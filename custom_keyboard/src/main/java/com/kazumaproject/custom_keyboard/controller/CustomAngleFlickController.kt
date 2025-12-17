@@ -21,7 +21,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
-// 変更: flickSensitivity をコンストラクタで受け取る
+// flickSensitivity はあくまで「距離の閾値」として保持
 class CustomAngleFlickController(
     context: Context,
     private val flickSensitivity: Int
@@ -50,8 +50,6 @@ class CustomAngleFlickController(
     private var initialTouchX = 0f
     private var initialTouchY = 0f
 
-    // 以前の flickThreshold 変数は削除し、コンストラクタの flickSensitivity を使用します
-
     private var keyMaps: List<Map<FlickDirection, String>> = emptyList()
     private var currentMapIndex = 0
 
@@ -62,8 +60,11 @@ class CustomAngleFlickController(
     private var isLongPressModeActive = false
 
     init {
-        // 初期化時に感度（中心円の半径）をViewに伝える
-        popupView.setFlickSensitivity(flickSensitivity.toFloat())
+        // ★ViewへのSensitivity設定呼び出しを削除 (Viewには見た目のサイズのみ設定する方針へ)
+        // popupView.setFlickSensitivity(...)
+
+        // デフォルトの見た目サイズを設定（必要に応じて setPopupViewSize で上書きしてください）
+        popupView.setUiSize(160f, 60f, 40f)
     }
 
     // --- Configuration ---
@@ -80,11 +81,10 @@ class CustomAngleFlickController(
         popupView.setColors(theme)
     }
 
-    // 変更: center サイズは flickSensitivity で決まるため、引数から削除、あるいは無視するように変更しても良いですが、
-    // ここでは orbit と textSize だけ更新するように修正します。
-    fun setPopupViewSize(orbit: Float, textSize: Float) {
-        // center は flickSensitivity を使用するため、ここでは orbit と text だけ更新
-        popupView.setUiSize(orbit, textSize)
+    // ★変更: 見た目用に centerRadius (px) を受け取れるようにする
+    // これにより、flickSensitivity(判定) と centerRadius(見た目) を別々に管理可能
+    fun setPopupViewSize(orbit: Float, centerRadius: Float, textSize: Float) {
+        popupView.setUiSize(orbit, centerRadius, textSize)
     }
 
     fun cancel() {
@@ -177,7 +177,6 @@ class CustomAngleFlickController(
 
     private fun showPopup() {
         val currentAnchor = anchorView ?: return
-        // PopupViewのサイズが更新されている可能性があるため再取得
         popupWindow.width = popupView.preferredWidth
         popupWindow.height = popupView.preferredHeight
 
@@ -204,7 +203,8 @@ class CustomAngleFlickController(
         val dy = currentY - initialTouchY
         val distance = sqrt(dx * dx + dy * dy)
 
-        // 変更: コンストラクタで受け取った flickSensitivity を使用
+        // 判定はコンストラクタで渡された flickSensitivity を使用
+        // これが見た目の中心円半径と一致している必要はありません
         if (distance < flickSensitivity) return FlickDirection.TAP
 
         val angle = (Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) + 360) % 360

@@ -56,9 +56,17 @@ class CircularFlickSettingsFragment : Fragment() {
         val ranges = appPreference.getCircularFlickRanges()
         angleData.putAll(ranges)
 
+        // Sweep角度スライダーの設定
         binding.sliderSweepAngle.apply {
             valueFrom = minSweepAngle
             valueTo = 360f
+        }
+
+        // ウィンドウサイズ倍率スライダーの設定
+        binding.sliderWindowScale.apply {
+            valueFrom = 0.5f
+            valueTo = 2.0f
+            stepSize = 0.1f // 0.1刻みに設定
         }
 
         setupMenu()
@@ -71,12 +79,16 @@ class CircularFlickSettingsFragment : Fragment() {
 
     private fun setupResetButton() {
         binding.btnReset.setOnClickListener {
-            // デフォルト値に戻して保存
+            // 角度設定をデフォルト値に戻して保存
             saveData(FlickDirection.UP, 225f, 90f)
             saveData(FlickDirection.UP_RIGHT_FAR, 315f, 90f)
             saveData(FlickDirection.DOWN, 45f, 90f)
             saveData(FlickDirection.UP_LEFT_FAR, 135f, 90f)
 
+            // ウィンドウサイズ倍率をデフォルト(1.0)に戻して保存
+            appPreference.circular_flickWindow_scale = 1.0f
+
+            // UI選択状態のリセット
             binding.chipGroupDirection.check(binding.chipUp.id)
             currentEditingDirection = FlickDirection.UP
 
@@ -130,6 +142,17 @@ class CircularFlickSettingsFragment : Fragment() {
     }
 
     private fun setupSliders() {
+        // --- ウィンドウサイズ倍率のスライダー操作 ---
+        binding.sliderWindowScale.addOnChangeListener { _, value, fromUser ->
+            if (!fromUser || isUpdatingUi) return@addOnChangeListener
+
+            // Preference保存
+            appPreference.circular_flickWindow_scale = value
+
+            // 値表示の更新 (例: "1.0")
+            binding.tvScaleValue.text = String.format("%.1f", value)
+        }
+
         // --- 開始角度(Start)のスライダー操作 ---
         binding.sliderStartAngle.addOnChangeListener { _, newStartValue, fromUser ->
             if (!fromUser || isUpdatingUi) return@addOnChangeListener
@@ -199,6 +222,7 @@ class CircularFlickSettingsFragment : Fragment() {
     private fun updateSlidersFromData() {
         isUpdatingUi = true
 
+        // 1. 角度スライダーの更新
         val (start, sweep) = angleData[currentEditingDirection] ?: Pair(0f, 90f)
 
         binding.sliderStartAngle.value =
@@ -208,6 +232,14 @@ class CircularFlickSettingsFragment : Fragment() {
 
         binding.tvStartValue.text = "${start.toInt()}°"
         binding.tvSweepValue.text = "${sweep.toInt()}°"
+
+        // 2. 倍率スライダーの更新
+        val scale = appPreference.circular_flickWindow_scale
+        binding.sliderWindowScale.value =
+            scale.coerceIn(binding.sliderWindowScale.valueFrom, binding.sliderWindowScale.valueTo)
+
+        // テキスト表示の更新
+        binding.tvScaleValue.text = String.format("%.1f", scale)
 
         isUpdatingUi = false
     }
@@ -238,11 +270,11 @@ class CircularFlickSettingsFragment : Fragment() {
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-
+                // 必要に応じてメニューを追加
             }
 
             override fun onPrepareMenu(menu: Menu) {
-
+                // メニューの準備
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {

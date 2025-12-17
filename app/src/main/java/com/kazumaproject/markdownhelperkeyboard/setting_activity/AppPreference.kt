@@ -279,6 +279,8 @@ object AppPreference {
     private val PREF_LEFT_START = Pair("circular_flick_left_start", 135f)
     private val PREF_LEFT_SWEEP = Pair("circular_flick_left_sweep", 90f)
 
+    private val CIRCULAR_FLICK_WINDOW_SCALE = Pair("circular_flick_window_scale", 1.0f)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1259,6 +1261,13 @@ object AppPreference {
             LEARN_PREDICTION_PREFERENCE.second
         )
         set(value) = preferences.edit { it.putInt(LEARN_PREDICTION_PREFERENCE.first, value) }
+
+    var circular_flickWindow_scale: Float
+        get() = preferences.getFloat(
+            CIRCULAR_FLICK_WINDOW_SCALE.first,
+            CIRCULAR_FLICK_WINDOW_SCALE.second
+        )
+        set(value) = preferences.edit { it.putFloat(CIRCULAR_FLICK_WINDOW_SCALE.first, value) }
 
     var circularFlickUpStart: Float
         get() = preferences.getFloat(PREF_UP_START.first, PREF_UP_START.second)

@@ -113,6 +113,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var customBorderEnable: Boolean = false
     private var customBorderColor: Int = Color.BLACK
     private var customAngleAndRange: Map<FlickDirection, Pair<Float, Float>> = emptyMap()
+    private var circularViewScale: Float = 1.0f
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
@@ -130,8 +131,13 @@ class FlickKeyboardView @JvmOverloads constructor(
         isCursorMode = enabled
     }
 
-    fun setAngleAndRange(range: Map<FlickDirection, Pair<Float, Float>>) {
+    fun setAngleAndRange(
+        range: Map<FlickDirection,
+                Pair<Float, Float>>,
+        circularPopViewScale: Float
+    ) {
         this.customAngleAndRange = range
+        this.circularViewScale = circularPopViewScale
     }
 
     /**
@@ -665,11 +671,12 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         }
                         attach(keyView, stringMaps)
-                        val scaleFactor = 1.4f
-                        val newOrbit = 170f * scaleFactor
-                        val newTextSize = 55f * scaleFactor
+                        val newCenter = 64f * circularViewScale
+                        val newOrbit = 170f * circularViewScale
+                        val newTextSize = 55f * circularViewScale
                         setPopupViewSize(
                             orbit = newOrbit,
+                            centerRadius = newCenter,
                             textSize = newTextSize
                         )
                     }
