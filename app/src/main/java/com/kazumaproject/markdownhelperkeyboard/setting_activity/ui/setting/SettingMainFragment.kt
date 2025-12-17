@@ -46,29 +46,39 @@ class SettingMainFragment : Fragment() {
         super.onCreate(savedInstanceState)
         val romajiMapUpdated = appPreference.romaji_map_data_version
         lifecycleScope.launch(Dispatchers.IO) {
-            userDictionaryRepository.apply {
-                if (searchByReadingExactMatchSuspend("びゃんびゃんめん").isEmpty()) {
-                    insert(
-                        UserWord(
-                            reading = "びゃんびゃんめん",
-                            word = "\uD883\uDEDE\uD883\uDEDE麺",
-                            posIndex = 0,
-                            posScore = 4000
-                        )
-                    )
-                }
-                if (searchByReadingExactMatchSuspend("びゃん").isEmpty()) {
-                    insert(
-                        UserWord(
-                            reading = "びゃん", word = "\uD883\uDEDE", posIndex = 0, posScore = 3000
-                        )
-                    )
-                }
+            withContext(Dispatchers.Main) {
+                binding.settingProgressBar.isVisible = true
             }
             if (romajiMapUpdated == 0) {
                 romajiMapRepository.updateDefaultMap()
+
+                userDictionaryRepository.apply {
+                    if (searchByReadingExactMatchSuspend("びゃんびゃんめん").isEmpty()) {
+                        insert(
+                            UserWord(
+                                reading = "びゃんびゃんめん",
+                                word = "\uD883\uDEDE\uD883\uDEDE麺",
+                                posIndex = 0,
+                                posScore = 4000
+                            )
+                        )
+                    }
+                    if (searchByReadingExactMatchSuspend("びゃん").isEmpty()) {
+                        insert(
+                            UserWord(
+                                reading = "びゃん", word = "\uD883\uDEDE", posIndex = 0, posScore = 3000
+                            )
+                        )
+                    }
+                }
+
                 appPreference.romaji_map_data_version = 1
             }
+
+            withContext(Dispatchers.Main) {
+                binding.settingProgressBar.isVisible = false
+            }
+
         }
     }
 
