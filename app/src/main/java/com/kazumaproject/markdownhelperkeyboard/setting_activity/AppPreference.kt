@@ -283,6 +283,10 @@ object AppPreference {
 
     private val CUSTOM_THEME_BORDER_WIDTH = Pair("theme_custom_border_width", 1)
 
+    private val PREF_FIVE_DIRECTIONS_ENABLE = Pair("circular_flick_five_directions_enable", false)
+    private val PREF_UP_RIGHT_START = Pair("circular_flick_up_right_start", 90f)
+    private val PREF_UP_RIGHT_SWEEP = Pair("circular_flick_up_right_sweep", 72f)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1280,6 +1284,13 @@ object AppPreference {
             it.putInt(CUSTOM_THEME_BORDER_WIDTH.first, value)
         }
 
+    var circularFlick5DirectionsEnable: Boolean
+        get() = preferences.getBoolean(
+            PREF_FIVE_DIRECTIONS_ENABLE.first,
+            PREF_FIVE_DIRECTIONS_ENABLE.second
+        )
+        set(value) = preferences.edit { it.putBoolean(PREF_FIVE_DIRECTIONS_ENABLE.first, value) }
+
     var circularFlickUpStart: Float
         get() = preferences.getFloat(PREF_UP_START.first, PREF_UP_START.second)
         set(value) = preferences.edit { it.putFloat(PREF_UP_START.first, value) }
@@ -1312,17 +1323,31 @@ object AppPreference {
         get() = preferences.getFloat(PREF_LEFT_SWEEP.first, PREF_LEFT_SWEEP.second)
         set(value) = preferences.edit { it.putFloat(PREF_LEFT_SWEEP.first, value) }
 
+    var circularFlickUpRightStart: Float
+        get() = preferences.getFloat(PREF_UP_RIGHT_START.first, PREF_UP_RIGHT_START.second)
+        set(value) = preferences.edit { it.putFloat(PREF_UP_RIGHT_START.first, value) }
+
+    var circularFlickUpRightSweep: Float
+        get() = preferences.getFloat(PREF_UP_RIGHT_SWEEP.first, PREF_UP_RIGHT_SWEEP.second)
+        set(value) = preferences.edit { it.putFloat(PREF_UP_RIGHT_SWEEP.first, value) }
+
     /**
      * キーボード側で使用するためのマップ取得メソッド
      * 戻り値: Map<FlickDirection, Pair<StartAngle, SweepAngle>>
      */
     fun getCircularFlickRanges(): Map<FlickDirection, Pair<Float, Float>> {
-        return mapOf(
+        val baseMap = mutableMapOf(
             FlickDirection.UP to Pair(circularFlickUpStart, circularFlickUpSweep),
             FlickDirection.UP_RIGHT_FAR to Pair(circularFlickRightStart, circularFlickRightSweep),
             FlickDirection.DOWN to Pair(circularFlickDownStart, circularFlickDownSweep),
             FlickDirection.UP_LEFT_FAR to Pair(circularFlickLeftStart, circularFlickLeftSweep)
         )
+
+        if (circularFlick5DirectionsEnable) {
+            baseMap[FlickDirection.UP_RIGHT] = Pair(circularFlickUpRightStart, circularFlickUpRightSweep)
+        }
+
+        return baseMap
     }
 
     fun migrateSumirePreferenceIfNeeded() {
