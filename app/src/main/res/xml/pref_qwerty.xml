@@ -88,5 +88,11 @@
             app:defaultValue="false"
             app:summary="@string/pref_romaji_shift_summary" />
 
+        <SwitchPreferenceCompat
+            android:key="qwerty_switch_number_key_without_number_preference"
+            android:title="@string/qwerty_switch_number_key_without_number_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/qwerty_switch_number_key_without_number_preference_sumary" />
+
     </PreferenceCategory>
 </PreferenceScreen>
