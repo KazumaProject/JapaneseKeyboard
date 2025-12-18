@@ -8,10 +8,18 @@ import androidx.room.Relation
  */
 data class KeyWithFlicks(
     @Embedded val key: KeyDefinition,
+
     @Relation(
         parentColumn = "keyId",
         entity = FlickMapping::class,
         entityColumn = "ownerKeyId"
     )
-    val flicks: List<FlickMapping>
+    val flicks: List<FlickMapping>,
+
+    @Relation(
+        parentColumn = "keyId",
+        entity = TwoStepFlickMapping::class,
+        entityColumn = "ownerKeyId"
+    )
+    val twoStepFlicks: List<TwoStepFlickMapping>
 )

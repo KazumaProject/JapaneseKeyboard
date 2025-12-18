@@ -1052,7 +1052,8 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.TWO_STEP_FLICK -> {
-                val twoStepMap = layout.twoStepFlickKeyMaps[keyData.label]
+                val twoStepMap = layout.twoStepFlickKeyMaps[keyData.keyId]
+                    ?: layout.twoStepFlickKeyMaps[keyData.label]
                 if (twoStepMap != null) {
                     val controller = TfbiInputController(
                         context,

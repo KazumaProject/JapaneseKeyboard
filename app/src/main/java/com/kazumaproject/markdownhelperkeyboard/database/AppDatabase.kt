@@ -14,6 +14,8 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemT
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TfbiFlickDirectionConverter
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.MapTypeConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
@@ -37,21 +39,24 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         CustomKeyboardLayout::class,
         KeyDefinition::class,
         FlickMapping::class,
+        TwoStepFlickMapping::class,
         UserTemplate::class,
         ClipboardHistoryItem::class,
         RomajiMapEntity::class,
         NgWord::class,
         ShortcutItem::class
     ],
-    version = 13,
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(
     BitmapConverter::class,
     ItemTypeConverter::class,
-    MapTypeConverter::class
+    MapTypeConverter::class,
+    TfbiFlickDirectionConverter::class
 )
 abstract class AppDatabase : RoomDatabase() {
+
     abstract fun learnDao(): LearnDao
     abstract fun clickedSymbolDao(): ClickedSymbolDao
     abstract fun userWordDao(): UserWordDao
@@ -63,6 +68,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun shortcutDao(): ShortcutDao
 
     companion object {
+
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -101,7 +107,6 @@ abstract class AppDatabase : RoomDatabase() {
          */
         val MIGRATION_3_4 = object : Migration(3, 4) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // SQL command to create an index on the 'reading' column
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_user_word_reading` ON `user_word`(`reading`)")
             }
         }
@@ -113,7 +118,6 @@ abstract class AppDatabase : RoomDatabase() {
          */
         val MIGRATION_4_5 = object : Migration(4, 5) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1. keyboard_layouts テーブルの作成
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `keyboard_layouts` (
@@ -126,7 +130,6 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent()
                 )
 
-                // 2. key_definitions テーブルの作成
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `key_definitions` (
@@ -145,10 +148,8 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """.trimIndent()
                 )
-                // key_definitions テーブルのインデックス作成 (外部キーのパフォーマンス向上)
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_key_definitions_ownerLayoutId` ON `key_definitions`(`ownerLayoutId`)")
 
-                // 3. flick_mappings テーブルの作成
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `flick_mappings` (
@@ -168,9 +169,8 @@ abstract class AppDatabase : RoomDatabase() {
         /**
          * バージョン5から6へのマイグレーション。
          * key_definitions テーブルに action 列を追加します。
-         * この列は、キーが持つ特別な機能（削除、スペースなど）を文字列として保存します。
          */
-        val MIGRATION_5_6 = object : Migration(5, 6) { // <<< ★★★ ここから追加 ★★★
+        val MIGRATION_5_6 = object : Migration(5, 6) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `action` TEXT")
             }
@@ -179,11 +179,9 @@ abstract class AppDatabase : RoomDatabase() {
         /**
          * バージョン6から7へのマイグレーション。
          * 定型文機能をサポートするため、user_template テーブルを追加します。
-         * 検索パフォーマンス向上のため、reading列にインデックスも作成します。
          */
         val MIGRATION_6_7 = object : Migration(6, 7) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // user_template テーブルの作成
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `user_template` (
@@ -195,7 +193,6 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
-                // reading 列にインデックスを作成
                 db.execSQL("CREATE INDEX IF NOT EXISTS `index_user_template_reading` ON `user_template`(`reading`)")
             }
         }
@@ -203,8 +200,6 @@ abstract class AppDatabase : RoomDatabase() {
         /**
          * バージョン7から8へのマイグレーション。
          * learn_table に leftId と rightId カラムを追加します。
-         * これらは連接コスト計算のために使用されます。
-         * SQLiteではShort型はINTEGERとして扱われ、デフォルト値はNULLとなります。
          */
         val MIGRATION_7_8 = object : Migration(7, 8) {
             override fun migrate(db: SupportSQLiteDatabase) {
@@ -213,7 +208,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // バージョン8から9へのマイグレーション例
         val MIGRATION_8_9 = object : Migration(8, 9) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -246,22 +240,18 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // ▼▼▼ このマイグレーションを追加 ▼▼▼
         /**
          * バージョン10から11へのマイグレーション。
          * keyboard_layoutsテーブルにisRomajiカラムを追加します。
-         * これはキーボードがローマ字入力用かどうかを示すためのフラグです。
          */
         val MIGRATION_10_11 = object : Migration(10, 11) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // keyboard_layoutsテーブルにisRomajiカラム(INTEGER型, NOT NULL, デフォルト値0)を追加
                 db.execSQL("ALTER TABLE keyboard_layouts ADD COLUMN isRomaji INTEGER NOT NULL DEFAULT 0")
             }
         }
 
         val MIGRATION_11_12 = object : Migration(11, 12) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 1) Create table
                 db.execSQL(
                     """
                     CREATE TABLE IF NOT EXISTS `ng_word` (
@@ -271,7 +261,6 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                 """.trimIndent()
                 )
-                // 2) Index on yomi for fast lookups
                 db.execSQL(
                     """
                     CREATE INDEX IF NOT EXISTS `index_ng_word_yomi`
@@ -295,5 +284,32 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * バージョン13から14へのマイグレーション。
+         * TWO_STEP_FLICK の永続化のために two_step_flick_mappings テーブルを追加します。
+         */
+        val MIGRATION_13_14 = object : Migration(13, 14) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `two_step_flick_mappings` (
+                        `ownerKeyId` INTEGER NOT NULL,
+                        `firstDirection` TEXT NOT NULL,
+                        `secondDirection` TEXT NOT NULL,
+                        `output` TEXT NOT NULL,
+                        PRIMARY KEY(`ownerKeyId`, `firstDirection`, `secondDirection`),
+                        FOREIGN KEY(`ownerKeyId`) REFERENCES `key_definitions`(`keyId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_two_step_flick_mappings_ownerKeyId`
+                    ON `two_step_flick_mappings`(`ownerKeyId`)
+                    """.trimIndent()
+                )
+            }
+        }
     }
 }
