@@ -27,8 +27,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
             android:text="5方向フリックモードを有効にする"
-            app:layout_constraintTop_toBottomOf="@id/btnReset"
-            app:layout_constraintStart_toStartOf="parent" />
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/btnReset" />
 
         <TextView
             android:id="@+id/tvScaleLabel"

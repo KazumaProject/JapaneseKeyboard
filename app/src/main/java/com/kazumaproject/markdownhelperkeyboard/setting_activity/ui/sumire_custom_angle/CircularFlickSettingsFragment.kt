@@ -34,6 +34,10 @@ class CircularFlickSettingsFragment : Fragment() {
     private var isUpdatingUi = false
     private val minSweepAngle = 15f
 
+    // 新規作成: カウンター変数
+    private var resetClickCount = 0
+    private var chipDownClickCount = 0
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -46,7 +50,13 @@ class CircularFlickSettingsFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         val is5Way = appPreference.circularFlick5DirectionsEnable
+
+        // 初期状態ではスイッチを非表示にする（ただし、既に設定が有効な場合は表示したままにする等の調整が必要な場合はここを変更してください）
+        // 要件に従い、隠しコマンド未達成なら非表示、既にONなら表示などのロジックを入れるのが親切ですが、
+        // 今回は「条件達成時に表示」という要件のため、初期状態は、設定がOFFならGONEにします。
+        binding.switchFiveDirections.isVisible = is5Way
         binding.switchFiveDirections.isChecked = is5Way
+
         updateDirectionOrder(is5Way)
 
         val ranges = appPreference.getCircularFlickRanges()
@@ -73,19 +83,24 @@ class CircularFlickSettingsFragment : Fragment() {
         refreshAll()
     }
 
+    // 新規作成: 隠し機能解除チェック
+    private fun checkSecretUnlock() {
+        if (resetClickCount >= 16 && chipDownClickCount >= 16) {
+            if (!binding.switchFiveDirections.isVisible) {
+                binding.switchFiveDirections.isVisible = true
+            }
+        }
+    }
+
     private fun updateDirectionOrder(is5Way: Boolean) {
         directionOrder.clear()
         if (is5Way) {
-            // 5方向モード: 時計回りの順序を定義
-            // UP(上) -> RIGHT(右) -> DOWN(下) -> UP_RIGHT(左下) -> LEFT(左)
-            // ※ UP_RIGHT を DOWN と LEFT の間に配置
             directionOrder.add(FlickDirection.UP)
-            directionOrder.add(FlickDirection.UP_RIGHT_FAR) // 右
-            directionOrder.add(FlickDirection.DOWN)         // 下
-            directionOrder.add(FlickDirection.UP_RIGHT)     // 左下 (Toggle用)
-            directionOrder.add(FlickDirection.UP_LEFT_FAR)  // 左
+            directionOrder.add(FlickDirection.UP_RIGHT_FAR)
+            directionOrder.add(FlickDirection.DOWN)
+            directionOrder.add(FlickDirection.UP_RIGHT)
+            directionOrder.add(FlickDirection.UP_LEFT_FAR)
         } else {
-            // 4方向モード
             directionOrder.add(FlickDirection.UP)
             directionOrder.add(FlickDirection.UP_RIGHT_FAR)
             directionOrder.add(FlickDirection.DOWN)
@@ -112,6 +127,10 @@ class CircularFlickSettingsFragment : Fragment() {
 
     private fun setupResetButton() {
         binding.btnReset.setOnClickListener {
+            // 変更点: カウントアップとチェック
+            resetClickCount++
+            checkSecretUnlock()
+
             val is5Way = appPreference.circularFlick5DirectionsEnable
             resetAnglesToDefault(is5Way)
             appPreference.circular_flickWindow_scale = 1.0f
@@ -123,21 +142,12 @@ class CircularFlickSettingsFragment : Fragment() {
 
     private fun resetAnglesToDefault(is5Way: Boolean) {
         if (is5Way) {
-            // 5分割 (360 / 5 = 72度)
-            // 配置:
-            // UP(上): 中心270度 -> Start 234
-            // RIGHT(右): 中心342度 -> Start 306
-            // DOWN(下): 中心54度 -> Start 18
-            // UP_RIGHT(左下): 中心126度 -> Start 90 (ここが変更点)
-            // LEFT(左): 中心198度 -> Start 162
-
             saveData(FlickDirection.UP, 234f, 72f)
             saveData(FlickDirection.UP_RIGHT_FAR, 306f, 72f)
             saveData(FlickDirection.DOWN, 18f, 72f)
-            saveData(FlickDirection.UP_RIGHT, 90f, 72f) // 左下に配置
+            saveData(FlickDirection.UP_RIGHT, 90f, 72f)
             saveData(FlickDirection.UP_LEFT_FAR, 162f, 72f)
         } else {
-            // 4分割 (360 / 4 = 90度)
             saveData(FlickDirection.UP, 225f, 90f)
             saveData(FlickDirection.UP_RIGHT_FAR, 315f, 90f)
             saveData(FlickDirection.DOWN, 45f, 90f)
@@ -177,6 +187,12 @@ class CircularFlickSettingsFragment : Fragment() {
 
     private fun setupChipGroup() {
         binding.chipGroupDirection.setOnCheckedChangeListener { _, checkedId ->
+            // 変更点: DOWNチップ選択時のカウントとチェック
+            if (checkedId == binding.chipDown.id) {
+                chipDownClickCount++
+                checkSecretUnlock()
+            }
+
             val direction = when (checkedId) {
                 binding.chipUp.id -> FlickDirection.UP
                 binding.chipUpRight.id -> FlickDirection.UP_RIGHT
@@ -203,13 +219,11 @@ class CircularFlickSettingsFragment : Fragment() {
             val (prevDirection, nextDirection) = getNeighbors(currentEditingDirection)
             val (prevStart, _) = angleData[prevDirection] ?: Pair(0f, 90f)
 
-            // 前の方向のSweepを調整
             val newPrevSweep = normalizeAngle(newStartValue - prevStart)
             if (newPrevSweep < minSweepAngle) return@addOnChangeListener
 
             val (nextStart, _) = angleData[nextDirection] ?: Pair(0f, 90f)
 
-            // 現在の方向のSweepを調整
             val newCurrentSweep = normalizeAngle(nextStart - newStartValue)
             if (newCurrentSweep < minSweepAngle) return@addOnChangeListener
 

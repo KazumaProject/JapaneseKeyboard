@@ -287,6 +287,8 @@ object AppPreference {
     private val PREF_UP_RIGHT_START = Pair("circular_flick_up_right_start", 90f)
     private val PREF_UP_RIGHT_SWEEP = Pair("circular_flick_up_right_sweep", 72f)
 
+    private val QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE = Pair("qwerty_switch_number_key_without_number_preference", false)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1330,6 +1332,14 @@ object AppPreference {
     var circularFlickUpRightSweep: Float
         get() = preferences.getFloat(PREF_UP_RIGHT_SWEEP.first, PREF_UP_RIGHT_SWEEP.second)
         set(value) = preferences.edit { it.putFloat(PREF_UP_RIGHT_SWEEP.first, value) }
+
+    var qwerty_switch_number_key_without_number_preference: Boolean
+        get() = preferences.getBoolean(
+            QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE.first,
+            QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE.second
+        )
+        set(value) = preferences.edit { it.putBoolean(QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE.first, value) }
+
 
     /**
      * キーボード側で使用するためのマップ取得メソッド

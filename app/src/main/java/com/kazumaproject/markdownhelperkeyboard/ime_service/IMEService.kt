@@ -510,6 +510,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var customKeyBorderWidth: Int? = 1
 
+    private var qwertySwitchNumberKeyWithoutNumberPreference: Boolean? = false
+
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
     private val _ngPattern = MutableStateFlow("".toRegex())
@@ -962,6 +964,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             learnPredictionPreference = learn_prediction_preference
             circularFlickWindowScale = circular_flickWindow_scale
             customKeyBorderWidth = custom_theme_border_width
+            qwertySwitchNumberKeyWithoutNumberPreference =
+                qwerty_switch_number_key_without_number_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1331,7 +1335,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
                 qwertyView.setFlickUpDetectionEnabled(qwertyEnableFlickUpPreference ?: false)
                 qwertyView.setFlickDownDetectionEnabled(qwertyEnableFlickDownPreference ?: false)
-                qwertyView.setNumberSwitchKeyTextStyle()
+                qwertyView.setNumberSwitchKeyTextStyle(
+                    excludeNumber = qwertySwitchNumberKeyWithoutNumberPreference ?: false
+                )
                 qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                 qwertyView.setDeleteLeftFlickEnabled(isDeleteLeftFlickPreference ?: true)
                 qwertyView.setKeyMargins(
@@ -1568,6 +1574,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         learnPredictionPreference = null
         circularFlickWindowScale = null
         customKeyBorderWidth = null
+        qwertySwitchNumberKeyWithoutNumberPreference = null
+
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
         speechRecognizer?.destroy()
@@ -8726,29 +8734,54 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySwitchNumberKey -> {
                             if (previousTenKeyQWERTYMode == null) {
-                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
-                                setKeyboardSizeSwitchKeyboard(mainView)
+                                if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
+                                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                                    mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                    setKeyboardSizeSwitchKeyboard(mainView)
+                                } else {
+                                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                                    mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                                    setKeyboardSizeSwitchKeyboard(mainView)
+                                }
                             } else {
                                 previousTenKeyQWERTYMode?.let {
                                     when (it) {
                                         TenKeyQWERTYMode.Default -> {
-                                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                            mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
-                                            setKeyboardSizeSwitchKeyboard(mainView)
+                                            if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
+                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                                setKeyboardSizeSwitchKeyboard(mainView)
+                                            } else {
+                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                                                mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                                                setKeyboardSizeSwitchKeyboard(mainView)
+                                            }
                                         }
 
                                         TenKeyQWERTYMode.Sumire -> {
-                                            customKeyboardMode = KeyboardInputMode.SYMBOLS
-                                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
-                                            createNewKeyboardLayoutForSumire()
-                                            setKeyboardSizeSwitchKeyboard(mainView)
+                                            if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
+                                                customKeyboardMode = KeyboardInputMode.HIRAGANA
+                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                                                createNewKeyboardLayoutForSumire()
+                                                setKeyboardSizeSwitchKeyboard(mainView)
+                                            } else {
+                                                customKeyboardMode = KeyboardInputMode.SYMBOLS
+                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                                                createNewKeyboardLayoutForSumire()
+                                                setKeyboardSizeSwitchKeyboard(mainView)
+                                            }
                                         }
 
                                         else -> {
-                                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                            mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
-                                            setKeyboardSizeSwitchKeyboard(mainView)
+                                            if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
+                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                                setKeyboardSizeSwitchKeyboard(mainView)
+                                            } else {
+                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                                                mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                                                setKeyboardSizeSwitchKeyboard(mainView)
+                                            }
                                         }
                                     }
                                 }
