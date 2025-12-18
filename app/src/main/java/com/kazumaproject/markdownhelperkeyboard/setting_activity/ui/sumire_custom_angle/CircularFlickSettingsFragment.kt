@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import com.kazumaproject.custom_keyboard.data.FlickDirection
@@ -26,20 +27,16 @@ class CircularFlickSettingsFragment : Fragment() {
     private var _binding: FragmentCircularFlickSettingsBinding? = null
     private val binding get() = _binding!!
 
-    private val directionOrder = listOf(
-        FlickDirection.UP,
-        FlickDirection.UP_RIGHT_FAR,
-        FlickDirection.DOWN,
-        FlickDirection.UP_LEFT_FAR
-    )
-
-    // 開始角度と範囲(Sweep)の両方を保持するMap
-    // Pair(StartAngle, SweepAngle)
+    private var directionOrder = mutableListOf<FlickDirection>()
     private val angleData = mutableMapOf<FlickDirection, Pair<Float, Float>>()
 
     private var currentEditingDirection: FlickDirection = FlickDirection.UP
     private var isUpdatingUi = false
     private val minSweepAngle = 15f
+
+    // 新規作成: カウンター変数
+    private var resetClickCount = 0
+    private var chipDownClickCount = 0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -52,85 +49,153 @@ class CircularFlickSettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Preferenceからデータをロード
+        val is5Way = appPreference.circularFlick5DirectionsEnable
+
+        // 初期状態ではスイッチを非表示にする（ただし、既に設定が有効な場合は表示したままにする等の調整が必要な場合はここを変更してください）
+        // 要件に従い、隠しコマンド未達成なら非表示、既にONなら表示などのロジックを入れるのが親切ですが、
+        // 今回は「条件達成時に表示」という要件のため、初期状態は、設定がOFFならGONEにします。
+        binding.switchFiveDirections.isVisible = is5Way
+        binding.switchFiveDirections.isChecked = is5Way
+
+        updateDirectionOrder(is5Way)
+
         val ranges = appPreference.getCircularFlickRanges()
         angleData.putAll(ranges)
 
-        // Sweep角度スライダーの設定
         binding.sliderSweepAngle.apply {
             valueFrom = minSweepAngle
             valueTo = 360f
         }
 
-        // ウィンドウサイズ倍率スライダーの設定
         binding.sliderWindowScale.apply {
             valueFrom = 0.5f
             valueTo = 2.0f
-            stepSize = 0.1f // 0.1刻みに設定
+            stepSize = 0.1f
         }
 
         setupMenu()
+        setupFiveWaySwitch()
         setupChipGroup()
         setupSliders()
         setupResetButton()
 
+        updateChipVisibility(is5Way)
         refreshAll()
+    }
+
+    // 新規作成: 隠し機能解除チェック
+    private fun checkSecretUnlock() {
+        if (resetClickCount >= 16 && chipDownClickCount >= 16) {
+            if (!binding.switchFiveDirections.isVisible) {
+                binding.switchFiveDirections.isVisible = true
+            }
+        }
+    }
+
+    private fun updateDirectionOrder(is5Way: Boolean) {
+        directionOrder.clear()
+        if (is5Way) {
+            directionOrder.add(FlickDirection.UP)
+            directionOrder.add(FlickDirection.UP_RIGHT_FAR)
+            directionOrder.add(FlickDirection.DOWN)
+            directionOrder.add(FlickDirection.UP_RIGHT)
+            directionOrder.add(FlickDirection.UP_LEFT_FAR)
+        } else {
+            directionOrder.add(FlickDirection.UP)
+            directionOrder.add(FlickDirection.UP_RIGHT_FAR)
+            directionOrder.add(FlickDirection.DOWN)
+            directionOrder.add(FlickDirection.UP_LEFT_FAR)
+        }
+    }
+
+    private fun setupFiveWaySwitch() {
+        binding.switchFiveDirections.setOnCheckedChangeListener { _, isChecked ->
+            appPreference.circularFlick5DirectionsEnable = isChecked
+            updateDirectionOrder(isChecked)
+            updateChipVisibility(isChecked)
+            resetAnglesToDefault(isChecked)
+
+            binding.chipGroupDirection.check(binding.chipUp.id)
+            currentEditingDirection = FlickDirection.UP
+            refreshAll()
+        }
+    }
+
+    private fun updateChipVisibility(is5Way: Boolean) {
+        binding.chipUpRight.isVisible = is5Way
     }
 
     private fun setupResetButton() {
         binding.btnReset.setOnClickListener {
-            // 角度設定をデフォルト値に戻して保存
+            // 変更点: カウントアップとチェック
+            resetClickCount++
+            checkSecretUnlock()
+
+            val is5Way = appPreference.circularFlick5DirectionsEnable
+            resetAnglesToDefault(is5Way)
+            appPreference.circular_flickWindow_scale = 1.0f
+            binding.chipGroupDirection.check(binding.chipUp.id)
+            currentEditingDirection = FlickDirection.UP
+            refreshAll()
+        }
+    }
+
+    private fun resetAnglesToDefault(is5Way: Boolean) {
+        if (is5Way) {
+            saveData(FlickDirection.UP, 234f, 72f)
+            saveData(FlickDirection.UP_RIGHT_FAR, 306f, 72f)
+            saveData(FlickDirection.DOWN, 18f, 72f)
+            saveData(FlickDirection.UP_RIGHT, 90f, 72f)
+            saveData(FlickDirection.UP_LEFT_FAR, 162f, 72f)
+        } else {
             saveData(FlickDirection.UP, 225f, 90f)
             saveData(FlickDirection.UP_RIGHT_FAR, 315f, 90f)
             saveData(FlickDirection.DOWN, 45f, 90f)
             saveData(FlickDirection.UP_LEFT_FAR, 135f, 90f)
 
-            // ウィンドウサイズ倍率をデフォルト(1.0)に戻して保存
-            appPreference.circular_flickWindow_scale = 1.0f
-
-            // UI選択状態のリセット
-            binding.chipGroupDirection.check(binding.chipUp.id)
-            currentEditingDirection = FlickDirection.UP
-
-            refreshAll()
+            angleData.remove(FlickDirection.UP_RIGHT)
         }
     }
 
-    // 特定の方向のデータ(Start/Sweep)をメモリとPreferenceの両方に保存する
     private fun saveData(direction: FlickDirection, start: Float, sweep: Float) {
-        // メモリ上のMap更新
         angleData[direction] = Pair(start, sweep)
 
-        // Preferenceへの保存
         when (direction) {
             FlickDirection.UP -> {
                 appPreference.circularFlickUpStart = start
                 appPreference.circularFlickUpSweep = sweep
             }
-
+            FlickDirection.UP_RIGHT -> {
+                appPreference.circularFlickUpRightStart = start
+                appPreference.circularFlickUpRightSweep = sweep
+            }
             FlickDirection.UP_RIGHT_FAR -> {
                 appPreference.circularFlickRightStart = start
                 appPreference.circularFlickRightSweep = sweep
             }
-
             FlickDirection.DOWN -> {
                 appPreference.circularFlickDownStart = start
                 appPreference.circularFlickDownSweep = sweep
             }
-
             FlickDirection.UP_LEFT_FAR -> {
                 appPreference.circularFlickLeftStart = start
                 appPreference.circularFlickLeftSweep = sweep
             }
-
             else -> {}
         }
     }
 
     private fun setupChipGroup() {
         binding.chipGroupDirection.setOnCheckedChangeListener { _, checkedId ->
+            // 変更点: DOWNチップ選択時のカウントとチェック
+            if (checkedId == binding.chipDown.id) {
+                chipDownClickCount++
+                checkSecretUnlock()
+            }
+
             val direction = when (checkedId) {
                 binding.chipUp.id -> FlickDirection.UP
+                binding.chipUpRight.id -> FlickDirection.UP_RIGHT
                 binding.chipRight.id -> FlickDirection.UP_RIGHT_FAR
                 binding.chipDown.id -> FlickDirection.DOWN
                 binding.chipLeft.id -> FlickDirection.UP_LEFT_FAR
@@ -142,71 +207,47 @@ class CircularFlickSettingsFragment : Fragment() {
     }
 
     private fun setupSliders() {
-        // --- ウィンドウサイズ倍率のスライダー操作 ---
         binding.sliderWindowScale.addOnChangeListener { _, value, fromUser ->
             if (!fromUser || isUpdatingUi) return@addOnChangeListener
-
-            // Preference保存
             appPreference.circular_flickWindow_scale = value
-
-            // 値表示の更新 (例: "1.0")
             binding.tvScaleValue.text = String.format("%.1f", value)
         }
 
-        // --- 開始角度(Start)のスライダー操作 ---
         binding.sliderStartAngle.addOnChangeListener { _, newStartValue, fromUser ->
             if (!fromUser || isUpdatingUi) return@addOnChangeListener
 
-            // 現在の方向のSweepを取得
-            val currentSweep = angleData[currentEditingDirection]?.second ?: 90f
-
-            // 1. 前の方向への影響チェック
-            val prevDirection = getPrevDirection(currentEditingDirection)
+            val (prevDirection, nextDirection) = getNeighbors(currentEditingDirection)
             val (prevStart, _) = angleData[prevDirection] ?: Pair(0f, 90f)
 
-            // 前の方向の新しいSweepを計算 (自分のStartが変わる＝前のSweepが伸び縮みする)
             val newPrevSweep = normalizeAngle(newStartValue - prevStart)
             if (newPrevSweep < minSweepAngle) return@addOnChangeListener
 
-            val nextDirection = getNextDirection(currentEditingDirection)
             val (nextStart, _) = angleData[nextDirection] ?: Pair(0f, 90f)
 
             val newCurrentSweep = normalizeAngle(nextStart - newStartValue)
             if (newCurrentSweep < minSweepAngle) return@addOnChangeListener
 
-            // 値の更新と保存
-            // 前の方向: Startはそのまま、Sweep更新
             saveData(prevDirection, prevStart, newPrevSweep)
-            // 現在の方向: Start更新、Sweep更新
             saveData(currentEditingDirection, newStartValue, newCurrentSweep)
 
             refreshAll()
         }
 
-        // --- 範囲(Sweep)のスライダー操作 ---
         binding.sliderSweepAngle.addOnChangeListener { _, newSweepValue, fromUser ->
             if (!fromUser || isUpdatingUi) return@addOnChangeListener
 
             val (currentStart, _) = angleData[currentEditingDirection] ?: Pair(0f, 90f)
-
-            // Sweepが変わると、次の方向のStartが変わる
-            val newNextStart = normalizeAngle(currentStart + newSweepValue)
             val nextDirection = getNextDirection(currentEditingDirection)
 
-            // 次の方向のSweepチェック
-            // 次の方向の終了位置(Start + Sweep)を取得
+            val newNextStart = normalizeAngle(currentStart + newSweepValue)
             val (oldNextStart, oldNextSweep) = angleData[nextDirection] ?: Pair(0f, 90f)
             val nextEnd = normalizeAngle(oldNextStart + oldNextSweep)
 
-            // 次の方向の新しいSweep = (元の終了位置 - 新しい開始位置)
             val newNextSweep = normalizeAngle(nextEnd - newNextStart)
 
             if (newNextSweep < minSweepAngle) return@addOnChangeListener
 
-            // 値の更新と保存
-            // 現在の方向: Startそのまま、Sweep更新
             saveData(currentEditingDirection, currentStart, newSweepValue)
-            // 次の方向: Start更新、Sweep更新
             saveData(nextDirection, newNextStart, newNextSweep)
 
             refreshAll()
@@ -214,15 +255,12 @@ class CircularFlickSettingsFragment : Fragment() {
     }
 
     private fun refreshAll() {
-        // PreviewView には Map<FlickDirection, Pair<Start, Sweep>> をそのまま渡せる想定
         binding.previewView.setRanges(angleData)
         updateSlidersFromData()
     }
 
     private fun updateSlidersFromData() {
         isUpdatingUi = true
-
-        // 1. 角度スライダーの更新
         val (start, sweep) = angleData[currentEditingDirection] ?: Pair(0f, 90f)
 
         binding.sliderStartAngle.value =
@@ -233,12 +271,9 @@ class CircularFlickSettingsFragment : Fragment() {
         binding.tvStartValue.text = "${start.toInt()}°"
         binding.tvSweepValue.text = "${sweep.toInt()}°"
 
-        // 2. 倍率スライダーの更新
         val scale = appPreference.circular_flickWindow_scale
         binding.sliderWindowScale.value =
             scale.coerceIn(binding.sliderWindowScale.valueFrom, binding.sliderWindowScale.valueTo)
-
-        // テキスト表示の更新
         binding.tvScaleValue.text = String.format("%.1f", scale)
 
         isUpdatingUi = false
@@ -253,12 +288,16 @@ class CircularFlickSettingsFragment : Fragment() {
 
     private fun getNextDirection(current: FlickDirection): FlickDirection {
         val index = directionOrder.indexOf(current)
+        if (index == -1) return directionOrder[0]
         return directionOrder[(index + 1) % directionOrder.size]
     }
 
-    private fun getPrevDirection(current: FlickDirection): FlickDirection {
+    private fun getNeighbors(current: FlickDirection): Pair<FlickDirection, FlickDirection> {
         val index = directionOrder.indexOf(current)
-        return directionOrder[(index - 1 + directionOrder.size) % directionOrder.size]
+        if (index == -1) return Pair(directionOrder[0], directionOrder[0])
+        val prev = directionOrder[(index - 1 + directionOrder.size) % directionOrder.size]
+        val next = directionOrder[(index + 1) % directionOrder.size]
+        return Pair(prev, next)
     }
 
     override fun onDestroyView() {
@@ -269,21 +308,14 @@ class CircularFlickSettingsFragment : Fragment() {
     private fun setupMenu() {
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                // 必要に応じてメニューを追加
-            }
-
-            override fun onPrepareMenu(menu: Menu) {
-                // メニューの準備
-            }
-
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {}
+            override fun onPrepareMenu(menu: Menu) {}
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
                 return when (menuItem.itemId) {
                     android.R.id.home -> {
                         parentFragmentManager.popBackStack()
                         true
                     }
-
                     else -> false
                 }
             }
