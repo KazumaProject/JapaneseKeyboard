@@ -42,13 +42,21 @@ class SettingMainFragment : Fragment() {
     @Inject
     lateinit var romajiMapRepository: RomajiMapRepository
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        _binding = FragmentSettingMainBinding.inflate(inflater, container, false)
+        return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
         val romajiMapUpdated = appPreference.romaji_map_data_version
         lifecycleScope.launch(Dispatchers.IO) {
-            withContext(Dispatchers.Main) {
-                binding.settingProgressBar.isVisible = true
-            }
             if (romajiMapUpdated == 0) {
                 romajiMapRepository.updateDefaultMap()
 
@@ -74,25 +82,7 @@ class SettingMainFragment : Fragment() {
 
                 appPreference.romaji_map_data_version = 1
             }
-
-            withContext(Dispatchers.Main) {
-                binding.settingProgressBar.isVisible = false
-            }
-
         }
-    }
-
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentSettingMainBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
 
         val adapter = SettingPagerAdapter(this)
         binding.settingViewPager.adapter = adapter
