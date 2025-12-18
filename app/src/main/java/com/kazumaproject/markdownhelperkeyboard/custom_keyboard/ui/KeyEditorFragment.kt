@@ -23,17 +23,19 @@ import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingAdapter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingItem
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.TwoStepMappingAdapter
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyEditorBinding
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -48,17 +50,20 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private val binding get() = _binding!!
 
     private var flickAdapter: FlickMappingAdapter? = null
+    private var twoStepAdapter: TwoStepMappingAdapter? = null
+
     private var currentKeyData: KeyData? = null
+
     private var currentFlickItems = mutableListOf<FlickMappingItem>()
+    private var currentTwoStepItems = mutableListOf<TwoStepMappingItem>()
+
     private lateinit var keyActionAdapter: ArrayAdapter<String>
 
-    // サイズ設定用の変数
     private var currentColSpan: Int = 1
     private var currentRowSpan: Int = 1
     private var maxColSpan: Int = 1
     private var maxRowSpan: Int = 1
 
-    // The ActionBar setup is now fully handled in onViewCreated.
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
     }
@@ -75,14 +80,27 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
     private fun setupAdapters() {
-        flickAdapter = FlickMappingAdapter(onItemUpdated = { updatedItem ->
-            val index = currentFlickItems.indexOfFirst { it.id == updatedItem.id }
-            if (index != -1) {
-                currentFlickItems[index] = updatedItem
-            }
-        }, context = requireContext())
+        flickAdapter = FlickMappingAdapter(
+            onItemUpdated = { updatedItem ->
+                val index = currentFlickItems.indexOfFirst { it.id == updatedItem.id }
+                if (index != -1) currentFlickItems[index] = updatedItem
+            },
+            context = requireContext()
+        )
         binding.flickMappingsRecyclerView.adapter = flickAdapter
         binding.flickMappingsRecyclerView.layoutManager = LinearLayoutManager(context)
+
+        twoStepAdapter = TwoStepMappingAdapter(
+            onItemUpdated = { updatedItem ->
+                val index = currentTwoStepItems.indexOfFirst { it.id == updatedItem.id }
+                if (index != -1) {
+                    currentTwoStepItems[index] = updatedItem
+                    updateDoneButtonState()
+                }
+            }
+        )
+        binding.twoStepMappingsRecyclerView.adapter = twoStepAdapter
+        binding.twoStepMappingsRecyclerView.layoutManager = LinearLayoutManager(context)
 
         val actionDisplayNames =
             KeyActionMapper.getDisplayActions(requireContext()).map { it.displayName }
@@ -97,38 +115,41 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun setupUIListeners() {
         binding.buttonDone.setOnClickListener { onDone() }
 
-        binding.keyTypeChipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
+        binding.keyTypeChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
             val selectedChipId = checkedIds.first()
             val isSpecialKey = selectedChipId == R.id.chip_special
 
-            binding.keyLabelLayout.isVisible = !isSpecialKey
             binding.keyActionLayout.isVisible = isSpecialKey
-            binding.flickEditorGroup.isVisible = !isSpecialKey
+            binding.textInputStyleTitle.isVisible = !isSpecialKey
+            binding.inputStyleChipGroup.isVisible = !isSpecialKey
 
-            // If switching to a normal key, ensure the flick list is initialized and displayed.
-            if (!isSpecialKey) {
-                // If the list is empty, it means we are coming from a "special key" state.
-                if (currentFlickItems.isEmpty()) {
-                    currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
-                        FlickMappingItem(direction = direction, output = "")
-                    }.toMutableList()
-                }
-                // Submit the list to the adapter to display the flick settings.
-                flickAdapter?.submitList(currentFlickItems)
+            if (isSpecialKey) {
+                binding.keyLabelLayout.isVisible = false
+                binding.flickEditorGroup.isVisible = false
+                binding.twoStepEditorGroup.isVisible = false
+            } else {
+                // normal key: input style (petal / two-step) will control which editor is visible
+                handleInputStyleUi()
             }
 
+            updateDoneButtonState()
+        }
+
+        binding.inputStyleChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
+            handleInputStyleUi()
             updateDoneButtonState()
         }
 
         binding.keyLabelEdittext.doAfterTextChanged {
             updateDoneButtonState()
         }
+
         binding.keyActionSpinner.doAfterTextChanged {
             updateDoneButtonState()
         }
 
-        // ▼▼▼ サイズ変更ボタンのリスナー設定 ▼▼▼
         binding.btnColPlus.setOnClickListener {
             if (currentColSpan < maxColSpan) {
                 currentColSpan++
@@ -155,11 +176,36 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
     }
 
+    private fun handleInputStyleUi() {
+        val selectedStyle = binding.inputStyleChipGroup.checkedChipId
+        val isTwoStep = selectedStyle == R.id.chip_two_step_flick
+
+        // Petal: label + flick list
+        binding.keyLabelLayout.isVisible = !isTwoStep
+        binding.flickEditorGroup.isVisible = !isTwoStep
+
+        // TwoStep: 17 mapping list
+        binding.twoStepEditorGroup.isVisible = isTwoStep
+
+        if (!isTwoStep) {
+            if (currentFlickItems.isEmpty()) {
+                currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
+                    FlickMappingItem(direction = direction, output = "")
+                }.toMutableList()
+            }
+            flickAdapter?.submitList(currentFlickItems.toList())
+        } else {
+            if (currentTwoStepItems.isEmpty()) {
+                currentTwoStepItems = createDefaultTwoStepItems()
+            }
+            twoStepAdapter?.submitList(currentTwoStepItems.toList())
+        }
+    }
+
     private fun updateSizeDisplay() {
         binding.textColSpan.text = currentColSpan.toString()
         binding.textRowSpan.text = currentRowSpan.toString()
 
-        // ボタンの有効/無効状態を更新
         binding.btnColPlus.isEnabled = currentColSpan < maxColSpan
         binding.btnColMinus.isEnabled = currentColSpan > 1
         binding.btnRowPlus.isEnabled = currentRowSpan < maxRowSpan
@@ -169,18 +215,15 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun setupToolbarAndMenu() {
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = getString(R.string.edit_key)
-            // This line shows the back arrow in the ActionBar
             setDisplayHomeAsUpEnabled(true)
         }
 
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                // No menu items to inflate for this fragment
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                // This handles the click on the back arrow
                 return when (menuItem.itemId) {
                     android.R.id.home -> {
                         findNavController().popBackStack()
@@ -200,7 +243,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
 
             R.id.chip_normal -> {
-                binding.keyLabelEdittext.text.toString().isNotEmpty()
+                val isTwoStep =
+                    binding.inputStyleChipGroup.checkedChipId == R.id.chip_two_step_flick
+                if (isTwoStep) {
+                    // TwoStep: base (TAP->TAP) must be filled
+                    val base =
+                        currentTwoStepItems.firstOrNull { it.first == TfbiFlickDirection.TAP && it.second == TfbiFlickDirection.TAP }?.output
+                    !base.isNullOrEmpty()
+                } else {
+                    // Petal: label must be filled
+                    binding.keyLabelEdittext.text.toString().isNotEmpty()
+                }
             }
 
             else -> false
@@ -211,6 +264,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun setupInitialState() {
         viewLifecycleOwner.lifecycleScope.launch {
             val state = viewModel.uiState.filterNotNull().first()
+
             currentKeyData =
                 state.layout.keys.firstOrNull { it.keyId == state.selectedKeyIdentifier }
 
@@ -221,18 +275,13 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
             val key = currentKeyData!!
 
-            // ▼▼▼ サイズ情報の初期化と最大値の計算 ▼▼▼
             currentColSpan = key.colSpan
             currentRowSpan = key.rowSpan
-            // 現在のキー位置に基づいて、グリッドからはみ出さない最大サイズを計算
             maxColSpan = state.layout.columnCount - key.column
             maxRowSpan = state.layout.rowCount - key.row
-
             updateSizeDisplay()
-            // ▲▲▲ サイズ情報の初期化ここまで ▲▲▲
 
-            binding.keyLabelEdittext.setText(key.label)
-
+            // Key type: special / normal
             if (key.isSpecialKey) {
                 binding.keyTypeChipGroup.check(R.id.chip_special)
                 key.action?.let { currentAction ->
@@ -246,17 +295,279 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             } else {
                 binding.keyTypeChipGroup.check(R.id.chip_normal)
 
-                val flickMap = state.layout.flickKeyMaps[key.keyId]?.firstOrNull() ?: emptyMap()
-                currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
-                    val savedAction = flickMap[direction]
-                    val output = if (savedAction is FlickAction.Input) savedAction.char else ""
-                    FlickMappingItem(direction = direction, output = output)
-                }.toMutableList()
-                flickAdapter?.submitList(currentFlickItems)
+                // Input style: petal or two-step
+                if (key.keyType == KeyType.TWO_STEP_FLICK) {
+                    binding.inputStyleChipGroup.check(R.id.chip_two_step_flick)
+                } else {
+                    binding.inputStyleChipGroup.check(R.id.chip_petal_flick)
+                }
+
+                // Restore editors
+                if (key.keyType == KeyType.TWO_STEP_FLICK) {
+                    // Restore from layout.twoStepFlickKeyMaps
+                    val map = state.layout.twoStepFlickKeyMaps[key.keyId] ?: emptyMap()
+                    currentTwoStepItems = createDefaultTwoStepItems()
+
+                    val base = map[TfbiFlickDirection.TAP]?.get(TfbiFlickDirection.TAP).orEmpty()
+
+                    fun setItem(
+                        first: TfbiFlickDirection,
+                        second: TfbiFlickDirection,
+                        value: String
+                    ) {
+                        val idx =
+                            currentTwoStepItems.indexOfFirst { it.first == first && it.second == second }
+                        if (idx != -1) {
+                            currentTwoStepItems[idx] = currentTwoStepItems[idx].copy(output = value)
+                        }
+                    }
+
+                    setItem(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP, base)
+
+                    // diagonals
+                    setItem(
+                        TfbiFlickDirection.UP_LEFT,
+                        TfbiFlickDirection.UP_LEFT,
+                        map[TfbiFlickDirection.UP_LEFT]?.get(TfbiFlickDirection.UP_LEFT).orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.DOWN_LEFT,
+                        TfbiFlickDirection.DOWN_LEFT,
+                        map[TfbiFlickDirection.DOWN_LEFT]?.get(TfbiFlickDirection.DOWN_LEFT)
+                            .orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.UP_RIGHT,
+                        TfbiFlickDirection.UP_RIGHT,
+                        map[TfbiFlickDirection.UP_RIGHT]?.get(TfbiFlickDirection.UP_RIGHT).orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.DOWN_RIGHT,
+                        TfbiFlickDirection.DOWN_RIGHT,
+                        map[TfbiFlickDirection.DOWN_RIGHT]?.get(TfbiFlickDirection.DOWN_RIGHT)
+                            .orEmpty()
+                    )
+
+                    // cardinals
+                    setItem(
+                        TfbiFlickDirection.LEFT,
+                        TfbiFlickDirection.LEFT,
+                        map[TfbiFlickDirection.LEFT]?.get(TfbiFlickDirection.LEFT).orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.LEFT,
+                        TfbiFlickDirection.UP_LEFT,
+                        map[TfbiFlickDirection.LEFT]?.get(TfbiFlickDirection.UP_LEFT).orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.LEFT,
+                        TfbiFlickDirection.DOWN_LEFT,
+                        map[TfbiFlickDirection.LEFT]?.get(TfbiFlickDirection.DOWN_LEFT).orEmpty()
+                    )
+
+                    setItem(
+                        TfbiFlickDirection.RIGHT,
+                        TfbiFlickDirection.RIGHT,
+                        map[TfbiFlickDirection.RIGHT]?.get(TfbiFlickDirection.RIGHT).orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.RIGHT,
+                        TfbiFlickDirection.UP_RIGHT,
+                        map[TfbiFlickDirection.RIGHT]?.get(TfbiFlickDirection.UP_RIGHT).orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.RIGHT,
+                        TfbiFlickDirection.DOWN_RIGHT,
+                        map[TfbiFlickDirection.RIGHT]?.get(TfbiFlickDirection.DOWN_RIGHT).orEmpty()
+                    )
+
+                    setItem(
+                        TfbiFlickDirection.UP,
+                        TfbiFlickDirection.UP,
+                        map[TfbiFlickDirection.UP]?.get(TfbiFlickDirection.UP).orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.UP,
+                        TfbiFlickDirection.UP_LEFT,
+                        map[TfbiFlickDirection.UP]?.get(TfbiFlickDirection.UP_LEFT).orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.UP,
+                        TfbiFlickDirection.UP_RIGHT,
+                        map[TfbiFlickDirection.UP]?.get(TfbiFlickDirection.UP_RIGHT).orEmpty()
+                    )
+
+                    setItem(
+                        TfbiFlickDirection.DOWN,
+                        TfbiFlickDirection.DOWN,
+                        map[TfbiFlickDirection.DOWN]?.get(TfbiFlickDirection.DOWN).orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.DOWN,
+                        TfbiFlickDirection.DOWN_LEFT,
+                        map[TfbiFlickDirection.DOWN]?.get(TfbiFlickDirection.DOWN_LEFT).orEmpty()
+                    )
+                    setItem(
+                        TfbiFlickDirection.DOWN,
+                        TfbiFlickDirection.DOWN_RIGHT,
+                        map[TfbiFlickDirection.DOWN]?.get(TfbiFlickDirection.DOWN_RIGHT).orEmpty()
+                    )
+
+                    twoStepAdapter?.submitList(currentTwoStepItems.toList())
+                } else {
+                    binding.keyLabelEdittext.setText(key.label)
+
+                    val flickMap = state.layout.flickKeyMaps[key.keyId]?.firstOrNull() ?: emptyMap()
+                    currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
+                        val savedAction = flickMap[direction]
+                        val output = if (savedAction is FlickAction.Input) savedAction.char else ""
+                        FlickMappingItem(direction = direction, output = output)
+                    }.toMutableList()
+                    flickAdapter?.submitList(currentFlickItems.toList())
+                }
+
+                handleInputStyleUi()
             }
 
             updateDoneButtonState()
         }
+    }
+
+    private fun createDefaultTwoStepItems(): MutableList<TwoStepMappingItem> {
+        val items = mutableListOf<TwoStepMappingItem>()
+
+        // base
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.TAP,
+                second = TfbiFlickDirection.TAP,
+                output = ""
+            )
+        )
+
+        // diagonals (4)
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.UP_LEFT,
+                second = TfbiFlickDirection.UP_LEFT,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.DOWN_LEFT,
+                second = TfbiFlickDirection.DOWN_LEFT,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.UP_RIGHT,
+                second = TfbiFlickDirection.UP_RIGHT,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.DOWN_RIGHT,
+                second = TfbiFlickDirection.DOWN_RIGHT,
+                output = ""
+            )
+        )
+
+        // LEFT (3)
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.LEFT,
+                second = TfbiFlickDirection.LEFT,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.LEFT,
+                second = TfbiFlickDirection.UP_LEFT,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.LEFT,
+                second = TfbiFlickDirection.DOWN_LEFT,
+                output = ""
+            )
+        )
+
+        // RIGHT (3)
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.RIGHT,
+                second = TfbiFlickDirection.RIGHT,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.RIGHT,
+                second = TfbiFlickDirection.UP_RIGHT,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.RIGHT,
+                second = TfbiFlickDirection.DOWN_RIGHT,
+                output = ""
+            )
+        )
+
+        // UP (3)
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.UP,
+                second = TfbiFlickDirection.UP,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.UP,
+                second = TfbiFlickDirection.UP_LEFT,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.UP,
+                second = TfbiFlickDirection.UP_RIGHT,
+                output = ""
+            )
+        )
+
+        // DOWN (3)
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.DOWN,
+                second = TfbiFlickDirection.DOWN,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.DOWN,
+                second = TfbiFlickDirection.DOWN_LEFT,
+                output = ""
+            )
+        )
+        items.add(
+            TwoStepMappingItem(
+                first = TfbiFlickDirection.DOWN,
+                second = TfbiFlickDirection.DOWN_RIGHT,
+                output = ""
+            )
+        )
+
+        return items
     }
 
     private fun onDone() {
@@ -267,6 +578,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         val isSpecial: Boolean
         val newAction: KeyAction?
         var newFlickMap: Map<FlickDirection, FlickAction> = emptyMap()
+        var newTwoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>> = emptyMap()
         val newDrawableResId: Int?
 
         when (binding.keyTypeChipGroup.checkedChipId) {
@@ -279,23 +591,59 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     KeyActionMapper.getDisplayActions(requireContext())
                         .firstOrNull { it.displayName == selectedText }
 
-                Timber.d("KeyEditor: Spinner text is '$selectedText', Found action object is '$selectedDisplayAction'")
-
                 newAction = selectedDisplayAction?.action
                 newDrawableResId = selectedDisplayAction?.iconResId
-
                 newLabel = if (newDrawableResId != null) "" else selectedDisplayAction?.displayName
                     ?: "ACTION"
             }
 
-            else -> { // chip_normal
+            else -> {
                 isSpecial = false
                 newAction = null
-                newKeyType = KeyType.PETAL_FLICK
                 newDrawableResId = null
-                newLabel = binding.keyLabelEdittext.text.toString()
-                newFlickMap = currentFlickItems.filter { it.output.isNotEmpty() }
-                    .associate { it.direction to FlickAction.Input(it.output) }
+
+                val isTwoStep =
+                    binding.inputStyleChipGroup.checkedChipId == R.id.chip_two_step_flick
+
+                if (!isTwoStep) {
+                    newKeyType = KeyType.PETAL_FLICK
+                    newLabel = binding.keyLabelEdittext.text.toString()
+                    newFlickMap = currentFlickItems
+                        .filter { it.output.isNotEmpty() }
+                        .associate { it.direction to FlickAction.Input(it.output) }
+                } else {
+                    newKeyType = KeyType.TWO_STEP_FLICK
+
+                    // Build nested map from 17 items
+                    val base =
+                        currentTwoStepItems.firstOrNull { it.first == TfbiFlickDirection.TAP && it.second == TfbiFlickDirection.TAP }?.output.orEmpty()
+                    newLabel = base
+
+                    val firstMap =
+                        mutableMapOf<TfbiFlickDirection, MutableMap<TfbiFlickDirection, String>>()
+
+                    // base
+                    if (base.isNotEmpty()) {
+                        firstMap.getOrPut(TfbiFlickDirection.TAP) { mutableMapOf() }[TfbiFlickDirection.TAP] =
+                            base
+                    }
+
+                    // other 16 (store only if filled)
+                    currentTwoStepItems
+                        .filterNot { it.first == TfbiFlickDirection.TAP && it.second == TfbiFlickDirection.TAP }
+                        .forEach { item ->
+                            if (item.output.isNotEmpty()) {
+                                val inner = firstMap.getOrPut(item.first) { mutableMapOf() }
+                                // ensure TAP fallback to base for this first-direction
+                                if (base.isNotEmpty()) {
+                                    inner[TfbiFlickDirection.TAP] = base
+                                }
+                                inner[item.second] = item.output
+                            }
+                        }
+
+                    newTwoStepMap = firstMap.mapValues { it.value.toMap() }
+                }
             }
         }
 
@@ -304,26 +652,26 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             keyType = newKeyType,
             isSpecialKey = isSpecial,
             action = newAction,
-            isFlickable = !isSpecial && newFlickMap.isNotEmpty(),
+            isFlickable = !isSpecial && (newKeyType != KeyType.NORMAL),
             drawableResId = newDrawableResId,
-            // ▼▼▼ 変更されたサイズを適用 ▼▼▼
             rowSpan = currentRowSpan,
             colSpan = currentColSpan
         )
 
-        viewModel.updateKeyAndFlicks(updatedKey, newFlickMap)
+        viewModel.updateKeyAndMappings(updatedKey, newFlickMap, newTwoStepMap)
         findNavController().popBackStack()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // Clean up the action bar when the view is destroyed.
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = null
             setDisplayHomeAsUpEnabled(false)
         }
         viewModel.doneNavigatingToKeyEditor()
+
         flickAdapter = null
+        twoStepAdapter = null
         _binding = null
     }
 }
