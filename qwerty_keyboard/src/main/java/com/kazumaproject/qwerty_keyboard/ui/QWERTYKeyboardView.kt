@@ -1844,23 +1844,36 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         binding.switchRomajiEnglish.text = spannableString
     }
 
-    fun setNumberSwitchKeyTextStyle() {
-        val text = "あa1"
+    /**
+     * @param excludeNumber trueの場合 "あa"、falseの場合 "あa1" を表示
+     */
+    fun setNumberSwitchKeyTextStyle(excludeNumber: Boolean) {
+        // booleanによってテキストを切り替え
+        val text = if (excludeNumber) "あa" else "あa1"
         val spannableString = SpannableString(text)
+
+        // 1文字目 "あ" (共通)
         spannableString.setSpan(
             StyleSpan(Typeface.NORMAL),
             0,
             1,
             Spannable.SPAN_INCLUSIVE_EXCLUSIVE
         )
+
+        // 2文字目 "a" (共通)
         spannableString.setSpan(StyleSpan(Typeface.BOLD), 1, 2, Spannable.SPAN_INCLUSIVE_EXCLUSIVE)
         spannableString.setSpan(RelativeSizeSpan(1.5f), 1, 2, Spannable.SPAN_INCLUSIVE_EXCLUSIVE)
-        spannableString.setSpan(
-            StyleSpan(Typeface.NORMAL),
-            2,
-            3,
-            Spannable.SPAN_INCLUSIVE_EXCLUSIVE
-        )
+
+        // 3文字目 "1" (falseの場合のみ存在するので、範囲チェックを行う)
+        if (!excludeNumber) {
+            spannableString.setSpan(
+                StyleSpan(Typeface.NORMAL),
+                2,
+                3,
+                Spannable.SPAN_INCLUSIVE_EXCLUSIVE
+            )
+        }
+
         binding.switchNumberLayout.text = spannableString
     }
 
