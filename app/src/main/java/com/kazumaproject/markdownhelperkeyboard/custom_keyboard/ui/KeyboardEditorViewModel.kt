@@ -8,6 +8,7 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
+import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -66,7 +67,7 @@ class KeyboardEditorViewModel @Inject constructor(
             return
         }
         currentEditingId = newId
-        Timber.d("Starting new editing session for layoutId: $newId")
+
         if (newId != null) {
             loadLayout(newId)
         } else {
@@ -75,7 +76,6 @@ class KeyboardEditorViewModel @Inject constructor(
     }
 
     private fun loadLayout(id: Long) {
-        Timber.d("loadLayout called with id = $id")
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val layoutName = repository.getLayoutName(id) ?: "名称未設定"
@@ -115,15 +115,15 @@ class KeyboardEditorViewModel @Inject constructor(
         viewModelScope.launch {
             val currentState = _uiState.value
             val idToSave = currentEditingId
+
             val nameExists = repository.doesNameExist(currentState.name, idToSave)
             if (nameExists) {
-                Timber.d("Save failed: Duplicate name found.")
                 _uiState.update { it.copy(duplicateNameError = true) }
             } else {
                 if (idToSave != null) {
                     repository.deleteLayout(idToSave)
                 }
-                Timber.d("save layout: ${currentState.layout}")
+
                 val layoutToSave = currentState.layout.copy(isRomaji = currentState.isRomaji)
                 repository.saveLayout(
                     layout = layoutToSave,
@@ -136,7 +136,6 @@ class KeyboardEditorViewModel @Inject constructor(
     }
 
     fun onCancelEditing() {
-        Timber.d("Editing cancelled. Resetting ViewModel state.")
         currentEditingId = null
         _uiState.value = EditorUiState()
     }
@@ -167,20 +166,18 @@ class KeyboardEditorViewModel @Inject constructor(
             val layout = currentState.layout
             if (layout.rowCount <= 1) return@update currentState
             val newRowCount = layout.rowCount - 1
-            // 最後の行にある、もしくは最後の行にはみ出している部分を削除/調整する簡易実装
-            // (行削除ボタンによる任意位置削除とは別ロジック)
+
             val updatedKeys = layout.keys.mapNotNull { key ->
                 if (key.row >= newRowCount) {
-                    // 完全に削除される行にあるキーは削除
                     null
                 } else if (key.row + key.rowSpan > newRowCount) {
-                    // はみ出しているキーは縮める
                     val newSpan = newRowCount - key.row
                     if (newSpan > 0) key.copy(rowSpan = newSpan) else null
                 } else {
                     key
                 }
             }
+
             val newLayout = layout.copy(keys = updatedKeys, rowCount = newRowCount)
             currentState.copy(layout = newLayout)
         }
@@ -218,42 +215,28 @@ class KeyboardEditorViewModel @Inject constructor(
                     key
                 }
             }
+
             val newLayout = layout.copy(keys = updatedKeys, columnCount = newColumnCount)
             currentState.copy(layout = newLayout)
         }
     }
 
-    // ▼▼▼ 修正箇所：行削除ロジックの改善 ▼▼▼
     fun deleteRowAt(rowIndex: Int) {
         _uiState.update { currentState ->
             val layout = currentState.layout
             if (layout.rowCount <= 1) return@update currentState
 
-            // 全キーに対して、削除される行との関係に基づいて位置やサイズを調整
             val updatedKeys = layout.keys.mapNotNull { key ->
                 val keyRowStart = key.row
-                val keyRowEnd = key.row + key.rowSpan // 排他的 (exclusive)
+                val keyRowEnd = key.row + key.rowSpan
 
                 when {
-                    // ケース1: キーが削除行より完全に下にある -> 1つ上にずらす
-                    keyRowStart > rowIndex -> {
-                        key.copy(row = key.row - 1)
-                    }
-
-                    // ケース2: キーが削除行を含んでいる (跨いでいる)
-                    // (開始位置が削除行以下、かつ、終了位置が削除行より大きい)
+                    keyRowStart > rowIndex -> key.copy(row = key.row - 1)
                     keyRowStart <= rowIndex && keyRowEnd > rowIndex -> {
-                        // Spanを1つ減らす
                         val newSpan = key.rowSpan - 1
-                        // Spanがなくなったらキー自体を削除
-                        if (newSpan > 0) {
-                            key.copy(rowSpan = newSpan)
-                        } else {
-                            null
-                        }
+                        if (newSpan > 0) key.copy(rowSpan = newSpan) else null
                     }
 
-                    // ケース3: キーが完全に削除行より上にある -> 何もしない
                     else -> key
                 }
             }
@@ -262,9 +245,7 @@ class KeyboardEditorViewModel @Inject constructor(
             currentState.copy(layout = newLayout)
         }
     }
-    // ▲▲▲ 修正箇所ここまで ▲▲▲
 
-    // ▼▼▼ 修正箇所：列削除ロジックの改善 ▼▼▼
     fun deleteColumnAt(columnIndex: Int) {
         _uiState.update { currentState ->
             val layout = currentState.layout
@@ -275,22 +256,12 @@ class KeyboardEditorViewModel @Inject constructor(
                 val keyColEnd = key.column + key.colSpan
 
                 when {
-                    // ケース1: キーが削除列より右にある -> 1つ左にずらす
-                    keyColStart > columnIndex -> {
-                        key.copy(column = key.column - 1)
-                    }
-
-                    // ケース2: キーが削除列を跨いでいる
+                    keyColStart > columnIndex -> key.copy(column = key.column - 1)
                     keyColStart <= columnIndex && keyColEnd > columnIndex -> {
                         val newSpan = key.colSpan - 1
-                        if (newSpan > 0) {
-                            key.copy(colSpan = newSpan)
-                        } else {
-                            null
-                        }
+                        if (newSpan > 0) key.copy(colSpan = newSpan) else null
                     }
 
-                    // ケース3: キーが完全に削除列より左にある -> 何もしない
                     else -> key
                 }
             }
@@ -299,12 +270,15 @@ class KeyboardEditorViewModel @Inject constructor(
             currentState.copy(layout = newLayout)
         }
     }
-    // ▲▲▲ 修正箇所ここまで ▲▲▲
 
     private fun createEmptyKey(row: Int, column: Int): KeyData {
         return KeyData(
-            label = " ", row = row, column = column, isFlickable = true,
-            keyId = UUID.randomUUID().toString(), keyType = KeyType.PETAL_FLICK
+            label = " ",
+            row = row,
+            column = column,
+            isFlickable = true,
+            keyId = UUID.randomUUID().toString(),
+            keyType = KeyType.PETAL_FLICK
         )
     }
 
@@ -316,46 +290,66 @@ class KeyboardEditorViewModel @Inject constructor(
         _uiState.update { it.copy(selectedKeyIdentifier = null) }
     }
 
-    fun updateKeyAndFlicks(newKeyData: KeyData, flickMap: Map<FlickDirection, FlickAction>) {
+    /**
+     * Petal Flick / TwoStep Flick 両対応
+     */
+    fun updateKeyAndMappings(
+        newKeyData: KeyData,
+        flickMap: Map<FlickDirection, FlickAction>,
+        twoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
+    ) {
         val keyId = newKeyData.keyId ?: run {
-            Timber.e("FATAL: updateKeyAndFlicks received a KeyData with a null keyId!")
+            Timber.e("FATAL: updateKeyAndMappings received a KeyData with a null keyId!")
             return
         }
 
         _uiState.update { currentState ->
             val layout = currentState.layout
 
-            // 変更前の古いキー情報を取得
             val oldKeyData = layout.keys.find { it.keyId == keyId } ?: return@update currentState
-
-            // 自分以外の全てのキー
             val otherKeys = layout.keys.filter { it.keyId != keyId }
 
-            // 1. 【拡大対策】 新しいサイズで重なってしまう「他のキー」を特定 (ブルドーザー処理)
             val crushedKeys = otherKeys.filter { isRectOverlapping(newKeyData, it) }
             val crushedKeyIds = crushedKeys.map { it.keyId }.toSet()
 
-            // 2. 【縮小対策】 古いキーが居たけど、新しいキーは居ない場所(放棄されたセル)を特定
             val oldCells = getOccupiedCells(oldKeyData)
             val newCells = getOccupiedCells(newKeyData)
             val abandonedCells = oldCells.filter { !newCells.contains(it) }
 
-            // 放棄されたセルに新しい空キーを作成
-            val newEmptyKeys = abandonedCells.map { (row, col) ->
-                createEmptyKey(row, col)
+            val newEmptyKeys = abandonedCells.map { (row, col) -> createEmptyKey(row, col) }
+
+            val finalKeys = otherKeys
+                .filter { !crushedKeyIds.contains(it.keyId) }
+                .plus(newKeyData)
+                .plus(newEmptyKeys)
+
+            val finalFlickMaps = layout.flickKeyMaps.toMutableMap()
+            val finalTwoStepMaps = layout.twoStepFlickKeyMaps.toMutableMap()
+
+            crushedKeyIds.forEach {
+                finalFlickMaps.remove(it)
+                finalTwoStepMaps.remove(it)
             }
 
-            // 3. キーリストの再構築
-            val finalKeys = otherKeys.filter { !crushedKeyIds.contains(it.keyId) } // 潰されたキーを除外
-                .plus(newKeyData) // 更新されたメインのキーを追加
-                .plus(newEmptyKeys) // 新しく生まれた空キーを追加
+            when (newKeyData.keyType) {
+                KeyType.TWO_STEP_FLICK -> {
+                    // 2段フリックに切り替えた場合、1段フリック設定を消して2段を保存
+                    finalFlickMaps.remove(keyId)
+                    finalTwoStepMaps[keyId] = twoStepMap
+                }
 
-            // 4. フリック設定の更新
-            val finalFlickMaps = layout.flickKeyMaps.toMutableMap()
-            crushedKeyIds.forEach { finalFlickMaps.remove(it) } // 潰されたキーの設定を削除
-            finalFlickMaps[keyId] = listOf(flickMap) // メインキーの設定を更新
+                else -> {
+                    // 1段フリック系の場合、2段フリック設定を消して1段を保存
+                    finalTwoStepMaps.remove(keyId)
+                    finalFlickMaps[keyId] = listOf(flickMap)
+                }
+            }
 
-            val newLayout = layout.copy(keys = finalKeys, flickKeyMaps = finalFlickMaps)
+            val newLayout = layout.copy(
+                keys = finalKeys,
+                flickKeyMaps = finalFlickMaps,
+                twoStepFlickKeyMaps = finalTwoStepMaps
+            )
             currentState.copy(layout = newLayout)
         }
     }
@@ -384,7 +378,6 @@ class KeyboardEditorViewModel @Inject constructor(
 
             val destRow = targetKey.row
             val destCol = targetKey.column
-
             val movedDraggedKey = draggedKey.copy(row = destRow, column = destCol)
 
             val victims = currentKeys.filter { key ->
@@ -409,7 +402,6 @@ class KeyboardEditorViewModel @Inject constructor(
             }
 
             if (hasIssues(newKeysCandidate, layout.rowCount, layout.columnCount)) {
-                Timber.d("Swap rejected: Resulting layout has collisions or out-of-bounds.")
                 return@update currentState
             }
 
@@ -465,11 +457,7 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun applyTemplate(templateLayout: KeyboardLayout) {
         val keysWithEnsuredIds = templateLayout.keys.map { key ->
-            if (key.keyId == null) {
-                key.copy(keyId = UUID.randomUUID().toString())
-            } else {
-                key
-            }
+            if (key.keyId == null) key.copy(keyId = UUID.randomUUID().toString()) else key
         }
 
         val labelToIdMap = keysWithEnsuredIds
@@ -478,11 +466,7 @@ class KeyboardEditorViewModel @Inject constructor(
 
         val reKeyedFlickMaps = templateLayout.flickKeyMaps.mapNotNull { (labelKey, flickActions) ->
             val newKeyId = labelToIdMap[labelKey]
-            if (newKeyId != null) {
-                newKeyId to flickActions
-            } else {
-                null
-            }
+            if (newKeyId != null) newKeyId to flickActions else null
         }.toMap()
 
         val finalLayout = templateLayout.copy(

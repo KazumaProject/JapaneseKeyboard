@@ -10,6 +10,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeybo
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -26,18 +27,21 @@ interface KeyboardLayoutDao {
     fun getFullLayoutById(id: Long): Flow<FullKeyboardLayout>
 
     /**
-     * 【バグ修正版】新しいキーボードレイアウトをデータベースにアトミックに保存する。
-     * キーとフリックの正しい関連付けを保証する。
+     * 新しいキーボードレイアウトをデータベースにアトミックに保存する。
+     * キーとフリック、TwoStep の正しい関連付けを保証する。
      */
     @Transaction
     suspend fun insertFullKeyboardLayout(
         layout: CustomKeyboardLayout,
         keys: List<KeyDefinition>,
-        flicksMap: Map<String, List<FlickMapping>> // ★キーとフリックの関連情報を受け取る
+        flicksMap: Map<String, List<FlickMapping>>,
+        twoStepFlicksMap: Map<String, List<TwoStepFlickMapping>>
     ) {
         val layoutId = insertLayout(layout)
+
         val keysWithLayoutId = keys.map { it.copy(ownerLayoutId = layoutId) }
         val newKeyIds = insertKeys(keysWithLayoutId)
+
         val identifierToIdMap = keysWithLayoutId
             .mapIndexed { index, key -> key.keyIdentifier to newKeyIds[index] }
             .toMap()
@@ -51,6 +55,16 @@ interface KeyboardLayoutDao {
         if (flicksWithRealKeyIds.isNotEmpty()) {
             insertFlickMappings(flicksWithRealKeyIds)
         }
+
+        val twoStepWithRealKeyIds = mutableListOf<TwoStepFlickMapping>()
+        identifierToIdMap.forEach { (identifier, realKeyId) ->
+            twoStepFlicksMap[identifier]?.forEach { mapping ->
+                twoStepWithRealKeyIds.add(mapping.copy(ownerKeyId = realKeyId))
+            }
+        }
+        if (twoStepWithRealKeyIds.isNotEmpty()) {
+            insertTwoStepFlickMappings(twoStepWithRealKeyIds)
+        }
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -61,6 +75,9 @@ interface KeyboardLayoutDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertFlickMappings(flicks: List<FlickMapping>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTwoStepFlickMappings(mappings: List<TwoStepFlickMapping>)
 
     @Query("DELETE FROM keyboard_layouts WHERE layoutId = :layoutId")
     suspend fun deleteLayout(layoutId: Long)
@@ -74,9 +91,13 @@ interface KeyboardLayoutDao {
     @Query("DELETE FROM flick_mappings WHERE ownerKeyId IN (SELECT keyId FROM key_definitions WHERE ownerLayoutId = :layoutId)")
     suspend fun deleteFlicksForLayout(layoutId: Long)
 
+    @Query("DELETE FROM two_step_flick_mappings WHERE ownerKeyId IN (SELECT keyId FROM key_definitions WHERE ownerLayoutId = :layoutId)")
+    suspend fun deleteTwoStepFlicksForLayout(layoutId: Long)
+
     @Transaction
     suspend fun deleteKeysAndFlicksForLayout(layoutId: Long) {
         deleteFlicksForLayout(layoutId)
+        deleteTwoStepFlicksForLayout(layoutId)
         deleteKeysForLayout(layoutId)
     }
 
