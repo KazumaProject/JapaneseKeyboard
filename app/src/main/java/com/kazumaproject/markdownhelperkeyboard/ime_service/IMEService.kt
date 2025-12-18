@@ -11060,7 +11060,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setCusrorLeftAfterCloseBracket(insertString: String) {
         if (insertString.isOnlyTwoCharBracketPair()) {
-            handleLeftCursorMoveAction()
+            moveCursorLeftBySelection()
+        }
+    }
+
+    private fun moveCursorLeftBySelection() {
+        if (currentInputConnection == null) return
+
+        beginBatchEdit()
+        try {
+            val req = ExtractedTextRequest()
+            req.token = 0
+            req.flags = 0
+            val extractedText = getExtractedText(req, 0)
+
+            if (extractedText != null) {
+                val start = extractedText.selectionStart
+                if (start > 0) {
+                    setSelection(start - 1, start - 1)
+                }
+            } else {
+                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
+                sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT))
+            }
+        } catch (e: Exception) {
+            Timber.e(e)
+        } finally {
+            endBatchEdit()
         }
     }
 
