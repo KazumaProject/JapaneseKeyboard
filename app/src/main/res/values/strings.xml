@@ -424,4 +424,11 @@
     <string name="custom_border_width">Border width</string>
     <string name="qwerty_switch_number_key_without_number_preference_title">Input mode when switching from the number keyboard</string>
     <string name="qwerty_switch_number_key_without_number_preference_sumary">When switching to the Kana keyboard or Sumire keyboard, switch to Japanese input mode instead of the number keyboard.。</string>
+
+    <string name="label_input_style">入力方式</string>
+    <string name="input_style_petal">1段フリック</string>
+    <string name="input_style_two_step">2段フリック</string>
+
+    <string name="setting_two_step_flick">2段フリック設定</string>
+    <string name="two_step_output_label">出力文字</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
+import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuInflater
@@ -23,6 +24,7 @@ import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingAdapter
@@ -33,7 +35,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -48,17 +49,18 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private val binding get() = _binding!!
 
     private var flickAdapter: FlickMappingAdapter? = null
+
     private var currentKeyData: KeyData? = null
+
     private var currentFlickItems = mutableListOf<FlickMappingItem>()
+
     private lateinit var keyActionAdapter: ArrayAdapter<String>
 
-    // サイズ設定用の変数
     private var currentColSpan: Int = 1
     private var currentRowSpan: Int = 1
     private var maxColSpan: Int = 1
     private var maxRowSpan: Int = 1
 
-    // The ActionBar setup is now fully handled in onViewCreated.
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
     }
@@ -75,14 +77,16 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
     private fun setupAdapters() {
-        flickAdapter = FlickMappingAdapter(onItemUpdated = { updatedItem ->
-            val index = currentFlickItems.indexOfFirst { it.id == updatedItem.id }
-            if (index != -1) {
-                currentFlickItems[index] = updatedItem
-            }
-        }, context = requireContext())
+        flickAdapter = FlickMappingAdapter(
+            onItemUpdated = { updatedItem ->
+                val index = currentFlickItems.indexOfFirst { it.id == updatedItem.id }
+                if (index != -1) currentFlickItems[index] = updatedItem
+            },
+            context = requireContext()
+        )
         binding.flickMappingsRecyclerView.adapter = flickAdapter
         binding.flickMappingsRecyclerView.layoutManager = LinearLayoutManager(context)
+
 
         val actionDisplayNames =
             KeyActionMapper.getDisplayActions(requireContext()).map { it.displayName }
@@ -97,38 +101,41 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun setupUIListeners() {
         binding.buttonDone.setOnClickListener { onDone() }
 
-        binding.keyTypeChipGroup.setOnCheckedStateChangeListener { group, checkedIds ->
+        binding.keyTypeChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
             val selectedChipId = checkedIds.first()
             val isSpecialKey = selectedChipId == R.id.chip_special
 
-            binding.keyLabelLayout.isVisible = !isSpecialKey
             binding.keyActionLayout.isVisible = isSpecialKey
-            binding.flickEditorGroup.isVisible = !isSpecialKey
+            binding.textInputStyleTitle.isVisible = !isSpecialKey
+            binding.inputStyleChipGroup.isVisible = !isSpecialKey
 
-            // If switching to a normal key, ensure the flick list is initialized and displayed.
-            if (!isSpecialKey) {
-                // If the list is empty, it means we are coming from a "special key" state.
-                if (currentFlickItems.isEmpty()) {
-                    currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
-                        FlickMappingItem(direction = direction, output = "")
-                    }.toMutableList()
-                }
-                // Submit the list to the adapter to display the flick settings.
-                flickAdapter?.submitList(currentFlickItems)
+            if (isSpecialKey) {
+                binding.keyLabelLayout.isVisible = false
+                binding.flickEditorGroup.isVisible = false
+                binding.twoStepEditorGroup.isVisible = false
+            } else {
+                // normal key: input style (petal / two-step) will control which editor is visible
+                handleInputStyleUi()
             }
 
+            updateDoneButtonState()
+        }
+
+        binding.inputStyleChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
+            handleInputStyleUi()
             updateDoneButtonState()
         }
 
         binding.keyLabelEdittext.doAfterTextChanged {
             updateDoneButtonState()
         }
+
         binding.keyActionSpinner.doAfterTextChanged {
             updateDoneButtonState()
         }
 
-        // ▼▼▼ サイズ変更ボタンのリスナー設定 ▼▼▼
         binding.btnColPlus.setOnClickListener {
             if (currentColSpan < maxColSpan) {
                 currentColSpan++
@@ -155,11 +162,31 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
     }
 
+    private fun handleInputStyleUi() {
+        val selectedStyle = binding.inputStyleChipGroup.checkedChipId
+
+
+        // Petal: label + flick list
+        binding.keyLabelLayout.isVisible = true
+        binding.flickEditorGroup.isVisible = true
+
+        // TwoStep: 17 mapping list
+        binding.twoStepEditorGroup.isVisible = false
+
+        
+            if (currentFlickItems.isEmpty()) {
+                currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
+                    FlickMappingItem(direction = direction, output = "")
+                }.toMutableList()
+            }
+            flickAdapter?.submitList(currentFlickItems.toList())
+        
+    }
+
     private fun updateSizeDisplay() {
         binding.textColSpan.text = currentColSpan.toString()
         binding.textRowSpan.text = currentRowSpan.toString()
 
-        // ボタンの有効/無効状態を更新
         binding.btnColPlus.isEnabled = currentColSpan < maxColSpan
         binding.btnColMinus.isEnabled = currentColSpan > 1
         binding.btnRowPlus.isEnabled = currentRowSpan < maxRowSpan
@@ -169,18 +196,15 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun setupToolbarAndMenu() {
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = getString(R.string.edit_key)
-            // This line shows the back arrow in the ActionBar
             setDisplayHomeAsUpEnabled(true)
         }
 
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                // No menu items to inflate for this fragment
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                // This handles the click on the back arrow
                 return when (menuItem.itemId) {
                     android.R.id.home -> {
                         findNavController().popBackStack()
@@ -200,7 +224,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
 
             R.id.chip_normal -> {
-                binding.keyLabelEdittext.text.toString().isNotEmpty()
+
+                {
+                    // Petal: label must be filled
+                    binding.keyLabelEdittext.text.toString().isNotEmpty()
+                }
             }
 
             else -> false
@@ -211,6 +239,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun setupInitialState() {
         viewLifecycleOwner.lifecycleScope.launch {
             val state = viewModel.uiState.filterNotNull().first()
+
             currentKeyData =
                 state.layout.keys.firstOrNull { it.keyId == state.selectedKeyIdentifier }
 
@@ -221,18 +250,13 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
             val key = currentKeyData!!
 
-            // ▼▼▼ サイズ情報の初期化と最大値の計算 ▼▼▼
             currentColSpan = key.colSpan
             currentRowSpan = key.rowSpan
-            // 現在のキー位置に基づいて、グリッドからはみ出さない最大サイズを計算
             maxColSpan = state.layout.columnCount - key.column
             maxRowSpan = state.layout.rowCount - key.row
-
             updateSizeDisplay()
-            // ▲▲▲ サイズ情報の初期化ここまで ▲▲▲
 
-            binding.keyLabelEdittext.setText(key.label)
-
+            // Key type: special / normal
             if (key.isSpecialKey) {
                 binding.keyTypeChipGroup.check(R.id.chip_special)
                 key.action?.let { currentAction ->
@@ -246,18 +270,32 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             } else {
                 binding.keyTypeChipGroup.check(R.id.chip_normal)
 
-                val flickMap = state.layout.flickKeyMaps[key.keyId]?.firstOrNull() ?: emptyMap()
-                currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
-                    val savedAction = flickMap[direction]
-                    val output = if (savedAction is FlickAction.Input) savedAction.char else ""
-                    FlickMappingItem(direction = direction, output = output)
-                }.toMutableList()
-                flickAdapter?.submitList(currentFlickItems)
+                // Input style: petal or two-step
+                {
+                    binding.inputStyleChipGroup.check(R.id.chip_petal_flick)
+                }
+
+                // Restore editors
+                {
+                    binding.keyLabelEdittext.setText(key.label)
+
+                    val flickMap = state.layout.flickKeyMaps[key.keyId]?.firstOrNull() ?: emptyMap()
+                    currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
+                        val savedAction = flickMap[direction]
+                        val output = if (savedAction is FlickAction.Input) savedAction.char else ""
+                        FlickMappingItem(direction = direction, output = output)
+                    }.toMutableList()
+                    flickAdapter?.submitList(currentFlickItems.toList())
+                }
+
+                handleInputStyleUi()
             }
 
             updateDoneButtonState()
         }
     }
+
+
 
     private fun onDone() {
         val originalKey = currentKeyData ?: return
@@ -267,6 +305,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         val isSpecial: Boolean
         val newAction: KeyAction?
         var newFlickMap: Map<FlickDirection, FlickAction> = emptyMap()
+        var newTwoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>> = emptyMap()
         val newDrawableResId: Int?
 
         when (binding.keyTypeChipGroup.checkedChipId) {
@@ -279,23 +318,25 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     KeyActionMapper.getDisplayActions(requireContext())
                         .firstOrNull { it.displayName == selectedText }
 
-                Timber.d("KeyEditor: Spinner text is '$selectedText', Found action object is '$selectedDisplayAction'")
-
                 newAction = selectedDisplayAction?.action
                 newDrawableResId = selectedDisplayAction?.iconResId
-
                 newLabel = if (newDrawableResId != null) "" else selectedDisplayAction?.displayName
                     ?: "ACTION"
             }
 
-            else -> { // chip_normal
+            else -> {
                 isSpecial = false
                 newAction = null
-                newKeyType = KeyType.PETAL_FLICK
                 newDrawableResId = null
-                newLabel = binding.keyLabelEdittext.text.toString()
-                newFlickMap = currentFlickItems.filter { it.output.isNotEmpty() }
-                    .associate { it.direction to FlickAction.Input(it.output) }
+
+
+                
+                    newKeyType = KeyType.PETAL_FLICK
+                    newLabel = binding.keyLabelEdittext.text.toString()
+                    newFlickMap = currentFlickItems
+                        .filter { it.output.isNotEmpty() }
+                        .associate { it.direction to FlickAction.Input(it.output) }
+                
             }
         }
 
@@ -304,25 +345,24 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             keyType = newKeyType,
             isSpecialKey = isSpecial,
             action = newAction,
-            isFlickable = !isSpecial && newFlickMap.isNotEmpty(),
+            isFlickable = !isSpecial && (newKeyType != KeyType.NORMAL),
             drawableResId = newDrawableResId,
-            // ▼▼▼ 変更されたサイズを適用 ▼▼▼
             rowSpan = currentRowSpan,
             colSpan = currentColSpan
         )
 
-        viewModel.updateKeyAndFlicks(updatedKey, newFlickMap)
+        viewModel.updateKeyAndMappings(updatedKey, newFlickMap, newTwoStepMap)
         findNavController().popBackStack()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
-        // Clean up the action bar when the view is destroyed.
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = null
             setDisplayHomeAsUpEnabled(false)
         }
         viewModel.doneNavigatingToKeyEditor()
+
         flickAdapter = null
         _binding = null
     }
