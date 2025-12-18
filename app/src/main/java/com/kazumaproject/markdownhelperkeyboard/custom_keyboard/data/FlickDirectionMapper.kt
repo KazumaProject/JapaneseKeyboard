@@ -31,28 +31,6 @@ object FlickDirectionMapper {
     }
 
     /**
-     * Gets the list of display names for the allowed flick directions.
-     * Ideal for populating UI elements like a Spinner.
-     * @param context The context needed to access string resources.
-     * @return A list of localized direction names.
-     */
-    fun getDisplayNames(context: Context): List<String> {
-        val displayMap = getDirectionDisplayMap(context)
-        return allowedDirections.mapNotNull { displayMap[it] }
-    }
-
-    /**
-     * Finds the FlickDirection enum corresponding to a given display name.
-     * @param displayName The localized string (e.g., "タップ").
-     * @param context The context needed to access string resources.
-     * @return The matching FlickDirection, or null if not found.
-     */
-    fun fromDisplayName(displayName: String, context: Context): FlickDirection? {
-        val displayMap = getDirectionDisplayMap(context)
-        return displayMap.entries.firstOrNull { it.value == displayName }?.key
-    }
-
-    /**
      * Gets the display name for a given FlickDirection enum.
      * @param direction The FlickDirection enum.
      * @param context The context needed to access string resources.

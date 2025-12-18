@@ -22,14 +22,18 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.gson.Gson
+import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
+import com.google.gson.stream.JsonReader
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.KeyboardLayoutAdapter
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardListBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import java.io.FileOutputStream
+import timber.log.Timber
+import java.io.OutputStreamWriter
+import java.io.StringReader
 
 @AndroidEntryPoint
 class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
@@ -144,12 +148,21 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
     private fun launchImportPicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "*/*"
+            type = "application/json"
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
         importLauncher.launch(intent)
     }
 
-    // [ADD] Core logic for export and import
+    private val exportGson: Gson by lazy {
+        GsonBuilder()
+            .disableHtmlEscaping()   // 余計なエスケープを避ける
+            .serializeNulls()        // null の扱いを安定させる（任意）
+            .create()
+    }
+
+
     private fun exportLayouts(uri: Uri) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
@@ -162,12 +175,15 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                     ).show()
                     return@launch
                 }
-                val jsonString = Gson().toJson(layoutsToExport)
-                requireContext().contentResolver.openFileDescriptor(uri, "w")?.use {
-                    FileOutputStream(it.fileDescriptor).use { fos ->
-                        fos.write(jsonString.toByteArray(Charsets.UTF_8))
+
+                val jsonString = exportGson.toJson(layoutsToExport)
+
+                requireContext().contentResolver.openOutputStream(uri, "w")?.use { os ->
+                    OutputStreamWriter(os, Charsets.UTF_8).use { writer ->
+                        writer.write(jsonString)
                     }
                 }
+
                 Toast.makeText(context, "エクスポートが完了しました", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(
@@ -180,26 +196,56 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
     }
 
     private fun importLayouts(uri: Uri) {
-        try {
-            val jsonString = requireContext().contentResolver.openInputStream(uri)?.use {
-                it.reader(Charsets.UTF_8).readText()
-            }
-            if (jsonString != null) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val bytes =
+                    requireContext().contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        ?: run {
+                            Toast.makeText(
+                                context,
+                                "ファイルを読み込めませんでした",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            return@launch
+                        }
+
+                // BOM (U+FEFF) と NULL を除去（現場で混入しがち）
+                val jsonString = bytes.toString(Charsets.UTF_8)
+                    .trimStart('\uFEFF')
+                    .replace("\u0000", "")
+
                 val type = object : TypeToken<List<FullKeyboardLayout>>() {}.type
-                val layouts: List<FullKeyboardLayout> = Gson().fromJson(jsonString, type)
+
+                val gson = GsonBuilder()
+                    .setLenient()          // ★ポイント：厳格でなく寛容に読む
+                    .create()
+
+                val reader = JsonReader(StringReader(jsonString)).apply {
+                    isLenient = true       // GsonBuilderだけで効かないケースも潰す
+                }
+
+                val layouts: List<FullKeyboardLayout> = gson.fromJson(reader, type) ?: emptyList()
+
+                if (layouts.isEmpty()) {
+                    Toast.makeText(context, "インポート対象が空です", Toast.LENGTH_LONG).show()
+                    return@launch
+                }
+
                 keyboardEditorViewMode.importLayouts(layouts)
                 Toast.makeText(
                     context,
                     "${layouts.size}件のレイアウトをインポートしました",
                     Toast.LENGTH_SHORT
                 ).show()
+
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    "インポートに失敗しました。ファイルが破損しているか形式が正しくありません。",
+                    Toast.LENGTH_LONG
+                ).show()
+                Timber.e(e, "importLayouts failed")
             }
-        } catch (e: Exception) {
-            Toast.makeText(
-                context,
-                "インポートに失敗しました。ファイルが破損しているか形式が正しくありません。",
-                Toast.LENGTH_LONG
-            ).show()
         }
     }
 
