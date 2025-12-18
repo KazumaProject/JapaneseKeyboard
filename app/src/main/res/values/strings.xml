@@ -422,4 +422,6 @@
     <string name="sumire_custom_angle_preference_title">Donuts Input</string>
     <string name="sumire_custom_angle_preference_summary">Adjust the flick recognition angle</string>
     <string name="custom_border_width">Border width</string>
+    <string name="qwerty_switch_number_key_without_number_preference_title">Input mode when switching from the number keyboard</string>
+    <string name="qwerty_switch_number_key_without_number_preference_sumary">When switching to the Kana keyboard or Sumire keyboard, switch to Japanese input mode instead of the number keyboard.。</string>
 </resources>
