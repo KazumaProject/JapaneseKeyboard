@@ -91,7 +91,7 @@ class UserTemplateFragment : Fragment() {
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                 // You can create a new menu file or reuse the dictionary one
-                menuInflater.inflate(R.menu.user_dictionary_menu, menu)
+                menuInflater.inflate(R.menu.user_template_menu, menu)
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {

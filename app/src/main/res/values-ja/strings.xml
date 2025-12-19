@@ -207,8 +207,9 @@
     <string name="keyboard_position_title">キーボードの配置</string>
     <string name="keyboard_selection_fragment_title">キーボード一覧</string>
     <string name="keyboard_selection_add_new_keyboard_title">キーボードを追加</string>
-    <string name="export_title">エクスポート</string>
-    <string name="import_title">インポート</string>
+    <string name="export_title">辞書の書き出し</string>
+    <string name="import_title">辞書の読み込み</string>
+    <string name="import_other_dict_title">スミレ以外の辞書の読み込み</string>
     <string name="yomi_edit_text_title">よみ：</string>
     <string name="word_edit_text_title">単語：</string>
     <string name="reset_learning_dictionary_dialog_title">辞書の初期化</string>

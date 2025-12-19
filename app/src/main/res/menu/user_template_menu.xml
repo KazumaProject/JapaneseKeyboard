@@ -9,12 +9,6 @@
         app:showAsAction="ifRoom" />
 
     <item
-        android:id="@+id/action_other_dict_import"
-        android:icon="@drawable/download_24px"
-        android:title="@string/import_title"
-        app:showAsAction="ifRoom" />
-
-    <item
         android:id="@+id/action_export"
         android:icon="@drawable/upload_file_24px"
         android:title="@string/export_title"
