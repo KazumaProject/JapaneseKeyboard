@@ -15,7 +15,9 @@ import androidx.room.PrimaryKey
  */
 @Entity(
     tableName = "user_word",
-    indices = [Index(value = ["reading"])]
+    indices = [
+        Index(value = ["reading"]),
+        Index(value = ["word", "reading"], unique = true)]
 )
 data class UserWord(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,

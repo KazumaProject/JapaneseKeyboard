@@ -28,6 +28,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentUserDictionaryBinding
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiraganaWithSymbols
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.adapter.UserWordAdapter
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.AndroidEntryPoint
@@ -298,15 +299,17 @@ class UserDictionaryFragment : Fragment() {
             val key = "$reading\t$word"
             if (!seen.add(key)) continue
 
-            out.add(
-                UserWord(
-                    id = 0,
-                    word = word,          // 単語（表記）
-                    reading = reading,    // よみ
-                    posIndex = 0,
-                    posScore = 5000
+            if (reading.isAllHiraganaWithSymbols()){
+                out.add(
+                    UserWord(
+                        id = 0,
+                        word = word,          // 単語（表記）
+                        reading = reading,    // よみ
+                        posIndex = 0,
+                        posScore = 5000
+                    )
                 )
-            )
+            }
         }
 
         return out
