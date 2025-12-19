@@ -229,7 +229,7 @@ class UserDictionaryFragment : Fragment() {
     private fun showOtherDictImportDialog() {
         val items = arrayOf("自動判定", "Google日本語入力", "Microsoft IME")
         AlertDialog.Builder(requireContext())
-            .setTitle("辞書形式を選択")
+            .setTitle("読み込む辞書形式を選択")
             .setItems(items) { _, which ->
                 pendingOtherDictFormat = when (which) {
                     1 -> OtherDictFormat.GOOGLE_JP_INPUT

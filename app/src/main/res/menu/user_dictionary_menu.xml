@@ -10,7 +10,7 @@
 
     <item
         android:id="@+id/action_other_dict_import"
-        android:icon="@drawable/download_24px"
+        android:icon="@drawable/dictionary_24px"
         android:title="@string/import_title"
         app:showAsAction="ifRoom" />
 
