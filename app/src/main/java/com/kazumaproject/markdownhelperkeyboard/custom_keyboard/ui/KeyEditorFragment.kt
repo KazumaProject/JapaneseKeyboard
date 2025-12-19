@@ -64,10 +64,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var maxColSpan: Int = 1
     private var maxRowSpan: Int = 1
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyEditorBinding.bind(view)

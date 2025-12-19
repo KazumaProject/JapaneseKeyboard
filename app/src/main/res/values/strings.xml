@@ -207,6 +207,7 @@
     <string name="keyboard_selection_add_new_keyboard_title">Add Keyboard</string>
     <string name="export_title">Export</string>
     <string name="import_title">Import</string>
+    <string name="import_other_dict_title">Import other dictionary</string>
     <string name="yomi_edit_text_title">reading</string>
     <string name="word_edit_text_title">word to register</string>
     <string name="reset_learning_dictionary_dialog_title">Initialize dictionary</string>

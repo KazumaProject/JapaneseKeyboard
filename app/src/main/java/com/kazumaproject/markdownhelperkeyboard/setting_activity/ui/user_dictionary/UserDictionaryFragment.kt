@@ -100,6 +100,11 @@ class UserDictionaryFragment : Fragment() {
                         true
                     }
 
+                    R.id.action_other_dict_import ->{
+                        showOtherDictImportDialog()
+                        true
+                    }
+
                     R.id.action_delete_all -> {
                         showDeleteAllConfirmationDialog()
                         true
@@ -180,6 +185,141 @@ class UserDictionaryFragment : Fragment() {
                 ).show()
             }
         }
+    }
+
+    private enum class OtherDictFormat { AUTO, GOOGLE_JP_INPUT, MICROSOFT_IME }
+
+    private var pendingOtherDictFormat: OtherDictFormat = OtherDictFormat.AUTO
+
+    private val otherDictImportLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let { uri ->
+                    importOtherDict(uri, pendingOtherDictFormat)
+                }
+            }
+        }
+
+    private fun readTextWithCharsetGuess(uri: Uri): String {
+        val bytes = requireContext().contentResolver.openInputStream(uri)!!.use { it.readBytes() }
+
+        fun startsWith(vararg sig: Int): Boolean {
+            if (bytes.size < sig.size) return false
+            for (i in sig.indices) if (bytes[i].toInt() and 0xFF != sig[i]) return false
+            return true
+        }
+
+        val charset = when {
+            startsWith(0xEF, 0xBB, 0xBF) -> Charsets.UTF_8                 // UTF-8 BOM
+            startsWith(0xFF, 0xFE) -> Charsets.UTF_16LE                     // UTF-16 LE BOM
+            startsWith(0xFE, 0xFF) -> Charsets.UTF_16BE                     // UTF-16 BE BOM
+            // NUL混入が目立つならUTF-16系の可能性が高い
+            bytes.count { it == 0.toByte() } > bytes.size / 10 -> Charsets.UTF_16LE
+            else -> Charsets.UTF_8
+        }
+
+        // UTF-8でコケる/文字化けがひどい端末用に Shift_JIS をフォールバック
+        return try {
+            String(bytes, charset)
+        } catch (_: Exception) {
+            String(bytes, charset("Shift_JIS"))
+        }
+    }
+
+    private fun showOtherDictImportDialog() {
+        val items = arrayOf("自動判定", "Google日本語入力", "Microsoft IME")
+        AlertDialog.Builder(requireContext())
+            .setTitle("辞書形式を選択")
+            .setItems(items) { _, which ->
+                pendingOtherDictFormat = when (which) {
+                    1 -> OtherDictFormat.GOOGLE_JP_INPUT
+                    2 -> OtherDictFormat.MICROSOFT_IME
+                    else -> OtherDictFormat.AUTO
+                }
+                launchOtherDictFilePicker()
+            }
+            .show()
+    }
+
+    private fun importOtherDict(uri: Uri, format: OtherDictFormat) {
+        try {
+            val text = readTextWithCharsetGuess(uri)
+            val words = parseOtherDictText(text, format)
+
+            if (words.isEmpty()) {
+                Toast.makeText(context, "辞書エントリが見つかりませんでした", Toast.LENGTH_LONG).show()
+                return
+            }
+
+            viewModel.insertAll(words)
+            Toast.makeText(context, "${words.size} 件インポートしました", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(context, getString(R.string.fail_to_import_string), Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun parseOtherDictText(text: String, format: OtherDictFormat): List<UserWord> {
+        val lines = text
+            .replace("\r\n", "\n")
+            .replace("\r", "\n")
+            .split('\n')
+
+        val out = ArrayList<UserWord>(lines.size)
+        val seen = HashSet<String>(lines.size)
+
+        for (raw in lines) {
+            val line = raw.trim()
+            if (line.isEmpty()) continue
+
+            // たまにヘッダ/説明が混じるケースの保険
+            if (line.startsWith("#")) continue
+            if (line.contains("Microsoft IME", ignoreCase = true) && line.count { it == '\t' } < 1) continue
+
+            val cols = line.split('\t')
+            if (cols.size < 2) continue
+
+            var reading = cols[0].trim()
+            var word = cols[1].trim()
+            if (reading.isEmpty() || word.isEmpty()) continue
+
+            // AUTOの場合は軽いヒューリスティックで入れ替え（任意だが安全性が上がる）
+            if (format == OtherDictFormat.AUTO) {
+                // もし「reading側に漢字が多く、word側がひらがなっぽい」なら入れ替え
+                val readingLooksKanji = reading.any { it in '\u4E00'..'\u9FFF' }
+                val wordLooksKana = word.all { it in '\u3040'..'\u309F' || it in '\u30A0'..'\u30FF' || it == 'ー' }
+                if (readingLooksKanji && wordLooksKana) {
+                    val tmp = reading
+                    reading = word
+                    word = tmp
+                }
+            }
+
+            val key = "$reading\t$word"
+            if (!seen.add(key)) continue
+
+            out.add(
+                UserWord(
+                    id = 0,
+                    word = word,          // 単語（表記）
+                    reading = reading,    // よみ
+                    posIndex = 0,
+                    posScore = 5000
+                )
+            )
+        }
+
+        return out
+    }
+
+    private fun launchOtherDictFilePicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "text/*"
+            // 端末によっては text/* だと出ないことがあるので保険で
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("text/plain", "text/tab-separated-values", "text/*"))
+        }
+        otherDictImportLauncher.launch(intent)
     }
 
     private fun importWords(uri: Uri) {
