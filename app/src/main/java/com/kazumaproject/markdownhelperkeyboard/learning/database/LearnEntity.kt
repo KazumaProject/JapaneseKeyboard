@@ -6,7 +6,12 @@ import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "learn_table",
-    indices = [Index(value = ["input"], unique = false)]
+    indices = [
+        Index(value = ["input"], unique = false),
+        Index(
+            value = ["input", "out"],
+            unique = true
+        )]
 )
 data class LearnEntity(
     val input: String,

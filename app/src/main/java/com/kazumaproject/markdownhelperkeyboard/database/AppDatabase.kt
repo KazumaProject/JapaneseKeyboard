@@ -46,7 +46,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         NgWord::class,
         ShortcutItem::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 @TypeConverters(
@@ -311,5 +311,63 @@ abstract class AppDatabase : RoomDatabase() {
                 )
             }
         }
+
+        /**
+         * バージョン14から15へのマイグレーション。
+         * user_word, learn_table, user_template の3テーブルに対し、
+         * 重複データを削除した上で、複合ユニークインデックスを作成します。
+         */
+        val MIGRATION_14_15 = object : Migration(14, 15) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+
+                // --- 1. UserWord (user_word) ---
+                // 重複削除: (word, reading) が同じなら id が最小のもの以外削除
+                db.execSQL(
+                    """
+                    DELETE FROM user_word
+                    WHERE id NOT IN (
+                        SELECT MIN(id)
+                        FROM user_word
+                        GROUP BY word, reading
+                    )
+                    """.trimIndent()
+                )
+                // ユニークインデックス作成
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_user_word_word_reading` ON `user_word`(`word`, `reading`)")
+
+
+                // --- 2. LearnEntity (learn_table) ---
+                // 重複削除: (input, out) が同じなら id が最小のもの以外削除
+                db.execSQL(
+                    """
+                    DELETE FROM learn_table
+                    WHERE id NOT IN (
+                        SELECT MIN(id)
+                        FROM learn_table
+                        GROUP BY input, out
+                    )
+                    """.trimIndent()
+                )
+                // ユニークインデックス作成
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_learn_table_input_out` ON `learn_table`(`input`, `out`)")
+
+
+                // --- 3. UserTemplate (user_template) ---
+                // 重複削除: (word, reading) が同じなら id が最小のもの以外削除
+                db.execSQL(
+                    """
+                    DELETE FROM user_template
+                    WHERE id NOT IN (
+                        SELECT MIN(id)
+                        FROM user_template
+                        GROUP BY word, reading
+                    )
+                    """.trimIndent()
+                )
+                // ユニークインデックス作成
+                db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_user_template_word_reading` ON `user_template`(`word`, `reading`)")
+            }
+        }
+
     }
 }

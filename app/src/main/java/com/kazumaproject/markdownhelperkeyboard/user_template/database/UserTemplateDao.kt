@@ -28,10 +28,10 @@ interface UserTemplateDao {
     @Query("SELECT * FROM user_template WHERE reading = :reading ORDER BY id DESC LIMIT :limit")
     suspend fun searchByReadingExactSuspend(reading: String, limit: Int): List<UserTemplate>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(userTemplate: UserTemplate)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(templates: List<UserTemplate>)
 
     @Update
