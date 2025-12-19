@@ -42,10 +42,10 @@ interface UserWordDao {
     @Query("SELECT * FROM user_word WHERE :inputStr LIKE reading || '%' ORDER BY LENGTH(reading) DESC")
     suspend fun commonPrefixSearchInUserDict(inputStr: String): List<UserWord>
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(userWord: UserWord)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(words: List<UserWord>)
 
     @Update

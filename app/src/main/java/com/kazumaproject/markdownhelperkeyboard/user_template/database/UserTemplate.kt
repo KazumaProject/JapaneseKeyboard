@@ -9,7 +9,11 @@ import androidx.room.PrimaryKey
  */
 @Entity(
     tableName = "user_template",
-    indices = [Index(value = ["reading"])] // 「読み」での検索を高速化するインデックス
+    indices = [Index(value = ["reading"]),
+        Index(
+            value = ["word", "reading"],
+            unique = true
+        )]
 )
 data class UserTemplate(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
