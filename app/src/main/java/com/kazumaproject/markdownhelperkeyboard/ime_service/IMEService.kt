@@ -2075,9 +2075,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onUpdateSelection(
             oldSelStart, oldSelEnd, newSelStart, newSelEnd, candidatesStart, candidatesEnd
         )
-
-        Timber.d("onUpdateSelection: $oldSelStart $oldSelEnd $newSelStart $newSelEnd $candidatesStart $candidatesEnd [${inputString.value}] [${stringInTail.get()}] [${bunsetsuPositionList}]")
-
         // Skip if composing text is active
         if (candidatesStart != -1 || candidatesEnd != -1) {
             return
@@ -2127,35 +2124,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val tail = stringInTail.get()
         val hasTail = tail.isNotEmpty()
-        val caretTop = newSelStart == 0 && newSelEnd == 0
 
-        Timber.d("onUpdateSelection tail: $tail $caretTop")
+        Timber.d("onUpdateSelection tail: $tail")
 
         when {
-            // Caret at top and tail exists → clear everything
-            hasTail && caretTop -> {
-                Timber.d("onUpdateSelection hasTail && caretTop: $tail $caretTop")
-                stringInTail.set("")
-                if (_inputString.value.isNotEmpty()) {
-                    _inputString.update { "" }
-                    beginBatchEdit()
-                    setComposingText("", 0)
-                    endBatchEdit()
-                }
-                suggestionAdapter?.suggestions =
-                    emptyList() // avoid unnecessary allocations elsewhere
-            }
-
             // Caret moved while tail exists → commit tail
             hasTail -> {
-                Timber.d("onUpdateSelection hasTail : $tail $caretTop")
+                Timber.d("onUpdateSelection hasTail : $tail")
                 _inputString.update { tail }
                 stringInTail.set("")
             }
 
             // No tail but still holding input → cleanup
             _inputString.value.isNotEmpty() -> {
-                Timber.d("onUpdateSelection _inputString.value.isNotEmpty() : $tail $caretTop")
+                Timber.d("onUpdateSelection _inputString.value.isNotEmpty() : $tail")
                 _inputString.update { "" }
                 beginBatchEdit()
                 setComposingText("", 0)
@@ -11306,6 +11288,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     stringInTail.set(stringBuilder.insert(0, insertString.last()).toString())
                     _inputString.update { "" }
                     suggestionAdapter?.suggestions = emptyList()
+                    if (isKeyboardFloatingMode == true) {
+                        floatingKeyboardBinding?.let { mainView ->
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility, false
+                            )
+                        }
+                    } else {
+                        mainLayoutBinding?.let { mainView ->
+                            animateSuggestionImageViewVisibility(
+                                mainView.suggestionVisibility, false
+                            )
+                        }
+                    }
                 } else {
                     stringInTail.set(stringBuilder.insert(0, insertString.last()).toString())
                     _inputString.update { it.dropLast(1) }
@@ -11401,6 +11396,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 stringInTail.set(insertString + stringInTail.get())
                 _inputString.update { "" }
                 suggestionAdapter?.suggestions = emptyList()
+                if (isKeyboardFloatingMode == true) {
+                    floatingKeyboardBinding?.let { mainView ->
+                        animateSuggestionImageViewVisibility(
+                            mainView.suggestionVisibility, false
+                        )
+                    }
+                } else {
+                    mainLayoutBinding?.let { mainView ->
+                        animateSuggestionImageViewVisibility(
+                            mainView.suggestionVisibility, false
+                        )
+                    }
+                }
             } else {
                 stringInTail.set(insertString.last() + stringInTail.get())
                 _inputString.update { it.dropLast(1) }
