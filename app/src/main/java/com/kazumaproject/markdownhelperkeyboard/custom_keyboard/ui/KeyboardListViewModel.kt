@@ -31,7 +31,14 @@ class KeyboardListViewModel @Inject constructor(
 
     fun duplicateLayout(id: Long) {
         viewModelScope.launch {
-            repository.duplicateLayout(id) // Repositoryにこのメソッドを追加する必要があります
+            repository.duplicateLayout(id)
+        }
+    }
+
+    // ★追加: 並び順を永続化
+    fun updateLayoutOrder(layoutIdsInDisplayOrder: List<Long>) {
+        viewModelScope.launch {
+            repository.updateLayoutOrder(layoutIdsInDisplayOrder)
         }
     }
 }
