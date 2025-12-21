@@ -21,4 +21,8 @@
     <string name="action_move_cursor_left">カーソル左</string>
     <string name="action_move_cursor_right">カーソル右</string>
     <string name="action_select_all">すべて選択</string>
+    <string name="switch_qwerty">QWERTY 切り替え</string>
+    <string name="switch_number">数字キーボード 切り替え</string>
+    <string name="action_delete_until_symbol">記号まで文字列を削除</string>
+    <string name="voice_input">音声入力</string>
 </resources>

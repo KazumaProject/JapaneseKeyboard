@@ -283,6 +283,8 @@ class KeyboardRepository @Inject constructor(
                         KeyAction.SwitchToNumberLayout -> com.kazumaproject.core.R.drawable.input_mode_number_select_custom
                         KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.english_small
                         KeyAction.ToggleDakuten -> com.kazumaproject.core.R.drawable.kana_small_custom
+                        KeyAction.ToggleKatakana -> com.kazumaproject.core.R.drawable.katakana
+                        KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
                         else -> null
                     },
                     keyId = dbKey.keyIdentifier,
@@ -291,7 +293,7 @@ class KeyboardRepository @Inject constructor(
             }
         }
 
-        if (twoStepMaps.isNotEmpty()){
+        if (twoStepMaps.isNotEmpty()) {
             return KeyboardLayout(
                 keys = keys,
                 flickKeyMaps = flickMaps,
@@ -300,7 +302,7 @@ class KeyboardRepository @Inject constructor(
                 isRomaji = dbLayout.layout.isRomaji,
                 twoStepFlickKeyMaps = twoStepMaps
             )
-        }else{
+        } else {
             return KeyboardLayout(
                 keys = keys,
                 flickKeyMaps = flickMaps,

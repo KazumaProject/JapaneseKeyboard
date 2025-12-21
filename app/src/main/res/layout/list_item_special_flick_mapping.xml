@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingVertical="8dp">
+
+    <TextView
+        android:id="@+id/text_direction"
+        android:layout_width="100dp"
+        android:layout_height="wrap_content"
+        android:text="TAP"
+        android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/action_layout"
+        style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:hint="アクション">
+
+        <AutoCompleteTextView
+            android:id="@+id/action_spinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="none" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+</LinearLayout>
