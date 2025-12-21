@@ -2124,10 +2124,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val tail = stringInTail.get()
         val hasTail = tail.isNotEmpty()
+        val caretTop = newSelStart == 0 && newSelEnd == 0
 
         Timber.d("onUpdateSelection tail: $tail")
 
         when {
+
+            hasTail && caretTop -> {
+                Timber.d("onUpdateSelection hasTail && caretTop: $tail $caretTop")
+                stringInTail.set("")
+                if (_inputString.value.isNotEmpty()) {
+                    _inputString.update { "" }
+                    beginBatchEdit()
+                    setComposingText("", 0)
+                    endBatchEdit()
+                }
+                suggestionAdapter?.suggestions =
+                    emptyList() // avoid unnecessary allocations elsewhere
+            }
+
             // Caret moved while tail exists → commit tail
             hasTail -> {
                 Timber.d("onUpdateSelection hasTail : $tail")
@@ -4729,7 +4744,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             override fun onKey(text: String, isFlick: Boolean) {
                 // 通常の文字が入力された場合（変更なし）
                 clearDeleteBufferWithView()
-                Timber.d("onKey: $text ${qwertyMode.value} $isDefaultRomajiHenkanMap")
+                Timber.d("onKey: [$text] [${qwertyMode.value}] [$isDefaultRomajiHenkanMap]")
                 vibrate()
 
                 when (qwertyMode.value) {
