@@ -1,12 +1,16 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.widget.ArrayAdapter
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
@@ -27,8 +31,11 @@ import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepMappingItem
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.DisplayActionUi
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingAdapter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingItem
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.SpecialFlickMappingAdapter
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.SpecialFlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.TwoStepMappingAdapter
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyEditorBinding
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
@@ -36,6 +43,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -52,17 +60,35 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var flickAdapter: FlickMappingAdapter? = null
     private var twoStepAdapter: TwoStepMappingAdapter? = null
 
+    // NEW: Special Flick Adapter
+    private var specialFlickAdapter: SpecialFlickMappingAdapter? = null
+
     private var currentKeyData: KeyData? = null
 
     private var currentFlickItems = mutableListOf<FlickMappingItem>()
     private var currentTwoStepItems = mutableListOf<TwoStepMappingItem>()
 
+    // NEW: special flick items
+    private var currentSpecialFlickItems = mutableListOf<SpecialFlickMappingItem>()
+
     private lateinit var keyActionAdapter: ArrayAdapter<String>
+
+    // NEW: UI-friendly display actions (avoids depending on unknown internal display type)
+    private lateinit var displayActions: List<DisplayActionUi>
 
     private var currentColSpan: Int = 1
     private var currentRowSpan: Int = 1
     private var maxColSpan: Int = 1
     private var maxRowSpan: Int = 1
+
+    // NEW: allowed directions for special-flick category (5 directions)
+    private val allowedSpecialFlickDirections: List<FlickDirection> = listOf(
+        FlickDirection.TAP,
+        FlickDirection.UP,
+        FlickDirection.DOWN,
+        FlickDirection.UP_LEFT,
+        FlickDirection.UP_RIGHT
+    )
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -98,14 +124,32 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         binding.twoStepMappingsRecyclerView.adapter = twoStepAdapter
         binding.twoStepMappingsRecyclerView.layoutManager = LinearLayoutManager(context)
 
-        val actionDisplayNames =
-            KeyActionMapper.getDisplayActions(requireContext()).map { it.displayName }
+        // Convert KeyActionMapper display actions into stable UI list
+        val raw = KeyActionMapper.getDisplayActions(requireContext())
+        displayActions = raw.map { DisplayActionUi(it.displayName, it.action, it.iconResId) }
+
+        val actionDisplayNames = displayActions.map { it.displayName }
         keyActionAdapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_dropdown_item,
             actionDisplayNames
         )
         binding.keyActionSpinner.setAdapter(keyActionAdapter)
+
+        // NEW: Special flick adapter
+        specialFlickAdapter = SpecialFlickMappingAdapter(
+            context = requireContext(),
+            displayActions = displayActions,
+            onItemUpdated = { updated ->
+                val idx = currentSpecialFlickItems.indexOfFirst { it.id == updated.id }
+                if (idx != -1) {
+                    currentSpecialFlickItems[idx] = updated
+                    updateDoneButtonState()
+                }
+            }
+        )
+        binding.specialFlickMappingsRecyclerView.adapter = specialFlickAdapter
+        binding.specialFlickMappingsRecyclerView.layoutManager = LinearLayoutManager(context)
     }
 
     private fun setupUIListeners() {
@@ -116,19 +160,43 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             val selectedChipId = checkedIds.first()
             val isSpecialKey = selectedChipId == R.id.chip_special
 
-            binding.keyActionLayout.isVisible = isSpecialKey
+            // Special key: show category selector (single/flick)
+            binding.textSpecialCategoryTitle.isVisible = isSpecialKey
+            binding.specialCategoryChipGroup.isVisible = isSpecialKey
+
+            // Normal UI blocks
             binding.textInputStyleTitle.isVisible = !isSpecialKey
             binding.inputStyleChipGroup.isVisible = !isSpecialKey
 
             if (isSpecialKey) {
+                // Default category = single if none selected yet
+                if (binding.specialCategoryChipGroup.checkedChipId == View.NO_ID) {
+                    binding.specialCategoryChipGroup.check(R.id.chip_special_single)
+                }
+
+                // hide normal editors
                 binding.keyLabelLayout.isVisible = false
                 binding.flickEditorGroup.isVisible = false
                 binding.twoStepEditorGroup.isVisible = false
+
+                // show the right special editor
+                handleSpecialCategoryUi()
             } else {
-                // normal key: input style (petal / two-step) will control which editor is visible
+                // hide special editors
+                binding.keyActionLayout.isVisible = false
+                binding.specialFlickEditorGroup.isVisible = false
+
+                // normal key: input style controls which editor is visible
                 handleInputStyleUi()
             }
 
+            updateDoneButtonState()
+        }
+
+        // NEW: category change for special key
+        binding.specialCategoryChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
+            handleSpecialCategoryUi()
             updateDoneButtonState()
         }
 
@@ -169,6 +237,22 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 currentRowSpan--
                 updateSizeDisplay()
             }
+        }
+    }
+
+    private fun handleSpecialCategoryUi() {
+        val isFlick = binding.specialCategoryChipGroup.checkedChipId == R.id.chip_special_flick
+
+        binding.keyActionLayout.isVisible = !isFlick
+        binding.specialFlickEditorGroup.isVisible = isFlick
+
+        if (isFlick) {
+            if (currentSpecialFlickItems.isEmpty()) {
+                currentSpecialFlickItems = allowedSpecialFlickDirections
+                    .map { dir -> SpecialFlickMappingItem(direction = dir, action = null) }
+                    .toMutableList()
+            }
+            specialFlickAdapter?.submitList(currentSpecialFlickItems.toList())
         }
     }
 
@@ -235,7 +319,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun updateDoneButtonState() {
         val isEnabled = when (binding.keyTypeChipGroup.checkedChipId) {
             R.id.chip_special -> {
-                binding.keyActionSpinner.text.isNotEmpty()
+                val isFlick =
+                    binding.specialCategoryChipGroup.checkedChipId == R.id.chip_special_flick
+                if (!isFlick) {
+                    binding.keyActionSpinner.text.isNotEmpty()
+                } else {
+                    // Special flick: TAP must be selected
+                    val tapAction = currentSpecialFlickItems
+                        .firstOrNull { it.direction == FlickDirection.TAP }
+                        ?.action
+                    tapAction != null
+                }
             }
 
             R.id.chip_normal -> {
@@ -243,8 +337,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     binding.inputStyleChipGroup.checkedChipId == R.id.chip_two_step_flick
                 if (isTwoStep) {
                     // TwoStep: base (TAP->TAP) must be filled
-                    val base =
-                        currentTwoStepItems.firstOrNull { it.first == TfbiFlickDirection.TAP && it.second == TfbiFlickDirection.TAP }?.output
+                    val base = currentTwoStepItems
+                        .firstOrNull { it.first == TfbiFlickDirection.TAP && it.second == TfbiFlickDirection.TAP }
+                        ?.output
                     !base.isNullOrEmpty()
                 } else {
                     // Petal: label must be filled
@@ -280,16 +375,50 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // Key type: special / normal
             if (key.isSpecialKey) {
                 binding.keyTypeChipGroup.check(R.id.chip_special)
-                key.action?.let { currentAction ->
-                    val displayAction =
-                        KeyActionMapper.getDisplayActions(requireContext())
-                            .find { it.action == currentAction }
-                    if (displayAction != null) {
-                        binding.keyActionSpinner.setText(displayAction.displayName, false)
+
+                // Decide category: SINGLE or FLICK
+                val flickMap = state.layout.flickKeyMaps[key.keyId]?.firstOrNull() ?: emptyMap()
+                val isSpecialFlick = (key.keyType == KeyType.CROSS_FLICK) ||
+                        flickMap.values.any { it is FlickAction.Action }
+
+                // show category UI
+                binding.textSpecialCategoryTitle.isVisible = true
+                binding.specialCategoryChipGroup.isVisible = true
+
+                if (isSpecialFlick) {
+                    binding.specialCategoryChipGroup.check(R.id.chip_special_flick)
+
+                    currentSpecialFlickItems = allowedSpecialFlickDirections.map { dir ->
+                        val saved = flickMap[dir] as? FlickAction.Action
+                        SpecialFlickMappingItem(direction = dir, action = saved?.action)
+                    }.toMutableList()
+
+                    handleSpecialCategoryUi()
+                    specialFlickAdapter?.submitList(currentSpecialFlickItems.toList())
+                } else {
+                    binding.specialCategoryChipGroup.check(R.id.chip_special_single)
+                    handleSpecialCategoryUi()
+
+                    key.action?.let { currentAction ->
+                        val displayAction = displayActions.find { it.action == currentAction }
+                        if (displayAction != null) {
+                            binding.keyActionSpinner.setText(displayAction.displayName, false)
+                        }
                     }
                 }
+
+                // hide normal editors for special
+                binding.keyLabelLayout.isVisible = false
+                binding.flickEditorGroup.isVisible = false
+                binding.twoStepEditorGroup.isVisible = false
             } else {
                 binding.keyTypeChipGroup.check(R.id.chip_normal)
+
+                // hide special UI
+                binding.textSpecialCategoryTitle.isVisible = false
+                binding.specialCategoryChipGroup.isVisible = false
+                binding.keyActionLayout.isVisible = false
+                binding.specialFlickEditorGroup.isVisible = false
 
                 // Input style: petal or two-step
                 if (key.keyType == KeyType.TWO_STEP_FLICK) {
@@ -566,6 +695,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         return items
     }
 
+    private val requestRecordAudioPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+
+        }
+
     private fun onDone() {
         val originalKey = currentKeyData ?: return
 
@@ -579,18 +713,87 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
         when (binding.keyTypeChipGroup.checkedChipId) {
             R.id.chip_special -> {
+                val isFlick =
+                    binding.specialCategoryChipGroup.checkedChipId == R.id.chip_special_flick
+
                 isSpecial = true
-                newKeyType = KeyType.NORMAL
 
-                val selectedText = binding.keyActionSpinner.text.toString()
-                val selectedDisplayAction =
-                    KeyActionMapper.getDisplayActions(requireContext())
-                        .firstOrNull { it.displayName == selectedText }
+                if (!isFlick) {
+                    // Special: SINGLE (existing behavior)
+                    newKeyType = KeyType.NORMAL
 
-                newAction = selectedDisplayAction?.action
-                newDrawableResId = selectedDisplayAction?.iconResId
-                newLabel = if (newDrawableResId != null) "" else selectedDisplayAction?.displayName
-                    ?: "ACTION"
+                    val selectedText = binding.keyActionSpinner.text.toString()
+                    val selectedDisplayAction =
+                        displayActions.firstOrNull { it.displayName == selectedText }
+
+                    newAction = selectedDisplayAction?.action
+                    newDrawableResId = selectedDisplayAction?.iconResId
+                    newLabel =
+                        if (newDrawableResId != null) "" else selectedDisplayAction?.displayName
+                            ?: "ACTION"
+
+                    if (newAction == KeyAction.VoiceInput) {
+                        val context = requireContext()
+                        val hasPermission = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (!hasPermission) {
+                            requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }
+
+                    newFlickMap = emptyMap()
+                    newTwoStepMap = emptyMap()
+                } else {
+                    // Special: FLICK (NEW) -> KeyType.CROSS_FLICK + store KeyAction as FlickAction.Action
+                    newKeyType = KeyType.CROSS_FLICK
+
+                    val tapAction = currentSpecialFlickItems
+                        .firstOrNull { it.direction == FlickDirection.TAP }
+                        ?.action
+
+                    // Done button guarantees tapAction != null, but keep safe
+                    newAction = tapAction ?: KeyAction.Delete
+
+                    val tapDisplay = displayActions.firstOrNull { it.action == newAction }
+                    newDrawableResId = tapDisplay?.iconResId
+
+                    Timber.d("KeyEditorFragment onDone: [$newAction] [$newDrawableResId]")
+                    newLabel =
+                        newAction.toString()
+
+                    // Build flick map from 5 items (save only non-null)
+                    newFlickMap = currentSpecialFlickItems
+                        .mapNotNull { item ->
+                            val act = item.action ?: return@mapNotNull null
+                            val display = displayActions.firstOrNull { it.action == act }
+
+                            Timber.d("KeyEditorFragment onDone: act=$act, iconFromDisplayActions=${display?.iconResId} [${item.direction}]")
+
+                            item.direction to FlickAction.Action(
+                                action = act,
+                                label = null,
+                                drawableResId = display?.iconResId
+                            )
+                        }
+                        .toMap()
+
+                    if (newAction == KeyAction.VoiceInput) {
+                        val context = requireContext()
+                        val hasPermission = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (!hasPermission) {
+                            requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }
+
+                    newTwoStepMap = emptyMap()
+                }
             }
 
             else -> {
@@ -612,7 +815,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
                     // Build nested map from 17 items
                     val base =
-                        currentTwoStepItems.firstOrNull { it.first == TfbiFlickDirection.TAP && it.second == TfbiFlickDirection.TAP }?.output.orEmpty()
+                        currentTwoStepItems.firstOrNull { it.first == TfbiFlickDirection.TAP && it.second == TfbiFlickDirection.TAP }
+                            ?.output.orEmpty()
                     newLabel = base
 
                     val firstMap =
@@ -648,7 +852,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             keyType = newKeyType,
             isSpecialKey = isSpecial,
             action = newAction,
-            isFlickable = !isSpecial && (newKeyType != KeyType.NORMAL),
+            // IMPORTANT: special flick should still be flickable (KeyType != NORMAL)
+            isFlickable = (newKeyType != KeyType.NORMAL),
             drawableResId = newDrawableResId,
             rowSpan = currentRowSpan,
             colSpan = currentColSpan
@@ -668,6 +873,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
         flickAdapter = null
         twoStepAdapter = null
+        specialFlickAdapter = null
         _binding = null
     }
 }
