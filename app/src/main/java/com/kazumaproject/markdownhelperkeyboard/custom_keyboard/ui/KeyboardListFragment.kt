@@ -19,7 +19,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
@@ -43,6 +45,8 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
 
     private var _binding: FragmentKeyboardListBinding? = null
     private val binding get() = _binding!!
+
+    private var itemTouchHelper: ItemTouchHelper? = null
 
     // [ADD] Launcher for exporting files
     private val exportLauncher =
@@ -75,7 +79,7 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
         super.onViewCreated(view, savedInstanceState)
         _binding = FragmentKeyboardListBinding.bind(view)
 
-        setupMenu() // [ADD] Call menu setup
+        setupMenu()
 
         val adapter = KeyboardLayoutAdapter(
             onItemClick = { layout ->
@@ -90,18 +94,69 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
             },
             onDuplicateClick = { layout ->
                 viewModel.duplicateLayout(layout.layoutId)
+            },
+            onStartDrag = { vh ->
+                itemTouchHelper?.startDrag(vh)
             }
         )
+
         binding.keyboardLayoutsRecyclerView.adapter = adapter
         binding.keyboardLayoutsRecyclerView.layoutManager = LinearLayoutManager(context)
         binding.keyboardLayoutsRecyclerView.addItemDecoration(
             DividerItemDecoration(context, DividerItemDecoration.VERTICAL)
         )
+
+        // ★追加: ItemTouchHelper
+        val callback = object : ItemTouchHelper.SimpleCallback(
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN,
+            0
+        ) {
+            override fun isLongPressDragEnabled(): Boolean = false // ハンドルのみで開始
+            override fun isItemViewSwipeEnabled(): Boolean = false
+
+            override fun onMove(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder,
+                target: RecyclerView.ViewHolder
+            ): Boolean {
+                val from = viewHolder.bindingAdapterPosition
+                val to = target.bindingAdapterPosition
+                if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) return false
+                if (from == to) return false
+
+                val current = adapter.currentList.toMutableList()
+                val moved = current.removeAt(from)
+                current.add(to, moved)
+
+                // ListAdapter なので新しいList参照で submit
+                adapter.submitList(current)
+                return true
+            }
+
+            override fun clearView(
+                recyclerView: RecyclerView,
+                viewHolder: RecyclerView.ViewHolder
+            ) {
+                super.clearView(recyclerView, viewHolder)
+
+                // ★ドロップ後に永続化
+                val idsInDisplayOrder = adapter.currentList.map { it.layoutId }
+                viewModel.updateLayoutOrder(idsInDisplayOrder)
+            }
+
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) = Unit
+        }
+
+        itemTouchHelper = ItemTouchHelper(callback).also {
+            it.attachToRecyclerView(binding.keyboardLayoutsRecyclerView)
+        }
+
         binding.fabAddLayout.setOnClickListener {
             val action =
                 KeyboardListFragmentDirections.actionKeyboardListFragmentToKeyboardEditorFragment(-1L)
             findNavController().navigate(action)
         }
+
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.layouts.collect { layouts ->
                 adapter.submitList(layouts)
@@ -135,7 +190,6 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
-    // [ADD] Functions to launch file pickers
     private fun launchExportPicker() {
         val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
@@ -157,11 +211,10 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
 
     private val exportGson: Gson by lazy {
         GsonBuilder()
-            .disableHtmlEscaping()   // 余計なエスケープを避ける
-            .serializeNulls()        // null の扱いを安定させる（任意）
+            .disableHtmlEscaping()
+            .serializeNulls()
             .create()
     }
-
 
     private fun exportLayouts(uri: Uri) {
         viewLifecycleOwner.lifecycleScope.launch {
@@ -209,7 +262,6 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                             return@launch
                         }
 
-                // BOM (U+FEFF) と NULL を除去（現場で混入しがち）
                 val jsonString = bytes.toString(Charsets.UTF_8)
                     .trimStart('\uFEFF')
                     .replace("\u0000", "")
@@ -217,11 +269,11 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                 val type = object : TypeToken<List<FullKeyboardLayout>>() {}.type
 
                 val gson = GsonBuilder()
-                    .setLenient()          // ★ポイント：厳格でなく寛容に読む
+                    .setLenient()
                     .create()
 
                 val reader = JsonReader(StringReader(jsonString)).apply {
-                    isLenient = true       // GsonBuilderだけで効かないケースも潰す
+                    isLenient = true
                 }
 
                 val layouts: List<FullKeyboardLayout> = gson.fromJson(reader, type) ?: emptyList()
@@ -265,5 +317,6 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        itemTouchHelper = null
     }
 }
