@@ -1127,6 +1127,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
 
             floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
+                floatingKeyboardLayoutBinding.keyboardViewFloating.applyKeyboardTheme(
+                    themeMode = keyboardThemeMode ?: "default",
+                    currentNightMode = currentNightMode,
+                    isDynamicColorEnabled = DynamicColors.isDynamicColorAvailable(),
+                    customBgColor = customThemeBgColor ?: Color.WHITE,
+                    customKeyColor = customThemeKeyColor ?: Color.WHITE,
+                    customSpecialKeyColor = customThemeSpecialKeyColor ?: Color.GRAY,
+                    customKeyTextColor = customThemeKeyTextColor ?: Color.BLACK,
+                    customSpecialKeyTextColor = customThemeSpecialKeyTextColor ?: Color.BLACK,
+                    liquidGlassEnable = liquidGlassThemePreference ?: false,
+                    customBorderEnable = customKeyBorderEnablePreference ?: false,
+                    customBorderColor = customKeyBorderEnableColor ?: Color.BLACK,
+                    liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
+                    borderWidth = customKeyBorderWidth ?: 1
+                )
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -1597,7 +1612,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onConfigureWindow(win: Window?, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
         super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
         // Android 12 (API 31) 以上の場合
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && liquidGlassThemePreference == true) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && liquidGlassThemePreference == true && isKeyboardFloatingMode != true) {
             // 背景のアプリに対してブラーをかける
             win?.setBackgroundBlurRadius(50)
         }
