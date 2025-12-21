@@ -432,4 +432,5 @@
 
     <string name="setting_two_step_flick">2段フリック設定</string>
     <string name="two_step_output_label">出力文字</string>
+    <string name="drag_item">drag item</string>
 </resources>

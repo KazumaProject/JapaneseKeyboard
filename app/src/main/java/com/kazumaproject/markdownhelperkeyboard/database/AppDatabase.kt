@@ -46,7 +46,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         NgWord::class,
         ShortcutItem::class
     ],
-    version = 15,
+    version = 16,
     exportSchema = false
 )
 @TypeConverters(
@@ -366,6 +366,13 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 // ユニークインデックス作成
                 db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_user_template_word_reading` ON `user_template`(`word`, `reading`)")
+            }
+        }
+
+        val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // keyboard_layouts に sortOrder を追加（既存行は 0）
+                db.execSQL("ALTER TABLE keyboard_layouts ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
             }
         }
 
