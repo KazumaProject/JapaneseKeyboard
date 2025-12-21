@@ -2146,8 +2146,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // Caret moved while tail exists → commit tail
             hasTail -> {
                 Timber.d("onUpdateSelection hasTail : $tail")
-                _inputString.update { tail }
-                stringInTail.set("")
+                scope.launch {
+                    _inputString.update { tail }
+                    stringInTail.set("")
+                }
             }
 
             // No tail but still holding input → cleanup
