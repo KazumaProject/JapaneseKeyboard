@@ -44,6 +44,41 @@
                     android:text="@string/special_key" />
             </com.google.android.material.chip.ChipGroup>
 
+            <!-- NEW: Special category selector -->
+            <TextView
+                android:id="@+id/text_special_category_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:text="特殊キーの種類"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/special_category_chip_group"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:visibility="gone"
+                app:singleSelection="true"
+                tools:visibility="visible">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_special_single"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="単一" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_special_flick"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="フリック" />
+            </com.google.android.material.chip.ChipGroup>
+
             <TextView
                 android:id="@+id/text_input_style_title"
                 android:layout_width="wrap_content"
@@ -195,6 +230,32 @@
                     android:inputType="none"
                     tools:text="削除" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- NEW: special flick editor group -->
+            <LinearLayout
+                android:id="@+id/special_flick_editor_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="24dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="特殊キー（フリック）設定"
+                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/special_flick_mappings_recycler_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:nestedScrollingEnabled="false"
+                    tools:itemCount="5"
+                    tools:listitem="@layout/list_item_special_flick_mapping" />
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/flick_editor_group"
