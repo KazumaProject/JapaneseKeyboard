@@ -27,6 +27,11 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "TOGGLE_DAKUTEN" -> KeyAction.ToggleDakuten
         "TOGGLE_CASE" -> KeyAction.ToggleCase
         "ShowEmojiKeyboard" -> KeyAction.ShowEmojiKeyboard
+        "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
+        "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
+        "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
+        "SwitchKatakana" -> KeyAction.ToggleKatakana
+        "VoiceInput" -> KeyAction.VoiceInput
         else -> null
     }
     return if (action != null) {
@@ -65,6 +70,11 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.ToggleDakuten -> "TOGGLE_DAKUTEN" to null
             KeyAction.ToggleCase -> "TOGGLE_CASE" to null
             KeyAction.ShowEmojiKeyboard -> "ShowEmojiKeyboard" to null
+            KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish" to null
+            KeyAction.SwitchToNumberLayout -> "SwitchToNumber" to null
+            KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol" to null
+            KeyAction.ToggleKatakana -> "SwitchKatakana" to null
+            KeyAction.VoiceInput -> "VoiceInput" to null
             else -> "UNKNOWN" to null // 未対応のアクション
         }
     }
