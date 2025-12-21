@@ -1,13 +1,17 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import com.kazumaproject.custom_keyboard.data.CustomFlickSuspension
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.widget.ArrayAdapter
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
@@ -417,6 +421,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
 
 
+    private val requestRecordAudioPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+
+        }
+
     private fun onDone() {
         val originalKey = currentKeyData ?: return
 
@@ -448,6 +457,18 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     newLabel =
                         if (newDrawableResId != null) "" else selectedDisplayAction?.displayName
                             ?: "ACTION"
+
+                    if (newAction == KeyAction.VoiceInput) {
+                        val context = requireContext()
+                        val hasPermission = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (!hasPermission) {
+                            requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }
 
                     newFlickMap = emptyMap()
                     newTwoStepMap = emptyMap()
@@ -484,6 +505,18 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                             )
                         }
                         .toMap()
+
+                    if (newAction == KeyAction.VoiceInput) {
+                        val context = requireContext()
+                        val hasPermission = ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED
+
+                        if (!hasPermission) {
+                            requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+                        }
+                    }
 
                     newTwoStepMap = emptyMap()
                 }

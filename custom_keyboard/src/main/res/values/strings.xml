@@ -21,4 +21,8 @@
     <string name="action_move_cursor_left">Move Cursor Left</string>
     <string name="action_move_cursor_right">Move Cursor Right</string>
     <string name="action_select_all">Select All</string>
+    <string name="switch_qwerty">Switch to QWERTY Keyboard</string>
+    <string name="switch_number">Switch to Number Keyboard</string>
+    <string name="action_delete_until_symbol">Delete until symbols</string>
+    <string name="voice_input">Voice Input</string>
 </resources>
