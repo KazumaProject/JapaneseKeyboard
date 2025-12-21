@@ -26,6 +26,7 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "SWITCH_TO_NEXT_IME" -> KeyAction.SwitchToNextIme
         "TOGGLE_DAKUTEN" -> KeyAction.ToggleDakuten
         "TOGGLE_CASE" -> KeyAction.ToggleCase
+        "ShowEmojiKeyboard" -> KeyAction.ShowEmojiKeyboard
         else -> null
     }
     return if (action != null) {
@@ -63,6 +64,7 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.SwitchToNextIme -> "SWITCH_TO_NEXT_IME" to null
             KeyAction.ToggleDakuten -> "TOGGLE_DAKUTEN" to null
             KeyAction.ToggleCase -> "TOGGLE_CASE" to null
+            KeyAction.ShowEmojiKeyboard -> "ShowEmojiKeyboard" to null
             else -> "UNKNOWN" to null // 未対応のアクション
         }
     }
