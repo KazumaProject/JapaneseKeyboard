@@ -24,6 +24,11 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.backspace_24px
             ),
             DisplayAction(
+                KeyAction.DeleteUntilSymbol,
+                context.getString(R.string.action_delete_until_symbol),
+                com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+            ),
+            DisplayAction(
                 KeyAction.Space,
                 context.getString(R.string.action_space),
                 com.kazumaproject.core.R.drawable.baseline_space_bar_24
@@ -93,88 +98,29 @@ object KeyActionMapper {
                 KeyAction.SelectAll,
                 context.getString(R.string.action_select_all),
                 com.kazumaproject.core.R.drawable.text_select_start_24dp
+            ),
+            DisplayAction(
+                KeyAction.SwitchToEnglishLayout,
+                context.getString(R.string.switch_qwerty),
+                com.kazumaproject.core.R.drawable.input_mode_english_custom
+            ),
+            DisplayAction(
+                KeyAction.SwitchToNumberLayout,
+                context.getString(R.string.switch_number),
+                com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+            ),
+            DisplayAction(
+                KeyAction.ToggleKatakana,
+                "カタカナ",
+                com.kazumaproject.core.R.drawable.katakana
+            ),
+            DisplayAction(
+                KeyAction.VoiceInput,
+                context.getString(R.string.voice_input),
+                com.kazumaproject.core.R.drawable.settings_voice_24px
             )
         )
     }
-
-    val displayActions = listOf(
-        DisplayAction(KeyAction.Delete, "削除", com.kazumaproject.core.R.drawable.backspace_24px),
-        DisplayAction(
-            KeyAction.Space,
-            "空白",
-            com.kazumaproject.core.R.drawable.baseline_space_bar_24
-        ),
-        DisplayAction(
-            KeyAction.Convert,
-            "変換",
-            com.kazumaproject.core.R.drawable.henkan
-        ),
-        DisplayAction(
-            KeyAction.Enter,
-            "エンター",
-            com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
-        ),
-        DisplayAction(
-            KeyAction.NewLine,
-            "改行",
-        ),
-        DisplayAction(
-            KeyAction.Paste,
-            "貼り付け",
-            com.kazumaproject.core.R.drawable.content_paste_24px
-        ),
-        DisplayAction(
-            KeyAction.Copy,
-            "コピー",
-            com.kazumaproject.core.R.drawable.content_copy_24dp
-        ),
-        DisplayAction(
-            KeyAction.SwitchToNextIme,
-            "IME切替",
-            com.kazumaproject.core.R.drawable.language_24dp
-        ),
-        DisplayAction(
-            KeyAction.ShowEmojiKeyboard,
-            "絵文字キーボード",
-            com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
-        ),
-        DisplayAction(
-            KeyAction.ToggleDakuten,
-            "濁点、小文字",
-            com.kazumaproject.core.R.drawable.kana_small
-        ),
-        DisplayAction(
-            KeyAction.ToggleCase,
-            "英語、小文字",
-            com.kazumaproject.core.R.drawable.english_small
-        ),
-        DisplayAction(
-            KeyAction.ShiftKey,
-            "ローマ字、英語切り替え",
-            com.kazumaproject.core.R.drawable.shift_24px
-        ),
-        DisplayAction(
-            KeyAction.MoveCustomKeyboardTab,
-            "タブの変更",
-            com.kazumaproject.core.R.drawable.keyboard_command_key_24px
-        ),
-        // --- アイコンがないアクション ---
-        DisplayAction(
-            KeyAction.MoveCursorLeft,
-            "カーソル左",
-            com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-        ),
-        DisplayAction(
-            KeyAction.MoveCursorRight,
-            "カーソル右",
-            com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-        ),
-        DisplayAction(
-            KeyAction.SelectAll,
-            "すべて選択",
-            com.kazumaproject.core.R.drawable.text_select_start_24dp
-        ),
-    )
 
     // KeyActionオブジェクトをDB保存用の文字列に変換
     fun fromKeyAction(keyAction: KeyAction?): String? {
@@ -200,9 +146,12 @@ object KeyActionMapper {
             is KeyAction.ToggleCase -> "a/A"
             is KeyAction.SwitchToKanaLayout -> "SwitchToKana"
             is KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish"
+            is KeyAction.SwitchToNumberLayout -> "SwitchToNumber"
             is KeyAction.ShiftKey -> "ShiftKeyPressed"
             is KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab"
             is KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol"
+            is KeyAction.ToggleKatakana -> "SwitchKatakana"
+            is KeyAction.VoiceInput -> "VoiceInput"
             else -> null
         }
     }
@@ -231,19 +180,14 @@ object KeyActionMapper {
             "a/A" -> KeyAction.ToggleCase
             "SwitchToKana" -> KeyAction.SwitchToKanaLayout
             "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
+            "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
             "ShiftKeyPressed" -> KeyAction.ShiftKey
             "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
             "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
+            "SwitchKatakana" -> KeyAction.ToggleKatakana
+            "VoiceInput" -> KeyAction.VoiceInput
             else -> null
         }
     }
 
-    // UI表示用のKeyActionリスト
-    val specialActions = listOf(
-        KeyAction.Delete, KeyAction.Backspace, KeyAction.Space, KeyAction.NewLine,
-        KeyAction.Enter, KeyAction.Convert, KeyAction.Confirm, KeyAction.MoveCursorLeft,
-        KeyAction.MoveCursorRight, KeyAction.SelectLeft, KeyAction.SelectRight,
-        KeyAction.SelectAll, KeyAction.Paste, KeyAction.Copy, KeyAction.ChangeInputMode,
-        KeyAction.ShowEmojiKeyboard, KeyAction.SwitchToNextIme
-    )
 }

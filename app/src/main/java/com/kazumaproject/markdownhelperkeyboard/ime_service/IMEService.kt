@@ -4484,7 +4484,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("updateKeyboardLayout: ${qwertyMode.value} $currentEnterKeyIndex")
         when (qwertyMode.value) {
             TenKeyQWERTYMode.Custom -> {
-                //setInitialKeyboardTab()
+                when (customKeyboardMode) {
+                    KeyboardInputMode.HIRAGANA -> {
+                        mainLayoutBinding?.let { mainView ->
+                            setInitialKeyboardTab()
+                            setKeyboardTab(0)
+                            mainView.customLayoutDefault.isVisible = true
+                            mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                            mainView.qwertyView.isVisible = false
+                            mainView.keyboardView.isVisible = false
+                        }
+                    }
+
+                    KeyboardInputMode.ENGLISH -> {
+                        val insertString = inputString.value
+                        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                        mainLayoutBinding?.let { mainView ->
+                            mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
+                            mainView.qwertyView.setRomajiMode(false)
+                            if (insertString.isEmpty()) {
+                                setKeyboardSizeSwitchKeyboard(mainView)
+                            } else {
+                                setKeyboardHeightWithAdditional(mainView)
+                            }
+                            previousTenKeyQWERTYMode = TenKeyQWERTYMode.Custom
+                        }
+                    }
+
+                    KeyboardInputMode.SYMBOLS -> {
+                        mainLayoutBinding?.customLayoutDefault?.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                    }
+
+                }
             }
 
             TenKeyQWERTYMode.Default -> {}
@@ -4981,6 +5012,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.MoveCursorDown -> {}
                     KeyAction.MoveCursorUp -> {}
                     KeyAction.Cancel -> {}
+                    KeyAction.VoiceInput -> {}
                 }
             }
 
@@ -5034,6 +5066,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         cancelLeftLongPress()
                         cancelRightLongPress()
                     }
+
+                    KeyAction.VoiceInput -> {}
                 }
             }
 
@@ -5159,6 +5193,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.MoveCursorUp -> {}
                     KeyAction.Cancel -> {}
+                    KeyAction.VoiceInput -> {}
                 }
             }
 
@@ -5293,6 +5328,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         cancelLeftLongPress()
                         cancelRightLongPress()
                     }
+
+                    KeyAction.VoiceInput -> {}
                 }
             }
 
@@ -5613,6 +5650,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Cancel -> {}
+                    KeyAction.VoiceInput -> {
+                        startVoiceInput(mainView)
+                    }
                 }
             }
         })
@@ -8795,6 +8835,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 } else {
                                                     setKeyboardHeightWithAdditional(mainView)
                                                 }
+                                            }
+                                        }
+
+                                        TenKeyQWERTYMode.Custom -> {
+                                            customKeyboardMode = KeyboardInputMode.HIRAGANA
+                                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
+                                            createNewKeyboardLayoutForSumire()
+                                            if (insertString.isEmpty()) {
+                                                setKeyboardSizeSwitchKeyboard(mainView)
+                                            } else {
+                                                setKeyboardHeightWithAdditional(mainView)
                                             }
                                         }
 
