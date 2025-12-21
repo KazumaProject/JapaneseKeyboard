@@ -28,14 +28,24 @@ class KeyboardRepository @Inject constructor(
     private val dao: KeyboardLayoutDao
 ) {
 
+    // -----------------------------
+    // Export / Import
+    // -----------------------------
+
     suspend fun getAllFullLayoutsForExport(): List<FullKeyboardLayout> {
         return dao.getAllFullLayoutsOneShot()
     }
 
     /**
      * インポート処理（TWO_STEP_FLICK 含む）
+     * - 名前衝突回避
+     * - createdAt は import 時刻
+     * - sortOrder は「最上位に積む」(max+1) を順に付与
      */
     suspend fun importLayouts(layouts: List<FullKeyboardLayout>) {
+        // まとめて import するときに max を毎回 DB に聞かない
+        var currentMaxOrder = dao.getMaxSortOrder()
+
         for (fullLayout in layouts) {
             var newName = fullLayout.layout.name
             var nameExists = dao.findLayoutByName(newName) != null
@@ -46,10 +56,13 @@ class KeyboardRepository @Inject constructor(
                 counter++
             }
 
+            currentMaxOrder += 1
+
             val layoutToInsert = fullLayout.layout.copy(
                 layoutId = 0,
                 name = newName,
-                createdAt = System.currentTimeMillis()
+                createdAt = System.currentTimeMillis(),
+                sortOrder = currentMaxOrder
             )
 
             val keysToInsert = fullLayout.keysWithFlicks.map { it.key }
@@ -65,6 +78,155 @@ class KeyboardRepository @Inject constructor(
             dao.insertFullKeyboardLayout(layoutToInsert, keysToInsert, flicksMap, twoStepMap)
         }
     }
+
+    // -----------------------------
+    // Sorting (Drag & Drop persistence)
+    // -----------------------------
+
+    /**
+     * RecyclerView で表示されている順（上→下）の layoutId リストを受け取り、
+     * DB の sortOrder を振り直して永続化する。
+     *
+     * 例: adapter.currentList.map { it.layoutId } を渡す。
+     */
+    suspend fun updateLayoutOrder(layoutIdsInDisplayOrder: List<Long>) {
+        dao.updateLayoutOrdersInDisplayOrder(layoutIdsInDisplayOrder)
+    }
+
+    private suspend fun nextTopSortOrder(): Int {
+        return dao.getMaxSortOrder() + 1
+    }
+
+    // -----------------------------
+    // Queries
+    // -----------------------------
+
+    fun getLayouts(): Flow<List<CustomKeyboardLayout>> = dao.getLayoutsList()
+
+    suspend fun getLayoutsNotFlow(): List<CustomKeyboardLayout> =
+        dao.getLayoutsListNotFlow()
+
+    suspend fun getLayoutName(id: Long): String? = dao.getLayoutName(id)
+
+    fun getFullLayout(id: Long): Flow<KeyboardLayout> {
+        return dao.getFullLayoutById(id).map { dbLayout ->
+            convertToUiModel(dbLayout)
+        }
+    }
+
+    fun getAllCustomKeyboardLayouts(): Flow<List<KeyboardLayout>> {
+        return dao.getAllFullLayouts().map { dbLayouts ->
+            dbLayouts.map { dbLayout ->
+                convertToUiModel(dbLayout)
+            }
+        }
+    }
+
+    suspend fun doesNameExist(name: String, currentId: Long?): Boolean {
+        val foundLayout = dao.findLayoutByName(name)
+        return when {
+            foundLayout == null -> false
+            foundLayout.layoutId == currentId -> false
+            else -> true
+        }
+    }
+
+    // -----------------------------
+    // Save / Delete / Duplicate
+    // -----------------------------
+
+    /**
+     * レイアウトの保存処理（TWO_STEP_FLICK 含む）
+     *
+     * 重要:
+     * - 既存レイアウトの createdAt / sortOrder を維持する（編集で順序が壊れないように）
+     * - 新規作成は sortOrder = max+1 として最上位に追加
+     *
+     * 注意:
+     * - dao.insertLayout() が REPLACE の場合、既存保存時は親(row)が置換されます。
+     *   ただし layoutId を明示しているので ID は維持されます。
+     *   また FK の ON DELETE CASCADE がある場合、子テーブルは置換に伴い一度削除され、
+     *   直後に insertFullKeyboardLayout 内で再挿入される想定です。
+     */
+    suspend fun saveLayout(layout: KeyboardLayout, name: String, id: Long?) {
+        Timber.d("saveLayout: $layout")
+
+        val existing = if (id != null && id > 0) {
+            dao.getFullLayoutOneShot(id)?.layout
+        } else {
+            null
+        }
+
+        val createdAtToKeep = existing?.createdAt ?: System.currentTimeMillis()
+        val sortOrderToKeep = existing?.sortOrder ?: nextTopSortOrder()
+
+        val dbLayout = CustomKeyboardLayout(
+            layoutId = id ?: 0,
+            name = name,
+            columnCount = layout.columnCount,
+            rowCount = layout.rowCount,
+            isRomaji = layout.isRomaji,
+            createdAt = createdAtToKeep,
+            sortOrder = sortOrderToKeep
+        )
+
+        val (keys, flicksMap, twoStepMap) = convertToDbModel(layout)
+
+        dao.insertFullKeyboardLayout(dbLayout, keys, flicksMap, twoStepMap)
+    }
+
+    suspend fun deleteLayout(id: Long) {
+        dao.deleteLayout(id)
+    }
+
+    /**
+     * レイアウト複製:
+     * - 名前衝突回避
+     * - createdAt は複製時刻
+     * - sortOrder は最上位へ (max+1)
+     */
+    suspend fun duplicateLayout(id: Long) {
+        val originalLayout = dao.getFullLayoutOneShot(id) ?: return
+
+        val baseName = originalLayout.layout.name + " (コピー)"
+        var finalName = baseName
+        var counter = 2
+        while (dao.findLayoutByName(finalName) != null) {
+            finalName = "$baseName ($counter)"
+            counter++
+        }
+
+        val newLayoutInfo = originalLayout.layout.copy(
+            layoutId = 0,
+            name = finalName,
+            createdAt = System.currentTimeMillis(),
+            sortOrder = nextTopSortOrder()
+        )
+
+        val newKeys = originalLayout.keysWithFlicks.map { keyWithFlicks ->
+            keyWithFlicks.key.copy(keyId = 0, ownerLayoutId = 0)
+        }
+
+        val newFlicksMap = originalLayout.keysWithFlicks.associate { keyWithFlicks ->
+            val newFlicks = keyWithFlicks.flicks.map { flick ->
+                flick.copy(ownerKeyId = 0)
+            }
+            keyWithFlicks.key.keyIdentifier to newFlicks
+        }
+
+        val newTwoStepMap = originalLayout.keysWithFlicks.associate { keyWithFlicks ->
+            val newTwoStep = keyWithFlicks.twoStepFlicks.map { m ->
+                m.copy(ownerKeyId = 0)
+            }
+            keyWithFlicks.key.keyIdentifier to newTwoStep
+        }
+
+        dao.insertFullKeyboardLayout(newLayoutInfo, newKeys, newFlicksMap, newTwoStepMap)
+    }
+
+    // -----------------------------
+    // Convert models
+    // -----------------------------
 
     fun convertLayout(dbLayout: KeyboardLayout): KeyboardLayout {
         val uuidToTapCharMap = dbLayout.flickKeyMaps.mapNotNull { (uuid, flickActionStates) ->
@@ -101,118 +263,24 @@ class KeyboardRepository @Inject constructor(
         )
     }
 
-    fun getAllCustomKeyboardLayouts(): Flow<List<KeyboardLayout>> {
-        return dao.getAllFullLayouts().map { dbLayouts ->
-            dbLayouts.map { dbLayout ->
-                convertToUiModel(dbLayout)
-            }
-        }
-    }
-
-    suspend fun doesNameExist(name: String, currentId: Long?): Boolean {
-        val foundLayout = dao.findLayoutByName(name)
-        return when {
-            foundLayout == null -> false
-            foundLayout.layoutId == currentId -> false
-            else -> true
-        }
-    }
-
-    fun getLayouts(): Flow<List<CustomKeyboardLayout>> = dao.getLayoutsList()
-
-    suspend fun getLayoutsNotFlow(): List<CustomKeyboardLayout> =
-        dao.getLayoutsListNotFlow()
-
-    suspend fun getLayoutName(id: Long): String? = dao.getLayoutName(id)
-
-    fun getFullLayout(id: Long): Flow<KeyboardLayout> {
-        return dao.getFullLayoutById(id).map { dbLayout ->
-            convertToUiModel(dbLayout)
-        }
-    }
-
-    /**
-     * レイアウトの保存処理（TWO_STEP_FLICK 含む）
-     */
-    suspend fun saveLayout(layout: KeyboardLayout, name: String, id: Long?) {
-        Timber.d("saveLayout: $layout")
-
-        val dbLayout = CustomKeyboardLayout(
-            layoutId = id ?: 0,
-            name = name,
-            columnCount = layout.columnCount,
-            rowCount = layout.rowCount,
-            isRomaji = layout.isRomaji
-        )
-
-        val (keys, flicksMap, twoStepMap) = convertToDbModel(layout)
-
-        if (id != null && id > 0) {
-            dao.updateLayout(dbLayout)
-            dao.deleteKeysAndFlicksForLayout(id)
-        }
-
-        dao.insertFullKeyboardLayout(dbLayout, keys, flicksMap, twoStepMap)
-    }
-
-    suspend fun deleteLayout(id: Long) {
-        dao.deleteLayout(id)
-    }
-
-    suspend fun duplicateLayout(id: Long) {
-        val originalLayout = dao.getFullLayoutOneShot(id) ?: return
-
-        val newName = originalLayout.layout.name + " (コピー)"
-        var nameExists = dao.findLayoutByName(newName) != null
-        var counter = 2
-        var finalName = newName
-        while (nameExists) {
-            finalName = "$newName ($counter)"
-            nameExists = dao.findLayoutByName(finalName) != null
-            counter++
-        }
-
-        val newLayoutInfo = originalLayout.layout.copy(
-            layoutId = 0,
-            name = finalName,
-            createdAt = System.currentTimeMillis()
-        )
-
-        val newKeys = originalLayout.keysWithFlicks.map { keyWithFlicks ->
-            keyWithFlicks.key.copy(keyId = 0, ownerLayoutId = 0)
-        }
-
-        val newFlicksMap = originalLayout.keysWithFlicks.associate { keyWithFlicks ->
-            val newFlicks = keyWithFlicks.flicks.map { flick ->
-                flick.copy(ownerKeyId = 0)
-            }
-            keyWithFlicks.key.keyIdentifier to newFlicks
-        }
-
-        val newTwoStepMap = originalLayout.keysWithFlicks.associate { keyWithFlicks ->
-            val newTwoStep = keyWithFlicks.twoStepFlicks.map { m ->
-                m.copy(ownerKeyId = 0)
-            }
-            keyWithFlicks.key.keyIdentifier to newTwoStep
-        }
-
-        dao.insertFullKeyboardLayout(newLayoutInfo, newKeys, newFlicksMap, newTwoStepMap)
-    }
-
     private fun convertToUiModel(dbLayout: FullKeyboardLayout): KeyboardLayout {
-        val flickMaps = dbLayout.keysWithFlicks.associate { keyWithFlicks ->
-            val identifier = keyWithFlicks.key.keyIdentifier
-            val flicksByState = keyWithFlicks.flicks.groupBy { it.stateIndex }
-                .mapValues { (_, stateFlicks) ->
-                    stateFlicks.associate { flick ->
-                        flick.flickDirection to flick.toFlickAction()
-                    }
-                }
-                .toSortedMap()
-                .values.toList()
+        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
+            dbLayout.keysWithFlicks.associate { keyWithFlicks ->
+                val identifier = keyWithFlicks.key.keyIdentifier
 
-            identifier to flicksByState
-        }
+                val flicksByState = keyWithFlicks.flicks
+                    .groupBy { it.stateIndex }
+                    .mapValues { (_, stateFlicks) ->
+                        stateFlicks.associate { flick ->
+                            flick.flickDirection to flick.toFlickAction()
+                        }
+                    }
+                    .toSortedMap()
+                    .values
+                    .toList()
+
+                identifier to flicksByState
+            }
 
         val twoStepMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> =
             dbLayout.keysWithFlicks.mapNotNull { keyWithFlicks ->
@@ -228,9 +296,10 @@ class KeyboardRepository @Inject constructor(
                 identifier to firstMap
             }.toMap()
 
-        val keys = dbLayout.keysWithFlicks.map { keyWithFlicks ->
+        val keys: List<KeyData> = dbLayout.keysWithFlicks.map { keyWithFlicks ->
             val dbKey = keyWithFlicks.key
-            val actionObject = if (dbKey.isSpecialKey) {
+
+            val actionObject: KeyAction? = if (dbKey.isSpecialKey) {
                 KeyActionMapper.toKeyAction(dbKey.action)
             } else {
                 null
@@ -293,25 +362,14 @@ class KeyboardRepository @Inject constructor(
             }
         }
 
-        if (twoStepMaps.isNotEmpty()) {
-            return KeyboardLayout(
-                keys = keys,
-                flickKeyMaps = flickMaps,
-                columnCount = dbLayout.layout.columnCount,
-                rowCount = dbLayout.layout.rowCount,
-                isRomaji = dbLayout.layout.isRomaji,
-                twoStepFlickKeyMaps = twoStepMaps
-            )
-        } else {
-            return KeyboardLayout(
-                keys = keys,
-                flickKeyMaps = flickMaps,
-                columnCount = dbLayout.layout.columnCount,
-                rowCount = dbLayout.layout.rowCount,
-                isRomaji = dbLayout.layout.isRomaji,
-                twoStepFlickKeyMaps = twoStepMaps
-            )
-        }
+        return KeyboardLayout(
+            keys = keys,
+            flickKeyMaps = flickMaps,
+            columnCount = dbLayout.layout.columnCount,
+            rowCount = dbLayout.layout.rowCount,
+            isRomaji = dbLayout.layout.isRomaji,
+            twoStepFlickKeyMaps = twoStepMaps
+        )
     }
 
     private fun convertToDbModel(
@@ -376,6 +434,11 @@ class KeyboardRepository @Inject constructor(
             }
         }
 
-        return Triple(keys, flicksMap, twoStepMap)
+        // Map<String, MutableList<...>> -> Map<String, List<...>> にして返す
+        return Triple(
+            keys,
+            flicksMap.mapValues { it.value.toList() },
+            twoStepMap.mapValues { it.value.toList() }
+        )
     }
 }

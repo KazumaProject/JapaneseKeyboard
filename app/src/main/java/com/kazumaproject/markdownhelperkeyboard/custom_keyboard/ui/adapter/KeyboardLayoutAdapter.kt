@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter
 
+import android.annotation.SuppressLint
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.recyclerview.widget.DiffUtil
@@ -17,11 +19,15 @@ class KeyboardLayoutAdapter(
     private val onItemClick: (CustomKeyboardLayout) -> Unit,
     private val onDeleteClick: (CustomKeyboardLayout) -> Unit,
     private val onDuplicateClick: (CustomKeyboardLayout) -> Unit,
+
+    // ★追加: Fragment 側の ItemTouchHelper.startDrag を呼ぶためのコールバック
+    private val onStartDrag: (RecyclerView.ViewHolder) -> Unit,
 ) : ListAdapter<CustomKeyboardLayout, KeyboardLayoutAdapter.ViewHolder>(DiffCallback) {
 
     inner class ViewHolder(private val binding: ListItemKeyboardLayoutBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
+        @SuppressLint("ClickableViewAccessibility")
         fun bind(layout: CustomKeyboardLayout) {
             binding.keyboardNameText.text = layout.name
             val context = binding.root.context
@@ -32,6 +38,14 @@ class KeyboardLayoutAdapter(
 
             // リスト項目全体がクリックされた場合
             binding.root.setOnClickListener { onItemClick(layout) }
+
+            // ★追加: ドラッグハンドルを押したらドラッグ開始
+            binding.dragHandleButton.setOnTouchListener { _, event ->
+                if (event.actionMasked == MotionEvent.ACTION_DOWN) {
+                    onStartDrag(this)
+                }
+                false
+            }
 
             // メニューボタンがクリックされた場合
             binding.keyboardMenuButton.setOnClickListener { view ->
