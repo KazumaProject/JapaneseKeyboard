@@ -11313,6 +11313,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
             isFirstClickHasStringTail = false
         }
+        if (candidateTabVisibility == true){
+            mainView.candidateTabLayout.isVisible = false
+            val tab = mainView.candidateTabLayout.getTabAt(0)
+            mainView.candidateTabLayout.selectTab(tab)
+        }
+        mainView.shortcutToolbarRecyclerview.isVisible =
+            shortcutTollbarVisibility == true
         setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
     }
 
