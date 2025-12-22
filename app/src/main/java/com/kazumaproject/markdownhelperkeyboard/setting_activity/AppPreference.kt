@@ -287,7 +287,23 @@ object AppPreference {
     private val PREF_UP_RIGHT_START = Pair("circular_flick_up_right_start", 90f)
     private val PREF_UP_RIGHT_SWEEP = Pair("circular_flick_up_right_sweep", 72f)
 
-    private val QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE = Pair("qwerty_switch_number_key_without_number_preference", false)
+    private val QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE =
+        Pair("qwerty_switch_number_key_without_number_preference", false)
+
+    private val KEYBOARD_MARGIN_START_DP = Pair("keyboard_margin_start_dp_preference", 0)
+    private val KEYBOARD_MARGIN_END_DP = Pair("keyboard_margin_end_dp_preference", 0)
+    private val QWERTY_KEYBOARD_MARGIN_START_DP =
+        Pair("qwerty_keyboard_margin_start_dp_preference", 0)
+    private val QWERTY_KEYBOARD_MARGIN_END_DP = Pair("qwerty_keyboard_margin_end_dp_preference", 0)
+
+    private val KEYBOARD_MARGIN_START_DP_LANDSCAPE =
+        Pair("keyboard_margin_start_dp_landscape_preference", 0)
+    private val KEYBOARD_MARGIN_END_DP_LANDSCAPE =
+        Pair("keyboard_margin_end_dp_landscape_preference", 0)
+    private val QWERTY_KEYBOARD_MARGIN_START_DP_LANDSCAPE =
+        Pair("qwerty_keyboard_margin_start_dp_landscape_preference", 0)
+    private val QWERTY_KEYBOARD_MARGIN_END_DP_LANDSCAPE =
+        Pair("qwerty_keyboard_margin_end_dp_landscape_preference", 0)
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
@@ -1338,8 +1354,88 @@ object AppPreference {
             QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE.first,
             QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE.second
         )
-        set(value) = preferences.edit { it.putBoolean(QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE.first, value) }
+        set(value) = preferences.edit {
+            it.putBoolean(
+                QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE.first,
+                value
+            )
+        }
 
+
+    var keyboard_margin_start_dp: Int?
+        get() = preferences.getInt(KEYBOARD_MARGIN_START_DP.first, KEYBOARD_MARGIN_START_DP.second)
+        set(value) = preferences.edit { it.putInt(KEYBOARD_MARGIN_START_DP.first, value ?: 0) }
+
+    var keyboard_margin_end_dp: Int?
+        get() = preferences.getInt(KEYBOARD_MARGIN_END_DP.first, KEYBOARD_MARGIN_END_DP.second)
+        set(value) = preferences.edit { it.putInt(KEYBOARD_MARGIN_END_DP.first, value ?: 0) }
+
+    var qwerty_keyboard_margin_start_dp: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_MARGIN_START_DP.first,
+            QWERTY_KEYBOARD_MARGIN_START_DP.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                QWERTY_KEYBOARD_MARGIN_START_DP.first,
+                value ?: 0
+            )
+        }
+
+    var qwerty_keyboard_margin_end_dp: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_MARGIN_END_DP.first,
+            QWERTY_KEYBOARD_MARGIN_END_DP.second
+        )
+        set(value) = preferences.edit { it.putInt(QWERTY_KEYBOARD_MARGIN_END_DP.first, value ?: 0) }
+
+    var keyboard_margin_start_dp_landscape: Int?
+        get() = preferences.getInt(
+            KEYBOARD_MARGIN_START_DP_LANDSCAPE.first,
+            KEYBOARD_MARGIN_START_DP_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_MARGIN_START_DP_LANDSCAPE.first,
+                value ?: 0
+            )
+        }
+
+    var keyboard_margin_end_dp_landscape: Int?
+        get() = preferences.getInt(
+            KEYBOARD_MARGIN_END_DP_LANDSCAPE.first,
+            KEYBOARD_MARGIN_END_DP_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_MARGIN_END_DP_LANDSCAPE.first,
+                value ?: 0
+            )
+        }
+
+    var qwerty_keyboard_margin_start_dp_landscape: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_MARGIN_START_DP_LANDSCAPE.first,
+            QWERTY_KEYBOARD_MARGIN_START_DP_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                QWERTY_KEYBOARD_MARGIN_START_DP_LANDSCAPE.first,
+                value ?: 0
+            )
+        }
+
+    var qwerty_keyboard_margin_end_dp_landscape: Int?
+        get() = preferences.getInt(
+            QWERTY_KEYBOARD_MARGIN_END_DP_LANDSCAPE.first,
+            QWERTY_KEYBOARD_MARGIN_END_DP_LANDSCAPE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                QWERTY_KEYBOARD_MARGIN_END_DP_LANDSCAPE.first,
+                value ?: 0
+            )
+        }
 
     /**
      * キーボード側で使用するためのマップ取得メソッド
@@ -1354,7 +1450,8 @@ object AppPreference {
         )
 
         if (circularFlick5DirectionsEnable) {
-            baseMap[FlickDirection.UP_RIGHT] = Pair(circularFlickUpRightStart, circularFlickUpRightSweep)
+            baseMap[FlickDirection.UP_RIGHT] =
+                Pair(circularFlickUpRightStart, circularFlickUpRightSweep)
         }
 
         return baseMap
