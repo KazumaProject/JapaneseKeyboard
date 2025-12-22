@@ -445,6 +445,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyLandScapePositionPreferenceValue: Boolean? = true
     private var qwertyLandScapeBottomMarginPreferenceValue: Int? = 0
 
+    private var tenkeyStartMarginPreferenceValue: Int? = 0
+    private var tenkeyEndMarginPreferenceValue: Int? = 0
+    private var qwertyStartMarginPreferenceValue: Int? = 0
+    private var qwertyEndMarginPreferenceValue: Int? = 0
+
+    private var tenkeyLandScapeStartMarginPreferenceValue: Int? = 0
+    private var tenkeyLandScapeEndMarginPreferenceValue: Int? = 0
+    private var qwertyLandScapeStartMarginPreferenceValue: Int? = 0
+    private var qwertyLandScapeEndMarginPreferenceValue: Int? = 0
+
     private var zenzEnableStatePreference: Boolean? = false
     private var zenzProfilePreference: String? = ""
     private var zenzEnableLongPressConversionPreference: Boolean? = false
@@ -904,6 +914,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tenkeyBottomMarginPreferenceValue = keyboard_vertical_margin_bottom ?: 0
             qwertyPositionPreferenceValue = qwerty_keyboard_position ?: true
             qwertyBottomMarginPreferenceValue = qwerty_keyboard_vertical_margin_bottom ?: 0
+
+            tenkeyStartMarginPreferenceValue = keyboard_margin_start_dp ?: 0
+            tenkeyEndMarginPreferenceValue = keyboard_margin_end_dp ?: 0
+            qwertyStartMarginPreferenceValue = qwerty_keyboard_margin_start_dp ?: 0
+            qwertyEndMarginPreferenceValue = qwerty_keyboard_margin_end_dp ?: 0
+
+            tenkeyLandScapeStartMarginPreferenceValue = keyboard_margin_start_dp_landscape
+            tenkeyLandScapeEndMarginPreferenceValue = keyboard_margin_end_dp_landscape
+            qwertyLandScapeStartMarginPreferenceValue = qwerty_keyboard_margin_start_dp_landscape
+            qwertyLandScapeEndMarginPreferenceValue = qwerty_keyboard_margin_end_dp_landscape
 
             tenkeyHeightLandScapePreferenceValue = keyboard_height_landscape ?: 280
             tenkeyWidthLandScapePreferenceValue = keyboard_width_landscape ?: 100
@@ -1504,6 +1524,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tenkeyBottomMarginPreferenceValue = null
         qwertyPositionPreferenceValue = null
         qwertyBottomMarginPreferenceValue = null
+
+        tenkeyStartMarginPreferenceValue = null
+        tenkeyEndMarginPreferenceValue = null
+        qwertyStartMarginPreferenceValue = null
+        qwertyEndMarginPreferenceValue = null
+
+        tenkeyLandScapeStartMarginPreferenceValue = null
+        tenkeyLandScapeEndMarginPreferenceValue = null
+        qwertyLandScapeStartMarginPreferenceValue = null
+        qwertyLandScapeEndMarginPreferenceValue = null
 
         tenkeyHeightLandScapePreferenceValue = null
         tenkeyWidthLandScapePreferenceValue = null
@@ -6914,7 +6944,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val qwertyHeightPref: Int,
         val qwertyWidthPref: Int,
         val qwertyBottomMargin: Int,
-        val qwertyPositionIsEnd: Boolean
+        val qwertyPositionIsEnd: Boolean,
+        val keyboardMarginStart: Int,
+        val keyboardMarginEnd: Int,
+        val qwertyMarginStart: Int,
+        val qwertyMarginEnd: Int,
     )
 
     private fun getKeyboardSizePreferences(): KeyboardSizePreferences {
@@ -6929,7 +6963,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyHeightPref = qwertyHeightPreferenceValue ?: 280,
                 qwertyWidthPref = qwertyWidthPreferenceValue ?: 100,
                 qwertyBottomMargin = qwertyBottomMarginPreferenceValue ?: 0,
-                qwertyPositionIsEnd = qwertyPositionPreferenceValue ?: true
+                qwertyPositionIsEnd = qwertyPositionPreferenceValue ?: true,
+                keyboardMarginStart = tenkeyStartMarginPreferenceValue ?: 0,
+                keyboardMarginEnd = tenkeyEndMarginPreferenceValue ?: 0,
+                qwertyMarginStart = qwertyStartMarginPreferenceValue ?: 0,
+                qwertyMarginEnd = qwertyEndMarginPreferenceValue ?: 0
             )
         } else {
             KeyboardSizePreferences(
@@ -6941,7 +6979,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyHeightPref = qwertyHeightLandScapePreferenceValue ?: 280,
                 qwertyWidthPref = qwertyWidthLandScapePreferenceValue ?: 100,
                 qwertyBottomMargin = qwertyLandScapeBottomMarginPreferenceValue ?: 0,
-                qwertyPositionIsEnd = qwertyLandScapePositionPreferenceValue ?: true
+                qwertyPositionIsEnd = qwertyLandScapePositionPreferenceValue ?: true,
+                keyboardMarginStart = tenkeyLandScapeStartMarginPreferenceValue ?: 0,
+                keyboardMarginEnd = tenkeyLandScapeEndMarginPreferenceValue ?: 0,
+                qwertyMarginStart = qwertyLandScapeStartMarginPreferenceValue ?: 0,
+                qwertyMarginEnd = qwertyLandScapeEndMarginPreferenceValue ?: 0
             )
         }
     }
@@ -7029,6 +7071,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 widthPx
             }
 
+        val finalStartMargin =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                dpToPx(prefs.qwertyMarginStart)
+            } else {
+                dpToPx(prefs.keyboardMarginStart)
+            }
+
+        val finalEndMargin =
+            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
+                dpToPx(prefs.qwertyMarginEnd)
+            } else {
+                dpToPx(prefs.keyboardMarginEnd)
+            }
+
         val finalBottomMargin =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
                 prefs.qwertyBottomMargin
@@ -7047,7 +7103,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         // 4. レイアウトパラメータの適用
         applyKeyboardLayoutParameters(
-            mainView, heightPx, finalKeyboardHeight, finalKeyboardWidth, gravity, finalBottomMargin
+            mainView = mainView,
+            heightPx = heightPx,
+            finalKeyboardHeight = finalKeyboardHeight,
+            finalKeyboardWidth = finalKeyboardWidth,
+            gravity = gravity,
+            finalBottomMargin = finalBottomMargin,
+            finalStartMargin = finalStartMargin,
+            finalEndMargin = finalEndMargin
         )
 
         if (isSymbol) {
@@ -7082,7 +7145,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         finalKeyboardHeight: Int,
         finalKeyboardWidth: Int,
         gravity: Int,
-        finalBottomMargin: Int
+        finalBottomMargin: Int,
+        finalStartMargin: Int,
+        finalEndMargin: Int
     ) {
         if (shortcutTollbarVisibility == true) {
             (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
@@ -7113,6 +7178,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.height = finalKeyboardHeight
             params.width = finalKeyboardWidth
             params.bottomMargin = finalBottomMargin
+            params.leftMargin = finalStartMargin
+            params.rightMargin = finalEndMargin
             params.gravity = gravity
             mainView.root.layoutParams = params
         }
