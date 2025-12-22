@@ -1312,6 +1312,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                     // Exit cursor mode when the finger is lifted
                     setCursorMode(false)
                     crossFlickControllers.forEach { it.dismissAllPopups() }
+
+                    clearSpaceKeyPressedState()
+                    motionTargets.clear()
+                    pointerDownTime.clear()
                     return true
                 }
             }
@@ -1597,4 +1601,24 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun dpToPx(dp: Int): Int {
         return (dp * resources.displayMetrics.density).toInt()
     }
+
+    private fun clearSpaceKeyPressedState() {
+        for (i in 0 until childCount) {
+            val child = getChildAt(i)
+
+            // ラベルが "空白" のキーだけ解除する
+            val isKuhakuKey = when (child) {
+                is AutoSizeButton -> child.text?.toString() == "空白"
+                is AppCompatImageButton -> child.contentDescription?.toString() == "空白"
+                else -> false
+            }
+
+            if (isKuhakuKey) {
+                child.isPressed = false
+                child.isSelected = false
+                child.refreshDrawableState()
+            }
+        }
+    }
+
 }
