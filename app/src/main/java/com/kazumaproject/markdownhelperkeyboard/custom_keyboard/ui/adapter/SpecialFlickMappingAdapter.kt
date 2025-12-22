@@ -63,7 +63,17 @@ class SpecialFlickMappingAdapter(
     override fun onBindViewHolder(holder: VH, position: Int) {
         val item = getItem(position)
 
-        holder.textDirection.text = item.direction.name
+        val label = when(item.direction){
+            FlickDirection.TAP -> context.getString(com.kazumaproject.custom_keyboard.R.string.tap)
+            FlickDirection.UP_LEFT_FAR -> context.getString(com.kazumaproject.custom_keyboard.R.string.flick_left)
+            FlickDirection.UP_LEFT -> context.getString(com.kazumaproject.custom_keyboard.R.string.flick_left)
+            FlickDirection.UP -> context.getString(com.kazumaproject.custom_keyboard.R.string.flick_top)
+            FlickDirection.UP_RIGHT -> context.getString(com.kazumaproject.custom_keyboard.R.string.flick_right)
+            FlickDirection.UP_RIGHT_FAR -> context.getString(com.kazumaproject.custom_keyboard.R.string.flick_right)
+            FlickDirection.DOWN -> context.getString(com.kazumaproject.custom_keyboard.R.string.flick_bottom)
+        }
+
+        holder.textDirection.text = label
 
         val names = mutableListOf<String>().apply {
             add("") // empty = no action
