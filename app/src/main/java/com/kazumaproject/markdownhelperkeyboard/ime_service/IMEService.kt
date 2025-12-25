@@ -61,6 +61,7 @@ import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.graphics.toColorInt
+import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.inputmethod.InputConnectionCompat
@@ -89,6 +90,7 @@ import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setLayerTypeSolidColor
 import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
+import com.kazumaproject.core.domain.extensions.toHankakuKigou
 import com.kazumaproject.core.domain.extensions.toHiragana
 import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
@@ -263,8 +265,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
-    @Inject
-    lateinit var zenzEngine: ZenzEngine
+    private var zenzEngine: ZenzEngine? = null
 
     private var shortcutAdapter: ShortcutAdapter? = null
 
@@ -714,6 +715,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onCreate")
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
+
+        zenzEngine = providesZenzEngine(this)
+
         suggestionAdapter = SuggestionAdapter().apply {
             onListUpdated = {
                 if (isKeyboardFloatingMode != true) {
@@ -1036,7 +1040,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        zenzEngine.setRuntimeConfig(
+        zenzEngine?.setRuntimeConfig(
             nCtx = zenzMaximumContextSizePreference ?: 512,
             nThreads = zenzMaximumThreadSizePreference ?: 4
         )
@@ -1463,6 +1467,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardViewFloating.cancelTenKeyScope()
             floatingSymbolKeyboard.release()
         }
+        zenzEngine = null
         suggestionAdapter?.release()
         suggestionAdapter = null
         shortcutAdapter = null
@@ -4389,6 +4394,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         qwertyView.setRomajiKeyboard(
                             qwertyEnterKeyText
                         )
+                        qwertyView.setRomajiEnglishSwitchKeyVisibility(true)
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
@@ -6902,7 +6908,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // 処理直前にキャンセルされていないかチェック
             ensureActive()
 
-            val stringFromZenz = zenzEngine.generateWithContextAndConditions(
+            val stringFromZenz = zenzEngine?.generateWithContextAndConditions(
                 profile = zenzProfilePreference ?: "",
                 topic = "",
                 style = "",
@@ -6910,7 +6916,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 leftContext = leftContext.ifEmpty { "" },
                 input = insertString.hiraganaToKatakana(),
                 maxTokens = zenzMaximumLetterSizePreference ?: 32
-            )
+            ) ?: ""
 
             // 生成後もチェック
             ensureActive()
@@ -9145,7 +9151,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     variations?.let { variation ->
                         if (variation.isNotEmpty()) {
-                            handleTap(variation.first(), insertString, sb, mainView)
+                            if (switchQWERTYPassword == true) {
+                                if (currentInputType in passwordTypesWithOutNumber) {
+                                    handleTap(
+                                        variation.first().toHankakuKigou(),
+                                        insertString,
+                                        sb,
+                                        mainView
+                                    )
+                                } else {
+                                    handleTap(variation.first(), insertString, sb, mainView)
+                                }
+                            } else {
+                                handleTap(variation.first(), insertString, sb, mainView)
+                            }
                         }
                     }
                 }
@@ -11313,7 +11332,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
             isFirstClickHasStringTail = false
         }
-        if (candidateTabVisibility == true){
+        if (candidateTabVisibility == true) {
             mainView.candidateTabLayout.isVisible = false
             val tab = mainView.candidateTabLayout.getTabAt(0)
             mainView.candidateTabLayout.selectTab(tab)
@@ -12498,6 +12517,63 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             isKeyboardFloatingMode = appPreference.is_floating_mode ?: false
         }
+    }
+
+    private fun providesZenzEngine(context: Context): ZenzEngine {
+        val defaultAssetFileName = "ggml-model-Q5_K_M.gguf"
+        val defaultDestFile = File(context.filesDir, defaultAssetFileName)
+
+        fun ensureDefaultModelCopied(): File {
+            if (!defaultDestFile.exists()) {
+                context.assets.open(defaultAssetFileName).use { input ->
+                    FileOutputStream(defaultDestFile).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            }
+            return defaultDestFile
+        }
+
+        fun copyUriToInternalFile(uriString: String): File {
+            val uri = uriString.toUri()
+            val dest = File(context.filesDir, "zenz_custom_model.gguf")
+
+            context.contentResolver.openInputStream(uri).use { input ->
+                requireNotNull(input) { "openInputStream returned null for uri=$uri" }
+                FileOutputStream(dest).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            return dest
+        }
+
+        val customUri = AppPreference.zenz_model_uri_preference
+
+        // 1) まずユーザー指定があれば試す
+        if (customUri.isNotBlank()) {
+            try {
+                val customFile = copyUriToInternalFile(customUri)
+                ZenzEngine.initModel(customFile.absolutePath)
+                Timber.d("Zenz model initialized with custom file: ${customFile.absolutePath}")
+                return ZenzEngine
+            } catch (e: Exception) {
+                Timber.e(e, "Zenz Failed to init Zenz with custom model. Fallback to default.")
+                // フォールバック継続
+            }
+        }
+
+        // 2) デフォルトで初期化（ここも失敗し得るので try/catch）
+        try {
+            val defaultFile = ensureDefaultModelCopied()
+            ZenzEngine.initModel(defaultFile.absolutePath)
+            Timber.d("Zenz model initialized with default asset file: ${defaultFile.absolutePath}")
+        } catch (e: Exception) {
+            Timber.e(e, "Zenz Failed to init Zenz with default model as well.")
+            // ここまで失敗する場合は致命的。ZenzEngine が内部で未初期化でもアプリが落ちない設計なら return は可能。
+            // 必要ならここで例外を投げる/機能OFF扱いにするなど方針を決める。
+        }
+
+        return ZenzEngine
     }
 
     override val lifecycle: Lifecycle
