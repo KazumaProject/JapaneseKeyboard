@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.di
 import android.content.Context
 import android.content.Context.INPUT_METHOD_SERVICE
 import android.view.inputmethod.InputMethodManager
+import androidx.core.net.toUri
 import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
@@ -55,7 +56,6 @@ import timber.log.Timber
 import java.io.BufferedInputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 import java.io.ObjectInputStream
 import java.util.zip.ZipInputStream
 import javax.inject.Singleton
@@ -819,32 +819,58 @@ object AppModule {
     @Singleton
     @Provides
     fun providesZenzEngine(@ApplicationContext context: Context): ZenzEngine {
-        // 1. モデルファイルの設定 (Assets内のファイル名)
-        // ※ ここは実際のAssets内のファイル名に合わせて変更してください
-        val assetFileName = "ggml-model-Q5_K_M.gguf"
+        val defaultAssetFileName = "ggml-model-Q5_K_M.gguf"
+        val defaultDestFile = File(context.filesDir, defaultAssetFileName)
 
-        // 2. コピー先の内部ストレージのファイル
-        val destinationFile = File(context.filesDir, assetFileName)
-
-        // 3. ファイルが存在しない場合、または更新が必要な場合にコピーを行う
-        // (簡易的な実装として、存在しない場合のみコピーしています)
-        if (!destinationFile.exists()) {
-            try {
-                context.assets.open(assetFileName).use { inputStream ->
-                    FileOutputStream(destinationFile).use { outputStream ->
-                        inputStream.copyTo(outputStream)
+        fun ensureDefaultModelCopied(): File {
+            if (!defaultDestFile.exists()) {
+                context.assets.open(defaultAssetFileName).use { input ->
+                    FileOutputStream(defaultDestFile).use { output ->
+                        input.copyTo(output)
                     }
                 }
-                Timber.d("Model file copied to: ${destinationFile.absolutePath}")
-            } catch (e: IOException) {
-                Timber.e(e, "Failed to copy model file from assets")
-                // 必要に応じて例外を投げるか、空の初期化を防ぐ処理を入れてください
+            }
+            return defaultDestFile
+        }
+
+        fun copyUriToInternalFile(uriString: String): File {
+            val uri = uriString.toUri()
+            val dest = File(context.filesDir, "zenz_custom_model.gguf")
+
+            context.contentResolver.openInputStream(uri).use { input ->
+                requireNotNull(input) { "openInputStream returned null for uri=$uri" }
+                FileOutputStream(dest).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            return dest
+        }
+
+        val customUri = AppPreference.zenz_model_uri_preference
+
+        // 1) まずユーザー指定があれば試す
+        if (customUri.isNotBlank()) {
+            try {
+                val customFile = copyUriToInternalFile(customUri)
+                ZenzEngine.initModel(customFile.absolutePath)
+                Timber.d("Zenz model initialized with custom file: ${customFile.absolutePath}")
+                return ZenzEngine
+            } catch (e: Exception) {
+                Timber.e(e, "Zenz Failed to init Zenz with custom model. Fallback to default.")
+                // フォールバック継続
             }
         }
 
-        // 4. ZenzEngineの初期化
-        // object なのでインスタンス化は不要ですが、初期化メソッドを呼びます
-        ZenzEngine.initModel(destinationFile.absolutePath)
+        // 2) デフォルトで初期化（ここも失敗し得るので try/catch）
+        try {
+            val defaultFile = ensureDefaultModelCopied()
+            ZenzEngine.initModel(defaultFile.absolutePath)
+            Timber.d("Zenz model initialized with default asset file: ${defaultFile.absolutePath}")
+        } catch (e: Exception) {
+            Timber.e(e, "Zenz Failed to init Zenz with default model as well.")
+            // ここまで失敗する場合は致命的。ZenzEngine が内部で未初期化でもアプリが落ちない設計なら return は可能。
+            // 必要ならここで例外を投げる/機能OFF扱いにするなど方針を決める。
+        }
 
         return ZenzEngine
     }
