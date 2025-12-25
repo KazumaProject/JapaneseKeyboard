@@ -5,6 +5,7 @@ import android.graphics.drawable.DrawableContainer
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.InsetDrawable
 import android.graphics.drawable.LayerDrawable
+import android.graphics.drawable.RippleDrawable
 import android.graphics.drawable.ScaleDrawable
 import android.view.View
 import androidx.annotation.ColorInt
@@ -59,3 +60,6 @@ private fun Drawable.applyBorderToDrawable(@ColorInt color: Int, widthPx: Int) {
         // key_preview_bubble が <shape> で作られているなら問題ありません。
     }
 }
+
+private fun RippleDrawable.safeGetDrawable(index: Int): Drawable? =
+    runCatching { getDrawable(index) }.getOrNull()
