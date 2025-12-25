@@ -3,7 +3,6 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.di
 import android.content.Context
 import android.content.Context.INPUT_METHOD_SERVICE
 import android.view.inputmethod.InputMethodManager
-import androidx.core.net.toUri
 import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
@@ -44,7 +43,6 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
-import com.kazumaproject.zenz.ZenzEngine
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -54,8 +52,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
 import java.io.BufferedInputStream
-import java.io.File
-import java.io.FileOutputStream
 import java.io.ObjectInputStream
 import java.util.zip.ZipInputStream
 import javax.inject.Singleton
@@ -814,65 +810,6 @@ object AppModule {
     fun provideEnglishSuccinctBitVectorTokenArray(@EnglishTokenArray englishTokenArray: com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray): SuccinctBitVector {
         Timber.d("provideEnglishSuccinctBitVectorTokenArray: ${englishTokenArray.bitvector.size()}")
         return SuccinctBitVector(englishTokenArray.bitvector)
-    }
-
-    @Singleton
-    @Provides
-    fun providesZenzEngine(@ApplicationContext context: Context): ZenzEngine {
-        val defaultAssetFileName = "ggml-model-Q5_K_M.gguf"
-        val defaultDestFile = File(context.filesDir, defaultAssetFileName)
-
-        fun ensureDefaultModelCopied(): File {
-            if (!defaultDestFile.exists()) {
-                context.assets.open(defaultAssetFileName).use { input ->
-                    FileOutputStream(defaultDestFile).use { output ->
-                        input.copyTo(output)
-                    }
-                }
-            }
-            return defaultDestFile
-        }
-
-        fun copyUriToInternalFile(uriString: String): File {
-            val uri = uriString.toUri()
-            val dest = File(context.filesDir, "zenz_custom_model.gguf")
-
-            context.contentResolver.openInputStream(uri).use { input ->
-                requireNotNull(input) { "openInputStream returned null for uri=$uri" }
-                FileOutputStream(dest).use { output ->
-                    input.copyTo(output)
-                }
-            }
-            return dest
-        }
-
-        val customUri = AppPreference.zenz_model_uri_preference
-
-        // 1) まずユーザー指定があれば試す
-        if (customUri.isNotBlank()) {
-            try {
-                val customFile = copyUriToInternalFile(customUri)
-                ZenzEngine.initModel(customFile.absolutePath)
-                Timber.d("Zenz model initialized with custom file: ${customFile.absolutePath}")
-                return ZenzEngine
-            } catch (e: Exception) {
-                Timber.e(e, "Zenz Failed to init Zenz with custom model. Fallback to default.")
-                // フォールバック継続
-            }
-        }
-
-        // 2) デフォルトで初期化（ここも失敗し得るので try/catch）
-        try {
-            val defaultFile = ensureDefaultModelCopied()
-            ZenzEngine.initModel(defaultFile.absolutePath)
-            Timber.d("Zenz model initialized with default asset file: ${defaultFile.absolutePath}")
-        } catch (e: Exception) {
-            Timber.e(e, "Zenz Failed to init Zenz with default model as well.")
-            // ここまで失敗する場合は致命的。ZenzEngine が内部で未初期化でもアプリが落ちない設計なら return は可能。
-            // 必要ならここで例外を投げる/機能OFF扱いにするなど方針を決める。
-        }
-
-        return ZenzEngine
     }
 
 }
