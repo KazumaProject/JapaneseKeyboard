@@ -305,6 +305,8 @@ object AppPreference {
     private val QWERTY_KEYBOARD_MARGIN_END_DP_LANDSCAPE =
         Pair("qwerty_keyboard_margin_end_dp_landscape_preference", 0)
 
+    private val ZENZ_MODEL_URI_PREFERENCE = Pair("zenz_model_uri_preference", "")
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1435,6 +1437,15 @@ object AppPreference {
                 QWERTY_KEYBOARD_MARGIN_END_DP_LANDSCAPE.first,
                 value ?: 0
             )
+        }
+
+    var zenz_model_uri_preference: String
+        get() = preferences.getString(
+            ZENZ_MODEL_URI_PREFERENCE.first,
+            ZENZ_MODEL_URI_PREFERENCE.second
+        ) ?: ""
+        set(value) = preferences.edit {
+            it.putString(ZENZ_MODEL_URI_PREFERENCE.first, value)
         }
 
     /**
