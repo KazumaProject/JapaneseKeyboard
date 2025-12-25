@@ -1110,6 +1110,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                         customLayoutDefault.isVisible = false
                         qwertyView.setRomajiEnglishSwitchKeyVisibility(false)
+                        qwertyView.resetQWERTYKeyboard()
                         qwertyView.isVisible = true
                     }
                 }
