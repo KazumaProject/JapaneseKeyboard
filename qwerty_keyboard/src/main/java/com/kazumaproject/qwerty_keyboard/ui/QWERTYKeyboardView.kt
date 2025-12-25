@@ -1760,6 +1760,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     fun setRomajiMode(state: Boolean) {
+        Log.d("QWERTY Keyboard Debug","romaji: [$state]")
         _romajiModeState.update { state }
     }
 
