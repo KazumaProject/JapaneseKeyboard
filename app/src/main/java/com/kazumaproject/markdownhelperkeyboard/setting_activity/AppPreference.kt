@@ -310,6 +310,9 @@ object AppPreference {
     private val SAVE_LAST_USED_KEYBOARD = Pair("save_last_used_keyboard", false)
     private val SAVE_LAST_USED_KEYBOARD_POSITION = Pair("save_last_used_keyboard_int", 0)
 
+    private val ENABLE_ZENZ_RIGHT_CONTEXT_PREFERENCE =
+        Pair("enable_zenz_right_context_preference", false)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1467,6 +1470,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(SAVE_LAST_USED_KEYBOARD_POSITION.first, value)
+        }
+
+    var enable_zenz_right_context_preference: Boolean
+        get() = preferences.getBoolean(
+            ENABLE_ZENZ_RIGHT_CONTEXT_PREFERENCE.first,
+            ENABLE_ZENZ_RIGHT_CONTEXT_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENABLE_ZENZ_RIGHT_CONTEXT_PREFERENCE.first, value)
         }
 
     /**

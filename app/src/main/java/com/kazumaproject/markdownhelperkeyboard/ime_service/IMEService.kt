@@ -517,6 +517,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireEnglishQwertyPreference: Boolean? = false
     private var conversionCandidatesRomajiEnablePreference: Boolean? = false
 
+    private var enableZenzRightContextPreference: Boolean? = false
+
     private var learnFirstCandidateDictionaryPreference: Boolean? = false
     private var enablePredictionSearchLearnDictionaryPreference: Boolean? = false
     private var learnPredictionPreference: Int? = 2
@@ -992,6 +994,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             sumireEnglishQwertyPreference = sumire_english_qwerty_preference
             conversionCandidatesRomajiEnablePreference =
                 conversion_candidates_romaji_enable_preference
+
+            enableZenzRightContextPreference = enable_zenz_right_context_preference
 
             learnFirstCandidateDictionaryPreference = learn_first_candidate_dictionary_preference
             enablePredictionSearchLearnDictionaryPreference =
@@ -1634,6 +1638,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         sumireEnglishQwertyPreference = null
         conversionCandidatesRomajiEnablePreference = null
+        enableZenzRightContextPreference = null
         learnFirstCandidateDictionaryPreference = null
         enablePredictionSearchLearnDictionaryPreference = null
         learnPredictionPreference = null
@@ -6923,7 +6928,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     insertString.length
                 }
                 Timber.d("getLeftContext: $insertString lastCandidateLength:[$lastCandidateLength] suggestion: [${suggestionAdapter?.suggestions?.firstOrNull()?.string ?: ""}] lastCandidate [$lastCandidate]")
-                getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
+                if (enableZenzRightContextPreference == true){
+                    val tmpResult =
+                        getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
+                    tmpResult.ifEmpty {
+                        getRightContext(inputLength = lastCandidateLength)
+                    }
+                }else{
+                    getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
+                }
             }
         } catch (e: Exception) {
             Timber.e("Error performZenzRequest leftContext: ${e.stackTraceToString()}")
@@ -10549,6 +10562,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 改行記号 '\n' があれば、それより後ろの部分だけを返す。
         // 改行がない場合は、テキスト全体が返されます。
         return text.substringAfterLast('\n')
+    }
+
+    private fun getRightContext(inputLength: Int): String {
+        val ic = currentInputConnection ?: return ""
+        val lengthToGetTextAfterCursor = (8 + inputLength).coerceAtMost(64)
+
+        // カーソル後のテキストを取得
+        val charSequence = ic.getTextAfterCursor(lengthToGetTextAfterCursor, 0)
+        val text = charSequence?.toString() ?: ""
+
+        Timber.d("getRightContext: inputLength [$inputLength] text: [$text]")
+
+        return text.substringBefore('\n')
     }
 
     private suspend fun getSuggestionListWithoutPrediction(

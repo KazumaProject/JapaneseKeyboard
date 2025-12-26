@@ -20,6 +20,12 @@
             app:defaultValue=""
             app:summary="@string/zenz_profile_preference_summary" />
 
+        <SwitchPreferenceCompat
+            android:key="enable_zenz_right_context_preference"
+            app:defaultValue="false"
+            android:title="@string/enable_zenz_right_context_preference_title"
+            app:summary="@string/enable_zenz_right_context_preference_summary"/>
+
         <SeekBarPreference
             android:defaultValue="300"
             android:key="zenz_debounce_time_preference"
