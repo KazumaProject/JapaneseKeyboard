@@ -190,6 +190,11 @@
             android:summary="@string/pref_summary_space_longpress_cursor"
             android:title="@string/pref_title_space_longpress_cursor" />
 
+        <SwitchPreferenceCompat
+            android:key="save_last_used_keyboard"
+            app:defaultValue="false"
+            android:title="@string/save_last_used_keyboard_title"
+            app:summary="@string/save_last_used_keyboard_summey" />
         <SeekBarPreference
             android:defaultValue="100"
             android:key="flick_sensitivity_preference"
