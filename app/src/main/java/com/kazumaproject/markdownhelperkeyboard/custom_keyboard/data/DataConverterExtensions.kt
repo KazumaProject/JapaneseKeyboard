@@ -32,6 +32,8 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
         "SwitchKatakana" -> KeyAction.ToggleKatakana
         "VoiceInput" -> KeyAction.VoiceInput
+        "ShiftKey" -> KeyAction.ShiftKey
+        "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
         else -> null
     }
     return if (action != null) {
@@ -75,6 +77,8 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol" to null
             KeyAction.ToggleKatakana -> "SwitchKatakana" to null
             KeyAction.VoiceInput -> "VoiceInput" to null
+            KeyAction.ShiftKey -> "ShiftKey" to null
+            KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab" to null
             else -> "UNKNOWN" to null // 未対応のアクション
         }
     }

@@ -1559,6 +1559,16 @@ object KeyboardDefaultLayouts {
             )
         )
 
+        val spaceActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.Space,
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.Space,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+            )
+        )
+
         // --- 英字キーのflickMap (小文字) ---
         val abcLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("a"),
@@ -1723,7 +1733,7 @@ object KeyboardDefaultLayouts {
         )
 
         // isUpperCaseフラグに基づいてflickMapのリストの順序を決定し、最終的なflickMapsを作成
-        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
+        val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
             if (isFlickDeleteEnabled) {
                 val deleteActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
@@ -1735,7 +1745,7 @@ object KeyboardDefaultLayouts {
 
                     )
                 )
-                mapOf(
+                mutableMapOf(
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
                     "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
@@ -1769,7 +1779,7 @@ object KeyboardDefaultLayouts {
                     "Del" to listOf(deleteActionMap)
                 )
             } else {
-                mapOf(
+                mutableMapOf(
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
                     "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
@@ -1803,7 +1813,12 @@ object KeyboardDefaultLayouts {
                 )
             }
 
-        return KeyboardLayout(keys, flickMaps, 5, 4)
+        spaceConvertStates.getOrNull(0)?.label?.let { label ->
+            flickMaps.put(label, listOf(spaceActionMap))
+        }
+
+
+        return KeyboardLayout(keys, flickMaps.toMap(), 5, 4)
     }
 
     private fun createEnglishLayoutFlick(
@@ -2494,8 +2509,18 @@ object KeyboardDefaultLayouts {
             )
         )
 
+        val spaceActionMap = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.Space,
+            ), FlickDirection.UP_LEFT to FlickAction.Action(
+                KeyAction.Space,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24
+
+            )
+        )
+
         // Final map combining all flick definitions
-        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
+        val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
             if (isFlickDeleteEnabled) {
                 val deleteActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
@@ -2507,7 +2532,7 @@ object KeyboardDefaultLayouts {
 
                     )
                 )
-                mapOf(
+                mutableMapOf(
                     "Del" to listOf(deleteActionMap),
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -2613,7 +2638,7 @@ object KeyboardDefaultLayouts {
                     )
                 )
             } else {
-                mapOf(
+                mutableMapOf(
                     // Added for consistency
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -2719,6 +2744,10 @@ object KeyboardDefaultLayouts {
                     )
                 )
             }
+
+        spaceConvertStates.getOrNull(0)?.label?.let { label ->
+            flickMaps.put(label, listOf(spaceActionMap))
+        }
 
         // The layout uses 5 columns and 4 rows
         return KeyboardLayout(keys, flickMaps, 5, 4)
@@ -7482,13 +7511,32 @@ object KeyboardDefaultLayouts {
 
             else -> {
 
-                val cursorMoveActionMap = mapOf(
+                val cursorLeftActionMap = mapOf(
                     FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorLeft,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
                         KeyAction.MoveCursorRight,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
-                        drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.MoveCursorUp,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.MoveCursorDown,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+                    )
+                )
+
+                val cursorRightActionMap = mapOf(
+                    FlickDirection.TAP to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
+                    ), FlickDirection.UP_RIGHT to FlickAction.Action(
+                        KeyAction.MoveCursorRight,
+                        drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_right_alt_24
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.MoveCursorLeft,
                         drawableResId = com.kazumaproject.core.R.drawable.outline_arrow_left_alt_24
@@ -7597,7 +7645,8 @@ object KeyboardDefaultLayouts {
                             )
                         )
                         mutableMapOf(
-                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
                             "@#/_" to listOf(symbols1),
                             "ABC" to listOf(abc),
                             "DEF" to listOf(def),
@@ -7613,7 +7662,8 @@ object KeyboardDefaultLayouts {
                         )
                     } else {
                         mutableMapOf(
-                            "CursorMoveLeft" to listOf(cursorMoveActionMap),
+                            "CursorMoveLeft" to listOf(cursorLeftActionMap),
+                            "CursorMoveRight" to listOf(cursorRightActionMap),
                             "@#/_" to listOf(symbols1),
                             "ABC" to listOf(abc),
                             "DEF" to listOf(def),
