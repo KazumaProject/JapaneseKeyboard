@@ -456,6 +456,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyLandScapeStartMarginPreferenceValue: Int? = 0
     private var qwertyLandScapeEndMarginPreferenceValue: Int? = 0
 
+    private var enableShowLastShownKeyboardInRestart: Boolean? = false
+    private var lastSavedKeyboardPosition: Int? = 0
+
     private var zenzEnableStatePreference: Boolean? = false
     private var zenzProfilePreference: String? = ""
     private var zenzEnableLongPressConversionPreference: Boolean? = false
@@ -710,6 +713,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var previousTenKeyQWERTYMode: TenKeyQWERTYMode? = null
 
+    private var currentKeyboardOrder = 0
+
     override fun onCreate() {
         super.onCreate()
         Timber.d("onCreate")
@@ -928,6 +933,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tenkeyLandScapeEndMarginPreferenceValue = keyboard_margin_end_dp_landscape
             qwertyLandScapeStartMarginPreferenceValue = qwerty_keyboard_margin_start_dp_landscape
             qwertyLandScapeEndMarginPreferenceValue = qwerty_keyboard_margin_end_dp_landscape
+
+            enableShowLastShownKeyboardInRestart = save_last_used_keyboard_enable_preference
+            lastSavedKeyboardPosition = save_last_used_keyboard_position_preference
+            if (save_last_used_keyboard_enable_preference) {
+                currentKeyboardOrder = save_last_used_keyboard_position_preference
+            }
 
             tenkeyHeightLandScapePreferenceValue = keyboard_height_landscape ?: 280
             tenkeyWidthLandScapePreferenceValue = keyboard_width_landscape ?: 100
@@ -1540,6 +1551,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tenkeyLandScapeEndMarginPreferenceValue = null
         qwertyLandScapeStartMarginPreferenceValue = null
         qwertyLandScapeEndMarginPreferenceValue = null
+
+        enableShowLastShownKeyboardInRestart = null
+        lastSavedKeyboardPosition = null
 
         tenkeyHeightLandScapePreferenceValue = null
         tenkeyWidthLandScapePreferenceValue = null
@@ -3944,6 +3958,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             listView.setOnItemClickListener { _, _, position, _ ->
                 if (keyboardOrder.isEmpty()) return@setOnItemClickListener
                 currentKeyboardOrder = position
+                if (enableShowLastShownKeyboardInRestart == true) {
+                    appPreference.save_last_used_keyboard_position_preference = position
+                }
                 onKeyboardSwitchLongPressUp = false
                 val nextType = keyboardOrder[position]
                 when (nextType) {
@@ -5487,6 +5504,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
                             KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
                         }
+                        if (isTablet == true) {
+                            mainView.tabletView.currentInputMode.set(inputMode)
+                        }
                         mainView.keyboardView.setCurrentMode(inputMode)
                     }
 
@@ -5618,6 +5638,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customKeyboardMode = KeyboardInputMode.ENGLISH
                         createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeEnglish
+                        if (isTablet == true) {
+                            mainView.tabletView.currentInputMode.set(inputMode)
+                        }
                         mainView.keyboardView.setCurrentMode(inputMode)
                     }
 
@@ -5625,6 +5648,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeJapanese
+                        if (isTablet == true) {
+                            mainView.tabletView.currentInputMode.set(inputMode)
+                        }
                         mainView.keyboardView.setCurrentMode(inputMode)
                     }
 
@@ -6058,13 +6084,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private var currentKeyboardOrder = 0
-
     private fun resetKeyboard() {
         Timber.d("resetKeyboard called for showKeyboard")
         if (keyboardOrder.isEmpty()) return
-        currentKeyboardOrder = 0
-        showKeyboard(keyboardOrder[0])
+        if (enableShowLastShownKeyboardInRestart == true) {
+            showKeyboard(keyboardOrder[lastSavedKeyboardPosition ?: 0])
+        } else {
+            currentKeyboardOrder = 0
+            showKeyboard(keyboardOrder[0])
+        }
     }
 
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
@@ -12005,6 +12033,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         showKeyboard(nextType)
 
         currentKeyboardOrder = nextIndex
+        if (enableShowLastShownKeyboardInRestart == true) {
+            appPreference.save_last_used_keyboard_position_preference = nextIndex
+        }
 
         if (qwertyMode.value == TenKeyQWERTYMode.Number) {
             val type = when (nextType) {
