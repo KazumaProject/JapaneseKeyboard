@@ -99,7 +99,7 @@ class TwoStepMappingAdapter(
             }
 
             item.first.name == "UP" && item.second.name == "UP_RIGHT" -> {
-                "上 + 左フリック"
+                "上 + 右フリック"
             }
 
             item.first.name == "DOWN" && item.second.name == "DOWN" -> {
