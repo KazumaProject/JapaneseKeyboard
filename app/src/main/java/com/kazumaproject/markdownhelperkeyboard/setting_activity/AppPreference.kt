@@ -307,6 +307,9 @@ object AppPreference {
 
     private val ZENZ_MODEL_URI_PREFERENCE = Pair("zenz_model_uri_preference", "")
 
+    private val SAVE_LAST_USED_KEYBOARD = Pair("save_last_used_keyboard", false)
+    private val SAVE_LAST_USED_KEYBOARD_POSITION = Pair("save_last_used_keyboard_int", 0)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1446,6 +1449,24 @@ object AppPreference {
         ) ?: ""
         set(value) = preferences.edit {
             it.putString(ZENZ_MODEL_URI_PREFERENCE.first, value)
+        }
+
+    var save_last_used_keyboard_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            SAVE_LAST_USED_KEYBOARD.first,
+            SAVE_LAST_USED_KEYBOARD.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SAVE_LAST_USED_KEYBOARD.first, value)
+        }
+
+    var save_last_used_keyboard_position_preference: Int
+        get() = preferences.getInt(
+            SAVE_LAST_USED_KEYBOARD_POSITION.first,
+            SAVE_LAST_USED_KEYBOARD_POSITION.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(SAVE_LAST_USED_KEYBOARD_POSITION.first, value)
         }
 
     /**
