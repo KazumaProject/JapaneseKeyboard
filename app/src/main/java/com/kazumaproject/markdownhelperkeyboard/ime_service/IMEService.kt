@@ -5487,6 +5487,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             KeyboardInputMode.ENGLISH -> InputMode.ModeEnglish
                             KeyboardInputMode.SYMBOLS -> InputMode.ModeNumber
                         }
+                        if (isTablet == true){
+                            mainView.tabletView.currentInputMode.set(inputMode)
+                        }
                         mainView.keyboardView.setCurrentMode(inputMode)
                     }
 
@@ -5618,6 +5621,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customKeyboardMode = KeyboardInputMode.ENGLISH
                         createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeEnglish
+                        if (isTablet == true){
+                            mainView.tabletView.currentInputMode.set(inputMode)
+                        }
                         mainView.keyboardView.setCurrentMode(inputMode)
                     }
 
@@ -5625,6 +5631,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeJapanese
+                        if (isTablet == true){
+                            mainView.tabletView.currentInputMode.set(inputMode)
+                        }
                         mainView.keyboardView.setCurrentMode(inputMode)
                     }
 
