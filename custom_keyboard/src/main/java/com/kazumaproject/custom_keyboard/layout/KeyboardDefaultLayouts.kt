@@ -4715,7 +4715,8 @@ object KeyboardDefaultLayouts {
                         ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.UP to "う",
-                            TfbiFlickDirection.UP_LEFT to "ぅ"
+                            TfbiFlickDirection.UP_LEFT to "ぅ",
+                            TfbiFlickDirection.UP_RIGHT to "ゔ",
                         ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.RIGHT to "え",
@@ -6269,7 +6270,8 @@ object KeyboardDefaultLayouts {
                         ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.UP to "う",
-                            TfbiFlickDirection.UP_LEFT to "ぅ"
+                            TfbiFlickDirection.UP_LEFT to "ぅ",
+                            TfbiFlickDirection.UP_RIGHT to "ゔ"
                         ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.RIGHT to "え",
@@ -8185,7 +8187,8 @@ object KeyboardDefaultLayouts {
                         ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.UP to "う",
-                            TfbiFlickDirection.UP_LEFT to "ぅ"
+                            TfbiFlickDirection.UP_LEFT to "ぅ",
+                            TfbiFlickDirection.UP_RIGHT to "ゔ"
                         ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.RIGHT to "え",
