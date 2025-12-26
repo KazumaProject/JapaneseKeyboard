@@ -430,4 +430,7 @@
 
     <string name="setting_two_step_flick">2段フリック設定</string>
     <string name="two_step_output_label">出力文字</string>
+    <string name="drag_item">drag item</string>
+    <string name="save_last_used_keyboard_title">最後に使ったキーボードを表示</string>
+    <string name="save_last_used_keyboard_summey">アプリ再起動時に、前回使用したキーボードを自動で表示します</string>
 </resources>
