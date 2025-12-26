@@ -4726,7 +4726,8 @@ object KeyboardDefaultLayouts {
                         ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.UP to "う",
-                            TfbiFlickDirection.UP_LEFT to "ぅ"
+                            TfbiFlickDirection.UP_LEFT to "ぅ",
+                            TfbiFlickDirection.UP_RIGHT to "ゔ",
                         ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.RIGHT to "え",
@@ -6431,7 +6432,8 @@ object KeyboardDefaultLayouts {
                         ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.UP to "う",
-                            TfbiFlickDirection.UP_LEFT to "ぅ"
+                            TfbiFlickDirection.UP_LEFT to "ぅ",
+                            TfbiFlickDirection.UP_RIGHT to "ゔ"
                         ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.RIGHT to "え",
@@ -8477,7 +8479,8 @@ object KeyboardDefaultLayouts {
                         ), TfbiFlickDirection.UP to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.UP to "う",
-                            TfbiFlickDirection.UP_LEFT to "ぅ"
+                            TfbiFlickDirection.UP_LEFT to "ぅ",
+                            TfbiFlickDirection.UP_RIGHT to "ゔ"
                         ), TfbiFlickDirection.RIGHT to mapOf(
                             TfbiFlickDirection.TAP to "あ",
                             TfbiFlickDirection.RIGHT to "え",
@@ -9603,7 +9606,8 @@ object KeyboardDefaultLayouts {
         )
         val subMenu_A_U = mapOf(
             TfbiFlickDirection.UP to TfbiFlickNode.Input("う"),
-            TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぅ")
+            TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぅ"),
+            TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("ゔ")
         )
         val subMenu_A_E = mapOf(
             TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("え"),
