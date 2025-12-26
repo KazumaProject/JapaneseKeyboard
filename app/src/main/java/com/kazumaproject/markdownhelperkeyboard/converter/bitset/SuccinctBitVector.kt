@@ -126,10 +126,16 @@ class SuccinctBitVector(private val bitSet: BitSet) {
         // 該当大ブロック内の小ブロックを線形探索
         val baseSmallIndex = bigBlock * numSmallBlocksPerBig
         var smallBlock = 0
-        while (smallBlock < numSmallBlocksPerBig - 1 &&
-            smallBlockRanks[baseSmallIndex + smallBlock + 1] < localTarget
-        ) {
-            smallBlock++
+        while (smallBlock < numSmallBlocksPerBig - 1) {
+            val nextGlobalSmallIndex = baseSmallIndex + smallBlock + 1
+            if (nextGlobalSmallIndex >= smallBlockRanks.size) break
+
+            if (smallBlockRanks[nextGlobalSmallIndex] < localTarget) {
+                smallBlock++
+
+            } else {
+                break
+            }
         }
 
         // 小ブロック内をビット単位に走査して正確な位置を求める
