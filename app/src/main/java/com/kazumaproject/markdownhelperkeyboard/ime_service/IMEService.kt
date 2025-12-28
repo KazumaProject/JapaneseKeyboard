@@ -8243,7 +8243,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 val input = inputString.value
                                 if (input.isNotEmpty()) {
                                     ioScope.launch {
-                                        setCandidates(input)
+                                        setCandidates(input, mainView)
                                         withContext(Dispatchers.Main) {
                                             hideFirstRowCandidatesInFullScreen(mainView)
                                         }
@@ -8255,7 +8255,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 val input = inputString.value
                                 if (input.isNotEmpty()) {
                                     ioScope.launch {
-                                        setCandidatesWithoutPrediction(input)
+                                        setCandidatesWithoutPrediction(input, mainView)
                                         withContext(Dispatchers.Main) {
                                             hideFirstRowCandidatesInFullScreen(mainView)
                                         }
@@ -10117,11 +10117,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (candidateTabOrder.isNotEmpty() && tabPosition < candidateTabOrder.size) {
                 when (candidateTabOrder[tabPosition]) {
                     CandidateTab.PREDICTION -> {
-                        setCandidates(inputString)
+                        setCandidates(inputString, mainView)
                     }
 
                     CandidateTab.CONVERSION -> {
-                        setCandidatesWithoutPrediction(inputString)
+                        setCandidatesWithoutPrediction(inputString, mainView)
                     }
 
                     CandidateTab.EISUKANA -> {
@@ -10129,21 +10129,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
             } else {
-                setCandidates(inputString)
+                setCandidates(inputString, mainView)
             }
         } else {
-            setCandidatesOriginal(inputString)
+            setCandidatesOriginal(inputString, mainView)
         }
         Timber.d("setSuggestionOnView auto: $inputString $stringInTail $tabPosition $bunsetsuPositionList ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetusMultipleDetect")
     }
 
     private suspend fun setCandidates(
-        insertString: String,
+        insertString: String, mainView: MainLayoutBinding
     ) {
         if (zenzEnableStatePreference == true) {
             _zenzRequest.emit(insertString)
         }
-        val candidates = getSuggestionList(insertString)
+        val candidates = getSuggestionList(insertString, mainView)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
@@ -10183,13 +10183,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
         if (bunsetsuSeparation == true) {
-            mainLayoutBinding?.let { mainView ->
-                bunsetsuPositionList?.let {
-                    if (bunsetusMultipleDetect && it.isNotEmpty()) {
-                        handleJapaneseModeSpaceKeyWithBunsetsu(
-                            mainView, filtered, insertString
-                        )
-                    }
+            bunsetsuPositionList?.let {
+                if (bunsetusMultipleDetect && it.isNotEmpty()) {
+                    handleJapaneseModeSpaceKeyWithBunsetsu(
+                        mainView, filtered, insertString
+                    )
                 }
             }
         }
@@ -10197,12 +10195,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setCandidatesOriginal(
-        insertString: String,
+        insertString: String, mainView: MainLayoutBinding
     ) {
         if (zenzEnableStatePreference == true) {
             _zenzRequest.emit(insertString)
         }
-        val candidates = getSuggestionListOriginal(insertString)
+        val candidates = getSuggestionListOriginal(insertString, mainView)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
@@ -10243,20 +10241,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
         if (bunsetsuSeparation == true) {
-            mainLayoutBinding?.let { mainView ->
-                bunsetsuPositionList?.let {
-                    if (bunsetusMultipleDetect && it.isNotEmpty()) {
-                        handleJapaneseModeSpaceKeyWithBunsetsu(
-                            mainView, filtered, insertString
-                        )
-                    }
+            bunsetsuPositionList?.let {
+                if (bunsetusMultipleDetect && it.isNotEmpty()) {
+                    handleJapaneseModeSpaceKeyWithBunsetsu(
+                        mainView, filtered, insertString
+                    )
                 }
             }
         }
     }
 
     private suspend fun setCandidatesWithoutPrediction(
-        insertString: String,
+        insertString: String, mainView: MainLayoutBinding
     ) {
         val candidates = getSuggestionListWithoutPrediction(insertString)
         val filtered = if (stringInTail.get().isNotEmpty()) {
@@ -10293,13 +10289,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
         if (bunsetsuSeparation == true) {
-            mainLayoutBinding?.let { mainView ->
-                bunsetsuPositionList?.let {
-                    if (bunsetusMultipleDetect && it.isNotEmpty()) {
-                        handleJapaneseModeSpaceKeyWithBunsetsu(
-                            mainView, filtered, insertString
-                        )
-                    }
+            bunsetsuPositionList?.let {
+                if (bunsetusMultipleDetect && it.isNotEmpty()) {
+                    handleJapaneseModeSpaceKeyWithBunsetsu(
+                        mainView, filtered, insertString
+                    )
                 }
             }
         }
@@ -10340,7 +10334,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun getSuggestionListOriginal(
-        insertString: String,
+        insertString: String, mainView: MainLayoutBinding
     ): List<Candidate> {
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
@@ -10406,7 +10400,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             enableFlickPref && (qwertyMode.value == TenKeyQWERTYMode.Default || qwertyMode.value == TenKeyQWERTYMode.Sumire)
         val enableTypoCorrectionQwertyEnglish =
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
-                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY)
+                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !mainView.qwertyView.getRomajiMode()))
 
         val engineCandidates = withContext(Dispatchers.Default) {
             if (bunsetsuSeparation == true) {
@@ -10466,6 +10460,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private suspend fun getSuggestionList(
         insertString: String,
+        mainView: MainLayoutBinding
     ): List<Candidate> {
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
@@ -10532,7 +10527,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val enableTypoCorrectionQwertyEnglish =
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
-                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY)
+                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !mainView.qwertyView.getRomajiMode()))
 
         val engineCandidates = withContext(Dispatchers.Default) {
             if (bunsetsuSeparation == true) {
