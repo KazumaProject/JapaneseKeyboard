@@ -313,6 +313,12 @@ object AppPreference {
     private val ENABLE_ZENZ_RIGHT_CONTEXT_PREFERENCE =
         Pair("enable_zenz_right_context_preference", false)
 
+    private val TYPO_CORRECTION_JA_FLICK =
+        Pair("enable_typo_correction_japanese_flick_keyboard_preference", false)
+
+    private val TYPO_CORRECTION_EN_QWERTY =
+        Pair("enable_typo_correction_qwerty_english_keyboard_preference", false)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1479,6 +1485,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(ENABLE_ZENZ_RIGHT_CONTEXT_PREFERENCE.first, value)
+        }
+
+    var enable_typo_correction_japanese_flick_keyboard_preference: Boolean
+        get() = preferences.getBoolean(
+            TYPO_CORRECTION_JA_FLICK.first,
+            TYPO_CORRECTION_JA_FLICK.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TYPO_CORRECTION_JA_FLICK.first, value)
+        }
+
+    var enable_typo_correction_qwerty_english_keyboard_preference: Boolean
+        get() = preferences.getBoolean(
+            TYPO_CORRECTION_EN_QWERTY.first,
+            TYPO_CORRECTION_EN_QWERTY.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TYPO_CORRECTION_EN_QWERTY.first, value)
         }
 
     /**
