@@ -122,6 +122,23 @@
             android:title="@string/conversion_candidates_romaji_enable_preference_title"
             app:defaultValue="false"
             app:summary="@string/conversion_candidates_romaji_enable_preference_summary" />
+
+        <PreferenceCategory android:title="@string/typo_correction_title">
+
+            <SwitchPreferenceCompat
+                android:key="enable_typo_correction_japanese_flick_keyboard_preference"
+                android:title="@string/enable_typo_correction_japanese_flick_keyboard_preference_title"
+                app:defaultValue="false"
+                app:summary="@string/enable_typo_correction_japanese_flick_keyboard_preference_sumary" />
+
+            <SwitchPreferenceCompat
+                android:key="enable_typo_correction_qwerty_english_keyboard_preference"
+                android:title="@string/enable_typo_correction_qwerty_english_keyboard_preference_title"
+                app:defaultValue="false"
+                app:summary="@string/enable_typo_correction_qwerty_english_keyboard_preference_summary" />
+
+        </PreferenceCategory>
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_function_title">
@@ -192,8 +209,8 @@
 
         <SwitchPreferenceCompat
             android:key="save_last_used_keyboard"
-            app:defaultValue="false"
             android:title="@string/save_last_used_keyboard_title"
+            app:defaultValue="false"
             app:summary="@string/save_last_used_keyboard_summey" />
         <SeekBarPreference
             android:defaultValue="100"
