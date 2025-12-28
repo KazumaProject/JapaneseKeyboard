@@ -571,7 +571,9 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        isOmissionSearchEnable: Boolean
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
+        enableTypoCorrectionQwertyEnglish: Boolean = false
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -613,7 +615,8 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = isOmissionSearchEnable
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -733,8 +736,7 @@ class KanaKanjiEngine {
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
-            val finalList =
-                resultWithHankaku.sortedBy { it.score }
+            val finalList = resultWithHankaku.sortedBy { it.score }
             // 3. Combine and return all generated candidates.
             return finalList
         }
@@ -850,9 +852,15 @@ class KanaKanjiEngine {
             )
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
-            englishEngine.getCandidates(input)
+            englishEngine.getCandidates(
+                input = input,
+                enableTypoCorrection = enableTypoCorrectionQwertyEnglish
+            )
         } else if (input.isAllFullWidthAscii()) {
-            englishEngine.getCandidates(input.toHankakuAlphabet())
+            englishEngine.getCandidates(
+                input = input.toHankakuAlphabet(),
+                enableTypoCorrection = enableTypoCorrectionQwertyEnglish
+            )
         } else {
             emptyList()
         }
@@ -1082,7 +1090,9 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        isOmissionSearchEnable: Boolean
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
+        enableTypoCorrectionQwertyEnglish: Boolean = false
     ): Pair<List<Candidate>, List<Int>> {
 
         val graph = graphBuilder.constructGraph(
@@ -1124,7 +1134,8 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = isOmissionSearchEnable
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick
         )
 
         val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
@@ -1248,8 +1259,7 @@ class KanaKanjiEngine {
         if (input.containsDigit() && input.containsFullWidthNumber()) {
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
 
-            val finalList =
-                resultWithHankaku.first.sortedBy { it.score }
+            val finalList = resultWithHankaku.first.sortedBy { it.score }
 
             // 3. Combine and return all generated candidates.
             return Pair(finalList, resultWithHankaku.second)
@@ -1366,9 +1376,15 @@ class KanaKanjiEngine {
             )
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
-            englishEngine.getCandidates(input)
+            englishEngine.getCandidates(
+                input = input,
+                enableTypoCorrection = enableTypoCorrectionQwertyEnglish
+            )
         } else if (input.isAllFullWidthAscii()) {
-            englishEngine.getCandidates(input.toHankakuAlphabet())
+            englishEngine.getCandidates(
+                input = input.toHankakuAlphabet(),
+                enableTypoCorrection = enableTypoCorrectionQwertyEnglish
+            )
         } else {
             emptyList()
         }
@@ -1586,8 +1602,7 @@ class KanaKanjiEngine {
             resultNBestFinalDeferred.first + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }) + kotowazaListDeferred + symbolHalfWidthListDeferred +
-                    (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }) + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
         return Pair(resultListFinal, resultNBestFinalDeferred.second)
 
@@ -1604,6 +1619,8 @@ class KanaKanjiEngine {
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
         isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
+        enableTypoCorrectionQwertyEnglish: Boolean = false
     ): Pair<List<Candidate>, List<Int>> {
 
         val graph = graphBuilder.constructGraph(
@@ -1645,7 +1662,8 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = isOmissionSearchEnable
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick
         )
 
         val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
@@ -1762,9 +1780,7 @@ class KanaKanjiEngine {
             }
 
             val finalList =
-                resultNBestFinalDeferred.first + timeConversion +
-                        dateConversion + fullWidth + halfWidth +
-                        numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
+                resultNBestFinalDeferred.first + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
 
             // 3. Combine and return all generated candidates.
             return Pair(finalList, resultNBestFinalDeferred.second)
@@ -1772,8 +1788,7 @@ class KanaKanjiEngine {
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
-            val finalList =
-                resultWithHankaku.first.sortedBy { it.score }
+            val finalList = resultWithHankaku.first.sortedBy { it.score }
 
             return Pair(finalList, resultWithHankaku.second)
         }
@@ -1797,9 +1812,14 @@ class KanaKanjiEngine {
         )
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
-            englishEngine.getCandidates(input)
+            englishEngine.getCandidates(
+                input = input, enableTypoCorrection = enableTypoCorrectionQwertyEnglish
+            )
         } else if (input.isAllFullWidthAscii()) {
-            englishEngine.getCandidates(input.toHankakuAlphabet())
+            englishEngine.getCandidates(
+                input = input.toHankakuAlphabet(),
+                enableTypoCorrection = enableTypoCorrectionQwertyEnglish
+            )
         } else {
             emptyList()
         }
@@ -2071,7 +2091,9 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
-        isOmissionSearchEnable: Boolean
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
+        enableTypoCorrectionQwertyEnglish: Boolean = false
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -2113,7 +2135,8 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = isOmissionSearchEnable
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2234,8 +2257,7 @@ class KanaKanjiEngine {
         if (input.containsDigit() && input.containsFullWidthNumber()) {
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
 
-            val finalList =
-                resultWithHankaku.sortedBy { it.score }
+            val finalList = resultWithHankaku.sortedBy { it.score }
 
             // 3. Combine and return all generated candidates.
             return finalList
@@ -2260,9 +2282,14 @@ class KanaKanjiEngine {
         )
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
-            englishEngine.getCandidates(input)
+            englishEngine.getCandidates(
+                input = input, enableTypoCorrection = enableTypoCorrectionQwertyEnglish
+            )
         } else if (input.isAllFullWidthAscii()) {
-            englishEngine.getCandidates(input.toHankakuAlphabet())
+            englishEngine.getCandidates(
+                input = input.toHankakuAlphabet(),
+                enableTypoCorrection = enableTypoCorrectionQwertyEnglish
+            )
         } else {
             emptyList()
         }
@@ -2703,8 +2730,7 @@ class KanaKanjiEngine {
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
-            val finalList =
-                resultWithHankaku.sortedBy { it.score }
+            val finalList = resultWithHankaku.sortedBy { it.score }
             return finalList
         }
 
@@ -3172,8 +3198,7 @@ class KanaKanjiEngine {
         if (input.containsDigit() && input.containsFullWidthNumber()) {
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
 
-            val finalList =
-                resultWithHankaku.first.sortedBy { it.score }
+            val finalList = resultWithHankaku.first.sortedBy { it.score }
 
             // 3. Combine and return all generated candidates.
             return Pair(finalList, resultWithHankaku.second)
@@ -4368,9 +4393,7 @@ class KanaKanjiEngine {
 
                 // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
                 val newCandidate = candidate.copy(
-                    string = newString,
-                    type = 31,
-                    score = candidate.score + 6000
+                    string = newString, type = 31, score = candidate.score + 6000
                     // type, length, score など他のプロパティはそのままコピーされます
                 )
 
@@ -4410,9 +4433,7 @@ class KanaKanjiEngine {
 
                 // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
                 val newCandidate = candidate.copy(
-                    string = newString,
-                    type = 31,
-                    score = candidate.score + 6000
+                    string = newString, type = 31, score = candidate.score + 6000
                     // type, length, score など他のプロパティはそのままコピーされます
                 )
 

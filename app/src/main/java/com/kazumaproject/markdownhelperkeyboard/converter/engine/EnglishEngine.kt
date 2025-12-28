@@ -38,7 +38,10 @@ class EnglishEngine {
         this.succinctBitVectorTokenArray = englishSuccinctBitVectorTokenArray
     }
 
-    fun getCandidates(input: String, enableTypoCorrection: Boolean = true): List<Candidate> {
+    fun getCandidates(
+        input: String,
+        enableTypoCorrection: Boolean = false,
+    ): List<Candidate> {
         if (input.isEmpty()) return emptyList()
 
         val defaultType = 29.toByte()
