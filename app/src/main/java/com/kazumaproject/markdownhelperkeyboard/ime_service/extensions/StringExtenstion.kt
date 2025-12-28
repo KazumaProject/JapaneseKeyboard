@@ -111,9 +111,17 @@ private fun Char.isHiraganaWithSymbols(): Boolean =
 fun String.isAllHiraganaWithSymbols(): Boolean =
     isNotEmpty() && all { it.isHiraganaWithSymbols() }
 
-// 数字かどうか
-fun Char.isNumber(): Boolean =
-    this.isDigit()
+// 数字かどうか（Nd / Nl / No を含める）
+fun Char.isNumber(): Boolean {
+    return when (Character.getType(this)) {
+        Character.DECIMAL_DIGIT_NUMBER.toInt(), // Nd: 0-9 など
+        Character.LETTER_NUMBER.toInt(),        // Nl: ローマ数字(Ⅰ)など
+        Character.OTHER_NUMBER.toInt()          // No: ①, ㉑, ㊱ など
+            -> true
+
+        else -> false
+    }
+}
 
 // 句読点や記号（一般的な記号区分）かどうか
 fun Char.isPunctuationOrSymbol(): Boolean {
