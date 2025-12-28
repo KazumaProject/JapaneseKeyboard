@@ -493,6 +493,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var inputConversionBackgroundColor: Int? = "#55FF8800".toColorInt()
     private var inputConversionTextColor: Int? = Color.WHITE
 
+    private var enableTypoCorrectionJapaneseFlickKeyboardPreference: Boolean? = false
+    private var enableTypoCorrectionQwertyEnglishKeyboardPreference: Boolean? = false
+
     @Deprecated(
         message = "Use the new input key type management system instead. This field is kept only for backward compatibility."
     )
@@ -1005,6 +1008,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customKeyBorderWidth = custom_theme_border_width
             qwertySwitchNumberKeyWithoutNumberPreference =
                 qwerty_switch_number_key_without_number_preference
+
+            enableTypoCorrectionJapaneseFlickKeyboardPreference =
+                enable_typo_correction_japanese_flick_keyboard_preference
+            enableTypoCorrectionQwertyEnglishKeyboardPreference =
+                enable_typo_correction_qwerty_english_keyboard_preference
 
             if (mozcUTPersonName == true) {
                 if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
@@ -1645,6 +1653,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         circularFlickWindowScale = null
         customKeyBorderWidth = null
         qwertySwitchNumberKeyWithoutNumberPreference = null
+
+        enableTypoCorrectionJapaneseFlickKeyboardPreference = null
+        enableTypoCorrectionQwertyEnglishKeyboardPreference = null
 
         inputManager.unregisterInputDeviceListener(this)
         actionInDestroy()
@@ -6928,13 +6939,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     insertString.length
                 }
                 Timber.d("getLeftContext: $insertString lastCandidateLength:[$lastCandidateLength] suggestion: [${suggestionAdapter?.suggestions?.firstOrNull()?.string ?: ""}] lastCandidate [$lastCandidate]")
-                if (enableZenzRightContextPreference == true){
+                if (enableZenzRightContextPreference == true) {
                     val tmpResult =
-                        getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
+                        getLeftContext(inputLength = lastCandidateLength).dropLast(
+                            lastCandidateLength
+                        )
                     tmpResult.ifEmpty {
                         getRightContext(inputLength = lastCandidateLength)
                     }
-                }else{
+                } else {
                     getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
                 }
             }
@@ -10387,6 +10400,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+
+        val enableFlickPref = (enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
+        val enableTypoCorrectionJapaneseFlick =
+            enableFlickPref && (qwertyMode.value == TenKeyQWERTYMode.Default || qwertyMode.value == TenKeyQWERTYMode.Sumire)
+        val enableTypoCorrectionQwertyEnglish =
+            (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
+                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY)
+
         val engineCandidates = withContext(Dispatchers.Default) {
             if (bunsetsuSeparation == true) {
                 val result = kanaKanjiEngine.getCandidatesOriginalWithBunsetsu(
@@ -10399,7 +10420,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
                     learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                    isOmissionSearchEnable = isOmissionSearchEnable ?: false
+                    isOmissionSearchEnable = isOmissionSearchEnable ?: false,
+                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish
                 )
                 bunsetsuPositionList = result.second
                 result.first
@@ -10414,7 +10437,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
                     learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                    isOmissionSearchEnable = isOmissionSearchEnable ?: false
+                    isOmissionSearchEnable = isOmissionSearchEnable ?: false,
+                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish
                 )
             }
         }
@@ -10500,6 +10525,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+
+        val enableFlickPref = (enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
+        val enableTypoCorrectionJapaneseFlick =
+            enableFlickPref && (qwertyMode.value == TenKeyQWERTYMode.Default || qwertyMode.value == TenKeyQWERTYMode.Sumire)
+
+        val enableTypoCorrectionQwertyEnglish =
+            (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
+                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY)
+
         val engineCandidates = withContext(Dispatchers.Default) {
             if (bunsetsuSeparation == true) {
                 val candidates = kanaKanjiEngine.getCandidatesWithBunsetsuSeparation(
@@ -10512,7 +10546,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
                     learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                    isOmissionSearchEnable = isOmissionSearchEnable ?: false
+                    isOmissionSearchEnable = isOmissionSearchEnable ?: false,
+                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish
                 )
                 bunsetsuPositionList = candidates.second
                 Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords $insertString ${candidates.second}")
@@ -10528,7 +10564,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
                     learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                    isOmissionSearchEnable = isOmissionSearchEnable ?: false
+                    isOmissionSearchEnable = isOmissionSearchEnable ?: false,
+                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish
                 )
             }
         }
