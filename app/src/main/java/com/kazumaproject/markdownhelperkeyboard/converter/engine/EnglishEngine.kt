@@ -55,7 +55,7 @@ class EnglishEngine {
         )
 
         // ★ typo はフラグが true のときだけ
-        val typoCorrection = if (enableTypoCorrection) {
+        val typoCorrection = if (enableTypoCorrection && input.length > 2) {
             readingLOUDS.commonPrefixSearchWithOmission(
                 str = lowerInput,
                 succinctBitVector = succinctBitVectorLBSReading
