@@ -8,6 +8,7 @@ import com.kazumaproject.bitset.select0Common
 import com.kazumaproject.bitset.select0CommonShort
 import com.kazumaproject.bitset.select1
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
 import com.kazumaproject.toBitSet
 import java.io.IOException
 import java.io.ObjectInput
@@ -616,6 +617,137 @@ class LOUDSWithTermId {
             }
         }
         return LOUDSWithTermId(LBS, labels, isLeaf, termIdsSaved)
+    }
+
+    /**
+     * 修飾キー省略を考慮した共通接頭辞検索を行います。
+     *
+     * @return OmissionSearchResultのリスト。省略が発生したかのフラグを含む。
+     */
+    fun commonPrefixSearchWithOmission(
+        str: String,
+        succinctBitVector: SuccinctBitVector
+    ): List<OmissionSearchResult> { // ★ 戻り値を List<String> から List<OmissionSearchResult> に変更
+        val results =
+            mutableSetOf<OmissionSearchResult>() // ★ 型を MutableSet<OmissionSearchResult> に変更
+        // ★ 5番目の引数として「省略発生フラグ」の初期値 false を渡す
+        searchRecursiveWithOmission(str, 0, 0, "", false, results, succinctBitVector)
+        return results.toList()
+    }
+
+    /**
+     * 修飾キー省略検索のための再帰的なヘルパー関数。
+     *
+     * @param omissionOccurred これまでの探索パスで省略が発生したか
+     */
+    private fun searchRecursiveWithOmission(
+        originalStr: String,
+        strIndex: Int,
+        currentNodeIndex: Int,
+        currentYomi: String,
+        omissionOccurred: Boolean, // ★「省略発生フラグ」を引数に追加
+        results: MutableSet<OmissionSearchResult>, // ★ 型を OmissionSearchResult に変更
+        succinctBitVector: SuccinctBitVector
+    ) {
+        if (isLeaf[currentNodeIndex]) {
+            // ★ OmissionSearchResult オブジェクトを追加
+            results.add(OmissionSearchResult(currentYomi, omissionOccurred))
+        }
+
+        if (strIndex >= originalStr.length) {
+            return
+        }
+
+        val charToMatch = originalStr[strIndex]
+        val charVariations = getCharVariations(charToMatch)
+
+        for (variant in charVariations) {
+            // ★ 現在のパスで省略が発生したかを計算 (元のフラグ || 今回の文字が元と違うか)
+            val newOmissionOccurred = omissionOccurred || (variant != charToMatch)
+
+            var childPos = firstChild(currentNodeIndex, succinctBitVector)
+            while (childPos >= 0 && LBS[childPos]) {
+                val labelNodeId = succinctBitVector.rank1(childPos)
+                if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
+
+                    searchRecursiveWithOmission(
+                        originalStr,
+                        strIndex + 1,
+                        childPos,
+                        currentYomi + variant,
+                        newOmissionOccurred, // ★ 更新したフラグを再帰呼び出しに渡す
+                        results,
+                        succinctBitVector
+                    )
+                    break
+                }
+                childPos++
+            }
+        }
+    }
+
+    private data class Pos(val x: Double, val y: Double)
+
+    private object QwertyNeighbors {
+        // QWERTY を「座標」に落とす（行のズレも入れる）
+        // 必要なら数字段や記号も足せます
+        private val rows: List<Pair<String, Double>> = listOf(
+            "qwertyuiop" to 0.0,   // y=0
+            "asdfghjkl" to 0.5,   // y=1, 右に0.5ずらす
+            "zxcvbnm" to 1.0    // y=2, 右に1.0ずらす
+        )
+
+        private val posMap: Map<Char, Pos> = buildMap {
+            rows.forEachIndexed { y, (row, xOffset) ->
+                row.forEachIndexed { x, c ->
+                    put(c, Pos(x + xOffset, y.toDouble()))
+                }
+            }
+        }
+
+        // 近傍探索（キャッシュ）
+        private val cache = HashMap<Pair<Char, Int>, List<Char>>() // (char, radius*100) -> list
+
+        fun variations(ch: Char, radius: Double = 1.35, max: Int = 12): List<Char> {
+            // 大文字対応（戻りも大文字に）
+            val isUpper = ch.isUpperCase()
+            val c = ch.lowercaseChar()
+
+            val key = c to (radius * 100).toInt()
+            cache[key]?.let { cached ->
+                return if (isUpper) cached.map { it.uppercaseChar() } else cached
+            }
+
+            val base = posMap[c] ?: return listOf(ch) // 英字以外はそのまま
+
+            val r2 = radius * radius
+            val candidates = posMap.entries
+                .asSequence()
+                .map { (k, p) ->
+                    val dx = p.x - base.x
+                    val dy = p.y - base.y
+                    val d2 = dx * dx + dy * dy
+                    k to d2
+                }
+                .filter { (_, d2) -> d2 <= r2 }
+                .sortedBy { (_, d2) -> d2 } // 近い順
+                .map { (k, _) -> k }
+                .toList()
+
+            // 必ず自分自身を先頭に、重複排除、上限
+            val resultLower = (listOf(c) + candidates)
+                .distinct()
+                .take(max)
+
+            cache[key] = resultLower
+
+            return if (isUpper) resultLower.map { it.uppercaseChar() } else resultLower
+        }
+    }
+
+    private fun getCharVariations(char: Char): List<Char> {
+        // 実用設定：1.35 くらいだと“周囲1キー+斜め”が概ね入る
+        return QwertyNeighbors.variations(char, radius = 1.35, max = 12)
     }
 
 }
