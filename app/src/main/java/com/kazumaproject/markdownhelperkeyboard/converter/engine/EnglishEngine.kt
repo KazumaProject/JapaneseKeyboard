@@ -178,7 +178,7 @@ class EnglishEngine {
         // 2) typo（補正） - enableTypoCorrection のときだけ
         // ============
         if (enableTypoCorrection && typoCorrection.isNotEmpty()) {
-            val typoType = 34.toByte()
+            val typoType = 35.toByte()
             val predictiveSet = predictiveSearchReading.toHashSet()
 
             val maxEdits = maxEditsByLength(lowerInput.length)

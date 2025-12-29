@@ -11,7 +11,11 @@ import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
-import com.kazumaproject.markdownhelperkeyboard.converter.graph.TypoCorrectionResult
+import com.kazumaproject.markdownhelperkeyboard.converter.typo_correction.FlickDir
+import com.kazumaproject.markdownhelperkeyboard.converter.typo_correction.KanaFlickLayout
+import com.kazumaproject.markdownhelperkeyboard.converter.typo_correction.TypoCandidate
+import com.kazumaproject.markdownhelperkeyboard.converter.typo_correction.TypoCategory
+import com.kazumaproject.markdownhelperkeyboard.converter.typo_correction.TypoCorrectionResult
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArray
 import com.kazumaproject.toByteArrayFromListChar
@@ -706,32 +710,53 @@ class LOUDSWithTermId {
     fun commonPrefixSearchWithTypoCorrectionPrefix(
         str: String,
         succinctBitVector: SuccinctBitVector,
-        maxEdits: Int = 1,
+        maxPenalty: Int = 2,
         maxLen: Int = 12,
+        maxResults: Int = 64, // 任意: 暴発防止
     ): List<TypoCorrectionResult> {
-        val results = LinkedHashSet<TypoCorrectionResult>()
-        val sb = StringBuilder()
 
-        fun dfs(strIndex: Int, nodeIndex: Int, editsUsed: Int) {
-            // ★ 「途中でも leaf なら採用」(ただし空文字は除外)
-            if (sb.isNotEmpty() && isLeaf[nodeIndex]) {
-                results.add(TypoCorrectionResult(sb.toString(), editsUsed))
+        // 同一yomiの重複を最小penaltyで集約
+        val bestPenaltyByYomi = HashMap<String, Int>(128)
+        val sb = StringBuilder(maxLen)
+
+        fun acceptIfLeaf(nodeIndex: Int, penaltyUsed: Int) {
+            if (sb.isEmpty()) return
+            if (!isLeaf[nodeIndex]) return
+
+            val yomi = sb.toString()
+            val prev = bestPenaltyByYomi[yomi]
+            if (prev == null || penaltyUsed < prev) {
+                bestPenaltyByYomi[yomi] = penaltyUsed
             }
+        }
 
+        fun dfs(strIndex: Int, nodeIndex: Int, penaltyUsed: Int) {
+            if (penaltyUsed > maxPenalty) return
+            if (sb.length > maxLen) return
+            if (bestPenaltyByYomi.size >= maxResults) return
+
+            // ★ prefix検索: 途中でも leaf なら採用
+            acceptIfLeaf(nodeIndex, penaltyUsed)
+
+            // 入力を使い切ったら終了（prefixなのでここで止める）
             if (strIndex >= str.length) return
             if (sb.length >= maxLen) return
 
             val ch = str[strIndex]
-            for (variant in getCharTypeCorrectionVariations(ch)) {
-                val nextEdits = editsUsed + if (variant == ch) 0 else 1
-                if (nextEdits > maxEdits) continue
+
+            // ★ 候補をペナルティ昇順で展開（枝刈り）
+            val candidates: List<TypoCandidate> = getTypoCandidates(ch)
+
+            for (cand in candidates) {
+                val nextPenalty = penaltyUsed + cand.penalty
+                if (nextPenalty > maxPenalty) continue
 
                 var childPos = firstChild(nodeIndex, succinctBitVector)
                 while (childPos >= 0 && LBS[childPos]) {
                     val labelNodeId = succinctBitVector.rank1(childPos)
-                    if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
-                        sb.append(variant)
-                        dfs(strIndex + 1, childPos, nextEdits)
+                    if (labelNodeId < labels.size && labels[labelNodeId] == cand.ch) {
+                        sb.append(cand.ch)
+                        dfs(strIndex + 1, childPos, nextPenalty)
                         sb.setLength(sb.length - 1)
                         break
                     }
@@ -740,8 +765,17 @@ class LOUDSWithTermId {
             }
         }
 
-        dfs(strIndex = 0, nodeIndex = 0, editsUsed = 0)
-        return results.toList()
+        // ルート開始
+        dfs(strIndex = 0, nodeIndex = 0, penaltyUsed = 0)
+
+        // 出力整形: penalty昇順 → 長さ降順（好み）→ 文字列昇順
+        return bestPenaltyByYomi.entries
+            .sortedWith(
+                compareBy<Map.Entry<String, Int>> { it.value }
+                    .thenByDescending { it.key.length }
+                    .thenBy { it.key }
+            )
+            .map { TypoCorrectionResult(it.key, it.value) }
     }
 
     private fun searchRecursiveWithTypoCorrection(
@@ -853,6 +887,41 @@ class LOUDSWithTermId {
         }
         // ★ 元の文字を必ず含める（重複排除）
         return (listOf(char) + neighbors).distinct()
+    }
+
+    private fun getTypoCandidates(ch: Char): List<TypoCandidate> {
+        val key = KanaFlickLayout.keyOf(ch) ?: return listOf(TypoCandidate(ch, TypoCategory.Exact))
+
+        val out = ArrayList<TypoCandidate>(16)
+
+        // 1) Exact
+        out.add(TypoCandidate(ch, TypoCategory.Exact))
+
+        // 2) TapKeyInFlick: 同じgroup内の別dir
+        for (dir in FlickDir.entries) {
+            if (dir == key.dir) continue
+            val v = KanaFlickLayout.charOf(key.group, dir) ?: continue
+            out.add(TypoCandidate(v, TypoCategory.TapKeyInFlick))
+        }
+
+        // 3) DistanceNear/Middle/Far: 同dirのまま別groupへ
+        for (g in KanaFlickLayout.allGroups()) {
+            if (g == key.group) continue
+            val v = KanaFlickLayout.charOf(g, key.dir) ?: continue
+
+            val dist = KanaFlickLayout.manhattan(key.group, g)
+            val cat = when (dist) {
+                1 -> TypoCategory.DistanceNear
+                2 -> TypoCategory.DistanceMiddle
+                else -> TypoCategory.DistanceFar
+            }
+            out.add(TypoCandidate(v, cat))
+        }
+
+        // 重複排除 + penalty昇順（探索枝刈りに効く）
+        return out
+            .distinctBy { it.ch to it.category } // 同じ文字が複数カテゴリに入る設計にしたいならここは要調整
+            .sortedWith(compareBy<TypoCandidate> { it.penalty }.thenBy { it.ch })
     }
 
 }

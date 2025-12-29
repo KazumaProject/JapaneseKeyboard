@@ -17,7 +17,7 @@ class GraphBuilder {
 
     companion object {
         private const val OMISSION_SCORE_OFFSET = 1900
-        private const val TYPO_SCORE_OFFSET = 1600
+        private const val TYPO_SCORE_OFFSET = 2200
     }
 
     /**
@@ -193,11 +193,11 @@ class GraphBuilder {
             }
 
             // 3.x システム辞書 (Typo Correction Prefix)
-            if (enableTypoCorrectionJapaneseFlick && subStr.length > 1) {
+            if (enableTypoCorrectionJapaneseFlick && subStr.length > 2) {
                 val typoPrefixResults = yomiTrie.commonPrefixSearchWithTypoCorrectionPrefix(
                     str = subStr,
                     succinctBitVector = succinctBitVectorLBSYomi,
-                    maxEdits = 1,
+                    maxResults = 98,
                     maxLen = 12, // ここは調整（予測変換の最大長に合わせる）
                 )
 
@@ -205,8 +205,8 @@ class GraphBuilder {
                 if (typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
 
                 for (typo in typoPrefixResults) {
-                    // edits=0 は通常検索と重複しやすいのでスキップ推奨
-                    if (typo.editsUsed == 0) continue
+                    // penaltyUsed==0 は通常検索と重複しやすいのでスキップ推奨
+                    if (typo.penaltyUsed == 0) continue
 
                     val yomiStr = typo.yomi
                     val nodeIndex = yomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSYomi)
@@ -219,7 +219,7 @@ class GraphBuilder {
                     )
 
                     val endIndex = i + yomiStr.length
-                    val penalty = TYPO_SCORE_OFFSET * typo.editsUsed
+                    val penalty = TYPO_SCORE_OFFSET * typo.penaltyUsed
 
                     listToken
                         .sortedBy { it.wordCost }
