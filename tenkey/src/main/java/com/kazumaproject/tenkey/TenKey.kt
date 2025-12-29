@@ -97,6 +97,56 @@ import kotlin.math.abs
 class TenKey(context: Context, attributeSet: AttributeSet) :
     ConstraintLayout(context, attributeSet), View.OnTouchListener {
 
+    private companion object {
+        private const val TAG = "TenKeyTouch"
+    }
+
+    // 設定でON/OFFできるように（本番はOFF推奨）
+    private var touchDebugLogEnabled: Boolean = true
+
+    fun setTouchDebugLogEnabled(enabled: Boolean) {
+        touchDebugLogEnabled = enabled
+    }
+
+    // MOVEログ間引き
+    private var lastMoveLogAtMs: Long = 0L
+    private val moveLogIntervalMs: Long = 60L
+
+    private fun logTouch(
+        label: String,
+        event: MotionEvent,
+        pointerIndex: Int,
+        extra: String = ""
+    ) {
+        if (!touchDebugLogEnabled) return
+
+        val pointerId = event.getPointerId(pointerIndex)
+        val (x, y) = getRawCoordinates(event, pointerIndex)
+
+        // TenKey view 自体の screen 座標（座標系確認用）
+        val loc = IntArray(2)
+        this.getLocationOnScreen(loc)
+
+        Log.d(
+            TAG,
+            "$label id=$pointerId idx=$pointerIndex " +
+                    "raw=(${x.toInt()},${y.toInt()}) " +
+                    "tenkeyScreen=(${loc[0]},${loc[1]}) " +
+                    "pressedKey=${runCatching { pressedKey.key }.getOrNull()} " +
+                    extra
+        )
+    }
+
+    /**
+     * 押したキーの rect と座標系が合っているか確認用
+     * pressedKeyByMotionEvent() と同じ KeyRect 計算をしているなら、
+     * そこにログを入れるのがベストですが、まずは最低限ここで確認できます。
+     */
+    private fun logResolvedKey(label: String, key: Key) {
+        if (!touchDebugLogEnabled) return
+        Log.d(TAG, "$label resolvedKey=$key")
+    }
+
     // ViewBinding for the main keyboard layout
     private val binding: KeyboardLayoutBinding
 
@@ -1178,7 +1228,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             }
             when (event.action and MotionEvent.ACTION_MASK) {
                 MotionEvent.ACTION_DOWN -> {
+                    logTouch("DOWN", event, 0)
                     val key = pressedKeyByMotionEvent(event, 0)
+                    logResolvedKey("DOWN", key)
                     flickListener?.onFlick(GestureType.Down, key, null)
 
                     pressedKey = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
