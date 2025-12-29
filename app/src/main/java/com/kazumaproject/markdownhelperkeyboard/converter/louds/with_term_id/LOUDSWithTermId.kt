@@ -10,7 +10,11 @@ import com.kazumaproject.bitset.select1
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.FlickDir
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.KanaFlickLayout
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.OmissionSearchResult
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.TypoCandidate
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.TypoCategory
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.TypoCorrectionResult
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArray
@@ -663,75 +667,56 @@ class LOUDSWithTermId {
         }
     }
 
-    fun commonPrefixSearchWithTypoCorrectionExact(
-        str: String,
-        succinctBitVector: SuccinctBitVector,
-        maxEdits: Int = 1,
-    ): List<TypoCorrectionResult> {
-        val results = LinkedHashSet<TypoCorrectionResult>()
-        val sb = StringBuilder(str.length)
-
-        fun dfs(strIndex: Int, nodeIndex: Int, editsUsed: Int) {
-            // ★ 入力を最後まで消費したときだけ判定・追加
-            if (strIndex == str.length) {
-                if (isLeaf[nodeIndex]) {
-                    results.add(TypoCorrectionResult(sb.toString(), editsUsed))
-                }
-                return
-            }
-
-            val ch = str[strIndex]
-            for (variant in getCharTypeCorrectionVariations(ch)) {
-                val nextEdits = editsUsed + if (variant == ch) 0 else 1
-                if (nextEdits > maxEdits) continue
-
-                var childPos = firstChild(nodeIndex, succinctBitVector)
-                while (childPos >= 0 && LBS[childPos]) {
-                    val labelNodeId = succinctBitVector.rank1(childPos)
-                    if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
-                        sb.append(variant)
-                        dfs(strIndex + 1, childPos, nextEdits)
-                        sb.setLength(sb.length - 1)
-                        break
-                    }
-                    childPos++
-                }
-            }
-        }
-
-        dfs(strIndex = 0, nodeIndex = 0, editsUsed = 0)
-        return results.toList()
-    }
-
     fun commonPrefixSearchWithTypoCorrectionPrefix(
         str: String,
         succinctBitVector: SuccinctBitVector,
-        maxEdits: Int = 1,
+        maxPenalty: Int = 2,
         maxLen: Int = 12,
+        maxResults: Int = 64, // 任意: 暴発防止
     ): List<TypoCorrectionResult> {
-        val results = LinkedHashSet<TypoCorrectionResult>()
-        val sb = StringBuilder()
 
-        fun dfs(strIndex: Int, nodeIndex: Int, editsUsed: Int) {
-            // ★ 「途中でも leaf なら採用」(ただし空文字は除外)
-            if (sb.isNotEmpty() && isLeaf[nodeIndex]) {
-                results.add(TypoCorrectionResult(sb.toString(), editsUsed))
+        // 同一yomiの重複を最小penaltyで集約
+        val bestPenaltyByYomi = HashMap<String, Int>(128)
+        val sb = StringBuilder(maxLen)
+
+        fun acceptIfLeaf(nodeIndex: Int, penaltyUsed: Int) {
+            if (sb.isEmpty()) return
+            if (!isLeaf[nodeIndex]) return
+
+            val yomi = sb.toString()
+            val prev = bestPenaltyByYomi[yomi]
+            if (prev == null || penaltyUsed < prev) {
+                bestPenaltyByYomi[yomi] = penaltyUsed
             }
+        }
 
+        fun dfs(strIndex: Int, nodeIndex: Int, penaltyUsed: Int) {
+            if (penaltyUsed > maxPenalty) return
+            if (sb.length > maxLen) return
+            if (bestPenaltyByYomi.size >= maxResults) return
+
+            // ★ prefix検索: 途中でも leaf なら採用
+            acceptIfLeaf(nodeIndex, penaltyUsed)
+
+            // 入力を使い切ったら終了（prefixなのでここで止める）
             if (strIndex >= str.length) return
             if (sb.length >= maxLen) return
 
             val ch = str[strIndex]
-            for (variant in getCharTypeCorrectionVariations(ch)) {
-                val nextEdits = editsUsed + if (variant == ch) 0 else 1
-                if (nextEdits > maxEdits) continue
+
+            // ★ 候補をペナルティ昇順で展開（枝刈り）
+            val candidates: List<TypoCandidate> = getTypoCandidates(ch)
+
+            for (cand in candidates) {
+                val nextPenalty = penaltyUsed + cand.penalty
+                if (nextPenalty > maxPenalty) continue
 
                 var childPos = firstChild(nodeIndex, succinctBitVector)
                 while (childPos >= 0 && LBS[childPos]) {
                     val labelNodeId = succinctBitVector.rank1(childPos)
-                    if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
-                        sb.append(variant)
-                        dfs(strIndex + 1, childPos, nextEdits)
+                    if (labelNodeId < labels.size && labels[labelNodeId] == cand.ch) {
+                        sb.append(cand.ch)
+                        dfs(strIndex + 1, childPos, nextPenalty)
                         sb.setLength(sb.length - 1)
                         break
                     }
@@ -740,119 +725,53 @@ class LOUDSWithTermId {
             }
         }
 
-        dfs(strIndex = 0, nodeIndex = 0, editsUsed = 0)
-        return results.toList()
+        // ルート開始
+        dfs(strIndex = 0, nodeIndex = 0, penaltyUsed = 0)
+
+        // 出力整形: penalty昇順 → 長さ降順（好み）→ 文字列昇順
+        return bestPenaltyByYomi.entries
+            .sortedWith(
+                compareBy<Map.Entry<String, Int>> { it.value }
+                    .thenByDescending { it.key.length }
+                    .thenBy { it.key }
+            )
+            .map { TypoCorrectionResult(it.key, it.value) }
     }
 
-    private fun searchRecursiveWithTypoCorrection(
-        originalStr: String,
-        strIndex: Int,
-        currentNodeIndex: Int,
-        currentYomi: String,
-        editsUsed: Int,
-        results: MutableSet<TypoCorrectionResult>,
-        succinctBitVector: SuccinctBitVector,
-        maxEdits: Int = 1,
-    ) {
-        if (strIndex == originalStr.length) {
-            if (isLeaf[currentNodeIndex]) {
-                results.add(TypoCorrectionResult(currentYomi, editsUsed))
+    private fun getTypoCandidates(ch: Char): List<TypoCandidate> {
+        val key = KanaFlickLayout.keyOf(ch) ?: return listOf(TypoCandidate(ch, TypoCategory.Exact))
+
+        val out = ArrayList<TypoCandidate>(16)
+
+        // 1) Exact
+        out.add(TypoCandidate(ch, TypoCategory.Exact))
+
+        // 2) TapKeyInFlick: 同じgroup内の別dir
+        for (dir in FlickDir.entries) {
+            if (dir == key.dir) continue
+            val v = KanaFlickLayout.charOf(key.group, dir) ?: continue
+            out.add(TypoCandidate(v, TypoCategory.TapKeyInFlick))
+        }
+
+        // 3) DistanceNear/Middle/Far: 同dirのまま別groupへ
+        for (g in KanaFlickLayout.allGroups()) {
+            if (g == key.group) continue
+            val v = KanaFlickLayout.charOf(g, key.dir) ?: continue
+
+            val dist = KanaFlickLayout.manhattan(key.group, g)
+            val cat = when (dist) {
+                1 -> TypoCategory.DistanceNear
+                2 -> TypoCategory.DistanceMiddle
+                else -> TypoCategory.DistanceFar
             }
-            return
+            out.add(TypoCandidate(v, cat))
         }
 
-        val charToMatch = originalStr[strIndex]
-        val charVariations = getCharTypeCorrectionVariations(charToMatch)
-
-        for (variant in charVariations) {
-            val nextEdits = editsUsed + if (variant == charToMatch) 0 else 1
-            if (nextEdits > maxEdits) continue
-
-            var childPos = firstChild(currentNodeIndex, succinctBitVector)
-            while (childPos >= 0 && LBS[childPos]) {
-                val labelNodeId = succinctBitVector.rank1(childPos)
-                if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
-                    searchRecursiveWithTypoCorrection(
-                        originalStr,
-                        strIndex + 1,
-                        childPos,
-                        currentYomi + variant,
-                        nextEdits,
-                        results,
-                        succinctBitVector,
-                        maxEdits
-                    )
-                    break
-                }
-                childPos++
-            }
-        }
+        // 重複排除 + penalty昇順（探索枝刈りに効く）
+        return out
+            .distinctBy { it.ch to it.category } // 同じ文字が複数カテゴリに入る設計にしたいならここは要調整
+            .sortedWith(compareBy<TypoCandidate> { it.penalty }.thenBy { it.ch })
     }
 
-    /**
-     * 文字のバリエーションを返すヘルパー関数。
-     * （濁点、半濁音、小文字など）
-     *
-     * @param char 変換元の文字
-     * @return 変換後の文字のリスト
-     */
-    private fun getCharTypeCorrectionVariations(char: Char): List<Char> {
-        val neighbors = when (char) {
-            'か' -> listOf('あ', 'さ', 'な')
-            'き' -> listOf('い', 'し', 'に')
-            'く' -> listOf('う', 'す', 'ぬ')
-            'け' -> listOf('え', 'せ', 'ね')
-            'こ' -> listOf('お', 'そ', 'の')
-
-            'さ' -> listOf('か', 'な', 'は')
-            'し' -> listOf('き', 'に', 'ひ')
-            'す' -> listOf('く', 'ぬ', 'ふ')
-            'せ' -> listOf('け', 'ね', 'へ')
-            'そ' -> listOf('こ', 'の', 'ほ')
-
-            'た' -> listOf('あ', 'な', 'ま')
-            'ち' -> listOf('い', 'に', 'み')
-            'つ' -> listOf('う', 'ぬ', 'む')
-            'て' -> listOf('え', 'ね', 'め')
-            'と' -> listOf('お', 'の', 'も')
-
-            'な' -> listOf('か', 'た', 'は', 'や')
-            'に' -> listOf('き', 'ち', 'ひ')
-            'ぬ' -> listOf('く', 'つ', 'ふ', 'ゆ')
-            'ね' -> listOf('け', 'て', 'へ')
-            'の' -> listOf('こ', 'と', 'ほ', 'よ')
-
-            'は' -> listOf('さ', 'な', 'ら')
-            'ひ' -> listOf('し', 'に', 'り')
-            'ふ' -> listOf('す', 'ぬ', 'る')
-            'へ' -> listOf('せ', 'ね', 'れ')
-            'ほ' -> listOf('そ', 'の', 'ろ')
-
-            'ま' -> listOf('た', 'や')
-            'み' -> listOf('ち')
-            'む' -> listOf('つ', 'ゆ')
-            'め' -> listOf('て')
-            'も' -> listOf('と', 'よ')
-
-            'や' -> listOf('な', 'ま', 'ら', 'わ')
-            'ゆ' -> listOf('ぬ', 'む', 'る', 'ん')
-            'よ' -> listOf('の', 'も', 'ろ', '〜')
-
-            'ら' -> listOf('は', 'や')
-            'り' -> listOf('ひ')
-            'る' -> listOf('ふ', 'ゆ')
-            'れ' -> listOf('へ')
-            'ろ' -> listOf('ほ', 'よ')
-
-            'あ' -> listOf('か', 'た', 'な')
-            'い' -> listOf('き', 'ち', 'に')
-            'う' -> listOf('く', 'つ', 'ぬ')
-            'え' -> listOf('け', 'て', 'ね')
-            'お' -> listOf('こ', 'と', 'の')
-            else -> emptyList()
-        }
-        // ★ 元の文字を必ず含める（重複排除）
-        return (listOf(char) + neighbors).distinct()
-    }
 
 }
