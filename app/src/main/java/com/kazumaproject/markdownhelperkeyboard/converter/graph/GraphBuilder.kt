@@ -17,7 +17,7 @@ class GraphBuilder {
 
     companion object {
         private const val OMISSION_SCORE_OFFSET = 1900
-        private const val TYPO_SCORE_OFFSET = 1600
+        private const val TYPO_SCORE_OFFSET = 2200
     }
 
     /**
@@ -193,11 +193,11 @@ class GraphBuilder {
             }
 
             // 3.x システム辞書 (Typo Correction Prefix)
-            if (enableTypoCorrectionJapaneseFlick && subStr.length > 1) {
+            if (enableTypoCorrectionJapaneseFlick && subStr.length > 2) {
                 val typoPrefixResults = yomiTrie.commonPrefixSearchWithTypoCorrectionPrefix(
                     str = subStr,
                     succinctBitVector = succinctBitVectorLBSYomi,
-                    maxEdits = 1,
+                    maxResults = 98,
                     maxLen = 12, // ここは調整（予測変換の最大長に合わせる）
                 )
 
