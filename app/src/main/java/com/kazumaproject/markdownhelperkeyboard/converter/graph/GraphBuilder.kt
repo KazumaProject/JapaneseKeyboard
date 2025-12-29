@@ -205,8 +205,8 @@ class GraphBuilder {
                 if (typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
 
                 for (typo in typoPrefixResults) {
-                    // edits=0 は通常検索と重複しやすいのでスキップ推奨
-                    if (typo.editsUsed == 0) continue
+                    // penaltyUsed==0 は通常検索と重複しやすいのでスキップ推奨
+                    if (typo.penaltyUsed == 0) continue
 
                     val yomiStr = typo.yomi
                     val nodeIndex = yomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSYomi)
@@ -219,7 +219,7 @@ class GraphBuilder {
                     )
 
                     val endIndex = i + yomiStr.length
-                    val penalty = TYPO_SCORE_OFFSET * typo.editsUsed
+                    val penalty = TYPO_SCORE_OFFSET * typo.penaltyUsed
 
                     listToken
                         .sortedBy { it.wordCost }
@@ -496,65 +496,6 @@ class GraphBuilder {
                 graph.computeIfAbsent(endIndex) { mutableListOf() }.add(unknownNode)
             }
         }
-//        val typoResults: List<TypoCorrectionResult> = if (str.length > 1) {
-//            yomiTrie.commonPrefixSearchWithTypoCorrectionExact(
-//                str = str,
-//                succinctBitVector = succinctBitVectorLBSYomi
-//            )
-//        } else {
-//            emptyList()
-//        }
-//
-//        Timber.d("constructGraph typo: [$str] [${typoResults.map { "${it.yomi}:${it.editsUsed}" }}]")
-//
-//        for (typo in typoResults) {
-//            val yomiStr = typo.yomi
-//
-//            // 念のため（Exactなら基本true）
-//            if (yomiStr.length != str.length) continue
-//
-//            // editsUsed=0 は通常検索で同じ候補が入るので、不要ならスキップ（任意）
-//            // if (typo.editsUsed == 0) continue
-//
-//            val nodeIndex = yomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSYomi)
-//            if (nodeIndex <= 0) continue
-//
-//            val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
-//            val listToken =
-//                tokenArray.getListDictionaryByYomiTermId(termId, succinctBitVectorTokenArray)
-//
-//            val endIndex = yomiStr.length // == str.length
-//            val penalty = TYPO_SCORE_OFFSET * typo.editsUsed
-//
-//            listToken
-//                .sortedBy { it.wordCost }
-//                .take(5)
-//                .forEach { token ->
-//                    val tango = when (token.nodeId) {
-//                        -2 -> yomiStr
-//                        -1 -> yomiStr.hiraToKata()
-//                        else -> tangoTrie.getLetter(
-//                            token.nodeId,
-//                            succinctBitVector = succinctBitVectorTangoLBS
-//                        )
-//                    }
-//
-//                    val cost = token.wordCost.toInt() + penalty
-//
-//                    val node = Node(
-//                        l = tokenArray.leftIds[token.posTableIndex.toInt()],
-//                        r = tokenArray.rightIds[token.posTableIndex.toInt()],
-//                        score = cost,
-//                        f = cost,
-//                        g = cost,
-//                        tango = tango,
-//                        len = yomiStr.length.toShort(),
-//                        sPos = 0, // ★ 入力全体（先頭から）の候補として追加
-//                    )
-//
-//                    addOrUpdateNode(graph, endIndex, node)
-//                }
-//        }
         return graph
     }
 }
