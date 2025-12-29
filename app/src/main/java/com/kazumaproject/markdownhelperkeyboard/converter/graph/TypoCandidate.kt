@@ -1,4 +1,4 @@
-package com.kazumaproject.markdownhelperkeyboard.converter.typo_correction
+package com.kazumaproject.markdownhelperkeyboard.converter.graph
 
 enum class TypoCategory(val penalty: Int) {
     Exact(0),
