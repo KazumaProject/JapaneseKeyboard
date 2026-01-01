@@ -1,6 +1,5 @@
 package com.kazumaproject.custom_keyboard.layout
 
-import android.util.Log
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
@@ -26,7 +25,6 @@ object KeyboardDefaultLayouts {
         inputStyle: String,
         isDeleteFlickEnabled: Boolean
     ): KeyboardLayout {
-        Log.d("createFinalLayout:", "$inputLayoutType $inputStyle $mode")
         val baseLayout = when (inputLayoutType) {
             "toggle" -> {
                 when (mode) {
@@ -151,10 +149,6 @@ object KeyboardDefaultLayouts {
             KeyAction.Enter, "検索",
         ), FlickAction.Action(KeyAction.Enter, "次"),
         FlickAction.Action(KeyAction.Enter, "確定"),
-        FlickAction.Action(
-            KeyAction.Enter,
-            drawableResId = com.kazumaproject.core.R.drawable.send_24px
-        )
     )
 
     private val dakutenToggleStates = listOf(
@@ -215,10 +209,6 @@ object KeyboardDefaultLayouts {
         ),
         FlickAction.Action(KeyAction.Enter, "Next"),
         FlickAction.Action(KeyAction.Enter, "確定"),
-        FlickAction.Action(
-            KeyAction.Enter,
-            drawableResId = com.kazumaproject.core.R.drawable.send_24px
-        )
     )
 
     /**
