@@ -605,6 +605,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private val cachedSendDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            applicationContext, com.kazumaproject.core.R.drawable.send_24px
+        )
+    }
+
     private val cachedReturnDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
             applicationContext, com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
@@ -8012,6 +8018,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             )
                         }
 
+                        InputTypeForIME.TextSend -> {
+                            currentInputMode.set(InputMode.ModeJapanese)
+                            setInputModeSwitchState()
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedSendDrawable
+                            )
+                        }
+
                         InputTypeForIME.TextMultiLine,
                         InputTypeForIME.TextImeMultiLine,
                         InputTypeForIME.TextShortMessage,
@@ -8150,6 +8165,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setFirstKeyboardType()
                         }
 
+                        InputTypeForIME.TextSend -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedSendDrawable
+                            )
+                            setFirstKeyboardType()
+                        }
+
                         InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
@@ -8248,6 +8272,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setSideKeyPreviousState(true)
                             this.setSideKeyEnterDrawable(
                                 cachedCheckDrawable
+                            )
+                        }
+
+                        InputTypeForIME.TextSend -> {
+                            setCurrentMode(InputMode.ModeJapanese)
+                            setSideKeyPreviousState(true)
+                            this.setSideKeyEnterDrawable(
+                                cachedSendDrawable
                             )
                         }
 
@@ -11062,6 +11094,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.TextWebPassword,
             InputTypeForIME.TextNotCursorUpdate,
             InputTypeForIME.TextEditTextInWebView,
+            InputTypeForIME.TextSend
                 -> {
                 Timber.d("Enter key: called 3\n")
                 sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
@@ -11588,6 +11621,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 cachedCheckDrawable
             }
 
+            InputTypeForIME.TextSend -> {
+                cachedSendDrawable
+            }
+
             else -> {
                 cachedArrowRightDrawable
             }
@@ -11615,6 +11652,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             InputTypeForIME.TextDone -> {
                 cachedCheckDrawable
+            }
+
+            InputTypeForIME.TextSend -> {
+                cachedSendDrawable
             }
 
             else -> {
