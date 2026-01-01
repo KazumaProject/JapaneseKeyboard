@@ -606,12 +606,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
-    private val cachedSendDrawable: Drawable? by lazy {
-        ContextCompat.getDrawable(
-            applicationContext, com.kazumaproject.core.R.drawable.send_24px
-        )
-    }
-
     private val cachedReturnDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
             applicationContext, com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
@@ -8024,7 +8018,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setInputModeSwitchState()
                             setSideKeyPreviousState(true)
                             this.setSideKeyEnterDrawable(
-                                cachedSendDrawable
+                                cachedArrowRightDrawable
                             )
                         }
 
@@ -8170,7 +8164,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
                             this.setSideKeyEnterDrawable(
-                                cachedSendDrawable
+                                cachedArrowRightDrawable
                             )
                             setFirstKeyboardType()
                         }
@@ -8280,7 +8274,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setCurrentMode(InputMode.ModeJapanese)
                             setSideKeyPreviousState(true)
                             this.setSideKeyEnterDrawable(
-                                cachedSendDrawable
+                                cachedArrowRightDrawable
                             )
                         }
 
@@ -11646,7 +11640,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             InputTypeForIME.TextSend -> {
-                cachedSendDrawable
+                cachedArrowRightDrawable
             }
 
             else -> {
@@ -11679,7 +11673,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             InputTypeForIME.TextSend -> {
-                cachedSendDrawable
+                cachedArrowRightDrawable
             }
 
             else -> {

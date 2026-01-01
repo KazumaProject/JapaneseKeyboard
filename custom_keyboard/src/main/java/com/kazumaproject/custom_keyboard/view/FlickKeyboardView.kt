@@ -281,7 +281,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         val newView: View
         if (needsNewView) {
             // Viewタイプが異なる場合：Viewを再生成して差し替える
-            Log.d("FlickKeyboardView", "updateDynamicKey: Replacing View for $keyId")
             newView = createKeyView(newKeyData) // 新しいViewを生成
             newView.layoutParams = oldView.layoutParams // レイアウトパラメータは引き継ぐ
 
