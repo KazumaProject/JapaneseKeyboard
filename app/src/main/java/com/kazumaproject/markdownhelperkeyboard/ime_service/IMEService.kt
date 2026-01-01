@@ -18,7 +18,6 @@ import android.os.Build
 import android.os.Bundle
 import android.os.CombinedVibration
 import android.os.Handler
-import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -11056,29 +11055,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lastFlickConvertedNextHiragana.set(true)
     }
 
-    private fun sendShiftEnter() {
-        val ic = currentInputConnection ?: return
-        val now = SystemClock.uptimeMillis()
-
-        // 1) SHIFT down
-        ic.sendKeyEvent(
-            KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT, 0, 0)
-        )
-
-        // 2) ENTER down/up with SHIFT meta
-        ic.sendKeyEvent(
-            KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER, 0, KeyEvent.META_SHIFT_ON)
-        )
-        ic.sendKeyEvent(
-            KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ENTER, 0, KeyEvent.META_SHIFT_ON)
-        )
-
-        // 3) SHIFT up
-        ic.sendKeyEvent(
-            KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT, 0, 0)
-        )
-    }
-
     private fun setEnterKeyPress() {
         Timber.d("setEnterKeyPress: $currentInputType")
         when (currentInputType) {
@@ -11087,7 +11063,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.TextShortMessage,
             InputTypeForIME.TextLongMessage,
                 -> {
-                sendShiftEnter()
+                commitText("\n", 1)
             }
 
             InputTypeForIME.None,
