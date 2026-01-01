@@ -36,7 +36,7 @@ fun InputTypeForIME.getQWERTYReturnTextInJp(): String {
         }
 
         InputTypeForIME.TextSend -> {
-            "送信"
+            "確定"
         }
 
         InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
@@ -106,7 +106,7 @@ fun InputTypeForIME.getQWERTYReturnTextInEn(): String {
         }
 
         InputTypeForIME.TextSend -> {
-            "send"
+            "return"
         }
 
         InputTypeForIME.TextWebSearchView, InputTypeForIME.TextWebSearchViewFireFox, InputTypeForIME.TextSearchView -> {
@@ -202,12 +202,12 @@ fun InputTypeForIME.getEnterKeyIndexSumire(): Int {
             1
         }
 
-        InputTypeForIME.TextDone ->{
+        InputTypeForIME.TextDone -> {
             5
         }
 
         InputTypeForIME.TextSend -> {
-            6
+            1
         }
 
     }
