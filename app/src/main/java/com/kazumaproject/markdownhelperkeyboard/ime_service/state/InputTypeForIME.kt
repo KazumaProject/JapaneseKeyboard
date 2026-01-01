@@ -31,6 +31,8 @@ sealed class InputTypeForIME {
     data object TextWebPassword : InputTypeForIME()
     data object TextWebSearchView : InputTypeForIME()
 
+    data object TextSend: InputTypeForIME()
+
     data object TextSearchView : InputTypeForIME()
     data object TextEditTextInWebView : InputTypeForIME()
     data object TextWebSearchViewFireFox : InputTypeForIME()
