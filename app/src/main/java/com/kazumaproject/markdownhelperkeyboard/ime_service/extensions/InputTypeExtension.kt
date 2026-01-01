@@ -215,6 +215,7 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
     when (imeAction) {
         EditorInfo.IME_ACTION_SEARCH -> return InputTypeForIME.TextSearchView
         EditorInfo.IME_ACTION_GO -> return InputTypeForIME.TextUri // ブラウザのURLバーなど
+        EditorInfo.IME_ACTION_SEND -> return InputTypeForIME.TextSend
     }
 
     // 優先度3: 複数行の判定（最重要）
@@ -235,7 +236,6 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
     when (imeAction) {
         EditorInfo.IME_ACTION_NEXT -> return InputTypeForIME.TextNextLine
         EditorInfo.IME_ACTION_DONE -> return InputTypeForIME.TextDone
-        EditorInfo.IME_ACTION_SEND -> return InputTypeForIME.TextDone
     }
 
     // 優先度5: フォールバック
