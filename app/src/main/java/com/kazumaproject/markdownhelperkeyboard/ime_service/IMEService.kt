@@ -4028,7 +4028,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
                     val view = super.getView(position, convertView, parent)
                     val text1 = view.findViewById<TextView>(android.R.id.text1)
-                    val text2 = view.findViewById<TextView>(android.R.id.text2)
 
                     when (val item = getItem(position)!!) {
                         is RowItem.Internal -> {
@@ -4053,11 +4052,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 manipulateColor(customThemeSpecialKeyColor ?: Color.LTGRAY, 1.2f)
                             view.setBackgroundColor(highlightColor)
                             text1.setTextColor(customThemeSpecialKeyTextColor ?: baseText)
-                            text2.setTextColor(customThemeSpecialKeyTextColor ?: baseText)
                         } else {
                             view.setBackgroundColor(baseBg)
                             text1.setTextColor(baseText)
-                            text2.setTextColor(baseText)
                         }
                     }
 
