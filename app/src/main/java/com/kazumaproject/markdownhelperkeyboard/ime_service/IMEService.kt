@@ -2560,64 +2560,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         romajiConverter?.flush(insertString)?.first
                     }
                     Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN $stringInTail")
-
-                    val position = bunsetsuPositionList?.firstOrNull()
-                    Timber.d(
-                        "handleJapaneseModeSpaceKeyWithBunsetsu called: [$position] [$stringInTail] [$insertStringEndWithN]"
-                    )
                     if (insertStringEndWithN == null) {
-                        if (position != null && stringInTail.get().isEmpty()) {
-                            // 区切り位置がある場合：文字列を分割する
-                            val head = insertString.substring(0, position)
-                            val tail = insertString.substring(position)
-                            _inputString.update { head }
-                            stringInTail.set(tail)
-                            Timber.d(
-                                "handleJapaneseModeSpaceKeyWithBunsetsu called: $bunsetsuPositionList | head: $head, tail: $tail $stringInTail"
-                            )
-                            isHenkan.set(true)
-                            henkanPressedWithBunsetsuDetect = true
-                            bunsetsuPositionList?.let {
-                                if (it.size > 1) {
-                                    bunsetusMultipleDetect = true
-                                }
-                            }
-                            floatingCandidateNextItem(head)
-                        } else {
-                            floatingCandidateNextItem(insertString)
-                            Timber.d(
-                                "handleJapaneseModeSpaceKeyWithBunsetsu called: No split position. Full string to tail: $insertString"
-                            )
-                        }
+                        _inputString.update { insertString }
+                        floatingCandidateNextItem(insertString)
                     } else {
-                        if (position != null && stringInTail.get().isEmpty()) {
-                            // 区切り位置がある場合：文字列を分割する
-                            val head = insertString.substring(0, position)
-                            val tail = insertString.substring(position)
-                            _inputString.update { head }
-                            stringInTail.set(tail)
-                            Timber.d(
-                                "handleJapaneseModeSpaceKeyWithBunsetsu called: $bunsetsuPositionList | head: $head, tail: $tail $stringInTail"
+                        _inputString.update { insertStringEndWithN }
+                        floatingCandidateNextItem(insertString)
+                        scope.launch {
+                            delay(64)
+                            val newSuggestionList = suggestionAdapter?.suggestions ?: emptyList()
+                            if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                mainView, newSuggestionList, insertStringEndWithN
                             )
-                            isHenkan.set(true)
-                            henkanPressedWithBunsetsuDetect = true
-                            bunsetsuPositionList?.let {
-                                if (it.size > 1) {
-                                    bunsetusMultipleDetect = true
-                                }
-                            }
-                            floatingCandidateNextItem(head)
-                        } else {
-                            _inputString.update { insertStringEndWithN }
-                            floatingCandidateNextItem(insertString)
-                            scope.launch {
-                                delay(64)
-                                val newSuggestionList =
-                                    suggestionAdapter?.suggestions ?: emptyList()
-                                if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                    mainView, newSuggestionList, insertStringEndWithN
-                                )
-                            }
                         }
                     }
                 } else {
@@ -10304,7 +10258,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun setCandidates(
         insertString: String, mainView: MainLayoutBinding
     ) {
-        if (zenzEnableStatePreference == true) {
+        if (
+            zenzEnableStatePreference == true &&
+            hasHardwareKeyboardConnected != true
+        ) {
             _zenzRequest.emit(insertString)
         }
         val candidates = getSuggestionList(insertString, mainView)
@@ -10361,7 +10318,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun setCandidatesOriginal(
         insertString: String, mainView: MainLayoutBinding
     ) {
-        if (zenzEnableStatePreference == true) {
+        if (
+            zenzEnableStatePreference == true &&
+            hasHardwareKeyboardConnected != true
+        ) {
             _zenzRequest.emit(insertString)
         }
         val candidates = getSuggestionListOriginal(insertString, mainView)
