@@ -47,6 +47,7 @@ import android.view.inputmethod.ExtractedText
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
+import android.view.inputmethod.InputMethodInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.FrameLayout
@@ -719,6 +720,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var previousTenKeyQWERTYMode: TenKeyQWERTYMode? = null
 
     private var currentKeyboardOrder = 0
+
+    private data class ImeItem(
+        val id: String,                 // imeId (InputMethodInfo.getId())
+        val packageName: String,
+        val settingsActivity: String?,   // 例: "com.example.ime.SettingsActivity"
+        val label: CharSequence
+    )
+
+    private sealed class RowItem {
+        data class Internal(val type: KeyboardType, val title: String) : RowItem()
+        data class External(val ime: ImeItem) : RowItem()
+    }
+
+    // 設定値を保持するためのデータクラス
+    private data class KeyboardSizePreferences(
+        val heightPref: Int,
+        val widthPref: Int,
+        val bottomMargin: Int,
+        val positionIsEnd: Boolean, // true: End, false: Start
+        val candidateEmptyHeight: Int,
+        val qwertyHeightPref: Int,
+        val qwertyWidthPref: Int,
+        val qwertyBottomMargin: Int,
+        val qwertyPositionIsEnd: Boolean,
+        val keyboardMarginStart: Int,
+        val keyboardMarginEnd: Int,
+        val qwertyMarginStart: Int,
+        val qwertyMarginEnd: Int,
+    )
 
     override fun onCreate() {
         super.onCreate()
@@ -1678,7 +1708,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onConfigureWindow(win: Window?, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
         super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
         // Android 12 (API 31) 以上の場合
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && liquidGlassThemePreference == true && isKeyboardFloatingMode != true) {
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            liquidGlassThemePreference == true &&
+            isKeyboardFloatingMode != true &&
+            hasHardwareKeyboardConnected != true
+        ) {
             // 背景のアプリに対してブラーをかける
             win?.setBackgroundBlurRadius(50)
         }
@@ -1687,7 +1722,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
         super.onUpdateCursorAnchorInfo(cursorAnchorInfo)
 
-        if (cursorAnchorInfo == null || floatingCandidateWindow == null) {
+        Timber.d("onUpdateCursorAnchorInfo start: [${cursorAnchorInfo == null}] [${floatingCandidateWindow == null}]")
+        val insertString = inputString.value
+        if (cursorAnchorInfo == null || floatingCandidateWindow == null || insertString.isEmpty()) {
             return
         }
 
@@ -1707,14 +1744,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val x = if (initialCursorDetectInFloatingCandidateView) {
             initialCursorXPosition
         } else {
-            (screenX - 32).coerceAtLeast(0f).toInt()
+            (screenX - 64).coerceAtLeast(0f).toInt()
         }
         val y = screenY.toInt()
-
-        if (listAdapter.currentList.isEmpty()) {
-            floatingCandidateWindow?.dismiss()
-            return
-        }
 
         Timber.d("onUpdateCursorAnchorInfo: baseLine:${cursorAnchorInfo.insertionMarkerBaseline}")
         Timber.d("onUpdateCursorAnchorInfo: bottom:${cursorAnchorInfo.insertionMarkerBottom}")
@@ -1727,6 +1759,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         initialCursorDetectInFloatingCandidateView = true
         val currentPopupWindow = floatingCandidateWindow
         currentPopupWindow?.let { currentWindow ->
+            Timber.d("onUpdateCursorAnchorInfo window debug: [$physicalKeyboardFloatingXPosition] [$physicalKeyboardFloatingYPosition] [${currentWindow.isShowing}]")
             if (currentWindow.isShowing) {
                 currentWindow.update(x, y, -1, -1)
             } else {
@@ -2315,9 +2348,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyEvent.KEYCODE_BACK -> super.onKeyDown(keyCode, event)
 
             // 文字入力
-            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> handleJapaneseCharacterKeyFloating(
-                keyCode, event, insertString
-            )
+            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> {
+                handleJapaneseCharacterKeyFloating(
+                    keyCode, event, insertString
+                )
+            }
 
             // それ以外
             else -> super.onKeyDown(keyCode, event)
@@ -2525,18 +2560,64 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         romajiConverter?.flush(insertString)?.first
                     }
                     Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN $stringInTail")
+
+                    val position = bunsetsuPositionList?.firstOrNull()
+                    Timber.d(
+                        "handleJapaneseModeSpaceKeyWithBunsetsu called: [$position] [$stringInTail] [$insertStringEndWithN]"
+                    )
                     if (insertStringEndWithN == null) {
-                        _inputString.update { insertString }
-                        floatingCandidateNextItem(insertString)
-                    } else {
-                        _inputString.update { insertStringEndWithN }
-                        floatingCandidateNextItem(insertString)
-                        scope.launch {
-                            delay(64)
-                            val newSuggestionList = suggestionAdapter?.suggestions ?: emptyList()
-                            if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                mainView, newSuggestionList, insertStringEndWithN
+                        if (position != null && stringInTail.get().isEmpty()) {
+                            // 区切り位置がある場合：文字列を分割する
+                            val head = insertString.substring(0, position)
+                            val tail = insertString.substring(position)
+                            _inputString.update { head }
+                            stringInTail.set(tail)
+                            Timber.d(
+                                "handleJapaneseModeSpaceKeyWithBunsetsu called: $bunsetsuPositionList | head: $head, tail: $tail $stringInTail"
                             )
+                            isHenkan.set(true)
+                            henkanPressedWithBunsetsuDetect = true
+                            bunsetsuPositionList?.let {
+                                if (it.size > 1) {
+                                    bunsetusMultipleDetect = true
+                                }
+                            }
+                            floatingCandidateNextItem(head)
+                        } else {
+                            floatingCandidateNextItem(insertString)
+                            Timber.d(
+                                "handleJapaneseModeSpaceKeyWithBunsetsu called: No split position. Full string to tail: $insertString"
+                            )
+                        }
+                    } else {
+                        if (position != null && stringInTail.get().isEmpty()) {
+                            // 区切り位置がある場合：文字列を分割する
+                            val head = insertString.substring(0, position)
+                            val tail = insertString.substring(position)
+                            _inputString.update { head }
+                            stringInTail.set(tail)
+                            Timber.d(
+                                "handleJapaneseModeSpaceKeyWithBunsetsu called: $bunsetsuPositionList | head: $head, tail: $tail $stringInTail"
+                            )
+                            isHenkan.set(true)
+                            henkanPressedWithBunsetsuDetect = true
+                            bunsetsuPositionList?.let {
+                                if (it.size > 1) {
+                                    bunsetusMultipleDetect = true
+                                }
+                            }
+                            floatingCandidateNextItem(head)
+                        } else {
+                            _inputString.update { insertStringEndWithN }
+                            floatingCandidateNextItem(insertString)
+                            scope.launch {
+                                delay(64)
+                                val newSuggestionList =
+                                    suggestionAdapter?.suggestions ?: emptyList()
+                                if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
+                                    mainView, newSuggestionList, insertStringEndWithN
+                                )
+                            }
                         }
                     }
                 } else {
@@ -3119,6 +3200,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun displayCurrentPage() {
         if (fullSuggestionsList.isEmpty()) {
+            Timber.d("onUpdateCursorAnchorInfo displayCurrentPage empty called")
             listAdapter.submitList(emptyList())
             floatingCandidateWindow?.dismiss()
             return
@@ -3138,7 +3220,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         listAdapter.submitList(itemsToShow) {
             listAdapter.updateHighlightPosition(currentHighlightIndex)
-            Timber.d("floatingCandidateNextItem (after update): ${listAdapter.getHighlightedItem()}")
+            Timber.d("floatingCandidateNextItem (after update): ${listAdapter.getHighlightedItem()} [$itemsToShow]")
         }
     }
 
@@ -3900,109 +3982,160 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun showListPopup() {
         onKeyboardSwitchLongPressUp = true
         if (inputString.value.isNotEmpty()) return
+
         mainLayoutBinding?.let { mainView ->
             val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
             val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
-            when (keyboardThemeMode) {
-                "custom" -> {
-                    popupView.setDrawableSolidColor(customThemeKeyColor ?: Color.WHITE)
-                }
-            }
-            val listView = popupView.findViewById<ListView>(R.id.popup_listview)
 
-            // A. Enable single choice mode for the ListView
+            when (keyboardThemeMode) {
+                "custom" -> popupView.setDrawableSolidColor(customThemeKeyColor ?: Color.WHITE)
+            }
+
+            val listView = popupView.findViewById<ListView>(R.id.popup_listview)
             listView.choiceMode = ListView.CHOICE_MODE_SINGLE
 
-            val currentKeyboardSetting = appPreference.keyboard_order
-
-            val items = currentKeyboardSetting.map {
-                when (it) {
+            // --- 1) 行データを構築（内部→外部の順） ---
+            val internalOrder = appPreference.keyboard_order
+            val internalRows: List<RowItem.Internal> = internalOrder.map { type ->
+                val title = when (type) {
                     KeyboardType.TENKEY -> "日本語 - かな"
                     KeyboardType.SUMIRE -> "スミレ入力"
                     KeyboardType.QWERTY -> "英語"
                     KeyboardType.ROMAJI -> "ローマ字入力"
                     KeyboardType.CUSTOM -> "カスタム"
                 }
+                RowItem.Internal(type = type, title = title)
             }
 
-            // B. Use your new custom layout file in the ArrayAdapter
-            val adapter = object : ArrayAdapter<String>(this, R.layout.list_item_layout, items) {
+            val externalRows: List<RowItem.External> = listEnabledImeItems()
+                // 任意: 音声入力など除外したい場合は filter を足す
+                // .filter { it.packageName != "com.google.android.tts" }
+                .map { RowItem.External(it) }
+
+            val rows: List<RowItem> = internalRows + externalRows
+            val internalCount = internalRows.size
+
+            Timber.d("Popup rows size=${rows.size}, internalCount=$internalCount")
+            Timber.d("get all IME list: [${listEnabledImeItems()}]")
+
+            // --- 2) 2行表示アダプタ ---
+            val adapter = object : ArrayAdapter<RowItem>(
+                this@IMEService,
+                android.R.layout.simple_list_item_2,
+                android.R.id.text1,
+                rows
+            ) {
                 override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                    // 親クラスのgetViewを呼び出してViewを取得
-                    val view = super.getView(position, convertView, parent) as TextView
+                    val view = super.getView(position, convertView, parent)
+                    val text1 = view.findViewById<TextView>(android.R.id.text1)
+                    val text2 = view.findViewById<TextView>(android.R.id.text2)
 
-                    // カスタムテーマの場合の色設定
+                    when (val item = getItem(position)!!) {
+                        is RowItem.Internal -> {
+                            text1.text = item.title
+                        }
+
+                        is RowItem.External -> {
+                            text1.text = item.ime.label
+                        }
+                    }
+
+                    // --- custom テーマ対応（選択色・文字色） ---
                     if (keyboardThemeMode == "custom") {
-                        // ★ 1. テキスト色の変更
-                        // 背景が SpecialKeyColor (濃い色) になる可能性があるため、テキストは白か黒か、
-                        // あるいは専用の customThemeKeyTextColor 変数があればそれを使ってください。
-                        // ここでは例として、背景が濃いと仮定して白、または動的なテキスト色変数を指定します。
-                        val textColor = customThemeKeyTextColor ?: Color.BLACK // ※変数は適宜合わせてください
-                        view.setTextColor(textColor)
+                        val baseBg = customThemeKeyColor ?: Color.WHITE
+                        val baseText = customThemeKeyTextColor ?: Color.BLACK
 
-                        // ★ 2. 選択状態に応じた背景色の変更
-                        val listView2 = parent as ListView
-                        if (listView2.isItemChecked(position)) {
-                            // 選択されているアイテムの背景色
-                            // customThemeSpecialKeyColor または ハイライト用の色を使用
+                        val listParent = parent as ListView
+                        val checked = listParent.isItemChecked(position)
+
+                        if (checked) {
                             val highlightColor =
                                 manipulateColor(customThemeSpecialKeyColor ?: Color.LTGRAY, 1.2f)
                             view.setBackgroundColor(highlightColor)
-
-                            // 必要であれば選択時のテキスト色もここで上書き可能
-                            view.setTextColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+                            text1.setTextColor(customThemeSpecialKeyTextColor ?: baseText)
+                            text2.setTextColor(customThemeSpecialKeyTextColor ?: baseText)
                         } else {
-                            // 選択されていないアイテムの背景色
-                            // 透明 または popupView全体の背景色に合わせる
-                            view.setBackgroundColor(customThemeKeyColor ?: Color.WHITE)
-                            view.setTextColor(textColor)
+                            view.setBackgroundColor(baseBg)
+                            text1.setTextColor(baseText)
+                            text2.setTextColor(baseText)
                         }
                     }
+
                     return view
                 }
             }
-            listView.adapter = adapter
 
+            listView.adapter = adapter
+            limitListViewVisibleItems(listView, maxVisible = 5)
+
+            // --- 3) PopupWindow ---
             keyboardSelectionPopupWindow = PopupWindow(
                 popupView,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                true // Set focusable to true
+                true
             )
-            listView.setItemChecked(currentKeyboardOrder, true)
 
+            // 既存の「内部キーボードの選択状態」を復元（範囲チェック必須）
+            if (currentKeyboardOrder in 0 until internalCount) {
+                listView.setItemChecked(currentKeyboardOrder, true)
+            }
+
+            // --- 4) クリック処理（内部→今まで通り / 外部→IME切替） ---
             listView.setOnItemClickListener { _, _, position, _ ->
-                if (keyboardOrder.isEmpty()) return@setOnItemClickListener
-                currentKeyboardOrder = position
-                if (enableShowLastShownKeyboardInRestart == true) {
-                    appPreference.save_last_used_keyboard_position_preference = position
-                }
                 onKeyboardSwitchLongPressUp = false
-                val nextType = keyboardOrder[position]
-                when (nextType) {
-                    KeyboardType.TENKEY -> {
-                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                    }
-
-                    KeyboardType.SUMIRE -> {
-                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                    }
-
-                    KeyboardType.ROMAJI -> {
-                        mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                        mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
-                    }
-
-                    KeyboardType.QWERTY -> {
-                        mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                        mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
-                    }
-
-                    KeyboardType.CUSTOM -> {}
-                }
-                showKeyboard(nextType)
                 keyboardSelectionPopupWindow?.dismiss()
-                setKeyboardSizeSwitchKeyboard(mainView)
+
+                when (val row = rows[position]) {
+                    is RowItem.Internal -> {
+                        // 既存挙動：内部キーボード切替
+                        currentKeyboardOrder = position
+                        if (enableShowLastShownKeyboardInRestart == true) {
+                            appPreference.save_last_used_keyboard_position_preference = position
+                        }
+
+                        val nextType = row.type
+                        when (nextType) {
+                            KeyboardType.TENKEY -> {
+                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                            }
+
+                            KeyboardType.SUMIRE -> {
+                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                            }
+
+                            KeyboardType.ROMAJI -> {
+                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
+                            }
+
+                            KeyboardType.QWERTY -> {
+                                mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                                mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
+                            }
+
+                            KeyboardType.CUSTOM -> { /* 任意 */
+                            }
+                        }
+
+                        showKeyboard(nextType)
+                        setKeyboardSizeSwitchKeyboard(mainView)
+                    }
+
+                    is RowItem.External -> {
+                        // 外部IMEへ切替（API 28+ 推奨、失敗時はピッカーへ）
+                        val imeId = row.ime.id
+                        runCatching {
+                            if (Build.VERSION.SDK_INT >= 28) {
+                                switchInputMethod(imeId)
+                            } else {
+                                showKeyboardPicker()
+                            }
+                        }.onFailure {
+                            showKeyboardPicker()
+                        }
+                    }
+                }
             }
 
             keyboardSelectionPopupWindow?.setOnDismissListener {
@@ -4011,6 +4144,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             keyboardSelectionPopupWindow?.showAtLocation(mainView.root, Gravity.CENTER, 0, 0)
         }
+    }
+
+    private fun limitListViewVisibleItems(listView: ListView, maxVisible: Int) {
+        val adapter = listView.adapter ?: return
+        val visibleCount = minOf(maxVisible, adapter.count)
+        if (visibleCount <= 0) return
+
+        var totalHeight = 0
+
+        // 各行を実測して合算（simple_list_item_2 等でもOK）
+        for (i in 0 until visibleCount) {
+            val itemView = adapter.getView(i, null, listView)
+
+            // 幅が未確定でも高さはだいたい測れる。より厳密にしたいなら widthSpec を調整。
+            itemView.measure(
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+            )
+            totalHeight += itemView.measuredHeight
+        }
+
+        val divider = listView.dividerHeight
+        totalHeight += divider * (visibleCount - 1)
+        totalHeight += listView.paddingTop + listView.paddingBottom
+
+        listView.layoutParams = listView.layoutParams.apply {
+            height = totalHeight
+        }
+
+        // スクロールバーを出したい場合（任意）
+        listView.isVerticalScrollBarEnabled = true
+    }
+
+    private fun InputMethodService.listEnabledImeItems(): List<ImeItem> {
+        val imm = getSystemService(Context.INPUT_METHOD_SERVICE) as InputMethodManager
+        val pm = packageManager
+
+        return imm.enabledInputMethodList
+            .asSequence()
+            // 自分自身を除外（任意）
+            .filter { it.packageName != packageName }
+            .map { imi: InputMethodInfo ->
+                ImeItem(
+                    id = imi.id,
+                    packageName = imi.packageName,
+                    settingsActivity = imi.settingsActivity, // null のIMEもある
+                    label = imi.loadLabel(pm)
+                )
+            }
+            .sortedBy { it.label.toString() }
+            .toList()
     }
 
     /**
@@ -6994,23 +7178,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
     }
-
-    // 設定値を保持するためのデータクラス
-    private data class KeyboardSizePreferences(
-        val heightPref: Int,
-        val widthPref: Int,
-        val bottomMargin: Int,
-        val positionIsEnd: Boolean, // true: End, false: Start
-        val candidateEmptyHeight: Int,
-        val qwertyHeightPref: Int,
-        val qwertyWidthPref: Int,
-        val qwertyBottomMargin: Int,
-        val qwertyPositionIsEnd: Boolean,
-        val keyboardMarginStart: Int,
-        val keyboardMarginEnd: Int,
-        val qwertyMarginStart: Int,
-        val qwertyMarginEnd: Int,
-    )
 
     private fun getKeyboardSizePreferences(): KeyboardSizePreferences {
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
