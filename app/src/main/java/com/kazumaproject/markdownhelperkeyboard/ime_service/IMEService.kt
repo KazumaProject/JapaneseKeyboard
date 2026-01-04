@@ -11527,6 +11527,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleRightCursorMoveAction() {
+        if (!hasTextAfterCursor()) return
         sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
     }
 
@@ -11767,7 +11768,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 // tail があり composing が空 → Idle で抜ける
                 if (stringInTail.get().isNotEmpty() && insertString.isEmpty()) {
                     finalSuggestionFlag = CandidateShowFlag.Idle
-                    handleLeftCursorMoveAction()
+                    //handleLeftCursorMoveAction()
                     break
                 }
 
@@ -11780,7 +11781,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         handleLeftCursorMoveAction()
                     }
                 } else {
-                    handleLeftCursorMoveAction()
+                    //handleLeftCursorMoveAction()
                 }
 
                 delay(LONG_DELAY_TIME)
@@ -11862,6 +11863,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleEmptyInputString(gestureType: GestureType) {
         if (stringInTail.get().isEmpty()) {
+
+            if (!hasTextAfterCursor()) return
+
             when (gestureType) {
                 GestureType.FlickRight -> {
                     sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
@@ -11895,6 +11899,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun isCursorAtBeginning(): Boolean {
         val extractedText = currentInputConnection.getExtractedText(ExtractedTextRequest(), 0)
         return extractedText?.selectionStart == 0
+    }
+
+    private fun hasTextAfterCursor(chars: Int = 1): Boolean {
+        val ic = currentInputConnection ?: return false
+        val after = ic.getTextAfterCursor(chars, 0)
+        return !after.isNullOrEmpty()
     }
 
     private fun isCursorAtEnd(): Boolean {
