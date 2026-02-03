@@ -512,10 +512,16 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             /** 漢数字 **/
             (32).toByte() -> ""
             /** Zenz **/
-            (33).toByte() -> "[AI]"
+            (33).toByte() -> "[z]"
             (34).toByte() -> "[履歴]"
             /** Typo Correction QWERTY **/
             (35).toByte() -> "[修正]"
+
+            (36).toByte() -> ""
+            (37).toByte() -> "[Z]"
+            (38).toByte() -> ""
+            (39).toByte() -> ""
+            (40).toByte() -> "[Z]"
             else -> ""
         }
         holder.itemView.isPressed = position == highlightedPosition

@@ -86,6 +86,7 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
+import com.kazumaproject.core.domain.extensions.kanjiCount
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setLayerTypeSolidColor
@@ -147,6 +148,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPasswor
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateEvaluationResult
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
@@ -461,6 +463,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var lastSavedKeyboardPosition: Int? = 0
 
     private var zenzEnableStatePreference: Boolean? = false
+    private var zenzaiEnableStatePreference: Boolean? = false
     private var zenzProfilePreference: String? = ""
     private var zenzEnableLongPressConversionPreference: Boolean? = false
 
@@ -992,6 +995,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwerty_keyboard_vertical_margin_bottom_landscape ?: 0
 
             zenzEnableStatePreference = enable_zenz_preference
+            zenzaiEnableStatePreference = enable_zenzai_preference
             zenzProfilePreference = zenz_profile_preference
             zenzEnableLongPressConversionPreference = enable_zenz_long_press_preference
 
@@ -1609,6 +1613,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyLandScapeBottomMarginPreferenceValue = null
 
         zenzEnableStatePreference = null
+        zenzaiEnableStatePreference = null
         zenzProfilePreference = null
         zenzEnableLongPressConversionPreference = null
 
@@ -6986,11 +6991,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             zenzRequest
                 .debounce((zenzDebounceTimePreference ?: 300).toLong())
                 .collectLatest {
-                    val zenzCandidates = performZenzRequest(it)
-                    lastLocalUpdatedInput.first { completedInput ->
-                        completedInput == it
+                    if (zenzaiEnableStatePreference == true) {
+                        lastLocalUpdatedInput.first { completedInput ->
+                            completedInput == it
+                        }
+                        val suggestions = filteredCandidateList ?: emptyList()
+                        if (suggestions.isNotEmpty()) {
+                            val zenzCandidates = performZenzaiRequest(it, suggestions)
+                            _zenzCandidates.update { zenzCandidates }
+                        }
+                    } else {
+                        val zenzCandidates = performZenzRequest(it)
+                        lastLocalUpdatedInput.first { completedInput ->
+                            completedInput == it
+                        }
+                        _zenzCandidates.update { zenzCandidates }
                     }
-                    _zenzCandidates.update { zenzCandidates }
                 }
         }
 
@@ -7073,7 +7089,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 } else {
                     insertString.length
                 }
-                Timber.d("getLeftContext: $insertString lastCandidateLength:[$lastCandidateLength] suggestion: [${suggestionAdapter?.suggestions?.firstOrNull()?.string ?: ""}] lastCandidate [$lastCandidate]")
+                //Timber.d("getLeftContext: $insertString lastCandidateLength:[$lastCandidateLength] suggestion: [${suggestionAdapter?.suggestions?.firstOrNull()?.string ?: ""}] lastCandidate [$lastCandidate]")
                 if (enableZenzRightContextPreference == true) {
                     val tmpResult =
                         getLeftContext(inputLength = lastCandidateLength).dropLast(
@@ -7128,6 +7144,179 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.e(e, "Error in zenzEngine generation")
             emptyList()
         }
+    }
+
+    private suspend fun performZenzaiRequest(
+        insertString: String,
+        suggesions: List<Candidate>,
+    ): List<ZenzCandidate> = withContext(Dispatchers.Default) {
+
+        // suggesions が空だと first() で落ちるので防御
+        val firstCandidate = suggesions.firstOrNull()?.string ?: return@withContext emptyList()
+
+        // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
+        if (insertString.length <= 1) {
+            return@withContext emptyList()
+        }
+
+        if (!insertString.isAllHiraganaWithSymbols()) {
+            return@withContext emptyList()
+        }
+
+        // 3. 文脈（LeftContext）の取得
+        val leftContext = try {
+            withContext(Dispatchers.Main) {
+                val lastCandidateLength = if (isLiveConversionEnable == true) {
+                    lastCandidate?.length ?: 0
+                } else {
+                    insertString.length
+                }
+
+                if (enableZenzRightContextPreference == true) {
+                    val tmpResult =
+                        getLeftContext(inputLength = lastCandidateLength).dropLast(
+                            lastCandidateLength
+                        )
+                    tmpResult.ifEmpty {
+                        getRightContext(inputLength = lastCandidateLength)
+                    }
+                } else {
+                    getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e("Error performZenzRequest leftContext: ${e.stackTraceToString()}")
+            ""
+        }
+
+        // 4. エンジンによる生成処理
+        try {
+            ensureActive()
+
+            val stringFromZenz = zenzEngine?.candidateEvaluate(
+                profile = zenzProfilePreference ?: "",
+                topic = "",
+                style = "",
+                preference = "",
+                leftContext = leftContext.ifEmpty { "" },
+                input = insertString.hiraganaToKatakana(),
+                candidate = firstCandidate
+            ) ?: ""
+
+            ensureActive()
+
+            Timber.d("performZenzaiRequest: [$firstCandidate] result: [$stringFromZenz]")
+
+            val zenzaiResultType = CandidateEvaluationResult.parse(stringFromZenz)
+
+            var type = 33
+            var parsedResultText = ""
+
+            when (zenzaiResultType) {
+                CandidateEvaluationResult.Error -> {
+                    type = 39
+                    parsedResultText = firstCandidate
+                }
+
+                is CandidateEvaluationResult.FixRequired -> {
+                    val prefix = zenzaiResultType.prefix
+                    // prefix と前方一致する candidate.string を suggesions から探す
+                    // 見つからなければ firstCandidate を採用
+
+                    val firstCandidateFromPrefix = suggesions
+                        .subList(0, (nBest ?: 4))
+                        .firstOrNull { it.string.startsWith(prefix) }
+                        ?.string
+
+                    Timber.d("CandidateEvaluationResult.FixRequired :[$firstCandidateFromPrefix] [$prefix] [$insertString] [${suggesions.map { it.string }}]")
+
+
+                    val firstCandidateFromKanakanjiEngine = ZenzCandidate(
+                        string = firstCandidateFromPrefix ?: firstCandidate,
+                        type = (37).toByte(),
+                        length = insertString.length.toUByte(),
+                        score = 2000,
+                        originalString = insertString
+                    )
+
+                    val secondCandidateFromZenz = ZenzCandidate(
+                        string = (zenzEngine?.generateWithContextAndConditions(
+                            profile = zenzProfilePreference ?: "",
+                            topic = "",
+                            style = "",
+                            preference = "",
+                            leftContext = prefix,
+                            input = insertString.hiraganaToKatakana(),
+                            maxTokens = zenzMaximumLetterSizePreference ?: 32
+                        ) ?: ""),
+                        type = (40).toByte(),
+                        length = insertString.length.toUByte(),
+                        score = 2000,
+                        originalString = insertString
+                    )
+
+                    val candidates = listOf(
+                        secondCandidateFromZenz,
+                        firstCandidateFromKanakanjiEngine,
+                    )
+
+                    val topCandidate = candidates
+                        .maxByOrNull { it.rank(prefix) }
+                        ?: secondCandidateFromZenz
+
+                    return@withContext listOfNotNull(topCandidate)
+                }
+
+                is CandidateEvaluationResult.Pass -> {
+                    type = 36
+                    parsedResultText = firstCandidate
+                }
+
+                is CandidateEvaluationResult.WholeResult -> {
+                    type = 38
+                    parsedResultText = zenzaiResultType.result
+                }
+            }
+
+            listOf(
+                ZenzCandidate(
+                    string = parsedResultText,
+                    type = type.toByte(),
+                    length = insertString.length.toUByte(),
+                    score = 2000,
+                    originalString = insertString
+                )
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.e(e, "Error in zenzEngine generation")
+            emptyList()
+        }
+    }
+
+    private fun commonPrefixLength(a: String, b: String): Int {
+        val n = minOf(a.length, b.length)
+        var i = 0
+        while (i < n && a[i] == b[i]) i++
+        return i
+    }
+
+    private fun String.duplicateCharCount(): Int {
+        val counts = this.groupingBy { it }.eachCount()
+        return counts.values.sumOf { (it - 1).coerceAtLeast(0) } // 2回目以降の総数
+    }
+
+    private fun ZenzCandidate.rank(prefix: String): Int {
+        val prefixScore = commonPrefixLength(this.string, prefix) * 10
+        val kanjiScore = this.string.kanjiCount() * 3
+
+        // ★ここを強めに：重複が多い候補は大きく減点
+        val duplicatePenalty = this.string.duplicateCharCount() * 50
+
+        val typeBonus = if (this.type == (40).toByte()) 2 else 0
+
+        return prefixScore + kanjiScore + typeBonus - duplicatePenalty
     }
 
     private fun getKeyboardSizePreferences(): KeyboardSizePreferences {
