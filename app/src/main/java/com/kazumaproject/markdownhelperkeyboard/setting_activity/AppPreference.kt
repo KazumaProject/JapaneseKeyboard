@@ -216,6 +216,9 @@ object AppPreference {
     private val ENABLE_ZENZ_PREFERENCE =
         Pair("enable_ai_conversion_zenz_preference", false)
 
+    private val ENABLE_ZENZAI_PREFERENCE =
+        Pair("enable_ai_conversion_zenzai_preference", false)
+
     private val ZENZ_PROFILE_PREFERENCE =
         Pair("zenz_profile_string_preference", "")
 
@@ -1083,6 +1086,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(ENABLE_ZENZ_PREFERENCE.first, value)
+        }
+
+    var enable_zenzai_preference: Boolean
+        get() = preferences.getBoolean(
+            ENABLE_ZENZAI_PREFERENCE.first,
+            ENABLE_ZENZAI_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENABLE_ZENZAI_PREFERENCE.first, value)
         }
 
     var zenz_profile_preference: String
