@@ -440,4 +440,6 @@
     <string name="enable_typo_correction_japanese_flick_keyboard_preference_sumary">フリック入力でミスを検知した場合、補正した変換候補を表示します。</string>
     <string name="enable_typo_correction_qwerty_english_keyboard_preference_title">QWERTY（英語）</string>
     <string name="enable_typo_correction_qwerty_english_keyboard_preference_summary">QWERTY入力でミスを検知した場合、補正した候補を表示します。</string>
+    <string name="enable_zenzai_preference_title">zenzai を有効にする</string>
+    <string name="enable_ai_conversion_zenz_preference_summary">zenz の結果と変換候補を再評価する（zanzai 相当）機能を有効にします。</string>
 </resources>

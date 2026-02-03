@@ -442,4 +442,6 @@
     <string name="enable_typo_correction_japanese_flick_keyboard_preference_sumary">If a typo is detected while using flick input, corrected conversion candidates are shown.</string>
     <string name="enable_typo_correction_qwerty_english_keyboard_preference_title">QWERTY（English）</string>
     <string name="enable_typo_correction_qwerty_english_keyboard_preference_summary">If a typo is detected while using a QWERTY keyboard, corrected candidates are shown.</string>
+    <string name="enable_zenzai_preference_title">Enable Zenzai</string>
+    <string name="enable_ai_conversion_zenz_preference_summary">Enables zenzai (zanzai-equivalent) re-ranking for zenz output and conversion candidates.</string>
 </resources>

@@ -12,6 +12,7 @@ object ZenzEngine {
         nCtx: Int,
         nThreads: Int
     )
+
     external fun generate(
         prompt: String,
         maxTokens: Int
@@ -31,5 +32,15 @@ object ZenzEngine {
         leftContext: String,
         input: String,
         maxTokens: Int
+    ): String
+
+    external fun candidateEvaluate(
+        profile: String?,
+        topic: String?,
+        style: String?,
+        preference: String?,
+        leftContext: String?,
+        input: String,
+        candidate: String
     ): String
 }
