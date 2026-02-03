@@ -485,3 +485,34 @@ fun String.toZenkaku(): String {
     }
     return sb.toString()
 }
+
+fun String.kanjiCount(): Int {
+    var c = 0
+    for (ch in this) {
+        val block = Character.UnicodeBlock.of(ch)
+        if (block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS ||
+            block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A ||
+            block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_B ||
+            block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_C ||
+            block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_D ||
+            block == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS ||
+            block == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS_SUPPLEMENT
+        ) {
+            c++
+        }
+    }
+    return c
+}
+
+fun String.duplicateCharCount(): Int {
+    // 2回目以降の総数（重複が多いほど大きい）
+    val counts = this.groupingBy { it }.eachCount()
+    return counts.values.sumOf { (it - 1).coerceAtLeast(0) }
+}
+
+// もし「同じ文字が連続しているのが嫌」なら、こちらも併用できます
+fun String.maxCharFrequency(): Int {
+    // 1文字が最大何回出現するか（小さいほど偏りが少ない）
+    val counts = this.groupingBy { it }.eachCount()
+    return counts.values.maxOrNull() ?: 0
+}
