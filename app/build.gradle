@@ -18,10 +18,12 @@ android {
 
     signingConfigs {
         release {
-            storeFile file(localProperties['KEYSTORE_FILE'])
-            storePassword localProperties['KEYSTORE_PASSWORD']
-            keyAlias localProperties['KEY_ALIAS']
-            keyPassword localProperties['KEY_PASSWORD']
+            if (localProperties['KEYSTORE_FILE']) {
+                storeFile file(localProperties['KEYSTORE_FILE'])
+                storePassword localProperties['KEYSTORE_PASSWORD']
+                keyAlias localProperties['KEY_ALIAS']
+                keyPassword localProperties['KEY_PASSWORD']
+            }
         }
     }
 
@@ -49,10 +51,17 @@ android {
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
+            if (signingConfigs.release.storeFile) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        releaseUnsigned {
+            initWith release
+            signingConfig null
+            matchingFallbacks = ['release']
         }
     }
     compileOptions {
@@ -82,6 +91,11 @@ android {
                     }
                     output.outputFileName = "app-${abi}-${variant.buildType.name}.apk"
                 }
+            }
+
+            // Override name specifically for releaseUnsigned
+            if (variant.buildType.name == "releaseUnsigned") {
+                output.outputFileName = "app-release-unsigned.apk"
             }
         }
     }
