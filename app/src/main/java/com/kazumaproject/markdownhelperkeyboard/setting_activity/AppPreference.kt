@@ -1537,6 +1537,82 @@ object AppPreference {
         return baseMap
     }
 
+    // AppPreference.kt（object AppPreference 内に追記）
+
+    private data class PrefBackup(
+        val version: Int = 1,
+        val entries: List<PrefEntry>,
+    )
+
+    private data class PrefEntry(
+        val key: String,
+        val type: String, // "boolean" | "int" | "long" | "float" | "string" | "string_set" | "null"
+        val value: Any?,  // string_set の場合は List<String>
+    )
+
+    /**
+     * SharedPreferences 全体を JSON として書き出す（将来キーが増えても自動対応）
+     */
+    fun exportAllToJson(): String {
+        val all = preferences.all // Map<String, *>
+        val entries = all.entries.map { (k, v) ->
+            when (v) {
+                null -> PrefEntry(k, "null", null)
+                is Boolean -> PrefEntry(k, "boolean", v)
+                is Int -> PrefEntry(k, "int", v)
+                is Long -> PrefEntry(k, "long", v)
+                is Float -> PrefEntry(k, "float", v)
+                is String -> PrefEntry(k, "string", v)
+                is Set<*> -> {
+                    val list = v.filterIsInstance<String>()
+                    PrefEntry(k, "string_set", list)
+                }
+
+                else -> {
+                    // 想定外は string に落とす（壊さないため）
+                    PrefEntry(k, "string", v.toString())
+                }
+            }
+        }
+
+        return gson.toJson(PrefBackup(entries = entries))
+    }
+
+    /**
+     * JSON を読み込んで SharedPreferences に反映
+     * @param replaceAll true の場合は一旦 clear() してから復元（バックアップ復元向け）
+     */
+    fun importAllFromJson(json: String, replaceAll: Boolean = true) {
+        val backup = try {
+            gson.fromJson(json, PrefBackup::class.java)
+        } catch (e: Exception) {
+            throw IllegalArgumentException("Invalid backup json", e)
+        }
+
+        preferences.edit { editor ->
+            if (replaceAll) editor.clear()
+
+            backup.entries.forEach { e ->
+                when (e.type) {
+                    "null" -> editor.remove(e.key)
+                    "boolean" -> editor.putBoolean(e.key, (e.value as Boolean))
+                    "int" -> editor.putInt(e.key, (e.value as Number).toInt())
+                    "long" -> editor.putLong(e.key, (e.value as Number).toLong())
+                    "float" -> editor.putFloat(e.key, (e.value as Number).toFloat())
+                    "string" -> editor.putString(e.key, e.value as String)
+                    "string_set" -> {
+                        val list = (e.value as List<*>).filterIsInstance<String>()
+                        editor.putStringSet(e.key, list.toSet())
+                    }
+
+                    else -> {
+                        // unknown type は無視（将来バージョン差分で落ちないように）
+                    }
+                }
+            }
+        }
+    }
+
     fun migrateSumirePreferenceIfNeeded() {
         // 古いキーが存在する場合のみ移行処理を実行
         if (preferences.contains(OLD_SUMIRE_PREFERENCE_KEY)) {
