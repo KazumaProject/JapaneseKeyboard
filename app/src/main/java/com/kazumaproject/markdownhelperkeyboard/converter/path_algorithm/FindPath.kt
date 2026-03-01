@@ -41,6 +41,7 @@ class FindPath {
             node?.let {
                 if (node.first.tango == "BOS") {
                     val stringFromNode = getStringFromNode(node.first)
+                    val yomiUsedFromNode = getYomiUsedFromNode(node.first)
 
                     // ★★★ 改善点：HashSetを使い、高速で効率的な重複チェックを行う
                     if (foundStrings.add(stringFromNode)) {
@@ -51,6 +52,7 @@ class FindPath {
                                 stringFromNode.isAllHalfWidthNumericSymbol() -> (31).toByte()
                                 else -> (1).toByte()
                             },
+                            yomi = yomiUsedFromNode,
                             length = length.toUByte(),
                             score = if (stringFromNode.any { it.isDigit() }) node.second + 2000 else node.second,
                             leftId = node.first.next?.l,
@@ -229,6 +231,18 @@ class FindPath {
         return result.dropLast(1).joinToString("")
     }
 
+    private fun getYomiUsedFromNode(node: Node): String {
+        var tempNode = node
+        val result = mutableListOf<String>()
+        while (tempNode.tango != "EOS") {
+            tempNode.next?.let {
+                result.add(it.yomiUsed)
+                tempNode = it
+            }
+        }
+        return result.dropLast(1).joinToString("") // EOSぶん
+    }
+
     /**
      * A*アルゴリズムを用いて最適な変換候補のリストを後方探索で生成します。
      *
@@ -265,6 +279,7 @@ class FindPath {
             node?.let {
                 if (node.first.tango == "BOS") {
                     val stringFromNode = getStringFromNode(node.first)
+                    val yomiUsedFromNode = getYomiUsedFromNode(node.first)
 
                     if (foundStrings.add(stringFromNode)) {
                         if (resultFinal.isEmpty()) {
@@ -279,6 +294,7 @@ class FindPath {
                                 else -> (1).toByte()
                             },
                             length = length.toUByte(),
+                            yomi = yomiUsedFromNode,
                             score = if (stringFromNode.any { it.isDigit() }) node.second + 2000 else node.second,
                             leftId = node.first.next?.l,
                             rightId = node.first.next?.r
@@ -363,6 +379,7 @@ class FindPath {
             node?.let {
                 if (node.first.tango == "BOS") {
                     val stringFromNode = getStringFromNode(node.first)
+                    val yomiUsedFromNode = getYomiUsedFromNode(node.first)
 
                     if (foundStrings.add(stringFromNode)) {
                         if (resultFinal.isEmpty()) {
@@ -376,6 +393,7 @@ class FindPath {
                                 stringFromNode.isAllHalfWidthNumericSymbol() -> (31).toByte()
                                 else -> (1).toByte()
                             },
+                            yomi = yomiUsedFromNode,
                             length = length.toUByte(),
                             score = if (stringFromNode.any { it.isDigit() }) node.second + 2000 else node.second,
                             leftId = node.first.next?.l,

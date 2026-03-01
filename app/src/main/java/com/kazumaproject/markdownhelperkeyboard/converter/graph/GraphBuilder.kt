@@ -108,6 +108,7 @@ class GraphBuilder {
                 f = 0,
                 g = 0,
                 tango = "EOS",
+                yomiUsed = "EOS",
                 len = 0,
                 sPos = str.length + 1,
             )
@@ -129,6 +130,7 @@ class GraphBuilder {
                     f = userWord.posScore,
                     g = userWord.posScore,
                     tango = userWord.word,
+                    yomiUsed = userWord.reading,
                     len = userWord.reading.length.toShort(),
                     sPos = i
                 )
@@ -147,6 +149,7 @@ class GraphBuilder {
                     f = learnedWord.score.toInt(),
                     g = learnedWord.score.toInt(),
                     tango = learnedWord.out,
+                    yomiUsed = learnedWord.input,
                     len = learnedWord.input.length.toShort(),
                     sPos = i
                 )
@@ -184,6 +187,7 @@ class GraphBuilder {
                             f = token.wordCost.toInt(),
                             g = token.wordCost.toInt(),
                             tango = tango,
+                            yomiUsed = yomiStr,
                             len = yomiStr.length.toShort(),
                             sPos = i
                         )
@@ -243,6 +247,7 @@ class GraphBuilder {
                                     f = cost,
                                     g = cost,
                                     tango = tango,
+                                    yomiUsed = yomiStr,
                                     len = yomiStr.length.toShort(),
                                     sPos = i,
                                 )
@@ -287,6 +292,7 @@ class GraphBuilder {
                                 f = token.wordCost.toInt() + scoreOffset,
                                 g = token.wordCost.toInt() + scoreOffset,
                                 tango = tango,
+                                yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i
                             )
@@ -332,6 +338,7 @@ class GraphBuilder {
                                 f = token.wordCost.toInt(),
                                 g = token.wordCost.toInt(),
                                 tango = tango,
+                                yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i
                             )
@@ -377,6 +384,7 @@ class GraphBuilder {
                                 f = token.wordCost.toInt(),
                                 g = token.wordCost.toInt(),
                                 tango = tango,
+                                yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i
                             )
@@ -423,6 +431,7 @@ class GraphBuilder {
                                 f = token.wordCost.toInt(),
                                 g = token.wordCost.toInt(),
                                 tango = tango,
+                                yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i
                             )
@@ -469,6 +478,7 @@ class GraphBuilder {
                                 f = token.wordCost.toInt(),
                                 g = token.wordCost.toInt(),
                                 tango = tango,
+                                yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i
                             )
@@ -489,6 +499,7 @@ class GraphBuilder {
                     f = 10000,
                     g = 10000,
                     tango = yomiStr, // 読みをそのまま単語とする
+                    yomiUsed = yomiStr,
                     len = yomiStr.length.toShort(),
                     sPos = i,
                 )

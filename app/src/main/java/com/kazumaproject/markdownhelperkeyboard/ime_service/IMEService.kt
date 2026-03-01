@@ -6997,7 +6997,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                         val suggestions = filteredCandidateList ?: emptyList()
                         if (suggestions.isNotEmpty()) {
-                            val zenzCandidates = performZenzaiRequest(it, suggestions)
+                            Timber.d("Fisrt candidate: ${suggestions.first()}")
+                            val zenzCandidates =
+                                performZenzRequest(suggestions.first().yomi ?: it)
                             _zenzCandidates.update { zenzCandidates }
                         }
                     } else {
