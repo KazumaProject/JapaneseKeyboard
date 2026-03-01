@@ -917,4 +917,32 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             ).indexOf(b)
         )
     }
+
+    fun switchToClipboardMode(selectCategoryIndex: Int = 0) {
+        // Modeを切り替え
+        currentMode = SymbolMode.CLIPBOARD
+
+        // ModeTab / CategoryTab を作り直す（CLIPBOARD用タブを生成するため）
+        buildModeTabs()
+        buildCategoryTabs()
+
+        // UI上の選択状態も同期
+        modeTab.getTabAt(SymbolMode.CLIPBOARD.ordinal)?.select()
+
+        // CLIPBOARDのカテゴリは基本1つなので 0 を選択
+        categoryTab.getTabAt(selectCategoryIndex.coerceIn(0, categoryTab.tabCount - 1))?.select()
+
+        // Recycler表示更新
+        updateSymbolsForCategory(categoryTab.selectedTabPosition)
+    }
+
+    fun switchToSymbolMode(mode: SymbolMode, selectCategoryIndex: Int = 0) {
+        currentMode = mode
+        buildModeTabs()
+        buildCategoryTabs()
+        modeTab.getTabAt(mode.ordinal)?.select()
+        categoryTab.getTabAt(selectCategoryIndex.coerceIn(0, categoryTab.tabCount - 1))?.select()
+        updateSymbolsForCategory(categoryTab.selectedTabPosition)
+    }
+
 }

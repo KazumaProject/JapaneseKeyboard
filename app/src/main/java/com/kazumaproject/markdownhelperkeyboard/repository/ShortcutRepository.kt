@@ -64,7 +64,8 @@ class ShortcutRepository @Inject constructor(
                     ShortcutType.TEMPLATE,
                     ShortcutType.COPY,
                     ShortcutType.PASTE,
-                    ShortcutType.KEYBOARD_PICKER
+                    ShortcutType.KEYBOARD_PICKER,
+                    ShortcutType.CLIP_BOARD
                 )
                 updateShortcuts(defaultShortcuts)
             }

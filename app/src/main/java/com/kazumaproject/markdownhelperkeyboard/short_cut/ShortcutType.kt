@@ -25,7 +25,13 @@ enum class ShortcutType(
         "voice_input",
         com.kazumaproject.core.R.drawable.settings_voice_24px,
         "音声入力"
-    ),;
+    ),
+    CLIP_BOARD(
+        "clip_board",
+        com.kazumaproject.core.R.drawable.clip_board,
+        "クリップボード"
+    )
+    ;
 
     companion object {
         fun fromId(id: String): ShortcutType? = entries.find { it.id == id }
