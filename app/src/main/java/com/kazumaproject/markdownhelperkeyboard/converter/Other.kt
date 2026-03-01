@@ -12,6 +12,7 @@ object Other {
         g = 0,
         tango = "BOS",
         len = 0,
+        yomiUsed = "BOS",
         0,
     )
 }
