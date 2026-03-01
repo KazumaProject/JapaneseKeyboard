@@ -11,6 +11,20 @@
             android:title="@string/language_display_title" />
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/back_up">
+
+        <Preference
+            android:key="pref_backup_export"
+            android:summary="@string/pref_backup_export_summary"
+            android:title="@string/pref_backup_export_title" />
+
+        <Preference
+            android:key="pref_backup_import"
+            android:summary="@string/pref_backup_import_summary"
+            android:title="@string/pref_backup_import_title" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/category_title_keyboard">
         <Preference
             android:icon="@drawable/outline_border_color_24"
