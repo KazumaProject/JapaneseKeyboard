@@ -11,6 +11,8 @@ import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 
 object AppPreference {
 
@@ -1536,19 +1538,6 @@ object AppPreference {
 
         return baseMap
     }
-
-    // AppPreference.kt（object AppPreference 内に追記）
-
-    private data class PrefBackup(
-        val version: Int = 1,
-        val entries: List<PrefEntry>,
-    )
-
-    private data class PrefEntry(
-        val key: String,
-        val type: String, // "boolean" | "int" | "long" | "float" | "string" | "string_set" | "null"
-        val value: Any?,  // string_set の場合は List<String>
-    )
 
     /**
      * SharedPreferences 全体を JSON として書き出す（将来キーが増えても自動対応）
