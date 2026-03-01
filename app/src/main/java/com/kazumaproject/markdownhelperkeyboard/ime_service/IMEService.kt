@@ -5026,7 +5026,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         }
                                     } else {
                                         _inputString.update {
-                                            converter.convert(sb.toString())
+                                            converter.convertQWERTYZenkaku(sb.toString())
                                         }
                                     }
                                 }
