@@ -1,8 +1,11 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
@@ -18,6 +21,9 @@ import com.google.android.material.color.DynamicColors
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.OutputStreamWriter
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -27,6 +33,68 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
     lateinit var appPreference: AppPreference
 
     private var count = 0
+
+    private val exportLauncher =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            if (uri == null) return@registerForActivityResult
+            runCatching {
+                val json = AppPreference.exportAllToJson()
+                writeTextToUri(uri, json)
+            }.onSuccess {
+                toast("Backup exported")
+            }.onFailure {
+                toast("Export failed: ${it.message}")
+            }
+        }
+
+    private val importLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri == null) return@registerForActivityResult
+            runCatching {
+                val json = readTextFromUri(uri)
+                AppPreference.importAllFromJson(json, replaceAll = true)
+
+                // 旧→新キー移行などがあるなら復元後に実行
+                AppPreference.migrateSumirePreferenceIfNeeded()
+            }.onSuccess {
+                toast("Backup imported")
+                requireActivity().recreate()
+            }.onFailure {
+                toast("Import failed: ${it.message}")
+            }
+        }
+
+    // ヘルパーを class 内に追記
+    private fun readTextFromUri(uri: Uri): String {
+        val cr = requireContext().contentResolver
+        cr.openInputStream(uri).use { input ->
+            if (input == null) error("Cannot open input stream")
+            BufferedReader(InputStreamReader(input, Charsets.UTF_8)).use { br ->
+                val sb = StringBuilder()
+                var line: String?
+                while (true) {
+                    line = br.readLine() ?: break
+                    sb.append(line).append('\n')
+                }
+                return sb.toString()
+            }
+        }
+    }
+
+    private fun writeTextToUri(uri: Uri, text: String) {
+        val cr = requireContext().contentResolver
+        cr.openOutputStream(uri).use { out ->
+            if (out == null) error("Cannot open output stream")
+            OutputStreamWriter(out, Charsets.UTF_8).use { w ->
+                w.write(text)
+                w.flush()
+            }
+        }
+    }
+
+    private fun toast(msg: String) {
+        Toast.makeText(requireContext(), msg, Toast.LENGTH_SHORT).show()
+    }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.pref_common, rootKey)
@@ -47,6 +115,17 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
                 }
                 true
             }
+        }
+
+        findPreference<Preference>("pref_backup_export")?.setOnPreferenceClickListener {
+            val fileName = "sumire_prefs_backup_${System.currentTimeMillis()}.json"
+            exportLauncher.launch(fileName)
+            true
+        }
+
+        findPreference<Preference>("pref_backup_import")?.setOnPreferenceClickListener {
+            importLauncher.launch(arrayOf("application/json", "text/*"))
+            true
         }
 
         val candidateColumnListPreference =
@@ -354,4 +433,5 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             negativeButton(android.R.string.cancel)
         }
     }
+
 }
