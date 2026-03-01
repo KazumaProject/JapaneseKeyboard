@@ -150,6 +150,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.Floati
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateEvaluationResult
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
+import com.kazumaproject.markdownhelperkeyboard.ime_service.models.SymbolKeyboardState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKanaConverter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
@@ -371,8 +372,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val suggestionFlag = _suggestionFlag.asSharedFlow()
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val suggestionViewStatus = _suggestionViewStatus.asStateFlow()
-    private val _keyboardSymbolViewState = MutableStateFlow(false)
-    private val keyboardSymbolViewState: StateFlow<Boolean> = _keyboardSymbolViewState.asStateFlow()
+    private val _keyboardSymbolViewState = MutableStateFlow(SymbolKeyboardState())
+    private val keyboardSymbolViewState: StateFlow<SymbolKeyboardState> =
+        _keyboardSymbolViewState.asStateFlow()
     private val _tenKeyQWERTYMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
     private val qwertyMode = _tenKeyQWERTYMode.asStateFlow()
     private val _physicalKeyboardEnable = MutableSharedFlow<Boolean>(replay = 1)
@@ -1091,7 +1093,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onStartInputView(editorInfo, restarting)
         keyboardSelectionPopupWindow?.dismiss()
         addUserDictionaryPopup?.dismiss()
-        _keyboardSymbolViewState.update { false }
+        _keyboardSymbolViewState.update { SymbolKeyboardState() }
         _selectMode.update { false }
         _cursorMoveMode.update { false }
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
@@ -2017,7 +2019,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
             val keyboardMarginBottom = (keyboardMarginBottomPref * density).toInt()
             val heightPx = when {
-                keyboardSymbolViewState.value -> {
+                keyboardSymbolViewState.value.isShown -> {
                     val height = if (isPortrait) 320 else 220
                     (height * density).toInt()
                 }
@@ -2031,7 +2033,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d("setKeyboardSize: $heightPx $keyboardMarginBottom")
 
             val widthPx = when {
-                widthPref == 100 || keyboardSymbolViewState.value -> {
+                widthPref == 100 || keyboardSymbolViewState.value.isShown -> {
                     ViewGroup.LayoutParams.MATCH_PARENT
                 }
 
@@ -3409,7 +3411,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeySymbol -> {
                 vibrate()
-                _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                _keyboardSymbolViewState.value = SymbolKeyboardState(
+                    isShown = !_keyboardSymbolViewState.value.isShown
+                )
                 stringInTail.set("")
                 finishComposingText()
                 setComposingText("", 0)
@@ -3609,7 +3613,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeySymbol -> {
                 vibrate()
-                _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                _keyboardSymbolViewState.value = SymbolKeyboardState(
+                    isShown = !_keyboardSymbolViewState.value.isShown
+                )
                 stringInTail.set("")
                 finishComposingText()
                 setComposingText("", 0)
@@ -5149,7 +5155,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     )
                                 }
                             } else {
-                                _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                                _keyboardSymbolViewState.value = SymbolKeyboardState(
+                                    isShown = !_keyboardSymbolViewState.value.isShown
+                                )
                                 stringInTail.set("")
                                 finishComposingText()
                                 setComposingText("", 0)
@@ -5582,7 +5590,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         )
                                     }
                                 } else {
-                                    _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                                    _keyboardSymbolViewState.value = SymbolKeyboardState(
+                                        isShown = !_keyboardSymbolViewState.value.isShown
+                                    )
                                     stringInTail.set("")
                                     finishComposingText()
                                     setComposingText("", 0)
@@ -5775,7 +5785,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {
-                        _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                        _keyboardSymbolViewState.value = SymbolKeyboardState(
+                            isShown = !_keyboardSymbolViewState.value.isShown
+                        )
                         stringInTail.set("")
                         finishComposingText()
                         setComposingText("", 0)
@@ -6678,7 +6690,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
                         setSymbolsFloating(floatingKeyboardLayoutBinding)
-                        if (isSymbolKeyboardShow) {
+                        if (isSymbolKeyboardShow.isShown) {
                             floatingKeyboardLayoutBinding.keyboardViewFloating.isVisible = false
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = true
                         } else {
@@ -6687,13 +6699,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
                 } else {
-                    setKeyboardSizeForHeightSymbol(mainView, isSymbolKeyboardShow)
+                    setKeyboardSizeForHeightSymbol(mainView, isSymbolKeyboardShow.isShown)
                 }
                 mainView.apply {
                     if (shortcutTollbarVisibility == true) {
-                        shortcutToolbarRecyclerview.isVisible = !isSymbolKeyboardShow
+                        shortcutToolbarRecyclerview.isVisible = !isSymbolKeyboardShow.isShown
                     }
-                    if (isSymbolKeyboardShow) {
+                    if (isSymbolKeyboardShow.isShown) {
                         when {
                             customLayoutDefault.isVisible -> {
                                 customLayoutDefault.visibility = View.INVISIBLE
@@ -6717,7 +6729,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                         animateViewVisibility(keyboardSymbolView, true)
                         suggestionRecyclerView.isVisible = false
-                        setSymbols(mainView)
+                        if (isSymbolKeyboardShow.mode == SymbolMode.CLIPBOARD) {
+                            setSymbolsClipboard(mainView = mainView)
+                        } else {
+                            setSymbols(mainView)
+                        }
                     } else {
                         if (isTablet == true) {
                             when {
@@ -7375,12 +7391,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
-        val isSymbol = isSymbolOverride ?: keyboardSymbolViewState.value
+        val isSymbol = isSymbolOverride ?: keyboardSymbolViewState.value.isShown
 
         // 2. ピクセル値の計算
         val heightPx = when {
 
-            isSymbol || keyboardSymbolViewState.value -> {
+            isSymbol || keyboardSymbolViewState.value.isShown -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
             }
@@ -7606,7 +7622,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val heightPx = when {
-            keyboardSymbolViewState.value -> {
+            keyboardSymbolViewState.value.isShown -> {
                 val height = if (isPortrait) 320 else 220
                 (height * density).toInt()
             }
@@ -7649,11 +7665,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val keyboardHeight = if (isPortrait) {
-            if (keyboardSymbolViewState.value) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
+            if (keyboardSymbolViewState.value.isShown) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
                 suggestionHeightInDp
             )
         } else {
-            if (keyboardSymbolViewState.value) heightPx else heightPx + applicationContext.dpToPx(
+            if (keyboardSymbolViewState.value.isShown) heightPx else heightPx + applicationContext.dpToPx(
                 suggestionHeightInDp
             )
         }
@@ -8875,7 +8891,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 ShortcutType.EMOJI -> {
                     vibrate()
-                    _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                    _keyboardSymbolViewState.value = SymbolKeyboardState(
+                        isShown = !_keyboardSymbolViewState.value.isShown
+                    )
                     stringInTail.set("")
                     finishComposingText()
                     setComposingText("", 0)
@@ -8908,6 +8926,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 ShortcutType.VOICE_INPUT -> {
                     startVoiceInput(mainView)
                 }
+
+                ShortcutType.CLIP_BOARD -> {
+                    vibrate()
+                    _keyboardSymbolViewState.value = SymbolKeyboardState(
+                        isShown = true,
+                        mode = SymbolMode.CLIPBOARD
+                    )
+                    stringInTail.set("")
+                    finishComposingText()
+                    setComposingText("", 0)
+                }
             }
         }
     }
@@ -8920,7 +8949,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setOnReturnToTenKeyButtonClickListener(object : ReturnToTenKeyButtonClickListener {
                 override fun onClick() {
                     vibrate()
-                    _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                    _keyboardSymbolViewState.value = SymbolKeyboardState(
+                        isShown = !_keyboardSymbolViewState.value.isShown
+                    )
                     finishComposingText()
                     setComposingText("", 0)
                 }
@@ -8999,7 +9030,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setOnReturnToTenKeyButtonClickListener(object : ReturnToTenKeyButtonClickListener {
                 override fun onClick() {
                     vibrate()
-                    _keyboardSymbolViewState.value = !_keyboardSymbolViewState.value
+                    _keyboardSymbolViewState.value = SymbolKeyboardState(
+                        isShown = !_keyboardSymbolViewState.value.isShown
+                    )
                     finishComposingText()
                     setComposingText("", 0)
                 }
@@ -9617,6 +9650,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private suspend fun setSymbolsClipboard(mainView: MainLayoutBinding) {
+        coroutineScope {
+            if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
+                val emojiDeferred =
+                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmojiCandidates() }
+                val emoticonDeferred =
+                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolEmoticonCandidates() }
+                val symbolDeferred =
+                    async(Dispatchers.Default) { kanaKanjiEngine.getSymbolCandidates() }
+                cachedEmoji = emojiDeferred.await()
+                cachedEmoticons = emoticonDeferred.await()
+                cachedSymbols = symbolDeferred.await()
+            }
+            val historyDeferred = async(Dispatchers.Default) { clickedSymbolRepository.getAll() }
+            cachedClickedSymbolHistory =
+                historyDeferred.await().sortedByDescending { it.timestamp }.distinctBy { it.symbol }
+        }
+        Timber.d("setSymbols: ${cachedEmoji?.size}")
+        mainView.keyboardSymbolView.setSymbolLists(
+            emojiList = cachedEmoji ?: emptyList(),
+            emoticons = cachedEmoticons ?: emptyList(),
+            symbols = cachedSymbols ?: emptyList(),
+            clipBoardItems = currentClipboardItems,
+            symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
+            symbolMode =SymbolMode.CLIPBOARD
+
+        )
+    }
+
     private suspend fun setSymbolsFloating(floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding) {
         coroutineScope {
             if (cachedEmoji == null || cachedEmoticons == null || cachedSymbols == null) {
@@ -9926,7 +9988,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFirstClickHasStringTail = false
         resetKeyboard()
         lastCandidate = ""
-        _keyboardSymbolViewState.update { false }
+        _keyboardSymbolViewState.update { SymbolKeyboardState() }
         learnMultiple.stop()
         stopDeleteLongPress()
         clearDeletedBuffer()
