@@ -5026,7 +5026,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         }
                                     } else {
                                         _inputString.update {
-                                            converter.convert(sb.toString())
+                                            converter.convertQWERTYZenkaku(sb.toString())
                                         }
                                     }
                                 }
@@ -5052,7 +5052,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             }
                                         } else {
                                             _inputString.update {
-                                                converter.convert(sb.toString())
+                                                converter.convertQWERTYZenkaku(sb.toString())
                                             }
                                         }
                                     }
@@ -9674,7 +9674,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbols = cachedSymbols ?: emptyList(),
             clipBoardItems = currentClipboardItems,
             symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
-            symbolMode =SymbolMode.CLIPBOARD
+            symbolMode = SymbolMode.CLIPBOARD
 
         )
     }
