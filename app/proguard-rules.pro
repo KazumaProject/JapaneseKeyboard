@@ -27,3 +27,5 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry { *; }
