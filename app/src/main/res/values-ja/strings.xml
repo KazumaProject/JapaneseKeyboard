@@ -447,4 +447,10 @@
     <string name="pref_backup_export_summary">現在の設定をバックアップファイルとして保存します</string>
     <string name="pref_backup_import_summary">バックアップファイルから設定を復元します。</string>
     <string name="pref_backup_import_title">設定をインポート</string>
+    <string name="custom_romaji_zenkaku_conversion_enable_preference_title">カスタムローマ字での全角nの動作</string>
+    <string name="custom_romaji_zenkaku_conversion_enable_preference_summary">カスタムローマ字を使用している場合、この設定を有効にすると、全角の n の後に文字を入力した際に「ん」に変換されます</string>
+    <string name="enable_typo_correction_japanese_flick_keyboard_offset_score_preference_tittle">タイピングミス補正のしきい値</string>
+    <string name="enable_typo_correction_japanese_flick_keyboard_offset_score_preference_summary">日本語フリック入力でのタイピングミス補正の強さを設定します。数値を大きくするほど、補正は弱くなります。(デフォルト：3000)</string>
+    <string name="omission_search_preference_offset_score_preference_title">修飾キー省略入力のしきい値</string>
+    <string name="omission_search_preference_offset_score_preference_summary">修飾キー省略入力補正の強さを設定します。数値を大きくするほど、補正は弱くなります。(デフォルト: 1900)</string>
 </resources>
