@@ -537,6 +537,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var qwertySwitchNumberKeyWithoutNumberPreference: Boolean? = false
 
+    private var customRomajiZenkakuConversionEnablePreference: Boolean? = true
+
+    private var omissionSearchOffsetScorePreference: Int? = 1900
+    private var enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference: Int? = 3000
+
     private val _ngWordsList = MutableStateFlow<List<NgWord>>(emptyList())
     private val ngWordsList: StateFlow<List<NgWord>> = _ngWordsList
     private val _ngPattern = MutableStateFlow("".toRegex())
@@ -1044,6 +1049,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customKeyBorderWidth = custom_theme_border_width
             qwertySwitchNumberKeyWithoutNumberPreference =
                 qwerty_switch_number_key_without_number_preference
+
+            customRomajiZenkakuConversionEnablePreference =
+                appPreference.custom_romaji_zenkaku_conversion_enable_preference
+
+            omissionSearchOffsetScorePreference =
+                appPreference.omission_search_offset_score_preference
+            enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference =
+                appPreference.enable_typo_correction_japanese_flick_keyboard_offset_score_preference
 
             enableTypoCorrectionJapaneseFlickKeyboardPreference =
                 enable_typo_correction_japanese_flick_keyboard_preference
@@ -1690,6 +1703,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         circularFlickWindowScale = null
         customKeyBorderWidth = null
         qwertySwitchNumberKeyWithoutNumberPreference = null
+        customRomajiZenkakuConversionEnablePreference = null
+        omissionSearchOffsetScorePreference = null
+        enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference = null
 
         enableTypoCorrectionJapaneseFlickKeyboardPreference = null
         enableTypoCorrectionQwertyEnglishKeyboardPreference = null
@@ -1716,13 +1732,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
         // Android 12 (API 31) 以上の場合
         if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-            liquidGlassThemePreference == true &&
-            isKeyboardFloatingMode != true &&
-            hasHardwareKeyboardConnected != true
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
         ) {
-            // 背景のアプリに対してブラーをかける
-            win?.setBackgroundBlurRadius(50)
+            if (liquidGlassThemePreference == true &&
+                isKeyboardFloatingMode != true &&
+                hasHardwareKeyboardConnected != true
+            ) {
+                // 背景のアプリに対してブラーをかける
+                win?.setBackgroundBlurRadius(50)
+            } else {
+                win?.setBackgroundBlurRadius(0)
+            }
         }
     }
 
@@ -5025,8 +5045,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             converter.convertCustomLayout(sb.toString())
                                         }
                                     } else {
-                                        _inputString.update {
-                                            converter.convertQWERTYZenkaku(sb.toString())
+                                        if (customRomajiZenkakuConversionEnablePreference == true) {
+                                            _inputString.update {
+                                                converter.convertQWERTYZenkaku(sb.toString())
+                                            }
+                                        } else {
+                                            _inputString.update {
+                                                converter.convert(sb.toString())
+                                            }
                                         }
                                     }
                                 }
@@ -5051,8 +5077,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 converter.convertCustomLayout(sb.toString())
                                             }
                                         } else {
-                                            _inputString.update {
-                                                converter.convertQWERTYZenkaku(sb.toString())
+                                            if (customRomajiZenkakuConversionEnablePreference == true) {
+                                                _inputString.update {
+                                                    converter.convertQWERTYZenkaku(sb.toString())
+                                                }
+                                            } else {
+                                                _inputString.update {
+                                                    converter.convert(sb.toString())
+                                                }
                                             }
                                         }
                                     }
@@ -10818,7 +10850,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
                     isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                     enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish
+                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
+                        ?: 3000,
+                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
                 bunsetsuPositionList = result.second
                 result.first
@@ -10835,7 +10870,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
                     isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                     enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish
+                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
+                        ?: 3000,
+                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
             }
         }
@@ -10945,7 +10983,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
                     isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                     enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish
+                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
+                        ?: 3000,
+                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
                 bunsetsuPositionList = candidates.second
                 Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords $insertString ${candidates.second}")
@@ -10963,7 +11004,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
                     isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                     enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish
+                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
+                        ?: 3000,
+                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
             }
         }
@@ -11085,6 +11129,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
                     learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
+                        ?: 3000,
+                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
                 bunsetsuPositionList = resultWithBunsetsu.second
                 resultWithBunsetsu.first
@@ -11099,6 +11146,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
                     learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
+                        ?: 3000,
+                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
             }
         }
