@@ -15,11 +15,6 @@ import com.kazumaproject.markdownhelperkeyboard.user_dictionary.PosMapper
 
 class GraphBuilder {
 
-    companion object {
-        private const val OMISSION_SCORE_OFFSET = 1900
-        private const val TYPO_SCORE_OFFSET = 2200
-    }
-
     /**
      * グラフにノードを追加または更新する。
      * 同じ終了位置に【同じ単語】かつ【同じ品詞ID(l/r)】のノードが既に存在する場合、
@@ -95,7 +90,9 @@ class GraphBuilder {
         succinctBitVectorneologdTokenArray: SuccinctBitVector?,
         succinctBitVectorneologdTangoLBS: SuccinctBitVector?,
         isOmissionSearchEnable: Boolean,
-        enableTypoCorrectionJapaneseFlick: Boolean = false
+        enableTypoCorrectionJapaneseFlick: Boolean = false,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffSetScore: Int
     ): MutableMap<Int, MutableList<Node>> {
         if (str.isAllHalfWidthAscii()) return mutableMapOf()
         val graph: MutableMap<Int, MutableList<Node>> = LinkedHashMap()
@@ -223,7 +220,7 @@ class GraphBuilder {
                     )
 
                     val endIndex = i + yomiStr.length
-                    val penalty = TYPO_SCORE_OFFSET * typo.penaltyUsed
+                    val penalty = typoCorrectionOffsetScore * typo.penaltyUsed
 
                     listToken
                         .sortedBy { it.wordCost }
@@ -284,7 +281,7 @@ class GraphBuilder {
                                     succinctBitVector = succinctBitVectorTangoLBS
                                 )
                             }
-                            val scoreOffset = if (didOmit) OMISSION_SCORE_OFFSET else 0
+                            val scoreOffset = if (didOmit) omissionSearchOffSetScore else 0
                             val node = Node(
                                 l = tokenArray.leftIds[token.posTableIndex.toInt()],
                                 r = tokenArray.rightIds[token.posTableIndex.toInt()],
