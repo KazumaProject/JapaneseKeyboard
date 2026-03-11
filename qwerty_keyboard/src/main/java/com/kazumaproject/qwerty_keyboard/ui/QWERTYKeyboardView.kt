@@ -675,8 +675,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         keyZ.text = "。"
                         keyX.text = "、"
                     } else {
-                        key123.text =
-                            resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
                         keyF.text = ";"
                         keyJ.text = "￥"
                         keyK.text = "&"
@@ -1760,7 +1758,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     fun setRomajiMode(state: Boolean) {
-        Log.d("QWERTY Keyboard Debug","romaji: [$state]")
+        Log.d("QWERTY Keyboard Debug", "romaji: [$state]")
         _romajiModeState.update { state }
     }
 
