@@ -324,6 +324,15 @@ object AppPreference {
     private val TYPO_CORRECTION_EN_QWERTY =
         Pair("enable_typo_correction_qwerty_english_keyboard_preference", false)
 
+    private val CUSTOM_ROMAJI_ZENKAKU_CONVERSION_ENABLE_PREFERENCE =
+        Pair("custom_romaji_zenkaku_conversion_enable_preference", true)
+
+    private val OMISSION_SEARCH_OFFSET_SCORE_PREFERENCE =
+        Pair("omission_search_preference_offset_score_preference", 1900)
+
+    private val TYPO_CORRECTION_JA_FLICK_OFFSET_SCORE_PREFERENCE =
+        Pair("enable_typo_correction_japanese_flick_keyboard_offset_score_preference", 3000)
+
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
     }
@@ -1517,6 +1526,36 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TYPO_CORRECTION_EN_QWERTY.first, value)
+        }
+
+    var custom_romaji_zenkaku_conversion_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            CUSTOM_ROMAJI_ZENKAKU_CONVERSION_ENABLE_PREFERENCE.first,
+            CUSTOM_ROMAJI_ZENKAKU_CONVERSION_ENABLE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(
+                CUSTOM_ROMAJI_ZENKAKU_CONVERSION_ENABLE_PREFERENCE.first,
+                value
+            )
+        }
+
+    var omission_search_offset_score_preference: Int
+        get() = preferences.getInt(
+            OMISSION_SEARCH_OFFSET_SCORE_PREFERENCE.first,
+            OMISSION_SEARCH_OFFSET_SCORE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(OMISSION_SEARCH_OFFSET_SCORE_PREFERENCE.first, value)
+        }
+
+    var enable_typo_correction_japanese_flick_keyboard_offset_score_preference: Int
+        get() = preferences.getInt(
+            TYPO_CORRECTION_JA_FLICK_OFFSET_SCORE_PREFERENCE.first,
+            TYPO_CORRECTION_JA_FLICK_OFFSET_SCORE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(TYPO_CORRECTION_JA_FLICK_OFFSET_SCORE_PREFERENCE.first, value)
         }
 
     /**

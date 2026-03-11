@@ -16,6 +16,12 @@
             android:summaryOff="@string/custom_keyboard_suggestion_summary_off"
             android:summaryOn="@string/custom_keyboard_suggestion_summary_on"
             android:title="@string/custom_keyboard_suggestion_title" />
+
+        <SwitchPreferenceCompat
+            android:key="custom_romaji_zenkaku_conversion_enable_preference"
+            android:title="@string/custom_romaji_zenkaku_conversion_enable_preference_title"
+            app:defaultValue="true"
+            app:summary="@string/custom_romaji_zenkaku_conversion_enable_preference_summary" />
     </PreferenceCategory>
 
 </PreferenceScreen>
