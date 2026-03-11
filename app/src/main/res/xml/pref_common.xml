@@ -145,6 +145,16 @@
                 app:defaultValue="false"
                 app:summary="@string/enable_typo_correction_japanese_flick_keyboard_preference_sumary" />
 
+            <SeekBarPreference
+                android:key="enable_typo_correction_japanese_flick_keyboard_offset_score_preference"
+                android:max="5000"
+                android:title="@string/enable_typo_correction_japanese_flick_keyboard_offset_score_preference_tittle"
+                app:defaultValue="3000"
+                app:min="0"
+                app:seekBarIncrement="10"
+                app:showSeekBarValue="true"
+                app:summary="@string/enable_typo_correction_japanese_flick_keyboard_offset_score_preference_summary" />
+
             <SwitchPreferenceCompat
                 android:key="enable_typo_correction_qwerty_english_keyboard_preference"
                 android:title="@string/enable_typo_correction_qwerty_english_keyboard_preference_title"
@@ -208,6 +218,16 @@
             android:summaryOff="@string/omission_search_summary_off"
             android:summaryOn="@string/omission_search_summary_on"
             android:title="@string/omission_search_title" />
+
+        <SeekBarPreference
+            android:key="omission_search_preference_offset_score_preference"
+            android:max="5000"
+            android:title="@string/omission_search_preference_offset_score_preference_title"
+            app:defaultValue="1900"
+            app:min="0"
+            app:seekBarIncrement="10"
+            app:showSeekBarValue="true"
+            app:summary="@string/omission_search_preference_offset_score_preference_summary" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"

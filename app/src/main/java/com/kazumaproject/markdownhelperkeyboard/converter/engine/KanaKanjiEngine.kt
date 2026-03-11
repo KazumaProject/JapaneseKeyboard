@@ -573,7 +573,9 @@ class KanaKanjiEngine {
         learnRepository: LearnRepository?,
         isOmissionSearchEnable: Boolean,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
-        enableTypoCorrectionQwertyEnglish: Boolean = false
+        enableTypoCorrectionQwertyEnglish: Boolean = false,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -616,7 +618,9 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
             isOmissionSearchEnable = isOmissionSearchEnable,
-            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffSetScore = omissionSearchOffsetScore
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -1092,7 +1096,9 @@ class KanaKanjiEngine {
         learnRepository: LearnRepository?,
         isOmissionSearchEnable: Boolean,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
-        enableTypoCorrectionQwertyEnglish: Boolean = false
+        enableTypoCorrectionQwertyEnglish: Boolean = false,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int
     ): Pair<List<Candidate>, List<Int>> {
 
         val graph = graphBuilder.constructGraph(
@@ -1135,7 +1141,9 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
             isOmissionSearchEnable = isOmissionSearchEnable,
-            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffSetScore = omissionSearchOffsetScore
         )
 
         val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
@@ -1620,7 +1628,9 @@ class KanaKanjiEngine {
         learnRepository: LearnRepository?,
         isOmissionSearchEnable: Boolean,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
-        enableTypoCorrectionQwertyEnglish: Boolean = false
+        enableTypoCorrectionQwertyEnglish: Boolean = false,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int
     ): Pair<List<Candidate>, List<Int>> {
 
         val graph = graphBuilder.constructGraph(
@@ -1663,7 +1673,9 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
             isOmissionSearchEnable = isOmissionSearchEnable,
-            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffSetScore = omissionSearchOffsetScore
         )
 
         val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
@@ -2093,7 +2105,9 @@ class KanaKanjiEngine {
         learnRepository: LearnRepository?,
         isOmissionSearchEnable: Boolean,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
-        enableTypoCorrectionQwertyEnglish: Boolean = false
+        enableTypoCorrectionQwertyEnglish: Boolean = false,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -2136,7 +2150,9 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
             isOmissionSearchEnable = isOmissionSearchEnable,
-            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffSetScore = omissionSearchOffsetScore
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2569,6 +2585,8 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -2610,7 +2628,9 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = false
+            isOmissionSearchEnable = false,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffSetScore = omissionSearchOffsetScore
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -3033,6 +3053,8 @@ class KanaKanjiEngine {
         mozcUTWeb: Boolean?,
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffsetScore: Int
     ): Pair<List<Candidate>, List<Int>> {
 
         val graph = graphBuilder.constructGraph(
@@ -3074,7 +3096,9 @@ class KanaKanjiEngine {
             succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
             succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
-            isOmissionSearchEnable = false
+            isOmissionSearchEnable = false,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffSetScore = omissionSearchOffsetScore
         )
 
         val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
