@@ -123,7 +123,6 @@ import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
-import com.kazumaproject.markdownhelperkeyboard.clipboard_history.toHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -310,38 +309,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
         ioScope.launch {
-            // ▼▼▼ Mutexで処理ブロックをロックする ▼▼▼
             clipboardMutex.withLock {
-                // 1. 現在クリップボードにあるアイテムを取得
+                // 1. 現在クリップボードにあるアイテムを取得 (ClipboardItem.Text or Image)
                 val newItem = clipboardUtil.getPrimaryClipContent()
-                val newHistoryItem = newItem.toHistoryItem() ?: return@withLock
+                if (newItem is ClipboardItem.Empty) return@withLock
 
-                // 2. DBに保存されている最新のアイテムを取得
+                // 2. DBに保存されている最新のメタデータを取得
                 val lastSavedItem = clipboardHistoryRepository.getLatestItem()
 
-                // 3. 最新アイテムと比較して、内容が重複していないかチェック
+                // 3. 重複チェック
+                // 最新の実データを取得して比較 (テキストのみ。画像はパス比較などで代用検討)
                 val isDuplicate = if (lastSavedItem == null) {
                     false
                 } else {
-                    if (newHistoryItem.itemType == lastSavedItem.itemType) {
-                        when (newHistoryItem.itemType) {
-                            ItemType.TEXT -> newHistoryItem.textData == lastSavedItem.textData
-                            ItemType.IMAGE -> newHistoryItem.imageData?.sameAs(lastSavedItem.imageData)
-                                ?: false
+                    when {
+                        newItem is ClipboardItem.Text && lastSavedItem.itemType == ItemType.TEXT -> {
+                            // DBのpreviewではなくファイルの実体と、現在のクリップボードを比較
+                            val lastFullText = clipboardHistoryRepository.getFullText(lastSavedItem)
+                            newItem.text == lastFullText
                         }
-                    } else {
-                        false
+
+                        else -> false // 画像の厳密な比較はコストが高いため、一旦 false
                     }
                 }
 
-                // 4. 重複していなければ、DBに挿入する
+                // 4. 重複していなければ保存
                 if (!isDuplicate) {
-                    Timber.d("LOCKED: New clipboard item detected. Inserting to history.")
                     if (isClipboardHistoryFeatureEnabled) {
-                        clipboardHistoryRepository.insert(newHistoryItem)
+                        Timber.d("Saving new clipboard item to file and DB.")
+                        // ここで Repository の新メソッドを呼ぶ (ファイル保存 + DB挿入)
+                        clipboardHistoryRepository.insertFromClipboard(newItem)
                     }
-                } else {
-                    Timber.d("LOCKED: Clipboard item is a duplicate. Skipping insert.")
                 }
             }
         }
@@ -6927,24 +6925,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             clipboardHistoryRepository.allHistory.collectLatest { historyList ->
-                // 1. DBモデルのリストからUIモデルのリストに変換する
-                //    このとき、削除に必要な `id` も一緒に渡す
-                val uiItems = historyList.map {
-                    when (it.itemType) {
-                        ItemType.TEXT -> ClipboardItem.Text(id = it.id, text = it.textData ?: "")
+                // 1. DBモデル(軽量メタデータ)のリストからUIモデルのリストに変換する
+                //    CursorWindowクラッシュを避けるため、ここでは実データ(全文/Bitmap)を読み込まず
+                //    プレビュー用のテキストを保持させる、または ID のみの器を作る。
+                val uiItems = historyList.map { entity ->
+                    when (entity.itemType) {
+                        ItemType.TEXT -> {
+                            // 一覧表示には DB の preview を使用する
+                            ClipboardItem.Text(
+                                id = entity.id,
+                                text = entity.preview
+                            )
+                        }
+
                         ItemType.IMAGE -> {
-                            it.imageData?.let { bitmap ->
-                                ClipboardItem.Image(id = it.id, bitmap = bitmap)
-                            } ?: ClipboardItem.Empty
+                            // 画像の場合、一覧では Bitmap は null (または読み込み専用の器) にする
+                            // ※ 必要に応じて placeholder 用の空 Bitmap を渡すか、
+                            //    UI 側 (CustomSymbolKeyboardView) で path からロードするように変更します。
+                            val content = clipboardHistoryRepository.getThumbnail(entity)
+                            if (content is ClipboardItem.Image) {
+                                content // 正しい Bitmap が入った ClipboardItem.Image
+                            }else{
+                                ClipboardItem.Text(entity.id, "[画像の読み込み失敗]")
+                            }
                         }
                     }
-                }.filter { it !is ClipboardItem.Empty }
+                }
 
                 // 2. 最新のリストをクラスのプロパティにキャッシュする
                 currentClipboardItems = uiItems
 
                 // 3. CustomSymbolKeyboardViewの表示を更新する
-                //    このメソッドは、クリップボードタブが表示中の場合のみUIを更新する
                 mainView.keyboardSymbolView.updateClipboardItems(uiItems)
             }
         }

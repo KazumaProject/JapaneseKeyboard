@@ -1,6 +1,5 @@
 package com.kazumaproject.markdownhelperkeyboard.clipboard_history.database
 
-import android.graphics.Bitmap
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -15,7 +14,7 @@ data class ClipboardHistoryItem(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val itemType: ItemType,
-    val textData: String?,   // テキスト用
-    val imageData: Bitmap?, // 画像用
+    val preview: String,      // 一覧表示用の短い文字列
+    val contentPath: String,   // ファイルの絶対パス
     val timestamp: Long = System.currentTimeMillis()
 )

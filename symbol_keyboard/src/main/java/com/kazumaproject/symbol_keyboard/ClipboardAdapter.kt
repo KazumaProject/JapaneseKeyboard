@@ -1,5 +1,6 @@
 package com.kazumaproject.symbol_keyboard
 
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -60,13 +61,17 @@ class ClipboardAdapter :
     }
 
     override fun onBindViewHolder(holder: ClipboardViewHolder, position: Int) {
-        val item = getItem(position)
-        when (item) {
+        when (val item = getItem(position)) {
             is ClipboardItem.Image -> {
+                Log.d(
+                    "ClipboardAdapter",
+                    "Image item bound: Bitmap exists ${item.bitmap.width} x ${item.bitmap.height})"
+                )
                 holder.imageView.visibility = View.VISIBLE
                 // textCardViewを非表示にする
                 holder.textCardView.visibility = View.GONE
                 holder.imageView.setImageBitmap(item.bitmap)
+                holder.imageView.scaleType = ImageView.ScaleType.FIT_CENTER
             }
 
             is ClipboardItem.Text -> {
