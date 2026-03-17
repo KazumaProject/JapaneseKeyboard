@@ -58,4 +58,53 @@ class ClipboardFileStore @Inject constructor(@ApplicationContext private val con
         textDir.mkdirs()
         imageDir.mkdirs()
     }
+
+
+    /**
+     * 【新規】指定したサイズに収まるように縮小して読み込む (一覧表示用)
+     */
+    fun readImageThumbnail(path: String, reqWidth: Int, reqHeight: Int): Bitmap? {
+        val file = File(path)
+        if (!file.exists()) return null
+
+        return try {
+            // 1. サイズだけを読み込む (inJustDecodeBounds = true)
+            val options = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            BitmapFactory.decodeFile(path, options)
+
+            // 2. 縮小率 (Sample Size) を計算する
+            options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight)
+
+            // 3. 実際にデコードする
+            options.inJustDecodeBounds = false
+            BitmapFactory.decodeFile(path, options)
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * 適切な縮小率を計算するロジック
+     */
+    private fun calculateInSampleSize(
+        options: BitmapFactory.Options,
+        reqWidth: Int,
+        reqHeight: Int
+    ): Int {
+        val (height: Int, width: Int) = options.outHeight to options.outWidth
+        var inSampleSize = 1
+
+        if (height > reqHeight || width > reqWidth) {
+            val halfHeight: Int = height / 2
+            val halfWidth: Int = width / 2
+
+            while (halfHeight / inSampleSize >= reqHeight && halfWidth / inSampleSize >= reqWidth) {
+                inSampleSize *= 2
+            }
+        }
+        return inSampleSize
+    }
 }

@@ -6942,15 +6942,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             // 画像の場合、一覧では Bitmap は null (または読み込み専用の器) にする
                             // ※ 必要に応じて placeholder 用の空 Bitmap を渡すか、
                             //    UI 側 (CustomSymbolKeyboardView) で path からロードするように変更します。
-                            ClipboardItem.Image(
-                                id = entity.id,
-                                bitmap = android.graphics.Bitmap.createBitmap(
-                                    1,
-                                    1,
-                                    android.graphics.Bitmap.Config.ARGB_8888
-                                )
-                                // IDが必要なため一時的なオブジェクトを生成。実際の表示は path を参照。
-                            )
+                            val content = clipboardHistoryRepository.getThumbnail(entity)
+                            if (content is ClipboardItem.Image) {
+                                content // 正しい Bitmap が入った ClipboardItem.Image
+                            }else{
+                                ClipboardItem.Text(entity.id, "[画像の読み込み失敗]")
+                            }
                         }
                     }
                 }

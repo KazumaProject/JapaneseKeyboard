@@ -114,6 +114,27 @@ class ClipboardHistoryRepository @Inject constructor(
         }
 
     /**
+     * 一覧表示用の縮小された画像（サムネイル）を取得します。
+     */
+    suspend fun getThumbnail(
+        item: ClipboardHistoryItem,
+        targetWidth: Int = 300,
+        targetHeight: Int = 300
+    ): ClipboardItem =
+        withContext(Dispatchers.IO) {
+            if (item.itemType != ItemType.IMAGE) return@withContext ClipboardItem.Empty
+
+            // FileStore にサムネイル読み込み機能を実装するか、ここでデコードを制御する
+            val bitmap = fileStore.readImageThumbnail(item.contentPath, targetWidth, targetHeight)
+            return@withContext if (bitmap != null) {
+                ClipboardItem.Image(id = item.id, bitmap = bitmap)
+            } else {
+                ClipboardItem.Empty
+            }
+        }
+
+
+    /**
      * 指定されたIDの履歴とファイルを削除します。
      */
     suspend fun deleteById(id: Long) = withContext(Dispatchers.IO) {
