@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ClipboardHistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(item: ClipboardHistoryItem)
+    suspend fun insert(item: ClipboardHistoryItem): Long
 
     @Update
     suspend fun update(item: ClipboardHistoryItem)
@@ -29,4 +29,7 @@ interface ClipboardHistoryDao {
 
     @Query("DELETE FROM clipboard_history")
     suspend fun deleteAll()
+
+    @Query("SELECT contentPath FROM clipboard_history WHERE id = :id")
+    suspend fun getContentPathById(id: Long): String?
 }
