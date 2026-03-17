@@ -7,7 +7,6 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.markdownhelperkeyboard.clicked_symbol.database.ClickedSymbolDao
-import com.kazumaproject.markdownhelperkeyboard.clipboard_history.BitmapConverter
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryDao
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemTypeConverter
@@ -46,11 +45,10 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         NgWord::class,
         ShortcutItem::class
     ],
-    version = 16,
+    version = 17,
     exportSchema = false
 )
 @TypeConverters(
-    BitmapConverter::class,
     ItemTypeConverter::class,
     MapTypeConverter::class,
     TfbiFlickDirectionConverter::class
@@ -373,6 +371,25 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 // keyboard_layouts に sortOrder を追加（既存行は 0）
                 db.execSQL("ALTER TABLE keyboard_layouts ADD COLUMN sortOrder INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 旧テーブルを削除（BLOBデータが含まれており、移行中のCursorWindow制限を避けるため）
+                db.execSQL("DROP TABLE IF EXISTS `clipboard_history`")
+                // 新しいスキーマで再作成
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `clipboard_history` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `itemType` TEXT NOT NULL,
+                      `preview` TEXT NOT NULL,
+                      `contentPath` TEXT NOT NULL,
+                      `timestamp` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
             }
         }
 

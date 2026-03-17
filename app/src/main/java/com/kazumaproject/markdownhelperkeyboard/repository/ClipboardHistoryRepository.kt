@@ -1,73 +1,156 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
+import com.kazumaproject.core.data.clipboard.ClipboardItem
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardFileStore
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryDao
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
  * クリップボード履歴のデータ操作を抽象化するリポジトリクラス。
- * ViewModelなどアプリの他の部分はこのリポジトリを介してデータにアクセスします。
- *
- * @property dao Hilt/DaggerなどのDIフレームワークによって注入されるDAOのインスタンス。
+ * DB (軽量メタデータ) と FileStore (重い実データ) の整合性を一元管理します。
  */
 class ClipboardHistoryRepository @Inject constructor(
-    private val dao: ClipboardHistoryDao
+    private val dao: ClipboardHistoryDao,
+    private val fileStore: ClipboardFileStore
 ) {
 
     /**
-     * すべてのクリップボード履歴をFlowとして提供します。
-     * UIはこのFlowを監視することで、データベースの変更を自動的に反映できます。
+     * すべてのクリップボード履歴(メタデータ)をFlowとして提供します。
      */
     val allHistory: Flow<List<ClipboardHistoryItem>> = dao.getAllHistory()
 
     /**
-     * 新しいクリップボード履歴アイテムをデータベースに挿入します。
-     *
-     * @param item 保存するClipboardHistoryItem
+     * 【重要】IMEService から呼ばれる保存メソッド
+     * 実データをファイルへ保存し、DBにパスとプレビューを記録します。
      */
-    suspend fun insert(item: ClipboardHistoryItem) {
-        dao.insert(item)
+    suspend fun insertFromClipboard(item: ClipboardItem) = withContext(Dispatchers.IO) {
+        val historyItem = when (item) {
+            is ClipboardItem.Text -> {
+                val path = fileStore.saveText(item.text)
+                ClipboardHistoryItem(
+                    itemType = ItemType.TEXT,
+                    preview = createTextPreview(item.text),
+                    contentPath = path
+                )
+            }
+
+            is ClipboardItem.Image -> {
+                val path = fileStore.saveImage(item.bitmap)
+                ClipboardHistoryItem(
+                    itemType = ItemType.IMAGE,
+                    preview = "[画像]",
+                    contentPath = path
+                )
+            }
+
+            else -> null
+        }
+        historyItem?.let { dao.insert(it) }
     }
 
-    suspend fun insertAll(items: List<ClipboardHistoryItem>) {
-        items.forEach { dao.insert(it) }
-    }
+    /**
+     * insertFromClipboard と同じ処理を別名でも提供（ViewModel等からの呼び出し用）
+     */
+    suspend fun insertClipboardItem(item: ClipboardItem) = insertFromClipboard(item)
 
-    suspend fun update(item: ClipboardHistoryItem) {
+    /**
+     * 単純なEntityの更新
+     */
+    suspend fun update(item: ClipboardHistoryItem) = withContext(Dispatchers.IO) {
         dao.update(item)
     }
 
     /**
-     * 指定されたIDの履歴アイテムをデータベースから削除します。
-     *
-     * @param id 削除するアイテムのID
+     * 本文テキストの取得
      */
-    suspend fun deleteById(id: Long) {
+    suspend fun getFullText(item: ClipboardHistoryItem): String = withContext(Dispatchers.IO) {
+        if (item.itemType != ItemType.TEXT) return@withContext ""
+        return@withContext fileStore.readText(item.contentPath) ?: item.preview
+    }
+
+    /**
+     * 本文テキストの編集・更新（ファイル上書き + DBプレビュー更新）
+     */
+    suspend fun updateTextContent(item: ClipboardHistoryItem, newFullText: String) =
+        withContext(Dispatchers.IO) {
+            if (item.itemType != ItemType.TEXT) return@withContext
+
+            fileStore.deleteFile(item.contentPath)
+            val newPath = fileStore.saveText(newFullText)
+
+            val updatedItem = item.copy(
+                preview = createTextPreview(newFullText),
+                contentPath = newPath,
+                timestamp = System.currentTimeMillis()
+            )
+            dao.update(updatedItem)
+        }
+
+    /**
+     * 履歴のメタデータから実データを読み出します（貼り付け時などに使用）。
+     */
+    suspend fun getFullContent(item: ClipboardHistoryItem): ClipboardItem =
+        withContext(Dispatchers.IO) {
+            return@withContext when (item.itemType) {
+                ItemType.TEXT -> {
+                    val text = fileStore.readText(item.contentPath) ?: item.preview
+                    ClipboardItem.Text(id = item.id, text = text)
+                }
+
+                ItemType.IMAGE -> {
+                    val bitmap = fileStore.readImage(item.contentPath)
+                    if (bitmap != null) {
+                        ClipboardItem.Image(id = item.id, bitmap = bitmap)
+                    } else {
+                        ClipboardItem.Empty
+                    }
+                }
+            }
+        }
+
+    /**
+     * 指定されたIDの履歴とファイルを削除します。
+     */
+    suspend fun deleteById(id: Long) = withContext(Dispatchers.IO) {
+        val path = dao.getContentPathById(id)
+        fileStore.deleteFile(path)
         dao.deleteById(id)
     }
 
-    suspend fun deleteAll() {
+    /**
+     * すべての履歴とファイルを削除します。
+     */
+    suspend fun deleteAll() = withContext(Dispatchers.IO) {
+        fileStore.deleteAllFiles()
         dao.deleteAll()
     }
+
     /**
-     * 現在のクリップボード履歴のスナップショット（一度きりのリスト）を取得します。
-     * バックグラウンド処理などで、一度だけ最新のリストが必要な場合に使用します。
-     *
-     * @return ClipboardHistoryItemのリスト
+     * 最新の履歴アイテムを取得します（重複チェック用）。
      */
-    suspend fun getHistorySnapshot(): List<ClipboardHistoryItem> {
-        return dao.getAllHistorySuspended()
+    suspend fun getLatestItem(): ClipboardHistoryItem? = withContext(Dispatchers.IO) {
+        return@withContext dao.getLatestItem()
     }
 
     /**
-     * データベースに保存されている最新の履歴アイテムを取得します。
-     * 履歴が空の場合はnullを返します。
-     *
-     * @return 最新の ClipboardHistoryItem、または null
+     * 現在の履歴のスナップショットを取得します。
      */
-    suspend fun getLatestItem(): ClipboardHistoryItem? {
-        return dao.getLatestItem()
+    suspend fun getHistorySnapshot(): List<ClipboardHistoryItem> = withContext(Dispatchers.IO) {
+        return@withContext dao.getAllHistorySuspended()
     }
 
+    /**
+     * プレビュー文字列を生成します。
+     */
+    private fun createTextPreview(text: String): String {
+        return text.take(150)
+            .replace(Regex("[\\n\\r\\s]+"), " ")
+            .trim()
+            .let { if (text.length > 150) "$it..." else it }
+    }
 }

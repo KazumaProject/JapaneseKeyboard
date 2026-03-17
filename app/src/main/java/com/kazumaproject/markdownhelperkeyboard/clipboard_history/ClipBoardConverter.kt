@@ -1,45 +1,32 @@
-package com.kazumaproject.markdownhelperkeyboard.clipboard_history
-
 import com.kazumaproject.core.data.clipboard.ClipboardItem
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardFileStore
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 
-fun ClipboardHistoryItem.toClipboardItem(): ClipboardItem {
+/**
+ * 拡張関数: Entity -> UI/DTOモデル
+ * 実データが必要なため ClipboardFileStore を引数に取ります
+ */
+fun ClipboardHistoryItem.toClipboardItem(fileStore: ClipboardFileStore): ClipboardItem {
     return when (this.itemType) {
-        ItemType.TEXT -> ClipboardItem.Text(
-            id = this.id, // <<< id を渡す
-            text = this.textData ?: ""
-        )
+        ItemType.TEXT -> {
+            val content = fileStore.readText(this.contentPath) ?: this.preview
+            ClipboardItem.Text(
+                id = this.id,
+                text = content
+            )
+        }
 
         ItemType.IMAGE -> {
-            this.imageData?.let { bitmap ->
+            val bitmap = fileStore.readImage(this.contentPath)
+            if (bitmap != null) {
                 ClipboardItem.Image(
-                    id = this.id, // <<< id を渡す
+                    id = this.id,
                     bitmap = bitmap
                 )
-            } ?: ClipboardItem.Empty // Bitmapが何らかの理由でnullならEmpty扱い
+            } else {
+                ClipboardItem.Empty
+            }
         }
     }
-}
-
-/**
- *【参考】
- * 逆方向の変換（ClipboardItem → ClipboardHistoryItem）です。
- * こちらはDBに新規挿入する際に使われるため、idはRoomが自動生成するので不要です。
- * そのため、こちらの関数は修正の必要はありません。
- */
-fun ClipboardItem.toHistoryItem(): ClipboardHistoryItem? = when (this) {
-    is ClipboardItem.Text -> ClipboardHistoryItem(
-        itemType = ItemType.TEXT,
-        textData = this.text,
-        imageData = null
-    )
-
-    is ClipboardItem.Image -> ClipboardHistoryItem(
-        itemType = ItemType.IMAGE,
-        textData = null,
-        imageData = this.bitmap
-    )
-
-    is ClipboardItem.Empty -> null
 }
