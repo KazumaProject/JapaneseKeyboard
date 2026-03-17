@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.clipboard_history.ui
 
+import android.graphics.BitmapFactory
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -10,7 +11,8 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemT
 import com.kazumaproject.markdownhelperkeyboard.databinding.ItemClipboardImageBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.ItemClipboardTextBinding
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 class ClipboardHistoryAdapter(
     private val onItemClicked: (ClipboardHistoryItem) -> Unit
@@ -77,7 +79,8 @@ class ClipboardHistoryAdapter(
     inner class TextViewHolder(private val binding: ItemClipboardTextBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(item: ClipboardHistoryItem) {
-            binding.textViewContent.text = item.textData
+            // textData の代わりに preview を使用
+            binding.textViewContent.text = item.preview
             binding.textViewTimestamp.text = dateFormat.format(Date(item.timestamp))
         }
     }
@@ -85,7 +88,10 @@ class ClipboardHistoryAdapter(
     inner class ImageViewHolder(private val binding: ItemClipboardImageBinding) :
         RecyclerView.ViewHolder(binding.root) {
         fun bind(item: ClipboardHistoryItem) {
-            binding.imageViewContent.setImageBitmap(item.imageData)
+            // imageData (Bitmap) は Entity にないので、パスからデコードして表示
+            // 本来は Coil や Glide を使うのが推奨されます
+            val bitmap = BitmapFactory.decodeFile(item.contentPath)
+            binding.imageViewContent.setImageBitmap(bitmap)
             binding.textViewTimestamp.text = dateFormat.format(Date(item.timestamp))
         }
     }
