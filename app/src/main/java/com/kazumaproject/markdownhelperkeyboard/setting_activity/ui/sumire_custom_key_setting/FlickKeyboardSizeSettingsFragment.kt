@@ -141,7 +141,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
         AppPreference.flick_key_height_scale_percent = currentHeightPercent
         AppPreference.flick_key_icon_scale_percent = currentIconPercent
         AppPreference.flick_key_text_size_sp = currentTextSizeSp
-        specialTextValueText?.text = String.format("%.1fsp", currentSpecialTextSizeSp)
+        AppPreference.flick_special_key_text_size_sp = currentSpecialTextSizeSp
     }
 
     private fun updateValueLabels() {
@@ -149,6 +149,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
         heightValueText?.text = "${currentHeightPercent}%"
         iconValueText?.text = "${currentIconPercent}%"
         textValueText?.text = String.format("%.1fsp", currentTextSizeSp)
+        specialTextValueText?.text = String.format("%.1fsp", currentSpecialTextSizeSp)
     }
 
     private fun renderPreview() {
