@@ -1158,7 +1158,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         updateClipboardPreview()
 
-        Timber.d("onUpdate onStartInputView called after $isPrivateMode $hasPhysicalKeyboard $currentInputType $restarting ${mainLayoutBinding?.keyboardView?.currentInputMode?.value}　${editorInfo?.inputType} $currentKeyboardOrder ${keyboardOrder[currentKeyboardOrder]}\n${candidateTabVisibility}")
         suppressSuggestions = if (showCandidateInPasswordPreference == true) {
             currentInputType.isPassword()
         } else {
@@ -5022,10 +5021,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
 
         mainView.customLayoutDefault.applyKeySizing(
-            keyWidthScalePercent = appPreference.flick_key_width_scale_percent ?: 100,
-            keyHeightScalePercent = appPreference.flick_key_height_scale_percent ?: 100,
-            iconScalePercent = appPreference.flick_key_icon_scale_percent ?: 100,
-            textSizeSp = appPreference.flick_key_text_size_sp ?: 14.0f
+            keyWidthScalePercent = appPreference.flick_key_width_scale_percent ?: 160,
+            keyHeightScalePercent = appPreference.flick_key_height_scale_percent ?: 160,
+            iconScalePercent = appPreference.flick_key_icon_scale_percent ?: 80,
+            textSizeSp = appPreference.flick_key_text_size_sp ?: 16.0f,
+            specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 16.0f
         )
 
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
@@ -6294,7 +6294,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("resetKeyboard called for showKeyboard")
         if (keyboardOrder.isEmpty()) return
         if (enableShowLastShownKeyboardInRestart == true) {
-            showKeyboard(keyboardOrder[lastSavedKeyboardPosition ?: 0])
+            if ((lastSavedKeyboardPosition ?: 0) >= keyboardOrder.size) {
+                lastSavedKeyboardPosition = 0
+                showKeyboard(keyboardOrder.first())
+            } else {
+                showKeyboard(keyboardOrder[lastSavedKeyboardPosition ?: 0])
+            }
+
         } else {
             currentKeyboardOrder = 0
             showKeyboard(keyboardOrder[0])

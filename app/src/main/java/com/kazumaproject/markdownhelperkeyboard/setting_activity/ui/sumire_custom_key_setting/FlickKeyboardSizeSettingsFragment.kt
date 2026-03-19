@@ -27,11 +27,13 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
     private var heightSeekBar: SeekBar? = null
     private var iconSeekBar: SeekBar? = null
     private var textSeekBar: SeekBar? = null
+    private var specialTextSeekBar: SeekBar? = null
 
     private var widthValueText: TextView? = null
     private var heightValueText: TextView? = null
     private var iconValueText: TextView? = null
     private var textValueText: TextView? = null
+    private var specialTextValueText: TextView? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -50,11 +52,13 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
         heightSeekBar = view.findViewById(R.id.seekBarKeyHeight)
         iconSeekBar = view.findViewById(R.id.seekBarIconSize)
         textSeekBar = view.findViewById(R.id.seekBarTextSize)
+        specialTextSeekBar = view.findViewById(R.id.seekBarSpecialTextSize)
 
         widthValueText = view.findViewById(R.id.textKeyWidthValue)
         heightValueText = view.findViewById(R.id.textKeyHeightValue)
         iconValueText = view.findViewById(R.id.textIconSizeValue)
         textValueText = view.findViewById(R.id.textTextSizeValue)
+        specialTextValueText = view.findViewById(R.id.textSpecialTextSizeValue)
 
         val resetButton: Button = view.findViewById(R.id.buttonResetFlickKeyboardSize)
 
@@ -70,10 +74,12 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
         heightSeekBar = null
         iconSeekBar = null
         textSeekBar = null
+        specialTextSeekBar = null
         widthValueText = null
         heightValueText = null
         iconValueText = null
         textValueText = null
+        specialTextValueText = null
         super.onDestroyView()
     }
 
@@ -82,6 +88,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
         heightSeekBar?.max = MAX_PERCENT - MIN_PERCENT
         iconSeekBar?.max = MAX_ICON_PERCENT - MIN_PERCENT
         textSeekBar?.max = (MAX_TEXT_SIZE_SP - MIN_TEXT_SIZE_SP).toInt()
+        specialTextSeekBar?.max = (MAX_TEXT_SIZE_SP - MIN_TEXT_SIZE_SP).toInt()
 
         widthSeekBar?.progress =
             (AppPreference.flick_key_width_scale_percent ?: DEFAULT_WIDTH_PERCENT) - MIN_PERCENT
@@ -92,6 +99,9 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
         textSeekBar?.progress =
             ((AppPreference.flick_key_text_size_sp
                 ?: DEFAULT_TEXT_SIZE_SP) - MIN_TEXT_SIZE_SP).toInt()
+        specialTextSeekBar?.progress =
+            ((AppPreference.flick_special_key_text_size_sp
+                ?: DEFAULT_SPECIAL_TEXT_SIZE_SP) - MIN_TEXT_SIZE_SP).toInt()
 
         val listener = object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
@@ -108,6 +118,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
         heightSeekBar?.setOnSeekBarChangeListener(listener)
         iconSeekBar?.setOnSeekBarChangeListener(listener)
         textSeekBar?.setOnSeekBarChangeListener(listener)
+        specialTextSeekBar?.setOnSeekBarChangeListener(listener)
 
         updateValueLabels()
     }
@@ -118,6 +129,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
             heightSeekBar?.progress = DEFAULT_HEIGHT_PERCENT - MIN_PERCENT
             iconSeekBar?.progress = DEFAULT_ICON_PERCENT - MIN_PERCENT
             textSeekBar?.progress = (DEFAULT_TEXT_SIZE_SP - MIN_TEXT_SIZE_SP).toInt()
+            specialTextSeekBar?.progress = (DEFAULT_SPECIAL_TEXT_SIZE_SP - MIN_TEXT_SIZE_SP).toInt()
             saveCurrentValues()
             updateValueLabels()
             renderPreview()
@@ -129,6 +141,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
         AppPreference.flick_key_height_scale_percent = currentHeightPercent
         AppPreference.flick_key_icon_scale_percent = currentIconPercent
         AppPreference.flick_key_text_size_sp = currentTextSizeSp
+        specialTextValueText?.text = String.format("%.1fsp", currentSpecialTextSizeSp)
     }
 
     private fun updateValueLabels() {
@@ -162,7 +175,8 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
             keyWidthScalePercent = currentWidthPercent,
             keyHeightScalePercent = currentHeightPercent,
             iconScalePercent = currentIconPercent,
-            textSizeSp = currentTextSizeSp
+            textSizeSp = currentTextSizeSp,
+            specialKeyTextSizeSp = currentSpecialTextSizeSp
         )
 
         keyboardView.setOnKeyboardActionListener(object :
@@ -207,6 +221,9 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
     private val currentTextSizeSp: Float
         get() = MIN_TEXT_SIZE_SP + (textSeekBar?.progress ?: 0).toFloat()
 
+    private val currentSpecialTextSizeSp: Float
+        get() = MIN_TEXT_SIZE_SP + (specialTextSeekBar?.progress ?: 0).toFloat()
+
     private fun setupMenu() {
         val menuHost: MenuHost = requireActivity()
         menuHost.addMenuProvider(object : MenuProvider {
@@ -240,5 +257,6 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
         private const val MIN_TEXT_SIZE_SP = 8f
         private const val MAX_TEXT_SIZE_SP = 32f
         private const val DEFAULT_TEXT_SIZE_SP = 16f
+        private const val DEFAULT_SPECIAL_TEXT_SIZE_SP = 12f
     }
 }
