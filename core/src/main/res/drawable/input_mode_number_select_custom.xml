@@ -7,8 +7,8 @@
     <group
         android:pivotX="50"
         android:pivotY="50"
-        android:scaleX="1.45"
-        android:scaleY="1.45">
+        android:scaleX="1.4"
+        android:scaleY="1.4">
 
         <path
             android:fillColor="@color/keyboard_icon_color"
