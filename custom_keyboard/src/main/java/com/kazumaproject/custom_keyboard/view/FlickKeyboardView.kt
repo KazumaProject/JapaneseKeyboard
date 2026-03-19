@@ -63,7 +63,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private companion object {
         private const val SPECIAL_KEY_BASE_TEXT_SIZE_SP = 16f
-        private const val SPECIAL_KEY_ICON_BASE_RATIO = 0.72f
+        private const val SPECIAL_ICON_TO_TEXT_RATIO = 1.6f
     }
 
     private var listener: OnKeyboardActionListener? = null
@@ -320,8 +320,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         return (SPECIAL_KEY_BASE_TEXT_SIZE_SP * scale).coerceIn(8f, 32f)
     }
 
-    private fun getImageContentScale(): Float {
-        return (iconScalePercent / 100f).coerceIn(0.6f, 2.0f)
+    private fun getSpecialIconTargetSizePx(): Float {
+        val textSizePx = spToPx(getSpecialKeyTextSizeSp()).toFloat()
+        return textSizePx * SPECIAL_ICON_TO_TEXT_RATIO
     }
 
     private fun applyImageButtonSizing(button: AppCompatImageButton) {
@@ -347,10 +348,19 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         if (availableWidth <= 0f || availableHeight <= 0f) return
 
-        val fitScale = minOf(availableWidth / drawableWidth, availableHeight / drawableHeight)
+        val targetContentSizePx = getSpecialIconTargetSizePx()
 
-        val calibratedBaseScale = fitScale * SPECIAL_KEY_ICON_BASE_RATIO
-        val finalScale = calibratedBaseScale * getImageContentScale()
+        val baseScale = minOf(
+            targetContentSizePx / drawableWidth,
+            targetContentSizePx / drawableHeight
+        )
+
+        val maxFitScale = minOf(
+            availableWidth / drawableWidth,
+            availableHeight / drawableHeight
+        )
+
+        val finalScale = minOf(baseScale, maxFitScale)
 
         val dx = (availableWidth - drawableWidth * finalScale) / 2f + button.paddingLeft
         val dy = (availableHeight - drawableHeight * finalScale) / 2f + button.paddingTop

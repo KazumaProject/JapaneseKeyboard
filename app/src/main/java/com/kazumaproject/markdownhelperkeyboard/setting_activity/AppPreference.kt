@@ -183,7 +183,7 @@ object AppPreference {
         Pair("flick_key_width_scale_percent_preference", 160)
     private val FLICK_KEY_HEIGHT_SCALE_PERCENT =
         Pair("flick_key_height_scale_percent_preference", 160)
-    private val FLICK_KEY_ICON_SCALE_PERCENT = Pair("flick_key_icon_scale_percent_preference", 50)
+    private val FLICK_KEY_ICON_SCALE_PERCENT = Pair("flick_key_icon_scale_percent_preference", 80)
     private val FLICK_KEY_TEXT_SIZE_SP = Pair("flick_key_text_size_sp_preference", 16.0f)
 
     private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
