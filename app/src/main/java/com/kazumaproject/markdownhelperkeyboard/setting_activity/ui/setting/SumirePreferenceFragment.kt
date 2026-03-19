@@ -14,6 +14,9 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.pref_sumire, rootKey)
 
+        val sumireKeyboardSizePreference =
+            findPreference<Preference>("sumire_keyboard_size_preference")
+
         // 先に sumireCustomAnglePreference を取得しておく（リスナー内で使うため）
         val sumireCustomAnglePreference =
             findPreference<Preference>("sumire_custom_angle_preference")
@@ -59,6 +62,13 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
                 if (index >= 0) {
                     preference.summary = listPreference.entries[index].toString()
                 }
+                true
+            }
+        }
+
+        sumireKeyboardSizePreference?.apply {
+            setOnPreferenceClickListener {
+                findNavController().navigate(R.id.action_navigation_setting_to_flickKeyboardSizeSettingsFragment)
                 true
             }
         }

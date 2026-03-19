@@ -25,6 +25,21 @@ class AutoSizeButton @JvmOverloads constructor(
 
     fun setDefaultTextSize(textSize: Float) {
         this.defaultTextSize = textSize
+        refreshTextSize()
+    }
+
+    fun refreshTextSize() {
+        if (width > 0 && height > 0) {
+            adjustTextSize(width, height)
+        } else {
+            requestLayout()
+            invalidate()
+        }
+    }
+
+    override fun setText(text: CharSequence?, type: BufferType?) {
+        super.setText(text, type)
+        refreshTextSize()
     }
 
     private fun adjustTextSize(buttonWidth: Int, buttonHeight: Int) {
