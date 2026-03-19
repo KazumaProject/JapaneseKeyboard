@@ -4801,6 +4801,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainLayoutBinding?.let { mainView ->
                                 mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
                                 mainView.qwertyView.setRomajiMode(false)
+                                mainView.qwertyView.setDefaultView()
                                 if (insertString.isEmpty()) {
                                     setKeyboardSizeSwitchKeyboard(mainView)
                                 } else {
@@ -5018,6 +5019,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.customLayoutDefault.setAngleAndRange(
             appPreference.getCircularFlickRanges(),
             circularFlickWindowScale ?: 1.0f
+        )
+
+        mainView.customLayoutDefault.applyKeySizing(
+            keyWidthScalePercent = appPreference.flick_key_width_scale_percent ?: 100,
+            keyHeightScalePercent = appPreference.flick_key_height_scale_percent ?: 100,
+            iconScalePercent = appPreference.flick_key_icon_scale_percent ?: 100,
+            textSizeSp = appPreference.flick_key_text_size_sp ?: 14.0f
         )
 
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
@@ -6945,7 +6953,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             val content = clipboardHistoryRepository.getThumbnail(entity)
                             if (content is ClipboardItem.Image) {
                                 content // 正しい Bitmap が入った ClipboardItem.Image
-                            }else{
+                            } else {
                                 ClipboardItem.Text(entity.id, "[画像の読み込み失敗]")
                             }
                         }

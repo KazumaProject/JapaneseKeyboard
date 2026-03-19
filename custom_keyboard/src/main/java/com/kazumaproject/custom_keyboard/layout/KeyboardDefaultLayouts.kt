@@ -142,12 +142,15 @@ object KeyboardDefaultLayouts {
         FlickAction.Action(
             KeyAction.Confirm,
             drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_alt_24
-        ), FlickAction.Action(
+        ),
+        FlickAction.Action(
             KeyAction.Enter,
             drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24,
-        ), FlickAction.Action(
+        ),
+        FlickAction.Action(
             KeyAction.Enter, "検索",
-        ), FlickAction.Action(KeyAction.Enter, "次"),
+        ),
+        FlickAction.Action(KeyAction.Enter, "次"),
         FlickAction.Action(KeyAction.Enter, "確定"),
     )
 
@@ -3320,13 +3323,39 @@ object KeyboardDefaultLayouts {
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
-                "", 0, 0, false, isSpecialKey = true, keyType = KeyType.PETAL_FLICK
+                "SwitchToNumber",
+                0,
+                0,
+                false,
+                KeyAction.SwitchToNumberLayout,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_number_select_custom,
             ), KeyData(
-                "", 1, 0, false, isSpecialKey = true, keyType = KeyType.PETAL_FLICK
+                "SwitchToEnglish",
+                1,
+                0,
+                false,
+                KeyAction.SwitchToEnglishLayout,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
             ), KeyData(
-                "", 2, 0, false, isSpecialKey = true, keyType = KeyType.PETAL_FLICK
+                "SwitchToKana",
+                2,
+                0,
+                false,
+                KeyAction.SwitchToKanaLayout,
+                isSpecialKey = true,
+                isHiLighted = true,
+                drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
             ), KeyData(
-                "", 3, 0, false, isSpecialKey = true, keyType = KeyType.PETAL_FLICK
+                "",
+                3,
+                0,
+                false,
+                KeyAction.SwitchToNextIme,
+                isSpecialKey = true,
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyId = "switch_next_ime"
             ), KeyData(
                 "あ",
                 0,
@@ -3382,7 +3411,14 @@ object KeyboardDefaultLayouts {
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
-                "", 3, 1, false, keyType = KeyType.PETAL_FLICK
+                dakutenToggleStates[0].label ?: "",
+                3,
+                1,
+                false,
+                dakutenToggleStates[0].action,
+                dynamicStates = dakutenToggleStates,
+                keyId = "dakuten_toggle_key",
+                keyType = KeyType.CROSS_FLICK
             ), KeyData(
                 "わ",
                 3,
@@ -3396,37 +3432,45 @@ object KeyboardDefaultLayouts {
                 true,
                 keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
-                "",
+                "Del",
                 0,
                 4,
                 false,
                 KeyAction.Delete,
                 isSpecialKey = true,
                 rowSpan = 1,
-                keyType = KeyType.PETAL_FLICK
+                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
             ), KeyData(
-                "",
+                spaceConvertStates[0].label ?: "",
                 1,
                 4,
                 true,
                 spaceConvertStates[0].action,
+                dynamicStates = spaceConvertStates,
                 isSpecialKey = true,
                 rowSpan = 1,
-                keyType = KeyType.PETAL_FLICK
+                keyId = "space_convert_key",
+                keyType = KeyType.CROSS_FLICK
             ), KeyData(
-                "",
+                "CursorMoveLeft",
                 2,
                 4,
                 false,
+                KeyAction.MoveCursorRight,
                 isSpecialKey = true,
-                rowSpan = 1,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_arrow_right_24,
+                keyType = KeyType.CROSS_FLICK,
             ), KeyData(
-                "",
+                enterKeyStates[0].label ?: "",
                 3,
                 4,
                 false,
+                enterKeyStates[0].action,
+                dynamicStates = enterKeyStates,
                 isSpecialKey = true,
                 rowSpan = 1,
+                drawableResId = enterKeyStates[0].drawableResId,
+                keyId = "enter_key"
             )
         )
 
