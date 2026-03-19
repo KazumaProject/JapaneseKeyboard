@@ -1939,4 +1939,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun setSwitchNumberLayoutKeyVisibility(state: Boolean) {
         binding.switchNumberLayout.isVisible = state
     }
+
+    fun setDefaultView() {
+        _qwertyMode.update { QWERTYMode.Default }
+    }
 }
