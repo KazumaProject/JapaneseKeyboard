@@ -457,4 +457,6 @@
     <string name="sumire_keyboard_size_preference_summary">キーに表示される文字の大きさや、キーのサイズを調整できます。\nこの設定はカスタムキーボードにも適用されます。</string>
     <string name="preview_custom_keyboard">キーボードのプレビュー</string>
     <string name="flickKeyboardSizeSettingsFragment_title">カスタマイズ</string>
+    <string name="custom_keyboard_size_preference_title">文字サイズ</string>
+    <string name="custom_keyboard_size_preference_summary">キーに表示される文字の大きさや、キーのサイズを調整できます。\nこの設定はスミレキーボードにも適用されます。</string>
 </resources>
