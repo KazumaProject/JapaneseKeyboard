@@ -9,8 +9,8 @@
 
         <Preference
             android:key="sumire_keyboard_size_preference"
-            android:title="文字のサイズ"
-            app:summary="キーに表示する文字の大きさ、キーの大きさを調整します" />
+            android:title="@string/sumire_keyboard_size_preference_title"
+            app:summary="@string/sumire_keyboard_size_preference_summary" />
 
         <ListPreference
             android:defaultValue="toggle"

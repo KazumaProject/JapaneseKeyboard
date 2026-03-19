@@ -3,12 +3,18 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.sumire_cust
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.SeekBar
 import android.widget.TextView
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -55,6 +61,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
         bindSeekBars()
         bindResetButton(resetButton)
         renderPreview()
+        setupMenu()
     }
 
     override fun onDestroyView() {
@@ -200,6 +207,27 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
     private val currentTextSizeSp: Float
         get() = MIN_TEXT_SIZE_SP + (textSeekBar?.progress ?: 0).toFloat()
 
+    private fun setupMenu() {
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return when (menuItem.itemId) {
+
+                    android.R.id.home -> {
+                        parentFragmentManager.popBackStack()
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+    }
+
     companion object {
         private const val MIN_PERCENT = 40
         private const val MAX_PERCENT = 220
@@ -207,7 +235,7 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
 
         private const val DEFAULT_WIDTH_PERCENT = 160
         private const val DEFAULT_HEIGHT_PERCENT = 160
-        private const val DEFAULT_ICON_PERCENT = 50
+        private const val DEFAULT_ICON_PERCENT = 80
 
         private const val MIN_TEXT_SIZE_SP = 8f
         private const val MAX_TEXT_SIZE_SP = 32f

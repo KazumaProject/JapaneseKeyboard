@@ -13,7 +13,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="フリックキーボードのプレビュー"
+            android:text="@string/preview_custom_keyboard"
             android:textSize="18sp"
             android:textStyle="bold" />
 
