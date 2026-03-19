@@ -459,4 +459,6 @@
     <string name="sumire_keyboard_size_preference_summary">Adjust the size of the text shown on keys and the size of the keys.\nThis setting also applies to the custom keyboard.</string>
     <string name="preview_custom_keyboard">Keyboard Preview</string>
     <string name="flickKeyboardSizeSettingsFragment_title">Customize</string>
+    <string name="custom_keyboard_size_preference_title">Key Text Size</string>
+    <string name="custom_keyboard_size_preference_summary">Adjust the size of the text shown on keys and the size of the keys.\nThis setting also applies to the Sumire keyboard.</string>
 </resources>

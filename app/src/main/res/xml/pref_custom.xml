@@ -3,6 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/category_custom_keyboard_title">
+
+        <Preference
+            android:key="custom_keyboard_size_preference"
+            android:title="@string/custom_keyboard_size_preference_title"
+            app:summary="@string/custom_keyboard_size_preference_summary" />
+
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="custom_keyboard_two_words_preference"
