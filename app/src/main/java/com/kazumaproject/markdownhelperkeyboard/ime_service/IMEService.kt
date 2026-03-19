@@ -5020,6 +5020,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             circularFlickWindowScale ?: 1.0f
         )
 
+        mainView.customLayoutDefault.applyKeySizing(
+            keyWidthScalePercent = appPreference.flick_key_width_scale_percent ?: 100,
+            keyHeightScalePercent = appPreference.flick_key_height_scale_percent ?: 100,
+            iconScalePercent = appPreference.flick_key_icon_scale_percent ?: 100,
+            textSizeSp = appPreference.flick_key_text_size_sp ?: 14.0f
+        )
+
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
@@ -6945,7 +6952,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             val content = clipboardHistoryRepository.getThumbnail(entity)
                             if (content is ClipboardItem.Image) {
                                 content // 正しい Bitmap が入った ClipboardItem.Image
-                            }else{
+                            } else {
                                 ClipboardItem.Text(entity.id, "[画像の読み込み失敗]")
                             }
                         }

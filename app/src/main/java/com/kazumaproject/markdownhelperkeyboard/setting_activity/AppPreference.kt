@@ -179,6 +179,12 @@ object AppPreference {
     private val DELETE_KEY_LEFT_FLICK_PREFERENCE = Pair("delete_key_flick_left_preference", true)
 
     private val KEY_LETTER_SIZE = Pair("key_letter_size_preference", 0.0f)
+    private val FLICK_KEY_WIDTH_SCALE_PERCENT =
+        Pair("flick_key_width_scale_percent_preference", 160)
+    private val FLICK_KEY_HEIGHT_SCALE_PERCENT =
+        Pair("flick_key_height_scale_percent_preference", 160)
+    private val FLICK_KEY_ICON_SCALE_PERCENT = Pair("flick_key_icon_scale_percent_preference", 50)
+    private val FLICK_KEY_TEXT_SIZE_SP = Pair("flick_key_text_size_sp_preference", 16.0f)
 
     private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
 
@@ -1001,6 +1007,54 @@ object AppPreference {
         get() = preferences.getFloat(CANDIDATE_LETTER_SIZE.first, CANDIDATE_LETTER_SIZE.second)
         set(value) = preferences.edit {
             it.putFloat(CANDIDATE_LETTER_SIZE.first, value ?: CANDIDATE_LETTER_SIZE.second)
+        }
+
+    var flick_key_width_scale_percent: Int?
+        get() = preferences.getInt(
+            FLICK_KEY_WIDTH_SCALE_PERCENT.first,
+            FLICK_KEY_WIDTH_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                FLICK_KEY_WIDTH_SCALE_PERCENT.first,
+                value ?: FLICK_KEY_WIDTH_SCALE_PERCENT.second
+            )
+        }
+
+    var flick_key_height_scale_percent: Int?
+        get() = preferences.getInt(
+            FLICK_KEY_HEIGHT_SCALE_PERCENT.first,
+            FLICK_KEY_HEIGHT_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                FLICK_KEY_HEIGHT_SCALE_PERCENT.first,
+                value ?: FLICK_KEY_HEIGHT_SCALE_PERCENT.second
+            )
+        }
+
+    var flick_key_icon_scale_percent: Int?
+        get() = preferences.getInt(
+            FLICK_KEY_ICON_SCALE_PERCENT.first,
+            FLICK_KEY_ICON_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                FLICK_KEY_ICON_SCALE_PERCENT.first,
+                value ?: FLICK_KEY_ICON_SCALE_PERCENT.second
+            )
+        }
+
+    var flick_key_text_size_sp: Float?
+        get() = preferences.getFloat(
+            FLICK_KEY_TEXT_SIZE_SP.first,
+            FLICK_KEY_TEXT_SIZE_SP.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(
+                FLICK_KEY_TEXT_SIZE_SP.first,
+                value ?: FLICK_KEY_TEXT_SIZE_SP.second
+            )
         }
 
     var clipboard_preview_preference: Boolean
