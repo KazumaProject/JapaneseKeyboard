@@ -7,6 +7,11 @@
         android:title="@string/category_sumire_input_keyboard_title"
         app:isPreferenceVisible="true">
 
+        <Preference
+            android:key="sumire_keyboard_size_preference"
+            android:title="文字のサイズ"
+            app:summary="キーに表示する文字の大きさ、キーの大きさを調整します" />
+
         <ListPreference
             android:defaultValue="toggle"
             android:dialogTitle="@string/sumire_input_method_dialog_title"
