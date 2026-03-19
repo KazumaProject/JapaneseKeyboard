@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
@@ -44,6 +45,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import kotlin.math.abs
 import kotlin.math.pow
+import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 class FlickKeyboardView @JvmOverloads constructor(
@@ -60,6 +62,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean)
     }
 
+    private companion object {
+        private const val SPECIAL_KEY_BASE_TEXT_SIZE_SP = 16f
+        private const val SPECIAL_ICON_TO_TEXT_RATIO = 1.6f
+    }
+
     private var listener: OnKeyboardActionListener? = null
     private val flickControllers = mutableListOf<CustomAngleFlickController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
@@ -72,26 +79,25 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
     private var defaultTextSize = 14f
+
+    /**
+     * 100 = デフォルト
+     * 200 = margin 0 に近い最大サイズ
+     * 0 に近づくほど margin が増えて小さく見える
+     */
+    private var keyWidthScalePercent: Int = 100
+    private var keyHeightScalePercent: Int = 100
+
+    private var iconScalePercent: Int = 100
     private var isCursorMode: Boolean = false
     private var cursorInitialX = 0f
     private var cursorInitialY = 0f
 
     private var liquidGlassEnable: Boolean = false
 
-    /**
-     * 動的キー（keyIdを持つキー）の情報を保持するためのマップ
-     * keyId: String -> KeyInfo
-     */
     private val dynamicKeyMap = mutableMapOf<String, KeyInfo>()
-
-    /**
-     * flickKeyMaps などにアクセスするために、現在設定されているレイアウトを保持
-     */
     private var currentLayout: KeyboardLayout? = null
 
-    /**
-     * 動的キーのViewと最新のKeyData、コントローラー、インデックスを保持する
-     */
     private data class KeyInfo(
         var view: View,
         var keyData: KeyData,
@@ -99,7 +105,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         val index: Int
     )
 
-    // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
     private var isNightMode: Boolean = false
     private var isDynamicColorEnabled: Boolean = false
@@ -116,6 +121,12 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var circularViewScale: Float = 1.0f
     private var borderWidth: Int = 1
 
+    init {
+        setPadding(0, 0, 0, 0)
+        clipToPadding = false
+        clipChildren = false
+    }
+
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
     }
@@ -128,24 +139,32 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.defaultTextSize = textSize
     }
 
+    fun applyKeySizing(
+        keyWidthScalePercent: Int,
+        keyHeightScalePercent: Int,
+        iconScalePercent: Int,
+        textSizeSp: Float
+    ) {
+        this.keyWidthScalePercent = keyWidthScalePercent.coerceIn(0, 200)
+        this.keyHeightScalePercent = keyHeightScalePercent.coerceIn(0, 200)
+        this.iconScalePercent = iconScalePercent.coerceIn(40, 200)
+        this.defaultTextSize = textSizeSp.coerceIn(8f, 32f)
+
+        currentLayout?.let { setKeyboard(it) }
+    }
+
     fun setCursorMode(enabled: Boolean) {
         isCursorMode = enabled
     }
 
     fun setAngleAndRange(
-        range: Map<FlickDirection,
-                Pair<Float, Float>>,
+        range: Map<FlickDirection, Pair<Float, Float>>,
         circularPopViewScale: Float
     ) {
         this.customAngleAndRange = range
         this.circularViewScale = circularPopViewScale
     }
 
-    /**
-     * テーマ設定を一括で適用するメイン関数
-     * メンバ変数に値を保存してからテーマを適用します。
-     * @param currentNightMode res.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK の値
-     */
     fun applyKeyboardTheme(
         themeMode: String,
         currentNightMode: Int,
@@ -161,12 +180,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         liquidGlassKeyAlphaEnable: Int,
         borderWidth: Int
     ) {
-        // メンバ変数に代入
         this.themeMode = themeMode
-
-        // Int型の currentNightMode から Boolean型の isNightMode を判定
         this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
-
         this.isDynamicColorEnabled = isDynamicColorEnabled
         this.customBgColor = customBgColor
         this.customKeyColor = customKeyColor
@@ -174,7 +189,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.customKeyTextColor = customKeyTextColor
         this.customSpecialKeyTextColor = customSpecialKeyTextColor
         this.liquidGlassEnable = liquidGlassEnable
-
         this.customBorderEnable = customBorderEnable
         this.customBorderColor = customBorderColor
         this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
@@ -185,11 +199,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
-    /**
-     * 色の明るさを調整するヘルパー関数 (QWERTYKeyboardViewと統一)
-     * @param color 元の色
-     * @param factor 1.0より大＝明るく、1.0より小＝暗く
-     */
     private fun manipulateColor(color: Int, factor: Float): Int {
         val a = Color.alpha(color)
         val r = (Color.red(color) * factor).toInt().coerceIn(0, 255)
@@ -202,70 +211,60 @@ class FlickKeyboardView @JvmOverloads constructor(
     fun setKeyboard(layout: KeyboardLayout) {
         Log.d("FlickKeyboardView", "setKeyboard (Full Rebuild)")
 
-        // 1. 既存のリソースをすべてクリア
-        this.removeAllViews()
+        removeAllViews()
+
         flickControllers.forEach { it.cancel() }
         flickControllers.clear()
+
         crossFlickControllers.forEach { it.cancel() }
         crossFlickControllers.clear()
+
         standardFlickControllers.forEach { it.cancel() }
         standardFlickControllers.clear()
+
         petalFlickControllers.forEach { it.cancel() }
         petalFlickControllers.clear()
+
         tfbiControllers.forEach { it.cancel() }
         tfbiControllers.clear()
+
         stickyTfbiControllers.forEach { it.cancel() }
         stickyTfbiControllers.clear()
+
         hierarchicalTfbiControllers.forEach { it.cancel() }
         hierarchicalTfbiControllers.clear()
 
         dynamicKeyMap.clear()
         currentLayout = layout
 
-        this.columnCount = layout.columnCount
-        this.rowCount = layout.rowCount
-        this.isFocusable = false
+        columnCount = layout.columnCount
+        rowCount = layout.rowCount
+        isFocusable = false
 
-        // 2. キーを順に生成してアタッチ
         layout.keys.forEach { keyData ->
-            val index = this.childCount // addViewする前の現在のView数をインデックスとして使用
-
-            // 3. ヘルパー関数でViewを生成
+            val index = childCount
             val keyView = createKeyView(keyData)
-
-            // 4. ヘルパー関数でビヘイビア（リスナーやコントローラー）をアタッチ
             val controller = attachKeyBehavior(keyView, keyData)
 
-            // 5. 動的キーならマップに保存
             keyData.keyId?.let { id ->
                 dynamicKeyMap[id] = KeyInfo(keyView, keyData, controller, index)
             }
 
-            this.addView(keyView)
+            addView(keyView)
         }
     }
 
-    /**
-     * 指定されたkeyIdを持つキーの表示と動作を、新しいstateIndexに基づいて更新します。
-     * このメソッドは、必要に応じてViewの再生成とコントローラーの再アタッチを行います。
-     *
-     * @param keyId 更新するキーのID (e.g., "enter_key")
-     * @param stateIndex 適用する新しい状態のインデックス
-     */
     fun updateDynamicKey(keyId: String, stateIndex: Int) {
-        // 1. 更新対象のキー情報をマップから取得
         val info = dynamicKeyMap[keyId] ?: return
         val states = info.keyData.dynamicStates ?: return
         val newState = states.getOrNull(stateIndex) ?: states.firstOrNull() ?: return
 
-        // 2. 新しいKeyDataをメモリ上で作成
         val newKeyData = info.keyData.copy(
             label = newState.label ?: "",
             action = newState.action,
             drawableResId = newState.drawableResId
         )
 
-        // 3. Viewタイプの変更チェック
         val oldView = info.view
         val newViewIsIcon = newKeyData.isSpecialKey && newKeyData.drawableResId != null
         val newViewIsText = !newViewIsIcon
@@ -275,73 +274,224 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         val needsNewView = (oldViewIsIcon && newViewIsText) || (oldViewIsText && newViewIsIcon)
 
-        // 4. 古いビヘイビアをデタッチ
         detachKeyBehavior(info.controller)
 
         val newView: View
         if (needsNewView) {
-            // Viewタイプが異なる場合：Viewを再生成して差し替える
-            newView = createKeyView(newKeyData) // 新しいViewを生成
-            newView.layoutParams = oldView.layoutParams // レイアウトパラメータは引き継ぐ
-
-            this.removeViewAt(info.index) // 古いViewをGridから削除
-            this.addView(newView, info.index) // 新しいViewを同じ位置に追加
+            newView = createKeyView(newKeyData)
+            newView.layoutParams = oldView.layoutParams
+            removeViewAt(info.index)
+            addView(newView, info.index)
         } else {
-            // Viewタイプが同じ場合：Viewの表示内容だけ更新
             Log.d("FlickKeyboardView", "updateDynamicKey: Updating View for $keyId")
             newView = oldView
-            updateKeyVisuals(newView, newKeyData) // 表示だけ更新
+            updateKeyVisuals(newView, newKeyData)
         }
 
-        // 5. 新しいビヘイビアをアタッチ
         val newController = attachKeyBehavior(newView, newKeyData)
 
-        // 6. 管理マップの情報を更新
         info.view = newView
         info.keyData = newKeyData
         info.controller = newController
     }
 
-    /** keyDataに基づいてViewを生成し、基本的な設定（背景、テキスト、パディング等）を行います */
+    /**
+     * 100 = デフォルト margin
+     * 200 = margin 0
+     * 0   = margin 2倍
+     */
+    private fun getScaledHorizontalMarginPx(baseMarginDp: Int): Int {
+        val percent = keyWidthScalePercent.coerceIn(0, 200)
+        val marginFactor = ((200f - percent) / 100f).coerceIn(0f, 2f)
+        val marginDp = baseMarginDp * marginFactor
+        return dpToPx(marginDp.roundToInt())
+    }
+
+    /**
+     * 100 = デフォルト margin
+     * 200 = margin 0
+     * 0   = margin 2倍
+     */
+    private fun getScaledVerticalMarginPx(baseMarginDp: Int): Int {
+        val percent = keyHeightScalePercent.coerceIn(0, 200)
+        val marginFactor = ((200f - percent) / 100f).coerceIn(0f, 2f)
+        val marginDp = baseMarginDp * marginFactor
+        return dpToPx(marginDp.roundToInt())
+    }
+
+    private fun getSpecialKeyTextSizeSp(): Float {
+        val scale = iconScalePercent / 100f
+        return (SPECIAL_KEY_BASE_TEXT_SIZE_SP * scale).coerceIn(8f, 32f)
+    }
+
+    private fun getSpecialIconTargetSizePx(): Float {
+        val textSizePx = spToPx(getSpecialKeyTextSizeSp()).toFloat()
+        return textSizePx * SPECIAL_ICON_TO_TEXT_RATIO
+    }
+
+    private fun applyImageButtonSizing(button: AppCompatImageButton) {
+        button.scaleType = android.widget.ImageView.ScaleType.MATRIX
+        button.imageMatrix = Matrix()
+        button.setPadding(0, 0, 0, 0)
+
+        button.post {
+            updateImageButtonMatrix(button)
+        }
+    }
+
+    private fun updateImageButtonMatrix(button: AppCompatImageButton) {
+        val drawable = button.drawable ?: return
+
+        val drawableWidth = drawable.intrinsicWidth.toFloat()
+        val drawableHeight = drawable.intrinsicHeight.toFloat()
+
+        if (drawableWidth <= 0f || drawableHeight <= 0f) return
+
+        val availableWidth = (button.width - button.paddingLeft - button.paddingRight).toFloat()
+        val availableHeight = (button.height - button.paddingTop - button.paddingBottom).toFloat()
+
+        if (availableWidth <= 0f || availableHeight <= 0f) return
+
+        val targetContentSizePx = getSpecialIconTargetSizePx()
+
+        val baseScale = minOf(
+            targetContentSizePx / drawableWidth,
+            targetContentSizePx / drawableHeight
+        )
+
+        val maxFitScale = minOf(
+            availableWidth / drawableWidth,
+            availableHeight / drawableHeight
+        )
+
+        val finalScale = minOf(baseScale, maxFitScale)
+
+        val dx = (availableWidth - drawableWidth * finalScale) / 2f + button.paddingLeft
+        val dy = (availableHeight - drawableHeight * finalScale) / 2f + button.paddingTop
+
+        val matrix = Matrix().apply {
+            postScale(finalScale, finalScale)
+            postTranslate(dx, dy)
+        }
+
+        button.imageMatrix = matrix
+        button.invalidate()
+    }
+
+    private fun buildKeyLabelSpannable(label: String, textSizeSp: Float): SpannableString {
+        val parts = label.split("\n", limit = 2)
+        val primaryText = parts[0]
+        val secondaryText = parts.getOrNull(1) ?: ""
+        val spannable = SpannableString(label)
+        val primarySizePx = spToPx(textSizeSp)
+        val secondarySizePx = spToPx((textSizeSp * 0.625f).coerceAtLeast(8f))
+
+        spannable.setSpan(
+            AbsoluteSizeSpan(primarySizePx),
+            0,
+            primaryText.length,
+            Spannable.SPAN_INCLUSIVE_INCLUSIVE
+        )
+
+        if (secondaryText.isNotEmpty()) {
+            spannable.setSpan(
+                AbsoluteSizeSpan(secondarySizePx),
+                primaryText.length + 1,
+                label.length,
+                Spannable.SPAN_INCLUSIVE_INCLUSIVE
+            )
+        }
+
+        return spannable
+    }
+
+    private fun applyButtonText(button: AutoSizeButton, keyData: KeyData) {
+        val targetTextSizeSp = if (keyData.isSpecialKey) {
+            getSpecialKeyTextSizeSp()
+        } else {
+            defaultTextSize
+        }
+
+        button.setDefaultTextSize(targetTextSizeSp)
+
+        if (keyData.label.contains("\n")) {
+            button.maxLines = 2
+            button.setLineSpacing(0f, 0.9f)
+            button.setPadding(0, dpToPx(4), 0, dpToPx(4))
+            button.gravity = Gravity.CENTER
+            button.text = buildKeyLabelSpannable(keyData.label, targetTextSizeSp)
+        } else {
+            button.setTextSize(TypedValue.COMPLEX_UNIT_SP, targetTextSizeSp)
+            button.text = keyData.label
+            button.gravity = Gravity.CENTER
+        }
+
+        button.refreshTextSize()
+    }
+
+    private fun getScaledHorizontalInsetDp(baseInsetDp: Int): Int {
+        val percent = keyWidthScalePercent.coerceIn(0, 200)
+        val insetFactor = ((200f - percent) / 100f).coerceIn(0f, 2f)
+        return (baseInsetDp * insetFactor).roundToInt()
+    }
+
+    private fun getScaledVerticalInsetDp(baseInsetDp: Int): Int {
+        val percent = keyHeightScalePercent.coerceIn(0, 200)
+        val insetFactor = ((200f - percent) / 100f).coerceIn(0f, 2f)
+        return (baseInsetDp * insetFactor).roundToInt()
+    }
+
     private fun createKeyView(keyData: KeyData): View {
-        val (leftInset, topInset, rightInset, bottomInset) = if (keyData.isSpecialKey) {
+        val baseInsets = if (keyData.isSpecialKey) {
             listOf(6, 12, 6, 6)
         } else {
             listOf(6, 9, 6, 9)
         }
 
+        val leftInset = getScaledHorizontalInsetDp(baseInsets[0])
+        val topInset = getScaledVerticalInsetDp(baseInsets[1])
+        val rightInset = getScaledHorizontalInsetDp(baseInsets[2])
+        val bottomInset = getScaledVerticalInsetDp(baseInsets[3])
+
         val isDarkTheme = context.isDarkThemeOn()
-        // 角丸サイズを統一
         val commonCornerRadius = dpToPx(8).toFloat()
 
         val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
-            // ■■■ 1. 画像ボタン (AppCompatImageButton) ■■■
             AppCompatImageButton(context).apply {
                 isFocusable = false
                 elevation = 0f
                 setImageResource(keyData.drawableResId)
                 contentDescription = keyData.label
-                scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+                scaleType = android.widget.ImageView.ScaleType.MATRIX
 
-                if (themeMode == "custom") {
-                    // 影の分だけ中身を小さく見せる必要があるためパディングを設定
-                    setPadding(dpToPx(8), dpToPx(8), dpToPx(8), dpToPx(8))
-                }
+                applyImageButtonSizing(this)
 
                 val originalBg = ContextCompat.getDrawable(
                     context,
-                    if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                    if (isDarkTheme) {
+                        com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                    } else {
+                        com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                    }
                 )
+
                 val insetBg = android.graphics.drawable.InsetDrawable(
-                    originalBg, leftInset, topInset, rightInset, bottomInset
+                    originalBg,
+                    leftInset,
+                    topInset,
+                    rightInset,
+                    bottomInset
                 )
                 background = insetBg
+
+                addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
+                    updateImageButtonMatrix(this)
+                }
 
                 if (keyData.isHiLighted) {
                     isPressed = true
                 }
 
-                // ★ テーマ適用
                 when (themeMode) {
                     "custom" -> {
                         if (customBorderEnable) {
@@ -349,14 +499,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                             setColorFilter(customSpecialKeyTextColor)
                             setBorder(customBorderColor, borderWidth)
                         } else {
-                            // 1. ベース（ニューモーフィズム）- QWERTYと同じロジック
                             val neumorphDrawable = getDynamicNeumorphDrawable(
                                 baseColor = customSpecialKeyColor,
                                 radius = commonCornerRadius
                             )
 
-                            // 2. 上層（透明なSegmentedDrawable）
-                            // STANDARD_FLICKと見た目を合わせるため、アイコンキーにもダミーのSegmentedDrawableを重ねる
                             val segmentedDrawable = SegmentedBackgroundDrawable(
                                 label = "",
                                 baseColor = Color.TRANSPARENT,
@@ -365,12 +512,17 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 cornerRadius = commonCornerRadius
                             )
 
-                            // 3. レイヤー化とインセット設定
                             val layerDrawable =
                                 LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
-                            val inset = dpToPx(2) // QWERTYに合わせるため小さく
-                            layerDrawable.setLayerInset(1, inset, inset, inset, inset)
-
+                            val innerInsetHorizontal = dpToPx(getScaledHorizontalInsetDp(2))
+                            val innerInsetVertical = dpToPx(getScaledVerticalInsetDp(2))
+                            layerDrawable.setLayerInset(
+                                1,
+                                innerInsetHorizontal,
+                                innerInsetVertical,
+                                innerInsetHorizontal,
+                                innerInsetVertical
+                            )
                             background = layerDrawable
                             setColorFilter(customSpecialKeyTextColor)
                         }
@@ -378,60 +530,35 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
 
                 if (liquidGlassEnable) {
-                    this.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                    setDrawableAlpha(liquidGlassKeyAlphaEnable)
                 }
             }
         } else {
-            // ■■■ 2. テキストボタン (AutoSizeButton) ■■■
             AutoSizeButton(context).apply {
                 isFocusable = false
                 isAllCaps = false
                 elevation = 0f
 
-                if (!keyData.isSpecialKey) {
-                    setDefaultTextSize(defaultTextSize)
-                }
-
-                if (keyData.label.contains("\n")) {
-                    val parts = keyData.label.split("\n", limit = 2)
-                    val primaryText = parts[0]
-                    val secondaryText = parts.getOrNull(1) ?: ""
-                    val spannable = SpannableString(keyData.label)
-                    spannable.setSpan(
-                        AbsoluteSizeSpan(spToPx(16f)),
-                        0,
-                        primaryText.length,
-                        Spannable.SPAN_INCLUSIVE_INCLUSIVE
-                    )
-                    if (secondaryText.isNotEmpty()) {
-                        spannable.setSpan(
-                            AbsoluteSizeSpan(spToPx(10f)),
-                            primaryText.length + 1,
-                            keyData.label.length,
-                            Spannable.SPAN_INCLUSIVE_INCLUSIVE
-                        )
-                    }
-                    this.maxLines = 2
-                    this.setLineSpacing(0f, 0.9f)
-                    this.setPadding(0, dpToPx(4), 0, dpToPx(4))
-                    this.gravity = Gravity.CENTER
-                    this.text = spannable
-                } else {
-                    text = keyData.label
-                    gravity = Gravity.CENTER
-                }
+                applyButtonText(this, keyData)
 
                 val originalBg: Drawable? =
                     if (keyData.isSpecialKey) {
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                         ContextCompat.getDrawable(
                             context,
-                            if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                            if (isDarkTheme) {
+                                com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                            } else {
+                                com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                            }
                         )
                     } else if (keyData.keyType != KeyType.STANDARD_FLICK) {
                         ContextCompat.getDrawable(
                             context,
-                            if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_center_bg_material else com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                            if (isDarkTheme) {
+                                com.kazumaproject.core.R.drawable.ten_keys_center_bg_material
+                            } else {
+                                com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                            }
                         )
                     } else {
                         null
@@ -439,12 +566,15 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                 originalBg?.let {
                     val insetBg = android.graphics.drawable.InsetDrawable(
-                        it, leftInset, topInset, rightInset, bottomInset
+                        it,
+                        leftInset,
+                        topInset,
+                        rightInset,
+                        bottomInset
                     )
                     background = insetBg
                 }
 
-                // ★ テーマ適用
                 when (themeMode) {
                     "custom" -> {
                         if (customBorderEnable) {
@@ -456,10 +586,12 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 if (keyData.isSpecialKey) customSpecialKeyColor else customKeyColor
                             val targetTextColor =
                                 if (keyData.isSpecialKey) customSpecialKeyTextColor else customKeyTextColor
-                            val targetHighlightColor = if (keyData.isSpecialKey) manipulateColor(
-                                customSpecialKeyColor,
-                                1.2f
-                            ) else customSpecialKeyColor
+                            val targetHighlightColor =
+                                if (keyData.isSpecialKey) {
+                                    manipulateColor(customSpecialKeyColor, 1.2f)
+                                } else {
+                                    customSpecialKeyColor
+                                }
 
                             val neumorphDrawable = getDynamicNeumorphDrawable(
                                 baseColor = targetBaseColor,
@@ -476,7 +608,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                             val layerDrawable =
                                 LayerDrawable(arrayOf(neumorphDrawable, segmentedDrawable))
-                            val inset = dpToPx(2) // QWERTYに合わせる
+                            val inset = dpToPx(2)
                             layerDrawable.setLayerInset(1, inset, inset, inset, inset)
 
                             background = layerDrawable
@@ -491,49 +623,57 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
         }
 
-        // LayoutParamsの設定
+        val baseHorizontalMarginDp: Int
+        val baseVerticalMarginDp: Int
+
+        if (keyData.keyType == KeyType.STANDARD_FLICK) {
+            baseHorizontalMarginDp = 6
+            baseVerticalMarginDp = 9
+        } else if (keyData.isSpecialKey) {
+            baseHorizontalMarginDp = 3
+            baseVerticalMarginDp = 6
+        } else {
+            baseHorizontalMarginDp = 4
+            baseVerticalMarginDp = 6
+        }
+
         val params = LayoutParams().apply {
             rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
             columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
             width = 0
             height = 0
 
-            if (themeMode == "custom" && !customBorderEnable) {
-                setMargins(3, 6, 3, 6)
-            } else {
-                if (keyData.keyType == KeyType.STANDARD_FLICK) {
-                    setMargins(6, 9, 6, 9)
-                }
-            }
+            setMargins(
+                getScaledHorizontalMarginPx(baseHorizontalMarginDp),
+                getScaledVerticalMarginPx(baseVerticalMarginDp),
+                getScaledHorizontalMarginPx(baseHorizontalMarginDp),
+                getScaledVerticalMarginPx(baseVerticalMarginDp)
+            )
         }
+
         keyView.layoutParams = params
         return keyView
     }
 
-    /**
-     * 指定された色(baseColor)を元に、ニューモーフィズムのDrawableを動的に生成する
-     * QWERTYKeyboardViewと同じロジックを使用
-     */
     private fun getDynamicNeumorphDrawable(baseColor: Int, radius: Float): Drawable {
-        // 1. 色の計算 (manipulateColorを使用)
         val highlightColor = manipulateColor(baseColor, 1.2f)
         val shadowColor = manipulateColor(baseColor, 0.8f)
 
-        // 2. ピクセル単位のオフセット量
         val offset = dpToPx(4)
         val padding = dpToPx(2)
 
-        // --- A. 通常状態 (Idle) ---
         val shadowDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
             setColor(shadowColor)
         }
+
         val highlightDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
             setColor(highlightColor)
         }
+
         val surfaceDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
@@ -541,29 +681,19 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         val idleLayer = LayerDrawable(arrayOf(shadowDrawable, highlightDrawable, surfaceDrawable))
-
-        // Shadow: 左と上を空けて右下にずらす
         idleLayer.setLayerInset(0, offset, offset, 0, 0)
-        // Highlight: 右と下を空けて左上にずらす
         idleLayer.setLayerInset(1, 0, 0, offset, offset)
-        // Surface: 四方を少し空けて中央に配置
         idleLayer.setLayerInset(2, padding, padding, padding, padding)
 
-
-        // --- B. 押下状態 (Pressed) ---
         val pressedDrawable = GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
             cornerRadius = radius
-            // ベース色より少し暗くすることで「押し込まれた」感を出す
             setColor(manipulateColor(baseColor, 0.95f))
         }
 
         val pressedLayer = LayerDrawable(arrayOf(pressedDrawable))
-        // サイズを変えないため、IdleのSurfaceと同じ位置に合わせるためのInset
         pressedLayer.setLayerInset(0, padding, padding, padding, padding)
 
-
-        // --- C. StateListDrawable ---
         val stateList = android.graphics.drawable.StateListDrawable()
         stateList.addState(intArrayOf(android.R.attr.state_pressed), pressedLayer)
         stateList.addState(intArrayOf(), idleLayer)
@@ -571,21 +701,16 @@ class FlickKeyboardView @JvmOverloads constructor(
         return stateList
     }
 
-    /** Viewにリスナーやフリックコントローラーをアタッチします */
     @SuppressLint("ClickableViewAccessibility")
     private fun attachKeyBehavior(keyView: View, keyData: KeyData): Any? {
-        val layout = currentLayout ?: return null // currentLayoutが必須
+        val layout = currentLayout ?: return null
 
         when (keyData.keyType) {
             KeyType.CIRCULAR_FLICK -> {
                 val flickKeyMapsList = layout.flickKeyMaps[keyData.label]
-                Log.d(
-                    "FlickKeyboardView KeyType.CIRCULAR_FLICK",
-                    "$flickKeyMapsList"
-                )
+                Log.d("FlickKeyboardView KeyType.CIRCULAR_FLICK", "$flickKeyMapsList")
                 if (!flickKeyMapsList.isNullOrEmpty()) {
                     val controller = CustomAngleFlickController(context, flickSensitivity).apply {
-                        // ( ... Controllerの各種設定 ... )
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
                         val surfaceContainerLow =
@@ -594,62 +719,59 @@ class FlickKeyboardView @JvmOverloads constructor(
                             context.getColorFromAttr(R.attr.colorSurfaceContainerHighest)
                         val textColor =
                             context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
+
                         val dynamicColorTheme = when (themeMode) {
-                            "default" -> {
-                                FlickPopupColorTheme(
-                                    segmentColor = surfaceContainerLow,
-                                    segmentHighlightGradientStartColor = secondaryColor,
-                                    segmentHighlightGradientEndColor = secondaryColor,
-                                    centerGradientStartColor = surfaceContainerHighest,
-                                    centerGradientEndColor = surfaceContainerLow,
-                                    centerHighlightGradientStartColor = secondaryColor,
-                                    centerHighlightGradientEndColor = secondaryColor,
-                                    separatorColor = textColor,
-                                    textColor = textColor
-                                )
-                            }
+                            "default" -> FlickPopupColorTheme(
+                                segmentColor = surfaceContainerLow,
+                                segmentHighlightGradientStartColor = secondaryColor,
+                                segmentHighlightGradientEndColor = secondaryColor,
+                                centerGradientStartColor = surfaceContainerHighest,
+                                centerGradientEndColor = surfaceContainerLow,
+                                centerHighlightGradientStartColor = secondaryColor,
+                                centerHighlightGradientEndColor = secondaryColor,
+                                separatorColor = textColor,
+                                textColor = textColor
+                            )
 
-                            "custom" -> {
-                                FlickPopupColorTheme(
-                                    segmentColor = customSpecialKeyColor,
-                                    segmentHighlightGradientStartColor = customSpecialKeyColor,
-                                    segmentHighlightGradientEndColor = customSpecialKeyColor,
-                                    centerGradientStartColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        1.2f
-                                    ),
-                                    centerGradientEndColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        0.8f
-                                    ),
-                                    centerHighlightGradientStartColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        1.2f
-                                    ),
-                                    centerHighlightGradientEndColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        0.8f
-                                    ),
-                                    separatorColor = customSpecialKeyTextColor,
-                                    textColor = customSpecialKeyTextColor
-                                )
-                            }
+                            "custom" -> FlickPopupColorTheme(
+                                segmentColor = customSpecialKeyColor,
+                                segmentHighlightGradientStartColor = customSpecialKeyColor,
+                                segmentHighlightGradientEndColor = customSpecialKeyColor,
+                                centerGradientStartColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    1.2f
+                                ),
+                                centerGradientEndColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    0.8f
+                                ),
+                                centerHighlightGradientStartColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    1.2f
+                                ),
+                                centerHighlightGradientEndColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    0.8f
+                                ),
+                                separatorColor = customSpecialKeyTextColor,
+                                textColor = customSpecialKeyTextColor
+                            )
 
-                            else -> {
-                                FlickPopupColorTheme(
-                                    segmentColor = surfaceContainerLow,
-                                    segmentHighlightGradientStartColor = secondaryColor,
-                                    segmentHighlightGradientEndColor = secondaryColor,
-                                    centerGradientStartColor = surfaceContainerHighest,
-                                    centerGradientEndColor = surfaceContainerLow,
-                                    centerHighlightGradientStartColor = secondaryColor,
-                                    centerHighlightGradientEndColor = secondaryColor,
-                                    separatorColor = textColor,
-                                    textColor = textColor
-                                )
-                            }
+                            else -> FlickPopupColorTheme(
+                                segmentColor = surfaceContainerLow,
+                                segmentHighlightGradientStartColor = secondaryColor,
+                                segmentHighlightGradientEndColor = secondaryColor,
+                                centerGradientStartColor = surfaceContainerHighest,
+                                centerGradientEndColor = surfaceContainerLow,
+                                centerHighlightGradientStartColor = secondaryColor,
+                                centerHighlightGradientEndColor = secondaryColor,
+                                separatorColor = textColor,
+                                textColor = textColor
+                            )
                         }
+
                         setPopupColors(dynamicColorTheme)
+
                         this.listener = object : CustomAngleFlickController.FlickListener {
                             override fun onFlick(direction: FlickDirection, character: String) {
                                 if (character.isNotEmpty()) {
@@ -663,9 +785,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             override fun onStateChanged(
                                 view: View,
                                 newMap: Map<FlickDirection, String>
-                            ) {
-
-                            }
+                            ) = Unit
 
                             override fun onFlickDirectionChanged(newDirection: FlickDirection) {
                                 this@FlickKeyboardView.listener?.onFlickDirectionChanged(
@@ -673,12 +793,15 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 )
                             }
                         }
+
                         val stringMaps = flickKeyMapsList.map { actionMap ->
                             actionMap.mapValues { (_, flickAction) ->
                                 (flickAction as? FlickAction.Input)?.char ?: ""
                             }
                         }
+
                         attach(keyView, stringMaps)
+
                         val newCenter = 64f * circularViewScale
                         val newOrbit = 170f * circularViewScale
                         val newTextSize = 55f * circularViewScale
@@ -688,25 +811,16 @@ class FlickKeyboardView @JvmOverloads constructor(
                             textSize = newTextSize
                         )
                     }
+
                     val ranges = customAngleAndRange.ifEmpty {
                         mapOf(
-                            // UP (上): 270度を中心に ±45度
-                            // 開始: 225度, 範囲: 90度 (225° 〜 315°)
                             FlickDirection.UP to Pair(225f, 90f),
-
-                            // UP_RIGHT_FAR (右): 0度(360度)を中心に ±45度
-                            // 開始: 315度, 範囲: 90度 (315° 〜 45°) ※0度をまたぐ設定
                             FlickDirection.UP_RIGHT_FAR to Pair(315f, 90f),
-
-                            // DOWN (下): 90度を中心に ±45度
-                            // 開始: 45度, 範囲: 90度 (45° 〜 135°)
                             FlickDirection.DOWN to Pair(45f, 90f),
-
-                            // UP_LEFT_FAR (左): 180度を中心に ±45度
-                            // 開始: 135度, 範囲: 90度 (135° 〜 225°)
                             FlickDirection.UP_LEFT_FAR to Pair(135f, 90f)
                         )
                     }
+
                     controller.setFlickRanges(ranges)
                     flickControllers.add(controller)
                     return controller
@@ -715,32 +829,38 @@ class FlickKeyboardView @JvmOverloads constructor(
 
             KeyType.CROSS_FLICK -> {
                 val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
-                Log.d(
-                    "FlickKeyboardView KeyType.CROSS_FLICK",
-                    "$flickActionMap"
-                )
+                Log.d("FlickKeyboardView KeyType.CROSS_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
                     val controller = CrossFlickInputController(context).apply {
                         this.listener = object : CrossFlickInputController.CrossFlickListener {
                             override fun onFlick(flickAction: FlickAction, isFlick: Boolean) {
                                 when (flickAction) {
-                                    is FlickAction.Input -> this@FlickKeyboardView.listener?.onKey(
-                                        flickAction.char, isFlick = true
-                                    )
+                                    is FlickAction.Input -> {
+                                        this@FlickKeyboardView.listener?.onKey(
+                                            flickAction.char,
+                                            isFlick = true
+                                        )
+                                    }
 
-                                    is FlickAction.Action -> this@FlickKeyboardView.listener?.onAction(
-                                        flickAction.action, view = keyView, isFlick = isFlick
-                                    )
+                                    is FlickAction.Action -> {
+                                        this@FlickKeyboardView.listener?.onAction(
+                                            flickAction.action,
+                                            view = keyView,
+                                            isFlick = isFlick
+                                        )
+                                    }
                                 }
                             }
 
                             override fun onFlickLongPress(flickAction: FlickAction) {
                                 when (flickAction) {
-                                    is FlickAction.Action -> this@FlickKeyboardView.listener?.onFlickActionLongPress(
-                                        flickAction.action
-                                    )
+                                    is FlickAction.Action -> {
+                                        this@FlickKeyboardView.listener?.onFlickActionLongPress(
+                                            flickAction.action
+                                        )
+                                    }
 
-                                    is FlickAction.Input -> {}
+                                    is FlickAction.Input -> Unit
                                 }
                             }
 
@@ -749,16 +869,21 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 isFlick: Boolean
                             ) {
                                 when (flickAction) {
-                                    is FlickAction.Action -> this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
-                                        flickAction.action, isFlick = isFlick
-                                    )
+                                    is FlickAction.Action -> {
+                                        this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
+                                            flickAction.action,
+                                            isFlick = isFlick
+                                        )
+                                    }
 
-                                    is FlickAction.Input -> {}
+                                    is FlickAction.Input -> Unit
                                 }
                             }
                         }
+
                         attach(keyView, flickActionMap)
                     }
+
                     when (themeMode) {
                         "custom" -> {
                             controller.setPopupColors(
@@ -768,6 +893,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             )
                         }
                     }
+
                     crossFlickControllers.add(controller)
                     return controller
                 }
@@ -776,19 +902,15 @@ class FlickKeyboardView @JvmOverloads constructor(
             KeyType.STANDARD_FLICK -> {
                 val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 if (flickActionMap != null && keyView is Button) {
-
                     val label = keyData.label
                     val isDarkTheme = context.isDarkThemeOn()
 
                     val segmentedDrawable: SegmentedBackgroundDrawable
 
                     if (themeMode == "custom") {
-
                         if (customBorderEnable) {
-                            // 重要: AppCompatButton などの tint が枠線/塗りを壊すことがあるので無効化
                             keyView.backgroundTintList = null
 
-                            // 下層: 枠線付きベース
                             val baseCorner = dpToPx(8).toFloat()
                             val baseWithBorder = GradientDrawable().apply {
                                 shape = GradientDrawable.RECTANGLE
@@ -797,7 +919,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 setStroke(borderWidth, customBorderColor)
                             }
 
-                            // 上層: ガイド（透明ベースで下層を見せる）
                             segmentedDrawable = SegmentedBackgroundDrawable(
                                 label = label,
                                 baseColor = Color.TRANSPARENT,
@@ -811,9 +932,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                             layer.setLayerInset(1, inset, inset, inset, inset)
 
                             keyView.background = layer
-                            keyView.setTextColor(Color.TRANSPARENT) // 既存仕様（ガイド描画に任せる）
+                            keyView.setTextColor(Color.TRANSPARENT)
                         } else {
-                            // --- 既存のニューモーフィズムモードをそのまま ---
                             val neumorphDrawable = getDynamicNeumorphDrawable(
                                 baseColor = customKeyColor,
                                 radius = dpToPx(8).toFloat()
@@ -834,15 +954,18 @@ class FlickKeyboardView @JvmOverloads constructor(
                             keyView.background = layerDrawable
                             keyView.setTextColor(Color.TRANSPARENT)
                         }
-
                     } else {
-                        // --- 既存のデフォルトモードをそのまま ---
                         val keyBaseColor =
-                            if (isDarkTheme) context.getColorFromAttr(R.attr.colorSurfaceContainerHighest)
-                            else context.getColorFromAttr(R.attr.colorSurface)
+                            if (isDarkTheme) {
+                                context.getColorFromAttr(R.attr.colorSurfaceContainerHighest)
+                            } else {
+                                context.getColorFromAttr(R.attr.colorSurface)
+                            }
+
                         val keyHighlightColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
-                        val keyTextColor = context.getColorFromAttr(R.attr.colorOnSurface)
+                        val keyTextColor =
+                            context.getColorFromAttr(R.attr.colorOnSurface)
 
                         segmentedDrawable = SegmentedBackgroundDrawable(
                             label = label,
@@ -851,10 +974,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                             textColor = keyTextColor,
                             cornerRadius = 20f
                         )
+
                         keyView.background = segmentedDrawable
                         keyView.setTextColor(Color.TRANSPARENT)
                     }
-
 
                     val controller = StandardFlickInputController(context).apply {
                         this.listener =
@@ -876,68 +999,64 @@ class FlickKeyboardView @JvmOverloads constructor(
                         val surfaceContainerLow =
                             context.getColorFromAttr(R.attr.colorSurfaceContainerLow)
                         val surfaceContainerHighest =
-                            if (isDarkTheme) context.getColorFromAttr(R.attr.colorSurfaceContainerHighest) else context.getColorFromAttr(
-                                R.attr.colorSurface
-                            )
+                            if (isDarkTheme) {
+                                context.getColorFromAttr(R.attr.colorSurfaceContainerHighest)
+                            } else {
+                                context.getColorFromAttr(R.attr.colorSurface)
+                            }
                         val textColor =
                             context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
 
-
                         val dynamicColorTheme = when (themeMode) {
-                            "default" -> {
-                                FlickPopupColorTheme(
-                                    segmentColor = surfaceContainerHighest,
-                                    segmentHighlightGradientStartColor = secondaryColor,
-                                    segmentHighlightGradientEndColor = secondaryColor,
-                                    centerGradientStartColor = surfaceContainerHighest,
-                                    centerGradientEndColor = surfaceContainerLow,
-                                    centerHighlightGradientStartColor = secondaryColor,
-                                    centerHighlightGradientEndColor = secondaryColor,
-                                    separatorColor = textColor,
-                                    textColor = textColor
-                                )
-                            }
+                            "default" -> FlickPopupColorTheme(
+                                segmentColor = surfaceContainerHighest,
+                                segmentHighlightGradientStartColor = secondaryColor,
+                                segmentHighlightGradientEndColor = secondaryColor,
+                                centerGradientStartColor = surfaceContainerHighest,
+                                centerGradientEndColor = surfaceContainerLow,
+                                centerHighlightGradientStartColor = secondaryColor,
+                                centerHighlightGradientEndColor = secondaryColor,
+                                separatorColor = textColor,
+                                textColor = textColor
+                            )
 
-                            "custom" -> {
-                                FlickPopupColorTheme(
-                                    segmentColor = customSpecialKeyColor,
-                                    segmentHighlightGradientStartColor = customSpecialKeyColor,
-                                    segmentHighlightGradientEndColor = customSpecialKeyColor,
-                                    centerGradientStartColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        1.2f
-                                    ),
-                                    centerGradientEndColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        0.8f
-                                    ),
-                                    centerHighlightGradientStartColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        1.2f
-                                    ),
-                                    centerHighlightGradientEndColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        0.8f
-                                    ),
-                                    separatorColor = customSpecialKeyTextColor,
-                                    textColor = customSpecialKeyTextColor
-                                )
-                            }
+                            "custom" -> FlickPopupColorTheme(
+                                segmentColor = customSpecialKeyColor,
+                                segmentHighlightGradientStartColor = customSpecialKeyColor,
+                                segmentHighlightGradientEndColor = customSpecialKeyColor,
+                                centerGradientStartColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    1.2f
+                                ),
+                                centerGradientEndColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    0.8f
+                                ),
+                                centerHighlightGradientStartColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    1.2f
+                                ),
+                                centerHighlightGradientEndColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    0.8f
+                                ),
+                                separatorColor = customSpecialKeyTextColor,
+                                textColor = customSpecialKeyTextColor
+                            )
 
-                            else -> {
-                                FlickPopupColorTheme(
-                                    segmentColor = surfaceContainerHighest,
-                                    segmentHighlightGradientStartColor = secondaryColor,
-                                    segmentHighlightGradientEndColor = secondaryColor,
-                                    centerGradientStartColor = surfaceContainerHighest,
-                                    centerGradientEndColor = surfaceContainerLow,
-                                    centerHighlightGradientStartColor = secondaryColor,
-                                    centerHighlightGradientEndColor = secondaryColor,
-                                    separatorColor = textColor,
-                                    textColor = textColor
-                                )
-                            }
+                            else -> FlickPopupColorTheme(
+                                segmentColor = surfaceContainerHighest,
+                                segmentHighlightGradientStartColor = secondaryColor,
+                                segmentHighlightGradientEndColor = secondaryColor,
+                                centerGradientStartColor = surfaceContainerHighest,
+                                centerGradientEndColor = surfaceContainerLow,
+                                centerHighlightGradientStartColor = secondaryColor,
+                                centerHighlightGradientEndColor = secondaryColor,
+                                separatorColor = textColor,
+                                textColor = textColor
+                            )
                         }
+
                         setPopupColors(dynamicColorTheme)
                         attach(keyView, stringMap, segmentedDrawable)
                     }
@@ -949,125 +1068,119 @@ class FlickKeyboardView @JvmOverloads constructor(
 
             KeyType.PETAL_FLICK -> {
                 val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
-                Log.d(
-                    "FlickKeyboardView KeyType.PETAL_FLICK",
-                    "$flickActionMap"
-                )
+                Log.d("FlickKeyboardView KeyType.PETAL_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
-                    val controller = GridFlickInputController(
-                        context, flickSensitivity
-                    ).apply {
-                        // ( ... Controllerの各種設定 ... )
+                    val controller = GridFlickInputController(context, flickSensitivity).apply {
                         val isDarkTheme = context.isDarkThemeOn()
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
                         val surfaceContainerLow =
                             context.getColorFromAttr(R.attr.colorSurfaceContainerLow)
                         val surfaceContainerHighest =
-                            if (isDarkTheme) context.getColorFromAttr(R.attr.colorSurfaceContainerHighest) else context.getColorFromAttr(
-                                R.attr.colorSurface
-                            )
+                            if (isDarkTheme) {
+                                context.getColorFromAttr(R.attr.colorSurfaceContainerHighest)
+                            } else {
+                                context.getColorFromAttr(R.attr.colorSurface)
+                            }
                         val textColor =
                             context.getColor(com.kazumaproject.core.R.color.keyboard_icon_color)
 
                         val dynamicColorTheme = when (themeMode) {
-                            "default" -> {
-                                FlickPopupColorTheme(
-                                    segmentColor = surfaceContainerHighest,
-                                    segmentHighlightGradientStartColor = secondaryColor,
-                                    segmentHighlightGradientEndColor = secondaryColor,
-                                    centerGradientStartColor = surfaceContainerHighest,
-                                    centerGradientEndColor = surfaceContainerLow,
-                                    centerHighlightGradientStartColor = secondaryColor,
-                                    centerHighlightGradientEndColor = secondaryColor,
-                                    separatorColor = textColor,
-                                    textColor = textColor
-                                )
-                            }
+                            "default" -> FlickPopupColorTheme(
+                                segmentColor = surfaceContainerHighest,
+                                segmentHighlightGradientStartColor = secondaryColor,
+                                segmentHighlightGradientEndColor = secondaryColor,
+                                centerGradientStartColor = surfaceContainerHighest,
+                                centerGradientEndColor = surfaceContainerLow,
+                                centerHighlightGradientStartColor = secondaryColor,
+                                centerHighlightGradientEndColor = secondaryColor,
+                                separatorColor = textColor,
+                                textColor = textColor
+                            )
 
-                            "custom" -> {
-                                FlickPopupColorTheme(
-                                    segmentColor = customSpecialKeyColor,
-                                    segmentHighlightGradientStartColor = customSpecialKeyColor,
-                                    segmentHighlightGradientEndColor = customSpecialKeyColor,
-                                    centerGradientStartColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        1.2f
-                                    ),
-                                    centerGradientEndColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        0.8f
-                                    ),
-                                    centerHighlightGradientStartColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        1.2f
-                                    ),
-                                    centerHighlightGradientEndColor = manipulateColor(
-                                        customSpecialKeyColor,
-                                        0.8f
-                                    ),
-                                    separatorColor = customSpecialKeyTextColor,
-                                    textColor = customSpecialKeyTextColor
-                                )
-                            }
+                            "custom" -> FlickPopupColorTheme(
+                                segmentColor = customSpecialKeyColor,
+                                segmentHighlightGradientStartColor = customSpecialKeyColor,
+                                segmentHighlightGradientEndColor = customSpecialKeyColor,
+                                centerGradientStartColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    1.2f
+                                ),
+                                centerGradientEndColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    0.8f
+                                ),
+                                centerHighlightGradientStartColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    1.2f
+                                ),
+                                centerHighlightGradientEndColor = manipulateColor(
+                                    customSpecialKeyColor,
+                                    0.8f
+                                ),
+                                separatorColor = customSpecialKeyTextColor,
+                                textColor = customSpecialKeyTextColor
+                            )
 
-                            else -> {
-                                FlickPopupColorTheme(
-                                    segmentColor = surfaceContainerHighest,
-                                    segmentHighlightGradientStartColor = secondaryColor,
-                                    segmentHighlightGradientEndColor = secondaryColor,
-                                    centerGradientStartColor = surfaceContainerHighest,
-                                    centerGradientEndColor = surfaceContainerLow,
-                                    centerHighlightGradientStartColor = secondaryColor,
-                                    centerHighlightGradientEndColor = secondaryColor,
-                                    separatorColor = textColor,
-                                    textColor = textColor
-                                )
-                            }
+                            else -> FlickPopupColorTheme(
+                                segmentColor = surfaceContainerHighest,
+                                segmentHighlightGradientStartColor = secondaryColor,
+                                segmentHighlightGradientEndColor = secondaryColor,
+                                centerGradientStartColor = surfaceContainerHighest,
+                                centerGradientEndColor = surfaceContainerLow,
+                                centerHighlightGradientStartColor = secondaryColor,
+                                centerHighlightGradientEndColor = secondaryColor,
+                                separatorColor = textColor,
+                                textColor = textColor
+                            )
                         }
+
                         setPopupColors(dynamicColorTheme)
                         elevation = 1f
+
                         this.listener = object : GridFlickInputController.GridFlickListener {
                             override fun onFlick(character: String, isFlick: Boolean) {
-                                this@FlickKeyboardView.listener?.onKey(
-                                    character, isFlick = isFlick
-                                )
+                                this@FlickKeyboardView.listener?.onKey(character, isFlick = isFlick)
                             }
                         }
+
                         val stringMap = flickActionMap.mapValues { (_, flickAction) ->
                             (flickAction as? FlickAction.Input)?.char ?: ""
                         }
+
                         attach(keyView, stringMap)
                     }
+
                     petalFlickControllers.add(controller)
                     return controller
                 }
             }
 
             KeyType.NORMAL -> {
-                // ▼▼▼ 修正: newKeyData.action を参照する ▼▼▼
                 keyData.action?.let { action ->
-                    Log.d(
-                        "FlickKeyboardView KeyType.NORMAL",
-                        "key data: $keyData"
-                    )
+                    Log.d("FlickKeyboardView KeyType.NORMAL", "key data: $keyData")
+
                     var isLongPressTriggered = false
+
                     keyView.setOnClickListener {
-                        // ▼▼▼ 修正: info.keyData.action を参照して最新のアクションを実行する ▼▼▼
-                        val currentAction = dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
-                        Log.d(
-                            "FlickKeyboardView KeyType.NORMAL",
-                            "currentAction: $currentAction"
-                        )
+                        val currentAction =
+                            dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
+                        Log.d("FlickKeyboardView KeyType.NORMAL", "currentAction: $currentAction")
                         this@FlickKeyboardView.listener?.onAction(
-                            currentAction, view = keyView, isFlick = false
+                            currentAction,
+                            view = keyView,
+                            isFlick = false
                         )
                     }
+
                     keyView.setOnLongClickListener {
-                        val currentAction = dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
-                        isLongPressTriggered =
-                            true; this@FlickKeyboardView.listener?.onActionLongPress(currentAction); true
+                        val currentAction =
+                            dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
+                        isLongPressTriggered = true
+                        this@FlickKeyboardView.listener?.onActionLongPress(currentAction)
+                        true
                     }
+
                     keyView.setOnTouchListener { _, event ->
                         if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
                             if (isLongPressTriggered) {
@@ -1075,19 +1188,20 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
                                 this@FlickKeyboardView.listener?.onActionUpAfterLongPress(
                                     currentAction
-                                ); isLongPressTriggered =
-                                    false
+                                )
+                                isLongPressTriggered = false
                             }
                         }
                         false
                     }
                 }
-                return null // コントローラーなし
+                return null
             }
 
             KeyType.TWO_STEP_FLICK -> {
                 val twoStepMap = layout.twoStepFlickKeyMaps[keyData.keyId]
                     ?: layout.twoStepFlickKeyMaps[keyData.label]
+
                 if (twoStepMap != null) {
                     val controller = TfbiInputController(
                         context,
@@ -1111,6 +1225,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
                         }
+
                         attach(
                             view = keyView,
                             provider = { first, second ->
@@ -1118,6 +1233,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         )
                     }
+
                     when (themeMode) {
                         "custom" -> {
                             controller.setPopupColors(
@@ -1127,6 +1243,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             )
                         }
                     }
+
                     tfbiControllers.add(controller)
                     return controller
                 }
@@ -1157,6 +1274,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
                         }
+
                         attach(
                             view = keyView,
                             provider = { first, second ->
@@ -1164,6 +1282,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         )
                     }
+
                     stickyTfbiControllers.add(controller)
                     return controller
                 }
@@ -1177,11 +1296,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                         "AttachBehavior",
                         "-> Attaching TfbiHierarchicalFlickController for ${keyData.label}"
                     )
+
                     val controller = TfbiHierarchicalFlickController(
                         context,
                         flickSensitivity = flickSensitivity.toFloat()
                     ).apply {
-
                         this.listener = object : TfbiHierarchicalFlickController.TfbiListener {
                             override fun onFlick(character: String) {
                                 Log.d(
@@ -1191,7 +1310,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 if (character.isNotEmpty()) {
                                     this@FlickKeyboardView.listener?.onKey(
                                         text = character,
-                                        isFlick = true // 階層フリックは常true
+                                        isFlick = true
                                     )
                                 }
                             }
@@ -1202,14 +1321,12 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     "onModeChanged: keyId=${keyData.keyId}, newLabel=$newLabel"
                                 )
 
-                                // 1. dynamicKeyMap のキャッシュを更新 (存在する場合)
                                 keyData.keyId?.let { id ->
                                     dynamicKeyMap[id]?.let { info ->
                                         info.keyData = info.keyData.copy(label = newLabel)
                                     }
                                 }
 
-                                // 2. 実際のViewの表示を更新
                                 val newVisualKeyData = keyData.copy(label = newLabel)
                                 updateKeyVisuals(keyView, newVisualKeyData)
                             }
@@ -1217,6 +1334,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                         attach(keyView, statefulNode)
                     }
+
                     when (themeMode) {
                         "custom" -> {
                             controller.setPopupColors(
@@ -1226,6 +1344,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             )
                         }
                     }
+
                     hierarchicalTfbiControllers.add(controller)
                     return controller
                 } else {
@@ -1236,12 +1355,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
             }
         }
+
         return null
     }
 
-    /** アタッチされたビヘイビア（コントローラー）を解除します */
     private fun detachKeyBehavior(controller: Any?) {
-        // コントローラーを解除
         when (controller) {
             is CustomAngleFlickController -> {
                 controller.cancel()
@@ -1280,39 +1398,17 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
-    /** 既存Viewのビジュアル（テキスト/アイコン）のみを更新します */
     private fun updateKeyVisuals(view: View, keyData: KeyData) {
         when (view) {
             is AppCompatImageButton -> {
                 keyData.drawableResId?.let { view.setImageResource(it) }
+                applyImageButtonSizing(view)
                 view.contentDescription = keyData.label
                 view.isPressed = keyData.isHiLighted
             }
 
             is AutoSizeButton -> {
-                if (keyData.label.contains("\n")) {
-                    val parts = keyData.label.split("\n", limit = 2)
-                    val primaryText = parts[0]
-                    val secondaryText = parts.getOrNull(1) ?: ""
-                    val spannable = SpannableString(keyData.label)
-                    spannable.setSpan(
-                        AbsoluteSizeSpan(spToPx(16f)),
-                        0,
-                        primaryText.length,
-                        Spannable.SPAN_INCLUSIVE_INCLUSIVE
-                    )
-                    if (secondaryText.isNotEmpty()) {
-                        spannable.setSpan(
-                            AbsoluteSizeSpan(spToPx(10f)),
-                            primaryText.length + 1,
-                            keyData.label.length,
-                            Spannable.SPAN_INCLUSIVE_INCLUSIVE
-                        )
-                    }
-                    view.text = spannable
-                } else {
-                    view.text = keyData.label
-                }
+                applyButtonText(view, keyData)
                 view.isPressed = keyData.isHiLighted
             }
         }
@@ -1323,7 +1419,6 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val TAG = "FlickKeyboardViewTouch"
 
     private fun findTargetView(x: Float, y: Float): View? {
-        // まず、キーの矩形内に直接ヒットしたかチェック
         for (i in 0 until childCount) {
             val child = getChildAt(i)
             child.getHitRect(hitRect)
@@ -1332,7 +1427,6 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
         }
 
-        // 直接ヒットしなかった場合（マージンなどをタッチした場合）、最も近いキーを探す
         var nearestChild: View? = null
         var minDistance = Double.MAX_VALUE
 
@@ -1347,6 +1441,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 nearestChild = child
             }
         }
+
         return nearestChild
     }
 
@@ -1355,15 +1450,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         val action = ev.actionMasked
         Log.d(TAG, "onInterceptTouchEvent: ${MotionEvent.actionToString(action)} $")
 
-        // 最初の指が触れた瞬間に true を返すことで、
-        // この後のすべてのタッチイベント(MOVE, UP, POINTER_DOWNなど)を
-        // このビューの onTouchEvent で処理することを決定する。
         if (action == MotionEvent.ACTION_DOWN) {
             Log.d(TAG, "-> Intercepting gesture from ACTION_DOWN. Returning true.")
             return true
         }
 
-        // すでにインターセプトしている場合は、子には渡さない
         if (motionTargets.isNotEmpty()) {
             return true
         }
@@ -1380,45 +1471,38 @@ class FlickKeyboardView @JvmOverloads constructor(
         if (isCursorMode) {
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
-                    // Store the initial touch position for cursor movement
                     cursorInitialX = event.x
                     cursorInitialY = event.y
-                    return true // Consume the event
+                    return true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
-                    val threshold = 30f // Movement detection threshold in pixels
+                    val threshold = 30f
                     val currentX = event.x
                     val currentY = event.y
 
                     val dx = currentX - cursorInitialX
                     val dy = currentY - cursorInitialY
 
-                    // Horizontal movement
                     if (abs(dx) > abs(dy) && abs(dx) > threshold) {
                         val action2 =
                             if (dx < 0f) KeyAction.MoveCursorLeft else KeyAction.MoveCursorRight
                         listener?.onAction(action2, this, false)
-                        cursorInitialX = currentX // Reset the origin for continuous swiping
+                        cursorInitialX = currentX
                         cursorInitialY = currentY
-                    }
-                    // Vertical movement
-                    else if (abs(dy) > abs(dx) && abs(dy) > threshold) {
-                        // Assuming you have CURSOR_UP and CURSOR_DOWN in your KeyAction enum
+                    } else if (abs(dy) > abs(dx) && abs(dy) > threshold) {
                         val action2 =
                             if (dy < 0f) KeyAction.MoveCursorUp else KeyAction.MoveCursorDown
                         listener?.onAction(action2, this, false)
-                        cursorInitialX = currentX // Reset the origin
+                        cursorInitialX = currentX
                         cursorInitialY = currentY
                     }
                     return true
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    // Exit cursor mode when the finger is lifted
                     setCursorMode(false)
                     crossFlickControllers.forEach { it.dismissAllPopups() }
-
                     clearSpaceKeyPressedState()
                     motionTargets.clear()
                     pointerDownTime.clear()
@@ -1429,11 +1513,9 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         when (action) {
             MotionEvent.ACTION_DOWN -> {
-                // 最初の指が触れた。すべての状態をクリアして開始。
                 motionTargets.clear()
                 pointerDownTime.clear()
 
-                // この指の情報を保存
                 pointerDownTime[pointerId] = event.downTime
                 val x = event.x
                 val y = event.y
@@ -1442,18 +1524,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                 targetView?.let {
                     motionTargets[pointerId] = it
 
-                    // ★★★ 修正箇所 ★★★
-                    // システムのイベントをコピーするのではなく、2本指目と同様に
-                    // クリーンなACTION_DOWNイベントを自作する。
                     val newEvent = MotionEvent.obtain(
-                        event.downTime,    // downTime
-                        event.eventTime,   // eventTime
-                        MotionEvent.ACTION_DOWN, // action
-                        x,                 // x
-                        y,                 // y
-                        event.metaState    // metaState
+                        event.downTime,
+                        event.eventTime,
+                        MotionEvent.ACTION_DOWN,
+                        x,
+                        y,
+                        event.metaState
                     )
-                    // ★★★ ここまで ★★★
 
                     Log.d("FlickKeyboardView MotionEvent.ACTION_DOWN", "$newEvent")
 
@@ -1465,10 +1543,10 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_POINTER_DOWN -> {
-
-                if (this.visibility != View.VISIBLE) {
+                if (visibility != View.VISIBLE) {
                     return false
                 }
+
                 motionTargets.keys.toList().forEach { existingPointerId ->
                     val target = motionTargets[existingPointerId]
                     val downTime = pointerDownTime[existingPointerId]
@@ -1479,34 +1557,31 @@ class FlickKeyboardView @JvmOverloads constructor(
                     )
 
                     if (target != null && downTime != null) {
-                        // 1本目の指の現在の座標を取得
                         val existingPointerIndex = event.findPointerIndex(existingPointerId)
                         if (existingPointerIndex != -1) {
                             val x = event.getX(existingPointerIndex)
                             val y = event.getY(existingPointerIndex)
 
-                            // 1本目の指に対して「ACTION_UP」イベントを自作して送る
                             val upEvent = MotionEvent.obtain(
                                 downTime,
                                 event.eventTime,
-                                MotionEvent.ACTION_UP, // ジェスチャー終了としてUPイベントを偽装
+                                MotionEvent.ACTION_UP,
                                 x,
                                 y,
                                 event.metaState
                             )
                             upEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
-                            target.dispatchTouchEvent(upEvent) // ターゲットにUPイベントをディスパッチ
+                            target.dispatchTouchEvent(upEvent)
                             upEvent.recycle()
                         }
                     }
 
                     val matchingEntry = dynamicKeyMap.entries.find { it.value.view == target }
                     if (matchingEntry != null) {
-                        val keyId = matchingEntry.key
                         val keyInfo = matchingEntry.value
                         Log.d(
                             TAG,
-                            "ACTION_POINTER_DOWN: First finger (ID: $existingPointerId) is on a dynamic key. KeyId: $keyId, KeyInfo: $keyInfo"
+                            "ACTION_POINTER_DOWN: First finger (ID: $existingPointerId) is on a dynamic key. KeyInfo: $keyInfo"
                         )
                         if (keyInfo.keyData.action == KeyAction.InputText(text = "^_^") ||
                             keyInfo.keyData.keyId == "switch_next_ime"
@@ -1521,32 +1596,26 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
                 }
 
-                // 既存のポインター情報をすべてクリア
                 motionTargets.clear()
                 pointerDownTime.clear()
 
-                // 2. 新しい指（2本目）のジェスチャーを新しく開始する
                 val newPointerId = event.getPointerId(pointerIndex)
                 val x = event.getX(pointerIndex)
                 val y = event.getY(pointerIndex)
 
-                // 新しい指の情報を保存
                 pointerDownTime[newPointerId] = event.eventTime
                 val targetView = findTargetView(x, y)
 
-
                 targetView?.let {
                     motionTargets[newPointerId] = it
-                    // この指専用の「ACTION_DOWN」イベントを自作する
                     val newEvent = MotionEvent.obtain(
-                        event.eventTime, // 新しいジェスチャーなのでdownTimeは現在のeventTime
+                        event.eventTime,
                         event.eventTime,
                         MotionEvent.ACTION_DOWN,
                         x,
                         y,
                         event.metaState
                     )
-                    // 自作したきれいなDOWNイベントをターゲットにディスパッチ
 
                     Log.d(
                         "FlickKeyboardView",
@@ -1561,18 +1630,15 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_MOVE -> {
-                // 指が動いた。追跡中のすべての指に対して、それぞれ専用のMOVEイベントを作成する
                 for (i in 0 until event.pointerCount) {
                     val pId = event.getPointerId(i)
                     val target = motionTargets[pId]
                     val downTime = pointerDownTime[pId]
 
-
                     if (target != null && downTime != null) {
                         val x = event.getX(i)
                         val y = event.getY(i)
 
-                        // この指専用の「ACTION_MOVE」イベントを自作
                         val newEvent = MotionEvent.obtain(
                             downTime,
                             event.eventTime,
@@ -1590,75 +1656,67 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_POINTER_UP -> {
-                if (this.visibility != View.VISIBLE) {
+                if (visibility != View.VISIBLE) {
                     return false
                 }
-                // 離された指の情報を取得
+
                 val x = event.getX(pointerIndex)
                 val y = event.getY(pointerIndex)
 
-                // ▼▼▼ ログ追加 ▼▼▼
                 Log.d(
                     "FlickKeyboardView",
                     "ACTION_POINTER_UP: pointerId=$pointerId, index=$pointerIndex"
                 )
-                // ▲▲▲ ログ追加 ▲▲▲
 
                 motionTargets[pointerId]?.let { target ->
                     val downTime = pointerDownTime[pointerId]!!
 
-                    // ▼▼▼ ログ追加 ▼▼▼
-                    Log.d(
-                        "FlickKeyboardView",
-                        "ACTION_POINTER_UP: Found target! $target"
-                    )
-                    // ▲▲▲ ログ追加 ▲▲▲
+                    Log.d("FlickKeyboardView", "ACTION_POINTER_UP: Found target! $target")
 
-                    // この指専用の「ACTION_UP」イベントを自作
                     val newEvent = MotionEvent.obtain(
-                        downTime, event.eventTime, MotionEvent.ACTION_UP, // ジェスチャーの終了として偽装
-                        x, y, event.metaState
+                        downTime,
+                        event.eventTime,
+                        MotionEvent.ACTION_UP,
+                        x,
+                        y,
+                        event.metaState
                     )
 
-                    // ▼▼▼ ログ追加 ▼▼▼
                     Log.d(
                         "FlickKeyboardView",
                         "ACTION_POINTER_UP: Dispatching fake ACTION_UP to target. Event: $newEvent"
                     )
-                    // ▲▲▲ ログ追加 ▲▲▲
 
                     newEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
                     target.dispatchTouchEvent(newEvent)
                     newEvent.recycle()
-
                 } ?: run {
-                    // ▼▼▼ ログ追加（ターゲットが見つからなかった場合）▼▼▼
                     Log.e(
                         "FlickKeyboardView",
                         "ACTION_POINTER_UP: No target found for pointerId=$pointerId"
                     )
-                    // ▲▲▲ ログ追加 ▲▲▲
                 }
 
-                // 離された指の情報を削除
                 motionTargets.remove(pointerId)
                 pointerDownTime.remove(pointerId)
                 return true
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                // 最後の指が離された、またはジェスチャーがキャンセルされた
                 val x = event.getX(pointerIndex)
                 val y = event.getY(pointerIndex)
                 val actionToDispatch =
                     if (action == MotionEvent.ACTION_UP) MotionEvent.ACTION_UP else MotionEvent.ACTION_CANCEL
 
-
                 motionTargets[pointerId]?.let { target ->
                     val downTime = pointerDownTime[pointerId]!!
-                    // この指専用のUP/CANCELイベントを自作
                     val newEvent = MotionEvent.obtain(
-                        downTime, event.eventTime, actionToDispatch, x, y, event.metaState
+                        downTime,
+                        event.eventTime,
+                        actionToDispatch,
+                        x,
+                        y,
+                        event.metaState
                     )
 
                     Log.d("FlickKeyboardView MotionEvent.ACTION_UP", "$downTime $newEvent")
@@ -1667,12 +1725,12 @@ class FlickKeyboardView @JvmOverloads constructor(
                     newEvent.recycle()
                 }
 
-                // すべての状態をクリア
                 motionTargets.clear()
                 pointerDownTime.clear()
                 return true
             }
         }
+
         return super.onTouchEvent(event)
     }
 
@@ -1693,15 +1751,16 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun Context.getColorFromAttr(@AttrRes attrRes: Int): Int {
         val typedValue = TypedValue()
-        theme.resolveAttribute(
-            attrRes, typedValue, true
-        )
+        theme.resolveAttribute(attrRes, typedValue, true)
         return ContextCompat.getColor(this, typedValue.resourceId)
     }
 
     private fun spToPx(sp: Float): Int {
-        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, resources.displayMetrics)
-            .toInt()
+        return TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_SP,
+            sp,
+            resources.displayMetrics
+        ).toInt()
     }
 
     private fun dpToPx(dp: Int): Int {
@@ -1712,7 +1771,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         for (i in 0 until childCount) {
             val child = getChildAt(i)
 
-            // ラベルが "空白" のキーだけ解除する
             val isKuhakuKey = when (child) {
                 is AutoSizeButton -> child.text?.toString() == "空白"
                 is AppCompatImageButton -> child.contentDescription?.toString() == "空白"
@@ -1726,5 +1784,4 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
         }
     }
-
 }

@@ -455,4 +455,10 @@
     <string name="enable_typo_correction_japanese_flick_keyboard_offset_score_preference_summary">Sets the correction strength for typing mistakes in Japanese flick input. Higher values make the correction less aggressive.(Default: 3000)</string>
     <string name="omission_search_preference_offset_score_preference_title">Modifier Key Omission Correction Threshold</string>
     <string name="omission_search_preference_offset_score_preference_summary">Sets the correction strength for input entered without modifier keys. Higher values make the correction less aggressive. (Default: 1900)</string>
+    <string name="sumire_keyboard_size_preference_title">Key Text Size</string>
+    <string name="sumire_keyboard_size_preference_summary">Adjust the size of the text shown on keys and the size of the keys.\nThis setting also applies to the custom keyboard.</string>
+    <string name="preview_custom_keyboard">Keyboard Preview</string>
+    <string name="flickKeyboardSizeSettingsFragment_title">Customize</string>
+    <string name="custom_keyboard_size_preference_title">Key Text Size</string>
+    <string name="custom_keyboard_size_preference_summary">Adjust the size of the text shown on keys and the size of the keys.\nThis setting also applies to the Sumire keyboard.</string>
 </resources>

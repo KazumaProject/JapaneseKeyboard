@@ -453,4 +453,10 @@
     <string name="enable_typo_correction_japanese_flick_keyboard_offset_score_preference_summary">日本語フリック入力でのタイピングミス補正の強さを設定します。数値を大きくするほど、補正は弱くなります。(デフォルト：3000)</string>
     <string name="omission_search_preference_offset_score_preference_title">修飾キー省略入力のしきい値</string>
     <string name="omission_search_preference_offset_score_preference_summary">修飾キー省略入力補正の強さを設定します。数値を大きくするほど、補正は弱くなります。(デフォルト: 1900)</string>
+    <string name="sumire_keyboard_size_preference_title">文字サイズ</string>
+    <string name="sumire_keyboard_size_preference_summary">キーに表示される文字の大きさや、キーのサイズを調整できます。\nこの設定はカスタムキーボードにも適用されます。</string>
+    <string name="preview_custom_keyboard">キーボードのプレビュー</string>
+    <string name="flickKeyboardSizeSettingsFragment_title">カスタマイズ</string>
+    <string name="custom_keyboard_size_preference_title">文字サイズ</string>
+    <string name="custom_keyboard_size_preference_summary">キーに表示される文字の大きさや、キーのサイズを調整できます。\nこの設定はスミレキーボードにも適用されます。</string>
 </resources>
