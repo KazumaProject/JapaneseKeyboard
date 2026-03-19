@@ -79,6 +79,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
     private var defaultTextSize = 14f
+    private var specialKeyTextSizeSp = SPECIAL_KEY_BASE_TEXT_SIZE_SP
 
     /**
      * 100 = デフォルト
@@ -143,12 +144,14 @@ class FlickKeyboardView @JvmOverloads constructor(
         keyWidthScalePercent: Int,
         keyHeightScalePercent: Int,
         iconScalePercent: Int,
-        textSizeSp: Float
+        textSizeSp: Float,
+        specialKeyTextSizeSp: Float
     ) {
         this.keyWidthScalePercent = keyWidthScalePercent.coerceIn(0, 200)
         this.keyHeightScalePercent = keyHeightScalePercent.coerceIn(0, 200)
         this.iconScalePercent = iconScalePercent.coerceIn(40, 200)
         this.defaultTextSize = textSizeSp.coerceIn(8f, 32f)
+        this.specialKeyTextSizeSp = specialKeyTextSizeSp.coerceIn(8f, 32f)
 
         currentLayout?.let { setKeyboard(it) }
     }
@@ -320,13 +323,13 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun getSpecialKeyTextSizeSp(): Float {
-        val scale = iconScalePercent / 100f
-        return (SPECIAL_KEY_BASE_TEXT_SIZE_SP * scale).coerceIn(8f, 32f)
+        return specialKeyTextSizeSp.coerceIn(8f, 32f)
     }
 
     private fun getSpecialIconTargetSizePx(): Float {
-        val textSizePx = spToPx(getSpecialKeyTextSizeSp()).toFloat()
-        return textSizePx * SPECIAL_ICON_TO_TEXT_RATIO
+        val baseTextSizePx = spToPx(SPECIAL_KEY_BASE_TEXT_SIZE_SP).toFloat()
+        val iconScale = iconScalePercent / 100f
+        return baseTextSizePx * SPECIAL_ICON_TO_TEXT_RATIO * iconScale
     }
 
     private fun applyImageButtonSizing(button: AppCompatImageButton) {
