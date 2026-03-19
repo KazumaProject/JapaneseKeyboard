@@ -4801,6 +4801,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainLayoutBinding?.let { mainView ->
                                 mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
                                 mainView.qwertyView.setRomajiMode(false)
+                                mainView.qwertyView.setDefaultView()
                                 if (insertString.isEmpty()) {
                                     setKeyboardSizeSwitchKeyboard(mainView)
                                 } else {
