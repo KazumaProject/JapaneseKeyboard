@@ -186,6 +186,9 @@ object AppPreference {
     private val FLICK_KEY_ICON_SCALE_PERCENT = Pair("flick_key_icon_scale_percent_preference", 80)
     private val FLICK_KEY_TEXT_SIZE_SP = Pair("flick_key_text_size_sp_preference", 16.0f)
 
+    private val FLICK_SPECIAL_KEY_TEXT_SIZE_SP =
+        Pair("flick_special_key_text_size_sp_preference", 12.0f)
+
     private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
 
     private val CANDIDATE_VIEW_HEIGHT_DP = Pair("candidate_view_height_dp_preference", 110)
@@ -1054,6 +1057,18 @@ object AppPreference {
             it.putFloat(
                 FLICK_KEY_TEXT_SIZE_SP.first,
                 value ?: FLICK_KEY_TEXT_SIZE_SP.second
+            )
+        }
+
+    var flick_special_key_text_size_sp: Float?
+        get() = preferences.getFloat(
+            FLICK_SPECIAL_KEY_TEXT_SIZE_SP.first,
+            FLICK_SPECIAL_KEY_TEXT_SIZE_SP.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(
+                FLICK_SPECIAL_KEY_TEXT_SIZE_SP.first,
+                value ?: FLICK_SPECIAL_KEY_TEXT_SIZE_SP.second
             )
         }
 
