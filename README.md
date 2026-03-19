@@ -33,8 +33,7 @@
 Sumireは、**プライバシーを絶対に妥協しない**
 という哲学から生まれた日本語入力キーボードです。あなたの思考や会話が、意図せず第三者に渡るべきではありません。すべての変換処理をデバイス内で完結させることで、100%のオフライン動作を実現しました。
 
-オープンソースの`mozc`エンジンを基盤としながら、**強力なユーザー辞書**、**便利な定型文**、そして*
-*自由なキーボード定義**といった高度なパーソナライズ機能を追加し、書くことそのものを、あなただけの体験にすることを目指しています。
+オープンソースの`mozc`エンジンを基盤としながら、**強力なユーザー辞書**、**便利な定型文**、そして**自由なキーボード定義**といった高度なパーソナライズ機能を追加し、書くことそのものを、あなただけの体験にすることを目指しています。
 
 ### ✨ 主な特徴
 
@@ -189,8 +188,7 @@ customizable keyboard layouts**, aiming to make typing a truly personal experien
 
 1. Install from the **Google Play** badge above or from
    the [Releases page](https://github.com/KazumaProject/JapaneseKeyboard/releases).
-2. Open Android **Settings → System → Languages & input → On-screen keyboard** and enable **"Sumire"
-   **.
+2. Open Android **Settings → System → Languages & input → On-screen keyboard** and enable **"Sumire"**.
 3. Long-press any text field or tap the keyboard-switch icon and select **"Sumire"**.
 
 ### 🛠️ For Developers
