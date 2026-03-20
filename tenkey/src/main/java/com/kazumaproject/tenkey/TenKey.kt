@@ -92,10 +92,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @SuppressLint("ClickableViewAccessibility")
 class TenKey(context: Context, attributeSet: AttributeSet) :
     ConstraintLayout(context, attributeSet), View.OnTouchListener {
+
+    private data class BaseMargins(
+        val start: Int,
+        val top: Int,
+        val end: Int,
+        val bottom: Int
+    )
 
     // ViewBinding for the main keyboard layout
     private val binding: KeyboardLayoutBinding
@@ -257,6 +265,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var listKeys: Map<Key, Any>
 
     private var isCursorMode = false
+    private val baseKeyMargins: MutableMap<Int, BaseMargins> = mutableMapOf()
 
     // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
@@ -305,6 +314,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             Key.SideKeySpace to binding.keySpace,
             Key.SideKeyEnter to binding.keyEnter
         )
+        captureBaseKeyMargins()
 
         // Make all key views non-focusable so touches go directly to onTouch
         setViewsNotFocusable()
@@ -568,11 +578,63 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     /**
+     * Sets key width/height scaling by adjusting the margins of each key view.
+     * 100 keeps the current layout, a smaller value shrinks keys, and a larger value expands
+     * them until the gaps between keys are minimized.
+     */
+    fun setKeySizeScale(widthScalePercent: Int, heightScalePercent: Int) {
+        scalableKeyViews().forEach { keyView ->
+            val params = keyView.layoutParams as? LayoutParams ?: return@forEach
+            val baseMargins = baseKeyMargins[keyView.id] ?: return@forEach
+
+            params.marginStart = scaleMargin(baseMargins.start, widthScalePercent)
+            params.topMargin = scaleMargin(baseMargins.top, heightScalePercent)
+            params.marginEnd = scaleMargin(baseMargins.end, widthScalePercent)
+            params.bottomMargin = scaleMargin(baseMargins.bottom, heightScalePercent)
+            keyView.layoutParams = params
+        }
+        requestLayout()
+    }
+
+    /**
      * Sets the padding delta to keySize Delta.
      * @param delta The delta value from preference.
      */
     fun setKeyLetterSizeDelta(delta: Int) {
         this.keySizeDelta = delta
+    }
+
+    private fun captureBaseKeyMargins() {
+        scalableKeyViews().forEach { keyView ->
+            val params = keyView.layoutParams as? LayoutParams ?: return@forEach
+            baseKeyMargins[keyView.id] = BaseMargins(
+                start = params.marginStart,
+                top = params.topMargin,
+                end = params.marginEnd,
+                bottom = params.bottomMargin
+            )
+        }
+    }
+
+    private fun scalableKeyViews(): List<View> {
+        return listKeys.values.filterIsInstance<View>()
+    }
+
+    private fun scaleMargin(baseMargin: Int, scalePercent: Int): Int {
+        val clampedScale = scalePercent.coerceIn(60, 140)
+        val scaledMargin = when {
+            clampedScale >= 100 -> {
+                val reduceRatio = (clampedScale - 100) / 40f
+                baseMargin * (1f - reduceRatio)
+            }
+
+            else -> {
+                val expandRatio = (100 - clampedScale) / 40f
+                baseMargin * (1f + (expandRatio * 1.5f))
+            }
+        }
+
+        return scaledMargin.roundToInt().coerceAtLeast(0)
     }
 
     private fun setMaterialYouTheme(

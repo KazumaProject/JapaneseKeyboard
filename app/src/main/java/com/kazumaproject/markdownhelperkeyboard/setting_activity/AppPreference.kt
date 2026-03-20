@@ -179,6 +179,10 @@ object AppPreference {
     private val DELETE_KEY_LEFT_FLICK_PREFERENCE = Pair("delete_key_flick_left_preference", true)
 
     private val KEY_LETTER_SIZE = Pair("key_letter_size_preference", 0.0f)
+    private val TENKEY_KEY_WIDTH_SCALE_PERCENT =
+        Pair("tenkey_key_width_scale_percent_preference", 100)
+    private val TENKEY_KEY_HEIGHT_SCALE_PERCENT =
+        Pair("tenkey_key_height_scale_percent_preference", 100)
     private val FLICK_KEY_WIDTH_SCALE_PERCENT =
         Pair("flick_key_width_scale_percent_preference", 160)
     private val FLICK_KEY_HEIGHT_SCALE_PERCENT =
@@ -1010,6 +1014,30 @@ object AppPreference {
         get() = preferences.getFloat(CANDIDATE_LETTER_SIZE.first, CANDIDATE_LETTER_SIZE.second)
         set(value) = preferences.edit {
             it.putFloat(CANDIDATE_LETTER_SIZE.first, value ?: CANDIDATE_LETTER_SIZE.second)
+        }
+
+    var tenkey_key_width_scale_percent: Int?
+        get() = preferences.getInt(
+            TENKEY_KEY_WIDTH_SCALE_PERCENT.first,
+            TENKEY_KEY_WIDTH_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                TENKEY_KEY_WIDTH_SCALE_PERCENT.first,
+                value ?: TENKEY_KEY_WIDTH_SCALE_PERCENT.second
+            )
+        }
+
+    var tenkey_key_height_scale_percent: Int?
+        get() = preferences.getInt(
+            TENKEY_KEY_HEIGHT_SCALE_PERCENT.first,
+            TENKEY_KEY_HEIGHT_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                TENKEY_KEY_HEIGHT_SCALE_PERCENT.first,
+                value ?: TENKEY_KEY_HEIGHT_SCALE_PERCENT.second
+            )
         }
 
     var flick_key_width_scale_percent: Int?
