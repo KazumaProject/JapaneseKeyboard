@@ -41,6 +41,9 @@ class TenKeyCandidateLetterSizeFragment : Fragment() {
     private val minKeyTextSize = 12f
     private val maxKeyTextSize = 40f
     private val defaultKeyTextSize = 17.0f
+    private val minKeyScalePercent = 60
+    private val maxKeyScalePercent = 140
+    private val defaultKeyScalePercent = 100
 
     // 候補サイズもプレビュー用に必要であれば定義
     private val defaultCandidateTextSize = 14.0f
@@ -68,7 +71,10 @@ class TenKeyCandidateLetterSizeFragment : Fragment() {
 
         // サイズ調整とリスナー設定
         setKeyboardSize()
+        applySavedPreviewKeyScale()
         setupKeyLetterSizeSeekBar()
+        setupKeyWidthSeekBar()
+        setupKeyHeightSeekBar()
         setupMenu()
 
         // プレビュー用なのでタッチイベントを無効化
@@ -189,6 +195,75 @@ class TenKeyCandidateLetterSizeFragment : Fragment() {
         }
     }
 
+    private fun setupKeyWidthSeekBar() {
+        binding.keyWidthSeekbar.max = maxKeyScalePercent - minKeyScalePercent
+        binding.keyWidthSeekbar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    updatePreviewKeyScale(widthPercent = progressToScalePercent(progress))
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                appPreference.tenkey_key_width_scale_percent =
+                    progressToScalePercent(seekBar?.progress ?: 0)
+            }
+        })
+
+        val savedWidthPercent =
+            appPreference.tenkey_key_width_scale_percent ?: defaultKeyScalePercent
+        binding.keyWidthSeekbar.progress = scalePercentToProgress(savedWidthPercent)
+    }
+
+    private fun setupKeyHeightSeekBar() {
+        binding.keyHeightSeekbar.max = maxKeyScalePercent - minKeyScalePercent
+        binding.keyHeightSeekbar.setOnSeekBarChangeListener(object :
+            SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) {
+                    updatePreviewKeyScale(heightPercent = progressToScalePercent(progress))
+                }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                appPreference.tenkey_key_height_scale_percent =
+                    progressToScalePercent(seekBar?.progress ?: 0)
+            }
+        })
+
+        val savedHeightPercent =
+            appPreference.tenkey_key_height_scale_percent ?: defaultKeyScalePercent
+        binding.keyHeightSeekbar.progress = scalePercentToProgress(savedHeightPercent)
+    }
+
+    private fun applySavedPreviewKeyScale() {
+        binding.tenkeyLetterSizePreview.setKeySizeScale(
+            appPreference.tenkey_key_width_scale_percent ?: defaultKeyScalePercent,
+            appPreference.tenkey_key_height_scale_percent ?: defaultKeyScalePercent
+        )
+    }
+
+    private fun updatePreviewKeyScale(widthPercent: Int? = null, heightPercent: Int? = null) {
+        val currentWidthPercent =
+            widthPercent ?: progressToScalePercent(binding.keyWidthSeekbar.progress)
+        val currentHeightPercent =
+            heightPercent ?: progressToScalePercent(binding.keyHeightSeekbar.progress)
+
+        binding.tenkeyLetterSizePreview.setKeySizeScale(currentWidthPercent, currentHeightPercent)
+    }
+
+    private fun progressToScalePercent(progress: Int): Int {
+        return minKeyScalePercent + progress.coerceIn(0, maxKeyScalePercent - minKeyScalePercent)
+    }
+
+    private fun scalePercentToProgress(scalePercent: Int): Int {
+        return scalePercent.coerceIn(minKeyScalePercent, maxKeyScalePercent) - minKeyScalePercent
+    }
+
     private fun setupRecyclerView() {
         binding.suggestionLetterSizeRecyclerview.apply {
             layoutManager =
@@ -251,9 +326,17 @@ class TenKeyCandidateLetterSizeFragment : Fragment() {
         appPreference.key_letter_size = 0.0f // 差分を0に戻す
         val keyProgress =
             (100 * (defaultKeyTextSize - minKeyTextSize) / (maxKeyTextSize - minKeyTextSize)).toInt()
+        appPreference.tenkey_key_width_scale_percent = defaultKeyScalePercent
+        appPreference.tenkey_key_height_scale_percent = defaultKeyScalePercent
 
         binding.keyLetterSizeSeekbar.progress = keyProgress
+        binding.keyWidthSeekbar.progress = scalePercentToProgress(defaultKeyScalePercent)
+        binding.keyHeightSeekbar.progress = scalePercentToProgress(defaultKeyScalePercent)
         binding.tenkeyLetterSizePreview.setKeyLetterSize(defaultKeyTextSize)
+        binding.tenkeyLetterSizePreview.setKeySizeScale(
+            defaultKeyScalePercent,
+            defaultKeyScalePercent
+        )
     }
 
     override fun onDestroyView() {

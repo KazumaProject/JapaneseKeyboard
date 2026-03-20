@@ -58,6 +58,10 @@ class KeyCandidateLetterSizeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setKeyboardSize()
+        binding.tenkeyLetterSizePreview.setKeySizeScale(
+            appPreference.tenkey_key_width_scale_percent ?: DEFAULT_KEY_SCALE_PERCENT,
+            appPreference.tenkey_key_height_scale_percent ?: DEFAULT_KEY_SCALE_PERCENT
+        )
         setupRecyclerView()
         setupPreviewData()
         setupCandidateLetterSizeSeekBar()
@@ -165,8 +169,6 @@ class KeyCandidateLetterSizeFragment : Fragment() {
     private fun resetSettings() {
         // Reset key letter size
         appPreference.key_letter_size = 0.0f
-        val keyProgress =
-            (100 * (defaultKeyTextSize - minKeyTextSize) / (maxKeyTextSize - minKeyTextSize)).toInt()
         //binding.keyLetterSizeSeekbar.progress = keyProgress
         binding.tenkeyLetterSizePreview.setKeyLetterSize(defaultKeyTextSize)
 
@@ -240,5 +242,9 @@ class KeyCandidateLetterSizeFragment : Fragment() {
         super.onDestroyView()
         binding.suggestionLetterSizeRecyclerview.adapter = null
         _binding = null
+    }
+
+    companion object {
+        private const val DEFAULT_KEY_SCALE_PERCENT = 100
     }
 }
