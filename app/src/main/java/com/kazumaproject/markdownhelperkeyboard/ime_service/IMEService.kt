@@ -1418,6 +1418,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     (appPreference.key_letter_size ?: 0.0f) + defaultLetterSize
                 )
                 keyboardView.setKeyLetterSizeDelta((appPreference.key_letter_size ?: 0.0f).toInt())
+                keyboardView.setKeySizeScale(
+                    appPreference.tenkey_key_width_scale_percent ?: 100,
+                    appPreference.tenkey_key_height_scale_percent ?: 100
+                )
                 keyboardView.setLanguageEnableKeyState(tenkeyShowIMEButtonPreference ?: true)
                 if (tenkeyShowIMEButtonPreference == true) {
                     keyboardView.setBackgroundSmallLetterKey(cachedLogoDrawable)
