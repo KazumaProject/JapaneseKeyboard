@@ -64,6 +64,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private companion object {
         private const val SPECIAL_KEY_BASE_TEXT_SIZE_SP = 16f
         private const val SPECIAL_ICON_TO_TEXT_RATIO = 1.6f
+        private const val INPUT_MODE_SWITCH_ICON_SIZE_MULTIPLIER = 1.65f
     }
 
     private var listener: OnKeyboardActionListener? = null
@@ -322,23 +323,38 @@ class FlickKeyboardView @JvmOverloads constructor(
         return specialKeyTextSizeSp.coerceIn(8f, 32f)
     }
 
-    private fun getSpecialIconTargetSizePx(): Float {
+    private fun getSpecialIconTargetSizePx(keyData: KeyData): Float {
         val baseTextSizePx = spToPx(SPECIAL_KEY_BASE_TEXT_SIZE_SP).toFloat()
         val iconScale = iconScalePercent / 100f
-        return baseTextSizePx * SPECIAL_ICON_TO_TEXT_RATIO * iconScale
+        val extraScale = if (shouldUseLargeImageButtonIcon(keyData)) {
+            INPUT_MODE_SWITCH_ICON_SIZE_MULTIPLIER
+        } else {
+            1f
+        }
+        return baseTextSizePx * SPECIAL_ICON_TO_TEXT_RATIO * iconScale * extraScale
     }
 
-    private fun applyImageButtonSizing(button: AppCompatImageButton) {
+    private fun shouldUseLargeImageButtonIcon(keyData: KeyData): Boolean {
+        return when (keyData.action) {
+            KeyAction.SwitchToNumberLayout,
+            KeyAction.SwitchToEnglishLayout,
+            KeyAction.SwitchToKanaLayout -> true
+
+            else -> keyData.label in setOf("SwitchToNumber", "SwitchToEnglish", "SwitchToKana")
+        }
+    }
+
+    private fun applyImageButtonSizing(button: AppCompatImageButton, keyData: KeyData) {
         button.scaleType = android.widget.ImageView.ScaleType.MATRIX
         button.imageMatrix = Matrix()
         button.setPadding(0, 0, 0, 0)
 
         button.post {
-            updateImageButtonMatrix(button)
+            updateImageButtonMatrix(button, keyData)
         }
     }
 
-    private fun updateImageButtonMatrix(button: AppCompatImageButton) {
+    private fun updateImageButtonMatrix(button: AppCompatImageButton, keyData: KeyData) {
         val drawable = button.drawable ?: return
 
         val drawableWidth = drawable.intrinsicWidth.toFloat()
@@ -351,7 +367,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         if (availableWidth <= 0f || availableHeight <= 0f) return
 
-        val targetContentSizePx = getSpecialIconTargetSizePx()
+        val targetContentSizePx = getSpecialIconTargetSizePx(keyData)
 
         val baseScale = minOf(
             targetContentSizePx / drawableWidth,
@@ -463,7 +479,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 contentDescription = keyData.label
                 scaleType = android.widget.ImageView.ScaleType.MATRIX
 
-                applyImageButtonSizing(this)
+                applyImageButtonSizing(this, keyData)
 
                 val originalBg = ContextCompat.getDrawable(
                     context,
@@ -484,7 +500,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 background = insetBg
 
                 addOnLayoutChangeListener { _, _, _, _, _, _, _, _, _ ->
-                    updateImageButtonMatrix(this)
+                    updateImageButtonMatrix(this, keyData)
                 }
 
                 if (keyData.isHiLighted) {
@@ -1332,7 +1348,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         when (view) {
             is AppCompatImageButton -> {
                 keyData.drawableResId?.let { view.setImageResource(it) }
-                applyImageButtonSizing(view)
+                applyImageButtonSizing(view, keyData)
                 view.contentDescription = keyData.label
                 view.isPressed = keyData.isHiLighted
             }
