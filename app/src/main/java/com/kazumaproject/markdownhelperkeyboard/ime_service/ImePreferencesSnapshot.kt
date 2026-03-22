@@ -56,6 +56,7 @@ data class ImePreferencesSnapshot(
     val isKeyboardFloatingMode: Boolean,
     val isKeyboardRounded: Boolean,
     val bunsetsuSeparation: Boolean,
+    val bunsetsuCursorMove: Boolean,
     val conversionKeySwipePreference: Boolean,
     val switchQWERTYPassword: Boolean,
     val shortcutTollbarVisibility: Boolean,
@@ -206,6 +207,7 @@ data class ImePreferencesSnapshot(
                 isKeyboardFloatingMode = appPreference.is_floating_mode ?: false,
                 isKeyboardRounded = appPreference.keyboard_corner_round_preference,
                 bunsetsuSeparation = appPreference.bunsetsu_separation_preference,
+                bunsetsuCursorMove = appPreference.bunsetsu_cursor_move_preference,
                 conversionKeySwipePreference =
                     appPreference.conversion_key_swipe_cursor_move_preference,
                 switchQWERTYPassword = appPreference.switch_qwerty_password ?: false,
