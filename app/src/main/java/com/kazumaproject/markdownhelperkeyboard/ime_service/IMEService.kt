@@ -8508,6 +8508,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun exitBunsetsuCursorMoveSessionToRawInput(): String {
+        val rawInput = bunsetsuConversionSession?.rawInput ?: inputString.value
+        restoreRawInputFromBunsetsuSession()
+        isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
+        suggestionClickNum = 0
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() &&
+            physicalKeyboardEnable.replayCache.first()
+        ) {
+            currentHighlightIndex = RecyclerView.NO_POSITION
+        }
+        isFirstClickHasStringTail = false
+        return rawInput
+    }
+
     private fun moveFocusedBunsetsuSegment(
         delta: Int,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
@@ -9658,7 +9674,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         QWERTYKey.QWERTYKeyCursorLeft -> {
                             Timber.d("QWERTYKey.QWERTYKeyCursorLeft")
                             if (!leftCursorKeyLongKeyPressed.get()) {
-                                if (isHenkan.get()) {
+                                if (moveFocusedBunsetsuSegment(delta = -1)) {
+                                    // handled by bunsetsu cursor move session
+                                } else if (isHenkan.get()) {
                                     val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                                     handleDeleteKeyInHenkan(suggestions, insertString)
                                 } else {
@@ -9675,7 +9693,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         QWERTYKey.QWERTYKeyCursorRight -> {
                             Timber.d("QWERTYKey.QWERTYKeyCursorRight")
                             if (!rightCursorKeyLongKeyPressed.get()) {
-                                if (isHenkan.get()) {
+                                if (moveFocusedBunsetsuSegment(delta = 1)) {
+                                    // handled by bunsetsu cursor move session
+                                } else if (isHenkan.get()) {
                                     val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                                     handleJapaneseModeSpaceKey(
                                         mainView, suggestions, insertString
@@ -9825,8 +9845,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         else -> {
+                            val effectiveInsertString = if (isBunsetsuCursorMoveSessionActive()) {
+                                exitBunsetsuCursorMoveSessionToRawInput()
+                            } else {
+                                insertString
+                            }
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                                if (insertString.isNotEmpty()) {
+                                if (effectiveInsertString.isNotEmpty()) {
                                     Timber.d("QWERTY romaji not empty: $hardKeyboardShiftPressd $qwertyRomajiShiftConversionPreference")
                                     if (qwertyRomajiShiftConversionPreference == true) {
                                         if (hardKeyboardShiftPressd) {
@@ -9839,7 +9864,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                         c
                                                     }
                                                 Timber.d("QWERTY romaji : $charToAppend")
-                                                sb.append(insertString).append(charToAppend)
+                                                sb.append(effectiveInsertString).append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
                                                         converter.convertQWERTYZenkaku(sb.toString())
@@ -9854,7 +9879,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     c
                                                 }
                                                 Timber.d("QWERTY romaji : $charToAppend")
-                                                sb.append(insertString).append(charToAppend)
+                                                sb.append(effectiveInsertString).append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
                                                         converter.convertQWERTYZenkaku(sb.toString())
@@ -9865,7 +9890,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     } else {
                                         if (hardKeyboardShiftPressd) {
                                             Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
-                                            handleTap(tap, insertString, sb, mainView)
+                                            handleTap(tap, effectiveInsertString, sb, mainView)
                                         } else {
                                             tap?.let { c ->
                                                 val charToAppend = if (isDefaultRomajiHenkanMap) {
@@ -9874,7 +9899,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     c
                                                 }
                                                 Timber.d("QWERTY romaji : $charToAppend")
-                                                sb.append(insertString).append(charToAppend)
+                                                sb.append(effectiveInsertString).append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
                                                         converter.convertQWERTYZenkaku(sb.toString())
@@ -9902,7 +9927,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     }
                                 }
                             } else {
-                                handleTap(tap, insertString, sb, mainView)
+                                handleTap(tap, effectiveInsertString, sb, mainView)
                             }
                             isContinuousTapInputEnabled.set(true)
                             lastFlickConvertedNextHiragana.set(true)
