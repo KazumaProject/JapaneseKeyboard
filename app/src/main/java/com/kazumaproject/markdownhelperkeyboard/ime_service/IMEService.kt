@@ -236,6 +236,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private data class BunsetsuConversionSession(
         val rawInput: String,
         val segments: List<BunsetsuSegmentState>,
+        val tailText: String = "",
         val focusedIndex: Int = 0
     )
 
@@ -8355,6 +8356,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         if (!shouldUseBunsetsuCursorMoveSession()) return false
 
+        val tailText = stringInTail.get()
         val initialSegments = buildBunsetsuSegments(input)
         if (initialSegments.size <= 1) {
             clearBunsetsuConversionSession()
@@ -8362,8 +8364,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val initialSession = BunsetsuConversionSession(
-            rawInput = input,
+            rawInput = input + tailText,
             segments = initialSegments,
+            tailText = tailText,
             focusedIndex = 0
         )
 
@@ -8424,7 +8427,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val session = bunsetsuConversionSession ?: return
         val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
         val segments = session.segments
-        val text = segments.joinToString(separator = "") { it.displayText }
+        val convertedText = segments.joinToString(separator = "") { it.displayText }
+        val text = convertedText + session.tailText
         val highlightStart = segments
             .take(focusedIndex)
             .sumOf { it.displayText.length }
@@ -8564,15 +8568,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun commitBunsetsuConversionSession(): Boolean {
         val session = bunsetsuConversionSession ?: return false
         val commitString = session.segments.joinToString(separator = "") { it.displayText }
+        val tailText = session.tailText
         beginBatchEdit()
         try {
             setComposingText("", 0)
             finishComposingText()
             commitText(commitString, 1)
+            if (tailText.isNotEmpty()) {
+                val spannableString = SpannableString(tailText)
+                setComposingTextAfterEdit(
+                    inputString = tailText,
+                    spannableString = spannableString,
+                    backgroundColor = if (customComposingTextPreference == true) {
+                        inputCompositionAfterBackgroundColor
+                            ?: getColor(com.kazumaproject.core.R.color.blue)
+                    } else {
+                        getColor(com.kazumaproject.core.R.color.blue)
+                    },
+                    textColor = if (customComposingTextPreference == true) {
+                        inputCompositionTextColor
+                    } else {
+                        null
+                    }
+                )
+            }
         } finally {
             endBatchEdit()
         }
-        resetFlagsEnterKey()
+        isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
+        suggestionClickNum = 0
+        englishSpaceKeyPressed.set(false)
+        onDeleteLongPressUp.set(false)
+        _dakutenPressed.value = false
+        lastFlickConvertedNextHiragana.set(true)
+        isContinuousTapInputEnabled.set(true)
+        suggestionAdapter?.suggestions = emptyList()
+        suggestionAdapterFull?.suggestions = emptyList()
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() &&
+            physicalKeyboardEnable.replayCache.first()
+        ) {
+            updateSuggestionsForFloatingCandidate(emptyList())
+            currentHighlightIndex = RecyclerView.NO_POSITION
+        }
+        isFirstClickHasStringTail = false
+        stringInTail.set("")
+        _inputString.update { tailText }
         clearBunsetsuConversionSession()
         return true
     }
