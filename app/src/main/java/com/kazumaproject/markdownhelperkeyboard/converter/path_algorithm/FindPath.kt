@@ -5,6 +5,7 @@ import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import timber.log.Timber
 import java.util.PriorityQueue
@@ -253,14 +254,14 @@ class FindPath {
         length: Int,
         connectionIds: ShortArray,
         n: Int
-    ): Pair<List<Candidate>, List<Int>> {
+    ): BunsetsuCandidateResult {
         forwardDp(
             graph,
             length,
             connectionIds
         )
         val resultFinal: MutableList<Candidate> = mutableListOf()
-        var bestBunsetsuPositions: List<Int> = emptyList()
+        val splitPatterns = mutableListOf<List<Int>>()
         val foundStrings = HashSet<String>()
         val pQueue: PriorityQueue<Pair<Node, Int>> =
             PriorityQueue(
@@ -271,7 +272,7 @@ class FindPath {
             )
 
         graph[length + 1]?.get(0)?.let { pQueue.add(Pair(it, 0)) }
-            ?: return Pair(emptyList(), emptyList())
+            ?: return BunsetsuCandidateResult(emptyList(), emptyList())
 
         while (pQueue.isNotEmpty()) {
             val node: Pair<Node, Int>? = pQueue.poll()
@@ -280,10 +281,11 @@ class FindPath {
                 if (node.first.tango == "BOS") {
                     val stringFromNode = getStringFromNode(node.first)
                     val yomiUsedFromNode = getYomiUsedFromNode(node.first)
+                    val bunsetsuPositions = getBunsetsuPositions(node.first)
 
                     if (foundStrings.add(stringFromNode)) {
-                        if (resultFinal.isEmpty()) {
-                            bestBunsetsuPositions = getBunsetsuPositions(node.first)
+                        if (splitPatterns.none { it == bunsetsuPositions } && splitPatterns.size < 4) {
+                            splitPatterns.add(bunsetsuPositions)
                         }
 
                         val candidate = Candidate(
@@ -316,11 +318,11 @@ class FindPath {
                     }
                 }
                 if (resultFinal.size >= n) {
-                    return Pair(resultFinal, bestBunsetsuPositions)
+                    return BunsetsuCandidateResult(resultFinal, splitPatterns)
                 }
             }
         }
-        return Pair(resultFinal.sortedBy { it.score }, bestBunsetsuPositions)
+        return BunsetsuCandidateResult(resultFinal.sortedBy { it.score }, splitPatterns)
     }
 
     fun backwardAStarWithBunsetsuWithLog(
