@@ -211,6 +211,9 @@ object AppPreference {
     private val BUNSETSU_SEPARATION_PREFERENCE =
         Pair("conversion_bunsetsu_separation_preference", false)
 
+    private val BUNSETSU_CURSOR_MOVE_PREFERENCE =
+        Pair("conversion_bunsetsu_cursor_move_preference", false)
+
     private val CONVERSION_KEY_SWIPE_CURSOR_MOVE_PREFERENCE =
         Pair("conversion_key_swipe_cursor_move_preference", false)
 
@@ -1134,6 +1137,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(BUNSETSU_SEPARATION_PREFERENCE.first, value)
+        }
+
+    var bunsetsu_cursor_move_preference: Boolean
+        get() = preferences.getBoolean(
+            BUNSETSU_CURSOR_MOVE_PREFERENCE.first,
+            BUNSETSU_CURSOR_MOVE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(BUNSETSU_CURSOR_MOVE_PREFERENCE.first, value)
         }
 
     var conversion_key_swipe_cursor_move_preference: Boolean

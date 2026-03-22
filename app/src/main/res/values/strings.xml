@@ -326,6 +326,8 @@
     <string name="candidate_height_landscape_preference_title">Candidate Height(Landscape)</string>
     <string name="conversion_separation_title">Split with Convert key</string>
     <string name="conversion_separation_summary">Split the composing text into segments and select the first one.</string>
+    <string name="conversion_bunsetsu_cursor_move_title">Move Segments with Cursor Keys</string>
+    <string name="conversion_bunsetsu_cursor_move_summary">While segment conversion is active, move the focused segment with the left and right cursor keys.</string>
     <string name="pref_title_space_longpress_cursor">Move Cursor by Holding Space</string>
     <string name="pref_summary_space_longpress_cursor">When composing text, hold down the space key to move the cursor.</string>
     <string name="add_candidate_tab_title">Add candidate tab</string>
