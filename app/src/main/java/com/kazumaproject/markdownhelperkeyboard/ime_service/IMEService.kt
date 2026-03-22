@@ -890,214 +890,189 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         physicalKeyboardFloatingXPosition = 200
         physicalKeyboardFloatingYPosition = 150
         _suggestionViewStatus.update { true }
-        appPreference.apply {
-            keyboardOrder = keyboard_order
-            candidateTabOrder = candidate_tab_order
-            mozcUTPersonName = mozc_ut_person_names_preference ?: false
-            mozcUTPlaces = mozc_ut_places_preference ?: false
-            mozcUTWiki = mozc_ut_wiki_preference ?: false
-            mozcUTNeologd = mozc_ut_neologd_preference ?: false
-            mozcUTWeb = mozc_ut_web_preference ?: false
-            isFlickOnlyMode = flick_input_only_preference ?: false
-            isOmissionSearchEnable = omission_search_preference ?: false
-            delayTime = time_same_pronounce_typing_preference ?: 1000
-            isLearnDictionaryMode = learn_dictionary_preference ?: true
-            isUserDictionaryEnable = user_dictionary_preference ?: true
-            isUserTemplateEnable = user_template_preference ?: true
-            hankakuPreference = space_hankaku_preference ?: false
-            isLiveConversionEnable = live_conversion_preference ?: false
-            nBest = n_best_preference ?: 4
-            flickSensitivityPreferenceValue = flick_sensitivity_preference ?: 100
-            qwertyShowIMEButtonPreference = qwerty_show_ime_button ?: true
-            tenkeyShowIMEButtonPreference = tenkey_show_language_button_preference
-            qwertyShowCursorButtonsPreference = qwerty_show_cursor_buttons ?: false
-            qwertyShowNumberButtonsPreference = qwerty_show_number_buttons ?: false
-            qwertyShowSwitchRomajiEnglishPreference =
-                qwerty_show_switch_romaji_english_button ?: true
-            qwertyShowPopupWindowPreference = qwerty_show_popup_window ?: true
-            qwertyEnableFlickUpPreference = qwerty_enable_flick_up_preference ?: false
-            qwertyEnableFlickDownPreference = qwerty_enable_flick_down_preference ?: false
-            qwertyEnableZenkakuSpacePreference = qwerty_enable_zenkaku_space_preference ?: false
-            qwertyShowKutoutenButtonsPreference = qwerty_show_kutouten_buttons ?: false
-            showCandidateInPasswordPreference = show_candidates_password ?: true
-            qwertyShowKeymapSymbolsPreference = qwerty_show_keymap_symbols ?: false
-            qwertyRomajiShiftConversionPreference = qwerty_romaji_shift_conversion_preference
-            tabletGojuonLayoutPreference = tablet_gojuon_layout_preference
-            isNgWordEnable = ng_word_preference ?: true
-            deleteKeyHighLight = delete_key_high_light_preference ?: true
-            customKeyboardSuggestionPreference = custom_keyboard_suggestion_preference ?: true
-            userDictionaryPrefixMatchNumber = user_dictionary_prefix_match_number_preference ?: 2
-            isVibration = vibration_preference ?: true
-            vibrationTimingStr = vibration_timing_preference ?: "both"
-            sumireInputKeyType = sumire_input_selection_preference ?: "flick-default"
-            sumireInputKeyLayoutType = sumire_input_method
-            sumireInputStyle = sumire_keyboard_style
-            candidateColumns = candidate_column_preference
-            candidateColumnsLandscape = candidate_column_landscape_preference
-            candidateTabVisibility = candidate_tab_preference
-            symbolKeyboardFirstItem = symbol_mode_preference
-            isCustomKeyboardTwoWordsOutputEnable = custom_keyboard_two_words_output ?: true
-            tenkeyQWERTYSwitchNumber = tenkey_qwerty_switch_number_layout ?: false
-            tenkeyQKeymapGuide = tenkey_keymap_guide_layout ?: false
-            isKeyboardFloatingMode = is_floating_mode ?: false
-            isKeyboardRounded = keyboard_corner_round_preference
-            bunsetsuSeparation = bunsetsu_separation_preference
-            conversionKeySwipePreference = conversion_key_swipe_cursor_move_preference
-            _keyboardFloatingMode.update { is_floating_mode ?: false }
-            switchQWERTYPassword = switch_qwerty_password ?: false
-            shortcutTollbarVisibility = shortcut_toolbar_visibility_preference
-            isDeleteLeftFlickPreference = delete_key_left_flick_preference
-            zenzDebounceTimePreference = zenz_debounce_time_preference ?: 300
-            zenzMaximumLetterSizePreference = zenz_maximum_letter_size_preference ?: 32
-            zenzMaximumContextSizePreference = zenz_maximum_context_size_preference ?: 512
-            zenzMaximumThreadSizePreference = zenz_maximum_thread_size_preference ?: 4
-            clipboardPreviewVisibility = clipboard_preview_preference
-            clipboardPreviewTapToDelete = clipboard_preview_tap_delete_preference
+        val preferences = ImePreferencesSnapshot.from(appPreference)
+        applyImePreferences(preferences)
+        initializeMozcDictionaries(preferences)
+        suggestionAdapter?.updateCustomTabVisibility(preferences.customKeyboardSuggestionPreference)
+    }
 
-            tenkeyHeightPreferenceValue = keyboard_height ?: 280
-            tenkeyWidthPreferenceValue = keyboard_width ?: 100
-            qwertyHeightPreferenceValue = qwerty_keyboard_height ?: 280
-            qwertyWidthPreferenceValue = qwerty_keyboard_width ?: 100
-
-            candidateViewHeightPreferenceValue = candidate_view_height_dp ?: 110
-            candidateViewHeightEmptyPreferenceValue = candidate_view_empty_height_dp ?: 110
-
-            tenkeyPositionPreferenceValue = keyboard_position ?: true
-            tenkeyBottomMarginPreferenceValue = keyboard_vertical_margin_bottom ?: 0
-            qwertyPositionPreferenceValue = qwerty_keyboard_position ?: true
-            qwertyBottomMarginPreferenceValue = qwerty_keyboard_vertical_margin_bottom ?: 0
-
-            tenkeyStartMarginPreferenceValue = keyboard_margin_start_dp ?: 0
-            tenkeyEndMarginPreferenceValue = keyboard_margin_end_dp ?: 0
-            qwertyStartMarginPreferenceValue = qwerty_keyboard_margin_start_dp ?: 0
-            qwertyEndMarginPreferenceValue = qwerty_keyboard_margin_end_dp ?: 0
-
-            tenkeyLandScapeStartMarginPreferenceValue = keyboard_margin_start_dp_landscape
-            tenkeyLandScapeEndMarginPreferenceValue = keyboard_margin_end_dp_landscape
-            qwertyLandScapeStartMarginPreferenceValue = qwerty_keyboard_margin_start_dp_landscape
-            qwertyLandScapeEndMarginPreferenceValue = qwerty_keyboard_margin_end_dp_landscape
-
-            enableShowLastShownKeyboardInRestart = save_last_used_keyboard_enable_preference
-            lastSavedKeyboardPosition = save_last_used_keyboard_position_preference
-            if (save_last_used_keyboard_enable_preference) {
-                currentKeyboardOrder = save_last_used_keyboard_position_preference
-            }
-
-            tenkeyHeightLandScapePreferenceValue = keyboard_height_landscape ?: 280
-            tenkeyWidthLandScapePreferenceValue = keyboard_width_landscape ?: 100
-            qwertyHeightLandScapePreferenceValue = qwerty_keyboard_height_landscape ?: 280
-            qwertyWidthLandScapePreferenceValue = qwerty_keyboard_width_landscape ?: 100
-
-            candidateViewLandScapeHeightPreferenceValue = candidate_view_height_dp_landscape ?: 110
-            candidateViewLandScapeHeightEmptyPreferenceValue =
-                candidate_view_empty_height_dp_landscape ?: 110
-
-            tenkeyLandScapePositionPreferenceValue = keyboard_position_landscape ?: true
-            tenkeyLandScapeBottomMarginPreferenceValue =
-                keyboard_vertical_margin_bottom_landscape ?: 0
-            qwertyLandScapePositionPreferenceValue = qwerty_keyboard_position_landscape ?: true
-            qwertyLandScapeBottomMarginPreferenceValue =
-                qwerty_keyboard_vertical_margin_bottom_landscape ?: 0
-
-            zenzEnableStatePreference = enable_zenz_preference
-            zenzaiEnableStatePreference = enable_zenzai_preference
-            zenzProfilePreference = zenz_profile_preference
-            zenzEnableLongPressConversionPreference = enable_zenz_long_press_preference
-
-            qwertyKeyVerticalMargin = qwerty_key_vertical_margin
-            qwertyKeyHorizontalGap = qwerty_key_horizontal_gap
-            qwertyKeyIndentLarge = qwerty_key_indent_large
-            qwertyKeyIndentSmall = qwerty_key_indent_small
-            qwertyKeySideMargin = qwerty_key_side_margin
-            qwertyKeyTextSize = qwerty_key_text_size
-
-            keyboardThemeMode = theme_mode
-            customThemeBgColor = custom_theme_bg_color
-            customThemeKeyColor = custom_theme_key_color
-            customThemeSpecialKeyColor = custom_theme_special_key_color
-            customThemeKeyTextColor = custom_theme_key_text_color
-            customThemeSpecialKeyTextColor = custom_theme_special_key_text_color
-
-            liquidGlassThemePreference = liquid_glass_preference
-            liquidGlassBlurRadiousPreference = liquid_glass_blur_radius
-            liquidGlassKeyBlurRadiousPreference = liquid_glass_key_alpha
-            customKeyBorderEnablePreference = custom_theme_border_enable
-            customKeyBorderEnableColor = custom_theme_border_color
-
-            customComposingTextPreference = custom_theme_input_color_enable
-            inputCompositionBackgroundColor = custom_theme_pre_edit_bg_color
-            inputCompositionTextColor = custom_theme_pre_edit_text_color
-            inputConversionBackgroundColor = custom_theme_post_edit_bg_color
-            inputConversionTextColor = custom_theme_post_edit_text_color
-
-            inputCompositionAfterBackgroundColor =
-                manipulateColor(custom_theme_pre_edit_bg_color, 1.2f)
-
-            sumireEnglishQwertyPreference = sumire_english_qwerty_preference
-            conversionCandidatesRomajiEnablePreference =
-                conversion_candidates_romaji_enable_preference
-
-            enableZenzRightContextPreference = enable_zenz_right_context_preference
-
-            learnFirstCandidateDictionaryPreference = learn_first_candidate_dictionary_preference
-            enablePredictionSearchLearnDictionaryPreference =
-                enable_prediction_search_learn_dictionary_preference
-            learnPredictionPreference = learn_prediction_preference
-            circularFlickWindowScale = circular_flickWindow_scale
-            customKeyBorderWidth = custom_theme_border_width
-            qwertySwitchNumberKeyWithoutNumberPreference =
-                qwerty_switch_number_key_without_number_preference
-
-            customRomajiZenkakuConversionEnablePreference =
-                appPreference.custom_romaji_zenkaku_conversion_enable_preference
-
-            omissionSearchOffsetScorePreference =
-                appPreference.omission_search_offset_score_preference
-            enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference =
-                appPreference.enable_typo_correction_japanese_flick_keyboard_offset_score_preference
-
-            enableTypoCorrectionJapaneseFlickKeyboardPreference =
-                enable_typo_correction_japanese_flick_keyboard_preference
-            enableTypoCorrectionQwertyEnglishKeyboardPreference =
-                enable_typo_correction_qwerty_english_keyboard_preference
-
-            if (mozcUTPersonName == true) {
-                if (!kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
-                    kanaKanjiEngine.buildPersonNamesDictionary(
-                        applicationContext
-                    )
-                }
-            }
-            if (mozcUTPlaces == true) {
-                if (!kanaKanjiEngine.isMozcUTPlacesDictionariesInitialized()) {
-                    kanaKanjiEngine.buildPlaceDictionary(
-                        applicationContext
-                    )
-                }
-            }
-            if (mozcUTWiki == true) {
-                if (!kanaKanjiEngine.isMozcUTWikiDictionariesInitialized()) {
-                    kanaKanjiEngine.buildWikiDictionary(
-                        applicationContext
-                    )
-                }
-            }
-            if (mozcUTNeologd == true) {
-                if (!kanaKanjiEngine.isMozcUTNeologdDictionariesInitialized()) {
-                    kanaKanjiEngine.buildNeologdDictionary(
-                        applicationContext
-                    )
-                }
-            }
-            if (mozcUTWeb == true) {
-                if (!kanaKanjiEngine.isMozcUTWebDictionariesInitialized()) {
-                    kanaKanjiEngine.buildWebDictionary(
-                        applicationContext
-                    )
-                }
-            }
+    private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
+        keyboardOrder = preferences.keyboardOrder
+        candidateTabOrder = preferences.candidateTabOrder
+        mozcUTPersonName = preferences.mozcUTPersonName
+        mozcUTPlaces = preferences.mozcUTPlaces
+        mozcUTWiki = preferences.mozcUTWiki
+        mozcUTNeologd = preferences.mozcUTNeologd
+        mozcUTWeb = preferences.mozcUTWeb
+        isFlickOnlyMode = preferences.isFlickOnlyMode
+        isOmissionSearchEnable = preferences.isOmissionSearchEnable
+        delayTime = preferences.delayTime
+        isLearnDictionaryMode = preferences.isLearnDictionaryMode
+        isUserDictionaryEnable = preferences.isUserDictionaryEnable
+        isUserTemplateEnable = preferences.isUserTemplateEnable
+        hankakuPreference = preferences.hankakuPreference
+        isLiveConversionEnable = preferences.isLiveConversionEnable
+        nBest = preferences.nBest
+        flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
+        qwertyShowIMEButtonPreference = preferences.qwertyShowIMEButtonPreference
+        tenkeyShowIMEButtonPreference = preferences.tenkeyShowIMEButtonPreference
+        qwertyShowCursorButtonsPreference = preferences.qwertyShowCursorButtonsPreference
+        qwertyShowNumberButtonsPreference = preferences.qwertyShowNumberButtonsPreference
+        qwertyShowSwitchRomajiEnglishPreference =
+            preferences.qwertyShowSwitchRomajiEnglishPreference
+        qwertyShowPopupWindowPreference = preferences.qwertyShowPopupWindowPreference
+        qwertyEnableFlickUpPreference = preferences.qwertyEnableFlickUpPreference
+        qwertyEnableFlickDownPreference = preferences.qwertyEnableFlickDownPreference
+        qwertyEnableZenkakuSpacePreference = preferences.qwertyEnableZenkakuSpacePreference
+        qwertyShowKutoutenButtonsPreference = preferences.qwertyShowKutoutenButtonsPreference
+        showCandidateInPasswordPreference = preferences.showCandidateInPasswordPreference
+        qwertyShowKeymapSymbolsPreference = preferences.qwertyShowKeymapSymbolsPreference
+        qwertyRomajiShiftConversionPreference = preferences.qwertyRomajiShiftConversionPreference
+        tabletGojuonLayoutPreference = preferences.tabletGojuonLayoutPreference
+        isNgWordEnable = preferences.isNgWordEnable
+        deleteKeyHighLight = preferences.deleteKeyHighLight
+        customKeyboardSuggestionPreference = preferences.customKeyboardSuggestionPreference
+        userDictionaryPrefixMatchNumber = preferences.userDictionaryPrefixMatchNumber
+        isVibration = preferences.isVibration
+        vibrationTimingStr = preferences.vibrationTimingStr
+        sumireInputKeyType = preferences.sumireInputKeyType
+        sumireInputKeyLayoutType = preferences.sumireInputKeyLayoutType
+        sumireInputStyle = preferences.sumireInputStyle
+        candidateColumns = preferences.candidateColumns
+        candidateColumnsLandscape = preferences.candidateColumnsLandscape
+        candidateTabVisibility = preferences.candidateTabVisibility
+        symbolKeyboardFirstItem = preferences.symbolKeyboardFirstItem
+        isCustomKeyboardTwoWordsOutputEnable = preferences.isCustomKeyboardTwoWordsOutputEnable
+        tenkeyQWERTYSwitchNumber = preferences.tenkeyQWERTYSwitchNumber
+        tenkeyQKeymapGuide = preferences.tenkeyQKeymapGuide
+        isKeyboardFloatingMode = preferences.isKeyboardFloatingMode
+        isKeyboardRounded = preferences.isKeyboardRounded
+        bunsetsuSeparation = preferences.bunsetsuSeparation
+        conversionKeySwipePreference = preferences.conversionKeySwipePreference
+        _keyboardFloatingMode.update { preferences.isKeyboardFloatingMode }
+        switchQWERTYPassword = preferences.switchQWERTYPassword
+        shortcutTollbarVisibility = preferences.shortcutTollbarVisibility
+        isDeleteLeftFlickPreference = preferences.isDeleteLeftFlickPreference
+        zenzDebounceTimePreference = preferences.zenzDebounceTimePreference
+        zenzMaximumLetterSizePreference = preferences.zenzMaximumLetterSizePreference
+        zenzMaximumContextSizePreference = preferences.zenzMaximumContextSizePreference
+        zenzMaximumThreadSizePreference = preferences.zenzMaximumThreadSizePreference
+        clipboardPreviewVisibility = preferences.clipboardPreviewVisibility
+        clipboardPreviewTapToDelete = preferences.clipboardPreviewTapToDelete
+        tenkeyHeightPreferenceValue = preferences.tenkeyHeightPreferenceValue
+        tenkeyWidthPreferenceValue = preferences.tenkeyWidthPreferenceValue
+        qwertyHeightPreferenceValue = preferences.qwertyHeightPreferenceValue
+        qwertyWidthPreferenceValue = preferences.qwertyWidthPreferenceValue
+        candidateViewHeightPreferenceValue = preferences.candidateViewHeightPreferenceValue
+        candidateViewHeightEmptyPreferenceValue =
+            preferences.candidateViewHeightEmptyPreferenceValue
+        tenkeyPositionPreferenceValue = preferences.tenkeyPositionPreferenceValue
+        tenkeyBottomMarginPreferenceValue = preferences.tenkeyBottomMarginPreferenceValue
+        qwertyPositionPreferenceValue = preferences.qwertyPositionPreferenceValue
+        qwertyBottomMarginPreferenceValue = preferences.qwertyBottomMarginPreferenceValue
+        tenkeyStartMarginPreferenceValue = preferences.tenkeyStartMarginPreferenceValue
+        tenkeyEndMarginPreferenceValue = preferences.tenkeyEndMarginPreferenceValue
+        qwertyStartMarginPreferenceValue = preferences.qwertyStartMarginPreferenceValue
+        qwertyEndMarginPreferenceValue = preferences.qwertyEndMarginPreferenceValue
+        tenkeyLandScapeStartMarginPreferenceValue =
+            preferences.tenkeyLandscapeStartMarginPreferenceValue
+        tenkeyLandScapeEndMarginPreferenceValue =
+            preferences.tenkeyLandscapeEndMarginPreferenceValue
+        qwertyLandScapeStartMarginPreferenceValue =
+            preferences.qwertyLandscapeStartMarginPreferenceValue
+        qwertyLandScapeEndMarginPreferenceValue =
+            preferences.qwertyLandscapeEndMarginPreferenceValue
+        enableShowLastShownKeyboardInRestart =
+            preferences.enableShowLastShownKeyboardInRestart
+        lastSavedKeyboardPosition = preferences.lastSavedKeyboardPosition
+        if (preferences.enableShowLastShownKeyboardInRestart) {
+            currentKeyboardOrder = preferences.lastSavedKeyboardPosition
         }
-        suggestionAdapter?.updateCustomTabVisibility(customKeyboardSuggestionPreference ?: true)
+        tenkeyHeightLandScapePreferenceValue = preferences.tenkeyHeightLandscapePreferenceValue
+        tenkeyWidthLandScapePreferenceValue = preferences.tenkeyWidthLandscapePreferenceValue
+        qwertyHeightLandScapePreferenceValue = preferences.qwertyHeightLandscapePreferenceValue
+        qwertyWidthLandScapePreferenceValue = preferences.qwertyWidthLandscapePreferenceValue
+        candidateViewLandScapeHeightPreferenceValue =
+            preferences.candidateViewLandscapeHeightPreferenceValue
+        candidateViewLandScapeHeightEmptyPreferenceValue =
+            preferences.candidateViewLandscapeHeightEmptyPreferenceValue
+        tenkeyLandScapePositionPreferenceValue =
+            preferences.tenkeyLandscapePositionPreferenceValue
+        tenkeyLandScapeBottomMarginPreferenceValue =
+            preferences.tenkeyLandscapeBottomMarginPreferenceValue
+        qwertyLandScapePositionPreferenceValue =
+            preferences.qwertyLandscapePositionPreferenceValue
+        qwertyLandScapeBottomMarginPreferenceValue =
+            preferences.qwertyLandscapeBottomMarginPreferenceValue
+        zenzEnableStatePreference = preferences.zenzEnableStatePreference
+        zenzaiEnableStatePreference = preferences.zenzaiEnableStatePreference
+        zenzProfilePreference = preferences.zenzProfilePreference
+        zenzEnableLongPressConversionPreference =
+            preferences.zenzEnableLongPressConversionPreference
+        qwertyKeyVerticalMargin = preferences.qwertyKeyVerticalMargin
+        qwertyKeyHorizontalGap = preferences.qwertyKeyHorizontalGap
+        qwertyKeyIndentLarge = preferences.qwertyKeyIndentLarge
+        qwertyKeyIndentSmall = preferences.qwertyKeyIndentSmall
+        qwertyKeySideMargin = preferences.qwertyKeySideMargin
+        qwertyKeyTextSize = preferences.qwertyKeyTextSize
+        keyboardThemeMode = preferences.keyboardThemeMode
+        customThemeBgColor = preferences.customThemeBgColor
+        customThemeKeyColor = preferences.customThemeKeyColor
+        customThemeSpecialKeyColor = preferences.customThemeSpecialKeyColor
+        customThemeKeyTextColor = preferences.customThemeKeyTextColor
+        customThemeSpecialKeyTextColor = preferences.customThemeSpecialKeyTextColor
+        liquidGlassThemePreference = preferences.liquidGlassThemePreference
+        liquidGlassBlurRadiousPreference = preferences.liquidGlassBlurRadiousPreference
+        liquidGlassKeyBlurRadiousPreference = preferences.liquidGlassKeyBlurRadiousPreference
+        customKeyBorderEnablePreference = preferences.customKeyBorderEnablePreference
+        customKeyBorderEnableColor = preferences.customKeyBorderEnableColor
+        customComposingTextPreference = preferences.customComposingTextPreference
+        inputCompositionBackgroundColor = preferences.inputCompositionBackgroundColor
+        inputCompositionTextColor = preferences.inputCompositionTextColor
+        inputConversionBackgroundColor = preferences.inputConversionBackgroundColor
+        inputConversionTextColor = preferences.inputConversionTextColor
+        inputCompositionAfterBackgroundColor =
+            manipulateColor(preferences.inputCompositionBackgroundColor, 1.2f)
+        sumireEnglishQwertyPreference = preferences.sumireEnglishQwertyPreference
+        conversionCandidatesRomajiEnablePreference =
+            preferences.conversionCandidatesRomajiEnablePreference
+        enableZenzRightContextPreference = preferences.enableZenzRightContextPreference
+        learnFirstCandidateDictionaryPreference =
+            preferences.learnFirstCandidateDictionaryPreference
+        enablePredictionSearchLearnDictionaryPreference =
+            preferences.enablePredictionSearchLearnDictionaryPreference
+        learnPredictionPreference = preferences.learnPredictionPreference
+        circularFlickWindowScale = preferences.circularFlickWindowScale
+        customKeyBorderWidth = preferences.customKeyBorderWidth
+        qwertySwitchNumberKeyWithoutNumberPreference =
+            preferences.qwertySwitchNumberKeyWithoutNumberPreference
+        customRomajiZenkakuConversionEnablePreference =
+            preferences.customRomajiZenkakuConversionEnablePreference
+        omissionSearchOffsetScorePreference = preferences.omissionSearchOffsetScorePreference
+        enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference =
+            preferences.enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
+        enableTypoCorrectionJapaneseFlickKeyboardPreference =
+            preferences.enableTypoCorrectionJapaneseFlickKeyboardPreference
+        enableTypoCorrectionQwertyEnglishKeyboardPreference =
+            preferences.enableTypoCorrectionQwertyEnglishKeyboardPreference
+    }
+
+    private fun initializeMozcDictionaries(preferences: ImePreferencesSnapshot) {
+        if (preferences.mozcUTPersonName && !kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
+            kanaKanjiEngine.buildPersonNamesDictionary(applicationContext)
+        }
+        if (preferences.mozcUTPlaces && !kanaKanjiEngine.isMozcUTPlacesDictionariesInitialized()) {
+            kanaKanjiEngine.buildPlaceDictionary(applicationContext)
+        }
+        if (preferences.mozcUTWiki && !kanaKanjiEngine.isMozcUTWikiDictionariesInitialized()) {
+            kanaKanjiEngine.buildWikiDictionary(applicationContext)
+        }
+        if (preferences.mozcUTNeologd && !kanaKanjiEngine.isMozcUTNeologdDictionariesInitialized()) {
+            kanaKanjiEngine.buildNeologdDictionary(applicationContext)
+        }
+        if (preferences.mozcUTWeb && !kanaKanjiEngine.isMozcUTWebDictionariesInitialized()) {
+            kanaKanjiEngine.buildWebDictionary(applicationContext)
+        }
     }
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
