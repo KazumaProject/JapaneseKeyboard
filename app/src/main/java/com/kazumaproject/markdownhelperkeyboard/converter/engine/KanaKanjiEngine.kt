@@ -18,6 +18,7 @@ import com.kazumaproject.domain.toEmoticonCategory
 import com.kazumaproject.domain.toSymbolCategory
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
@@ -1099,7 +1100,7 @@ class KanaKanjiEngine {
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
         omissionSearchOffsetScore: Int
-    ): Pair<List<Candidate>, List<Int>> {
+    ): BunsetsuCandidateResult {
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -1146,16 +1147,17 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore
         )
 
-        val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
-            Pair(
-                listOf(
+        val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
+            BunsetsuCandidateResult(
+                candidates = listOf(
                     Candidate(
                         string = input,
                         type = (1).toByte(),
                         length = input.length.toUByte(),
                         score = 4000
                     )
-                ), emptyList()
+                ),
+                splitPatterns = emptyList()
             )
         } else {
             findPath.backwardAStarWithBunsetsu(graph, input.length, connectionIds, n)
@@ -1260,17 +1262,17 @@ class KanaKanjiEngine {
             }
 
             val finalList =
-                resultNBestFinalDeferred.first + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
-            return Pair(finalList, resultNBestFinalDeferred.second)
+                resultNBestFinalDeferred.candidates + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
+            return BunsetsuCandidateResult(finalList, resultNBestFinalDeferred.splitPatterns)
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
 
-            val finalList = resultWithHankaku.first.sortedBy { it.score }
+            val finalList = resultWithHankaku.candidates.sortedBy { it.score }
 
             // 3. Combine and return all generated candidates.
-            return Pair(finalList, resultWithHankaku.second)
+            return BunsetsuCandidateResult(finalList, resultWithHankaku.splitPatterns)
         }
 
         val hirakanaAndKana = listOf(
@@ -1418,8 +1420,8 @@ class KanaKanjiEngine {
 
         if (input.length == 1) {
             val finalList =
-                resultNBestFinalDeferred.first + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
-            return Pair(finalList, resultNBestFinalDeferred.second)
+                resultNBestFinalDeferred.candidates + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
+            return BunsetsuCandidateResult(finalList, resultNBestFinalDeferred.splitPatterns)
         }
 
         val yomiPartOfDeferred = if (input.length > 16) {
@@ -1607,12 +1609,12 @@ class KanaKanjiEngine {
         val mozcUTWebList = if (mozcUTWeb == true) getMozcUTWeb(input) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred.first + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+            resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }) + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
-        return Pair(resultListFinal, resultNBestFinalDeferred.second)
+        return BunsetsuCandidateResult(resultListFinal, resultNBestFinalDeferred.splitPatterns)
 
     }
 
@@ -1631,7 +1633,7 @@ class KanaKanjiEngine {
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
         omissionSearchOffsetScore: Int
-    ): Pair<List<Candidate>, List<Int>> {
+    ): BunsetsuCandidateResult {
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -1678,16 +1680,17 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore
         )
 
-        val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
-            Pair(
-                listOf(
+        val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
+            BunsetsuCandidateResult(
+                candidates = listOf(
                     Candidate(
                         string = input,
                         type = (1).toByte(),
                         length = input.length.toUByte(),
                         score = 4000
                     )
-                ), emptyList()
+                ),
+                splitPatterns = emptyList()
             )
         } else {
             findPath.backwardAStarWithBunsetsu(graph, input.length, connectionIds, n)
@@ -1792,17 +1795,17 @@ class KanaKanjiEngine {
             }
 
             val finalList =
-                resultNBestFinalDeferred.first + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
+                resultNBestFinalDeferred.candidates + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
 
             // 3. Combine and return all generated candidates.
-            return Pair(finalList, resultNBestFinalDeferred.second)
+            return BunsetsuCandidateResult(finalList, resultNBestFinalDeferred.splitPatterns)
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
-            val finalList = resultWithHankaku.first.sortedBy { it.score }
+            val finalList = resultWithHankaku.candidates.sortedBy { it.score }
 
-            return Pair(finalList, resultWithHankaku.second)
+            return BunsetsuCandidateResult(finalList, resultWithHankaku.splitPatterns)
         }
 
         val hirakanaAndKana = listOf(
@@ -1892,8 +1895,8 @@ class KanaKanjiEngine {
 
         if (input.length == 1) {
             val finalListOneLetter =
-                resultNBestFinalDeferred.first + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + symbolListDeferred + singleKanjiListDeferred
-            return Pair(finalListOneLetter, listOf())
+                resultNBestFinalDeferred.candidates + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + symbolListDeferred + singleKanjiListDeferred
+            return BunsetsuCandidateResult(finalListOneLetter, resultNBestFinalDeferred.splitPatterns)
         }
 
         val yomiPartOfDeferred = if (input.length > 16) {
@@ -2081,7 +2084,7 @@ class KanaKanjiEngine {
         val mozcUTWebList = if (mozcUTWeb == true) getMozcUTWeb(input) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred.first + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+            resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
@@ -2089,7 +2092,7 @@ class KanaKanjiEngine {
         val finalList =
             resultListFinal + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
 
-        return Pair(finalList, resultNBestFinalDeferred.second)
+        return BunsetsuCandidateResult(finalList, resultNBestFinalDeferred.splitPatterns)
 
     }
 
@@ -3055,7 +3058,7 @@ class KanaKanjiEngine {
         learnRepository: LearnRepository?,
         typoCorrectionOffsetScore: Int,
         omissionSearchOffsetScore: Int
-    ): Pair<List<Candidate>, List<Int>> {
+    ): BunsetsuCandidateResult {
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -3101,16 +3104,17 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore
         )
 
-        val resultNBestFinalDeferred: Pair<List<Candidate>, List<Int>> = if (graph.isEmpty()) {
-            Pair(
-                listOf(
+        val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
+            BunsetsuCandidateResult(
+                candidates = listOf(
                     Candidate(
                         string = input,
                         type = (1).toByte(),
                         length = input.length.toUByte(),
                         score = 4000
                     )
-                ), emptyList()
+                ),
+                splitPatterns = emptyList()
             )
         } else {
             findPath.backwardAStarWithBunsetsu(graph, input.length, connectionIds, n)
@@ -3215,17 +3219,17 @@ class KanaKanjiEngine {
             }
 
             val finalList =
-                resultNBestFinalDeferred.first + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
-            return Pair(finalList, resultNBestFinalDeferred.second)
+                resultNBestFinalDeferred.candidates + timeConversion + dateConversion + fullWidth + halfWidth + numberCandidates + superscriptCandidate + subscriptCandidate + valueBasedCandidates
+            return BunsetsuCandidateResult(finalList, resultNBestFinalDeferred.splitPatterns)
         }
 
         if (input.containsDigit() && input.containsFullWidthNumber()) {
             val resultWithHankaku = addHalfWidthCandidates(resultNBestFinalDeferred)
 
-            val finalList = resultWithHankaku.first.sortedBy { it.score }
+            val finalList = resultWithHankaku.candidates.sortedBy { it.score }
 
             // 3. Combine and return all generated candidates.
-            return Pair(finalList, resultWithHankaku.second)
+            return BunsetsuCandidateResult(finalList, resultWithHankaku.splitPatterns)
         }
 
         val hirakanaAndKana = listOf(
@@ -3365,8 +3369,8 @@ class KanaKanjiEngine {
 
         if (input.length == 1) {
             val finalList =
-                resultNBestFinalDeferred.first + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
-            return Pair(finalList, resultNBestFinalDeferred.second)
+                resultNBestFinalDeferred.candidates + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + emojiListDeferred + emoticonListDeferred + symbolListDeferred + symbolHalfWidthListDeferred + singleKanjiListDeferred
+            return BunsetsuCandidateResult(finalList, resultNBestFinalDeferred.splitPatterns)
         }
 
         val yomiPartOfDeferred = if (input.length > 16) {
@@ -3512,13 +3516,13 @@ class KanaKanjiEngine {
         val mozcUTWebList = if (mozcUTWeb == true) getMozcUTWeb(input) else emptyList()
 
         val resultList =
-            resultNBestFinalDeferred.first + readingCorrectionListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
+            resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
-        return Pair(
-            resultListFinal, resultNBestFinalDeferred.second
+        return BunsetsuCandidateResult(
+            resultListFinal, resultNBestFinalDeferred.splitPatterns
         )
 
     }
@@ -4433,6 +4437,13 @@ class KanaKanjiEngine {
 
         // 6. 新しく作成した候補リストと、元の Int リストで Pair を再構築して返す
         return Pair(newList, intList)
+    }
+
+    private fun addHalfWidthCandidates(
+        originalData: BunsetsuCandidateResult
+    ): BunsetsuCandidateResult {
+        val newList = addHalfWidthCandidates(originalData.candidates)
+        return BunsetsuCandidateResult(newList, originalData.splitPatterns)
     }
 
     /**

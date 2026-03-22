@@ -235,9 +235,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private data class BunsetsuConversionSession(
         val rawInput: String,
+        val conversionInput: String,
         val segments: List<BunsetsuSegmentState>,
         val tailText: String = "",
-        val focusedIndex: Int = 0
+        val focusedIndex: Int = 0,
+        val splitPatterns: List<List<Int>> = emptyList(),
+        val activeSplitPatternIndex: Int = 0
     )
 
     @Inject
@@ -313,6 +316,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var bunsetsuSeparation: Boolean? = false
     private var bunsetsuCursorMove: Boolean? = false
     private var bunsetsuPositionList: List<Int>? = emptyList()
+    private var bunsetsuSplitPatterns: List<List<Int>> = emptyList()
     private var bunsetsuConversionSession: BunsetsuConversionSession? = null
     private var henkanPressedWithBunsetsuDetect: Boolean = false
     private var conversionKeySwipePreference: Boolean? = false
@@ -1672,6 +1676,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         bunsetsuCursorMove = null
         conversionKeySwipePreference = null
         bunsetsuPositionList = null
+        bunsetsuSplitPatterns = emptyList()
         bunsetsuConversionSession = null
 
         liquidGlassThemePreference = null
@@ -3442,7 +3447,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     _cursorMoveMode.update { false }
                 } else {
                     if (!isSpaceKeyLongPressed) {
-                        if (gestureType == GestureType.FlickLeft) {
+                        if (gestureType == GestureType.FlickLeft &&
+                            cycleFocusedBunsetsuCandidate(delta = -1)
+                        ) {
+                        } else if (gestureType == GestureType.FlickLeft) {
                             val isHankaku = hankakuPreference == true
                             if (isHankaku) {
                                 handleSpaceKeyClick(false, insertString, suggestions, mainView)
@@ -3640,7 +3648,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     _cursorMoveMode.update { false }
                 } else {
                     if (!isSpaceKeyLongPressed) {
-                        if (gestureType == GestureType.FlickLeft) {
+                        if (gestureType == GestureType.FlickLeft &&
+                            cycleFocusedBunsetsuCandidate(delta = -1, floatingKeyboardLayoutBinding)
+                        ) {
+                        } else if (gestureType == GestureType.FlickLeft) {
                             val isHankaku = hankakuPreference == true
                             if (isHankaku) {
                                 handleSpaceKeyClickFloating(
@@ -4360,6 +4371,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleSpaceLongAction() {
         Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+        if (switchBunsetsuSplitPattern()) {
+            isSpaceKeyLongPressed = true
+            return
+        }
         val insertString = inputString.value
         if (insertString.isNotEmpty()) {
             if (zenzEnableLongPressConversionPreference == true) {
@@ -4436,6 +4451,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleSpaceLongActionSumire() {
         Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+        if (switchBunsetsuSplitPattern()) {
+            isSpaceKeyLongPressed = true
+            return
+        }
         val insertString = inputString.value
         if (insertString.isNotEmpty()) {
             mainLayoutBinding?.let {
@@ -4495,6 +4514,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleSpaceLongActionFloating() {
         Timber.d("SideKeySpace LongPress Floting: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
+        if (switchBunsetsuSplitPattern(floatingKeyboardBinding)) {
+            isSpaceKeyLongPressed = true
+            return
+        }
         val insertString = inputString.value
         if (insertString.isNotEmpty()) {
             floatingKeyboardBinding?.let {
@@ -5175,6 +5198,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.Convert, KeyAction.Space -> {
                         val insertString = inputString.value
+                        if (switchBunsetsuSplitPattern()) {
+                            isSpaceKeyLongPressed = true
+                            return
+                        }
                         if (insertString.isEmpty()) {
                             mainView.customLayoutDefault.setCursorMode(true)
                         } else {
@@ -5393,6 +5420,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
                     KeyAction.Convert -> {
+                        if (switchBunsetsuSplitPattern()) {
+                            isSpaceKeyLongPressed = true
+                            return
+                        }
                         if (zenzEnableLongPressConversionPreference == true) {
                             val insertString = inputString.value
                             scope.launch {
@@ -5474,6 +5505,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Space -> {
+                        if (switchBunsetsuSplitPattern()) {
+                            isSpaceKeyLongPressed = true
+                            return
+                        }
                         mainView.customLayoutDefault.setCursorMode(true)
                     }
 
@@ -5774,26 +5809,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             _cursorMoveMode.update { false }
                         } else {
                             if (!isSpaceKeyLongPressed) {
-                                val isHankaku = hankakuPreference == true
-                                if (isHankaku) {
-                                    if (isFlick) {
-                                        handleSpaceKeyClick(
-                                            false, insertString, suggestions, mainView
-                                        )
-                                    } else {
-                                        handleSpaceKeyClick(
-                                            true, insertString, suggestions, mainView
-                                        )
-                                    }
+                                if (isFlick && cycleFocusedBunsetsuCandidate(delta = -1)) {
                                 } else {
-                                    if (isFlick) {
-                                        handleSpaceKeyClick(
-                                            true, insertString, suggestions, mainView
-                                        )
+                                    val isHankaku = hankakuPreference == true
+                                    if (isHankaku) {
+                                        if (isFlick) {
+                                            handleSpaceKeyClick(
+                                                false, insertString, suggestions, mainView
+                                            )
+                                        } else {
+                                            handleSpaceKeyClick(
+                                                true, insertString, suggestions, mainView
+                                            )
+                                        }
                                     } else {
-                                        handleSpaceKeyClick(
-                                            false, insertString, suggestions, mainView
-                                        )
+                                        if (isFlick) {
+                                            handleSpaceKeyClick(
+                                                true, insertString, suggestions, mainView
+                                            )
+                                        } else {
+                                            handleSpaceKeyClick(
+                                                false, insertString, suggestions, mainView
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -8286,16 +8324,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 bunsetsuConversionSession != null
     }
 
-    private fun buildBunsetsuSegments(input: String): List<BunsetsuSegmentState> {
-        val splitPositions = bunsetsuPositionList
-            ?.filter { it in 1 until input.length }
-            ?.distinct()
-            ?.sorted()
-            .orEmpty()
+    private fun sanitizeSplitPositions(
+        input: String,
+        splitPositions: List<Int>
+    ): List<Int> {
+        return splitPositions
+            .filter { it in 1 until input.length }
+            .distinct()
+            .sorted()
+    }
+
+    private fun normalizeBunsetsuSplitPatterns(
+        input: String,
+        splitPatterns: List<List<Int>>
+    ): List<List<Int>> {
+        val normalizedPatterns = splitPatterns
+            .map { sanitizeSplitPositions(input, it) }
+            .distinct()
+            .filter { it.isNotEmpty() }
+
+        if (normalizedPatterns.isNotEmpty()) {
+            return normalizedPatterns
+        }
+
+        val fallback = sanitizeSplitPositions(input, bunsetsuPositionList.orEmpty())
+        return if (fallback.isNotEmpty()) {
+            listOf(fallback)
+        } else {
+            emptyList()
+        }
+    }
+
+    private fun buildBunsetsuSegments(
+        input: String,
+        splitPositions: List<Int>
+    ): List<BunsetsuSegmentState> {
+        val sanitizedSplitPositions = sanitizeSplitPositions(input, splitPositions)
 
         val boundaries = buildList {
             add(0)
-            addAll(splitPositions)
+            addAll(sanitizedSplitPositions)
             add(input.length)
         }.distinct()
 
@@ -8331,10 +8399,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (targetSegment.candidates.isNotEmpty()) return session
 
         val previousPositions = bunsetsuPositionList
+        val previousSplitPatterns = bunsetsuSplitPatterns
         val candidates = try {
             getSuggestionList(targetSegment.reading, mainView)
         } finally {
             bunsetsuPositionList = previousPositions
+            bunsetsuSplitPatterns = previousSplitPatterns
         }
 
         val displayText = candidates.firstOrNull()?.let(::displayTextFromCandidate)
@@ -8357,7 +8427,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!shouldUseBunsetsuCursorMoveSession()) return false
 
         val tailText = stringInTail.get()
-        val initialSegments = buildBunsetsuSegments(input)
+        val splitPatterns = normalizeBunsetsuSplitPatterns(input, bunsetsuSplitPatterns)
+        val initialSplitPositions = splitPatterns.firstOrNull().orEmpty()
+        val initialSegments = buildBunsetsuSegments(input, initialSplitPositions)
         if (initialSegments.size <= 1) {
             clearBunsetsuConversionSession()
             return false
@@ -8365,9 +8437,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val initialSession = BunsetsuConversionSession(
             rawInput = input + tailText,
+            conversionInput = input,
             segments = initialSegments,
             tailText = tailText,
-            focusedIndex = 0
+            focusedIndex = 0,
+            splitPatterns = splitPatterns,
+            activeSplitPatternIndex = 0
         )
 
         isHenkan.set(true)
@@ -8376,12 +8451,93 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         stringInTail.set("")
         suggestionClickNum = 0
         currentHighlightIndex = RecyclerView.NO_POSITION
+        bunsetsuPositionList = initialSplitPositions
+        bunsetsuSplitPatterns = splitPatterns
         bunsetsuConversionSession = loadCandidatesForBunsetsuSegment(
             initialSession,
             segmentIndex = 0,
             mainView = mainView
         )
         renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
+        return true
+    }
+
+    private fun buildBunsetsuSegmentRanges(
+        segments: List<BunsetsuSegmentState>
+    ): List<IntRange> {
+        var start = 0
+        return segments.map { segment ->
+            val endExclusive = start + segment.reading.length
+            val range = start until endExclusive
+            start = endExclusive
+            range
+        }
+    }
+
+    private fun overlapLength(first: IntRange, second: IntRange): Int {
+        val start = maxOf(first.first, second.first)
+        val endExclusive = minOf(first.last + 1, second.last + 1)
+        return (endExclusive - start).coerceAtLeast(0)
+    }
+
+    private fun findFocusedSegmentIndexForSplitPattern(
+        currentSegments: List<BunsetsuSegmentState>,
+        currentFocusedIndex: Int,
+        nextSegments: List<BunsetsuSegmentState>
+    ): Int {
+        val currentRanges = buildBunsetsuSegmentRanges(currentSegments)
+        val currentRange = currentRanges.getOrNull(currentFocusedIndex) ?: return 0
+        val nextRanges = buildBunsetsuSegmentRanges(nextSegments)
+
+        return nextRanges.indices.maxWithOrNull(
+            compareBy<Int> { index ->
+                overlapLength(currentRange, nextRanges[index])
+            }.thenByDescending { index ->
+                -kotlin.math.abs(nextRanges[index].first - currentRange.first)
+            }
+        ) ?: 0
+    }
+
+    private fun switchBunsetsuSplitPattern(
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
+    ): Boolean {
+        if (!isBunsetsuCursorMoveSessionActive()) return false
+        val mainView = mainLayoutBinding ?: return false
+        val session = bunsetsuConversionSession ?: return false
+        if (session.splitPatterns.size <= 1) return false
+
+        scope.launch {
+            val nextPatternIndex =
+                (session.activeSplitPatternIndex + 1) % session.splitPatterns.size
+            val nextSplitPositions = session.splitPatterns[nextPatternIndex]
+            val rebuiltSegments = buildBunsetsuSegments(
+                input = session.conversionInput,
+                splitPositions = nextSplitPositions
+            )
+            if (rebuiltSegments.size <= 1) {
+                return@launch
+            }
+
+            val nextFocusedIndex = findFocusedSegmentIndexForSplitPattern(
+                currentSegments = session.segments,
+                currentFocusedIndex = session.focusedIndex,
+                nextSegments = rebuiltSegments
+            )
+
+            val switchedSession = session.copy(
+                segments = rebuiltSegments,
+                focusedIndex = nextFocusedIndex,
+                activeSplitPatternIndex = nextPatternIndex
+            )
+            bunsetsuPositionList = nextSplitPositions
+            bunsetsuSplitPatterns = session.splitPatterns
+            bunsetsuConversionSession = loadCandidatesForBunsetsuSegment(
+                switchedSession,
+                segmentIndex = nextFocusedIndex,
+                mainView = mainView
+            )
+            renderBunsetsuConversionSession(mainView, floatingKeyboardLayoutBinding)
+        }
         return true
     }
 
@@ -9955,6 +10111,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySpace -> {
                             val insertString = inputString.value
+                            if (switchBunsetsuSplitPattern()) {
+                                isSpaceKeyLongPressed = true
+                                return
+                            }
                             if (insertString.isEmpty() || !mainView.qwertyView.getRomajiMode()) {
                                 setCursorMode(true)
                                 isSpaceKeyLongPressed = true
@@ -10471,6 +10631,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentKatakanaKeyIndex = 0
         currentDakutenKeyIndex = 0
         bunsetsuPositionList = emptyList()
+        bunsetsuSplitPatterns = emptyList()
         clearBunsetsuConversionSession()
         henkanPressedWithBunsetsuDetect = false
         bunsetusMultipleDetect = false
@@ -11292,9 +11453,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         ?: 3000,
                     omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
-                bunsetsuPositionList = result.second
-                result.first
+                bunsetsuSplitPatterns = result.splitPatterns
+                bunsetsuPositionList = result.primarySplitPositions
+                result.candidates
             } else {
+                bunsetsuSplitPatterns = emptyList()
+                bunsetsuPositionList = emptyList()
                 kanaKanjiEngine.getCandidatesOriginal(
                     input = insertString,
                     n = nBest ?: 4,
@@ -11425,10 +11589,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         ?: 3000,
                     omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
-                bunsetsuPositionList = candidates.second
-                Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords $insertString ${candidates.second}")
-                candidates.first
+                bunsetsuSplitPatterns = candidates.splitPatterns
+                bunsetsuPositionList = candidates.primarySplitPositions
+                Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords $insertString ${candidates.splitPatterns}")
+                candidates.candidates
             } else {
+                bunsetsuSplitPatterns = emptyList()
+                bunsetsuPositionList = emptyList()
                 kanaKanjiEngine.getCandidates(
                     input = insertString,
                     n = nBest ?: 4,
@@ -11570,9 +11737,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         ?: 3000,
                     omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
-                bunsetsuPositionList = resultWithBunsetsu.second
-                resultWithBunsetsu.first
+                bunsetsuSplitPatterns = resultWithBunsetsu.splitPatterns
+                bunsetsuPositionList = resultWithBunsetsu.primarySplitPositions
+                resultWithBunsetsu.candidates
             } else {
+                bunsetsuSplitPatterns = emptyList()
+                bunsetsuPositionList = emptyList()
                 kanaKanjiEngine.getCandidatesWithoutPrediction(
                     input = insertString,
                     n = nBest ?: 4,
