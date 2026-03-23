@@ -10,11 +10,18 @@
             app:summary="@string/enable_ai_preference_summary" />
 
         <SwitchPreferenceCompat
-            android:key="enable_ai_conversion_zenzai_preference"
             android:dependency="enable_ai_conversion_zenz_preference"
+            android:key="enable_ai_conversion_zenzai_preference"
             android:summary="@string/enable_ai_conversion_zenz_preference_summary"
             android:title="@string/enable_zenzai_preference_title"
             app:defaultValue="false" />
+
+        <SwitchPreferenceCompat
+            android:dependency="enable_ai_conversion_zenz_preference"
+            android:key="enable_zenz_rerank_preference"
+            android:title="@string/enable_zenz_rerank_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/enable_zenz_rerank_preference_summary" />
 
         <Preference
             android:key="zenz_model_select_preference"

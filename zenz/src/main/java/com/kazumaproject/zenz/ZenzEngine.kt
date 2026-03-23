@@ -43,4 +43,14 @@ object ZenzEngine {
         input: String,
         candidate: String
     ): String
+
+    external fun scoreCandidates(
+        profile: String?,
+        topic: String?,
+        style: String?,
+        preference: String?,
+        leftContext: String?,
+        input: String,
+        candidates: Array<String>
+    ): FloatArray
 }

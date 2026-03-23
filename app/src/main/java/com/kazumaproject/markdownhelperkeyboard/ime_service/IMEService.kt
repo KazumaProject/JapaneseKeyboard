@@ -243,6 +243,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val activeSplitPatternIndex: Int = 0
     )
 
+    private data class ZenzRerankEntry(
+        val originalPosition: Int,
+        val candidate: Candidate,
+        val rawScore: Float,
+        val fusedScore: Float
+    )
+
+    private data class ZenzRerankPlan(
+        val leftContext: String,
+        val cacheKey: String,
+        val rerankTargets: List<IndexedValue<Candidate>>
+    )
+
     @Inject
     lateinit var learnMultiple: LearnMultiple
 
@@ -486,6 +499,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zenzaiEnableStatePreference: Boolean? = false
     private var zenzProfilePreference: String? = ""
     private var zenzEnableLongPressConversionPreference: Boolean? = false
+    private var zenzRerankPreference: Boolean? = false
 
     private var qwertyKeyVerticalMargin: Float? = 5.0f
     private var qwertyKeyHorizontalGap: Float? = 2.0f
@@ -667,6 +681,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
         private const val PAGE_SIZE: Int = 5
+        private const val ZENZ_RERANK_TOP_K = 4
+        private const val ZENZ_RERANK_ALPHA = 0.7f
+        private const val ZENZ_RERANK_BETA = 0.3f
 
         private val passwordTypes = setOf(
             InputTypeForIME.TextWebPassword,
@@ -744,6 +761,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var addUserDictionaryPopup: PopupWindow? = null
 
     private var filteredCandidateList: List<Candidate>? = emptyList()
+    private var zenzRerankJob: Job? = null
+    private var zenzRerankRequestToken: Long = 0L
+    private val zenzRerankCache = object : LinkedHashMap<String, List<Candidate>>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Candidate>>?): Boolean {
+            return size > 24
+        }
+    }
 
     private var previousTenKeyQWERTYMode: TenKeyQWERTYMode? = null
 
@@ -1030,6 +1054,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         zenzProfilePreference = preferences.zenzProfilePreference
         zenzEnableLongPressConversionPreference =
             preferences.zenzEnableLongPressConversionPreference
+        zenzRerankPreference = preferences.zenzRerankPreference
         qwertyKeyVerticalMargin = preferences.qwertyKeyVerticalMargin
         qwertyKeyHorizontalGap = preferences.qwertyKeyHorizontalGap
         qwertyKeyIndentLarge = preferences.qwertyKeyIndentLarge
@@ -1628,6 +1653,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         zenzaiEnableStatePreference = null
         zenzProfilePreference = null
         zenzEnableLongPressConversionPreference = null
+        zenzRerankPreference = null
 
         qwertyKeyVerticalMargin = null
         qwertyKeyHorizontalGap = null
@@ -7488,6 +7514,272 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun beginZenzRerankRequest(): Long {
+        zenzRerankJob?.cancel()
+        zenzRerankJob = null
+        zenzRerankRequestToken += 1L
+        return zenzRerankRequestToken
+    }
+
+    private fun getCachedZenzRerank(cacheKey: String): List<Candidate>? {
+        return synchronized(zenzRerankCache) {
+            zenzRerankCache[cacheKey]
+        }
+    }
+
+    private fun putCachedZenzRerank(cacheKey: String, candidates: List<Candidate>) {
+        synchronized(zenzRerankCache) {
+            zenzRerankCache[cacheKey] = candidates
+        }
+    }
+
+    private suspend fun prepareZenzRerankPlan(
+        insertString: String,
+        candidates: List<Candidate>
+    ): ZenzRerankPlan? {
+        if (zenzRerankPreference != true) return null
+        if (zenzaiEnableStatePreference == true) return null
+        if (hasHardwareKeyboardConnected == true) return null
+        if (insertString.length <= 1 || !insertString.isAllHiraganaWithSymbols()) return null
+        if (candidates.size < 2) return null
+
+        val rerankTargets = candidates.withIndex()
+            .filter { it.value.length.toInt() == insertString.length }
+            .take(ZENZ_RERANK_TOP_K)
+
+        if (rerankTargets.size < 2) return null
+
+        val leftContext = getZenzLeftContext(insertString)
+        val cacheKey = buildString {
+            append(zenzProfilePreference ?: "")
+            append('\u0001')
+            append(leftContext)
+            append('\u0001')
+            append(insertString.hiraganaToKatakana())
+            rerankTargets.forEach {
+                append('\u0002')
+                append(it.index)
+                append('\u0003')
+                append(it.value.string)
+                append('\u0003')
+                append(it.value.score)
+            }
+        }
+
+        return ZenzRerankPlan(
+            leftContext = leftContext,
+            cacheKey = cacheKey,
+            rerankTargets = rerankTargets
+        )
+    }
+
+    private suspend fun rerankCandidatesWithZenz(
+        insertString: String,
+        candidates: List<Candidate>,
+        plan: ZenzRerankPlan
+    ): List<Candidate>? {
+        val rawScores = withContext(Dispatchers.Default) {
+            zenzEngine?.scoreCandidates(
+                profile = zenzProfilePreference ?: "",
+                topic = "",
+                style = "",
+                preference = "",
+                leftContext = plan.leftContext.ifEmpty { "" },
+                input = insertString.hiraganaToKatakana(),
+                candidates = plan.rerankTargets.map { it.value.string }.toTypedArray()
+            ) ?: FloatArray(0)
+        }
+
+        if (rawScores.size != plan.rerankTargets.size) {
+            Timber.w(
+                "rerankCandidatesWithZenz score size mismatch: expected=%d actual=%d",
+                plan.rerankTargets.size,
+                rawScores.size
+            )
+            return null
+        }
+
+        if (rawScores.none { it.isFinite() }) {
+            return null
+        }
+
+        val baseNorm = minMaxNormalize(plan.rerankTargets.map { -it.value.score.toFloat() })
+        val zenzNorm = minMaxNormalizeFinite(rawScores.toList())
+
+        val rerankedEntries = plan.rerankTargets.mapIndexed { index, indexedValue ->
+            val rawScore = rawScores[index]
+            val fusedScore = ZENZ_RERANK_ALPHA * baseNorm[index] +
+                    ZENZ_RERANK_BETA * zenzNorm[index]
+            ZenzRerankEntry(
+                originalPosition = indexedValue.index,
+                candidate = indexedValue.value,
+                rawScore = rawScore,
+                fusedScore = fusedScore
+            )
+        }.sortedWith(
+            compareByDescending<ZenzRerankEntry> { it.fusedScore }
+                .thenByDescending {
+                    if (it.rawScore.isFinite()) it.rawScore else Float.NEGATIVE_INFINITY
+                }
+                .thenBy { it.candidate.score }
+                .thenBy { it.originalPosition }
+        )
+
+        val reranked = candidates.toMutableList()
+        plan.rerankTargets.indices.forEach { slot ->
+            reranked[plan.rerankTargets[slot].index] = rerankedEntries[slot].candidate
+        }
+
+        Timber.d(
+            "rerankCandidatesWithZenz: input=[%s] before=%s after=%s scores=%s",
+            insertString,
+            plan.rerankTargets.map { it.value.string },
+            rerankedEntries.map { it.candidate.string },
+            rawScores.toList()
+        )
+
+        return reranked
+    }
+
+    private suspend fun getZenzLeftContext(insertString: String): String {
+        return try {
+            withContext(Dispatchers.Main) {
+                val lastCandidateLength = if (isLiveConversionEnable == true) {
+                    lastCandidate?.length ?: 0
+                } else {
+                    insertString.length
+                }
+
+                if (enableZenzRightContextPreference == true) {
+                    val tmpResult = getLeftContext(inputLength = lastCandidateLength)
+                        .dropLast(lastCandidateLength)
+                    tmpResult.ifEmpty {
+                        getRightContext(inputLength = lastCandidateLength)
+                    }
+                } else {
+                    getLeftContext(inputLength = lastCandidateLength)
+                        .dropLast(lastCandidateLength)
+                }
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error getZenzLeftContext")
+            ""
+        }
+    }
+
+    private fun minMaxNormalize(values: List<Float>): List<Float> {
+        if (values.isEmpty()) return emptyList()
+        val minValue = values.minOrNull() ?: return List(values.size) { 1.0f }
+        val maxValue = values.maxOrNull() ?: return List(values.size) { 1.0f }
+        val span = maxValue - minValue
+        if (span <= 1e-6f) return List(values.size) { 1.0f }
+        return values.map { (it - minValue) / span }
+    }
+
+    private fun minMaxNormalizeFinite(values: List<Float>): List<Float> {
+        if (values.isEmpty()) return emptyList()
+
+        val result = MutableList(values.size) { 0.0f }
+        val finiteValues = values.withIndex().filter { it.value.isFinite() }
+        if (finiteValues.isEmpty()) return result
+
+        val minValue = finiteValues.minOf { it.value }
+        val maxValue = finiteValues.maxOf { it.value }
+        val span = maxValue - minValue
+
+        if (span <= 1e-6f) {
+            finiteValues.forEach { result[it.index] = 1.0f }
+            return result
+        }
+
+        finiteValues.forEach {
+            result[it.index] = (it.value - minValue) / span
+        }
+        return result
+    }
+
+    private suspend fun updateDisplayedCandidates(
+        insertString: String,
+        candidates: List<Candidate>
+    ) {
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            if (!suppressSuggestions) {
+                updateSuggestionsForFloatingCandidate(candidates.map {
+                    CandidateItem(
+                        word = it.string, length = it.length
+                    )
+                })
+            }
+        } else {
+            if (!suppressSuggestions) {
+                suggestionAdapter?.suggestions = candidates
+                suggestionAdapterFull?.suggestions = candidates
+            }
+        }
+
+        if (zenzEnableStatePreference == true) {
+            filteredCandidateList = candidates
+            lastLocalUpdatedInput.emit(insertString)
+        }
+    }
+
+    private fun updateBunsetsuSpaceKeyIfNeeded(
+        mainView: MainLayoutBinding,
+        candidates: List<Candidate>,
+        insertString: String
+    ) {
+        if (bunsetsuSeparation == true) {
+            bunsetsuPositionList?.let {
+                if (bunsetusMultipleDetect && it.isNotEmpty()) {
+                    handleJapaneseModeSpaceKeyWithBunsetsu(
+                        mainView, candidates, insertString
+                    )
+                }
+            }
+        }
+    }
+
+    private fun maybeLaunchZenzRerank(
+        requestToken: Long,
+        insertString: String,
+        baseCandidates: List<Candidate>,
+        plan: ZenzRerankPlan,
+        mainView: MainLayoutBinding
+    ) {
+        zenzRerankJob = scope.launch {
+            val reranked = try {
+                rerankCandidatesWithZenz(insertString, baseCandidates, plan)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Error rerankCandidatesWithZenz")
+                null
+            } ?: return@launch
+
+            putCachedZenzRerank(plan.cacheKey, reranked)
+
+            if (requestToken != zenzRerankRequestToken || reranked == baseCandidates) {
+                return@launch
+            }
+
+            updateDisplayedCandidates(insertString, reranked)
+            updateBunsetsuSpaceKeyIfNeeded(mainView, reranked, insertString)
+
+            if (
+                requestToken == zenzRerankRequestToken &&
+                isLiveConversionEnable == true &&
+                !hasConvertedKatakana &&
+                inputString.value == insertString &&
+                reranked.isNotEmpty()
+            ) {
+                val rerankedCommitString = getCandidateCommitString(reranked.first())
+                if (rerankedCommitString != lastCandidate) {
+                    applyFirstSuggestion(reranked.first())
+                }
+            }
+        }
+    }
+
     private fun commonPrefixLength(a: String, b: String): Int {
         val n = minOf(a.length, b.length)
         var i = 0
@@ -8320,15 +8612,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * サジェスト候補リストの先頭にある文字列を取得し、編集後のテキストとして設定します。
      * このロジックは複数箇所で使われるため、関数として抽出しました。
      */
-    private fun applyFirstSuggestion(
-        candidate: Candidate
-    ) {
-        beginBatchEdit()
-        val commitString = if (candidate.type == (15).toByte()) {
+    private fun getCandidateCommitString(candidate: Candidate): String {
+        return if (candidate.type == (15).toByte()) {
             candidate.string.correctReading().first
         } else {
             candidate.string
         }
+    }
+
+    private fun applyFirstSuggestion(
+        candidate: Candidate
+    ) {
+        beginBatchEdit()
+        val commitString = getCandidateCommitString(candidate)
         lastCandidate = commitString
         val newSpannable = createSpannableWithTail(commitString)
         setComposingTextAfterEdit(
@@ -11275,9 +11571,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun setCandidates(
         insertString: String, mainView: MainLayoutBinding
     ) {
+        val requestToken = beginZenzRerankRequest()
         if (
             zenzEnableStatePreference == true &&
-            hasHardwareKeyboardConnected != true
+            hasHardwareKeyboardConnected != true &&
+            zenzRerankPreference != true
+        ) {
+            _zenzRequest.emit(insertString)
+        }
+        if (zenzEnableStatePreference == true &&
+            zenzRerankPreference == true &&
+            zenzaiEnableStatePreference == true
         ) {
             _zenzRequest.emit(insertString)
         }
@@ -11287,25 +11591,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
-        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
-            if (!suppressSuggestions) {
-                updateSuggestionsForFloatingCandidate(filtered.map {
-                    CandidateItem(
-                        word = it.string, length = it.length
-                    )
-                })
-            }
-        } else {
-            if (!suppressSuggestions) {
-                suggestionAdapter?.suggestions = filtered
-                suggestionAdapterFull?.suggestions = filtered
-            }
-        }
-
-        if (zenzEnableStatePreference == true) {
-            filteredCandidateList = filtered
-            lastLocalUpdatedInput.emit(insertString)
-        }
+        val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
+        val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
+        val displayedCandidates = cachedReranked ?: filtered
+        updateDisplayedCandidates(insertString, displayedCandidates)
 
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
@@ -11313,21 +11602,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+            if (!hasConvertedKatakana && displayedCandidates.isNotEmpty()) applyFirstSuggestion(
+                displayedCandidates.first()
+            )
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+            if (!hasConvertedKatakana && displayedCandidates.isNotEmpty()) applyFirstSuggestion(
+                displayedCandidates.first()
+            )
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
-        if (bunsetsuSeparation == true) {
-            bunsetsuPositionList?.let {
-                if (bunsetusMultipleDetect && it.isNotEmpty()) {
-                    handleJapaneseModeSpaceKeyWithBunsetsu(
-                        mainView, filtered, insertString
-                    )
-                }
-            }
+        updateBunsetsuSpaceKeyIfNeeded(mainView, displayedCandidates, insertString)
+
+        if (rerankPlan != null && cachedReranked == null) {
+            maybeLaunchZenzRerank(requestToken, insertString, filtered, rerankPlan, mainView)
         }
 
     }
@@ -11335,9 +11624,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun setCandidatesOriginal(
         insertString: String, mainView: MainLayoutBinding
     ) {
+        val requestToken = beginZenzRerankRequest()
         if (
             zenzEnableStatePreference == true &&
-            hasHardwareKeyboardConnected != true
+            hasHardwareKeyboardConnected != true &&
+            zenzRerankPreference != true
+        ) {
+            _zenzRequest.emit(insertString)
+        }
+        if (zenzEnableStatePreference == true &&
+            zenzRerankPreference == true &&
+            zenzaiEnableStatePreference == true
         ) {
             _zenzRequest.emit(insertString)
         }
@@ -11347,26 +11644,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
-        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
-            if (!suppressSuggestions) {
-                updateSuggestionsForFloatingCandidate(filtered.map {
-                    CandidateItem(
-                        word = it.string, length = it.length
-                    )
-                })
-            }
-        } else {
-            if (!suppressSuggestions) {
-                suggestionAdapter?.suggestions = filtered
-                suggestionAdapterFull?.suggestions = filtered
-            }
-
-        }
-
-        if (zenzEnableStatePreference == true) {
-            filteredCandidateList = filtered
-            lastLocalUpdatedInput.emit(insertString)
-        }
+        val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
+        val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
+        val displayedCandidates = cachedReranked ?: filtered
+        updateDisplayedCandidates(insertString, displayedCandidates)
 
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
@@ -11374,27 +11655,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+            if (!hasConvertedKatakana && displayedCandidates.isNotEmpty()) applyFirstSuggestion(
+                displayedCandidates.first()
+            )
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+            if (!hasConvertedKatakana && displayedCandidates.isNotEmpty()) applyFirstSuggestion(
+                displayedCandidates.first()
+            )
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
-        if (bunsetsuSeparation == true) {
-            bunsetsuPositionList?.let {
-                if (bunsetusMultipleDetect && it.isNotEmpty()) {
-                    handleJapaneseModeSpaceKeyWithBunsetsu(
-                        mainView, filtered, insertString
-                    )
-                }
-            }
+        updateBunsetsuSpaceKeyIfNeeded(mainView, displayedCandidates, insertString)
+
+        if (rerankPlan != null && cachedReranked == null) {
+            maybeLaunchZenzRerank(requestToken, insertString, filtered, rerankPlan, mainView)
         }
     }
 
     private suspend fun setCandidatesWithoutPrediction(
         insertString: String, mainView: MainLayoutBinding
     ) {
+        beginZenzRerankRequest()
         val candidates = getSuggestionListWithoutPrediction(insertString)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
@@ -11443,6 +11725,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun setCandidatesEnglishKana(
         insertString: String,
     ) {
+        beginZenzRerankRequest()
         val candidates = getSuggestionListEnglishKana(insertString)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }

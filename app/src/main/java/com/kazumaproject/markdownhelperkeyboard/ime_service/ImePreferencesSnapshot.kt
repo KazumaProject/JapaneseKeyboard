@@ -101,6 +101,7 @@ data class ImePreferencesSnapshot(
     val zenzaiEnableStatePreference: Boolean,
     val zenzProfilePreference: String,
     val zenzEnableLongPressConversionPreference: Boolean,
+    val zenzRerankPreference: Boolean,
     val qwertyKeyVerticalMargin: Float,
     val qwertyKeyHorizontalGap: Float,
     val qwertyKeyIndentLarge: Float,
@@ -282,6 +283,7 @@ data class ImePreferencesSnapshot(
                 zenzProfilePreference = appPreference.zenz_profile_preference,
                 zenzEnableLongPressConversionPreference =
                     appPreference.enable_zenz_long_press_preference,
+                zenzRerankPreference = appPreference.enable_zenz_rerank_preference,
                 qwertyKeyVerticalMargin = appPreference.qwerty_key_vertical_margin ?: 5.0f,
                 qwertyKeyHorizontalGap = appPreference.qwerty_key_horizontal_gap ?: 2.0f,
                 qwertyKeyIndentLarge = appPreference.qwerty_key_indent_large ?: 23.0f,
