@@ -70,6 +70,13 @@
             app:summary="@string/conversion_separation_summary" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="conversion_bunsetsu_separation_preference"
+            android:key="conversion_bunsetsu_cursor_move_preference"
+            android:title="@string/conversion_bunsetsu_cursor_move_title"
+            app:summary="@string/conversion_bunsetsu_cursor_move_summary" />
+
+        <SwitchPreferenceCompat
             android:key="shortcut_toolbar_visibility_preference"
             android:title="@string/shortcut_toolbar_title"
             app:defaultValue="false"

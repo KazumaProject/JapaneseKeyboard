@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <atomic>
 #include <cstdint>
 #include <cmath>
 #include <android/log.h>
@@ -11,7 +12,7 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "zenz-bridge", __VA_ARGS__)
 
 // モデルと語彙のみグローバルで保持する。
-// コンテキストは毎回生成・破棄する。
+// コンテキストはセッションで使い回す。
 static llama_model *g_model = nullptr;
 static const llama_vocab *g_vocab = nullptr;
 
@@ -21,6 +22,23 @@ static int g_param_n_threads = 4;
 static int g_param_n_threads_batch = 4;
 static int g_param_n_batch = 512;
 static std::mutex g_param_mutex;   // 設定値の読み書き用
+static std::atomic<uint64_t> g_request_seq{0};
+static bool g_backend_initialized = false;
+
+struct RuntimeConfig {
+    int n_ctx;
+    int n_threads;
+    int n_threads_batch;
+    int n_batch;
+};
+
+struct ZenzSession {
+    llama_context *ctx = nullptr;
+    RuntimeConfig config{0, 0, 0, 0};
+    std::mutex mutex;
+};
+
+static ZenzSession g_session;
 
 // 候補評価の結果タイプ
 enum class CandidateEvaluationResultType {
@@ -231,47 +249,108 @@ static std::string token_to_piece_str(llama_token token) {
     return out;
 }
 
-// llama_context を毎回生成するヘルパー
-static llama_context *create_context() {
+static RuntimeConfig get_runtime_config() {
+    std::lock_guard<std::mutex> lock(g_param_mutex);
+    return RuntimeConfig{
+            g_param_n_ctx,
+            g_param_n_threads,
+            g_param_n_threads_batch,
+            g_param_n_batch
+    };
+}
+
+static bool same_runtime_config(const RuntimeConfig &lhs, const RuntimeConfig &rhs) {
+    return lhs.n_ctx == rhs.n_ctx &&
+           lhs.n_threads == rhs.n_threads &&
+           lhs.n_threads_batch == rhs.n_threads_batch &&
+           lhs.n_batch == rhs.n_batch;
+}
+
+static bool is_request_stale(uint64_t request_seq) {
+    return request_seq != g_request_seq.load(std::memory_order_relaxed);
+}
+
+struct AbortRequestState {
+    uint64_t request_seq;
+};
+
+static bool abort_if_stale(void *data) {
+    auto *state = static_cast<AbortRequestState *>(data);
+    return state && is_request_stale(state->request_seq);
+}
+
+static bool never_abort(void * /*data*/) {
+    return false;
+}
+
+static void destroy_session_context_locked() {
+    if (!g_session.ctx) {
+        return;
+    }
+    llama_set_abort_callback(g_session.ctx, never_abort, nullptr);
+    llama_synchronize(g_session.ctx);
+    llama_free(g_session.ctx);
+    g_session.ctx = nullptr;
+    g_session.config = RuntimeConfig{0, 0, 0, 0};
+}
+
+static llama_context *ensure_session_context_locked() {
     if (!g_model) {
         return nullptr;
     }
 
+    const RuntimeConfig config = get_runtime_config();
+    if (g_session.ctx && same_runtime_config(g_session.config, config)) {
+        return g_session.ctx;
+    }
+
+    destroy_session_context_locked();
+
     llama_context_params cparams = llama_context_default_params();
+    cparams.n_ctx = config.n_ctx;
+    cparams.n_threads = config.n_threads;
+    cparams.n_threads_batch = config.n_threads_batch;
+    cparams.n_batch = config.n_batch;
 
-    {
-        std::lock_guard<std::mutex> lock(g_param_mutex);
-        cparams.n_ctx = g_param_n_ctx;
-        cparams.n_threads = g_param_n_threads;
-        cparams.n_threads_batch = g_param_n_threads_batch;
-        cparams.n_batch = g_param_n_batch;
-    }
-
-    llama_context *ctx = llama_init_from_model(g_model, cparams);
-    if (!ctx) {
+    g_session.ctx = llama_init_from_model(g_model, cparams);
+    if (!g_session.ctx) {
         LOGE("Failed to create llama_context");
-    } else {
-        LOGI("llama_context created: n_ctx=%d, n_threads=%d, n_batch=%d",
-             cparams.n_ctx, cparams.n_threads, cparams.n_batch);
+        return nullptr;
     }
-    return ctx;
+
+    g_session.config = config;
+    LOGI("llama_context created: n_ctx=%d, n_threads=%d, n_batch=%d",
+         cparams.n_ctx, cparams.n_threads, cparams.n_batch);
+    return g_session.ctx;
 }
 
 // Swift の pure_greedy_decoding 相当
-static std::string pure_greedy_decoding(const std::string &leftSideContext, int maxCount) {
+static std::string pure_greedy_decoding(
+        const std::string &leftSideContext,
+        int maxCount,
+        uint64_t request_seq
+) {
+    std::unique_lock<std::mutex> session_lock(g_session.mutex);
+    if (is_request_stale(request_seq)) {
+        return "";
+    }
     if (!g_model || !g_vocab) {
         return "[error] model not initialized";
     }
 
-    llama_context *ctx = create_context();
+    llama_context *ctx = ensure_session_context_locked();
     if (!ctx) {
         return "[error] failed to create context";
     }
+    llama_kv_cache_clear(ctx);
+
+    AbortRequestState abort_state{request_seq};
+    llama_set_abort_callback(ctx, abort_if_stale, &abort_state);
 
     std::string pre = preprocess_text(leftSideContext);
     auto prompt_tokens = tokenize_text(pre, /*add_bos=*/false, /*add_eos=*/false);
     if (prompt_tokens.empty()) {
-        llama_free(ctx);
+        llama_set_abort_callback(ctx, never_abort, nullptr);
         return "";
     }
 
@@ -283,7 +362,10 @@ static std::string pure_greedy_decoding(const std::string &leftSideContext, int 
         int rc = llama_decode(ctx, batch);
         if (rc != 0) {
             LOGE("llama_decode(prompt) failed: %d", rc);
-            llama_free(ctx);
+            if (is_request_stale(request_seq)) {
+                LOGI("pure_greedy_decoding aborted while decoding prompt");
+            }
+            llama_set_abort_callback(ctx, never_abort, nullptr);
             return "";
         }
     }
@@ -320,7 +402,13 @@ static std::string pure_greedy_decoding(const std::string &leftSideContext, int 
         llama_batch next_batch = llama_batch_get_one(&next, 1);
         int rc = llama_decode(ctx, next_batch);
         if (rc != 0) {
-            LOGE("llama_decode(step) failed: %d", rc);
+            if (is_request_stale(request_seq)) {
+                LOGI("pure_greedy_decoding aborted during token generation");
+                llama_set_abort_callback(ctx, never_abort, nullptr);
+                return "";
+            } else {
+                LOGE("llama_decode(step) failed: %d", rc);
+            }
             break;
         }
     }
@@ -333,27 +421,38 @@ static std::string pure_greedy_decoding(const std::string &leftSideContext, int 
         out += token_to_piece_str(t);
     }
 
-    llama_free(ctx);
+    llama_set_abort_callback(ctx, never_abort, nullptr);
     return out;
 }
 
 // Swift の evaluate_candidate 相当
-static CandidateEvaluationResult
-candidate_evaluate(const std::string &prompt, const std::string &candidate_text) {
+static CandidateEvaluationResult candidate_evaluate(
+        const std::string &prompt,
+        const std::string &candidate_text,
+        uint64_t request_seq
+) {
     CandidateEvaluationResult result;
     result.type = CandidateEvaluationResultType::ERROR;
     result.score = 0.0f;
 
+    std::unique_lock<std::mutex> session_lock(g_session.mutex);
+    if (is_request_stale(request_seq)) {
+        return result;
+    }
     if (!g_model || !g_vocab) {
         LOGE("candidate_evaluate: model not initialized");
         return result;
     }
 
-    llama_context *ctx = create_context();
+    llama_context *ctx = ensure_session_context_locked();
     if (!ctx) {
         LOGE("candidate_evaluate: failed to create context");
         return result;
     }
+    llama_kv_cache_clear(ctx);
+
+    AbortRequestState abort_state{request_seq};
+    llama_set_abort_callback(ctx, abort_if_stale, &abort_state);
 
     std::string pre_prompt = preprocess_text(prompt);
     std::string pre_candidate = preprocess_text(candidate_text);
@@ -363,7 +462,7 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
 
     if (prompt_tokens.empty()) {
         LOGE("candidate_evaluate: prompt tokens empty");
-        llama_free(ctx);
+        llama_set_abort_callback(ctx, never_abort, nullptr);
         return result;
     }
 
@@ -397,9 +496,13 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
 
     int rc = llama_decode(ctx, batch);
     if (rc != 0) {
-        LOGE("candidate_evaluate: llama_decode failed: %d", rc);
+        if (is_request_stale(request_seq)) {
+            LOGI("candidate_evaluate aborted");
+        } else {
+            LOGE("candidate_evaluate: llama_decode failed: %d", rc);
+        }
         llama_batch_free(batch);
-        llama_free(ctx);
+        llama_set_abort_callback(ctx, never_abort, nullptr);
         return result;
     }
 
@@ -410,7 +513,7 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
     if (!all_logits) {
         LOGE("candidate_evaluate: all_logits is null");
         llama_batch_free(batch);
-        llama_free(ctx);
+        llama_set_abort_callback(ctx, never_abort, nullptr);
         return result;
     }
 
@@ -453,7 +556,7 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
                 result.whole_result = partial;
                 LOGI("candidate_evaluate: WHOLE_RESULT at pos %zu, result=%s", i, partial.c_str());
                 llama_batch_free(batch);
-                llama_free(ctx);
+                llama_set_abort_callback(ctx, never_abort, nullptr);
                 return result;
             } else {
                 std::string prefix;
@@ -470,7 +573,7 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
                 result.prefix = prefix;
                 LOGI("candidate_evaluate: FIX_REQUIRED at pos %zu, prefix=%s", i, prefix.c_str());
                 llama_batch_free(batch);
-                llama_free(ctx);
+                llama_set_abort_callback(ctx, never_abort, nullptr);
                 return result;
             }
         }
@@ -481,8 +584,109 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
     LOGI("candidate_evaluate: PASS, score=%f", total_score);
 
     llama_batch_free(batch);
-    llama_free(ctx);
+    llama_set_abort_callback(ctx, never_abort, nullptr);
     return result;
+}
+
+static bool prefill_prompt_prefix_locked(
+        llama_context *ctx,
+        const std::vector<llama_token> &prompt_tokens
+) {
+    llama_kv_cache_clear(ctx);
+
+    if (prompt_tokens.size() <= 1) {
+        return true;
+    }
+
+    const int32_t cap = (int32_t) (prompt_tokens.size() - 1);
+    llama_batch batch = llama_batch_init(cap, 0, 1);
+    for (size_t i = 0; i + 1 < prompt_tokens.size(); ++i) {
+        batch.token[batch.n_tokens] = prompt_tokens[i];
+        batch.pos[batch.n_tokens] = (llama_pos) i;
+        batch.n_seq_id[batch.n_tokens] = 1;
+        batch.seq_id[batch.n_tokens][0] = 0;
+        batch.logits[batch.n_tokens] = 0;
+        batch.n_tokens++;
+    }
+
+    const int rc = llama_decode(ctx, batch);
+    llama_batch_free(batch);
+    return rc == 0;
+}
+
+static float score_candidate_avg_logprob_reuse_prompt_locked(
+        llama_context *ctx,
+        const std::vector<llama_token> &prompt_tokens,
+        const std::vector<llama_token> &candidate_tokens,
+        uint64_t request_seq
+) {
+    if (is_request_stale(request_seq)) {
+        return -INFINITY;
+    }
+    if (prompt_tokens.empty() || candidate_tokens.empty()) {
+        return -INFINITY;
+    }
+
+    const llama_pos suffix_start = (llama_pos) (prompt_tokens.size() - 1);
+    llama_kv_cache_seq_rm(ctx, 0, suffix_start, -1);
+
+    const int32_t cap = (int32_t) (1 + candidate_tokens.size());
+    llama_batch batch = llama_batch_init(cap, 0, 1);
+
+    batch.token[batch.n_tokens] = prompt_tokens.back();
+    batch.pos[batch.n_tokens] = suffix_start;
+    batch.n_seq_id[batch.n_tokens] = 1;
+    batch.seq_id[batch.n_tokens][0] = 0;
+    batch.logits[batch.n_tokens] = 1;
+    batch.n_tokens++;
+
+    for (size_t i = 0; i < candidate_tokens.size(); ++i) {
+        batch.token[batch.n_tokens] = candidate_tokens[i];
+        batch.pos[batch.n_tokens] = suffix_start + 1 + (llama_pos) i;
+        batch.n_seq_id[batch.n_tokens] = 1;
+        batch.seq_id[batch.n_tokens][0] = 0;
+        batch.logits[batch.n_tokens] = 1;
+        batch.n_tokens++;
+    }
+
+    const int rc = llama_decode(ctx, batch);
+    if (rc != 0) {
+        if (!is_request_stale(request_seq)) {
+            LOGE("score_candidate_avg_logprob_reuse_prompt_locked: llama_decode failed: %d", rc);
+        }
+        llama_batch_free(batch);
+        return -INFINITY;
+    }
+
+    const int32_t n_vocab = llama_vocab_n_tokens(g_vocab);
+    float *all_logits = llama_get_logits(ctx);
+    if (!all_logits) {
+        LOGE("score_candidate_avg_logprob_reuse_prompt_locked: all_logits is null");
+        llama_batch_free(batch);
+        return -INFINITY;
+    }
+
+    float total_score = 0.0f;
+    for (size_t i = 0; i < candidate_tokens.size(); ++i) {
+        llama_token expected_token = candidate_tokens[i];
+        float *logits = all_logits + ((size_t) i * (size_t) n_vocab);
+
+        float max_logit = logits[0];
+        for (int32_t tid = 1; tid < n_vocab; ++tid) {
+            if (logits[tid] > max_logit) {
+                max_logit = logits[tid];
+            }
+        }
+
+        double sum_exp = 0.0;
+        for (int32_t tid = 0; tid < n_vocab; ++tid) {
+            sum_exp += exp((double) logits[tid] - (double) max_logit);
+        }
+        total_score += logits[expected_token] - max_logit - (float) log(sum_exp);
+    }
+
+    llama_batch_free(batch);
+    return total_score / (float) candidate_tokens.size();
 }
 
 // ------- JNI: モデル初期化 -------
@@ -498,13 +702,19 @@ Java_com_kazumaproject_zenz_ZenzEngine_initModel(
     const char *c_model_path = env->GetStringUTFChars(jModelPath, nullptr);
     LOGI("initModel: %s", c_model_path);
 
+    std::lock_guard<std::mutex> lock(g_session.mutex);
+    destroy_session_context_locked();
+
     if (g_model) {
         llama_model_free(g_model);
         g_model = nullptr;
         g_vocab = nullptr;
     }
 
-    llama_backend_init();
+    if (!g_backend_initialized) {
+        llama_backend_init();
+        g_backend_initialized = true;
+    }
 
     llama_model_params mparams = llama_model_default_params();
     mparams.n_gpu_layers = 0;
@@ -539,8 +749,6 @@ Java_com_kazumaproject_zenz_ZenzEngine_setRuntimeConfig(
         jint jNCtx,
         jint jNThreads
 ) {
-    std::lock_guard<std::mutex> lock(g_param_mutex);
-
     int n_ctx = jNCtx > 0 ? jNCtx : 512;
     int n_threads = jNThreads > 0 ? jNThreads : 4;
 
@@ -550,10 +758,27 @@ Java_com_kazumaproject_zenz_ZenzEngine_setRuntimeConfig(
     if (n_threads < 1) n_threads = 1;
     if (n_threads > 8) n_threads = 8;
 
-    g_param_n_ctx = n_ctx;
-    g_param_n_threads = n_threads;
-    g_param_n_threads_batch = n_threads;
-    g_param_n_batch = n_ctx;
+    RuntimeConfig new_config{
+            n_ctx,
+            n_threads,
+            n_threads,
+            n_ctx
+    };
+
+    {
+        std::lock_guard<std::mutex> lock(g_param_mutex);
+        g_param_n_ctx = new_config.n_ctx;
+        g_param_n_threads = new_config.n_threads;
+        g_param_n_threads_batch = new_config.n_threads_batch;
+        g_param_n_batch = new_config.n_batch;
+    }
+
+    {
+        std::lock_guard<std::mutex> session_lock(g_session.mutex);
+        if (g_session.ctx && !same_runtime_config(g_session.config, new_config)) {
+            destroy_session_context_locked();
+        }
+    }
 
     LOGI("setRuntimeConfig: n_ctx=%d, n_threads=%d", n_ctx, n_threads);
 }
@@ -568,15 +793,12 @@ Java_com_kazumaproject_zenz_ZenzEngine_generate(
         jstring jPrompt,
         jint maxTokens
 ) {
-    if (!g_model || !g_vocab) {
-        return toJString(env, "Model not initialized");
-    }
-
     const char *c_prompt = env->GetStringUTFChars(jPrompt, nullptr);
     std::string prompt(c_prompt ? c_prompt : "");
     env->ReleaseStringUTFChars(jPrompt, c_prompt);
 
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
+    uint64_t request_seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens, request_seq);
 
     // ★ NewStringUTFは禁止（不正UTF-8の可能性）
     return toJString(env, result);
@@ -593,10 +815,6 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContext(
         jstring jInput,
         jint maxTokens
 ) {
-    if (!g_model || !g_vocab) {
-        return toJString(env, "Model not initialized");
-    }
-
     const char *c_left = env->GetStringUTFChars(jLeftContext, nullptr);
     const char *c_input = env->GetStringUTFChars(jInput, nullptr);
 
@@ -617,7 +835,8 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContext(
         prompt = inputTag + input + outputTag;
     }
 
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
+    uint64_t request_seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens, request_seq);
     return toJString(env, result);
 }
 
@@ -636,10 +855,6 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContextAndConditions(
         jstring jInput,
         jint maxTokens
 ) {
-    if (!g_model || !g_vocab) {
-        return toJString(env, "Model not initialized");
-    }
-
     const char *c_profile = jProfile ? env->GetStringUTFChars(jProfile, nullptr) : nullptr;
     const char *c_topic = jTopic ? env->GetStringUTFChars(jTopic, nullptr) : nullptr;
     const char *c_style = jStyle ? env->GetStringUTFChars(jStyle, nullptr) : nullptr;
@@ -682,7 +897,8 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContextAndConditions(
         prompt = conditions + inputTag + input + outputTag;
     }
 
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
+    uint64_t request_seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens, request_seq);
     return toJString(env, result);
 }
 
@@ -701,10 +917,6 @@ Java_com_kazumaproject_zenz_ZenzEngine_candidateEvaluate(
         jstring jInput,
         jstring jCandidate
 ) {
-    if (!g_model || !g_vocab) {
-        return toJString(env, "ERROR");
-    }
-
     const char *c_profile = jProfile ? env->GetStringUTFChars(jProfile, nullptr) : nullptr;
     const char *c_topic = jTopic ? env->GetStringUTFChars(jTopic, nullptr) : nullptr;
     const char *c_style = jStyle ? env->GetStringUTFChars(jStyle, nullptr) : nullptr;
@@ -754,7 +966,8 @@ Java_com_kazumaproject_zenz_ZenzEngine_candidateEvaluate(
         prompt = conditions + inputTag + input + outputTag;
     }
 
-    CandidateEvaluationResult eval_result = candidate_evaluate(prompt, candidate);
+    uint64_t request_seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
+    CandidateEvaluationResult eval_result = candidate_evaluate(prompt, candidate, request_seq);
 
     std::string result_str;
     switch (eval_result.type) {
@@ -774,4 +987,154 @@ Java_com_kazumaproject_zenz_ZenzEngine_candidateEvaluate(
     }
 
     return toJString(env, result_str);
+}
+
+extern "C"
+JNIEXPORT jfloatArray JNICALL
+Java_com_kazumaproject_zenz_ZenzEngine_scoreCandidates(
+        JNIEnv *env,
+        jobject /* thiz */,
+        jstring jProfile,
+        jstring jTopic,
+        jstring jStyle,
+        jstring jPreference,
+        jstring jLeftContext,
+        jstring jInput,
+        jobjectArray jCandidates
+) {
+    const jsize candidate_count = jCandidates ? env->GetArrayLength(jCandidates) : 0;
+    jfloatArray result_array = env->NewFloatArray(candidate_count);
+    if (!result_array) {
+        return nullptr;
+    }
+
+    std::vector<jfloat> scores((size_t) candidate_count, -INFINITY);
+    if (candidate_count <= 0) {
+        return result_array;
+    }
+
+    const char *c_profile = jProfile ? env->GetStringUTFChars(jProfile, nullptr) : nullptr;
+    const char *c_topic = jTopic ? env->GetStringUTFChars(jTopic, nullptr) : nullptr;
+    const char *c_style = jStyle ? env->GetStringUTFChars(jStyle, nullptr) : nullptr;
+    const char *c_preference = jPreference ? env->GetStringUTFChars(jPreference, nullptr) : nullptr;
+    const char *c_left = jLeftContext ? env->GetStringUTFChars(jLeftContext, nullptr) : nullptr;
+    const char *c_input = jInput ? env->GetStringUTFChars(jInput, nullptr) : nullptr;
+
+    std::string profile = c_profile ? c_profile : "";
+    std::string topic = c_topic ? c_topic : "";
+    std::string style = c_style ? c_style : "";
+    std::string preference = c_preference ? c_preference : "";
+    std::string left = c_left ? c_left : "";
+    std::string input = c_input ? c_input : "";
+
+    if (c_profile) env->ReleaseStringUTFChars(jProfile, c_profile);
+    if (c_topic) env->ReleaseStringUTFChars(jTopic, c_topic);
+    if (c_style) env->ReleaseStringUTFChars(jStyle, c_style);
+    if (c_preference) env->ReleaseStringUTFChars(jPreference, c_preference);
+    if (c_left) env->ReleaseStringUTFChars(jLeftContext, c_left);
+    if (c_input) env->ReleaseStringUTFChars(jInput, c_input);
+
+    const std::string inputTag = u8"\uEE00";
+    const std::string contextTag = u8"\uEE02";
+    const std::string profileTag = u8"\uEE03";
+    const std::string topicTag = u8"\uEE04";
+    const std::string styleTag = u8"\uEE05";
+    const std::string preferenceTag = u8"\uEE06";
+    const std::string outputTag = u8"\uEE01";
+
+    std::string conditions;
+    if (!profile.empty()) conditions += profileTag + profile;
+    if (!topic.empty()) conditions += topicTag + topic;
+    if (!style.empty()) conditions += styleTag + style;
+    if (!preference.empty()) conditions += preferenceTag + preference;
+
+    std::string prompt;
+    if (!left.empty()) {
+        prompt = conditions + contextTag + left + inputTag + input + outputTag;
+    } else {
+        prompt = conditions + inputTag + input + outputTag;
+    }
+
+    const std::string pre_prompt = preprocess_text(prompt);
+    uint64_t request_seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
+
+    std::vector<std::string> candidate_strings((size_t) candidate_count);
+    for (jsize i = 0; i < candidate_count; ++i) {
+        auto *j_candidate = (jstring) env->GetObjectArrayElement(jCandidates, i);
+        if (!j_candidate) {
+            continue;
+        }
+        const char *c_candidate = env->GetStringUTFChars(j_candidate, nullptr);
+        candidate_strings[(size_t) i] = c_candidate ? c_candidate : "";
+        if (c_candidate) {
+            env->ReleaseStringUTFChars(j_candidate, c_candidate);
+        }
+        env->DeleteLocalRef(j_candidate);
+    }
+
+    {
+        std::unique_lock<std::mutex> session_lock(g_session.mutex);
+        if (!g_model || !g_vocab) {
+            LOGE("scoreCandidates: model not initialized");
+            env->SetFloatArrayRegion(result_array, 0, candidate_count, scores.data());
+            return result_array;
+        }
+
+        llama_context *ctx = ensure_session_context_locked();
+        if (!ctx) {
+            LOGE("scoreCandidates: failed to create context");
+            env->SetFloatArrayRegion(result_array, 0, candidate_count, scores.data());
+            return result_array;
+        }
+
+        AbortRequestState abort_state{request_seq};
+        llama_set_abort_callback(ctx, abort_if_stale, &abort_state);
+
+        auto prompt_tokens = tokenize_text(pre_prompt, /*add_bos=*/false, /*add_eos=*/false);
+        if (prompt_tokens.empty()) {
+            llama_set_abort_callback(ctx, never_abort, nullptr);
+            env->SetFloatArrayRegion(result_array, 0, candidate_count, scores.data());
+            return result_array;
+        }
+
+        if (!prefill_prompt_prefix_locked(ctx, prompt_tokens)) {
+            LOGE("scoreCandidates: failed to prefill prompt prefix");
+            llama_set_abort_callback(ctx, never_abort, nullptr);
+            env->SetFloatArrayRegion(result_array, 0, candidate_count, scores.data());
+            return result_array;
+        }
+
+        std::vector<std::vector<llama_token>> candidate_tokens_list((size_t) candidate_count);
+        for (jsize i = 0; i < candidate_count; ++i) {
+            if (candidate_strings[(size_t) i].empty()) {
+                continue;
+            }
+            candidate_tokens_list[(size_t) i] = tokenize_text(
+                    preprocess_text(candidate_strings[(size_t) i]),
+                    /*add_bos=*/false,
+                    /*add_eos=*/false
+            );
+        }
+
+        for (jsize i = 0; i < candidate_count; ++i) {
+            if (is_request_stale(request_seq)) {
+                break;
+            }
+            if (candidate_tokens_list[(size_t) i].empty()) {
+                scores[(size_t) i] = -INFINITY;
+                continue;
+            }
+
+            scores[(size_t) i] = score_candidate_avg_logprob_reuse_prompt_locked(
+                    ctx,
+                    prompt_tokens,
+                    candidate_tokens_list[(size_t) i],
+                    request_seq
+            );
+        }
+        llama_set_abort_callback(ctx, never_abort, nullptr);
+    }
+
+    env->SetFloatArrayRegion(result_array, 0, candidate_count, scores.data());
+    return result_array;
 }
