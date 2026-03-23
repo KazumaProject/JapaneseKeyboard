@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <mutex>
+#include <atomic>
 #include <cstdint>
 #include <cmath>
 #include <android/log.h>
@@ -11,7 +12,7 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "zenz-bridge", __VA_ARGS__)
 
 // モデルと語彙のみグローバルで保持する。
-// コンテキストは毎回生成・破棄する。
+// コンテキストはセッションで使い回す。
 static llama_model *g_model = nullptr;
 static const llama_vocab *g_vocab = nullptr;
 
@@ -21,6 +22,23 @@ static int g_param_n_threads = 4;
 static int g_param_n_threads_batch = 4;
 static int g_param_n_batch = 512;
 static std::mutex g_param_mutex;   // 設定値の読み書き用
+static std::atomic<uint64_t> g_request_seq{0};
+static bool g_backend_initialized = false;
+
+struct RuntimeConfig {
+    int n_ctx;
+    int n_threads;
+    int n_threads_batch;
+    int n_batch;
+};
+
+struct ZenzSession {
+    llama_context *ctx = nullptr;
+    RuntimeConfig config{0, 0, 0, 0};
+    std::mutex mutex;
+};
+
+static ZenzSession g_session;
 
 // 候補評価の結果タイプ
 enum class CandidateEvaluationResultType {
@@ -231,47 +249,108 @@ static std::string token_to_piece_str(llama_token token) {
     return out;
 }
 
-// llama_context を毎回生成するヘルパー
-static llama_context *create_context() {
+static RuntimeConfig get_runtime_config() {
+    std::lock_guard<std::mutex> lock(g_param_mutex);
+    return RuntimeConfig{
+            g_param_n_ctx,
+            g_param_n_threads,
+            g_param_n_threads_batch,
+            g_param_n_batch
+    };
+}
+
+static bool same_runtime_config(const RuntimeConfig &lhs, const RuntimeConfig &rhs) {
+    return lhs.n_ctx == rhs.n_ctx &&
+           lhs.n_threads == rhs.n_threads &&
+           lhs.n_threads_batch == rhs.n_threads_batch &&
+           lhs.n_batch == rhs.n_batch;
+}
+
+static bool is_request_stale(uint64_t request_seq) {
+    return request_seq != g_request_seq.load(std::memory_order_relaxed);
+}
+
+struct AbortRequestState {
+    uint64_t request_seq;
+};
+
+static bool abort_if_stale(void *data) {
+    auto *state = static_cast<AbortRequestState *>(data);
+    return state && is_request_stale(state->request_seq);
+}
+
+static bool never_abort(void * /*data*/) {
+    return false;
+}
+
+static void destroy_session_context_locked() {
+    if (!g_session.ctx) {
+        return;
+    }
+    llama_set_abort_callback(g_session.ctx, never_abort, nullptr);
+    llama_synchronize(g_session.ctx);
+    llama_free(g_session.ctx);
+    g_session.ctx = nullptr;
+    g_session.config = RuntimeConfig{0, 0, 0, 0};
+}
+
+static llama_context *ensure_session_context_locked() {
     if (!g_model) {
         return nullptr;
     }
 
+    const RuntimeConfig config = get_runtime_config();
+    if (g_session.ctx && same_runtime_config(g_session.config, config)) {
+        return g_session.ctx;
+    }
+
+    destroy_session_context_locked();
+
     llama_context_params cparams = llama_context_default_params();
+    cparams.n_ctx = config.n_ctx;
+    cparams.n_threads = config.n_threads;
+    cparams.n_threads_batch = config.n_threads_batch;
+    cparams.n_batch = config.n_batch;
 
-    {
-        std::lock_guard<std::mutex> lock(g_param_mutex);
-        cparams.n_ctx = g_param_n_ctx;
-        cparams.n_threads = g_param_n_threads;
-        cparams.n_threads_batch = g_param_n_threads_batch;
-        cparams.n_batch = g_param_n_batch;
-    }
-
-    llama_context *ctx = llama_init_from_model(g_model, cparams);
-    if (!ctx) {
+    g_session.ctx = llama_init_from_model(g_model, cparams);
+    if (!g_session.ctx) {
         LOGE("Failed to create llama_context");
-    } else {
-        LOGI("llama_context created: n_ctx=%d, n_threads=%d, n_batch=%d",
-             cparams.n_ctx, cparams.n_threads, cparams.n_batch);
+        return nullptr;
     }
-    return ctx;
+
+    g_session.config = config;
+    LOGI("llama_context created: n_ctx=%d, n_threads=%d, n_batch=%d",
+         cparams.n_ctx, cparams.n_threads, cparams.n_batch);
+    return g_session.ctx;
 }
 
 // Swift の pure_greedy_decoding 相当
-static std::string pure_greedy_decoding(const std::string &leftSideContext, int maxCount) {
+static std::string pure_greedy_decoding(
+        const std::string &leftSideContext,
+        int maxCount,
+        uint64_t request_seq
+) {
+    std::unique_lock<std::mutex> session_lock(g_session.mutex);
+    if (is_request_stale(request_seq)) {
+        return "";
+    }
     if (!g_model || !g_vocab) {
         return "[error] model not initialized";
     }
 
-    llama_context *ctx = create_context();
+    llama_context *ctx = ensure_session_context_locked();
     if (!ctx) {
         return "[error] failed to create context";
     }
+    llama_kv_cache_clear(ctx);
+
+    AbortRequestState abort_state{request_seq};
+    llama_set_abort_callback(ctx, abort_if_stale, &abort_state);
 
     std::string pre = preprocess_text(leftSideContext);
     auto prompt_tokens = tokenize_text(pre, /*add_bos=*/false, /*add_eos=*/false);
     if (prompt_tokens.empty()) {
-        llama_free(ctx);
+        llama_set_abort_callback(ctx, never_abort, nullptr);
         return "";
     }
 
@@ -283,7 +362,10 @@ static std::string pure_greedy_decoding(const std::string &leftSideContext, int 
         int rc = llama_decode(ctx, batch);
         if (rc != 0) {
             LOGE("llama_decode(prompt) failed: %d", rc);
-            llama_free(ctx);
+            if (is_request_stale(request_seq)) {
+                LOGI("pure_greedy_decoding aborted while decoding prompt");
+            }
+            llama_set_abort_callback(ctx, never_abort, nullptr);
             return "";
         }
     }
@@ -320,7 +402,13 @@ static std::string pure_greedy_decoding(const std::string &leftSideContext, int 
         llama_batch next_batch = llama_batch_get_one(&next, 1);
         int rc = llama_decode(ctx, next_batch);
         if (rc != 0) {
-            LOGE("llama_decode(step) failed: %d", rc);
+            if (is_request_stale(request_seq)) {
+                LOGI("pure_greedy_decoding aborted during token generation");
+                llama_set_abort_callback(ctx, never_abort, nullptr);
+                return "";
+            } else {
+                LOGE("llama_decode(step) failed: %d", rc);
+            }
             break;
         }
     }
@@ -333,27 +421,38 @@ static std::string pure_greedy_decoding(const std::string &leftSideContext, int 
         out += token_to_piece_str(t);
     }
 
-    llama_free(ctx);
+    llama_set_abort_callback(ctx, never_abort, nullptr);
     return out;
 }
 
 // Swift の evaluate_candidate 相当
-static CandidateEvaluationResult
-candidate_evaluate(const std::string &prompt, const std::string &candidate_text) {
+static CandidateEvaluationResult candidate_evaluate(
+        const std::string &prompt,
+        const std::string &candidate_text,
+        uint64_t request_seq
+) {
     CandidateEvaluationResult result;
     result.type = CandidateEvaluationResultType::ERROR;
     result.score = 0.0f;
 
+    std::unique_lock<std::mutex> session_lock(g_session.mutex);
+    if (is_request_stale(request_seq)) {
+        return result;
+    }
     if (!g_model || !g_vocab) {
         LOGE("candidate_evaluate: model not initialized");
         return result;
     }
 
-    llama_context *ctx = create_context();
+    llama_context *ctx = ensure_session_context_locked();
     if (!ctx) {
         LOGE("candidate_evaluate: failed to create context");
         return result;
     }
+    llama_kv_cache_clear(ctx);
+
+    AbortRequestState abort_state{request_seq};
+    llama_set_abort_callback(ctx, abort_if_stale, &abort_state);
 
     std::string pre_prompt = preprocess_text(prompt);
     std::string pre_candidate = preprocess_text(candidate_text);
@@ -363,7 +462,7 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
 
     if (prompt_tokens.empty()) {
         LOGE("candidate_evaluate: prompt tokens empty");
-        llama_free(ctx);
+        llama_set_abort_callback(ctx, never_abort, nullptr);
         return result;
     }
 
@@ -397,9 +496,13 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
 
     int rc = llama_decode(ctx, batch);
     if (rc != 0) {
-        LOGE("candidate_evaluate: llama_decode failed: %d", rc);
+        if (is_request_stale(request_seq)) {
+            LOGI("candidate_evaluate aborted");
+        } else {
+            LOGE("candidate_evaluate: llama_decode failed: %d", rc);
+        }
         llama_batch_free(batch);
-        llama_free(ctx);
+        llama_set_abort_callback(ctx, never_abort, nullptr);
         return result;
     }
 
@@ -410,7 +513,7 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
     if (!all_logits) {
         LOGE("candidate_evaluate: all_logits is null");
         llama_batch_free(batch);
-        llama_free(ctx);
+        llama_set_abort_callback(ctx, never_abort, nullptr);
         return result;
     }
 
@@ -453,7 +556,7 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
                 result.whole_result = partial;
                 LOGI("candidate_evaluate: WHOLE_RESULT at pos %zu, result=%s", i, partial.c_str());
                 llama_batch_free(batch);
-                llama_free(ctx);
+                llama_set_abort_callback(ctx, never_abort, nullptr);
                 return result;
             } else {
                 std::string prefix;
@@ -470,7 +573,7 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
                 result.prefix = prefix;
                 LOGI("candidate_evaluate: FIX_REQUIRED at pos %zu, prefix=%s", i, prefix.c_str());
                 llama_batch_free(batch);
-                llama_free(ctx);
+                llama_set_abort_callback(ctx, never_abort, nullptr);
                 return result;
             }
         }
@@ -481,7 +584,7 @@ candidate_evaluate(const std::string &prompt, const std::string &candidate_text)
     LOGI("candidate_evaluate: PASS, score=%f", total_score);
 
     llama_batch_free(batch);
-    llama_free(ctx);
+    llama_set_abort_callback(ctx, never_abort, nullptr);
     return result;
 }
 
@@ -498,13 +601,19 @@ Java_com_kazumaproject_zenz_ZenzEngine_initModel(
     const char *c_model_path = env->GetStringUTFChars(jModelPath, nullptr);
     LOGI("initModel: %s", c_model_path);
 
+    std::lock_guard<std::mutex> lock(g_session.mutex);
+    destroy_session_context_locked();
+
     if (g_model) {
         llama_model_free(g_model);
         g_model = nullptr;
         g_vocab = nullptr;
     }
 
-    llama_backend_init();
+    if (!g_backend_initialized) {
+        llama_backend_init();
+        g_backend_initialized = true;
+    }
 
     llama_model_params mparams = llama_model_default_params();
     mparams.n_gpu_layers = 0;
@@ -539,8 +648,6 @@ Java_com_kazumaproject_zenz_ZenzEngine_setRuntimeConfig(
         jint jNCtx,
         jint jNThreads
 ) {
-    std::lock_guard<std::mutex> lock(g_param_mutex);
-
     int n_ctx = jNCtx > 0 ? jNCtx : 512;
     int n_threads = jNThreads > 0 ? jNThreads : 4;
 
@@ -550,10 +657,27 @@ Java_com_kazumaproject_zenz_ZenzEngine_setRuntimeConfig(
     if (n_threads < 1) n_threads = 1;
     if (n_threads > 8) n_threads = 8;
 
-    g_param_n_ctx = n_ctx;
-    g_param_n_threads = n_threads;
-    g_param_n_threads_batch = n_threads;
-    g_param_n_batch = n_ctx;
+    RuntimeConfig new_config{
+            n_ctx,
+            n_threads,
+            n_threads,
+            n_ctx
+    };
+
+    {
+        std::lock_guard<std::mutex> lock(g_param_mutex);
+        g_param_n_ctx = new_config.n_ctx;
+        g_param_n_threads = new_config.n_threads;
+        g_param_n_threads_batch = new_config.n_threads_batch;
+        g_param_n_batch = new_config.n_batch;
+    }
+
+    {
+        std::lock_guard<std::mutex> session_lock(g_session.mutex);
+        if (g_session.ctx && !same_runtime_config(g_session.config, new_config)) {
+            destroy_session_context_locked();
+        }
+    }
 
     LOGI("setRuntimeConfig: n_ctx=%d, n_threads=%d", n_ctx, n_threads);
 }
@@ -568,15 +692,12 @@ Java_com_kazumaproject_zenz_ZenzEngine_generate(
         jstring jPrompt,
         jint maxTokens
 ) {
-    if (!g_model || !g_vocab) {
-        return toJString(env, "Model not initialized");
-    }
-
     const char *c_prompt = env->GetStringUTFChars(jPrompt, nullptr);
     std::string prompt(c_prompt ? c_prompt : "");
     env->ReleaseStringUTFChars(jPrompt, c_prompt);
 
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
+    uint64_t request_seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens, request_seq);
 
     // ★ NewStringUTFは禁止（不正UTF-8の可能性）
     return toJString(env, result);
@@ -593,10 +714,6 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContext(
         jstring jInput,
         jint maxTokens
 ) {
-    if (!g_model || !g_vocab) {
-        return toJString(env, "Model not initialized");
-    }
-
     const char *c_left = env->GetStringUTFChars(jLeftContext, nullptr);
     const char *c_input = env->GetStringUTFChars(jInput, nullptr);
 
@@ -617,7 +734,8 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContext(
         prompt = inputTag + input + outputTag;
     }
 
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
+    uint64_t request_seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens, request_seq);
     return toJString(env, result);
 }
 
@@ -636,10 +754,6 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContextAndConditions(
         jstring jInput,
         jint maxTokens
 ) {
-    if (!g_model || !g_vocab) {
-        return toJString(env, "Model not initialized");
-    }
-
     const char *c_profile = jProfile ? env->GetStringUTFChars(jProfile, nullptr) : nullptr;
     const char *c_topic = jTopic ? env->GetStringUTFChars(jTopic, nullptr) : nullptr;
     const char *c_style = jStyle ? env->GetStringUTFChars(jStyle, nullptr) : nullptr;
@@ -682,7 +796,8 @@ Java_com_kazumaproject_zenz_ZenzEngine_generateWithContextAndConditions(
         prompt = conditions + inputTag + input + outputTag;
     }
 
-    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens);
+    uint64_t request_seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
+    std::string result = pure_greedy_decoding(prompt, /*maxCount=*/maxTokens, request_seq);
     return toJString(env, result);
 }
 
@@ -701,10 +816,6 @@ Java_com_kazumaproject_zenz_ZenzEngine_candidateEvaluate(
         jstring jInput,
         jstring jCandidate
 ) {
-    if (!g_model || !g_vocab) {
-        return toJString(env, "ERROR");
-    }
-
     const char *c_profile = jProfile ? env->GetStringUTFChars(jProfile, nullptr) : nullptr;
     const char *c_topic = jTopic ? env->GetStringUTFChars(jTopic, nullptr) : nullptr;
     const char *c_style = jStyle ? env->GetStringUTFChars(jStyle, nullptr) : nullptr;
@@ -754,7 +865,8 @@ Java_com_kazumaproject_zenz_ZenzEngine_candidateEvaluate(
         prompt = conditions + inputTag + input + outputTag;
     }
 
-    CandidateEvaluationResult eval_result = candidate_evaluate(prompt, candidate);
+    uint64_t request_seq = g_request_seq.fetch_add(1, std::memory_order_relaxed) + 1;
+    CandidateEvaluationResult eval_result = candidate_evaluate(prompt, candidate, request_seq);
 
     std::string result_str;
     switch (eval_result.type) {
