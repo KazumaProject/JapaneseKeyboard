@@ -211,6 +211,9 @@ object AppPreference {
     private val BUNSETSU_SEPARATION_PREFERENCE =
         Pair("conversion_bunsetsu_separation_preference", false)
 
+    private val BUNSETSU_CURSOR_MOVE_PREFERENCE =
+        Pair("conversion_bunsetsu_cursor_move_preference", false)
+
     private val CONVERSION_KEY_SWIPE_CURSOR_MOVE_PREFERENCE =
         Pair("conversion_key_swipe_cursor_move_preference", false)
 
@@ -239,6 +242,9 @@ object AppPreference {
 
     private val ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE =
         Pair("conversion_key_long_press_ai_conversion_preference", false)
+
+    private val ENABLE_ZENZ_RERANK_PREFERENCE =
+        Pair("enable_zenz_rerank_preference", false)
 
     private val ZENZ_DEBOUNCE_TIME_PREFERENCE = Pair("zenz_debounce_time_preference", 300)
 
@@ -1136,6 +1142,15 @@ object AppPreference {
             it.putBoolean(BUNSETSU_SEPARATION_PREFERENCE.first, value)
         }
 
+    var bunsetsu_cursor_move_preference: Boolean
+        get() = preferences.getBoolean(
+            BUNSETSU_CURSOR_MOVE_PREFERENCE.first,
+            BUNSETSU_CURSOR_MOVE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(BUNSETSU_CURSOR_MOVE_PREFERENCE.first, value)
+        }
+
     var conversion_key_swipe_cursor_move_preference: Boolean
         get() = preferences.getBoolean(
             CONVERSION_KEY_SWIPE_CURSOR_MOVE_PREFERENCE.first,
@@ -1221,6 +1236,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE.first, value)
+        }
+
+    var enable_zenz_rerank_preference: Boolean
+        get() = preferences.getBoolean(
+            ENABLE_ZENZ_RERANK_PREFERENCE.first,
+            ENABLE_ZENZ_RERANK_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENABLE_ZENZ_RERANK_PREFERENCE.first, value)
         }
 
     var zenz_debounce_time_preference: Int?
