@@ -2460,6 +2460,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyCode: Int, event: KeyEvent, insertString: String
     ): Boolean {
         if (event.isCtrlPressed) return super.onKeyDown(keyCode, event)
+        if (event.isShiftPressed && isBunsetsuCursorMoveSessionActive()) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_LEFT -> return switchBunsetsuSplitPattern(delta = -1)
+                KeyEvent.KEYCODE_DPAD_RIGHT -> return switchBunsetsuSplitPattern(delta = 1)
+            }
+        }
         hardKeyboardShiftPressd = true
         val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
         char?.let { c ->
@@ -2981,7 +2987,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (currentHighlightIndex <= 0 && hasPreviousPage) {
             goToPreviousPageForFloatingCandidate()
-            Timber.d("floatingCandidatePreviousItem hasPreviousPage: ${listAdapter.getHighlightedItem()}")
+            scope.launch {
+                delay(64)
+                displayComposingTextInHardwareKeyboardConnected(insertString = insertString)
+                Timber.d("floatingCandidatePreviousItem hasPreviousPage: ${listAdapter.getHighlightedItem()}")
+            }
         } else {
             currentHighlightIndex = if (currentHighlightIndex <= 0) {
                 suggestionCount - 1
@@ -3210,10 +3220,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun updateSuggestionsForFloatingCandidate(suggestions: List<CandidateItem>) {
+    private fun updateSuggestionsForFloatingCandidate(
+        suggestions: List<CandidateItem>,
+        highlightedAbsoluteIndex: Int? = null
+    ) {
         Timber.d("updateSuggestionsForFloatingCandidate: $suggestions")
         fullSuggestionsList = suggestions
-        currentPage = 0
+        highlightedAbsoluteIndex?.let { absoluteIndex ->
+            if (suggestions.isNotEmpty() && absoluteIndex != RecyclerView.NO_POSITION) {
+                val safeIndex = absoluteIndex.coerceIn(0, suggestions.lastIndex)
+                currentPage = safeIndex / PAGE_SIZE
+                currentHighlightIndex = safeIndex % PAGE_SIZE
+            } else {
+                currentPage = 0
+                currentHighlightIndex = RecyclerView.NO_POSITION
+            }
+        } ?: run {
+            currentPage = 0
+        }
         displayCurrentPage()
     }
 
@@ -4514,7 +4538,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleSpaceLongActionFloating() {
         Timber.d("SideKeySpace LongPress Floting: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
-        if (switchBunsetsuSplitPattern(floatingKeyboardBinding)) {
+        if (switchBunsetsuSplitPattern(floatingKeyboardLayoutBinding = floatingKeyboardBinding)) {
             isSpaceKeyLongPressed = true
             return
         }
@@ -5358,6 +5382,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             updateClipboardPreview()
                         }
                     }
+
                     KeyAction.Cancel -> {}
                     KeyAction.VoiceInput -> {}
                 }
@@ -7104,6 +7129,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
                 if (isPhysicalKeyboardEnable) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                        window.window?.setBackgroundBlurRadius(0)
+                    }
+
                     val showInputModeText = when (mainView.keyboardView.currentInputMode.value) {
                         InputMode.ModeJapanese -> "あ"
                         InputMode.ModeEnglish -> "A"
@@ -8512,6 +8541,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun switchBunsetsuSplitPattern(
+        delta: Int = 1,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
     ): Boolean {
         if (!isBunsetsuCursorMoveSessionActive()) return false
@@ -8521,7 +8551,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         scope.launch {
             val nextPatternIndex =
-                (session.activeSplitPatternIndex + 1) % session.splitPatterns.size
+                ((session.activeSplitPatternIndex + delta) % session.splitPatterns.size + session.splitPatterns.size) % session.splitPatterns.size
             val nextSplitPositions = session.splitPatterns[nextPatternIndex]
             val rebuiltSegments = buildBunsetsuSegments(
                 input = session.conversionInput,
@@ -8579,13 +8609,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (physicalKeyboardEnable.replayCache.isNotEmpty() &&
             physicalKeyboardEnable.replayCache.first()
         ) {
-            currentHighlightIndex = highlightIndex
             updateSuggestionsForFloatingCandidate(segment.candidates.map {
                 CandidateItem(
                     word = displayTextFromCandidate(it),
                     length = it.length
                 )
-            })
+            }, highlightedAbsoluteIndex = highlightIndex)
         }
     }
 
@@ -8800,7 +8829,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             val candidateCount = segment.candidates.size
-            val nextIndex = ((segment.selectedIndex + delta) % candidateCount + candidateCount) % candidateCount
+            val nextIndex =
+                ((segment.selectedIndex + delta) % candidateCount + candidateCount) % candidateCount
             val updatedSegment = segment.copy(
                 selectedIndex = nextIndex,
                 displayText = displayTextFromCandidate(segment.candidates[nextIndex])
@@ -10096,7 +10126,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                         c
                                                     }
                                                 Timber.d("QWERTY romaji : $charToAppend")
-                                                sb.append(effectiveInsertString).append(charToAppend)
+                                                sb.append(effectiveInsertString)
+                                                    .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
                                                         converter.convertQWERTYZenkaku(sb.toString())
@@ -10111,7 +10142,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     c
                                                 }
                                                 Timber.d("QWERTY romaji : $charToAppend")
-                                                sb.append(effectiveInsertString).append(charToAppend)
+                                                sb.append(effectiveInsertString)
+                                                    .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
                                                         converter.convertQWERTYZenkaku(sb.toString())
@@ -10131,7 +10163,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     c
                                                 }
                                                 Timber.d("QWERTY romaji : $charToAppend")
-                                                sb.append(effectiveInsertString).append(charToAppend)
+                                                sb.append(effectiveInsertString)
+                                                    .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
                                                         converter.convertQWERTYZenkaku(sb.toString())
@@ -13816,9 +13849,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // Only proceed if we are not on the first page
         if (currentPage > 0) {
             currentPage--
-            // When moving to a previous page, set the highlight
-            // to the last possible position.
-            currentHighlightIndex = PAGE_SIZE - 1
+            currentHighlightIndex = 0
             displayCurrentPage()
         }
     }
