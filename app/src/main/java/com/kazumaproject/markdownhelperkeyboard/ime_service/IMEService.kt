@@ -8610,8 +8610,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding
         )
 
-        applyComposingTextRange(
+        applyBunsetsuComposingText(
             text = text,
+            segments = segments,
+            tailText = session.tailText,
             highlightStart = highlightStart,
             highlightEnd = highlightEnd,
             backgroundColor = if (customComposingTextPreference == true) {
@@ -8630,6 +8632,67 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding?.let {
             updateUIinHenkanFloating(it, session.rawInput)
         }
+    }
+
+    private fun applyBunsetsuComposingText(
+        text: String,
+        segments: List<BunsetsuSegmentState>,
+        tailText: String,
+        highlightStart: Int,
+        highlightEnd: Int,
+        @ColorInt backgroundColor: Int,
+        @ColorInt textColor: Int? = null
+    ) {
+        val spannableString = SpannableString(text)
+        val safeStart = highlightStart.coerceIn(0, text.length)
+        val safeEnd = highlightEnd.coerceIn(safeStart, text.length)
+        val spanFlag = Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+
+        spannableString.apply {
+            setSpan(
+                BackgroundColorSpan(backgroundColor),
+                safeStart,
+                safeEnd,
+                spanFlag
+            )
+
+            textColor?.let { color ->
+                setSpan(
+                    ForegroundColorSpan(color),
+                    safeStart,
+                    safeEnd,
+                    spanFlag
+                )
+            }
+
+            var segmentStart = 0
+            segments.forEach { segment ->
+                val segmentEnd = (segmentStart + segment.displayText.length).coerceAtMost(length)
+                if (segmentEnd > segmentStart) {
+                    setSpan(
+                        UnderlineSpan(),
+                        segmentStart,
+                        segmentEnd,
+                        spanFlag
+                    )
+                }
+                segmentStart = segmentEnd
+            }
+
+            if (tailText.isNotEmpty()) {
+                val tailStart = (text.length - tailText.length).coerceAtLeast(0)
+                if (tailStart < length) {
+                    setSpan(
+                        UnderlineSpan(),
+                        tailStart,
+                        length,
+                        spanFlag
+                    )
+                }
+            }
+        }
+
+        setComposingText(spannableString, 1)
     }
 
     private fun clearBunsetsuConversionSession() {
@@ -13650,6 +13713,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val spannableString = SpannableString(text)
         val safeStart = highlightStart.coerceIn(0, text.length)
         val safeEnd = highlightEnd.coerceIn(safeStart, text.length)
+        val spanFlag = Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
 
         spannableString.apply {
             // 背景色
@@ -13657,7 +13721,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 BackgroundColorSpan(backgroundColor),
                 safeStart,
                 safeEnd,
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                spanFlag
             )
 
             // テキスト色
@@ -13666,7 +13730,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ForegroundColorSpan(color),
                     safeStart,
                     safeEnd,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+                    spanFlag
+                )
+            }
+
+            if (text.isNotEmpty()) {
+                setSpan(
+                    UnderlineSpan(),
+                    0,
+                    text.length,
+                    spanFlag
                 )
             }
         }
