@@ -326,6 +326,8 @@
     <string name="candidate_height_landscape_preference_title">Candidate Height(Landscape)</string>
     <string name="conversion_separation_title">Split with Convert key</string>
     <string name="conversion_separation_summary">Split the composing text into segments and select the first one.</string>
+    <string name="conversion_bunsetsu_cursor_move_title">Move Segments with Cursor Keys</string>
+    <string name="conversion_bunsetsu_cursor_move_summary">While segment conversion is active, move the focused segment with the left and right cursor keys.</string>
     <string name="pref_title_space_longpress_cursor">Move Cursor by Holding Space</string>
     <string name="pref_summary_space_longpress_cursor">When composing text, hold down the space key to move the cursor.</string>
     <string name="add_candidate_tab_title">Add candidate tab</string>
@@ -356,6 +358,8 @@
     <string name="enable_ai_preference_summary">Enable predictive text conversion using the neural kana-kanji model “zenz-v3.1-xsmall.”</string>
     <string name="zenz_profile_preference_title">Profile Settings for zenz</string>
     <string name="zenz_profile_preference_summary">Set a profile that zenz will use for predictive conversion.\nExample: If you enter “Occupation: Doctor,” typing “chūsha” will make the candidate “injection” appear more frequently.</string>
+    <string name="enable_zenz_rerank_preference_title">Rerank conversion candidates with zenz</string>
+    <string name="enable_zenz_rerank_preference_summary">Uses zenz to lightly reorder the top conversion candidates. The existing dictionary score is still used together with the zenz score.</string>
     <string name="conversion_key_long_press_ai_conversion_preference_title">Add AI suggestions on Convert-key long press</string>
     <string name="conversion_key_long_press_ai_conversion_preference_summary">When detecting long-press the Convert key, add conversion suggestions from the zenz neural kana-kanji model.</string>
     <string name="zenz_debounce_time_preference_title">Debounce time for zenz predictions</string>
