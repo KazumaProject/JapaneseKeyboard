@@ -243,6 +243,9 @@ object AppPreference {
     private val ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE =
         Pair("conversion_key_long_press_ai_conversion_preference", false)
 
+    private val ENABLE_ZENZ_RERANK_PREFERENCE =
+        Pair("enable_zenz_rerank_preference", false)
+
     private val ZENZ_DEBOUNCE_TIME_PREFERENCE = Pair("zenz_debounce_time_preference", 300)
 
     private val ZENZ_MAXIMUM_LETTER_SIZE_PREFERENCE =
@@ -1233,6 +1236,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(ENABLE_ZENZ_CONVERSION_LONG_PRESS_PREFERENCE.first, value)
+        }
+
+    var enable_zenz_rerank_preference: Boolean
+        get() = preferences.getBoolean(
+            ENABLE_ZENZ_RERANK_PREFERENCE.first,
+            ENABLE_ZENZ_RERANK_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENABLE_ZENZ_RERANK_PREFERENCE.first, value)
         }
 
     var zenz_debounce_time_preference: Int?
