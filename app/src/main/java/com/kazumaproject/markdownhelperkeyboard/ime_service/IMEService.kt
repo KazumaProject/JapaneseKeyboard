@@ -2584,31 +2584,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return true
         }
 
-        // InputMode.ModeJapanese の KEYCODE_SPACE のロジックをここにペースト
         when (mainView.keyboardView.currentInputMode.value) {
             InputMode.ModeJapanese -> {
                 if (insertString.isNotEmpty()) {
-                    isHenkan.set(true)
-                    Timber.d("KEYCODE_SPACE is pressed")
-                    val insertStringEndWithN = if (isDefaultRomajiHenkanMap) {
+                    val normalizedInsertString = if (isDefaultRomajiHenkanMap) {
                         romajiConverter?.flushZenkaku(insertString)?.first
                     } else {
                         romajiConverter?.flush(insertString)?.first
-                    }
-                    Timber.d("KEYCODE_SPACE is pressed: $insertStringEndWithN $stringInTail")
-                    if (insertStringEndWithN == null) {
-                        _inputString.update { insertString }
-                        floatingCandidateNextItem(insertString)
-                    } else {
-                        _inputString.update { insertStringEndWithN }
-                        floatingCandidateNextItem(insertString)
+                    } ?: insertString
+
+                    isHenkan.set(true)
+                    Timber.d("KEYCODE_SPACE is pressed: $normalizedInsertString $stringInTail")
+                    _inputString.update { normalizedInsertString }
+
+                    if (shouldUseBunsetsuCursorMoveSession()) {
                         scope.launch {
-                            delay(64)
-                            val newSuggestionList = suggestionAdapter?.suggestions ?: emptyList()
-                            if (newSuggestionList.isNotEmpty()) handleJapaneseModeSpaceKey(
-                                mainView, newSuggestionList, insertStringEndWithN
+                            val activated = activateBunsetsuConversionSession(
+                                input = normalizedInsertString,
+                                mainView = mainView
                             )
+                            if (!activated) {
+                                floatingCandidateNextItem(normalizedInsertString)
+                            }
                         }
+                    } else {
+                        floatingCandidateNextItem(normalizedInsertString)
                     }
                 } else {
                     if (stringInTail.get().isNotEmpty()) return true
