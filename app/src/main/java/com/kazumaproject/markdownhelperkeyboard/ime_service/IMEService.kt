@@ -5345,8 +5345,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.MoveCustomKeyboardTab -> {}
                     KeyAction.ToggleKatakana -> {}
                     KeyAction.DeleteUntilSymbol -> {}
-                    KeyAction.MoveCursorDown -> {}
-                    KeyAction.MoveCursorUp -> {}
+                    KeyAction.MoveCursorDown -> {
+                        if (cycleFocusedBunsetsuCandidate(delta = 1)) {
+                            suggestionAdapter?.setUndoEnabled(false)
+                            updateClipboardPreview()
+                        }
+                    }
+
+                    KeyAction.MoveCursorUp -> {
+                        if (cycleFocusedBunsetsuCandidate(delta = -1)) {
+                            suggestionAdapter?.setUndoEnabled(false)
+                            updateClipboardPreview()
+                        }
+                    }
                     KeyAction.Cancel -> {}
                     KeyAction.VoiceInput -> {}
                 }
@@ -5999,14 +6010,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.MoveCursorDown -> {
                         val insertString = inputString.value
-                        if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                        if (cycleFocusedBunsetsuCandidate(delta = 1)) {
+                        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
                             sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
                         }
                     }
 
                     KeyAction.MoveCursorUp -> {
                         val insertString = inputString.value
-                        if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                        if (cycleFocusedBunsetsuCandidate(delta = -1)) {
+                        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
                             sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
                         }
                     }
