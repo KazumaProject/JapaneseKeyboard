@@ -262,6 +262,7 @@ class FindPath {
         )
         val resultFinal: MutableList<Candidate> = mutableListOf()
         val splitPatterns = mutableListOf<List<Int>>()
+        val splitPatternByCandidateString = linkedMapOf<String, List<Int>>()
         val foundStrings = HashSet<String>()
         val pQueue: PriorityQueue<Pair<Node, Int>> =
             PriorityQueue(
@@ -287,6 +288,7 @@ class FindPath {
                         if (splitPatterns.none { it == bunsetsuPositions } && splitPatterns.size < 4) {
                             splitPatterns.add(bunsetsuPositions)
                         }
+                        splitPatternByCandidateString[stringFromNode] = bunsetsuPositions
 
                         val candidate = Candidate(
                             string = stringFromNode,
@@ -318,11 +320,19 @@ class FindPath {
                     }
                 }
                 if (resultFinal.size >= n) {
-                    return BunsetsuCandidateResult(resultFinal, splitPatterns)
+                    return BunsetsuCandidateResult(
+                        candidates = resultFinal,
+                        splitPatterns = splitPatterns,
+                        splitPatternByCandidateString = splitPatternByCandidateString
+                    )
                 }
             }
         }
-        return BunsetsuCandidateResult(resultFinal.sortedBy { it.score }, splitPatterns)
+        return BunsetsuCandidateResult(
+            candidates = resultFinal.sortedBy { it.score },
+            splitPatterns = splitPatterns,
+            splitPatternByCandidateString = splitPatternByCandidateString
+        )
     }
 
     fun backwardAStarWithBunsetsuWithLog(
