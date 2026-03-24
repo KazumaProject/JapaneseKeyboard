@@ -123,6 +123,7 @@ import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -8676,21 +8677,61 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         input: String,
         splitPatterns: List<List<Int>>
     ): List<List<Int>> {
+        val initialPattern = sanitizeSplitPositions(input, bunsetsuPositionList.orEmpty())
         val normalizedPatterns = splitPatterns
             .map { sanitizeSplitPositions(input, it) }
             .distinct()
-            .filter { it.isNotEmpty() }
 
-        if (normalizedPatterns.isNotEmpty()) {
-            return normalizedPatterns
+        return buildList {
+            add(initialPattern)
+            normalizedPatterns.forEach { pattern ->
+                if (pattern != initialPattern) {
+                    add(pattern)
+                }
+            }
+        }
+    }
+
+    private fun resolveInitialBunsetsuSplitPositions(
+        input: String,
+        mergedCandidates: List<Candidate>,
+        engineResult: BunsetsuCandidateResult?
+    ): List<Int> {
+        val firstCandidate = mergedCandidates.firstOrNull() ?: return emptyList()
+        val result = engineResult ?: return emptyList()
+        if (!result.candidates.contains(firstCandidate)) {
+            return emptyList()
         }
 
-        val fallback = sanitizeSplitPositions(input, bunsetsuPositionList.orEmpty())
-        return if (fallback.isNotEmpty()) {
-            listOf(fallback)
-        } else {
-            emptyList()
+        val candidatePattern = result.splitPatternByCandidateString[firstCandidate.string]
+            ?: if (result.candidates.firstOrNull() == firstCandidate) {
+                result.primarySplitPositions
+            } else {
+                emptyList()
+            }
+
+        return sanitizeSplitPositions(input, candidatePattern)
+    }
+
+    private fun updateBunsetsuStateAfterCandidateMerge(
+        input: String,
+        mergedCandidates: List<Candidate>,
+        engineResult: BunsetsuCandidateResult?
+    ) {
+        if (bunsetsuSeparation != true || engineResult == null) {
+            bunsetsuSplitPatterns = emptyList()
+            bunsetsuPositionList = emptyList()
+            return
         }
+
+        bunsetsuSplitPatterns = engineResult.splitPatterns
+            .map { sanitizeSplitPositions(input, it) }
+            .distinct()
+        bunsetsuPositionList = resolveInitialBunsetsuSplitPositions(
+            input = input,
+            mergedCandidates = mergedCandidates,
+            engineResult = engineResult
+        )
     }
 
     private fun buildBunsetsuSegments(
@@ -8738,8 +8779,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val previousPositions = bunsetsuPositionList
         val previousSplitPatterns = bunsetsuSplitPatterns
+        val targetReadingLength = targetSegment.reading.length
         val candidates = try {
-            getSuggestionList(targetSegment.reading, mainView)
+            getSuggestionList(targetSegment.reading, mainView).filter {
+                it.length.toInt() == targetReadingLength
+            }
         } finally {
             bunsetsuPositionList = previousPositions
             bunsetsuSplitPatterns = previousSplitPatterns
@@ -8768,7 +8812,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val splitPatterns = normalizeBunsetsuSplitPatterns(input, bunsetsuSplitPatterns)
         val initialSplitPositions = splitPatterns.firstOrNull().orEmpty()
         val initialSegments = buildBunsetsuSegments(input, initialSplitPositions)
-        if (initialSegments.size <= 1) {
+        if (initialSegments.isEmpty()) {
             clearBunsetsuConversionSession()
             return false
         }
@@ -8823,6 +8867,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentFocusedIndex: Int,
         nextSegments: List<BunsetsuSegmentState>
     ): Int {
+        if (currentSegments.size == 1 && nextSegments.size > 1) {
+            return 0
+        }
+
         val currentRanges = buildBunsetsuSegmentRanges(currentSegments)
         val currentRange = currentRanges.getOrNull(currentFocusedIndex) ?: return 0
         val nextRanges = buildBunsetsuSegmentRanges(nextSegments)
@@ -8853,7 +8901,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 input = session.conversionInput,
                 splitPositions = nextSplitPositions
             )
-            if (rebuiltSegments.size <= 1) {
+            if (rebuiltSegments.isEmpty()) {
                 return@launch
             }
 
@@ -10747,6 +10795,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         Timber.d("setCandidateClick: $candidate")
+        if (handleBunsetsuCandidateClick(candidate, currentInputMode, position)) {
+            setCusrorLeftAfterCloseBracket(candidate.string)
+            return
+        }
         if (insertString.isNotEmpty()) {
             processCandidate(
                 candidate = candidate,
@@ -10757,6 +10809,143 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setCusrorLeftAfterCloseBracket(candidate.string)
         }
         resetFlagsSuggestionClick()
+    }
+
+    private fun handleBunsetsuCandidateClick(
+        candidate: Candidate,
+        currentInputMode: InputMode,
+        position: Int
+    ): Boolean {
+        val session = bunsetsuConversionSession ?: return false
+        if (!isBunsetsuCursorMoveSessionActive()) return false
+        val mainView = mainLayoutBinding ?: return false
+
+        val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
+        val targetSegment = session.segments[focusedIndex]
+        val candidateDisplayText = displayTextFromCandidate(candidate)
+        val selectedIndex = targetSegment.candidates.indexOfFirst { it == candidate }
+
+        if (currentInputMode == InputMode.ModeJapanese &&
+            isLearnDictionaryMode == true &&
+            !isPrivateMode &&
+            position != 0
+        ) {
+            ioScope.launch {
+                try {
+                    learnRepository.upsertLearnedData(
+                        LearnEntity(
+                            input = targetSegment.reading,
+                            out = candidate.string,
+                            score = ((candidate.score - 500 * position).coerceAtLeast(0)).toShort(),
+                            leftId = candidate.leftId,
+                            rightId = candidate.rightId
+                        )
+                    )
+                } catch (e: Exception) {
+                    Timber.e(e, "upsertLearnDictionary for bunsetsu tap failed")
+                }
+            }
+        }
+
+        val updatedSegments = session.segments.toMutableList()
+        updatedSegments[focusedIndex] = targetSegment.copy(
+            displayText = candidateDisplayText,
+            selectedIndex = if (selectedIndex >= 0) selectedIndex else targetSegment.selectedIndex
+        )
+        bunsetsuConversionSession = session.copy(segments = updatedSegments)
+        commitBunsetsuConversionUntilFocusedSegment(
+            mainView = mainView,
+            session = session.copy(segments = updatedSegments)
+        )
+        return true
+    }
+
+    private fun commitBunsetsuConversionUntilFocusedSegment(
+        mainView: MainLayoutBinding,
+        session: BunsetsuConversionSession
+    ): Boolean {
+        if (session.segments.isEmpty()) return false
+
+        val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
+        val committedText = session.segments
+            .take(focusedIndex + 1)
+            .joinToString(separator = "") { it.displayText }
+        val remainingSegmentInput = session.segments
+            .drop(focusedIndex + 1)
+            .joinToString(separator = "") { it.reading }
+        val sessionTailText = session.tailText
+        val nextInput = if (remainingSegmentInput.isNotEmpty()) {
+            remainingSegmentInput
+        } else {
+            sessionTailText
+        }
+        val nextTailText = if (remainingSegmentInput.isNotEmpty()) {
+            sessionTailText
+        } else {
+            ""
+        }
+
+        beginBatchEdit()
+        try {
+            setComposingText("", 0)
+            finishComposingText()
+            if (committedText.isNotEmpty()) {
+                commitText(committedText, 1)
+            }
+
+            if (nextInput.isNotEmpty()) {
+                stringInTail.set(nextTailText)
+                val spannableString = SpannableString(nextInput + nextTailText)
+                setComposingTextAfterEdit(
+                    inputString = nextInput,
+                    spannableString = spannableString,
+                    backgroundColor = if (customComposingTextPreference == true) {
+                        inputCompositionAfterBackgroundColor
+                            ?: getColor(com.kazumaproject.core.R.color.blue)
+                    } else {
+                        getColor(com.kazumaproject.core.R.color.blue)
+                    },
+                    textColor = if (customComposingTextPreference == true) {
+                        inputCompositionTextColor
+                    } else {
+                        null
+                    }
+                )
+            }
+        } finally {
+            endBatchEdit()
+        }
+
+        isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
+        suggestionClickNum = 0
+        englishSpaceKeyPressed.set(false)
+        onDeleteLongPressUp.set(false)
+        _dakutenPressed.value = false
+        lastFlickConvertedNextHiragana.set(true)
+        isContinuousTapInputEnabled.set(true)
+        suggestionAdapter?.suggestions = emptyList()
+        suggestionAdapterFull?.suggestions = emptyList()
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() &&
+            physicalKeyboardEnable.replayCache.first()
+        ) {
+            updateSuggestionsForFloatingCandidate(emptyList())
+            currentHighlightIndex = RecyclerView.NO_POSITION
+        }
+        isFirstClickHasStringTail = false
+        _inputString.update { nextInput }
+        clearBunsetsuConversionSession()
+        learnMultiple.stop()
+
+        if (nextInput.isNotEmpty()) {
+            scope.launch {
+                processInputString(nextInput, mainView)
+            }
+        } else {
+            stringInTail.set("")
+        }
+        return true
     }
 
 
@@ -11826,9 +12015,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
                     (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !mainView.qwertyView.getRomajiMode()))
 
+        var engineResult: BunsetsuCandidateResult? = null
         val engineCandidates = withContext(Dispatchers.Default) {
             if (bunsetsuSeparation == true) {
-                val result = kanaKanjiEngine.getCandidatesOriginalWithBunsetsu(
+                engineResult = kanaKanjiEngine.getCandidatesOriginalWithBunsetsu(
                     input = insertString,
                     n = nBest ?: 4,
                     mozcUtPersonName = mozcUTPersonName,
@@ -11845,12 +12035,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         ?: 3000,
                     omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
-                bunsetsuSplitPatterns = result.splitPatterns
-                bunsetsuPositionList = result.primarySplitPositions
-                result.candidates
+                engineResult?.candidates.orEmpty()
             } else {
-                bunsetsuSplitPatterns = emptyList()
-                bunsetsuPositionList = emptyList()
                 kanaKanjiEngine.getCandidatesOriginal(
                     input = insertString,
                     n = nBest ?: 4,
@@ -11880,7 +12066,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
 
-        return result.filter { candidate ->
+        val filteredCandidates = result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
             } else {
@@ -11889,6 +12075,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }.distinctBy { it.string }
+
+        updateBunsetsuStateAfterCandidateMerge(
+            input = insertString,
+            mergedCandidates = filteredCandidates,
+            engineResult = engineResult
+        )
+
+        return filteredCandidates
     }
 
     private suspend fun getSuggestionList(
@@ -11962,9 +12156,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
                     (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !mainView.qwertyView.getRomajiMode()))
 
+        var engineResult: BunsetsuCandidateResult? = null
         val engineCandidates = withContext(Dispatchers.Default) {
             if (bunsetsuSeparation == true) {
-                val candidates = kanaKanjiEngine.getCandidatesWithBunsetsuSeparation(
+                engineResult = kanaKanjiEngine.getCandidatesWithBunsetsuSeparation(
                     input = insertString,
                     n = nBest ?: 4,
                     mozcUtPersonName = mozcUTPersonName,
@@ -11981,13 +12176,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         ?: 3000,
                     omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
-                bunsetsuSplitPatterns = candidates.splitPatterns
-                bunsetsuPositionList = candidates.primarySplitPositions
-                Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: $bunsetsuPositionList ${isHenkan.get()} $ngWords $insertString ${candidates.splitPatterns}")
-                candidates.candidates
+                engineResult?.let {
+                    Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: ${it.primarySplitPositions} ${isHenkan.get()} $ngWords $insertString ${it.splitPatterns}")
+                }
+                engineResult?.candidates.orEmpty()
             } else {
-                bunsetsuSplitPatterns = emptyList()
-                bunsetsuPositionList = emptyList()
                 kanaKanjiEngine.getCandidates(
                     input = insertString,
                     n = nBest ?: 4,
@@ -12015,7 +12208,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
-        return result.filter { candidate ->
+        val filteredCandidates = result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
             } else {
@@ -12024,6 +12217,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }.distinctBy { it.string }
+
+        updateBunsetsuStateAfterCandidateMerge(
+            input = insertString,
+            mergedCandidates = filteredCandidates,
+            engineResult = engineResult
+        )
+
+        return filteredCandidates
     }
 
     private fun getLeftContext(inputLength: Int): String {
@@ -12113,9 +12314,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+        var engineResult: BunsetsuCandidateResult? = null
         val engineCandidates = withContext(Dispatchers.Default) {
             if (bunsetsuSeparation == true) {
-                val resultWithBunsetsu = kanaKanjiEngine.getCandidatesWithoutPredictionWithBunsetsu(
+                engineResult = kanaKanjiEngine.getCandidatesWithoutPredictionWithBunsetsu(
                     input = insertString,
                     n = nBest ?: 4,
                     mozcUtPersonName = mozcUTPersonName,
@@ -12129,12 +12331,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         ?: 3000,
                     omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
                 )
-                bunsetsuSplitPatterns = resultWithBunsetsu.splitPatterns
-                bunsetsuPositionList = resultWithBunsetsu.primarySplitPositions
-                resultWithBunsetsu.candidates
+                engineResult?.candidates.orEmpty()
             } else {
-                bunsetsuSplitPatterns = emptyList()
-                bunsetsuPositionList = emptyList()
                 kanaKanjiEngine.getCandidatesWithoutPrediction(
                     input = insertString,
                     n = nBest ?: 4,
@@ -12161,7 +12359,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
 
-        return result.filter { candidate ->
+        val filteredCandidates = result.filter { candidate ->
             if (ngWords.isEmpty()) {
                 true
             } else {
@@ -12170,6 +12368,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }.distinctBy { it.string }
+
+        updateBunsetsuStateAfterCandidateMerge(
+            input = insertString,
+            mergedCandidates = filteredCandidates,
+            engineResult = engineResult
+        )
+
+        return filteredCandidates
     }
 
     private fun getSuggestionListEnglishKana(
