@@ -8779,8 +8779,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val previousPositions = bunsetsuPositionList
         val previousSplitPatterns = bunsetsuSplitPatterns
+        val targetReadingLength = targetSegment.reading.length
         val candidates = try {
-            getSuggestionList(targetSegment.reading, mainView)
+            getSuggestionList(targetSegment.reading, mainView).filter {
+                it.length.toInt() == targetReadingLength
+            }
         } finally {
             bunsetsuPositionList = previousPositions
             bunsetsuSplitPatterns = previousSplitPatterns
