@@ -399,6 +399,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _inputString = MutableStateFlow("")
     private val inputString = _inputString.asStateFlow()
     private var stringInTail = AtomicReference("")
+    private var suppressedSelectionCleanupCount = 0
     private val _dakutenPressed = MutableStateFlow(false)
     private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>(replay = 0)
     private val suggestionFlag = _suggestionFlag.asSharedFlow()
@@ -2248,6 +2249,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
+        if (suppressedSelectionCleanupCount > 0) {
+            suppressedSelectionCleanupCount -= 1
+            Timber.d("onUpdateSelection suppressed: [${inputString.value}] [${stringInTail.get()}]")
+            return
+        }
+
         Timber.d("onUpdateSelection end called: [${inputString.value}] [${stringInTail.get()}] [${bunsetusMultipleDetect}]")
         if (stringInTail.get().isEmpty()) {
             bunsetusMultipleDetect = false
@@ -3784,23 +3791,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleFlick(
-        char: Char?, insertString: String, sb: StringBuilder, mainView: MainLayoutBinding
+        char: Char?, insertString: String, sb: StringBuilder, _mainView: MainLayoutBinding
     ) {
         if (isHenkan.get()) {
-            suggestionAdapter?.updateHighlightPosition(-1)
-            finishComposingText()
-            setComposingText("", 0)
-            mainView.root.post {
-                isHenkan.set(false)
-                henkanPressedWithBunsetsuDetect = false
-                char?.let {
-                    sendCharFlick(
-                        charToSend = it, insertString = "", sb = sb
-                    )
-                }
-                isContinuousTapInputEnabled.set(true)
-                lastFlickConvertedNextHiragana.set(true)
+            commitCurrentHenkanForNewInput()
+            char?.let {
+                sendCharFlick(
+                    charToSend = it, insertString = "", sb = sb
+                )
             }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
         } else {
             char?.let {
                 sendCharFlick(
@@ -3816,23 +3817,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         char: Char?,
         insertString: String,
         sb: StringBuilder,
-        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
+        _floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
         if (isHenkan.get()) {
-            suggestionAdapter?.updateHighlightPosition(-1)
-            finishComposingText()
-            setComposingText("", 0)
-            floatingKeyboardLayoutBinding.root.post {
-                isHenkan.set(false)
-                henkanPressedWithBunsetsuDetect = false
-                char?.let {
-                    sendCharFlick(
-                        charToSend = it, insertString = "", sb = sb
-                    )
-                }
-                isContinuousTapInputEnabled.set(true)
-                lastFlickConvertedNextHiragana.set(true)
+            commitCurrentHenkanForNewInput()
+            char?.let {
+                sendCharFlick(
+                    charToSend = it, insertString = "", sb = sb
+                )
             }
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
         } else {
             char?.let {
                 sendCharFlick(
@@ -3845,20 +3840,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleTap(
-        char: Char?, insertString: String, sb: StringBuilder, mainView: MainLayoutBinding
+        char: Char?, insertString: String, sb: StringBuilder, _mainView: MainLayoutBinding
     ) {
         if (isHenkan.get()) {
-            suggestionAdapter?.updateHighlightPosition(-1)
-            finishComposingText()
-            setComposingText("", 0)
-            mainView.root.post {
-                isHenkan.set(false)
-                henkanPressedWithBunsetsuDetect = false
-                char?.let {
-                    sendCharTap(
-                        charToSend = it, insertString = "", sb = sb
-                    )
-                }
+            commitCurrentHenkanForNewInput()
+            char?.let {
+                sendCharTap(
+                    charToSend = it, insertString = "", sb = sb
+                )
             }
         } else {
             char?.let {
@@ -3873,20 +3862,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         char: Char?,
         insertString: String,
         sb: StringBuilder,
-        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
+        _floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
         if (isHenkan.get()) {
-            suggestionAdapter?.updateHighlightPosition(-1)
-            finishComposingText()
-            setComposingText("", 0)
-            floatingKeyboardLayoutBinding.root.post {
-                isHenkan.set(false)
-                henkanPressedWithBunsetsuDetect = false
-                char?.let {
-                    sendCharTap(
-                        charToSend = it, insertString = "", sb = sb
-                    )
-                }
+            commitCurrentHenkanForNewInput()
+            char?.let {
+                sendCharTap(
+                    charToSend = it, insertString = "", sb = sb
+                )
             }
         } else {
             char?.let {
@@ -10456,8 +10439,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 insertString
                             }
+                            val inputForAppend = if (isHenkan.get()) {
+                                commitCurrentHenkanForNewInput()
+                                ""
+                            } else {
+                                effectiveInsertString
+                            }
                             if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                                if (effectiveInsertString.isNotEmpty()) {
+                                if (inputForAppend.isNotEmpty()) {
                                     Timber.d("QWERTY romaji not empty: $hardKeyboardShiftPressd $qwertyRomajiShiftConversionPreference")
                                     if (qwertyRomajiShiftConversionPreference == true) {
                                         if (hardKeyboardShiftPressd) {
@@ -10470,7 +10459,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                         c
                                                     }
                                                 Timber.d("QWERTY romaji : $charToAppend")
-                                                sb.append(effectiveInsertString)
+                                                sb.append(inputForAppend)
                                                     .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
@@ -10486,7 +10475,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     c
                                                 }
                                                 Timber.d("QWERTY romaji : $charToAppend")
-                                                sb.append(effectiveInsertString)
+                                                sb.append(inputForAppend)
                                                     .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
@@ -10498,7 +10487,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     } else {
                                         if (hardKeyboardShiftPressd) {
                                             Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
-                                            handleTap(tap, effectiveInsertString, sb, mainView)
+                                            handleTap(tap, inputForAppend, sb, mainView)
                                         } else {
                                             tap?.let { c ->
                                                 val charToAppend = if (isDefaultRomajiHenkanMap) {
@@ -10507,7 +10496,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                     c
                                                 }
                                                 Timber.d("QWERTY romaji : $charToAppend")
-                                                sb.append(effectiveInsertString)
+                                                sb.append(inputForAppend)
                                                     .append(charToAppend)
                                                 romajiConverter?.let { converter ->
                                                     _inputString.update {
@@ -10536,7 +10525,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     }
                                 }
                             } else {
-                                handleTap(tap, effectiveInsertString, sb, mainView)
+                                handleTap(tap, inputForAppend, sb, mainView)
                             }
                             isContinuousTapInputEnabled.set(true)
                             lastFlickConvertedNextHiragana.set(true)
@@ -11063,6 +11052,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun commitAndClearInput(candidateString: String) {
         _inputString.update { "" }
         commitText(candidateString, 1)
+    }
+
+    private fun resolveCurrentHenkanCommitText(): String {
+        bunsetsuConversionSession?.let { session ->
+            val convertedText = session.segments.joinToString(separator = "") { it.displayText }
+            return convertedText + session.tailText
+        }
+
+        val suggestions = suggestionAdapter?.suggestions.orEmpty()
+        if (suggestions.isNotEmpty()) {
+            val selectedIndex = if (suggestionClickNum <= 0) {
+                0
+            } else {
+                (suggestionClickNum - 1).coerceAtMost(suggestions.lastIndex)
+            }
+            return getCandidateCommitString(suggestions[selectedIndex]) + stringInTail.get()
+        }
+
+        return inputString.value + stringInTail.get()
+    }
+
+    private fun commitCurrentHenkanForNewInput() {
+        if (!isHenkan.get()) return
+
+        val currentHenkanText = resolveCurrentHenkanCommitText()
+        suppressedSelectionCleanupCount += 1
+
+        beginBatchEdit()
+        try {
+            setComposingText("", 0)
+            finishComposingText()
+            if (currentHenkanText.isNotEmpty()) {
+                commitText(currentHenkanText, 1)
+            }
+        } finally {
+            endBatchEdit()
+        }
+
+        resetFlagsEnterKeyNotHenkan()
     }
 
     private fun handlePartialOrExcessLength(
