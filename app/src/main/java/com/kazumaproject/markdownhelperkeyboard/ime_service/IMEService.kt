@@ -216,6 +216,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.text.BreakIterator
 import java.text.SimpleDateFormat
+import java.util.ArrayDeque
 import java.util.Calendar
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
@@ -595,7 +596,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val cursorMoveMode: StateFlow<Boolean> = _cursorMoveMode
     private var hasConvertedKatakana = false
 
-    private val deletedBuffer = StringBuilder()
+    private val deletedBuffer = EditHistoryBuffer()
+    private var activeDeleteHistoryBatch: DeleteHistoryBatch? = null
 
     private var keyboardOrder: List<KeyboardType> = emptyList()
     private var candidateTabOrder: List<CandidateTab> = emptyList()
@@ -786,6 +788,75 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         data class Internal(val type: KeyboardType, val title: String) : RowItem()
         data class External(val ime: ImeItem) : RowItem()
     }
+
+    private sealed interface EditHistoryEntry {
+        val previewText: String
+
+        data class DeleteCommittedText(
+            val deletedText: String
+        ) : EditHistoryEntry {
+            override val previewText: String = deletedText
+        }
+
+        data class CompositionChange(
+            val beforeInput: String,
+            val beforeTail: String,
+            val afterInput: String,
+            val afterTail: String,
+            override val previewText: String
+        ) : EditHistoryEntry
+
+    }
+
+    private class EditHistoryBuffer {
+        private val undoStack = ArrayDeque<EditHistoryEntry>()
+        private val redoStack = ArrayDeque<EditHistoryEntry>()
+
+        fun push(entry: EditHistoryEntry) {
+            undoStack.addLast(entry)
+            redoStack.clear()
+        }
+
+        fun popUndo(): EditHistoryEntry? {
+            return if (undoStack.isEmpty()) null else undoStack.removeLast()
+        }
+
+        fun popRedo(): EditHistoryEntry? {
+            return if (redoStack.isEmpty()) null else redoStack.removeLast()
+        }
+
+        fun pushRedo(entry: EditHistoryEntry) {
+            redoStack.addLast(entry)
+        }
+
+        fun pushUndoFromRedo(entry: EditHistoryEntry) {
+            undoStack.addLast(entry)
+        }
+
+        fun clear() {
+            undoStack.clear()
+            redoStack.clear()
+        }
+
+        fun isEmpty(): Boolean = undoStack.isEmpty() && redoStack.isEmpty()
+
+        fun isNotEmpty(): Boolean = !isEmpty()
+
+        fun hasUndoHistory(): Boolean = undoStack.isNotEmpty()
+
+        fun hasRedoHistory(): Boolean = redoStack.isNotEmpty()
+
+        fun peekUndoPreviewText(): String = undoStack.peekLast()?.previewText.orEmpty()
+
+        fun peekRedoPreviewText(): String = redoStack.peekLast()?.previewText.orEmpty()
+    }
+
+    private data class DeleteHistoryBatch(
+        val initialInput: String,
+        val initialTail: String,
+        val deletesCommittedText: Boolean,
+        val deletedText: StringBuilder = StringBuilder()
+    )
 
     // 設定値を保持するためのデータクラス
     private data class KeyboardSizePreferences(
@@ -3409,12 +3480,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
-            suggestionAdapter?.setUndoEnabled(false)
-            updateClipboardPreview()
+            refreshEditHistoryUi()
         } else if (deletedBuffer.isNotEmpty() && selectMode.value && key == Key.SideKeySpace) {
             clearDeletedBufferWithoutResetLayout()
-            suggestionAdapter?.setUndoEnabled(false)
-            updateClipboardPreview()
+            refreshEditHistoryUi()
         }
         when (key) {
             Key.NotSelected -> {}
@@ -3608,12 +3677,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
-            suggestionAdapter?.setUndoEnabled(false)
-            updateClipboardPreview()
+            refreshEditHistoryUi()
         } else if (deletedBuffer.isNotEmpty() && selectMode.value && key == Key.SideKeySpace) {
             clearDeletedBufferWithoutResetLayout()
-            suggestionAdapter?.setUndoEnabled(false)
-            updateClipboardPreview()
+            refreshEditHistoryUi()
         }
         when (key) {
             Key.NotSelected -> {}
@@ -3900,8 +3967,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 } else {
                     clearDeletedBuffer()
                 }
-                suggestionAdapter?.setUndoEnabled(false)
-                updateClipboardPreview()
+                refreshEditHistoryUi()
             }
 
             Key.SideKeyCursorRight -> {
@@ -3912,8 +3978,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 } else {
                     clearDeletedBuffer()
                 }
-                suggestionAdapter?.setUndoEnabled(false)
-                updateClipboardPreview()
+                refreshEditHistoryUi()
             }
 
             Key.SideKeyDelete -> {
@@ -3949,8 +4014,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 } else {
                     clearDeletedBuffer()
                 }
-                suggestionAdapter?.setUndoEnabled(false)
-                updateClipboardPreview()
+                refreshEditHistoryUi()
             }
 
             Key.SideKeyCursorRight -> {
@@ -3961,8 +4025,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 } else {
                     clearDeletedBuffer()
                 }
-                suggestionAdapter?.setUndoEnabled(false)
-                updateClipboardPreview()
+                refreshEditHistoryUi()
             }
 
             Key.SideKeyDelete -> {
@@ -5083,8 +5146,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         appPreference.undo_enable_preference?.let {
             if (it && deletedBuffer.isNotEmpty()) {
                 clearDeletedBufferWithoutResetLayout()
-                suggestionAdapter?.setUndoEnabled(false)
-                updateClipboardPreview()
+                refreshEditHistoryUi()
             }
         }
     }
@@ -5315,8 +5377,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 clearDeletedBuffer()
                             }
                         }
-                        suggestionAdapter?.setUndoEnabled(false)
-                        updateClipboardPreview()
+                        refreshEditHistoryUi()
                     }
 
                     KeyAction.MoveCursorRight -> {
@@ -5338,8 +5399,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 clearDeletedBuffer()
                             }
                         }
-                        suggestionAdapter?.setUndoEnabled(false)
-                        updateClipboardPreview()
+                        refreshEditHistoryUi()
                     }
 
                     KeyAction.Paste -> {}
@@ -5381,15 +5441,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.DeleteUntilSymbol -> {}
                     KeyAction.MoveCursorDown -> {
                         if (cycleFocusedBunsetsuCandidate(delta = 1)) {
-                            suggestionAdapter?.setUndoEnabled(false)
-                            updateClipboardPreview()
+                            refreshEditHistoryUi()
                         }
                     }
 
                     KeyAction.MoveCursorUp -> {
                         if (cycleFocusedBunsetsuCandidate(delta = -1)) {
-                            suggestionAdapter?.setUndoEnabled(false)
-                            updateClipboardPreview()
+                            refreshEditHistoryUi()
                         }
                     }
 
@@ -5520,8 +5578,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         } else {
                             clearDeletedBuffer()
                         }
-                        suggestionAdapter?.setUndoEnabled(false)
-                        updateClipboardPreview()
+                        refreshEditHistoryUi()
                     }
 
                     KeyAction.MoveCursorRight -> {
@@ -5534,8 +5591,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         } else {
                             clearDeletedBuffer()
                         }
-                        suggestionAdapter?.setUndoEnabled(false)
-                        updateClipboardPreview()
+                        refreshEditHistoryUi()
                     }
 
                     KeyAction.NewLine -> {}
@@ -6147,9 +6203,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         clearDeletedBufferWithoutResetLayout()
-        suggestionAdapter?.setUndoEnabled(false)
-        // ★修正点: UIを正しく更新する新しい関数を呼び出す
-        updateClipboardPreview()
+        refreshEditHistoryUi()
     }
 
     private fun cutAction() {
@@ -6188,9 +6242,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun pasteImageAction(bitmap: Bitmap) {
         commitBitmap(bitmap)
         clearDeletedBufferWithoutResetLayout()
-        suggestionAdapter?.setUndoEnabled(false)
-        // ★修正点: UIを正しく更新する新しい関数を呼び出す
-        updateClipboardPreview()
+        refreshEditHistoryUi()
     }
 
     /**
@@ -7686,6 +7738,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         candidates: List<Candidate>
     ) {
+        if (!shouldApplyCandidateResult(insertString)) {
+            return
+        }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
                 updateSuggestionsForFloatingCandidate(candidates.map {
@@ -7704,6 +7759,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (zenzEnableStatePreference == true) {
             filteredCandidateList = candidates
             lastLocalUpdatedInput.emit(insertString)
+        }
+    }
+
+    private fun shouldApplyCandidateResult(requestInput: String): Boolean {
+        return !suppressSuggestions &&
+                requestInput.isNotEmpty() &&
+                inputString.value == requestInput
+    }
+
+    private fun clearSuggestionStateAfterCommit() {
+        suggestionAdapter?.suggestions = emptyList()
+        suggestionAdapterFull?.suggestions = emptyList()
+        filteredCandidateList = emptyList()
+        if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            updateSuggestionsForFloatingCandidate(emptyList())
+            listAdapter.updateHighlightPosition(-1)
+            currentHighlightIndex = -1
+        }
+        scope.launch {
+            _suggestionFlag.emit(CandidateShowFlag.Idle)
         }
     }
 
@@ -9735,24 +9810,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemHelperIconClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
-                        appPreference.undo_enable_preference?.let {
-                            if (!it) return@setOnItemHelperIconClickListener
-                        }
-                        popLastDeletedChar()?.let { c ->
-                            commitText(c, 1)
-                            suggestionAdapter?.setUndoPreviewText(
-                                deletedBuffer.toString()
-                            )
-                        }
-                        if (deletedBuffer.isEmpty()) {
-                            suggestionAdapter?.setUndoEnabled(false)
-                            updateClipboardPreview()
-                            mainView.keyboardView.setSideKeyPreviousDrawable(
-                                ContextCompat.getDrawable(
-                                    this, com.kazumaproject.core.R.drawable.undo_24px
-                                )
-                            )
-                        }
+                        if (!isEditHistoryEnabled()) return@setOnItemHelperIconClickListener
+                        undoLastHistoryEntry()
+                    }
+
+                    SuggestionAdapter.HelperIcon.REDO -> {
+                        if (!isEditHistoryEnabled()) return@setOnItemHelperIconClickListener
+                        redoLastHistoryEntry()
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
@@ -9771,14 +9835,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemHelperIconLongClickListener { helperIcon ->
                 when (helperIcon) {
                     SuggestionAdapter.HelperIcon.UNDO -> {
-                        appPreference.undo_enable_preference?.let {
-                            if (!it) return@setOnItemHelperIconLongClickListener
-                        }
-                        val textToCommit = reverseByGrapheme(deletedBuffer.toString())
-                        commitText(textToCommit, 1)
-                        clearDeletedBuffer()
-                        suggestionAdapter?.setUndoEnabled(false)
-                        updateClipboardPreview()
+                        if (!isEditHistoryEnabled()) return@setOnItemHelperIconLongClickListener
+                        undoAllHistoryEntries()
+                    }
+
+                    SuggestionAdapter.HelperIcon.REDO -> {
+                        if (!isEditHistoryEnabled()) return@setOnItemHelperIconLongClickListener
+                        redoAllHistoryEntries()
                     }
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
@@ -9814,6 +9877,44 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     registerNGWord(
                         insertString = insertString, candidate = candidate, candidatePosition = i
                     )
+                }
+            }
+            adapter.setOnItemHelperIconClickListener { helperIcon ->
+                when (helperIcon) {
+                    SuggestionAdapter.HelperIcon.UNDO -> {
+                        if (!isEditHistoryEnabled()) return@setOnItemHelperIconClickListener
+                        undoLastHistoryEntry()
+                    }
+
+                    SuggestionAdapter.HelperIcon.REDO -> {
+                        if (!isEditHistoryEnabled()) return@setOnItemHelperIconClickListener
+                        redoLastHistoryEntry()
+                    }
+
+                    SuggestionAdapter.HelperIcon.PASTE -> {
+                        pasteAction()
+                    }
+                }
+            }
+            adapter.setOnItemHelperIconLongClickListener { helperIcon ->
+                when (helperIcon) {
+                    SuggestionAdapter.HelperIcon.UNDO -> {
+                        if (!isEditHistoryEnabled()) return@setOnItemHelperIconLongClickListener
+                        undoAllHistoryEntries()
+                    }
+
+                    SuggestionAdapter.HelperIcon.REDO -> {
+                        if (!isEditHistoryEnabled()) return@setOnItemHelperIconLongClickListener
+                        redoAllHistoryEntries()
+                    }
+
+                    SuggestionAdapter.HelperIcon.PASTE -> {
+                        clipboardUtil.clearClipboard()
+                        adapter.apply {
+                            setClipboardPreview("")
+                            setPasteEnabled(false)
+                        }
+                    }
                 }
             }
         }
@@ -10212,7 +10313,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
                     if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
                         clearDeletedBuffer()
-                        suggestionAdapter?.setUndoEnabled(false)
+                        refreshEditHistoryUi()
                     }
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyNotSelect -> {}
@@ -10590,8 +10691,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 clearDeletedBuffer()
                             }
-                            suggestionAdapter?.setUndoEnabled(false)
-                            updateClipboardPreview()
+                            refreshEditHistoryUi()
                         }
 
                         QWERTYKey.QWERTYKeyCursorLeft -> {
@@ -10602,8 +10702,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 clearDeletedBuffer()
                             }
-                            suggestionAdapter?.setUndoEnabled(false)
-                            updateClipboardPreview()
+                            refreshEditHistoryUi()
                         }
 
                         else -> {
@@ -10634,7 +10733,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
                         clearDeletedBuffer()
-                        suggestionAdapter?.setUndoEnabled(false)
+                        refreshEditHistoryUi()
                     }
 
                     variations?.let { variation ->
@@ -10673,7 +10772,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
                         clearDeletedBuffer()
-                        suggestionAdapter?.setUndoEnabled(false)
+                        refreshEditHistoryUi()
                     }
                     handleTap(character, inputString.value, StringBuilder(), mainView)
                 }
@@ -10938,81 +11037,224 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
 
+    private fun isEditHistoryEnabled(): Boolean {
+        return appPreference.undo_enable_preference == true
+    }
+
+    private fun updateSideKeyPreviousDrawableForHistory() {
+        val drawableRes = if (deletedBuffer.hasUndoHistory()) {
+            com.kazumaproject.core.R.drawable.baseline_delete_24
+        } else {
+            com.kazumaproject.core.R.drawable.undo_24px
+        }
+        mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
+            ContextCompat.getDrawable(this, drawableRes)
+        )
+    }
+
+    private fun refreshEditHistoryUi() {
+        val hasUndoHistory = isEditHistoryEnabled() && deletedBuffer.hasUndoHistory()
+        val hasRedoHistory = isEditHistoryEnabled() && deletedBuffer.hasRedoHistory()
+        val undoLabel =
+            if (hasUndoHistory) getString(com.kazumaproject.core.R.string.undo_action_label) else ""
+        val redoLabel =
+            if (hasRedoHistory) getString(com.kazumaproject.core.R.string.redo_action_label) else ""
+        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setUndoPreviewText(undoLabel)
+            adapter.setUndoEnabled(hasUndoHistory)
+            adapter.setRedoPreviewText(redoLabel)
+            adapter.setRedoEnabled(hasRedoHistory)
+        }
+        updateSideKeyPreviousDrawableForHistory()
+        if (!hasUndoHistory && !hasRedoHistory) {
+            updateClipboardPreview()
+        }
+    }
+
     /**
      * 削除バッファをまるごとクリアしたいときに呼ぶ
      */
     private fun clearDeletedBuffer() {
-        appPreference.undo_enable_preference?.let {
-            if (it) {
-                deletedBuffer.clear()
-                mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
-                    ContextCompat.getDrawable(
-                        this, com.kazumaproject.core.R.drawable.undo_24px
-                    )
-                )
-            }
-        }
+        if (!isEditHistoryEnabled()) return
+        deletedBuffer.clear()
+        activeDeleteHistoryBatch = null
+        updateSideKeyPreviousDrawableForHistory()
     }
 
     private fun clearDeletedBufferWithoutResetLayout() {
-        appPreference.undo_enable_preference?.let {
-            if (it) {
-                deletedBuffer.clear()
+        if (!isEditHistoryEnabled()) return
+        deletedBuffer.clear()
+        activeDeleteHistoryBatch = null
+    }
+
+    private fun pushEditHistoryEntry(entry: EditHistoryEntry) {
+        if (!isEditHistoryEnabled()) return
+        deletedBuffer.push(entry)
+        refreshEditHistoryUi()
+    }
+
+    private fun captureDeletedTextFromConnection(inputConnection: InputConnection?): String {
+        val connection = inputConnection ?: return ""
+        val selectedText = connection.getSelectedText(0)?.toString().orEmpty()
+        if (selectedText.isNotEmpty()) {
+            return selectedText
+        }
+        return getLastCharacterAsString(connection)
+    }
+
+    private fun removedSuffixFromComposition(beforeInput: String, afterInput: String): String {
+        return if (beforeInput.startsWith(afterInput)) {
+            beforeInput.substring(afterInput.length)
+        } else {
+            beforeInput
+        }
+    }
+
+    private fun createCompositionHistoryEntry(
+        beforeInput: String,
+        beforeTail: String,
+        afterInput: String,
+        afterTail: String,
+        previewText: String = removedSuffixFromComposition(beforeInput, afterInput)
+    ): EditHistoryEntry.CompositionChange? {
+        if (beforeInput == afterInput && beforeTail == afterTail) return null
+        val normalizedPreview = previewText.ifEmpty {
+            (beforeInput + beforeTail).ifEmpty { afterInput + afterTail }
+        }
+        return EditHistoryEntry.CompositionChange(
+            beforeInput = beforeInput,
+            beforeTail = beforeTail,
+            afterInput = afterInput,
+            afterTail = afterTail,
+            previewText = normalizedPreview
+        )
+    }
+
+    private fun resetHistoryInteractionFlags() {
+        isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
+        suggestionClickNum = 0
+        englishSpaceKeyPressed.set(false)
+        onDeleteLongPressUp.set(false)
+        _dakutenPressed.value = false
+        lastFlickConvertedNextHiragana.set(true)
+        isContinuousTapInputEnabled.set(true)
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        isFirstClickHasStringTail = false
+        clearBunsetsuConversionSession()
+        learnMultiple.stop()
+    }
+
+    private fun restoreCompositionState(input: String, tail: String) {
+        beginBatchEdit()
+        try {
+            _inputString.update { input }
+            stringInTail.set(tail)
+            resetHistoryInteractionFlags()
+            if (input.isEmpty() && tail.isEmpty()) {
+                setComposingText("", 0)
+                finishComposingText()
+            } else {
+                val spannableString = SpannableString(input + tail)
+                setComposingTextAfterEdit(
+                    inputString = input,
+                    spannableString = spannableString,
+                    backgroundColor = if (customComposingTextPreference == true) {
+                        inputCompositionAfterBackgroundColor
+                            ?: getColor(com.kazumaproject.core.R.color.blue)
+                    } else {
+                        getColor(com.kazumaproject.core.R.color.blue)
+                    },
+                    textColor = if (customComposingTextPreference == true) {
+                        inputCompositionTextColor
+                    } else {
+                        null
+                    }
+                )
+            }
+        } finally {
+            endBatchEdit()
+        }
+    }
+
+    private fun deleteCommittedTextBeforeCursor(text: String): Boolean {
+        val inputConnection = currentInputConnection ?: return false
+        if (text.isEmpty()) return false
+        val textBeforeCursor = inputConnection.getTextBeforeCursor(text.length, 0)?.toString() ?: ""
+        if (!textBeforeCursor.endsWith(text)) return false
+        return inputConnection.deleteSurroundingText(text.length, 0)
+    }
+
+    private fun performUndo(entry: EditHistoryEntry): Boolean {
+        return when (entry) {
+            is EditHistoryEntry.DeleteCommittedText -> {
+                commitText(entry.deletedText, 1)
+            }
+
+            is EditHistoryEntry.CompositionChange -> {
+                restoreCompositionState(entry.beforeInput, entry.beforeTail)
+                true
             }
         }
     }
 
-    private fun reverseByGrapheme(input: String): String {
-        appPreference.undo_enable_preference?.let {
-            if (!it) return@let
-        }
-        if (input.isEmpty()) return input
+    private fun performRedo(entry: EditHistoryEntry): Boolean {
+        return when (entry) {
+            is EditHistoryEntry.DeleteCommittedText -> {
+                deleteCommittedTextBeforeCursor(entry.deletedText)
+            }
 
-        // BreakIterator を文字（グラフェム）単位で作成
-        val it = BreakIterator.getCharacterInstance().also { it.setText(input) }
-
-        // まずはすべてのグラフェムの開始位置をリストに集める
-        val boundaries = mutableListOf<Int>()
-        var pos = it.first()
-        while (pos != BreakIterator.DONE) {
-            boundaries.add(pos)
-            pos = it.next()
+            is EditHistoryEntry.CompositionChange -> {
+                restoreCompositionState(entry.afterInput, entry.afterTail)
+                true
+            }
         }
-        // boundaries: [0, nextBoundary1, nextBoundary2, ..., input.length]
-
-        // グラフェム単位で部分文字列を取り出し、逆順に連結する
-        val sb = StringBuilder(input.length)
-        for (i in boundaries.size - 2 downTo 0) {
-            val start = boundaries[i]
-            val end = boundaries[i + 1]
-            sb.append(input.substring(start, end))
-        }
-        return sb.toString()
     }
 
-    /**
-     * サロゲートペア（絵文字）を考慮して、削除バッファの最後の「文字（コードポイント）」を取り出す。
-     * 絵文字の場合は2コードユニット、その他は1コードユニットを削除して返す。
-     */
-    private fun popLastDeletedChar(): String? {
-        appPreference.undo_enable_preference?.let {
-            if (!it) return@let
+    private fun undoLastHistoryEntry() {
+        val entry = deletedBuffer.popUndo() ?: return
+        if (performUndo(entry)) {
+            deletedBuffer.pushRedo(entry)
+        } else {
+            deletedBuffer.pushUndoFromRedo(entry)
         }
-        if (deletedBuffer.isEmpty()) return null
+        refreshEditHistoryUi()
+    }
 
-        // バッファ全体を String として扱う
-        val full = deletedBuffer.toString()
-        val endIndex = full.length
+    private fun redoLastHistoryEntry() {
+        val entry = deletedBuffer.popRedo() ?: return
+        if (performRedo(entry)) {
+            deletedBuffer.pushUndoFromRedo(entry)
+        } else {
+            deletedBuffer.pushRedo(entry)
+        }
+        refreshEditHistoryUi()
+    }
 
-        // 最後のグラフェムクラスタ開始位置を BreakIterator で得る
-        val startIndex = previousGraphemeOffset(full, endIndex)
+    private fun undoAllHistoryEntries() {
+        while (deletedBuffer.hasUndoHistory()) {
+            val entry = deletedBuffer.popUndo() ?: break
+            if (performUndo(entry)) {
+                deletedBuffer.pushRedo(entry)
+            } else {
+                deletedBuffer.pushUndoFromRedo(entry)
+                break
+            }
+        }
+        refreshEditHistoryUi()
+    }
 
-        // 「最後の1文字（＝拡張グラフェムクラスタ）」を substring で取り出す
-        val lastGrapheme = full.substring(startIndex, endIndex)
-
-        // バッファからその部分を丸ごと削除
-        deletedBuffer.delete(startIndex, endIndex)
-        return lastGrapheme
+    private fun redoAllHistoryEntries() {
+        while (deletedBuffer.hasRedoHistory()) {
+            val entry = deletedBuffer.popRedo() ?: break
+            if (performRedo(entry)) {
+                deletedBuffer.pushUndoFromRedo(entry)
+            } else {
+                deletedBuffer.pushRedo(entry)
+                break
+            }
+        }
+        refreshEditHistoryUi()
     }
 
     private fun handleExactLengthMatch(
@@ -11238,8 +11480,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         learnMultiple.stop()
         stopDeleteLongPress()
         clearDeletedBuffer()
-        suggestionAdapter?.setUndoEnabled(false)
-        updateClipboardPreview()
+        refreshEditHistoryUi()
         _selectMode.update { false }
         hasConvertedKatakana = false
         romajiConverter?.clear()
@@ -11445,6 +11686,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentInputMode = currentInputMode,
             position = index
         )
+        clearSuggestionStateAfterCommit()
         resetFlagsEnterKey()
     }
 
@@ -11811,11 +12053,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
         val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
         val displayedCandidates = cachedReranked ?: filtered
+        if (!shouldApplyCandidateResult(insertString)) {
+            return
+        }
         updateDisplayedCandidates(insertString, displayedCandidates)
 
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            if (!shouldApplyCandidateResult(insertString)) {
+                return
             }
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
@@ -11823,6 +12071,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 displayedCandidates.first()
             )
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
+            if (!shouldApplyCandidateResult(insertString)) {
+                return
+            }
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && displayedCandidates.isNotEmpty()) applyFirstSuggestion(
@@ -11864,11 +12115,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
         val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
         val displayedCandidates = cachedReranked ?: filtered
+        if (!shouldApplyCandidateResult(insertString)) {
+            return
+        }
         updateDisplayedCandidates(insertString, displayedCandidates)
 
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            if (!shouldApplyCandidateResult(insertString)) {
+                return
             }
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
@@ -11876,6 +12133,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 displayedCandidates.first()
             )
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
+            if (!shouldApplyCandidateResult(insertString)) {
+                return
+            }
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && displayedCandidates.isNotEmpty()) applyFirstSuggestion(
@@ -11900,6 +12160,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
+        if (!shouldApplyCandidateResult(insertString)) {
+            return
+        }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
                 updateSuggestionsForFloatingCandidate(filtered.map {
@@ -11919,10 +12182,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
             }
+            if (!shouldApplyCandidateResult(insertString)) {
+                return
+            }
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
+            if (!shouldApplyCandidateResult(insertString)) {
+                return
+            }
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
             if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
@@ -11949,6 +12218,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
+        if (!shouldApplyCandidateResult(insertString)) {
+            return
+        }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
                 updateSuggestionsForFloatingCandidate(filtered.map {
@@ -11967,6 +12239,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isLiveConversionEnable == true && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
+            }
+            if (!shouldApplyCandidateResult(insertString)) {
+                return
             }
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
@@ -12477,9 +12752,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (stringInTail.get().isNotEmpty()) return
 
         if (insertString.isNotEmpty()) {
+            val beforeInput = insertString
+            val beforeTail = stringInTail.get()
             _inputString.update { "" }
             setComposingText("", 0)
             finishComposingText()
+            createCompositionHistoryEntry(
+                beforeInput = beforeInput,
+                beforeTail = beforeTail,
+                afterInput = "",
+                afterTail = "",
+                previewText = beforeInput + beforeTail
+            )?.let(::pushEditHistoryEntry)
         } else {
             val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)?.toString() ?: ""
             if (textBeforeCursor.isEmpty()) return
@@ -12506,14 +12790,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             if (deleteCount > 0) {
+                val deletedText = textBeforeCursor.takeLast(deleteCount)
                 inputConnection.deleteSurroundingText(deleteCount, 0)
+                if (deletedText.isNotEmpty()) {
+                    pushEditHistoryEntry(EditHistoryEntry.DeleteCommittedText(deletedText))
+                }
             }
         }
     }
 
     private fun deleteLongPress() {
         if (deleteLongPressJob?.isActive == true) return
-        val inputStringInBeginning = inputString.value
+        activeDeleteHistoryBatch = DeleteHistoryBatch(
+            initialInput = inputString.value,
+            initialTail = stringInTail.get(),
+            deletesCommittedText = inputString.value.isEmpty()
+        )
         deleteLongPressJob = scope.launch {
             while (isActive && deleteKeyLongKeyPressed.get()) {
                 val current = inputString.value
@@ -12521,12 +12813,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 if (current.isEmpty()) {
                     if (tailIsEmpty) {
-                        appPreference.undo_enable_preference?.let {
-                            if (it) {
-                                val beforeChar = getLastCharacterAsString(currentInputConnection)
-                                if (beforeChar.isNotEmpty()) {
-                                    deletedBuffer.append(beforeChar)
-                                }
+                        if (isEditHistoryEnabled()) {
+                            val beforeChar = captureDeletedTextFromConnection(currentInputConnection)
+                            if (beforeChar.isNotEmpty()) {
+                                activeDeleteHistoryBatch?.deletedText?.insert(0, beforeChar)
                             }
                         }
                         deleteLastGraphemeOrSelection()
@@ -12534,12 +12824,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         break
                     }
                 } else {
-                    appPreference.undo_enable_preference?.let {
-                        if (it) {
-                            val deletedChar = current.last()
-                            deletedBuffer.append(deletedChar)
-                        }
-                    }
                     val newString = current.dropLast(1)
                     _inputString.update { newString }
                     if (newString.isEmpty() && tailIsEmpty) {
@@ -12556,23 +12840,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             else CandidateShowFlag.Updating
             _suggestionFlag.emit(flag)
         }
-        if (!selectMode.value) {
-            deleteLongPressJob?.invokeOnCompletion {
-                appPreference.undo_enable_preference?.let {
-                    if (it) {
-                        if (inputStringInBeginning.isEmpty()) {
-                            suggestionAdapter?.apply {
-                                suggestionAdapter?.setUndoPreviewText(deletedBuffer.toString())
-                                setUndoEnabled(true)
-                            }
-                            mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
-                                ContextCompat.getDrawable(
-                                    this@IMEService,
-                                    com.kazumaproject.core.R.drawable.baseline_delete_24
-                                )
-                            )
-                        }
+        deleteLongPressJob?.invokeOnCompletion {
+            if (selectMode.value || !isEditHistoryEnabled()) {
+                activeDeleteHistoryBatch = null
+                return@invokeOnCompletion
+            }
+            val batch = activeDeleteHistoryBatch
+            activeDeleteHistoryBatch = null
+            batch?.let {
+                if (it.deletesCommittedText) {
+                    val deletedText = it.deletedText.toString()
+                    if (deletedText.isNotEmpty()) {
+                        pushEditHistoryEntry(EditHistoryEntry.DeleteCommittedText(deletedText))
                     }
+                } else {
+                    createCompositionHistoryEntry(
+                        beforeInput = it.initialInput,
+                        beforeTail = it.initialTail,
+                        afterInput = inputString.value,
+                        afterTail = stringInTail.get(),
+                        previewText = it.initialInput
+                    )?.let(::pushEditHistoryEntry)
                 }
             }
         }
@@ -12674,7 +12962,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         hasConvertedKatakana = isLiveConversionEnable == true
                     }
                 } else {
+                    val beforeInput = insertString
+                    val beforeTail = stringInTail.get()
                     deleteStringCommon(insertString)
+                    createCompositionHistoryEntry(
+                        beforeInput = beforeInput,
+                        beforeTail = beforeTail,
+                        afterInput = inputString.value,
+                        afterTail = stringInTail.get()
+                    )?.let(::pushEditHistoryEntry)
                     resetFlagsDeleteKey()
                 }
             }
@@ -12682,23 +12978,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             else -> {
                 if (stringInTail.get().isNotEmpty()) return
                 if (!selectMode.value) {
-                    val beforeChar = getLastCharacterAsString(currentInputConnection)
+                    val beforeChar = captureDeletedTextFromConnection(currentInputConnection)
                     if (beforeChar.isNotEmpty()) {
-                        appPreference.undo_enable_preference?.let {
-                            if (it) {
-                                deletedBuffer.append(beforeChar)
-                                mainLayoutBinding?.keyboardView?.setSideKeyPreviousDrawable(
-                                    ContextCompat.getDrawable(
-                                        this@IMEService,
-                                        com.kazumaproject.core.R.drawable.baseline_delete_24
-                                    )
-                                )
-                                Timber.d("delete: $beforeChar")
-                                suggestionAdapter?.apply {
-                                    setUndoEnabled(true)
-                                    setUndoPreviewText(deletedBuffer.toString())
-                                }
-                            }
+                        if (isEditHistoryEnabled()) {
+                            Timber.d("delete: $beforeChar")
+                            pushEditHistoryEntry(EditHistoryEntry.DeleteCommittedText(beforeChar))
                         }
                     }
                 }
@@ -13262,6 +13546,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun finishInputEnterKey() {
         _inputString.update { "" }
         finishComposingText()
+        clearSuggestionStateAfterCommit()
         resetFlagsEnterKeyNotHenkan()
     }
 

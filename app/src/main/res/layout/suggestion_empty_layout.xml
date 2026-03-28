@@ -63,6 +63,50 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/redo_icon_parent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/ten_keys_center_bg"
+        android:paddingVertical="4dp"
+        android:paddingStart="0dp"
+        android:paddingEnd="7dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/undo_icon_parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/redo_image_view"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:contentDescription="@string/redo_symbol"
+            android:src="@drawable/outline_arrow_right_alt_24"
+            android:visibility="visible"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/redo_icon"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:maxEms="12"
+            android:maxLines="1"
+            android:scaleType="centerInside"
+            android:textColor="@color/keyboard_icon_color"
+            android:textSize="12sp"
+            android:visibility="gone"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.1"
+            app:layout_constraintStart_toEndOf="@+id/redo_image_view"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/paste_icon_patent"
         android:layout_width="wrap_content"
         android:layout_height="40dp"
@@ -73,7 +117,7 @@
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/redo_icon_parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <ImageView
