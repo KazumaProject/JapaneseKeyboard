@@ -12752,18 +12752,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (stringInTail.get().isNotEmpty()) return
 
         if (insertString.isNotEmpty()) {
-            val beforeInput = insertString
-            val beforeTail = stringInTail.get()
             _inputString.update { "" }
             setComposingText("", 0)
             finishComposingText()
-            createCompositionHistoryEntry(
-                beforeInput = beforeInput,
-                beforeTail = beforeTail,
-                afterInput = "",
-                afterTail = "",
-                previewText = beforeInput + beforeTail
-            )?.let(::pushEditHistoryEntry)
         } else {
             val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)?.toString() ?: ""
             if (textBeforeCursor.isEmpty()) return
@@ -12853,14 +12844,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (deletedText.isNotEmpty()) {
                         pushEditHistoryEntry(EditHistoryEntry.DeleteCommittedText(deletedText))
                     }
-                } else {
-                    createCompositionHistoryEntry(
-                        beforeInput = it.initialInput,
-                        beforeTail = it.initialTail,
-                        afterInput = inputString.value,
-                        afterTail = stringInTail.get(),
-                        previewText = it.initialInput
-                    )?.let(::pushEditHistoryEntry)
                 }
             }
         }
@@ -12962,15 +12945,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         hasConvertedKatakana = isLiveConversionEnable == true
                     }
                 } else {
-                    val beforeInput = insertString
-                    val beforeTail = stringInTail.get()
                     deleteStringCommon(insertString)
-                    createCompositionHistoryEntry(
-                        beforeInput = beforeInput,
-                        beforeTail = beforeTail,
-                        afterInput = inputString.value,
-                        afterTail = stringInTail.get()
-                    )?.let(::pushEditHistoryEntry)
                     resetFlagsDeleteKey()
                 }
             }
