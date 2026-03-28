@@ -7930,7 +7930,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
                 val clampedHeight = if (isPortrait) {
-                    prefs.qwertyHeightPref.coerceIn(180, 420)
+                    prefs.qwertyHeightPref.coerceIn(100, 420)
                 } else if (isFloating) {
                     prefs.qwertyHeightPref
                 } else {
@@ -7941,11 +7941,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             else -> {
                 val clampedHeight = if (isPortrait) {
-                    prefs.heightPref.coerceIn(180, 420)
+                    prefs.heightPref.coerceIn(100, 420)
                 } else if (isFloating) {
                     prefs.heightPref
                 } else {
-                    prefs.heightPref.coerceIn(60, 420)
+                    prefs.heightPref.coerceIn(100, 420)
                 }
                 (clampedHeight * density).toInt()
             }
