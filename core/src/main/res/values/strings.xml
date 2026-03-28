@@ -185,6 +185,9 @@
     <string name="shift_symbol">&#x21E7;</string>
     <string name="under_bar">_</string>
     <string name="undo_symbol">a/A</string>
+    <string name="undo_action_label">Undo</string>
+    <string name="redo_symbol">Redo</string>
+    <string name="redo_action_label">Redo</string>
     <string name="ampersand_symbol">&amp;</string>
     <string name="sharp_symbol">#</string>
     <string name="asterisk_symbol">*</string>

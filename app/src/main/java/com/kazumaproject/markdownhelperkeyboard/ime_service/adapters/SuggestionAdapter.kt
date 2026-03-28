@@ -41,7 +41,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     enum class HelperIcon {
-        UNDO, PASTE
+        UNDO, REDO, PASTE
     }
 
     // Listeners for clicks
@@ -59,9 +59,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var clipboardText: String = ""
     private var clipboardBitmap: Bitmap? = null // ★追加: Bitmapを保持するフィールド
     private var undoText: String = ""
+    private var redoText: String = ""
 
     // Internal flags to track enable/disable state
     private var isUndoEnabled: Boolean = false
+    private var isRedoEnabled: Boolean = false
     private var isPasteEnabled: Boolean = true
     private var isClipboardDescriptionShow: Boolean = true
 
@@ -139,6 +141,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+    fun setRedoEnabled(enabled: Boolean) {
+        isRedoEnabled = enabled
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
+    }
+
     fun setClipboardDescriptionTextVisibility(visibility: Boolean) {
         isClipboardDescriptionShow = visibility
         if (suggestions.isEmpty()) {
@@ -173,6 +182,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     fun setUndoPreviewText(text: String) {
         undoText = text
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
+    }
+
+    fun setRedoPreviewText(text: String) {
+        redoText = text
         if (suggestions.isEmpty()) {
             notifyItemChanged(0)
         }
@@ -221,6 +237,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     inner class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val undoIconParent: ConstraintLayout? = itemView.findViewById(R.id.undo_icon_parent)
         val undoIcon: MaterialTextView? = itemView.findViewById(R.id.undo_icon)
+        val redoIconParent: ConstraintLayout? = itemView.findViewById(R.id.redo_icon_parent)
+        val redoIcon: MaterialTextView? = itemView.findViewById(R.id.redo_icon)
         val pasteIconParent: ConstraintLayout? = itemView.findViewById(R.id.paste_icon_patent)
         val pasteIcon: ImageView? = itemView.findViewById(R.id.paste_icon)
         val clipboardPreviewText: MaterialTextView? =
@@ -317,7 +335,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 isFocusable = false
                 Timber.d("undo text: $undoText")
                 debugPrintCodePoints(undoText)
-                text = undoText.reversed()
+                text = undoText
+            }
+            redoIcon?.apply {
+                isVisible = isRedoEnabled
+                isFocusable = false
+                text = redoText
             }
             pasteIconParent?.apply {
                 isEnabled = isPasteEnabled
@@ -369,6 +392,28 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 }
                 setOnLongClickListener {
                     onItemHelperIconLongClickListener?.invoke(HelperIcon.UNDO)
+                    true
+                }
+            }
+
+            redoIconParent?.apply {
+                if (isDynamicColorEnable) {
+                    if (this.context.isDarkThemeOn()) {
+                        setBackgroundResource(
+                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                        )
+                    } else {
+                        setBackgroundResource(
+                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                        )
+                    }
+                }
+                isVisible = isRedoEnabled
+                setOnClickListener {
+                    onItemHelperIconClickListener?.invoke(HelperIcon.REDO)
+                }
+                setOnLongClickListener {
+                    onItemHelperIconLongClickListener?.invoke(HelperIcon.REDO)
                     true
                 }
             }
