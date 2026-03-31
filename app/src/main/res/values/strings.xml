@@ -467,4 +467,7 @@
     <string name="flickKeyboardSizeSettingsFragment_title">Customize</string>
     <string name="custom_keyboard_size_preference_title">Key Text Size</string>
     <string name="custom_keyboard_size_preference_summary">Adjust the size of the text shown on keys and the size of the keys.\nThis setting also applies to the Sumire keyboard.</string>
+    <string name="system_user_dictionary">System User Dictionary</string>
+    <string name="system_user_dictionary_builder_title">Create System User Dictionary</string>
+    <string name="system_user_dictionary_builder_summary">Create a system user dictionary from user-defined words</string>
 </resources>
