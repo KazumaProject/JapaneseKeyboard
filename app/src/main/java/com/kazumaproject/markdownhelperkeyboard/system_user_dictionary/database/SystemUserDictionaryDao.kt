@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 
 @Dao
@@ -19,6 +20,9 @@ interface SystemUserDictionaryDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(entry: SystemUserDictionaryEntry)
 
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertAll(entries: List<SystemUserDictionaryEntry>)
+
     @Update
     suspend fun update(entry: SystemUserDictionaryEntry)
 
@@ -27,4 +31,12 @@ interface SystemUserDictionaryDao {
 
     @Query("DELETE FROM system_user_dictionary_entry")
     suspend fun deleteAll()
+
+    @Transaction
+    suspend fun replaceAll(entries: List<SystemUserDictionaryEntry>) {
+        deleteAll()
+        if (entries.isNotEmpty()) {
+            insertAll(entries)
+        }
+    }
 }

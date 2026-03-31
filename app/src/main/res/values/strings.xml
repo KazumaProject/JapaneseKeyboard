@@ -490,4 +490,7 @@
     <string name="system_user_dictionary_import_success">System user dictionary was loaded.</string>
     <string name="system_user_dictionary_import_failed">Failed to load system user dictionary.</string>
     <string name="system_user_dictionary_context_id_search_hint">Search by id or label</string>
+    <string name="system_user_dictionary_delete_built">Delete built dictionary</string>
+    <string name="system_user_dictionary_delete_built_message">Delete only built dictionary files?</string>
+    <string name="system_user_dictionary_delete_built_failed">Failed to delete built dictionary files.</string>
 </resources>

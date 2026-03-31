@@ -4,6 +4,8 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.repository.SystemUserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.IdDefEntry
@@ -26,6 +28,8 @@ class SystemUserDictionaryBuilderViewModel @Inject constructor(
     private val kanaKanjiEngine: KanaKanjiEngine,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
+
+    private val gson = Gson()
 
     companion object {
         const val DEFAULT_SCORE = 4000
@@ -54,23 +58,52 @@ class SystemUserDictionaryBuilderViewModel @Inject constructor(
     }
 
     suspend fun exportBuiltDictionary(uri: Uri): Boolean = withContext(Dispatchers.IO) {
-        runCatching {
-            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
-                fileManager.exportBuiltDictionary(outputStream)
-            } ?: false
-        }.getOrDefault(false)
+        try {
+            val entriesJson = gson.toJson(repository.getAllForBuild())
+            val result = context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                fileManager.exportBuiltDictionary(outputStream, entriesJson)
+            }
+            result ?: false
+        } catch (_: Exception) {
+            false
+        }
     }
 
     suspend fun importBuiltDictionary(uri: Uri): Boolean = withContext(Dispatchers.IO) {
-        runCatching {
-            val metadata = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+        try {
+            val importResult = context.contentResolver.openInputStream(uri)?.use { inputStream ->
                 fileManager.importBuiltDictionary(inputStream)
-            } ?: return@withContext false
-            if (metadata == null) return@withContext false
+            }
+            if (importResult == null) {
+                false
+            } else {
+                val entriesJson = importResult.entriesJson
+                if (!entriesJson.isNullOrBlank()) {
+                    val type = object : TypeToken<List<SystemUserDictionaryEntry>>() {}.type
+                    val importedEntries: List<SystemUserDictionaryEntry> =
+                        gson.fromJson<List<SystemUserDictionaryEntry>?>(entriesJson, type).orEmpty()
+                    repository.replaceAll(importedEntries.map { it.copy(id = 0) })
+                }
+
+                kanaKanjiEngine.loadSystemUserDictionaryFromFiles(context)
+                true
+            }
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    suspend fun clearBuiltDictionary(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            fileManager.clearAll()
             kanaKanjiEngine.loadSystemUserDictionaryFromFiles(context)
             true
-        }.getOrDefault(false)
+        } catch (_: Exception) {
+            false
+        }
     }
+
+    fun hasBuiltDictionary(): Boolean = fileManager.hasBuiltDictionary()
 
     suspend fun reloadBuiltDictionaryIfExists(): Boolean = withContext(Dispatchers.IO) {
         if (!fileManager.hasBuiltDictionary()) return@withContext false
