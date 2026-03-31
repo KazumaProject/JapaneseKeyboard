@@ -236,6 +236,122 @@ class GraphBuilder {
                         )
                     }
                 }
+
+                // 1.x システムユーザー辞書 (Typo Correction Prefix)
+                if (enableTypoCorrectionJapaneseFlick && subStr.length > 2) {
+                    val typoPrefixResults = localSystemUserYomiTrie.commonPrefixSearchWithTypoCorrectionPrefix(
+                        str = subStr,
+                        succinctBitVector = localSystemUserLBSYomi,
+                        maxResults = 98,
+                        maxLen = 12,
+                    )
+                    if (typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
+
+                    for (typo in typoPrefixResults) {
+                        if (typo.penaltyUsed == 0) continue
+
+                        val yomiStr = typo.yomi
+                        val nodeIndex = localSystemUserYomiTrie.getNodeIndex(
+                            yomiStr,
+                            localSystemUserLBSYomi,
+                        )
+                        if (nodeIndex <= 0) continue
+
+                        val termId = localSystemUserYomiTrie.getTermId(
+                            nodeIndex,
+                            localSystemUserIsLeaf,
+                        )
+                        val listToken = localSystemUserTokenArray.getListDictionaryByYomiTermId(
+                            termId,
+                            localSystemUserTokenBitVector,
+                        )
+                        val endIndex = i + yomiStr.length
+                        val penalty = typoCorrectionOffsetScore * typo.penaltyUsed
+
+                        listToken
+                            .sortedBy { it.wordCost }
+                            .take(5)
+                            .forEach { token ->
+                                val tango = when (token.nodeId) {
+                                    -2 -> yomiStr
+                                    -1 -> yomiStr.hiraToKata()
+                                    else -> localSystemUserTangoTrie.getLetter(
+                                        token.nodeId,
+                                        succinctBitVector = localSystemUserTangoLBS,
+                                    )
+                                }
+                                val cost = token.wordCost.toInt() + penalty
+                                addOrUpdateNode(
+                                    graph,
+                                    endIndex,
+                                    Node(
+                                        l = localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
+                                        r = localSystemUserTokenArray.rightIds[token.posTableIndex.toInt()],
+                                        score = cost,
+                                        f = cost,
+                                        g = cost,
+                                        tango = tango,
+                                        yomiUsed = yomiStr,
+                                        len = yomiStr.length.toShort(),
+                                        sPos = i,
+                                    ),
+                                )
+                            }
+                    }
+                }
+
+                // 1.y システムユーザー辞書 (Omission Search)
+                if (isOmissionSearchEnable && !subStr.hasNConsecutiveChars(4)) {
+                    val omissionSearchResults = localSystemUserYomiTrie.commonPrefixSearchWithOmission(
+                        str = subStr,
+                        succinctBitVector = localSystemUserLBSYomi,
+                    )
+                    if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
+
+                    for (omissionResult in omissionSearchResults) {
+                        val yomiStr = omissionResult.yomi
+                        val didOmit = omissionResult.omissionOccurred
+                        val nodeIndex = localSystemUserYomiTrie.getNodeIndex(
+                            yomiStr,
+                            localSystemUserLBSYomi,
+                        )
+                        if (nodeIndex <= 0) continue
+
+                        val termId = localSystemUserYomiTrie.getTermId(nodeIndex, localSystemUserIsLeaf)
+                        val listToken = localSystemUserTokenArray.getListDictionaryByYomiTermId(
+                            termId,
+                            localSystemUserTokenBitVector,
+                        )
+                        val endIndex = i + yomiStr.length
+
+                        listToken.sortedBy { it.wordCost }.take(5).forEach { token ->
+                            val tango = when (token.nodeId) {
+                                -2 -> yomiStr
+                                -1 -> yomiStr.hiraToKata()
+                                else -> localSystemUserTangoTrie.getLetter(
+                                    token.nodeId,
+                                    succinctBitVector = localSystemUserTangoLBS,
+                                )
+                            }
+                            val scoreOffset = if (didOmit) omissionSearchOffSetScore else 0
+                            addOrUpdateNode(
+                                graph,
+                                endIndex,
+                                Node(
+                                    l = localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
+                                    r = localSystemUserTokenArray.rightIds[token.posTableIndex.toInt()],
+                                    score = token.wordCost.toInt() + scoreOffset,
+                                    f = token.wordCost.toInt() + scoreOffset,
+                                    g = token.wordCost.toInt() + scoreOffset,
+                                    tango = tango,
+                                    yomiUsed = yomiStr,
+                                    len = yomiStr.length.toShort(),
+                                    sPos = i,
+                                ),
+                            )
+                        }
+                    }
+                }
             }
 
             // 3. システム辞書 (通常検索)
