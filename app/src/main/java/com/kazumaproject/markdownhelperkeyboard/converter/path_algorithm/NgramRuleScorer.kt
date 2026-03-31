@@ -98,6 +98,18 @@ class NgramRuleScorer(
                     third = NodeFeature(word = "高い"),
                     adjustment = -2000,
                 ),
+                ThreeNodeRule(
+                    first = NodeFeature(word = "衛星"),
+                    second = NodeFeature(word = "は"),
+                    third = NodeFeature(word = "分離"),
+                    adjustment = -2000,
+                ),
+                ThreeNodeRule(
+                    first = NodeFeature(word = "衛星"),
+                    second = NodeFeature(word = "が"),
+                    third = NodeFeature(word = "分離"),
+                    adjustment = -2000,
+                ),
             )
 
             return NgramRuleScorer(
