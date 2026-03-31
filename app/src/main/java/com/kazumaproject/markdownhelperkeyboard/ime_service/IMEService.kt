@@ -10487,6 +10487,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
                                                 customKeyboardMode = KeyboardInputMode.HIRAGANA
                                                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
                                                 createNewKeyboardLayoutForSumire()
                                                 if (insertString.isEmpty()) {
                                                     setKeyboardSizeSwitchKeyboard(mainView)
@@ -12811,7 +12812,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (current.isEmpty()) {
                     if (tailIsEmpty) {
                         if (isEditHistoryEnabled()) {
-                            val beforeChar = captureDeletedTextFromConnection(currentInputConnection)
+                            val beforeChar =
+                                captureDeletedTextFromConnection(currentInputConnection)
                             if (beforeChar.isNotEmpty()) {
                                 activeDeleteHistoryBatch?.deletedText?.insert(0, beforeChar)
                             }
