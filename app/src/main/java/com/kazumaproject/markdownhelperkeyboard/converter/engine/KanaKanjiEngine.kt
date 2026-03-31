@@ -43,6 +43,8 @@ import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
 import timber.log.Timber
+import java.io.FileInputStream
+import java.io.File
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 import java.text.SimpleDateFormat
@@ -164,6 +166,14 @@ class KanaKanjiEngine {
     private var webSuccinctBitVectorIsLeaf: SuccinctBitVector? = null
     private var webSuccinctBitVectorTokenArray: SuccinctBitVector? = null
     private var webSuccinctBitVectorLBSTango: SuccinctBitVector? = null
+
+    private var systemUserYomiTrie: LOUDSWithTermId? = null
+    private var systemUserTangoTrie: LOUDS? = null
+    private var systemUserTokenArray: TokenArray? = null
+    private var systemUserSuccinctBitVectorLBSYomi: SuccinctBitVector? = null
+    private var systemUserSuccinctBitVectorIsLeaf: SuccinctBitVector? = null
+    private var systemUserSuccinctBitVectorTokenArray: SuccinctBitVector? = null
+    private var systemUserSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
     private lateinit var englishEngine: EnglishEngine
 
@@ -314,8 +324,82 @@ class KanaKanjiEngine {
             kotowazaSuccinctBitVectorTokenArray
         this@KanaKanjiEngine.kotowazaSuccinctBitVectorTangoLBS = kotowazaSuccinctBitVectorTangoLBS
 
+        this@KanaKanjiEngine.graphBuilder.updateSystemUserDictionary(
+            yomiTrie = null,
+            tangoTrie = null,
+            tokenArray = null,
+            succinctBitVectorLBSYomi = null,
+            succinctBitVectorIsLeafYomi = null,
+            succinctBitVectorTokenArray = null,
+            succinctBitVectorTangoLBS = null,
+        )
         this.englishEngine = engineEngine
     }
+
+    fun loadSystemUserDictionaryFromFiles(context: Context) {
+        val baseDir = File(context.filesDir, "system_user_dictionary")
+        val yomiFile = File(baseDir, "yomi_system_user_dictionary.dat")
+        val tangoFile = File(baseDir, "tango_system_user_dictionary.dat")
+        val tokenFile = File(baseDir, "token_system_user_dictionary.dat")
+        val posTableFile = File(baseDir, "pos_table_system_user_dictionary.dat")
+        if (!yomiFile.exists() || !tangoFile.exists() || !tokenFile.exists() || !posTableFile.exists()) {
+            releaseSystemUserDictionary()
+            return
+        }
+
+        ObjectInputStream(BufferedInputStream(FileInputStream(tangoFile))).use {
+            this.systemUserTangoTrie = LOUDS().readExternalNotCompress(it)
+        }
+        ObjectInputStream(BufferedInputStream(FileInputStream(yomiFile))).use {
+            this.systemUserYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
+        }
+        this.systemUserTokenArray = TokenArray()
+        ObjectInputStream(BufferedInputStream(FileInputStream(tokenFile))).use {
+            this.systemUserTokenArray?.readExternal(it)
+        }
+        ObjectInputStream(BufferedInputStream(FileInputStream(posTableFile))).use {
+            this.systemUserTokenArray?.readPOSTable(it)
+        }
+
+        this.systemUserSuccinctBitVectorLBSYomi = SuccinctBitVector(systemUserYomiTrie!!.LBS)
+        this.systemUserSuccinctBitVectorIsLeaf = SuccinctBitVector(systemUserYomiTrie!!.isLeaf)
+        this.systemUserSuccinctBitVectorTokenArray = SuccinctBitVector(systemUserTokenArray!!.bitvector)
+        this.systemUserSuccinctBitVectorLBSTango = SuccinctBitVector(systemUserTangoTrie!!.LBS)
+
+        graphBuilder.updateSystemUserDictionary(
+            yomiTrie = systemUserYomiTrie,
+            tangoTrie = systemUserTangoTrie,
+            tokenArray = systemUserTokenArray,
+            succinctBitVectorLBSYomi = systemUserSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = systemUserSuccinctBitVectorIsLeaf,
+            succinctBitVectorTokenArray = systemUserSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = systemUserSuccinctBitVectorLBSTango,
+        )
+    }
+
+    fun releaseSystemUserDictionary() {
+        this.systemUserTangoTrie = null
+        this.systemUserYomiTrie = null
+        this.systemUserTokenArray = null
+        this.systemUserSuccinctBitVectorLBSYomi = null
+        this.systemUserSuccinctBitVectorIsLeaf = null
+        this.systemUserSuccinctBitVectorTokenArray = null
+        this.systemUserSuccinctBitVectorLBSTango = null
+        graphBuilder.updateSystemUserDictionary(
+            yomiTrie = null,
+            tangoTrie = null,
+            tokenArray = null,
+            succinctBitVectorLBSYomi = null,
+            succinctBitVectorIsLeafYomi = null,
+            succinctBitVectorTokenArray = null,
+            succinctBitVectorTangoLBS = null,
+        )
+    }
+
+    fun isSystemUserDictionaryInitialized(): Boolean {
+        return !(systemUserYomiTrie == null || systemUserTangoTrie == null || systemUserTokenArray == null)
+    }
+
 
     fun buildPersonNamesDictionary(context: Context) {
         val objectInputTango =
