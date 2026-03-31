@@ -1,7 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.ui
 
-import android.app.AlertDialog
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -32,8 +32,8 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSystemUserDi
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.IdDefEntry
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryEntry
 import dagger.hilt.android.AndroidEntryPoint
-import java.text.DateFormat
 import kotlinx.coroutines.launch
+import java.text.DateFormat
 
 @AndroidEntryPoint
 class SystemUserDictionaryBuilderFragment : Fragment() {
@@ -101,12 +101,13 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
                 menuInflater.inflate(R.menu.system_user_dictionary_builder_menu, menu)
             }
 
+            override fun onPrepareMenu(menu: Menu) {
+                menu.findItem(R.id.action_delete_built_system_user_dictionary)?.isVisible =
+                    viewModel.hasBuiltDictionary()
+            }
+
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
                 return when (menuItem.itemId) {
-                    R.id.action_build_system_user_dictionary -> {
-                        buildDictionary()
-                        true
-                    }
 
                     R.id.action_export_system_user_dictionary -> {
                         launchExportFilePicker()
@@ -120,6 +121,11 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
 
                     R.id.action_delete_all_system_user_dictionary -> {
                         confirmDeleteAll()
+                        true
+                    }
+
+                    R.id.action_delete_built_system_user_dictionary -> {
+                        confirmDeleteBuiltDictionary()
                         true
                     }
 
@@ -138,7 +144,9 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
 
     private fun observeEntries() {
         viewModel.allEntries.observe(viewLifecycleOwner) { entries ->
-            (binding.recyclerViewEntries.adapter as SystemUserDictionaryEntryAdapter).submitList(entries)
+            (binding.recyclerViewEntries.adapter as SystemUserDictionaryEntryAdapter).submitList(
+                entries
+            )
             binding.textViewEmpty.visibility = if (entries.isEmpty()) View.VISIBLE else View.GONE
         }
     }
@@ -161,6 +169,7 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             val metadata = viewModel.buildDictionary()
             updateBuildStatus()
+            requireActivity().invalidateOptionsMenu()
             val message = if (metadata.entryCount == 0) {
                 getString(R.string.system_user_dictionary_cleared)
             } else {
@@ -204,6 +213,7 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
             val imported = viewModel.importBuiltDictionary(uri)
             if (imported) {
                 updateBuildStatus()
+                requireActivity().invalidateOptionsMenu()
             }
             val messageRes = if (imported) {
                 R.string.system_user_dictionary_import_success
@@ -227,6 +237,27 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
             .show()
     }
 
+    private fun confirmDeleteBuiltDictionary() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.confirm_delete_title)
+            .setMessage(R.string.system_user_dictionary_delete_built_message)
+            .setPositiveButton(R.string.delete_string) { _, _ ->
+                viewLifecycleOwner.lifecycleScope.launch {
+                    val deleted = viewModel.clearBuiltDictionary()
+                    updateBuildStatus()
+                    requireActivity().invalidateOptionsMenu()
+                    val messageRes = if (deleted) {
+                        R.string.system_user_dictionary_cleared
+                    } else {
+                        R.string.system_user_dictionary_delete_built_failed
+                    }
+                    Toast.makeText(requireContext(), messageRes, Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton(R.string.cancel_string, null)
+            .show()
+    }
+
     private fun showEditDialog(entry: SystemUserDictionaryEntry?) {
         val dialogView = LayoutInflater.from(requireContext())
             .inflate(R.layout.dialog_edit_system_user_dictionary_entry, null)
@@ -234,14 +265,26 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
         val yomiEdit = dialogView.findViewById<EditText>(R.id.edit_text_yomi_dialog)
         val tangoEdit = dialogView.findViewById<EditText>(R.id.edit_text_tango_dialog)
         val scoreEdit = dialogView.findViewById<EditText>(R.id.edit_text_score_dialog)
-        val leftIdInput = dialogView.findViewById<AutoCompleteTextView>(R.id.auto_complete_left_id_dialog)
-        val rightIdInput = dialogView.findViewById<AutoCompleteTextView>(R.id.auto_complete_right_id_dialog)
+        val leftIdInput =
+            dialogView.findViewById<AutoCompleteTextView>(R.id.auto_complete_left_id_dialog)
+        val rightIdInput =
+            dialogView.findViewById<AutoCompleteTextView>(R.id.auto_complete_right_id_dialog)
 
         yomiEdit.setText(entry?.yomi.orEmpty())
         tangoEdit.setText(entry?.tango.orEmpty())
-        scoreEdit.setText((entry?.score ?: SystemUserDictionaryBuilderViewModel.DEFAULT_SCORE).toString())
-        leftIdInput.setText(resolveDisplayText(entry?.leftId ?: SystemUserDictionaryBuilderViewModel.DEFAULT_CONTEXT_ID), false)
-        rightIdInput.setText(resolveDisplayText(entry?.rightId ?: SystemUserDictionaryBuilderViewModel.DEFAULT_CONTEXT_ID), false)
+        scoreEdit.setText(
+            (entry?.score ?: SystemUserDictionaryBuilderViewModel.DEFAULT_SCORE).toString()
+        )
+        leftIdInput.setText(
+            resolveDisplayText(
+                entry?.leftId ?: SystemUserDictionaryBuilderViewModel.DEFAULT_CONTEXT_ID
+            ), false
+        )
+        rightIdInput.setText(
+            resolveDisplayText(
+                entry?.rightId ?: SystemUserDictionaryBuilderViewModel.DEFAULT_CONTEXT_ID
+            ), false
+        )
         setupContextIdPicker(leftIdInput, R.string.system_user_dictionary_left_id)
         setupContextIdPicker(rightIdInput, R.string.system_user_dictionary_right_id)
 
@@ -340,7 +383,8 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
         }
 
         searchEdit.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) =
+                Unit
 
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
 
@@ -374,23 +418,39 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
     ): Boolean {
         when {
             yomi.isBlank() || tango.isBlank() -> {
-                Toast.makeText(requireContext(), R.string.enter_word_and_yomi_string, Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    R.string.enter_word_and_yomi_string,
+                    Toast.LENGTH_SHORT
+                ).show()
                 return false
             }
 
             !yomi.all { it in 'ぁ'..'ゖ' || it == 'ー' } -> {
-                Toast.makeText(requireContext(), R.string.system_user_dictionary_invalid_yomi, Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    R.string.system_user_dictionary_invalid_yomi,
+                    Toast.LENGTH_SHORT
+                ).show()
                 return false
             }
 
             score == null || score !in Short.MIN_VALUE..Short.MAX_VALUE -> {
-                Toast.makeText(requireContext(), R.string.system_user_dictionary_invalid_score, Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    requireContext(),
+                    R.string.system_user_dictionary_invalid_score,
+                    Toast.LENGTH_SHORT
+                ).show()
                 return false
             }
 
             leftId == null || !validContextIdSet.contains(leftId) ||
-                rightId == null || !validContextIdSet.contains(rightId) -> {
-                Toast.makeText(requireContext(), R.string.system_user_dictionary_invalid_context_id, Toast.LENGTH_SHORT).show()
+                    rightId == null || !validContextIdSet.contains(rightId) -> {
+                Toast.makeText(
+                    requireContext(),
+                    R.string.system_user_dictionary_invalid_context_id,
+                    Toast.LENGTH_SHORT
+                ).show()
                 return false
             }
         }

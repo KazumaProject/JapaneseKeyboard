@@ -3,12 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
-        android:id="@+id/action_build_system_user_dictionary"
-        android:icon="@drawable/baseline_save_24"
-        android:title="@string/system_user_dictionary_build_button"
-        app:showAsAction="ifRoom" />
-
-    <item
         android:id="@+id/action_export_system_user_dictionary"
         android:icon="@drawable/upload_file_24px"
         android:title="@string/export_title"
@@ -24,6 +18,11 @@
         android:id="@+id/action_delete_all_system_user_dictionary"
         android:icon="@drawable/remove"
         android:title="@string/delete_all"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/action_delete_built_system_user_dictionary"
+        android:title="@string/system_user_dictionary_delete_built"
         app:showAsAction="never" />
 
 </menu>

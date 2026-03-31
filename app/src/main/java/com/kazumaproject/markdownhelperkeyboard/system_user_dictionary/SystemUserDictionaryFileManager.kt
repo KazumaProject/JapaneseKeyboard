@@ -28,11 +28,17 @@ class SystemUserDictionaryFileManager @Inject constructor(
         private const val TOKEN_FILE_NAME = "token_system_user_dictionary.dat"
         private const val POS_TABLE_FILE_NAME = "pos_table_system_user_dictionary.dat"
         private const val META_FILE_NAME = "meta_system_user_dictionary.dat"
+        private const val ENTRIES_FILE_NAME = "entries_system_user_dictionary.json"
     }
 
     data class BuildMetadata(
         val entryCount: Int,
         val builtAt: Long,
+    )
+
+    data class ImportResult(
+        val metadata: BuildMetadata,
+        val entriesJson: String?,
     )
 
     val directory: File
@@ -93,7 +99,7 @@ class SystemUserDictionaryFileManager @Inject constructor(
         }.getOrNull()
     }
 
-    fun exportBuiltDictionary(outputStream: OutputStream): Boolean {
+    fun exportBuiltDictionary(outputStream: OutputStream, entriesJson: String?): Boolean {
         if (!hasBuiltDictionary()) return false
 
         ZipOutputStream(BufferedOutputStream(outputStream)).use { zipOut ->
@@ -104,24 +110,30 @@ class SystemUserDictionaryFileManager @Inject constructor(
                 }
                 zipOut.closeEntry()
             }
+            if (!entriesJson.isNullOrBlank()) {
+                zipOut.putNextEntry(ZipEntry(ENTRIES_FILE_NAME))
+                zipOut.write(entriesJson.toByteArray(Charsets.UTF_8))
+                zipOut.closeEntry()
+            }
         }
         return true
     }
 
-    fun importBuiltDictionary(inputStream: InputStream): BuildMetadata? {
+    fun importBuiltDictionary(inputStream: InputStream): ImportResult? {
         val importedBytes = mutableMapOf<String, ByteArray>()
+        val allowedNames = setOf(
+            YOMI_FILE_NAME,
+            TANGO_FILE_NAME,
+            TOKEN_FILE_NAME,
+            POS_TABLE_FILE_NAME,
+            META_FILE_NAME,
+            ENTRIES_FILE_NAME,
+        )
         ZipInputStream(BufferedInputStream(inputStream)).use { zipIn ->
             var entry = zipIn.nextEntry
             while (entry != null) {
                 val name = File(entry.name).name
-                if (!entry.isDirectory && name in setOf(
-                        YOMI_FILE_NAME,
-                        TANGO_FILE_NAME,
-                        TOKEN_FILE_NAME,
-                        POS_TABLE_FILE_NAME,
-                        META_FILE_NAME,
-                    )
-                ) {
+                if (!entry.isDirectory && name in allowedNames) {
                     importedBytes[name] = zipIn.readBytes()
                 }
                 zipIn.closeEntry()
@@ -144,18 +156,17 @@ class SystemUserDictionaryFileManager @Inject constructor(
         writeAtomically(posTableFile, importedBytes.getValue(POS_TABLE_FILE_NAME))
 
         val importedMetadataBytes = importedBytes[META_FILE_NAME]
-        if (importedMetadataBytes != null) {
+        val metadata = if (importedMetadataBytes != null) {
             writeAtomically(metaFile, importedMetadataBytes)
+            readMetadata() ?: BuildMetadata(entryCount = 0, builtAt = System.currentTimeMillis())
         } else {
-            writeMetadata(
-                BuildMetadata(
-                    entryCount = 0,
-                    builtAt = System.currentTimeMillis(),
-                ),
-            )
+            BuildMetadata(entryCount = 0, builtAt = System.currentTimeMillis()).also { writeMetadata(it) }
         }
 
-        return readMetadata()
+        return ImportResult(
+            metadata = metadata,
+            entriesJson = importedBytes[ENTRIES_FILE_NAME]?.toString(Charsets.UTF_8),
+        )
     }
 
     private fun writeAtomically(targetFile: File, content: ByteArray) {
