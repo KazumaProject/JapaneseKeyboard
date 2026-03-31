@@ -16,6 +16,8 @@ class SystemUserDictionaryRepository @Inject constructor(
 
     suspend fun insert(entry: SystemUserDictionaryEntry) = dao.insert(entry)
 
+    suspend fun insertAll(entries: List<SystemUserDictionaryEntry>) = dao.insertAll(entries)
+
     suspend fun update(entry: SystemUserDictionaryEntry) = dao.update(entry)
 
     suspend fun delete(id: Int) = dao.deleteById(id)

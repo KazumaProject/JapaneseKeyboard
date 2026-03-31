@@ -15,6 +15,11 @@
         app:showAsAction="ifRoom" />
 
     <item
+        android:id="@+id/action_import_from_app_dictionary"
+        android:title="@string/system_user_dictionary_import_from_app"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_delete_all_system_user_dictionary"
         android:icon="@drawable/remove"
         android:title="@string/delete_all"
