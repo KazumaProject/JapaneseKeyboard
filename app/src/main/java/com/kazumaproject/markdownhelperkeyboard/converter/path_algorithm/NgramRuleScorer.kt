@@ -71,21 +71,33 @@ class NgramRuleScorer(
          * 必要に応じてここへルールを追加していく。
          */
         fun createDefault(): NgramRuleScorer {
-            val twoNodeRules = listOf(
-                TwoNodeRule(
-                    prev = NodeFeature(word = "量子"),
-                    current = NodeFeature(word = "化"),
-                    adjustment = -400,
-                ),
-            )
+            val twoNodeRules = emptyList<TwoNodeRule>()
 
             val threeNodeRules = listOf(
                 ThreeNodeRule(
-                    first = NodeFeature(leftId = 1852, rightId = 1852),
+                    first = NodeFeature(leftId = 1851, rightId = 1851),
                     second = NodeFeature(word = "で"),
                     third = NodeFeature(word = "拭く"),
                     adjustment = -2000,
-                )
+                ),
+                ThreeNodeRule(
+                    first = NodeFeature(leftId = 1851, rightId = 1851),
+                    second = NodeFeature(word = "を"),
+                    third = NodeFeature(word = "吹く"),
+                    adjustment = -2000,
+                ),
+                ThreeNodeRule(
+                    first = NodeFeature(word = "精度"),
+                    second = NodeFeature(word = "が"),
+                    third = NodeFeature(word = "高い"),
+                    adjustment = -2000,
+                ),
+                ThreeNodeRule(
+                    first = NodeFeature(word = "精度"),
+                    second = NodeFeature(word = "の"),
+                    third = NodeFeature(word = "高い"),
+                    adjustment = -2000,
+                ),
             )
 
             return NgramRuleScorer(
