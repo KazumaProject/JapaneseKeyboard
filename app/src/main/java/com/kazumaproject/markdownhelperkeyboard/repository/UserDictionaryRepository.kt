@@ -34,6 +34,10 @@ class UserDictionaryRepository @Inject constructor(
         return userWordDao.commonPrefixSearchInUserDict(prefix)
     }
 
+    suspend fun allWordsSuspend(): List<UserWord> {
+        return userWordDao.getAllSuspend()
+    }
+
     suspend fun insert(userWord: UserWord) {
         userWordDao.insert(userWord)
     }
