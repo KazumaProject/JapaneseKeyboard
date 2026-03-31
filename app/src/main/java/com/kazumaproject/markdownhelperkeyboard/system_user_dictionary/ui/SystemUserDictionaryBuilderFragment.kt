@@ -1,7 +1,12 @@
 package com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.ui
 
 import android.app.AlertDialog
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -11,7 +16,10 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.EditText
+import android.widget.ListView
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
@@ -36,6 +44,25 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
     private val binding get() = _binding!!
 
     private lateinit var idEntries: List<IdDefEntry>
+    private lateinit var validContextIdSet: Set<Int>
+
+    private val exportLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let { uri ->
+                    exportBuiltDictionary(uri)
+                }
+            }
+        }
+
+    private val importLauncher =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                result.data?.data?.let { uri ->
+                    importBuiltDictionary(uri)
+                }
+            }
+        }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -49,6 +76,7 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         idEntries = viewModel.getIdDefEntries()
+        validContextIdSet = idEntries.map { it.id }.toSet()
         setupMenu()
         setupRecyclerView()
         binding.fabAddEntry.setOnClickListener {
@@ -59,6 +87,11 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
         }
         observeEntries()
         updateBuildStatus()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        requireActivity().title = ""
     }
 
     private fun setupMenu() {
@@ -72,6 +105,16 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
                 return when (menuItem.itemId) {
                     R.id.action_build_system_user_dictionary -> {
                         buildDictionary()
+                        true
+                    }
+
+                    R.id.action_export_system_user_dictionary -> {
+                        launchExportFilePicker()
+                        true
+                    }
+
+                    R.id.action_import_system_user_dictionary -> {
+                        launchImportFilePicker()
                         true
                     }
 
@@ -127,6 +170,50 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
         }
     }
 
+    private fun launchExportFilePicker() {
+        val intent = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/zip"
+            putExtra(Intent.EXTRA_TITLE, "system_user_dictionary.zip")
+        }
+        exportLauncher.launch(intent)
+    }
+
+    private fun launchImportFilePicker() {
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "application/zip"
+        }
+        importLauncher.launch(intent)
+    }
+
+    private fun exportBuiltDictionary(uri: Uri) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val exported = viewModel.exportBuiltDictionary(uri)
+            val messageRes = if (exported) {
+                R.string.system_user_dictionary_export_success
+            } else {
+                R.string.system_user_dictionary_export_failed
+            }
+            Toast.makeText(requireContext(), messageRes, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun importBuiltDictionary(uri: Uri) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            val imported = viewModel.importBuiltDictionary(uri)
+            if (imported) {
+                updateBuildStatus()
+            }
+            val messageRes = if (imported) {
+                R.string.system_user_dictionary_import_success
+            } else {
+                R.string.system_user_dictionary_import_failed
+            }
+            Toast.makeText(requireContext(), messageRes, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun confirmDeleteAll() {
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.confirm_delete_title)
@@ -150,20 +237,13 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
         val leftIdInput = dialogView.findViewById<AutoCompleteTextView>(R.id.auto_complete_left_id_dialog)
         val rightIdInput = dialogView.findViewById<AutoCompleteTextView>(R.id.auto_complete_right_id_dialog)
 
-        val dropdownItems = idEntries.map { it.displayText }
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_dropdown_item_1line, dropdownItems)
-        leftIdInput.setAdapter(adapter)
-        rightIdInput.setAdapter(adapter)
-        leftIdInput.threshold = 0
-        rightIdInput.threshold = 0
-        leftIdInput.setOnClickListener { leftIdInput.showDropDown() }
-        rightIdInput.setOnClickListener { rightIdInput.showDropDown() }
-
         yomiEdit.setText(entry?.yomi.orEmpty())
         tangoEdit.setText(entry?.tango.orEmpty())
         scoreEdit.setText((entry?.score ?: SystemUserDictionaryBuilderViewModel.DEFAULT_SCORE).toString())
         leftIdInput.setText(resolveDisplayText(entry?.leftId ?: SystemUserDictionaryBuilderViewModel.DEFAULT_CONTEXT_ID), false)
         rightIdInput.setText(resolveDisplayText(entry?.rightId ?: SystemUserDictionaryBuilderViewModel.DEFAULT_CONTEXT_ID), false)
+        setupContextIdPicker(leftIdInput, R.string.system_user_dictionary_left_id)
+        setupContextIdPicker(rightIdInput, R.string.system_user_dictionary_right_id)
 
         AlertDialog.Builder(requireContext())
             .setTitle(
@@ -218,6 +298,73 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
             .show()
     }
 
+    private fun setupContextIdPicker(
+        inputView: AutoCompleteTextView,
+        @StringRes titleRes: Int,
+    ) {
+        inputView.keyListener = null
+        inputView.isCursorVisible = false
+        inputView.setOnClickListener {
+            showContextIdPickerDialog(titleRes) { selectedId ->
+                inputView.setText(resolveDisplayText(selectedId), false)
+            }
+        }
+    }
+
+    private fun showContextIdPickerDialog(
+        @StringRes titleRes: Int,
+        onSelected: (Int) -> Unit,
+    ) {
+        val pickerView = LayoutInflater.from(requireContext())
+            .inflate(R.layout.dialog_system_user_dictionary_context_id_picker, null)
+        val searchEdit = pickerView.findViewById<EditText>(R.id.edit_text_context_id_search)
+        val listView = pickerView.findViewById<ListView>(R.id.list_view_context_id)
+
+        val filteredEntries = idEntries.toMutableList()
+        val adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_list_item_1,
+            filteredEntries.map { it.displayText }.toMutableList(),
+        )
+        listView.adapter = adapter
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle(titleRes)
+            .setView(pickerView)
+            .setNegativeButton(R.string.cancel_string, null)
+            .create()
+
+        listView.setOnItemClickListener { _, _, position, _ ->
+            onSelected(filteredEntries[position].id)
+            dialog.dismiss()
+        }
+
+        searchEdit.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
+
+            override fun afterTextChanged(s: Editable?) {
+                val keyword = s?.toString().orEmpty().trim()
+                val nextItems = if (keyword.isBlank()) {
+                    idEntries
+                } else {
+                    idEntries.filter { entry ->
+                        entry.displayText.contains(keyword, ignoreCase = true)
+                    }
+                }
+
+                filteredEntries.clear()
+                filteredEntries.addAll(nextItems)
+                adapter.clear()
+                adapter.addAll(nextItems.map { it.displayText })
+                adapter.notifyDataSetChanged()
+            }
+        })
+
+        dialog.show()
+    }
+
     private fun validateInput(
         yomi: String,
         tango: String,
@@ -241,7 +388,8 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
                 return false
             }
 
-            leftId == null || leftId !in 0..2670 || rightId == null || rightId !in 0..2670 -> {
+            leftId == null || !validContextIdSet.contains(leftId) ||
+                rightId == null || !validContextIdSet.contains(rightId) -> {
                 Toast.makeText(requireContext(), R.string.system_user_dictionary_invalid_context_id, Toast.LENGTH_SHORT).show()
                 return false
             }
