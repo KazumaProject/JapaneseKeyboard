@@ -3,6 +3,16 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory
+        android:title="@string/system_user_dictionary">
+
+        <Preference
+            android:key="system_user_dictionary_builder_preference"
+            android:title="@string/system_user_dictionary_builder_title"
+            app:summary="@string/system_user_dictionary_builder_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="@string/category_ng_word_title"
         app:summary="@string/category_ng_word_summary">
 
