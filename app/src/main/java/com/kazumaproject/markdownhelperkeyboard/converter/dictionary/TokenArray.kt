@@ -4,12 +4,17 @@ import com.kazumaproject.bitset.rank1Common
 import com.kazumaproject.bitset.rank1CommonShort
 import com.kazumaproject.bitset.select0Common
 import com.kazumaproject.bitset.select0CommonShort
+import com.kazumaproject.dictionary.models.Dictionary
 import com.kazumaproject.dictionary.models.TokenEntry
+import com.kazumaproject.toBitSet
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import java.io.ObjectOutput
 import java.io.ObjectInput
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import java.text.Normalizer
 import java.util.BitSet
+import com.kazumaproject.Louds.LOUDS
 
 class TokenArray {
     private var posTableIndexList: ShortArray = shortArrayOf()
@@ -148,6 +153,60 @@ class TokenArray {
         return TokenArray()
     }
 
+    fun buildTokenArray(
+        dictionaries: Map<String, List<Dictionary>>,
+        tangoTrie: LOUDS,
+        out: ObjectOutput,
+        posIndexMap: Map<Pair<Short, Short>, Int>,
+    ) {
+        val posTableIndices = mutableListOf<Short>()
+        val wordCosts = mutableListOf<Short>()
+        val nodeIds = mutableListOf<Int>()
+        val bits = mutableListOf<Boolean>()
+
+        dictionaries.forEach { (yomi, dictionaryList) ->
+            bits.add(false)
+            dictionaryList.forEach { dictionary ->
+                bits.add(true)
+                val posIndex = posIndexMap.getValue(dictionary.leftId to dictionary.rightId)
+                posTableIndices.add(posIndex.toShort())
+                wordCosts.add(dictionary.cost)
+                nodeIds.add(getNodeIdForDictionary(dictionary, tangoTrie, yomi))
+            }
+        }
+
+        posTableIndexList = posTableIndices.toShortArray()
+        wordCostList = wordCosts.toShortArray()
+        nodeIdList = nodeIds.toIntArray()
+        bitvector = bits.toBitSet()
+        writeExternalNotCompress(out)
+    }
+
+    private fun getNodeIdForDictionary(
+        dictionary: Dictionary,
+        tangoTrie: LOUDS,
+        yomi: String,
+    ): Int {
+        val tango = dictionary.tango
+        return when {
+            yomi == tango -> -2
+            tango.isHiraganaOnly() -> -2
+            tango.isKatakanaOnly() -> -1
+            else -> tangoTrie.getNodeIndex(Normalizer.normalize(tango, Normalizer.Form.NFC))
+        }
+    }
+
+    fun writeExternalNotCompress(out: ObjectOutput) {
+        out.apply {
+            writeObject(posTableIndexList)
+            writeObject(wordCostList)
+            writeObject(nodeIdList)
+            writeObject(bitvector)
+            flush()
+            close()
+        }
+    }
+
     /**
      *
      * @param fileList dictionary00 ~ dictionary09
@@ -247,6 +306,14 @@ class TokenArray {
             a = (readObject() as Map<Pair<Short, Short>, Int>)
         }
         return a
+    }
+
+    private fun String.isHiraganaOnly(): Boolean {
+        return isNotEmpty() && all { it in 'ぁ'..'ゖ' || it == 'ー' }
+    }
+
+    private fun String.isKatakanaOnly(): Boolean {
+        return isNotEmpty() && all { it in 'ァ'..'ヶ' || it == 'ー' }
     }
 
 }

@@ -1177,6 +1177,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun initializeMozcDictionaries(preferences: ImePreferencesSnapshot) {
+        if (!kanaKanjiEngine.isSystemUserDictionaryInitialized()) {
+            runCatching {
+                kanaKanjiEngine.loadSystemUserDictionaryFromFiles(applicationContext)
+            }
+        }
         if (preferences.mozcUTPersonName && !kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
             kanaKanjiEngine.buildPersonNamesDictionary(applicationContext)
         }
@@ -1656,6 +1661,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (mozcUTWiki == true) kanaKanjiEngine.releaseWikiDictionary()
         if (mozcUTNeologd == true) kanaKanjiEngine.releaseNeologdDictionary()
         if (mozcUTWeb == true) kanaKanjiEngine.releaseWebDictionary()
+        if (kanaKanjiEngine.isSystemUserDictionaryInitialized()) kanaKanjiEngine.releaseSystemUserDictionary()
         isFlickOnlyMode = null
         isOmissionSearchEnable = null
         delayTime = null
