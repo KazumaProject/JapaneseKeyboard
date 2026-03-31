@@ -210,7 +210,7 @@
     <fragment
         android:id="@+id/systemUserDictionaryBuilderFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.ui.SystemUserDictionaryBuilderFragment"
-        android:label="@string/system_user_dictionary_builder_title"
+        android:label=""
         tools:layout="@layout/fragment_system_user_dictionary_builder" />
 
 </navigation>

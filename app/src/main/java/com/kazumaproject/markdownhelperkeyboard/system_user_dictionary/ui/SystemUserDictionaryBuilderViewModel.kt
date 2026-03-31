@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.ui
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.ViewModel
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -50,6 +51,25 @@ class SystemUserDictionaryBuilderViewModel @Inject constructor(
         val metadata = systemUserDictionaryBuilder.build(entries)
         kanaKanjiEngine.loadSystemUserDictionaryFromFiles(context)
         metadata
+    }
+
+    suspend fun exportBuiltDictionary(uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                fileManager.exportBuiltDictionary(outputStream)
+            } ?: false
+        }.getOrDefault(false)
+    }
+
+    suspend fun importBuiltDictionary(uri: Uri): Boolean = withContext(Dispatchers.IO) {
+        runCatching {
+            val metadata = context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                fileManager.importBuiltDictionary(inputStream)
+            } ?: return@withContext false
+            if (metadata == null) return@withContext false
+            kanaKanjiEngine.loadSystemUserDictionaryFromFiles(context)
+            true
+        }.getOrDefault(false)
     }
 
     suspend fun reloadBuiltDictionaryIfExists(): Boolean = withContext(Dispatchers.IO) {

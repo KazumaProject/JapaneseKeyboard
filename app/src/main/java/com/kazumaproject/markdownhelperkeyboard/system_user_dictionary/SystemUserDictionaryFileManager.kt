@@ -7,8 +7,13 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import java.io.OutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,6 +53,10 @@ class SystemUserDictionaryFileManager @Inject constructor(
     private val metaFile: File
         get() = File(directory, META_FILE_NAME)
 
+    private fun dictionaryDataFiles(): List<File> = listOf(yomiFile, tangoFile, tokenFile, posTableFile)
+
+    private fun allExportFiles(): List<File> = dictionaryDataFiles() + metaFile
+
     fun ensureDirectory() {
         if (!directory.exists()) {
             directory.mkdirs()
@@ -55,7 +64,7 @@ class SystemUserDictionaryFileManager @Inject constructor(
     }
 
     fun hasBuiltDictionary(): Boolean {
-        return yomiFile.exists() && tangoFile.exists() && tokenFile.exists() && posTableFile.exists()
+        return dictionaryDataFiles().all { it.exists() }
     }
 
     fun clearAll() {
@@ -82,5 +91,82 @@ class SystemUserDictionaryFileManager @Inject constructor(
                 )
             }
         }.getOrNull()
+    }
+
+    fun exportBuiltDictionary(outputStream: OutputStream): Boolean {
+        if (!hasBuiltDictionary()) return false
+
+        ZipOutputStream(BufferedOutputStream(outputStream)).use { zipOut ->
+            allExportFiles().filter { it.exists() }.forEach { file ->
+                zipOut.putNextEntry(ZipEntry(file.name))
+                FileInputStream(file).use { input ->
+                    input.copyTo(zipOut)
+                }
+                zipOut.closeEntry()
+            }
+        }
+        return true
+    }
+
+    fun importBuiltDictionary(inputStream: InputStream): BuildMetadata? {
+        val importedBytes = mutableMapOf<String, ByteArray>()
+        ZipInputStream(BufferedInputStream(inputStream)).use { zipIn ->
+            var entry = zipIn.nextEntry
+            while (entry != null) {
+                val name = File(entry.name).name
+                if (!entry.isDirectory && name in setOf(
+                        YOMI_FILE_NAME,
+                        TANGO_FILE_NAME,
+                        TOKEN_FILE_NAME,
+                        POS_TABLE_FILE_NAME,
+                        META_FILE_NAME,
+                    )
+                ) {
+                    importedBytes[name] = zipIn.readBytes()
+                }
+                zipIn.closeEntry()
+                entry = zipIn.nextEntry
+            }
+        }
+
+        val hasAllRequiredFiles = listOf(
+            YOMI_FILE_NAME,
+            TANGO_FILE_NAME,
+            TOKEN_FILE_NAME,
+            POS_TABLE_FILE_NAME,
+        ).all { importedBytes.containsKey(it) }
+        if (!hasAllRequiredFiles) return null
+
+        ensureDirectory()
+        writeAtomically(yomiFile, importedBytes.getValue(YOMI_FILE_NAME))
+        writeAtomically(tangoFile, importedBytes.getValue(TANGO_FILE_NAME))
+        writeAtomically(tokenFile, importedBytes.getValue(TOKEN_FILE_NAME))
+        writeAtomically(posTableFile, importedBytes.getValue(POS_TABLE_FILE_NAME))
+
+        val importedMetadataBytes = importedBytes[META_FILE_NAME]
+        if (importedMetadataBytes != null) {
+            writeAtomically(metaFile, importedMetadataBytes)
+        } else {
+            writeMetadata(
+                BuildMetadata(
+                    entryCount = 0,
+                    builtAt = System.currentTimeMillis(),
+                ),
+            )
+        }
+
+        return readMetadata()
+    }
+
+    private fun writeAtomically(targetFile: File, content: ByteArray) {
+        val tempFile = File(targetFile.parentFile, "${targetFile.name}.tmp")
+        FileOutputStream(tempFile).use { output ->
+            output.write(content)
+            output.flush()
+        }
+        if (targetFile.exists()) {
+            targetFile.delete()
+        }
+        tempFile.renameTo(targetFile)
     }
 }

@@ -483,4 +483,9 @@
     <string name="system_user_dictionary_invalid_score">`score` は Short の範囲で入力してください。</string>
     <string name="system_user_dictionary_invalid_context_id">id.def から有効な leftId/rightId を選択してください。</string>
     <string name="system_user_dictionary_delete_all_message">システムユーザー辞書のエントリをすべて削除しますか？</string>
+    <string name="system_user_dictionary_export_success">システムユーザー辞書をエクスポートしました。</string>
+    <string name="system_user_dictionary_export_failed">システムユーザー辞書のエクスポートに失敗しました。</string>
+    <string name="system_user_dictionary_import_success">システムユーザー辞書を読み込みました。</string>
+    <string name="system_user_dictionary_import_failed">システムユーザー辞書の読み込みに失敗しました。</string>
+    <string name="system_user_dictionary_context_id_search_hint">id またはラベルで検索</string>
 </resources>
