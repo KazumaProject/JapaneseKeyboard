@@ -12,6 +12,7 @@ import com.kazumaproject.bitset.select1Common
 import com.kazumaproject.bitset.select1CommonShort
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
+import com.kazumaproject.toBitSet
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.toByteArrayFromListChar
 import com.kazumaproject.toListChar
@@ -72,6 +73,14 @@ class LOUDS {
             childPos += 1
         }
         return -1
+    }
+
+    fun convertListToBitSet() {
+        LBS = LBSTemp.toBitSet()
+        LBSTemp.clear()
+        isLeaf = isLeafTemp.toBitSet()
+        isLeafTemp.clear()
+        labels = labelsTemp.toCharArray()
     }
 
     fun commonPrefixSearch(str: String): MutableList<String> {
@@ -256,6 +265,20 @@ class LOUDS {
                 writeObject(LBS)
                 writeObject(labelsTemp.toByteArrayFromListChar().deflate())
                 writeObject(isLeaf)
+                flush()
+                close()
+            }
+        } catch (e: IOException) {
+            println(e.stackTraceToString())
+        }
+    }
+
+    fun writeExternalNotCompress(out: ObjectOutput) {
+        try {
+            out.apply {
+                writeObject(LBS)
+                writeObject(isLeaf)
+                writeObject(labels)
                 flush()
                 close()
             }

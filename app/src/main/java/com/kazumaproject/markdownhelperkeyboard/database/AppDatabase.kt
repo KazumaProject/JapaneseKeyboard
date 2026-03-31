@@ -25,6 +25,8 @@ import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
 import com.kazumaproject.markdownhelperkeyboard.short_cut.data.ShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
+import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryDao
+import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryEntry
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
@@ -43,9 +45,10 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         ClipboardHistoryItem::class,
         RomajiMapEntity::class,
         NgWord::class,
-        ShortcutItem::class
+        ShortcutItem::class,
+        SystemUserDictionaryEntry::class,
     ],
-    version = 17,
+    version = 18,
     exportSchema = false
 )
 @TypeConverters(
@@ -64,6 +67,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun romajiMapDao(): RomajiMapDao
     abstract fun ngWordDao(): NgWordDao
     abstract fun shortcutDao(): ShortcutDao
+    abstract fun systemUserDictionaryDao(): SystemUserDictionaryDao
 
     companion object {
 
@@ -388,6 +392,43 @@ abstract class AppDatabase : RoomDatabase() {
                       `contentPath` TEXT NOT NULL,
                       `timestamp` INTEGER NOT NULL
                     )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `system_user_dictionary_entry` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `yomi` TEXT NOT NULL,
+                      `tango` TEXT NOT NULL,
+                      `score` INTEGER NOT NULL,
+                      `leftId` INTEGER NOT NULL,
+                      `rightId` INTEGER NOT NULL,
+                      `createdAt` INTEGER NOT NULL,
+                      `updatedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_system_user_dictionary_entry_yomi`
+                    ON `system_user_dictionary_entry`(`yomi`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_system_user_dictionary_entry_tango`
+                    ON `system_user_dictionary_entry`(`tango`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_system_user_dictionary_entry_yomi_tango_leftId_rightId`
+                    ON `system_user_dictionary_entry`(`yomi`, `tango`, `leftId`, `rightId`)
                     """.trimIndent()
                 )
             }

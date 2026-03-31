@@ -29,3 +29,10 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryEntry { *; }
+
+# Keep Gson generic type metadata and annotations used by backup import/export parsing.
+-keepattributes Signature
+-keepattributes *Annotation*
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
