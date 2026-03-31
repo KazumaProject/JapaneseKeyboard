@@ -12,6 +12,9 @@ interface UserWordDao {
     @Query("SELECT * FROM user_word ORDER BY reading ASC")
     fun getAll(): LiveData<List<UserWord>>
 
+    @Query("SELECT * FROM user_word ORDER BY reading ASC")
+    suspend fun getAllSuspend(): List<UserWord>
+
     /**
      * readingの前方一致で単語を検索する (UI表示用)
      */

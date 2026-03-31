@@ -60,7 +60,9 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             if (result.resultCode == Activity.RESULT_OK) {
                 result.data?.data?.let { uri ->
-                    importBuiltDictionary(uri)
+                    showImportModeDialog { mode ->
+                        importDictionary(uri, mode)
+                    }
                 }
             }
         }
@@ -117,6 +119,11 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
 
                     R.id.action_import_system_user_dictionary -> {
                         launchImportFilePicker()
+                        true
+                    }
+
+                    R.id.action_import_from_app_dictionary -> {
+                        showImportFromAppDialog()
                         true
                     }
 
@@ -197,7 +204,17 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
     private fun launchImportFilePicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "application/zip"
+            type = "*/*"
+            putExtra(
+                Intent.EXTRA_MIME_TYPES,
+                arrayOf(
+                    "application/zip",
+                    "text/plain",
+                    "text/tab-separated-values",
+                    "text/csv",
+                    "application/octet-stream",
+                ),
+            )
         }
         importLauncher.launch(intent)
     }
@@ -214,19 +231,136 @@ class SystemUserDictionaryBuilderFragment : Fragment() {
         }
     }
 
-    private fun importBuiltDictionary(uri: Uri) {
+    private fun importDictionary(uri: Uri, mode: SystemUserDictionaryBuilderViewModel.ImportMode) {
         viewLifecycleOwner.lifecycleScope.launch {
-            val imported = viewModel.importBuiltDictionary(uri)
-            if (imported) {
-                updateBuildStatus()
-                requireActivity().invalidateOptionsMenu()
+            when (val result = viewModel.importDictionary(uri, mode)) {
+                is SystemUserDictionaryBuilderViewModel.DictionaryImportResult.BuiltDictionary -> {
+                    updateBuildStatus()
+                    requireActivity().invalidateOptionsMenu()
+                    val message = result.importedEntries?.let {
+                        getString(R.string.system_user_dictionary_import_success_with_count, it)
+                    } ?: getString(R.string.system_user_dictionary_import_success)
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                }
+
+                is SystemUserDictionaryBuilderViewModel.DictionaryImportResult.ExternalDictionary -> {
+                    val message = if (result.importedEntries > 0) {
+                        getString(
+                            R.string.system_user_dictionary_import_external_success,
+                            result.importedEntries,
+                            result.skippedLines,
+                        )
+                    } else {
+                        getString(
+                            R.string.system_user_dictionary_import_external_no_entries,
+                            result.skippedLines,
+                        )
+                    }
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                }
+
+                is SystemUserDictionaryBuilderViewModel.DictionaryImportResult.InternalDictionary -> {
+                    val message = getString(
+                        R.string.system_user_dictionary_import_internal_success,
+                        result.importedEntries,
+                        result.skippedEntries,
+                    )
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                }
+
+
+                SystemUserDictionaryBuilderViewModel.DictionaryImportResult.Failed -> {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.system_user_dictionary_import_failed,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
             }
-            val messageRes = if (imported) {
-                R.string.system_user_dictionary_import_success
-            } else {
-                R.string.system_user_dictionary_import_failed
+        }
+    }
+
+    private fun showImportModeDialog(
+        onSelected: (SystemUserDictionaryBuilderViewModel.ImportMode) -> Unit,
+    ) {
+        val labels = arrayOf(
+            getString(R.string.system_user_dictionary_import_mode_append),
+            getString(R.string.system_user_dictionary_import_mode_replace),
+        )
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.system_user_dictionary_import_mode_title)
+            .setItems(labels) { _, which ->
+                val mode = if (which == 1) {
+                    SystemUserDictionaryBuilderViewModel.ImportMode.REPLACE_ALL
+                } else {
+                    SystemUserDictionaryBuilderViewModel.ImportMode.APPEND
+                }
+                onSelected(mode)
             }
-            Toast.makeText(requireContext(), messageRes, Toast.LENGTH_SHORT).show()
+            .setNegativeButton(R.string.cancel_string, null)
+            .show()
+    }
+
+    private fun showImportFromAppDialog() {
+        val sourceItems = arrayOf(
+            getString(R.string.system_user_dictionary_import_source_learn),
+            getString(R.string.system_user_dictionary_import_source_user_word),
+            getString(R.string.system_user_dictionary_import_source_user_template),
+        )
+        val checked = booleanArrayOf(true, true, true)
+
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.system_user_dictionary_import_source_title)
+            .setMultiChoiceItems(sourceItems, checked) { _, which, isChecked ->
+                checked[which] = isChecked
+            }
+            .setPositiveButton(R.string.next_string) { _, _ ->
+                val selected = mutableSetOf<SystemUserDictionaryBuilderViewModel.InternalImportSource>()
+                if (checked[0]) selected += SystemUserDictionaryBuilderViewModel.InternalImportSource.LEARN
+                if (checked[1]) selected += SystemUserDictionaryBuilderViewModel.InternalImportSource.USER_WORD
+                if (checked[2]) selected += SystemUserDictionaryBuilderViewModel.InternalImportSource.USER_TEMPLATE
+
+                if (selected.isEmpty()) {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.system_user_dictionary_import_source_empty,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    return@setPositiveButton
+                }
+
+                showImportModeDialog { mode ->
+                    importFromInternalSources(selected, mode)
+                }
+            }
+            .setNegativeButton(R.string.cancel_string, null)
+            .show()
+    }
+
+    private fun importFromInternalSources(
+        sources: Set<SystemUserDictionaryBuilderViewModel.InternalImportSource>,
+        mode: SystemUserDictionaryBuilderViewModel.ImportMode,
+    ) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            when (val result = viewModel.importFromInternalSources(sources, mode)) {
+                is SystemUserDictionaryBuilderViewModel.DictionaryImportResult.InternalDictionary -> {
+                    val message = getString(
+                        R.string.system_user_dictionary_import_internal_success,
+                        result.importedEntries,
+                        result.skippedEntries,
+                    )
+                    Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
+                }
+
+                else -> {
+                    Toast.makeText(
+                        requireContext(),
+                        R.string.system_user_dictionary_import_failed,
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
         }
     }
 
