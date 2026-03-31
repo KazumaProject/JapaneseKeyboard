@@ -465,4 +465,7 @@
     <string name="flickKeyboardSizeSettingsFragment_title">カスタマイズ</string>
     <string name="custom_keyboard_size_preference_title">文字サイズ</string>
     <string name="custom_keyboard_size_preference_summary">キーに表示される文字の大きさや、キーのサイズを調整できます。\nこの設定はスミレキーボードにも適用されます。</string>
+    <string name="system_user_dictionary">システムユーザー辞書</string>
+    <string name="system_user_dictionary_builder_title">システムユーザー辞書の作成</string>
+    <string name="system_user_dictionary_builder_summary">ユーザー指定の単語からシステムユーザー辞書を作成します</string>
 </resources>
