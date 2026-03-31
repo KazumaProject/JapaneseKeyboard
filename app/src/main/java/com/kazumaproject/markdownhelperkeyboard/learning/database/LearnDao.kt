@@ -23,6 +23,9 @@ interface LearnDao {
     @Query("SELECT * FROM learn_table ORDER BY score ASC")
     fun all(): Flow<List<LearnEntity>>
 
+    @Query("SELECT * FROM learn_table ORDER BY score ASC")
+    suspend fun getAllSuspend(): List<LearnEntity>
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insertAll(learnDataList: List<LearnEntity>)
 

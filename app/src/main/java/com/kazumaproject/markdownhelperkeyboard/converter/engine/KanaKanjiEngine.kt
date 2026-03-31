@@ -43,6 +43,8 @@ import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
 import timber.log.Timber
+import java.io.FileInputStream
+import java.io.File
 import java.io.BufferedInputStream
 import java.io.ObjectInputStream
 import java.text.SimpleDateFormat
@@ -164,6 +166,14 @@ class KanaKanjiEngine {
     private var webSuccinctBitVectorIsLeaf: SuccinctBitVector? = null
     private var webSuccinctBitVectorTokenArray: SuccinctBitVector? = null
     private var webSuccinctBitVectorLBSTango: SuccinctBitVector? = null
+
+    private var systemUserYomiTrie: LOUDSWithTermId? = null
+    private var systemUserTangoTrie: LOUDS? = null
+    private var systemUserTokenArray: TokenArray? = null
+    private var systemUserSuccinctBitVectorLBSYomi: SuccinctBitVector? = null
+    private var systemUserSuccinctBitVectorIsLeaf: SuccinctBitVector? = null
+    private var systemUserSuccinctBitVectorTokenArray: SuccinctBitVector? = null
+    private var systemUserSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
     private lateinit var englishEngine: EnglishEngine
 
@@ -314,8 +324,82 @@ class KanaKanjiEngine {
             kotowazaSuccinctBitVectorTokenArray
         this@KanaKanjiEngine.kotowazaSuccinctBitVectorTangoLBS = kotowazaSuccinctBitVectorTangoLBS
 
+        this@KanaKanjiEngine.graphBuilder.updateSystemUserDictionary(
+            yomiTrie = null,
+            tangoTrie = null,
+            tokenArray = null,
+            succinctBitVectorLBSYomi = null,
+            succinctBitVectorIsLeafYomi = null,
+            succinctBitVectorTokenArray = null,
+            succinctBitVectorTangoLBS = null,
+        )
         this.englishEngine = engineEngine
     }
+
+    fun loadSystemUserDictionaryFromFiles(context: Context) {
+        val baseDir = File(context.filesDir, "system_user_dictionary")
+        val yomiFile = File(baseDir, "yomi_system_user_dictionary.dat")
+        val tangoFile = File(baseDir, "tango_system_user_dictionary.dat")
+        val tokenFile = File(baseDir, "token_system_user_dictionary.dat")
+        val posTableFile = File(baseDir, "pos_table_system_user_dictionary.dat")
+        if (!yomiFile.exists() || !tangoFile.exists() || !tokenFile.exists() || !posTableFile.exists()) {
+            releaseSystemUserDictionary()
+            return
+        }
+
+        ObjectInputStream(BufferedInputStream(FileInputStream(tangoFile))).use {
+            this.systemUserTangoTrie = LOUDS().readExternalNotCompress(it)
+        }
+        ObjectInputStream(BufferedInputStream(FileInputStream(yomiFile))).use {
+            this.systemUserYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
+        }
+        this.systemUserTokenArray = TokenArray()
+        ObjectInputStream(BufferedInputStream(FileInputStream(tokenFile))).use {
+            this.systemUserTokenArray?.readExternal(it)
+        }
+        ObjectInputStream(BufferedInputStream(FileInputStream(posTableFile))).use {
+            this.systemUserTokenArray?.readPOSTable(it)
+        }
+
+        this.systemUserSuccinctBitVectorLBSYomi = SuccinctBitVector(systemUserYomiTrie!!.LBS)
+        this.systemUserSuccinctBitVectorIsLeaf = SuccinctBitVector(systemUserYomiTrie!!.isLeaf)
+        this.systemUserSuccinctBitVectorTokenArray = SuccinctBitVector(systemUserTokenArray!!.bitvector)
+        this.systemUserSuccinctBitVectorLBSTango = SuccinctBitVector(systemUserTangoTrie!!.LBS)
+
+        graphBuilder.updateSystemUserDictionary(
+            yomiTrie = systemUserYomiTrie,
+            tangoTrie = systemUserTangoTrie,
+            tokenArray = systemUserTokenArray,
+            succinctBitVectorLBSYomi = systemUserSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = systemUserSuccinctBitVectorIsLeaf,
+            succinctBitVectorTokenArray = systemUserSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = systemUserSuccinctBitVectorLBSTango,
+        )
+    }
+
+    fun releaseSystemUserDictionary() {
+        this.systemUserTangoTrie = null
+        this.systemUserYomiTrie = null
+        this.systemUserTokenArray = null
+        this.systemUserSuccinctBitVectorLBSYomi = null
+        this.systemUserSuccinctBitVectorIsLeaf = null
+        this.systemUserSuccinctBitVectorTokenArray = null
+        this.systemUserSuccinctBitVectorLBSTango = null
+        graphBuilder.updateSystemUserDictionary(
+            yomiTrie = null,
+            tangoTrie = null,
+            tokenArray = null,
+            succinctBitVectorLBSYomi = null,
+            succinctBitVectorIsLeafYomi = null,
+            succinctBitVectorTokenArray = null,
+            succinctBitVectorTangoLBS = null,
+        )
+    }
+
+    fun isSystemUserDictionaryInitialized(): Boolean {
+        return !(systemUserYomiTrie == null || systemUserTangoTrie == null || systemUserTokenArray == null)
+    }
+
 
     fun buildPersonNamesDictionary(context: Context) {
         val objectInputTango =
@@ -899,12 +983,6 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
-        val predictiveSearchDeferred = deferredPrediction(
-            input = input,
-            yomiTrie = systemYomiTrie,
-            succinctBitVector = systemSuccinctBitVectorLBSYomi
-        )
-
         val readingCorrectionCommonPrefixDeferred = deferredPrediction(
             input = input,
             yomiTrie = readingCorrectionYomiTrie,
@@ -918,40 +996,7 @@ class KanaKanjiEngine {
         )
 
         val predictiveSearchResult: List<Candidate> =
-            predictiveSearchDeferred.filter { it.length != input.length }.flatMap { yomi ->
-                val nodeIndex = systemYomiTrie.getNodeIndex(
-                    yomi, succinctBitVector = systemSuccinctBitVectorLBSYomi
-                )
-                val termId = systemYomiTrie.getTermId(
-                    nodeIndex, systemSuccinctBitVectorIsLeafYomi
-                )
-
-                // 2) build Candidates
-                systemTokenArray.getListDictionaryByYomiTermId(
-                    termId, succinctBitVector = systemSuccinctBitVectorTokenArray
-                ).map { token ->
-                    val baseCost = token.wordCost.toInt()
-                    val score = when {
-                        yomi.length == input.length -> baseCost
-                        input.length <= 5 -> baseCost + SCORE_OFFSET * (yomi.length - input.length)
-                        else -> baseCost + SCORE_OFFSET_SMALL
-                    }
-                    Candidate(
-                        string = when (token.nodeId) {
-                            -2 -> yomi
-                            -1 -> yomi.hiraToKata()
-                            else -> systemTangoTrie.getLetter(
-                                token.nodeId, systemSuccinctBitVectorTangoLBS
-                            )
-                        },
-                        type = 9,
-                        length = yomi.length.toUByte(),
-                        score = score,
-                        leftId = systemTokenArray.leftIds[token.posTableIndex.toInt()],
-                        rightId = systemTokenArray.rightIds[token.posTableIndex.toInt()]
-                    )
-                }
-            }.sortedBy { it.score }.take(n)
+            buildPredictiveCandidatesIncludingSystemUser(input = input, n = n)
 
         val yomiPartListDeferred: List<Candidate> = yomiPartOfDeferred.flatMap { yomi ->
             val termId = systemYomiTrie.getTermId(
@@ -1444,12 +1489,6 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
-        val predictiveSearchDeferred = deferredPrediction(
-            input = input,
-            yomiTrie = systemYomiTrie,
-            succinctBitVector = systemSuccinctBitVectorLBSYomi
-        )
-
         val readingCorrectionCommonPrefixDeferred = deferredPrediction(
             input = input,
             yomiTrie = readingCorrectionYomiTrie,
@@ -1463,40 +1502,7 @@ class KanaKanjiEngine {
         )
 
         val predictiveSearchResult: List<Candidate> =
-            predictiveSearchDeferred.filter { it.length != input.length }.flatMap { yomi ->
-                val nodeIndex = systemYomiTrie.getNodeIndex(
-                    yomi, succinctBitVector = systemSuccinctBitVectorLBSYomi
-                )
-                val termId = systemYomiTrie.getTermId(
-                    nodeIndex, systemSuccinctBitVectorIsLeafYomi
-                )
-
-                // 2) build Candidates
-                systemTokenArray.getListDictionaryByYomiTermId(
-                    termId, succinctBitVector = systemSuccinctBitVectorTokenArray
-                ).map { token ->
-                    val baseCost = token.wordCost.toInt()
-                    val score = when {
-                        yomi.length == input.length -> baseCost
-                        input.length <= 5 -> baseCost + SCORE_OFFSET * (yomi.length - input.length)
-                        else -> baseCost + SCORE_OFFSET_SMALL
-                    }
-                    Candidate(
-                        string = when (token.nodeId) {
-                            -2 -> yomi
-                            -1 -> yomi.hiraToKata()
-                            else -> systemTangoTrie.getLetter(
-                                token.nodeId, systemSuccinctBitVectorTangoLBS
-                            )
-                        },
-                        type = 9,
-                        length = yomi.length.toUByte(),
-                        score = score,
-                        leftId = systemTokenArray.leftIds[token.posTableIndex.toInt()],
-                        rightId = systemTokenArray.rightIds[token.posTableIndex.toInt()]
-                    )
-                }
-            }.sortedBy { it.score }.take(n)
+            buildPredictiveCandidatesIncludingSystemUser(input = input, n = n)
 
         val yomiPartListDeferred: List<Candidate> = yomiPartOfDeferred.flatMap { yomi ->
             val termId = systemYomiTrie.getTermId(
@@ -1935,12 +1941,6 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
-        val predictiveSearchDeferred = deferredPrediction(
-            input = input,
-            yomiTrie = systemYomiTrie,
-            succinctBitVector = systemSuccinctBitVectorLBSYomi
-        )
-
         val readingCorrectionCommonPrefixDeferred = deferredPrediction(
             input = input,
             yomiTrie = readingCorrectionYomiTrie,
@@ -1954,40 +1954,7 @@ class KanaKanjiEngine {
         )
 
         val predictiveSearchResult: List<Candidate> =
-            predictiveSearchDeferred.filter { it.length != input.length }.flatMap { yomi ->
-                val nodeIndex = systemYomiTrie.getNodeIndex(
-                    yomi, succinctBitVector = systemSuccinctBitVectorLBSYomi
-                )
-                val termId = systemYomiTrie.getTermId(
-                    nodeIndex, systemSuccinctBitVectorIsLeafYomi
-                )
-
-                // 2) build Candidates
-                systemTokenArray.getListDictionaryByYomiTermId(
-                    termId, succinctBitVector = systemSuccinctBitVectorTokenArray
-                ).map { token ->
-                    val baseCost = token.wordCost.toInt()
-                    val score = when {
-                        yomi.length == input.length -> baseCost
-                        input.length <= 5 -> baseCost + SCORE_OFFSET * (yomi.length - input.length)
-                        else -> baseCost + SCORE_OFFSET_SMALL
-                    }
-                    Candidate(
-                        string = when (token.nodeId) {
-                            -2 -> yomi
-                            -1 -> yomi.hiraToKata()
-                            else -> systemTangoTrie.getLetter(
-                                token.nodeId, systemSuccinctBitVectorTangoLBS
-                            )
-                        },
-                        type = 9,
-                        length = yomi.length.toUByte(),
-                        score = score,
-                        leftId = systemTokenArray.leftIds[token.posTableIndex.toInt()],
-                        rightId = systemTokenArray.rightIds[token.posTableIndex.toInt()]
-                    )
-                }
-            }.sortedBy { it.score }.take(n)
+            buildPredictiveCandidatesIncludingSystemUser(input = input, n = n)
 
         val yomiPartListDeferred: List<Candidate> = yomiPartOfDeferred.flatMap { yomi ->
             val termId = systemYomiTrie.getTermId(
@@ -2424,12 +2391,6 @@ class KanaKanjiEngine {
             ).asReversed()
         }
 
-        val predictiveSearchDeferred = deferredPrediction(
-            input = input,
-            yomiTrie = systemYomiTrie,
-            succinctBitVector = systemSuccinctBitVectorLBSYomi
-        )
-
         val readingCorrectionCommonPrefixDeferred = deferredPrediction(
             input = input,
             yomiTrie = readingCorrectionYomiTrie,
@@ -2443,40 +2404,7 @@ class KanaKanjiEngine {
         )
 
         val predictiveSearchResult: List<Candidate> =
-            predictiveSearchDeferred.filter { it.length != input.length }.flatMap { yomi ->
-                val nodeIndex = systemYomiTrie.getNodeIndex(
-                    yomi, succinctBitVector = systemSuccinctBitVectorLBSYomi
-                )
-                val termId = systemYomiTrie.getTermId(
-                    nodeIndex, systemSuccinctBitVectorIsLeafYomi
-                )
-
-                // 2) build Candidates
-                systemTokenArray.getListDictionaryByYomiTermId(
-                    termId, succinctBitVector = systemSuccinctBitVectorTokenArray
-                ).map { token ->
-                    val baseCost = token.wordCost.toInt()
-                    val score = when {
-                        yomi.length == input.length -> baseCost
-                        input.length <= 5 -> baseCost + SCORE_OFFSET * (yomi.length - input.length)
-                        else -> baseCost + SCORE_OFFSET_SMALL
-                    }
-                    Candidate(
-                        string = when (token.nodeId) {
-                            -2 -> yomi
-                            -1 -> yomi.hiraToKata()
-                            else -> systemTangoTrie.getLetter(
-                                token.nodeId, systemSuccinctBitVectorTangoLBS
-                            )
-                        },
-                        type = 9,
-                        length = yomi.length.toUByte(),
-                        score = score,
-                        leftId = systemTokenArray.leftIds[token.posTableIndex.toInt()],
-                        rightId = systemTokenArray.rightIds[token.posTableIndex.toInt()]
-                    )
-                }
-            }.sortedBy { it.score }.take(n)
+            buildPredictiveCandidatesIncludingSystemUser(input = input, n = n)
 
         val yomiPartListDeferred: List<Candidate> = yomiPartOfDeferred.flatMap { yomi ->
             val termId = systemYomiTrie.getTermId(
@@ -4193,6 +4121,108 @@ class KanaKanjiEngine {
                 else -> it.length > input.length
             }
         }
+    }
+
+    private fun buildPredictiveCandidatesIncludingSystemUser(
+        input: String,
+        n: Int,
+    ): List<Candidate> {
+        val systemPredictiveYomi = deferredPrediction(
+            input = input,
+            yomiTrie = systemYomiTrie,
+            succinctBitVector = systemSuccinctBitVectorLBSYomi,
+        )
+        val systemCandidates = buildPredictiveCandidatesFromDictionary(
+            input = input,
+            yomiList = systemPredictiveYomi,
+            yomiTrie = systemYomiTrie,
+            tangoTrie = systemTangoTrie,
+            tokenArray = systemTokenArray,
+            succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+        )
+
+        val systemUserCandidates = if (
+            systemUserYomiTrie != null &&
+            systemUserTangoTrie != null &&
+            systemUserTokenArray != null &&
+            systemUserSuccinctBitVectorLBSYomi != null &&
+            systemUserSuccinctBitVectorIsLeaf != null &&
+            systemUserSuccinctBitVectorTokenArray != null &&
+            systemUserSuccinctBitVectorLBSTango != null
+        ) {
+            val systemUserPredictiveYomi = deferredPrediction(
+                input = input,
+                yomiTrie = systemUserYomiTrie!!,
+                succinctBitVector = systemUserSuccinctBitVectorLBSYomi!!,
+            )
+            buildPredictiveCandidatesFromDictionary(
+                input = input,
+                yomiList = systemUserPredictiveYomi,
+                yomiTrie = systemUserYomiTrie!!,
+                tangoTrie = systemUserTangoTrie!!,
+                tokenArray = systemUserTokenArray!!,
+                succinctBitVectorLBSYomi = systemUserSuccinctBitVectorLBSYomi!!,
+                succinctBitVectorIsLeafYomi = systemUserSuccinctBitVectorIsLeaf!!,
+                succinctBitVectorTokenArray = systemUserSuccinctBitVectorTokenArray!!,
+                succinctBitVectorTangoLBS = systemUserSuccinctBitVectorLBSTango!!,
+            )
+        } else {
+            emptyList()
+        }
+
+        return (systemCandidates + systemUserCandidates)
+            .sortedBy { it.score }
+            .take(n)
+    }
+
+    private fun buildPredictiveCandidatesFromDictionary(
+        input: String,
+        yomiList: List<String>,
+        yomiTrie: LOUDSWithTermId,
+        tangoTrie: LOUDS,
+        tokenArray: TokenArray,
+        succinctBitVectorLBSYomi: SuccinctBitVector,
+        succinctBitVectorIsLeafYomi: SuccinctBitVector,
+        succinctBitVectorTokenArray: SuccinctBitVector,
+        succinctBitVectorTangoLBS: SuccinctBitVector,
+    ): List<Candidate> {
+        return yomiList
+            .asSequence()
+            .filter { it.length != input.length }
+            .flatMap { yomi ->
+                val nodeIndex = yomiTrie.getNodeIndex(yomi, succinctBitVector = succinctBitVectorLBSYomi)
+                if (nodeIndex <= 0) {
+                    return@flatMap emptySequence()
+                }
+                val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
+                tokenArray.getListDictionaryByYomiTermId(
+                    termId,
+                    succinctBitVector = succinctBitVectorTokenArray,
+                ).asSequence().map { token ->
+                    val baseCost = token.wordCost.toInt()
+                    val score = when {
+                        yomi.length == input.length -> baseCost
+                        input.length <= 5 -> baseCost + SCORE_OFFSET * (yomi.length - input.length)
+                        else -> baseCost + SCORE_OFFSET_SMALL
+                    }
+                    Candidate(
+                        string = when (token.nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> tangoTrie.getLetter(token.nodeId, succinctBitVectorTangoLBS)
+                        },
+                        type = 9,
+                        length = yomi.length.toUByte(),
+                        score = score,
+                        leftId = tokenArray.leftIds[token.posTableIndex.toInt()],
+                        rightId = tokenArray.rightIds[token.posTableIndex.toInt()],
+                    )
+                }
+            }
+            .toList()
     }
 
     private fun deferredPredictionEmojiSymbols(

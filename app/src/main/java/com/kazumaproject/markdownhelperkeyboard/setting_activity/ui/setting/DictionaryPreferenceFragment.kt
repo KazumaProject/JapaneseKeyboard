@@ -53,6 +53,15 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val systemUserDictionaryBuilderPreference =
+            findPreference<Preference>("system_user_dictionary_builder_preference")
+        systemUserDictionaryBuilderPreference?.setOnPreferenceClickListener {
+            findNavController().navigate(
+                R.id.action_navigation_setting_to_systemUserDictionaryBuilderFragment
+            )
+            true
+        }
+
         val learnDictionaryPrefixSeekBar =
             findPreference<SeekBarPreference>("learn_prediction_preference")
         learnDictionaryPrefixSeekBar?.apply {
