@@ -67,6 +67,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_flickKeyboardSizeSettingsFragment"
             app:destination="@id/flickKeyboardSizeSettingsFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_systemUserDictionaryBuilderFragment"
+            app:destination="@id/systemUserDictionaryBuilderFragment" />
     </fragment>
 
     <fragment
@@ -204,5 +207,10 @@
         android:id="@+id/flickKeyboardSizeSettingsFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.sumire_custom_key_setting.FlickKeyboardSizeSettingsFragment"
         android:label="@string/flickKeyboardSizeSettingsFragment_title" />
+    <fragment
+        android:id="@+id/systemUserDictionaryBuilderFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.ui.SystemUserDictionaryBuilderFragment"
+        android:label="@string/system_user_dictionary_builder_title"
+        tools:layout="@layout/fragment_system_user_dictionary_builder" />
 
 </navigation>

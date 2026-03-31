@@ -15,6 +15,32 @@ import com.kazumaproject.markdownhelperkeyboard.user_dictionary.PosMapper
 
 class GraphBuilder {
 
+    private var systemUserYomiTrie: LOUDSWithTermId? = null
+    private var systemUserTangoTrie: LOUDS? = null
+    private var systemUserTokenArray: TokenArray? = null
+    private var systemUserSuccinctBitVectorLBSYomi: SuccinctBitVector? = null
+    private var systemUserSuccinctBitVectorIsLeafYomi: SuccinctBitVector? = null
+    private var systemUserSuccinctBitVectorTokenArray: SuccinctBitVector? = null
+    private var systemUserSuccinctBitVectorTangoLBS: SuccinctBitVector? = null
+
+    fun updateSystemUserDictionary(
+        yomiTrie: LOUDSWithTermId?,
+        tangoTrie: LOUDS?,
+        tokenArray: TokenArray?,
+        succinctBitVectorLBSYomi: SuccinctBitVector?,
+        succinctBitVectorIsLeafYomi: SuccinctBitVector?,
+        succinctBitVectorTokenArray: SuccinctBitVector?,
+        succinctBitVectorTangoLBS: SuccinctBitVector?,
+    ) {
+        systemUserYomiTrie = yomiTrie
+        systemUserTangoTrie = tangoTrie
+        systemUserTokenArray = tokenArray
+        systemUserSuccinctBitVectorLBSYomi = succinctBitVectorLBSYomi
+        systemUserSuccinctBitVectorIsLeafYomi = succinctBitVectorIsLeafYomi
+        systemUserSuccinctBitVectorTokenArray = succinctBitVectorTokenArray
+        systemUserSuccinctBitVectorTangoLBS = succinctBitVectorTangoLBS
+    }
+
     /**
      * グラフにノードを追加または更新する。
      * 同じ終了位置に【同じ単語】かつ【同じ品詞ID(l/r)】のノードが既に存在する場合、
@@ -151,6 +177,65 @@ class GraphBuilder {
                     sPos = i
                 )
                 addOrUpdateNode(graph, endIndex, node)
+            }
+
+            val localSystemUserYomiTrie = systemUserYomiTrie
+            val localSystemUserTangoTrie = systemUserTangoTrie
+            val localSystemUserTokenArray = systemUserTokenArray
+            val localSystemUserLBSYomi = systemUserSuccinctBitVectorLBSYomi
+            val localSystemUserIsLeaf = systemUserSuccinctBitVectorIsLeafYomi
+            val localSystemUserTokenBitVector = systemUserSuccinctBitVectorTokenArray
+            val localSystemUserTangoLBS = systemUserSuccinctBitVectorTangoLBS
+
+            if (
+                localSystemUserYomiTrie != null &&
+                localSystemUserTangoTrie != null &&
+                localSystemUserTokenArray != null &&
+                localSystemUserLBSYomi != null &&
+                localSystemUserIsLeaf != null &&
+                localSystemUserTokenBitVector != null &&
+                localSystemUserTangoLBS != null
+            ) {
+                val systemUserPrefixSearch = localSystemUserYomiTrie.commonPrefixSearch(
+                    str = subStr,
+                    succinctBitVector = localSystemUserLBSYomi,
+                )
+                if (systemUserPrefixSearch.isNotEmpty()) foundInAnyDictionary = true
+                for (yomiStr in systemUserPrefixSearch) {
+                    val nodeIndex = localSystemUserYomiTrie.getNodeIndex(yomiStr, localSystemUserLBSYomi)
+                    if (nodeIndex <= 0) continue
+                    val termId = localSystemUserYomiTrie.getTermId(nodeIndex, localSystemUserIsLeaf)
+                    val listToken = localSystemUserTokenArray.getListDictionaryByYomiTermId(
+                        termId,
+                        localSystemUserTokenBitVector,
+                    )
+                    val endIndex = i + yomiStr.length
+                    listToken.forEach { token ->
+                        val tango = when (token.nodeId) {
+                            -2 -> yomiStr
+                            -1 -> yomiStr.hiraToKata()
+                            else -> localSystemUserTangoTrie.getLetter(
+                                token.nodeId,
+                                succinctBitVector = localSystemUserTangoLBS,
+                            )
+                        }
+                        addOrUpdateNode(
+                            graph,
+                            endIndex,
+                            Node(
+                                l = localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
+                                r = localSystemUserTokenArray.rightIds[token.posTableIndex.toInt()],
+                                score = token.wordCost.toInt(),
+                                f = token.wordCost.toInt(),
+                                g = token.wordCost.toInt(),
+                                tango = tango,
+                                yomiUsed = yomiStr,
+                                len = yomiStr.length.toShort(),
+                                sPos = i,
+                            ),
+                        )
+                    }
+                }
             }
 
             // 3. システム辞書 (通常検索)

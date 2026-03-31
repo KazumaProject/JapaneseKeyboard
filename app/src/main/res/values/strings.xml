@@ -470,4 +470,19 @@
     <string name="system_user_dictionary">System User Dictionary</string>
     <string name="system_user_dictionary_builder_title">Create System User Dictionary</string>
     <string name="system_user_dictionary_builder_summary">Create a system user dictionary from user-defined words</string>
+    <string name="system_user_dictionary_build_button">Build Dictionary</string>
+    <string name="system_user_dictionary_registered_entries">Registered Entries</string>
+    <string name="system_user_dictionary_empty">No entries registered yet.</string>
+    <string name="system_user_dictionary_not_built">No built dictionary file has been saved yet.</string>
+    <string name="system_user_dictionary_last_built_format">%1$d entries, last built at %2$s</string>
+    <string name="system_user_dictionary_build_success">Built and saved %1$d entries.</string>
+    <string name="system_user_dictionary_cleared">Built dictionary files were cleared.</string>
+    <string name="system_user_dictionary_add_entry">Add Entry</string>
+    <string name="system_user_dictionary_edit_entry">Edit Entry</string>
+    <string name="system_user_dictionary_left_id">leftId</string>
+    <string name="system_user_dictionary_right_id">rightId</string>
+    <string name="system_user_dictionary_invalid_yomi">`yomi` must be hiragana only.</string>
+    <string name="system_user_dictionary_invalid_score">`score` must fit within the Short range.</string>
+    <string name="system_user_dictionary_invalid_context_id">Please select valid leftId/rightId values from id.def.</string>
+    <string name="system_user_dictionary_delete_all_message">Delete all system user dictionary entries?</string>
 </resources>

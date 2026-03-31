@@ -468,4 +468,19 @@
     <string name="system_user_dictionary">システムユーザー辞書</string>
     <string name="system_user_dictionary_builder_title">システムユーザー辞書の作成</string>
     <string name="system_user_dictionary_builder_summary">ユーザー指定の単語からシステムユーザー辞書を作成します</string>
+    <string name="system_user_dictionary_build_button">辞書をビルド</string>
+    <string name="system_user_dictionary_registered_entries">登録済みエントリ</string>
+    <string name="system_user_dictionary_empty">まだエントリが登録されていません。</string>
+    <string name="system_user_dictionary_not_built">まだ保存済みの辞書ファイルはありません。</string>
+    <string name="system_user_dictionary_last_built_format">%1$d件, 最終ビルド: %2$s</string>
+    <string name="system_user_dictionary_build_success">%1$d件の辞書をビルドして保存しました。</string>
+    <string name="system_user_dictionary_cleared">保存済みの辞書ファイルを削除しました。</string>
+    <string name="system_user_dictionary_add_entry">エントリを追加</string>
+    <string name="system_user_dictionary_edit_entry">エントリを編集</string>
+    <string name="system_user_dictionary_left_id">leftId</string>
+    <string name="system_user_dictionary_right_id">rightId</string>
+    <string name="system_user_dictionary_invalid_yomi">`yomi` はひらがなで入力してください。</string>
+    <string name="system_user_dictionary_invalid_score">`score` は Short の範囲で入力してください。</string>
+    <string name="system_user_dictionary_invalid_context_id">id.def から有効な leftId/rightId を選択してください。</string>
+    <string name="system_user_dictionary_delete_all_message">システムユーザー辞書のエントリをすべて削除しますか？</string>
 </resources>
