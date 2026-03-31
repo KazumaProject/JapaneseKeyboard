@@ -21,4 +21,6 @@ class SystemUserDictionaryRepository @Inject constructor(
     suspend fun delete(id: Int) = dao.deleteById(id)
 
     suspend fun deleteAll() = dao.deleteAll()
+
+    suspend fun replaceAll(entries: List<SystemUserDictionaryEntry>) = dao.replaceAll(entries)
 }

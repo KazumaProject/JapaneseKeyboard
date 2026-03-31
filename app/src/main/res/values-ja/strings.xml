@@ -488,4 +488,7 @@
     <string name="system_user_dictionary_import_success">システムユーザー辞書を読み込みました。</string>
     <string name="system_user_dictionary_import_failed">システムユーザー辞書の読み込みに失敗しました。</string>
     <string name="system_user_dictionary_context_id_search_hint">id またはラベルで検索</string>
+    <string name="system_user_dictionary_delete_built">ビルド済み辞書を削除</string>
+    <string name="system_user_dictionary_delete_built_message">ビルド済みの辞書ファイルのみ削除しますか？</string>
+    <string name="system_user_dictionary_delete_built_failed">ビルド済み辞書ファイルの削除に失敗しました。</string>
 </resources>
