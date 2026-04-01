@@ -30,6 +30,10 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryEntry { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NgramRuleBackup { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.TwoNodeRuleBackup { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.ThreeNodeRuleBackup { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NodeFeatureInput { *; }
 
 # Keep Gson generic type metadata and annotations used by backup import/export parsing.
 -keepattributes Signature
