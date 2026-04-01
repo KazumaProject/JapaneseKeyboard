@@ -26,6 +26,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_15_16
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_16_17
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_17_18
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_18_19
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_1_2
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
@@ -39,6 +40,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardU
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleDao
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -91,6 +94,7 @@ object AppModule {
             MIGRATION_15_16,
             MIGRATION_16_17,
             MIGRATION_17_18,
+            MIGRATION_18_19,
         )
         .build()
 
@@ -134,6 +138,10 @@ object AppModule {
     @Provides
     fun providesSystemUserDictionaryDao(db: AppDatabase): SystemUserDictionaryDao =
         db.systemUserDictionaryDao()
+
+    @Singleton
+    @Provides
+    fun providesNgramRuleDao(db: AppDatabase): NgramRuleDao = db.ngramRuleDao()
 
     @Singleton
     @Provides
@@ -653,11 +661,12 @@ object AppModule {
         @KotowazaSuccinctBitVectorIsLeafYomi kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         @KotowazaSuccinctBitVectorTokenArray kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector,
         @KotowazaSuccinctBitVectorTangoLBS kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
-        englishEngine: EnglishEngine
+        englishEngine: EnglishEngine,
+        ngramRuleScorerManager: NgramRuleScorerManager,
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
         val graphBuilder = GraphBuilder()
-        val findPath = FindPath()
+        val findPath = FindPath(ngramRuleScorerProvider = ngramRuleScorerManager::currentScorer)
 
         kanaKanjiEngine.buildEngine(
             graphBuilder = graphBuilder,

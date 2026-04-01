@@ -10,6 +10,50 @@ import kotlin.system.measureNanoTime
 class NgramRuleScorerTest {
 
     @Test
+    fun conversion_prioritizesIkideInasena_whenTwoNodeRuleAdded() {
+        val connectionIds = createConnectionIds()
+
+        val noRuleFindPath = FindPath(
+            ngramRuleScorerProvider = {
+                NgramRuleScorer(
+                    twoNodeRules = emptyList(),
+                    threeNodeRules = emptyList(),
+                )
+            }
+        )
+        val noRuleTop = noRuleFindPath.backwardAStar(
+            graph = createIkinaInasenaGraph(),
+            length = 2,
+            connectionIds = connectionIds,
+            n = 3,
+        ).first().string
+        assertEquals("意気でいなせな", noRuleTop)
+
+        val withRuleFindPath = FindPath(
+            ngramRuleScorerProvider = {
+                NgramRuleScorer(
+                    twoNodeRules = listOf(
+                        TwoNodeRule(
+                            prev = NodeFeature(word = "粋で"),
+                            current = NodeFeature(word = "いなせな"),
+                            adjustment = -6000,
+                        ),
+                    ),
+                    threeNodeRules = emptyList(),
+                )
+            }
+        )
+        val withRuleTop = withRuleFindPath.backwardAStar(
+            graph = createIkinaInasenaGraph(),
+            length = 2,
+            connectionIds = connectionIds,
+            n = 3,
+        ).first().string
+
+        assertEquals("粋でいなせな", withRuleTop)
+    }
+
+    @Test
     fun score_appliesTwoNodeRule_whenMatched() {
         val scorer = NgramRuleScorer(
             twoNodeRules = listOf(
@@ -196,7 +240,7 @@ class NgramRuleScorerTest {
 
         return ruleCounts.map { count ->
             val scorer = createScorer(mode = mode, count = count)
-            val findPath = FindPath(ngramRuleScorer = scorer)
+            val findPath = FindPath(ngramRuleScorerProvider = { scorer })
 
             repeat(warmupIterations) {
                 val graph = createBenchmarkGraph()
@@ -297,6 +341,25 @@ class NgramRuleScorerTest {
         )
 
         graph[4] = mutableListOf(createNode(tango = "EOS", l = 0, r = 0, len = 0, sPos = 4, score = 0))
+
+        return graph
+    }
+
+    private fun createIkinaInasenaGraph(): MutableMap<Int, MutableList<Node>> {
+        val graph = mutableMapOf<Int, MutableList<Node>>()
+
+        graph[0] = mutableListOf(createNode(tango = "BOS", l = 0, r = 0, len = 0, sPos = 0, score = 0))
+
+        graph[1] = mutableListOf(
+            createNode(tango = "意気で", score = 1000, sPos = 0),
+            createNode(tango = "粋で", score = 5000, sPos = 0),
+        )
+
+        graph[2] = mutableListOf(
+            createNode(tango = "いなせな", score = 1000, sPos = 1),
+        )
+
+        graph[3] = mutableListOf(createNode(tango = "EOS", l = 0, r = 0, len = 0, sPos = 3, score = 0))
 
         return graph
     }

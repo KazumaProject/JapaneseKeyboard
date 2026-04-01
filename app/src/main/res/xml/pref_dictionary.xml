@@ -13,6 +13,16 @@
     </PreferenceCategory>
 
     <PreferenceCategory
+        android:title="N-gram">
+
+        <Preference
+            android:key="n_gram_rule_preference"
+            android:title="@string/n_gram_rule_preference_title"
+            app:summary="@string/n_gram_rule_preference_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="@string/category_ng_word_title"
         app:summary="@string/category_ng_word_summary">
 

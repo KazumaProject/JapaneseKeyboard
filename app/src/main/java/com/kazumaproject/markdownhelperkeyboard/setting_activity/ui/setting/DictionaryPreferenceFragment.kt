@@ -62,6 +62,14 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+        val ngramRulePreference = findPreference<Preference>("n_gram_rule_preference")
+        ngramRulePreference?.setOnPreferenceClickListener {
+            findNavController().navigate(
+                R.id.action_navigation_setting_to_ngramRuleFragment
+            )
+            true
+        }
+
         val learnDictionaryPrefixSeekBar =
             findPreference<SeekBarPreference>("learn_prediction_preference")
         learnDictionaryPrefixSeekBar?.apply {

@@ -71,7 +71,13 @@ class NgramRuleScorer(
          * 必要に応じてここへルールを追加していく。
          */
         fun createDefault(): NgramRuleScorer {
-            val twoNodeRules = listOf(
+            return NgramRuleScorer(
+                twoNodeRules = defaultTwoNodeRules(),
+                threeNodeRules = defaultThreeNodeRules(),
+            )
+        }
+
+        fun defaultTwoNodeRules(): List<TwoNodeRule> = listOf(
                 TwoNodeRule(
                     prev = NodeFeature(
                         word = "粋で"
@@ -83,7 +89,7 @@ class NgramRuleScorer(
                 )
             )
 
-            val threeNodeRules = listOf(
+        fun defaultThreeNodeRules(): List<ThreeNodeRule> = listOf(
                 ThreeNodeRule(
                     first = NodeFeature(leftId = 1851, rightId = 1851),
                     second = NodeFeature(word = "で"),
@@ -121,11 +127,5 @@ class NgramRuleScorer(
                     adjustment = -2000,
                 ),
             )
-
-            return NgramRuleScorer(
-                twoNodeRules = twoNodeRules,
-                threeNodeRules = threeNodeRules,
-            )
-        }
     }
 }
