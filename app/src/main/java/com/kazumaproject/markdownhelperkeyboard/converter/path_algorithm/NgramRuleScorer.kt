@@ -71,7 +71,17 @@ class NgramRuleScorer(
          * 必要に応じてここへルールを追加していく。
          */
         fun createDefault(): NgramRuleScorer {
-            val twoNodeRules = emptyList<TwoNodeRule>()
+            val twoNodeRules = listOf(
+                TwoNodeRule(
+                    prev = NodeFeature(
+                        word = "粋で"
+                    ),
+                    current = NodeFeature(
+                        word = "いなせな"
+                    ),
+                    adjustment = -2000,
+                )
+            )
 
             val threeNodeRules = listOf(
                 ThreeNodeRule(
