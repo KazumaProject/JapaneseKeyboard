@@ -77,9 +77,9 @@ class NgramRuleScorer(
                         word = "粋で"
                     ),
                     current = NodeFeature(
-                        word = "いなせな"
+                        word = "いなせ"
                     ),
-                    adjustment = -2000,
+                    adjustment = -12000,
                 )
             )
 
