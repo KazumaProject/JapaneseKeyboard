@@ -11,8 +11,12 @@ import timber.log.Timber
 import java.util.PriorityQueue
 
 class FindPath(
-    private val ngramRuleScorer: NgramRuleScorer = NgramRuleScorer.createDefault(),
+    private val ngramRuleScorerProvider: () -> NgramRuleScorer = { defaultNgramRuleScorer },
 ) {
+
+    companion object {
+        private val defaultNgramRuleScorer: NgramRuleScorer = NgramRuleScorer.createDefault()
+    }
 
     fun backwardAStar(
         graph: MutableMap<Int, MutableList<Node>>,
@@ -85,7 +89,7 @@ class FindPath(
                         connectionIds = connectionIds,
                     )
 
-                    val ngramAdjustment = ngramRuleScorer.score(
+                    val ngramAdjustment = ngramRuleScorerProvider().score(
                         prevNode = prevNode,
                         currentNode = node.first,
                     )
@@ -336,7 +340,7 @@ class FindPath(
                         connectionIds = connectionIds,
                     )
 
-                    val ngramAdjustment = ngramRuleScorer.score(
+                    val ngramAdjustment = ngramRuleScorerProvider().score(
                         prevNode = prevNode,
                         currentNode = node.first,
                     )
@@ -456,7 +460,7 @@ class FindPath(
                         connectionIds = connectionIds,
                     )
 
-                    val ngramAdjustment = ngramRuleScorer.score(
+                    val ngramAdjustment = ngramRuleScorerProvider().score(
                         prevNode = prevNode,
                         currentNode = node.first,
                     )

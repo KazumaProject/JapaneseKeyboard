@@ -21,6 +21,9 @@ import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMap
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleDao
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.ThreeNodeRuleEntity
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.TwoNodeRuleEntity
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
 import com.kazumaproject.markdownhelperkeyboard.short_cut.data.ShortcutItem
@@ -47,8 +50,10 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         NgWord::class,
         ShortcutItem::class,
         SystemUserDictionaryEntry::class,
+        TwoNodeRuleEntity::class,
+        ThreeNodeRuleEntity::class,
     ],
-    version = 18,
+    version = 19,
     exportSchema = false
 )
 @TypeConverters(
@@ -68,6 +73,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ngWordDao(): NgWordDao
     abstract fun shortcutDao(): ShortcutDao
     abstract fun systemUserDictionaryDao(): SystemUserDictionaryDao
+    abstract fun ngramRuleDao(): NgramRuleDao
 
     companion object {
 
@@ -429,6 +435,55 @@ abstract class AppDatabase : RoomDatabase() {
                     """
                     CREATE UNIQUE INDEX IF NOT EXISTS `index_system_user_dictionary_entry_yomi_tango_leftId_rightId`
                     ON `system_user_dictionary_entry`(`yomi`, `tango`, `leftId`, `rightId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `two_node_rule` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `prevWord` TEXT NOT NULL,
+                      `prevLeftId` INTEGER NOT NULL,
+                      `prevRightId` INTEGER NOT NULL,
+                      `currentWord` TEXT NOT NULL,
+                      `currentLeftId` INTEGER NOT NULL,
+                      `currentRightId` INTEGER NOT NULL,
+                      `adjustment` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_two_node_rule_prevWord_prevLeftId_prevRightId_currentWord_currentLeftId_currentRightId`
+                    ON `two_node_rule`(`prevWord`, `prevLeftId`, `prevRightId`, `currentWord`, `currentLeftId`, `currentRightId`)
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `three_node_rule` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `firstWord` TEXT NOT NULL,
+                      `firstLeftId` INTEGER NOT NULL,
+                      `firstRightId` INTEGER NOT NULL,
+                      `secondWord` TEXT NOT NULL,
+                      `secondLeftId` INTEGER NOT NULL,
+                      `secondRightId` INTEGER NOT NULL,
+                      `thirdWord` TEXT NOT NULL,
+                      `thirdLeftId` INTEGER NOT NULL,
+                      `thirdRightId` INTEGER NOT NULL,
+                      `adjustment` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_three_node_rule_firstWord_firstLeftId_firstRightId_secondWord_secondLeftId_secondRightId_thirdWord_thirdLeftId_thirdRightId`
+                    ON `three_node_rule`(`firstWord`, `firstLeftId`, `firstRightId`, `secondWord`, `secondLeftId`, `secondRightId`, `thirdWord`, `thirdLeftId`, `thirdRightId`)
                     """.trimIndent()
                 )
             }
