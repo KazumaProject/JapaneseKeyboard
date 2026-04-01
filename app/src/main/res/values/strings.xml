@@ -507,4 +507,30 @@
     <string name="system_user_dictionary_delete_built">Delete built dictionary</string>
     <string name="system_user_dictionary_delete_built_message">Delete only built dictionary files?</string>
     <string name="system_user_dictionary_delete_built_failed">Failed to delete built dictionary files.</string>
+    <string name="n_gram_rule_preference_title">N-gram correction settings</string>
+    <string name="n_gram_rule_preference_summary">Add N-gram rules to adjust conversion candidate</string>
+    <string name="ngram_rule_add_two_node">Add 2-node rule</string>
+    <string name="ngram_rule_add_three_node">Add 3-node rule</string>
+    <string name="ngram_rule_two_node_title">2-node rule</string>
+    <string name="ngram_rule_three_node_title">3-node rule</string>
+    <string name="ngram_rule_edit_two_node">Edit 2-node rule</string>
+    <string name="ngram_rule_edit_three_node">Edit 3-node rule</string>
+    <string name="ngram_rule_empty">No N-gram rules registered.</string>
+    <string name="ngram_rule_node_1">Node 1</string>
+    <string name="ngram_rule_node_2">Node 2</string>
+    <string name="ngram_rule_node_3">Node 3</string>
+    <string name="ngram_rule_word_hint">word (blank = wildcard)</string>
+    <string name="ngram_rule_left_id_hint">leftId (blank = wildcard)</string>
+    <string name="ngram_rule_right_id_hint">rightId (blank = wildcard)</string>
+    <string name="ngram_rule_adjustment_hint">adjustment (-10000..10000)</string>
+    <string name="ngram_rule_adjustment_format">adjustment: %1$d</string>
+    <string name="ngram_rule_adjustment_invalid">Enter a valid adjustment value.</string>
+    <string name="ngram_rule_adjustment_out_of_range">Adjustment must be between -10000 and 10000.</string>
+    <string name="ngram_rule_hiragana_hint">hiragana reading</string>
+    <string name="ngram_rule_word_search_title">Word search from dictionaries</string>
+    <string name="ngram_rule_search">Search</string>
+    <string name="ngram_rule_close">Close</string>
+    <string name="ngram_rule_import_done">Imported successfully.</string>
+    <string name="ngram_rule_nothing_to_export">No rules to export.</string>
+    <string name="ngram_rule_delete_all_message">Delete all N-gram rules?</string>
 </resources>
