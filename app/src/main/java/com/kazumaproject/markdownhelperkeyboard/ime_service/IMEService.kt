@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
@@ -36,6 +37,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.Window
 import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -51,6 +53,7 @@ import android.view.inputmethod.InputMethodInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
@@ -72,6 +75,11 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -326,6 +334,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var floatingKeyboardView: PopupWindow? = null
     private var floatingKeyboardBinding: FloatingKeyboardLayoutBinding? = null
+    private var keyboardBackgroundPlayer: ExoPlayer? = null
     private var isKeyboardFloatingMode: Boolean? = false
     private var isKeyboardRounded: Boolean? = false
     private var bunsetsuSeparation: Boolean? = false
@@ -1199,6 +1208,113 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun loadKeyboardBackgroundBitmap(): Bitmap? {
+        val uriString = appPreference.keyboard_background_image_uri
+        if (uriString.isBlank()) return null
+        val uri = runCatching { uriString.toUri() }.getOrNull() ?: return null
+        return runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                BitmapFactory.decodeStream(input)
+            }
+        }.onFailure {
+            Timber.w(it, "Failed to load keyboard background image: $uriString")
+        }.getOrNull()
+    }
+
+    private fun applyKeyboardBackgroundImageIfNeeded(mainView: MainLayoutBinding) {
+        val imageView = mainView.keyboardBackgroundImage
+        val bitmap = loadKeyboardBackgroundBitmap()
+        if (bitmap == null) {
+            imageView.setImageDrawable(null)
+            imageView.background = null
+            imageView.isVisible = false
+            return
+        }
+
+        val displayMode = appPreference.keyboard_background_image_display_mode
+        when (displayMode) {
+            "center_crop" -> {
+                imageView.background = null
+                imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                imageView.setImageBitmap(bitmap)
+            }
+
+
+            else -> {
+                imageView.background = null
+                imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+                imageView.setImageBitmap(bitmap)
+            }
+        }
+        imageView.isVisible = true
+    }
+
+    private fun resolveVideoQualityMaxSize(quality: String): Pair<Int, Int> {
+        return when (quality) {
+            "low" -> 640 to 360
+            "medium" -> 1280 to 720
+            else -> Int.MAX_VALUE to Int.MAX_VALUE
+        }
+    }
+
+    private fun releaseKeyboardBackgroundVideoPlayer() {
+        mainLayoutBinding?.keyboardBackgroundVideo?.player = null
+        keyboardBackgroundPlayer?.release()
+        keyboardBackgroundPlayer = null
+    }
+
+    private fun applyKeyboardBackgroundVideoIfNeeded(mainView: MainLayoutBinding): Boolean {
+        val playerView = mainView.keyboardBackgroundVideo
+        playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+        val uriString = appPreference.keyboard_background_video_uri
+        if (uriString.isBlank()) {
+            releaseKeyboardBackgroundVideoPlayer()
+            playerView.isVisible = false
+            return false
+        }
+
+        val uri = runCatching { uriString.toUri() }.getOrNull()
+        if (uri == null) {
+            releaseKeyboardBackgroundVideoPlayer()
+            playerView.isVisible = false
+            return false
+        }
+
+        val (maxWidth, maxHeight) = resolveVideoQualityMaxSize(appPreference.keyboard_background_video_quality)
+        return runCatching {
+            releaseKeyboardBackgroundVideoPlayer()
+            val player = ExoPlayer.Builder(this).build().apply {
+                repeatMode = Player.REPEAT_MODE_ALL
+                volume = 0f
+                playWhenReady = true
+                videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
+                trackSelectionParameters = trackSelectionParameters
+                    .buildUpon()
+                    .setMaxVideoSize(maxWidth, maxHeight)
+                    .build()
+                setMediaItem(MediaItem.fromUri(uri))
+                prepare()
+            }
+            playerView.player = player
+            playerView.isVisible = true
+            keyboardBackgroundPlayer = player
+            true
+        }.onFailure {
+            Timber.w(it, "Failed to play keyboard background video: $uriString")
+            releaseKeyboardBackgroundVideoPlayer()
+            playerView.isVisible = false
+        }.getOrDefault(false)
+    }
+
+    private fun applyKeyboardContainerTransparencyForVideo(mainView: MainLayoutBinding, enabled: Boolean) {
+        if (!enabled) return
+        // Keep the original rounded drawable and just make it transparent.
+        mainView.root.setDrawableAlpha(0)
+        mainView.suggestionViewParent.setDrawableAlpha(0)
+        mainView.candidateTabLayout.setDrawableAlpha(0)
+        mainView.shortcutToolbarRecyclerview.setBackgroundColor(Color.TRANSPARENT)
+    }
+
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         keyboardSelectionPopupWindow?.dismiss()
@@ -1504,6 +1620,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainView.candidateTabLayout.setDrawableAlpha(0)
                 }
 
+                mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
+                mainView.root.clipToOutline = isKeyboardRounded == true
+
+                val isBackgroundVideoApplied = applyKeyboardBackgroundVideoIfNeeded(mainView)
+                if (isBackgroundVideoApplied) {
+                    applyKeyboardContainerTransparencyForVideo(mainView, enabled = true)
+                    mainView.keyboardBackgroundImage.setImageDrawable(null)
+                    mainView.keyboardBackgroundImage.background = null
+                    mainView.keyboardBackgroundImage.isVisible = false
+                } else {
+                    applyKeyboardBackgroundImageIfNeeded(mainView)
+                }
+
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
@@ -1622,6 +1751,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
+        releaseKeyboardBackgroundVideoPlayer()
         stopVoiceInput()
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
@@ -1631,6 +1761,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
+        releaseKeyboardBackgroundVideoPlayer()
         super.onDestroy()
         mainLayoutBinding?.apply {
             keyboardView.cancelTenKeyScope()
@@ -2282,6 +2413,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                             }
                         }
+                    }
+                    mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
+                    mainView.root.clipToOutline = isKeyboardRounded == true
+                    val isBackgroundVideoApplied = applyKeyboardBackgroundVideoIfNeeded(mainView)
+                    if (isBackgroundVideoApplied) {
+                        applyKeyboardContainerTransparencyForVideo(mainView, enabled = true)
+                        mainView.keyboardBackgroundImage.setImageDrawable(null)
+                        mainView.keyboardBackgroundImage.background = null
+                        mainView.keyboardBackgroundImage.isVisible = false
+                    } else {
+                        applyKeyboardBackgroundImageIfNeeded(mainView)
                     }
                     ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
                         val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())

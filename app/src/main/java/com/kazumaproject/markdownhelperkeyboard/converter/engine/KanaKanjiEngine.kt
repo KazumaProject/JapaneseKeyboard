@@ -1078,29 +1078,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -1584,29 +1562,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -2036,29 +1992,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -2486,29 +2420,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -2954,29 +2866,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -3445,29 +3335,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -3504,6 +3372,13 @@ class KanaKanjiEngine {
     fun getCandidatesEnglishKana(input: String): List<Candidate> {
         val inputToEnglish = input.replaceJapaneseCharactersForEnglish()
         val inputToNumbers = input.groupAndReplaceJapaneseForNumber()
+        val directJapaneseNumber = input.toNumber()
+        val numberUnitCandidates = createCandidatesForJapaneseNumberWithUnit(input)
+        val preferredNumberCandidate = when {
+            numberUnitCandidates.isNotEmpty() -> numberUnitCandidates.first().string
+            directJapaneseNumber != null -> directJapaneseNumber.second
+            else -> inputToNumbers
+        }
         val listJapaneseCandidates = listOf(
             Candidate(
                 string = input, type = (1).toByte(), length = input.length.toUByte(), score = 3000
@@ -3533,80 +3408,21 @@ class KanaKanjiEngine {
                 length = input.length.toUByte(),
                 score = 3000
             ), Candidate(
-                string = inputToNumbers,
+                string = preferredNumberCandidate,
                 type = (1).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
             )
         )
 
-        val fullWidth = Candidate(
-            string = inputToNumbers.toFullWidthDigitsEfficient(),
-            type = 22,
-            length = input.length.toUByte(),
-            score = 8000,
-            leftId = 2040,
-            rightId = 2040
-        )
-        val halfWidth = Candidate(
-            string = inputToNumbers.convertFullWidthToHalfWidth(),
-            type = 31,
-            length = input.length.toUByte(),
-            score = 8000,
-            leftId = 2040,
-            rightId = 2040
-        )
-        val timeConversion = createCandidatesForTime(inputToNumbers)
-        val dateConversion = createCandidatesForDateInDigit(inputToNumbers)
+        val digitCandidates = when {
+            directJapaneseNumber != null -> createDigitCandidates(
+                directJapaneseNumber.second,
+                input.length.toUByte()
+            )
 
-        // 2. Correctly generate number-to-Kanji/comma candidates.
-        val numberValue =
-            inputToNumbers.toLongOrNull() // Safely convert the digit string to a number.
-        val numberCandidates = if (numberValue != null) {
-            buildList {
-                // Full Kanji style (e.g., 百二十三)
-                add(
-                    Candidate(
-                        string = numberValue.toKanji(), type = 17, // Using 17 for Kanji
-                        score = 2000, length = input.length.toUByte(), leftId = 2040, rightId = 2040
-                    )
-                )
-                // Comma-separated style (e.g., 1,234)
-                add(
-                    Candidate(
-                        string = inputToNumbers.addCommasToNumber(),
-                        type = 19,
-                        score = 8001,
-                        length = input.length.toUByte(),
-                        leftId = 2040,
-                        rightId = 2040
-                    )
-                )
-                // Original number string itself (e.g., 123)
-                add(
-                    Candidate(
-                        string = inputToNumbers,
-                        type = 18,
-                        score = 8002,
-                        length = input.length.toUByte(),
-                        leftId = 2040,
-                        rightId = 2040
-                    )
-                )
-                // Mixed Kanji style (e.g., 12万3456)
-                add(
-                    Candidate(
-                        string = numberValue.convertToKanjiNotation(),
-                        type = 23, // Using a different type for this style
-                        score = 7900, // Lower score for the mixed style
-                        length = input.length.toUByte(),
-                        leftId = 2040,
-                        rightId = 2040
-                    )
-                )
-            }
-        } else {
-            emptyList()
+            numberUnitCandidates.isNotEmpty() -> emptyList()
+            else -> createDigitCandidates(inputToNumbers, input.length.toUByte())
         }
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
@@ -3636,11 +3452,199 @@ class KanaKanjiEngine {
             emptyList()
         }
 
-        val numbersConverted = listOf(
-            fullWidth, halfWidth
-        ) + (englishDeferred + englishZenkaku).sortedBy { it.score } + timeConversion + dateConversion + numberCandidates
+        val numbersConverted =
+            digitCandidates + numberUnitCandidates + (englishDeferred + englishZenkaku).sortedBy { it.score }
+        val temporalCandidates = createTemporalDictionaryCandidates(input)
 
-        return listJapaneseCandidates + numbersConverted
+        return listJapaneseCandidates + numbersConverted + temporalCandidates
+    }
+
+    private fun createTemporalDictionaryCandidates(input: String): List<Candidate> = when (input) {
+        "きょう" -> {
+            val today = Calendar.getInstance()
+            createCandidatesForDate(today, input)
+        }
+
+        "きのう" -> {
+            val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+            createCandidatesForDate(yesterday, input)
+        }
+
+        "あした" -> {
+            val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+            createCandidatesForDate(tomorrow, input)
+        }
+
+        "いま" -> {
+            val now = Calendar.getInstance()
+            createCandidatesForTime(now, input)
+        }
+
+        "ことし" -> createCandidatesForRelativeYear(input, yearOffset = 0)
+        "きょねん" -> createCandidatesForRelativeYear(input, yearOffset = -1)
+        "らいねん" -> createCandidatesForRelativeYear(input, yearOffset = 1)
+        else -> emptyList()
+    }
+
+    private fun createCandidatesForRelativeYear(input: String, yearOffset: Int): List<Candidate> {
+        val calendar = Calendar.getInstance().apply { add(Calendar.YEAR, yearOffset) }
+        val year = calendar.get(Calendar.YEAR)
+        val reiwaYear = year - 2018
+        val zodiac = listOf("子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥")[Math.floorMod(year - 4, 12)]
+        val length = input.length.toUByte()
+
+        val baseCandidates = mutableListOf(
+            Candidate(
+                string = "${year}年",
+                type = 14,
+                length = length,
+                score = 7000,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            Candidate(
+                string = "${zodiac}年",
+                type = 14,
+                length = length,
+                score = 7002,
+                leftId = 1851,
+                rightId = 1851
+            )
+        )
+
+        if (reiwaYear > 0) {
+            baseCandidates += Candidate(
+                string = "令和${reiwaYear}年",
+                type = 14,
+                length = length,
+                score = 7001,
+                leftId = 1851,
+                rightId = 1851
+            )
+            baseCandidates += Candidate(
+                string = "R${reiwaYear}",
+                type = 14,
+                length = length,
+                score = 7003,
+                leftId = 1851,
+                rightId = 1851
+            )
+        }
+
+        return baseCandidates
+    }
+
+    private fun createDigitCandidates(inputDigits: String, inputLength: UByte): List<Candidate> {
+        val halfWidthDigits = inputDigits.convertFullWidthNumbersToHalfWidth()
+        val fullWidthDigits = halfWidthDigits.toFullWidthDigitsEfficient()
+
+        val fullWidth = Candidate(
+            string = fullWidthDigits,
+            type = 22,
+            length = inputLength,
+            score = 8000,
+            leftId = 2040,
+            rightId = 2040
+        )
+        val halfWidth = Candidate(
+            string = halfWidthDigits.convertFullWidthToHalfWidth(),
+            type = 31,
+            length = inputLength,
+            score = 8000,
+            leftId = 2040,
+            rightId = 2040
+        )
+        val timeConversion = createCandidatesForTime(halfWidthDigits)
+        val dateConversion = createCandidatesForDateInDigit(halfWidthDigits)
+
+        val numberValue = halfWidthDigits.toLongOrNull()
+        val numberCandidates = if (numberValue != null) {
+            buildList {
+                add(
+                    Candidate(
+                        string = numberValue.toKanji(),
+                        type = 17,
+                        score = 2000,
+                        length = inputLength,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+                add(
+                    Candidate(
+                        string = halfWidthDigits.addCommasToNumber(),
+                        type = 19,
+                        score = 8001,
+                        length = inputLength,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+                add(
+                    Candidate(
+                        string = halfWidthDigits,
+                        type = 18,
+                        score = 8002,
+                        length = inputLength,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+                add(
+                    Candidate(
+                        string = numberValue.convertToKanjiNotation(),
+                        type = 23,
+                        score = 7900,
+                        length = inputLength,
+                        leftId = 2040,
+                        rightId = 2040
+                    )
+                )
+            }
+        } else {
+            emptyList()
+        }
+
+        return listOf(fullWidth, halfWidth) + timeConversion + dateConversion + numberCandidates
+    }
+
+    private fun createCandidatesForJapaneseNumberWithUnit(input: String): List<Candidate> {
+        val unitMappings = listOf(
+            "にん" to "人",
+            "えん" to "円",
+            "ぷん" to "分",
+            "ふん" to "分",
+            "じ" to "時"
+        )
+
+        for ((readingSuffix, unit) in unitMappings) {
+            if (!input.endsWith(readingSuffix) || input.length <= readingSuffix.length) continue
+
+            val number = input.removeSuffix(readingSuffix).toNumber() ?: continue
+            val isTimeLike = unit == "時" || unit == "分"
+            val connectionId = if (isTimeLike) 1851.toShort() else 2040.toShort()
+
+            return listOf(
+                Candidate(
+                    string = "${number.second}$unit",
+                    type = if (isTimeLike) 30 else 18,
+                    length = input.length.toUByte(),
+                    score = 8000,
+                    leftId = connectionId,
+                    rightId = connectionId
+                ),
+                Candidate(
+                    string = "${number.first}$unit",
+                    type = if (isTimeLike) 30 else 22,
+                    length = input.length.toUByte(),
+                    score = 8001,
+                    leftId = connectionId,
+                    rightId = connectionId
+                )
+            )
+        }
+
+        return emptyList()
     }
 
 
