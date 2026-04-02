@@ -1199,6 +1199,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun loadKeyboardBackgroundDrawable(): Drawable? {
+        val uriString = appPreference.keyboard_background_image_uri
+        if (uriString.isBlank()) return null
+        val uri = runCatching { uriString.toUri() }.getOrNull() ?: return null
+        return runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                Drawable.createFromStream(input, uri.toString())
+            }
+        }.onFailure {
+            Timber.w(it, "Failed to load keyboard background image: $uriString")
+        }.getOrNull()
+    }
+
+    private fun applyKeyboardBackgroundImageIfNeeded(mainView: MainLayoutBinding) {
+        val drawable = loadKeyboardBackgroundDrawable() ?: return
+        mainView.root.background = drawable.constantState?.newDrawable()?.mutate() ?: drawable
+        floatingKeyboardBinding?.root?.background =
+            drawable.constantState?.newDrawable()?.mutate() ?: drawable
+    }
+
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         keyboardSelectionPopupWindow?.dismiss()
@@ -1503,6 +1523,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainView.suggestionViewParent.setDrawableAlpha(0)
                     mainView.candidateTabLayout.setDrawableAlpha(0)
                 }
+
+                applyKeyboardBackgroundImageIfNeeded(mainView)
 
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
@@ -2283,6 +2305,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
                     }
+                    applyKeyboardBackgroundImageIfNeeded(mainView)
                     ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
                         val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
                         systemBottomInset = insets.bottom
