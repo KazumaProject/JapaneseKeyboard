@@ -7,125 +7,125 @@ fun detectMultipleSen(input: String): Boolean {
     return regex.matches(input)
 }
 
-fun String.toNumber(): Pair<String, String>? {
-    if (this == "ちょうせん" || detectMultipleSen(this) || this == "おくせん") return null
-    val digits = mapOf(
-        "ぜろ" to 0L, "れい" to 0L,
-        "いち" to 1L, "いっ" to 1L,
-        "に" to 2L,
-        "さん" to 3L,
-        "よん" to 4L, "し" to 4L,
-        "ご" to 5L,
-        "ろく" to 6L, "ろっ" to 6L,
-        "なな" to 7L, "しち" to 7L,
-        "はち" to 8L, "はっ" to 8L,
-        "きゅう" to 9L, "く" to 9L
-    )
+private val japaneseNumberDigits = mapOf(
+    "ぜろ" to 0L, "れい" to 0L,
+    "いち" to 1L, "いっ" to 1L,
+    "に" to 2L,
+    "さん" to 3L,
+    "よん" to 4L, "よ" to 4L, "し" to 4L,
+    "ご" to 5L,
+    "ろく" to 6L, "ろっ" to 6L,
+    "なな" to 7L, "しち" to 7L,
+    "はち" to 8L, "はっ" to 8L,
+    "きゅう" to 9L, "く" to 9L
+)
 
-    val units = mapOf(
-        "じゅう" to 10L,
-        "ひゃく" to 100L, "びゃく" to 100L, "ぴゃく" to 100L,
-        "せん" to 1000L, "ぜん" to 1000L
-    )
+private val japaneseNumberUnits = mapOf(
+    "じゅう" to 10L,
+    "ひゃく" to 100L, "びゃく" to 100L, "ぴゃく" to 100L,
+    "せん" to 1000L, "ぜん" to 1000L
+)
 
-    val bigUnits = mapOf(
-        "まん" to 10_000L,
-        "おく" to 100_000_000L,
-        "ちょう" to 1_000_000_000_000L,
-    )
+private val japaneseNumberBigUnits = listOf(
+    "ちょう" to 1_000_000_000_000L,
+    "おく" to 100_000_000L,
+    "まん" to 10_000L
+)
 
-    val patterns = (digits.keys + units.keys + bigUnits.keys).sortedByDescending { it.length }
+private val japaneseNumberDigitPatterns =
+    japaneseNumberDigits.keys.sortedByDescending { it.length }
 
-    var text = this
+private fun normalizeJapaneseNumberReading(input: String): String {
+    return input
+        .replace("じゅっ", "じゅう")
+        .replace("じっ", "じゅう")
+}
+
+private fun parseJapaneseDigitSequence(text: String): Long? {
+    if (text.isEmpty()) return null
+
+    var number = 0L
+    var remaining = text
+
+    while (remaining.isNotEmpty()) {
+        val matched = japaneseNumberDigitPatterns.firstOrNull { remaining.startsWith(it) } ?: return null
+        number = number * 10 + japaneseNumberDigits.getValue(matched)
+        remaining = remaining.substring(matched.length)
+    }
+
+    return number
+}
+
+private fun parseJapaneseNumberSection(sectionText: String): Long? {
+    if (sectionText.isEmpty()) return 0L
+
+    var sectionTotal = 0L
+    var remaining = sectionText
+
+    val orderedUnits = listOf("せん", "ぜん", "ひゃく", "びゃく", "ぴゃく", "じゅう")
+
+    for (unit in orderedUnits) {
+        while (remaining.contains(unit)) {
+            val index = remaining.indexOf(unit)
+            val digitText = remaining.substring(0, index)
+            val digitValue = if (digitText.isEmpty()) {
+                1L
+            } else {
+                parseJapaneseDigitSequence(digitText) ?: return null
+            }
+
+            sectionTotal += digitValue * japaneseNumberUnits.getValue(unit)
+            remaining = remaining.substring(index + unit.length)
+        }
+    }
+
+    if (remaining.isNotEmpty()) {
+        sectionTotal += parseJapaneseDigitSequence(remaining) ?: return null
+    }
+
+    return sectionTotal
+}
+
+private fun parseJapaneseNumberValue(input: String): Long? {
+    if (input == "ちょうせん" || detectMultipleSen(input) || input == "おくせん") return null
+
+    val normalized = normalizeJapaneseNumberReading(input)
+    if (normalized.isEmpty()) return null
+
+    var remaining = normalized
     var total = 0L
 
-    fun parseDigits(digitText: String): Long? {
-        var num = 0L
-        var tmpText = digitText
-        while (tmpText.isNotEmpty()) {
-            var matched = false
-            for (pattern in patterns) {
-                if (digits.containsKey(pattern) && tmpText.startsWith(pattern)) {
-                    num = num * 10 + digits[pattern]!!
-                    tmpText = tmpText.substring(pattern.length)
-                    matched = true
-                    break
-                }
-            }
-            if (!matched) {
-                // Cannot parse further, invalid digit sequence
-                return null
-            }
-        }
-        return num
-    }
-
-    fun parseSection(sectionText: String): Long? {
-        var sectionTotal = 0L
-        var tmpText = sectionText
-
-        val unitList = listOf("せん", "ぜん", "ひゃく", "びゃく", "ぴゃく", "じゅう")
-
-        for (unit in unitList) {
-            while (tmpText.contains(unit)) {
-                val index = tmpText.indexOf(unit)
-                val digitText = tmpText.substring(0, index)
-                val unitValue = units[unit]!!
-
-                var digit = 1L // Default to 1 if no digit is specified
-                if (digitText.isNotEmpty()) {
-                    val parsedDigit = parseDigits(digitText)
-                        ?: return null // Invalid digit sequence
-                    digit = parsedDigit
-                }
-
-                val value = digit * unitValue
-                sectionTotal += value
-
-                tmpText = tmpText.substring(index + unit.length)
-            }
-        }
-
-        // Remaining text may contain digits without units
-        if (tmpText.isNotEmpty()) {
-            val digit = parseDigits(tmpText)
-                ?: return null // Invalid digit sequence
-            sectionTotal += digit
-        }
-
-        return sectionTotal
-    }
-
-    // Process big units
-    while (text.isNotEmpty()) {
+    while (remaining.isNotEmpty()) {
         var matchedBigUnit = false
-        for ((bigUnit, bigUnitValue) in bigUnits.entries.sortedByDescending { it.value }) {
-            if (text.contains(bigUnit)) {
-                val index = text.indexOf(bigUnit)
-                val leftText = text.substring(0, index)
 
-                // Ensure the leftText is a valid numeric sequence
-                if (leftText.isEmpty() || leftText.any { it !in digits.keys.joinToString("") }) {
-                    return null  // Reject cases like "まんご"
-                }
+        for ((bigUnit, bigUnitValue) in japaneseNumberBigUnits) {
+            if (!remaining.contains(bigUnit)) continue
 
-                val sectionValue = parseSection(leftText)
-                    ?: return null // Invalid section
-                total += sectionValue * bigUnitValue
-                text = text.substring(index + bigUnit.length)
-                matchedBigUnit = true
-                break
+            val index = remaining.indexOf(bigUnit)
+            val leftText = remaining.substring(0, index)
+            val sectionValue = if (leftText.isEmpty()) {
+                1L
+            } else {
+                parseJapaneseNumberSection(leftText) ?: return null
             }
+
+            total += sectionValue * bigUnitValue
+            remaining = remaining.substring(index + bigUnit.length)
+            matchedBigUnit = true
+            break
         }
+
         if (!matchedBigUnit) {
-            val sectionValue = parseSection(text)
-                ?: return null // Invalid section
-            total += sectionValue
+            total += parseJapaneseNumberSection(remaining) ?: return null
             break
         }
     }
 
-    if (total <= 0) return null
+    return total
+}
+
+fun String.toNumber(): Pair<String, String>? {
+    val total = parseJapaneseNumberValue(this) ?: return null
 
     val fullWidth = total.toString().map { it.toFullWidthChar() }.joinToString("")
     val halfWidth = total.toString()
@@ -134,115 +134,7 @@ fun String.toNumber(): Pair<String, String>? {
 }
 
 fun String.toNumberExponent(): Pair<String, String>? {
-    val digits = mapOf(
-        "ぜろ" to 0L, "れい" to 0L,
-        "いち" to 1L, "いっ" to 1L,
-        "に" to 2L,
-        "さん" to 3L,
-        "よん" to 4L, "し" to 4L,
-        "ご" to 5L,
-        "ろく" to 6L, "ろっ" to 6L,
-        "なな" to 7L, "しち" to 7L,
-        "はち" to 8L, "はっ" to 8L,
-        "きゅう" to 9L, "く" to 9L
-    )
-
-    val units = mapOf(
-        "じゅう" to 10L,
-        "ひゃく" to 100L, "びゃく" to 100L, "ぴゃく" to 100L,
-        "せん" to 1000L, "ぜん" to 1000L
-    )
-
-    val bigUnits = mapOf(
-        "まん" to 10_000L,
-        "おく" to 100_000_000L,
-        "ちょう" to 1_000_000_000_000L,
-    )
-
-    val patterns = (digits.keys + units.keys + bigUnits.keys).sortedByDescending { it.length }
-
-    var text = this
-    var total = 0L
-
-    fun parseDigits(digitText: String): Long? {
-        var num = 0L
-        var tmpText = digitText
-        while (tmpText.isNotEmpty()) {
-            var matched = false
-            for (pattern in patterns) {
-                if (digits.containsKey(pattern) && tmpText.startsWith(pattern)) {
-                    num = num * 10 + digits[pattern]!!
-                    tmpText = tmpText.substring(pattern.length)
-                    matched = true
-                    break
-                }
-            }
-            if (!matched) {
-                // Cannot parse further, invalid digit sequence
-                return null
-            }
-        }
-        return num
-    }
-
-    fun parseSection(sectionText: String): Long? {
-        var sectionTotal = 0L
-        var tmpText = sectionText
-
-        val unitList = listOf("せん", "ぜん", "ひゃく", "びゃく", "ぴゃく", "じゅう")
-
-        for (unit in unitList) {
-            while (tmpText.contains(unit)) {
-                val index = tmpText.indexOf(unit)
-                val digitText = tmpText.substring(0, index)
-                val unitValue = units[unit]!!
-
-                var digit = 1L // Default to 1 if no digit is specified
-                if (digitText.isNotEmpty()) {
-                    val parsedDigit = parseDigits(digitText)
-                        ?: return null // Invalid digit sequence
-                    digit = parsedDigit
-                }
-
-                val value = digit * unitValue
-                sectionTotal += value
-
-                tmpText = tmpText.substring(index + unit.length)
-            }
-        }
-
-        // Remaining text may contain digits without units
-        if (tmpText.isNotEmpty()) {
-            val digit = parseDigits(tmpText)
-                ?: return null // Invalid digit sequence
-            sectionTotal += digit
-        }
-
-        return sectionTotal
-    }
-
-    // Process big units
-    while (text.isNotEmpty()) {
-        var matchedBigUnit = false
-        for ((bigUnit, bigUnitValue) in bigUnits.entries.sortedByDescending { it.value }) {
-            if (text.contains(bigUnit)) {
-                val index = text.indexOf(bigUnit)
-                val leftText = text.substring(0, index)
-                val sectionValue = parseSection(leftText)
-                    ?: return null // Invalid section
-                total += sectionValue * bigUnitValue
-                text = text.substring(index + bigUnit.length)
-                matchedBigUnit = true
-                break
-            }
-        }
-        if (!matchedBigUnit) {
-            val sectionValue = parseSection(text)
-                ?: return null // Invalid section
-            total += sectionValue
-            break
-        }
-    }
+    val total = parseJapaneseNumberValue(this) ?: return null
 
     val result = if (total < 100_000_000L) {
         null
@@ -353,4 +245,3 @@ fun Long.toKanji(): String {
     }
     return result
 }
-
