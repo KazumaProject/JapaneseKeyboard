@@ -278,6 +278,10 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<ListPreference>("keyboard_background_image_display_mode_preference")?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        }
+
         findPreference<Preference>("keyboard_background_image_clear_preference")?.apply {
             setOnPreferenceClickListener {
                 releaseKeyboardBackgroundUriPermissionIfNeeded()

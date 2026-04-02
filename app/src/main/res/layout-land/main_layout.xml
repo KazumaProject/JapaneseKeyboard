@@ -7,6 +7,14 @@
     android:background="@color/keyboard_bg"
     android:fitsSystemWindows="true">
 
+    <ImageView
+        android:id="@+id/keyboard_background_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/suggestionView_parent"
         android:layout_width="match_parent"
