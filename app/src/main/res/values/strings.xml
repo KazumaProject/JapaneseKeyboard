@@ -547,4 +547,19 @@
     <string name="keyboard_background_image_saved">Keyboard background image has been set.</string>
     <string name="keyboard_background_image_cleared">Keyboard background image has been cleared.</string>
     <string name="keyboard_background_image_failed">Failed to set keyboard background image: %1$s</string>
+
+    <string name="keyboard_background_video_select_title">Keyboard Background Video</string>
+    <string name="keyboard_background_video_select_summary">Choose a video from your files to use as the keyboard background.</string>
+    <string name="keyboard_background_video_quality_title">Background Video Quality</string>
+    <string name="keyboard_background_video_quality_summary">Choose the playback quality for the background video.</string>
+    <string name="keyboard_background_video_quality_high">High</string>
+    <string name="keyboard_background_video_quality_medium">Medium</string>
+    <string name="keyboard_background_video_quality_low">Low</string>
+    <string name="keyboard_background_video_clear_title">Clear Keyboard Background Video</string>
+    <string name="keyboard_background_video_clear_summary">Remove the selected video and restore image or theme background.</string>
+    <string name="keyboard_background_video_not_set">Not set</string>
+    <string name="keyboard_background_video_selected_summary">Selected: %1$s</string>
+    <string name="keyboard_background_video_saved">Keyboard background video has been set.</string>
+    <string name="keyboard_background_video_cleared">Keyboard background video has been cleared.</string>
+    <string name="keyboard_background_video_failed">Failed to set keyboard background video: %1$s</string>
 </resources>
