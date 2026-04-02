@@ -1078,29 +1078,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -1584,29 +1562,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -2036,29 +1992,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -2486,29 +2420,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -2954,29 +2866,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -3445,29 +3335,7 @@ class KanaKanjiEngine {
             }
         }
 
-        val listOfDictionaryToday: List<Candidate> = when (input) {
-            "きょう" -> {
-                val today = Calendar.getInstance()
-                createCandidatesForDate(today, input)
-            }
-
-            "きのう" -> {
-                val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
-                createCandidatesForDate(yesterday, input)
-            }
-
-            "あした" -> {
-                val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
-                createCandidatesForDate(tomorrow, input)
-            }
-
-            "いま" -> {
-                val now = Calendar.getInstance()
-                createCandidatesForTime(now, input)
-            }
-
-            else -> emptyList()
-        }
+        val listOfDictionaryToday: List<Candidate> = createTemporalDictionaryCandidates(input)
 
         val convertYearToEra: List<Candidate> = when {
             input.matches(Regex("""\d{1,4}ねん""")) -> {
@@ -3586,8 +3454,84 @@ class KanaKanjiEngine {
 
         val numbersConverted =
             digitCandidates + numberUnitCandidates + (englishDeferred + englishZenkaku).sortedBy { it.score }
+        val temporalCandidates = createTemporalDictionaryCandidates(input)
 
-        return listJapaneseCandidates + numbersConverted
+        return listJapaneseCandidates + numbersConverted + temporalCandidates
+    }
+
+    private fun createTemporalDictionaryCandidates(input: String): List<Candidate> = when (input) {
+        "きょう" -> {
+            val today = Calendar.getInstance()
+            createCandidatesForDate(today, input)
+        }
+
+        "きのう" -> {
+            val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+            createCandidatesForDate(yesterday, input)
+        }
+
+        "あした" -> {
+            val tomorrow = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, 1) }
+            createCandidatesForDate(tomorrow, input)
+        }
+
+        "いま" -> {
+            val now = Calendar.getInstance()
+            createCandidatesForTime(now, input)
+        }
+
+        "ことし" -> createCandidatesForRelativeYear(input, yearOffset = 0)
+        "きょねん" -> createCandidatesForRelativeYear(input, yearOffset = -1)
+        "らいねん" -> createCandidatesForRelativeYear(input, yearOffset = 1)
+        else -> emptyList()
+    }
+
+    private fun createCandidatesForRelativeYear(input: String, yearOffset: Int): List<Candidate> {
+        val calendar = Calendar.getInstance().apply { add(Calendar.YEAR, yearOffset) }
+        val year = calendar.get(Calendar.YEAR)
+        val reiwaYear = year - 2018
+        val zodiac = listOf("子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥")[Math.floorMod(year - 4, 12)]
+        val length = input.length.toUByte()
+
+        val baseCandidates = mutableListOf(
+            Candidate(
+                string = "${year}年",
+                type = 14,
+                length = length,
+                score = 7000,
+                leftId = 1851,
+                rightId = 1851
+            ),
+            Candidate(
+                string = "${zodiac}年",
+                type = 14,
+                length = length,
+                score = 7002,
+                leftId = 1851,
+                rightId = 1851
+            )
+        )
+
+        if (reiwaYear > 0) {
+            baseCandidates += Candidate(
+                string = "令和${reiwaYear}年",
+                type = 14,
+                length = length,
+                score = 7001,
+                leftId = 1851,
+                rightId = 1851
+            )
+            baseCandidates += Candidate(
+                string = "R${reiwaYear}",
+                type = 14,
+                length = length,
+                score = 7003,
+                leftId = 1851,
+                rightId = 1851
+            )
+        }
+
+        return baseCandidates
     }
 
     private fun createDigitCandidates(inputDigits: String, inputLength: UByte): List<Candidate> {
