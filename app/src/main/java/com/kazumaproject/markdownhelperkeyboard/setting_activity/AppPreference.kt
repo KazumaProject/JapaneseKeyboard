@@ -330,6 +330,8 @@ object AppPreference {
         Pair("qwerty_keyboard_margin_end_dp_landscape_preference", 0)
 
     private val ZENZ_MODEL_URI_PREFERENCE = Pair("zenz_model_uri_preference", "")
+    private val KEYBOARD_BACKGROUND_IMAGE_URI_PREFERENCE =
+        Pair("keyboard_background_image_uri_preference", "")
 
     private val SAVE_LAST_USED_KEYBOARD = Pair("save_last_used_keyboard", false)
     private val SAVE_LAST_USED_KEYBOARD_POSITION = Pair("save_last_used_keyboard_int", 0)
@@ -1602,6 +1604,15 @@ object AppPreference {
         ) ?: ""
         set(value) = preferences.edit {
             it.putString(ZENZ_MODEL_URI_PREFERENCE.first, value)
+        }
+
+    var keyboard_background_image_uri: String
+        get() = preferences.getString(
+            KEYBOARD_BACKGROUND_IMAGE_URI_PREFERENCE.first,
+            KEYBOARD_BACKGROUND_IMAGE_URI_PREFERENCE.second
+        ) ?: ""
+        set(value) = preferences.edit {
+            it.putString(KEYBOARD_BACKGROUND_IMAGE_URI_PREFERENCE.first, value)
         }
 
     var save_last_used_keyboard_enable_preference: Boolean
