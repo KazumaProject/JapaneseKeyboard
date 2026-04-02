@@ -531,4 +531,14 @@
     <string name="ngram_rule_import_done">インポートしました。</string>
     <string name="ngram_rule_nothing_to_export">エクスポートするルールがありません。</string>
     <string name="ngram_rule_delete_all_message">N-gramルールをすべて削除しますか？</string>
+
+    <string name="keyboard_background_image_select_title">キーボード背景画像</string>
+    <string name="keyboard_background_image_select_summary">ファイルから画像を選択してキーボード背景に設定します。</string>
+    <string name="keyboard_background_image_clear_title">キーボード背景画像を解除</string>
+    <string name="keyboard_background_image_clear_summary">設定した画像を解除してテーマ背景に戻します。</string>
+    <string name="keyboard_background_image_not_set">未設定</string>
+    <string name="keyboard_background_image_selected_summary">設定中: %1$s</string>
+    <string name="keyboard_background_image_saved">キーボード背景画像を設定しました。</string>
+    <string name="keyboard_background_image_cleared">キーボード背景画像を解除しました。</string>
+    <string name="keyboard_background_image_failed">キーボード背景画像の設定に失敗しました: %1$s</string>
 </resources>

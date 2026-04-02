@@ -533,4 +533,14 @@
     <string name="ngram_rule_import_done">Imported successfully.</string>
     <string name="ngram_rule_nothing_to_export">No rules to export.</string>
     <string name="ngram_rule_delete_all_message">Delete all N-gram rules?</string>
+
+    <string name="keyboard_background_image_select_title">Keyboard Background Image</string>
+    <string name="keyboard_background_image_select_summary">Choose an image from your files to use as the keyboard background.</string>
+    <string name="keyboard_background_image_clear_title">Clear Keyboard Background Image</string>
+    <string name="keyboard_background_image_clear_summary">Remove the selected image and restore the theme background.</string>
+    <string name="keyboard_background_image_not_set">Not set</string>
+    <string name="keyboard_background_image_selected_summary">Selected: %1$s</string>
+    <string name="keyboard_background_image_saved">Keyboard background image has been set.</string>
+    <string name="keyboard_background_image_cleared">Keyboard background image has been cleared.</string>
+    <string name="keyboard_background_image_failed">Failed to set keyboard background image: %1$s</string>
 </resources>
