@@ -68,6 +68,24 @@
             android:summary="@string/keyboard_background_image_clear_summary"
             android:title="@string/keyboard_background_image_clear_title" />
 
+        <Preference
+            android:key="keyboard_background_video_select_preference"
+            android:summary="@string/keyboard_background_video_select_summary"
+            android:title="@string/keyboard_background_video_select_title" />
+
+        <ListPreference
+            android:defaultValue="high"
+            android:entries="@array/keyboard_background_video_quality_entries"
+            android:entryValues="@array/keyboard_background_video_quality_values"
+            android:key="keyboard_background_video_quality_preference"
+            android:summary="@string/keyboard_background_video_quality_summary"
+            android:title="@string/keyboard_background_video_quality_title" />
+
+        <Preference
+            android:key="keyboard_background_video_clear_preference"
+            android:summary="@string/keyboard_background_video_clear_summary"
+            android:title="@string/keyboard_background_video_clear_title" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/conversion_preference_title">

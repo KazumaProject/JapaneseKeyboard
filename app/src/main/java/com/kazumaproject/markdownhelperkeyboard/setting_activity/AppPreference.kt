@@ -334,6 +334,10 @@ object AppPreference {
         Pair("keyboard_background_image_uri_preference", "")
     private val KEYBOARD_BACKGROUND_IMAGE_DISPLAY_MODE_PREFERENCE =
         Pair("keyboard_background_image_display_mode_preference", "fit")
+    private val KEYBOARD_BACKGROUND_VIDEO_URI_PREFERENCE =
+        Pair("keyboard_background_video_uri_preference", "")
+    private val KEYBOARD_BACKGROUND_VIDEO_QUALITY_PREFERENCE =
+        Pair("keyboard_background_video_quality_preference", "high")
 
     private val SAVE_LAST_USED_KEYBOARD = Pair("save_last_used_keyboard", false)
     private val SAVE_LAST_USED_KEYBOARD_POSITION = Pair("save_last_used_keyboard_int", 0)
@@ -1624,6 +1628,24 @@ object AppPreference {
         ) ?: "fit"
         set(value) = preferences.edit {
             it.putString(KEYBOARD_BACKGROUND_IMAGE_DISPLAY_MODE_PREFERENCE.first, value)
+        }
+
+    var keyboard_background_video_uri: String
+        get() = preferences.getString(
+            KEYBOARD_BACKGROUND_VIDEO_URI_PREFERENCE.first,
+            KEYBOARD_BACKGROUND_VIDEO_URI_PREFERENCE.second
+        ) ?: ""
+        set(value) = preferences.edit {
+            it.putString(KEYBOARD_BACKGROUND_VIDEO_URI_PREFERENCE.first, value)
+        }
+
+    var keyboard_background_video_quality: String
+        get() = preferences.getString(
+            KEYBOARD_BACKGROUND_VIDEO_QUALITY_PREFERENCE.first,
+            KEYBOARD_BACKGROUND_VIDEO_QUALITY_PREFERENCE.second
+        ) ?: "high"
+        set(value) = preferences.edit {
+            it.putString(KEYBOARD_BACKGROUND_VIDEO_QUALITY_PREFERENCE.first, value)
         }
 
     var save_last_used_keyboard_enable_preference: Boolean
