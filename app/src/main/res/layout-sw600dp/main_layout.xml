@@ -7,6 +7,23 @@
     android:background="@color/keyboard_bg"
     android:fitsSystemWindows="true">
 
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/keyboard_background_video"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        app:surface_type="texture_view"
+        app:shutter_background_color="@android:color/transparent"
+        app:use_controller="false" />
+
+    <ImageView
+        android:id="@+id/keyboard_background_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:scaleType="fitCenter"
+        android:visibility="gone" />
+
     <!-- Container for Suggestion List and Visibility Icon -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/suggestionView_parent"
