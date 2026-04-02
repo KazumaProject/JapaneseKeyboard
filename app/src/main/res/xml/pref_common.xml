@@ -55,6 +55,14 @@
             android:summary="@string/keyboard_background_image_select_summary"
             android:title="@string/keyboard_background_image_select_title" />
 
+        <ListPreference
+            android:defaultValue="fit"
+            android:entries="@array/keyboard_background_image_display_mode_entries"
+            android:entryValues="@array/keyboard_background_image_display_mode_values"
+            android:key="keyboard_background_image_display_mode_preference"
+            android:summary="@string/keyboard_background_image_display_mode_summary"
+            android:title="@string/keyboard_background_image_display_mode_title" />
+
         <Preference
             android:key="keyboard_background_image_clear_preference"
             android:summary="@string/keyboard_background_image_clear_summary"

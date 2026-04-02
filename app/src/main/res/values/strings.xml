@@ -536,6 +536,10 @@
 
     <string name="keyboard_background_image_select_title">Keyboard Background Image</string>
     <string name="keyboard_background_image_select_summary">Choose an image from your files to use as the keyboard background.</string>
+    <string name="keyboard_background_image_display_mode_title">Background Image Display Mode</string>
+    <string name="keyboard_background_image_display_mode_summary">Choose how to display the background image.</string>
+    <string name="keyboard_background_image_display_mode_fit">Fit</string>
+    <string name="keyboard_background_image_display_mode_center_crop">Center Crop</string>
     <string name="keyboard_background_image_clear_title">Clear Keyboard Background Image</string>
     <string name="keyboard_background_image_clear_summary">Remove the selected image and restore the theme background.</string>
     <string name="keyboard_background_image_not_set">Not set</string>

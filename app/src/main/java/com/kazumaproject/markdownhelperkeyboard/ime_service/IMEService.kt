@@ -8,6 +8,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
@@ -36,6 +37,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewOutlineProvider
 import android.view.Window
 import android.view.WindowManager
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -51,6 +53,7 @@ import android.view.inputmethod.InputMethodInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.ArrayAdapter
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
@@ -1199,13 +1202,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun loadKeyboardBackgroundDrawable(): Drawable? {
+    private fun loadKeyboardBackgroundBitmap(): Bitmap? {
         val uriString = appPreference.keyboard_background_image_uri
         if (uriString.isBlank()) return null
         val uri = runCatching { uriString.toUri() }.getOrNull() ?: return null
         return runCatching {
             contentResolver.openInputStream(uri)?.use { input ->
-                Drawable.createFromStream(input, uri.toString())
+                BitmapFactory.decodeStream(input)
             }
         }.onFailure {
             Timber.w(it, "Failed to load keyboard background image: $uriString")
@@ -1213,10 +1216,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun applyKeyboardBackgroundImageIfNeeded(mainView: MainLayoutBinding) {
-        val drawable = loadKeyboardBackgroundDrawable() ?: return
-        mainView.root.background = drawable.constantState?.newDrawable()?.mutate() ?: drawable
-        floatingKeyboardBinding?.root?.background =
-            drawable.constantState?.newDrawable()?.mutate() ?: drawable
+        val imageView = mainView.keyboardBackgroundImage
+        val bitmap = loadKeyboardBackgroundBitmap()
+        if (bitmap == null) {
+            imageView.setImageDrawable(null)
+            imageView.background = null
+            imageView.isVisible = false
+            return
+        }
+
+        val displayMode = appPreference.keyboard_background_image_display_mode
+        when (displayMode) {
+            "center_crop" -> {
+                imageView.background = null
+                imageView.scaleType = ImageView.ScaleType.CENTER_CROP
+                imageView.setImageBitmap(bitmap)
+            }
+
+
+            else -> {
+                imageView.background = null
+                imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+                imageView.setImageBitmap(bitmap)
+            }
+        }
+        imageView.isVisible = true
     }
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
@@ -1523,6 +1547,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainView.suggestionViewParent.setDrawableAlpha(0)
                     mainView.candidateTabLayout.setDrawableAlpha(0)
                 }
+
+                mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
+                mainView.root.clipToOutline = isKeyboardRounded == true
 
                 applyKeyboardBackgroundImageIfNeeded(mainView)
 
@@ -2305,6 +2332,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
                     }
+                    mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
+                    mainView.root.clipToOutline = isKeyboardRounded == true
                     applyKeyboardBackgroundImageIfNeeded(mainView)
                     ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
                         val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
