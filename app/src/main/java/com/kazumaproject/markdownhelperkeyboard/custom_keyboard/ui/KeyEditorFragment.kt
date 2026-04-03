@@ -304,14 +304,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun showEditorForMode(mode: CellMode) {
         val directionLabel = when (mode) {
             is CellMode.Petal -> FlickDirectionMapper.toDisplayName(mode.direction, requireContext())
-            is CellMode.SpecialFlick -> when (mode.direction) {
-                FlickDirection.TAP -> getString(com.kazumaproject.custom_keyboard.R.string.tap)
-                FlickDirection.UP -> getString(com.kazumaproject.custom_keyboard.R.string.flick_top)
-                FlickDirection.DOWN -> getString(com.kazumaproject.custom_keyboard.R.string.flick_bottom)
-                FlickDirection.UP_LEFT -> getString(com.kazumaproject.custom_keyboard.R.string.flick_left)
-                FlickDirection.UP_RIGHT -> getString(com.kazumaproject.custom_keyboard.R.string.flick_right)
-                else -> mode.direction.name
-            }
+            is CellMode.SpecialFlick -> FlickDirectionMapper.toDisplayName(mode.direction, requireContext())
+
         }
 
         binding.textSelectedDirection.text = getString(R.string.direction_action_label, directionLabel)
@@ -343,17 +337,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
     }
 
-    private fun tfbiToDisplayName(dir: TfbiFlickDirection): String = when (dir) {
-        TfbiFlickDirection.TAP -> getString(com.kazumaproject.custom_keyboard.R.string.tap)
-        TfbiFlickDirection.UP -> getString(com.kazumaproject.custom_keyboard.R.string.flick_top)
-        TfbiFlickDirection.DOWN -> getString(com.kazumaproject.custom_keyboard.R.string.flick_bottom)
-        TfbiFlickDirection.LEFT -> getString(com.kazumaproject.custom_keyboard.R.string.flick_left)
-        TfbiFlickDirection.RIGHT -> getString(com.kazumaproject.custom_keyboard.R.string.flick_right)
-        TfbiFlickDirection.UP_LEFT -> getString(R.string.flick_up_left)
-        TfbiFlickDirection.UP_RIGHT -> getString(R.string.flick_up_right)
-        TfbiFlickDirection.DOWN_LEFT -> getString(R.string.flick_down_left)
-        TfbiFlickDirection.DOWN_RIGHT -> getString(R.string.flick_down_right)
-    }
+    private fun tfbiToDisplayName(dir: TfbiFlickDirection): String =
+        FlickDirectionMapper.toDisplayName(dir, requireContext())
 
     private fun updateSizeDisplay() {
         binding.textColSpan.text = currentColSpan.toString()
