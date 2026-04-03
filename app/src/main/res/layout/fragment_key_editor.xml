@@ -231,79 +231,62 @@
                     tools:text="削除" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- NEW: special flick editor group -->
-            <LinearLayout
-                android:id="@+id/special_flick_editor_group"
+            <!-- フリックグリッドエディタ (ペタル・2段・特殊フリック共通) -->
+            <com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.FlickGridEditorView
+                android:id="@+id/flick_grid_editor_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="24dp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <!-- 選択中の方向テキスト -->
+            <TextView
+                android:id="@+id/text_selected_direction"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:visibility="gone"
+                tools:text="右フリック時の挙動"
+                tools:visibility="visible" />
+
+            <!-- 文字入力欄（ペタル・2段フリックのテキスト入力用） -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/text_char_input_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:orientation="vertical"
+                android:layout_marginTop="8dp"
+                android:hint="@string/key_label"
                 android:visibility="gone"
                 tools:visibility="visible">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/text_char_edittext"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="特殊キー（フリック）設定"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+                    android:inputType="text"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
 
-                <androidx.recyclerview.widget.RecyclerView
+            <!-- 特殊フリック用アクション選択スピナー（セル選択時に表示） -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/special_flick_editor_group"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/key_action"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <AutoCompleteTextView
                     android:id="@+id/special_flick_mappings_recycler_view"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:nestedScrollingEnabled="false"
-                    tools:itemCount="5"
-                    tools:listitem="@layout/list_item_special_flick_mapping" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/flick_editor_group"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/setting_flick"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/flick_mappings_recycler_view"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:nestedScrollingEnabled="false"
-                    tools:itemCount="5"
-                    tools:listitem="@layout/list_item_flick_mapping" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/two_step_editor_group"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:orientation="vertical"
-                android:visibility="gone"
-                tools:visibility="visible">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/setting_two_step_flick"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/two_step_mappings_recycler_view"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:nestedScrollingEnabled="false"
-                    tools:itemCount="17"
-                    tools:listitem="@layout/list_item_two_step_mapping" />
-            </LinearLayout>
+                    android:inputType="none" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <Button
                 android:id="@+id/button_done"
