@@ -271,6 +271,10 @@
     <string name="flick_top">上フリック</string>
     <string name="flick_right">右フリック</string>
     <string name="flick_bottom">下フリック</string>
+    <string name="flick_up_left">左上</string>
+    <string name="flick_up_right">右上</string>
+    <string name="flick_down_left">左下</string>
+    <string name="flick_down_right">右下</string>
     <string name="emoji">絵文字</string>
     <string name="emoticon">顔文字</string>
     <string name="symbol">記号</string>
