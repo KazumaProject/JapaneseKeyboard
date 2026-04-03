@@ -586,3 +586,14 @@ fun String.containsFullWidthNumber(): Boolean {
     // 1文字でも含まれているかをチェックします。
     return this.any { it in '０'..'９' }
 }
+
+fun String.convertFullWidthAlnumToHalfWidth(): String {
+    return this.map { char ->
+        when (char) {
+            in '０'..'９' -> ('0'.code + (char.code - '０'.code)).toChar()
+            in 'Ａ'..'Ｚ' -> ('A'.code + (char.code - 'Ａ'.code)).toChar()
+            in 'ａ'..'ｚ' -> ('a'.code + (char.code - 'ａ'.code)).toChar()
+            else -> char
+        }
+    }.joinToString("")
+}
