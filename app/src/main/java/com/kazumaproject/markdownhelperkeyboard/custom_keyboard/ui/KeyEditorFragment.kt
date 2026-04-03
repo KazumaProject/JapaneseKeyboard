@@ -295,7 +295,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         val selectedStyle = binding.inputStyleChipGroup.checkedChipId
         val isTwoStep = selectedStyle == R.id.chip_two_step_flick
 
-        binding.keyLabelLayout.isVisible = !isTwoStep
+        binding.keyLabelLayout.isVisible = true
         binding.flickGridEditorView.isVisible = true
         binding.textSelectedDirection.isVisible = false
         binding.textCharInputLayout.isVisible = false
@@ -534,6 +534,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
                 // Restore editors
                 if (key.keyType == KeyType.TWO_STEP_FLICK) {
+                    binding.keyLabelEdittext.setText(key.label)
+
                     // Restore from layout.twoStepFlickKeyMaps
                     val map = state.layout.twoStepFlickKeyMaps[key.keyId] ?: emptyMap()
                     currentTwoStepItems = createDefaultTwoStepItems()
@@ -696,7 +698,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     val base =
                         currentTwoStepItems.firstOrNull { it.first == TfbiFlickDirection.TAP && it.second == TfbiFlickDirection.TAP }
                             ?.output.orEmpty()
-                    newLabel = base
+                    val configuredLabel = binding.keyLabelEdittext.text.toString().trim()
+                    newLabel = configuredLabel.ifEmpty { base }
 
                     val firstMap =
                         mutableMapOf<TfbiFlickDirection, MutableMap<TfbiFlickDirection, String>>()
