@@ -23,8 +23,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.google.gson.JsonElement
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.MapTypeConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.ui.adapter.RomajiMapAdapter
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentRomajiMapBinding
@@ -32,6 +35,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import java.io.FileOutputStream
 import javax.inject.Inject
 
@@ -46,6 +50,7 @@ class RomajiMapFragment : Fragment() {
 
     private lateinit var romajiMapAdapter: RomajiMapAdapter
     private val gson = Gson()
+    private val mapTypeConverter = MapTypeConverter()
 
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -267,17 +272,25 @@ class RomajiMapFragment : Fragment() {
                 }
 
                 if (jsonString != null) {
-                    val type = object : TypeToken<List<RomajiMapEntity>>() {}.type
-                    val maps: List<RomajiMapEntity> = gson.fromJson(jsonString, type)
-                    val mapsToInsert = maps.map { it.copy(id = 0, isActive = false) }
+                    val mapsToInsert = parseImportMaps(jsonString)
+                    if (mapsToInsert.isEmpty()) {
+                        Timber.w(
+                            "Romaji import parsed zero maps. uri=%s, jsonPrefix=%s",
+                            uri,
+                            jsonString.take(300)
+                        )
+                        throw IllegalArgumentException("No valid romaji maps in import file")
+                    }
                     repository.insertAll(mapsToInsert)
+                    Timber.i("Romaji import succeeded. uri=%s, imported=%d", uri, mapsToInsert.size)
                     Toast.makeText(
                         context,
-                        "${maps.size}${getString(R.string.import_text_string)}",
+                        "${mapsToInsert.size}${getString(R.string.import_text_string)}",
                         Toast.LENGTH_SHORT
                     ).show()
                 }
             } catch (e: Exception) {
+                Timber.e(e, "Romaji import failed. uri=%s", uri)
                 Toast.makeText(
                     context,
                     getString(R.string.fail_to_import_string),
@@ -286,6 +299,117 @@ class RomajiMapFragment : Fragment() {
             } finally {
                 binding.progressBar.isVisible = false
             }
+        }
+    }
+
+    private fun parseImportMaps(jsonString: String): List<RomajiMapEntity> {
+        val normalized = jsonString.removePrefix("\uFEFF")
+        val root = runCatching { JsonParser.parseString(normalized) }.getOrNull() ?: return emptyList()
+        val mapObjects = extractMapObjects(root)
+        if (mapObjects.isEmpty()) {
+            Timber.w("Romaji import: no map objects found in root JSON")
+            return emptyList()
+        }
+
+        return mapObjects.mapNotNull { obj ->
+            val name = (
+                obj.readString("name")
+                    ?: obj.readString("mapName")
+                    ?: obj.readString("title")
+                )?.takeIf { it.isNotBlank() }
+                ?: return@mapNotNull null
+
+            val mapData = obj.readMapData("mapData")
+                .ifEmpty { obj.readMapData("map") }
+                .ifEmpty { obj.readMapData("data") }
+            if (mapData.isEmpty()) {
+                Timber.w("Romaji import: mapData empty for name=%s", name)
+                return@mapNotNull null
+            }
+
+            RomajiMapEntity(
+                id = 0,
+                name = name,
+                mapData = mapData,
+                isActive = false,
+                isDeletable = obj.readBoolean("isDeletable") ?: true
+            )
+        }
+    }
+
+    private fun extractMapObjects(root: JsonElement): List<JsonObject> {
+        if (root.isJsonArray) {
+            return root.asJsonArray.mapNotNull { it.takeIf(JsonElement::isJsonObject)?.asJsonObject }
+        }
+        if (!root.isJsonObject) return emptyList()
+
+        val obj = root.asJsonObject
+        val arrayKeys = listOf("maps", "romajiMaps", "romaji_maps", "items", "list")
+        for (key in arrayKeys) {
+            val candidate = obj.get(key)
+            if (candidate != null && candidate.isJsonArray) {
+                return candidate.asJsonArray.mapNotNull {
+                    it.takeIf(JsonElement::isJsonObject)?.asJsonObject
+                }
+            }
+        }
+
+        return listOf(obj)
+    }
+
+    private fun JsonObject.readString(key: String): String? {
+        val value = get(key) ?: return null
+        if (!value.isJsonPrimitive || !value.asJsonPrimitive.isString) return null
+        return value.asString
+    }
+
+    private fun JsonObject.readBoolean(key: String): Boolean? {
+        val value = get(key) ?: return null
+        if (!value.isJsonPrimitive) return null
+        val primitive = value.asJsonPrimitive
+        return when {
+            primitive.isBoolean -> primitive.asBoolean
+            primitive.isString -> primitive.asString.toBooleanStrictOrNull()
+            else -> null
+        }
+    }
+
+    private fun JsonObject.readMapData(key: String): Map<String, Pair<String, Int>> {
+        val value = get(key) ?: return emptyMap()
+        return when {
+            value.isJsonObject -> {
+                val parsed = mapTypeConverter.toMap(value.toString())
+                if (parsed.isNotEmpty()) parsed else value.asJsonObject.readLegacyCompactMapData()
+            }
+            value.isJsonPrimitive && value.asJsonPrimitive.isString -> mapTypeConverter.toMap(value.asString)
+            else -> emptyMap()
+        }
+    }
+
+    private fun JsonObject.readLegacyCompactMapData(): Map<String, Pair<String, Int>> {
+        val result = linkedMapOf<String, Pair<String, Int>>()
+        entrySet().forEach { (romaji, node) ->
+            if (romaji.isBlank() || !node.isJsonObject) return@forEach
+            val obj = node.asJsonObject
+
+            val kana = obj.readString("c") ?: obj.readString("kana")
+            val consume = obj.readNumberAsInt("d") ?: obj.readNumberAsInt("consume") ?: romaji.length
+
+            if (!kana.isNullOrBlank()) {
+                result[romaji] = kana to consume.coerceAtLeast(1)
+            }
+        }
+        return result
+    }
+
+    private fun JsonObject.readNumberAsInt(key: String): Int? {
+        val value = get(key) ?: return null
+        if (!value.isJsonPrimitive) return null
+        val primitive = value.asJsonPrimitive
+        return when {
+            primitive.isNumber -> runCatching { primitive.asBigDecimal.toInt() }.getOrNull()
+            primitive.isString -> primitive.asString.toDoubleOrNull()?.toInt()
+            else -> null
         }
     }
 
