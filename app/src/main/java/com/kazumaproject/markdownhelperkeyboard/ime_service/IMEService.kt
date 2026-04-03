@@ -321,6 +321,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
     private var tenkeyQKeymapGuide: Boolean? = false
+    private var flickKeymapGuidePreference: Boolean? = false
 
     private var floatingCandidateWindow: PopupWindow? = null
     private lateinit var floatingCandidateView: View
@@ -1071,6 +1072,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isCustomKeyboardTwoWordsOutputEnable = preferences.isCustomKeyboardTwoWordsOutputEnable
         tenkeyQWERTYSwitchNumber = preferences.tenkeyQWERTYSwitchNumber
         tenkeyQKeymapGuide = preferences.tenkeyQKeymapGuide
+        flickKeymapGuidePreference = preferences.flickKeymapGuide
         isKeyboardFloatingMode = preferences.isKeyboardFloatingMode
         isKeyboardRounded = preferences.isKeyboardRounded
         bunsetsuSeparation = preferences.bunsetsuSeparation
@@ -1665,6 +1667,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                customLayoutDefault.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
                 qwertyView.setSpecialKeyVisibility(
                     showCursors = qwertyShowCursorButtonsPreference ?: false,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
@@ -1897,6 +1900,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = null
         deleteKeyHighLight = null
         customKeyboardSuggestionPreference = null
+        flickKeymapGuidePreference = null
         zenzDebounceTimePreference = null
         zenzMaximumLetterSizePreference = null
         zenzMaximumContextSizePreference = null
@@ -5328,6 +5332,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             textSizeSp = appPreference.flick_key_text_size_sp ?: 16.0f,
             specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 16.0f
         )
+        mainView.customLayoutDefault.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
 
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {

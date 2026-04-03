@@ -53,6 +53,7 @@ data class ImePreferencesSnapshot(
     val isCustomKeyboardTwoWordsOutputEnable: Boolean,
     val tenkeyQWERTYSwitchNumber: Boolean,
     val tenkeyQKeymapGuide: Boolean,
+    val flickKeymapGuide: Boolean,
     val isKeyboardFloatingMode: Boolean,
     val isKeyboardRounded: Boolean,
     val bunsetsuSeparation: Boolean,
@@ -205,6 +206,7 @@ data class ImePreferencesSnapshot(
                 tenkeyQWERTYSwitchNumber =
                     appPreference.tenkey_qwerty_switch_number_layout ?: false,
                 tenkeyQKeymapGuide = appPreference.tenkey_keymap_guide_layout ?: false,
+                flickKeymapGuide = appPreference.flick_keymap_guide_layout ?: false,
                 isKeyboardFloatingMode = appPreference.is_floating_mode ?: false,
                 isKeyboardRounded = appPreference.keyboard_corner_round_preference,
                 bunsetsuSeparation = appPreference.bunsetsu_separation_preference,
