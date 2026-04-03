@@ -40,3 +40,7 @@
 -keepattributes *Annotation*
 -keep class com.google.gson.reflect.TypeToken { *; }
 -keep class * extends com.google.gson.reflect.TypeToken
+
+# Legacy data compatibility: Pair fields may still appear in old JSON payloads.
+-keep class kotlin.Pair { *; }
+
