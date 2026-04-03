@@ -120,6 +120,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var customAngleAndRange: Map<FlickDirection, Pair<Float, Float>> = emptyMap()
     private var circularViewScale: Float = 1.0f
     private var borderWidth: Int = 1
+    private var flickGuideEnabled: Boolean = false
 
     init {
         setPadding(0, 0, 0, 0)
@@ -137,6 +138,12 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     fun setDefaultTextSize(textSize: Float) {
         this.defaultTextSize = textSize
+    }
+
+    fun setFlickGuideEnabled(enabled: Boolean) {
+        if (flickGuideEnabled == enabled) return
+        flickGuideEnabled = enabled
+        currentLayout?.let { setKeyboard(it) }
     }
 
     fun applyKeySizing(
@@ -428,6 +435,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         button.setDefaultTextSize(targetTextSizeSp)
+        button.setFlickGuideLabels(null)
 
         if (keyData.label.contains("\n")) {
             button.maxLines = 2
@@ -442,6 +450,82 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         button.refreshTextSize()
+    }
+
+    private fun extractInputMap(actionMap: Map<FlickDirection, FlickAction>): Map<FlickDirection, String> {
+        return actionMap.mapValues { (_, flickAction) ->
+            (flickAction as? FlickAction.Input)?.char ?: ""
+        }
+    }
+
+    private fun getGuideLabels(stringMap: Map<FlickDirection, String>): AutoSizeButton.FlickGuideLabels {
+        val tap = sanitizeGuideCharacter(stringMap[FlickDirection.TAP] ?: "") ?: ""
+        val left = sanitizeGuideCharacter(
+            stringMap[FlickDirection.UP_LEFT_FAR]
+                ?: stringMap[FlickDirection.UP_LEFT]
+                ?: stringMap.entries.firstOrNull { it.key.name.contains("LEFT") }?.value
+                ?: ""
+        ) ?: ""
+        val right = sanitizeGuideCharacter(
+            stringMap[FlickDirection.UP_RIGHT_FAR]
+                ?: stringMap[FlickDirection.UP_RIGHT]
+                ?: stringMap.entries.firstOrNull { it.key.name.contains("RIGHT") }?.value
+                ?: ""
+        ) ?: ""
+        val down = sanitizeGuideCharacter(
+            stringMap[FlickDirection.DOWN]
+                ?: stringMap.entries.firstOrNull { it.key.name.contains("DOWN") }?.value
+                ?: ""
+        ) ?: ""
+        val up = sanitizeGuideCharacter(stringMap[FlickDirection.UP] ?: "") ?: ""
+
+        return AutoSizeButton.FlickGuideLabels(
+            tap = tap,
+            up = up,
+            right = right,
+            down = down,
+            left = left
+        )
+    }
+
+    private fun sanitizeGuideCharacter(value: String): String? {
+        if (value.isEmpty()) return null
+        val endIndex = value.offsetByCodePoints(0, 1)
+        return value.substring(0, endIndex)
+    }
+
+    private fun getGuideTextColor(keyData: KeyData): Int {
+        return when (themeMode) {
+            "custom" -> if (keyData.isSpecialKey) {
+                customSpecialKeyTextColor
+            } else {
+                customKeyTextColor
+            }
+
+            else -> context.getColorFromAttr(R.attr.colorOnSurface)
+        }
+    }
+
+    private fun applyGuideLabels(
+        button: AutoSizeButton,
+        keyData: KeyData,
+        stringMap: Map<FlickDirection, String>
+    ) {
+        if (!flickGuideEnabled) {
+            button.setFlickGuideLabels(null)
+            return
+        }
+
+        if (!isSingleGuideCharacter(keyData.label)) {
+            button.setFlickGuideLabels(null)
+            return
+        }
+
+        button.setFlickGuideLabels(getGuideLabels(stringMap), getGuideTextColor(keyData))
+    }
+
+    private fun isSingleGuideCharacter(value: String): Boolean {
+        return value.isNotEmpty() && value.codePointCount(0, value.length) == 1
     }
 
     private fun getScaledHorizontalInsetDp(baseInsetDp: Int): Int {
@@ -800,7 +884,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                             override fun onStateChanged(
                                 view: View,
                                 newMap: Map<FlickDirection, String>
-                            ) = Unit
+                            ) {
+                                if (view is AutoSizeButton) {
+                                    applyGuideLabels(view, keyData, newMap)
+                                }
+                            }
 
                             override fun onFlickDirectionChanged(newDirection: FlickDirection) {
                                 this@FlickKeyboardView.listener?.onFlickDirectionChanged(
@@ -809,10 +897,12 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         }
 
-                        val stringMaps = flickKeyMapsList.map { actionMap ->
-                            actionMap.mapValues { (_, flickAction) ->
-                                (flickAction as? FlickAction.Input)?.char ?: ""
-                            }
+                        val stringMaps = flickKeyMapsList.map(::extractInputMap)
+
+                        if (keyView is AutoSizeButton) {
+                            stringMaps.firstOrNull()?.let { firstMap ->
+                                applyGuideLabels(keyView, keyData, firstMap)
+                            } ?: keyView.setFlickGuideLabels(null)
                         }
 
                         attach(keyView, stringMaps)
@@ -1005,8 +1095,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
 
-                        val stringMap = flickActionMap.mapValues { (_, flickAction) ->
-                            (flickAction as? FlickAction.Input)?.char ?: ""
+                        val stringMap = extractInputMap(flickActionMap)
+
+                        if (keyView is AutoSizeButton) {
+                            applyGuideLabels(keyView, keyData, stringMap)
                         }
 
                         val secondaryColor =
@@ -1159,8 +1251,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         }
 
-                        val stringMap = flickActionMap.mapValues { (_, flickAction) ->
-                            (flickAction as? FlickAction.Input)?.char ?: ""
+                        val stringMap = extractInputMap(flickActionMap)
+
+                        if (keyView is AutoSizeButton) {
+                            applyGuideLabels(keyView, keyData, stringMap)
                         }
 
                         attach(keyView, stringMap)
