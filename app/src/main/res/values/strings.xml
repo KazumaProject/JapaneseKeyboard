@@ -269,6 +269,10 @@
     <string name="flick_top">Flick Top</string>
     <string name="flick_right">Flick Right</string>
     <string name="flick_bottom">Flick Down</string>
+    <string name="flick_up_left">Upper Left</string>
+    <string name="flick_up_right">Upper Right</string>
+    <string name="flick_down_left">Lower Left</string>
+    <string name="flick_down_right">Lower Right</string>
     <string name="emoji">Emoji</string>
     <string name="emoticon">Emoticon</string>
     <string name="symbol">Symbol</string>
@@ -507,6 +511,10 @@
     <string name="system_user_dictionary_delete_built">Delete built dictionary</string>
     <string name="system_user_dictionary_delete_built_message">Delete only built dictionary files?</string>
     <string name="system_user_dictionary_delete_built_failed">Failed to delete built dictionary files.</string>
+
+    <string name="label_key_type">キータイプ</string>
+    <string name="done_text">完了</string>
+    <string name="direction_action_label">%1$s の設定</string>
     <string name="n_gram_rule_preference_title">N-gram correction settings</string>
     <string name="n_gram_rule_preference_summary">Add N-gram rules to adjust conversion candidate</string>
     <string name="ngram_rule_add_two_node">Add 2-node rule</string>
