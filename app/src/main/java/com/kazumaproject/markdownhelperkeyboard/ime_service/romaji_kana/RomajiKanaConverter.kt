@@ -9,7 +9,7 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
     private val buffer = StringBuilder()
     private val surface = StringBuilder()
 
-    private val maxKeyLength = romajiToKana.keys.maxOf { it.length }
+    private val maxKeyLength = romajiToKana.keys.maxOfOrNull { it.length } ?: 1
     private val validPrefixes: Set<String> =
         romajiToKana.keys.flatMap { key -> (1..key.length).map { key.substring(0, it) } }.toSet()
 
@@ -20,11 +20,17 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
      */
     private val kanaToRomaji: Map<String, String> by lazy {
         romajiToKana.entries
-            // 促音(っ)のマッピングは文脈に依存するため、逆引きマップからは除外する
-            .filterNot { it.value.first == "っ" }
+            .mapNotNull { entry ->
+                val kana = entry.value.first as String?
+                if (kana.isNullOrBlank() || kana == "っ") {
+                    null
+                } else {
+                    kana to entry.key
+                }
+            }
             .groupBy(
-                keySelector = { it.value.first }, // keyは "か" などの「かな」
-                valueTransform = { it.key }       // valueは "ka" などの「ローマ字」
+                keySelector = { it.first },
+                valueTransform = { it.second }
             )
             .mapValues { (_, romajiList) ->
                 // 同じかなに複数のローマ字が割り当てられている場合 (例: し -> shi, si)、
