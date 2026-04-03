@@ -28,6 +28,12 @@
             android:title="@string/custom_romaji_zenkaku_conversion_enable_preference_title"
             app:defaultValue="true"
             app:summary="@string/custom_romaji_zenkaku_conversion_enable_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="flick_keymap_guide"
+            android:title="@string/flick_keymap_guide_title"
+            app:defaultValue="false"
+            app:summary="@string/flick_keymap_guide_summary" />
     </PreferenceCategory>
 
 </PreferenceScreen>
