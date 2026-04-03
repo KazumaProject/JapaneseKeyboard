@@ -36,6 +36,12 @@
             app:defaultValue="false"
             app:summary="@string/kana_input_qwerty_preference_summary" />
 
+        <SwitchPreferenceCompat
+            android:key="flick_keymap_guide"
+            android:title="@string/flick_keymap_guide_title"
+            app:defaultValue="false"
+            app:summary="@string/flick_keymap_guide_summary" />
+
         <Preference
             android:key="sumire_custom_angle_preference"
             android:title="@string/sumire_custom_angle_preference_title"

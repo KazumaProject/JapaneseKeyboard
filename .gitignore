@@ -17,3 +17,5 @@
 .cxx
 local.properties
 app/release
+.gradle-user-home
+.idea/copilot.data.migration.ask2agent.xml

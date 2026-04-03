@@ -44,6 +44,9 @@ object AppPreference {
     private val TENKEY_KEYMAP_GUIDE_PREFERENCE =
         Pair("tenkey_keymap_guide", false)
 
+    private val FLICK_KEYMAP_GUIDE_PREFERENCE =
+        Pair("flick_keymap_guide", false)
+
     private val CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS =
         Pair("custom_keyboard_two_words_preference", true)
 
@@ -400,6 +403,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TENKEY_KEYMAP_GUIDE_PREFERENCE.first, value ?: false)
+        }
+
+    var flick_keymap_guide_layout: Boolean?
+        get() = preferences.getBoolean(
+            FLICK_KEYMAP_GUIDE_PREFERENCE.first, FLICK_KEYMAP_GUIDE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(FLICK_KEYMAP_GUIDE_PREFERENCE.first, value ?: false)
         }
 
     var qwerty_show_ime_button: Boolean?
