@@ -25,6 +25,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPat
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsDigit
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsFullWidthNumber
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertFullWidthAlnumToHalfWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertFullWidthNumbersToHalfWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.createValueBasedSymbolCandidates
@@ -43,9 +44,9 @@ import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
 import timber.log.Timber
-import java.io.FileInputStream
-import java.io.File
 import java.io.BufferedInputStream
+import java.io.File
+import java.io.FileInputStream
 import java.io.ObjectInputStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -4548,7 +4549,7 @@ class KanaKanjiEngine {
             if (candidate.string.containsFullWidthNumber()) {
 
                 // 2. 全角数字を半角に変換
-                val newString = candidate.string.convertFullWidthNumbersToHalfWidth()
+                val newString = candidate.string.convertFullWidthAlnumToHalfWidth()
 
                 // 3. 元の候補のコピーを作成し、string だけを新しい文字列に差し替え
                 val newCandidate = candidate.copy(
