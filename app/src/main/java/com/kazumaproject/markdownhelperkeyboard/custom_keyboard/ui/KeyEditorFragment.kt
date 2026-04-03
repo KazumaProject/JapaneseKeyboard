@@ -552,113 +552,19 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     val map = state.layout.twoStepFlickKeyMaps[key.keyId] ?: emptyMap()
                     currentTwoStepItems = createDefaultTwoStepItems()
 
-                    val base = map[TfbiFlickDirection.TAP]?.get(TfbiFlickDirection.TAP).orEmpty()
-
-                    fun setItem(
-                        first: TfbiFlickDirection,
-                        second: TfbiFlickDirection,
-                        value: String
-                    ) {
-                        val idx =
-                            currentTwoStepItems.indexOfFirst { it.first == first && it.second == second }
-                        if (idx != -1) {
-                            currentTwoStepItems[idx] = currentTwoStepItems[idx].copy(output = value)
+                    TwoStepMappingItem.ALLOWED_TWO_STEP_PAIRS.forEach { (first, second) ->
+                        val value = map[first]?.get(second).orEmpty()
+                        if (value.isNotEmpty()) {
+                            val idx = currentTwoStepItems.indexOfFirst { it.first == first && it.second == second }
+                            if (idx != -1) {
+                                currentTwoStepItems[idx] = currentTwoStepItems[idx].copy(output = value)
+                            }
                         }
                     }
 
-                    setItem(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP, base)
-
-                    // diagonals
-                    setItem(
-                        TfbiFlickDirection.UP_LEFT,
-                        TfbiFlickDirection.UP_LEFT,
-                        map[TfbiFlickDirection.UP_LEFT]?.get(TfbiFlickDirection.UP_LEFT).orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.DOWN_LEFT,
-                        TfbiFlickDirection.DOWN_LEFT,
-                        map[TfbiFlickDirection.DOWN_LEFT]?.get(TfbiFlickDirection.DOWN_LEFT)
-                            .orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.UP_RIGHT,
-                        TfbiFlickDirection.UP_RIGHT,
-                        map[TfbiFlickDirection.UP_RIGHT]?.get(TfbiFlickDirection.UP_RIGHT).orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.DOWN_RIGHT,
-                        TfbiFlickDirection.DOWN_RIGHT,
-                        map[TfbiFlickDirection.DOWN_RIGHT]?.get(TfbiFlickDirection.DOWN_RIGHT)
-                            .orEmpty()
-                    )
-
-                    // cardinals
-                    setItem(
-                        TfbiFlickDirection.LEFT,
-                        TfbiFlickDirection.LEFT,
-                        map[TfbiFlickDirection.LEFT]?.get(TfbiFlickDirection.LEFT).orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.LEFT,
-                        TfbiFlickDirection.UP_LEFT,
-                        map[TfbiFlickDirection.LEFT]?.get(TfbiFlickDirection.UP_LEFT).orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.LEFT,
-                        TfbiFlickDirection.DOWN_LEFT,
-                        map[TfbiFlickDirection.LEFT]?.get(TfbiFlickDirection.DOWN_LEFT).orEmpty()
-                    )
-
-                    setItem(
-                        TfbiFlickDirection.RIGHT,
-                        TfbiFlickDirection.RIGHT,
-                        map[TfbiFlickDirection.RIGHT]?.get(TfbiFlickDirection.RIGHT).orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.RIGHT,
-                        TfbiFlickDirection.UP_RIGHT,
-                        map[TfbiFlickDirection.RIGHT]?.get(TfbiFlickDirection.UP_RIGHT).orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.RIGHT,
-                        TfbiFlickDirection.DOWN_RIGHT,
-                        map[TfbiFlickDirection.RIGHT]?.get(TfbiFlickDirection.DOWN_RIGHT).orEmpty()
-                    )
-
-                    setItem(
-                        TfbiFlickDirection.UP,
-                        TfbiFlickDirection.UP,
-                        map[TfbiFlickDirection.UP]?.get(TfbiFlickDirection.UP).orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.UP,
-                        TfbiFlickDirection.UP_LEFT,
-                        map[TfbiFlickDirection.UP]?.get(TfbiFlickDirection.UP_LEFT).orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.UP,
-                        TfbiFlickDirection.UP_RIGHT,
-                        map[TfbiFlickDirection.UP]?.get(TfbiFlickDirection.UP_RIGHT).orEmpty()
-                    )
-
-                    setItem(
-                        TfbiFlickDirection.DOWN,
-                        TfbiFlickDirection.DOWN,
-                        map[TfbiFlickDirection.DOWN]?.get(TfbiFlickDirection.DOWN).orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.DOWN,
-                        TfbiFlickDirection.DOWN_LEFT,
-                        map[TfbiFlickDirection.DOWN]?.get(TfbiFlickDirection.DOWN_LEFT).orEmpty()
-                    )
-                    setItem(
-                        TfbiFlickDirection.DOWN,
-                        TfbiFlickDirection.DOWN_RIGHT,
-                        map[TfbiFlickDirection.DOWN]?.get(TfbiFlickDirection.DOWN_RIGHT).orEmpty()
-                    )
-
                     // グリッドはhandleInputStyleUi()で更新
-                } else {
+                }
+ else {
                     binding.keyLabelEdittext.setText(key.label)
 
                     val flickMap = state.layout.flickKeyMaps[key.keyId]?.firstOrNull() ?: emptyMap()
@@ -677,140 +583,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
     private fun createDefaultTwoStepItems(): MutableList<TwoStepMappingItem> {
-        val items = mutableListOf<TwoStepMappingItem>()
-
-        // base
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.TAP,
-                second = TfbiFlickDirection.TAP,
-                output = ""
-            )
-        )
-
-        // diagonals (4)
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.UP_LEFT,
-                second = TfbiFlickDirection.UP_LEFT,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.DOWN_LEFT,
-                second = TfbiFlickDirection.DOWN_LEFT,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.UP_RIGHT,
-                second = TfbiFlickDirection.UP_RIGHT,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.DOWN_RIGHT,
-                second = TfbiFlickDirection.DOWN_RIGHT,
-                output = ""
-            )
-        )
-
-        // LEFT (3)
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.LEFT,
-                second = TfbiFlickDirection.LEFT,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.LEFT,
-                second = TfbiFlickDirection.UP_LEFT,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.LEFT,
-                second = TfbiFlickDirection.DOWN_LEFT,
-                output = ""
-            )
-        )
-
-        // RIGHT (3)
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.RIGHT,
-                second = TfbiFlickDirection.RIGHT,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.RIGHT,
-                second = TfbiFlickDirection.UP_RIGHT,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.RIGHT,
-                second = TfbiFlickDirection.DOWN_RIGHT,
-                output = ""
-            )
-        )
-
-        // UP (3)
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.UP,
-                second = TfbiFlickDirection.UP,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.UP,
-                second = TfbiFlickDirection.UP_LEFT,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.UP,
-                second = TfbiFlickDirection.UP_RIGHT,
-                output = ""
-            )
-        )
-
-        // DOWN (3)
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.DOWN,
-                second = TfbiFlickDirection.DOWN,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.DOWN,
-                second = TfbiFlickDirection.DOWN_LEFT,
-                output = ""
-            )
-        )
-        items.add(
-            TwoStepMappingItem(
-                first = TfbiFlickDirection.DOWN,
-                second = TfbiFlickDirection.DOWN_RIGHT,
-                output = ""
-            )
-        )
-
-        return items
+        return TwoStepMappingItem.ALLOWED_TWO_STEP_PAIRS.map { (first, second) ->
+            TwoStepMappingItem(first = first, second = second, output = "")
+        }.toMutableList()
     }
 
     private val requestRecordAudioPermission =
