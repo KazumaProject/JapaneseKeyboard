@@ -6193,11 +6193,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.ShiftKey -> {
                         isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
-                        mainLayoutBinding?.customLayoutDefault?.updateKeyIconByAction(
-                            KeyAction.ShiftKey,
-                            if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.shift_24px
-                            else com.kazumaproject.core.R.drawable.shift_fill_24px
-                        )
+                        Handler(mainLooper).post {
+                            mainLayoutBinding?.customLayoutDefault?.updateKeyIconByAction(
+                                KeyAction.ShiftKey,
+                                if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.shift_fill_24px
+                                else com.kazumaproject.core.R.drawable.shift_24px
+                            )
+                        }
                     }
 
                     KeyAction.MoveCustomKeyboardTab -> {
