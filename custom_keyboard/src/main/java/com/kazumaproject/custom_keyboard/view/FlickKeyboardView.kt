@@ -21,6 +21,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.GridLayout
 import androidx.annotation.AttrRes
+import androidx.annotation.DrawableRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
@@ -53,8 +54,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 ) : GridLayout(context, attrs, defStyleAttr) {
 
     interface OnKeyboardActionListener {
-        fun onKey(text: String, isFlick: Boolean)
-        fun onAction(action: KeyAction, view: View, isFlick: Boolean)
+        fun onAction(action: KeyAction, isFlick: Boolean)
         fun onActionLongPress(action: KeyAction)
         fun onActionUpAfterLongPress(action: KeyAction)
         fun onFlickDirectionChanged(direction: FlickDirection)
@@ -304,6 +304,16 @@ class FlickKeyboardView @JvmOverloads constructor(
         info.view = newView
         info.keyData = newKeyData
         info.controller = newController
+    }
+
+    fun updateKeyIconByAction(action: KeyAction, @DrawableRes drawableResId: Int) {
+        dynamicKeyMap.values
+            .filter { it.keyData.action == action }
+            .forEach { info ->
+                if (info.view is AppCompatImageButton) {
+                    (info.view as AppCompatImageButton).setImageResource(drawableResId)
+                }
+            }
     }
 
     /**
@@ -878,8 +888,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                         this.listener = object : CustomAngleFlickController.FlickListener {
                             override fun onFlick(direction: FlickDirection, character: String) {
                                 if (character.isNotEmpty()) {
-                                    this@FlickKeyboardView.listener?.onKey(
-                                        text = character,
+                                    this@FlickKeyboardView.listener?.onAction(
+                                        KeyAction.Text(character),
                                         isFlick = direction != FlickDirection.TAP
                                     )
                                 }
@@ -942,50 +952,21 @@ class FlickKeyboardView @JvmOverloads constructor(
                 if (flickActionMap != null) {
                     val controller = CrossFlickInputController(context).apply {
                         this.listener = object : CrossFlickInputController.CrossFlickListener {
-                            override fun onFlick(flickAction: FlickAction, isFlick: Boolean) {
-                                when (flickAction) {
-                                    is FlickAction.Input -> {
-                                        this@FlickKeyboardView.listener?.onKey(
-                                            flickAction.char,
-                                            isFlick = true
-                                        )
-                                    }
+                            override fun onFlick(action: KeyAction, isFlick: Boolean) {
+                                this@FlickKeyboardView.listener?.onAction(action, isFlick)
+                            }
 
-                                    is FlickAction.Action -> {
-                                        this@FlickKeyboardView.listener?.onAction(
-                                            flickAction.action,
-                                            view = keyView,
-                                            isFlick = isFlick
-                                        )
-                                    }
+                            override fun onFlickLongPress(action: KeyAction) {
+                                if (action !is KeyAction.Text) {
+                                    this@FlickKeyboardView.listener?.onFlickActionLongPress(action)
                                 }
                             }
 
-                            override fun onFlickLongPress(flickAction: FlickAction) {
-                                when (flickAction) {
-                                    is FlickAction.Action -> {
-                                        this@FlickKeyboardView.listener?.onFlickActionLongPress(
-                                            flickAction.action
-                                        )
-                                    }
-
-                                    is FlickAction.Input -> Unit
-                                }
-                            }
-
-                            override fun onFlickUpAfterLongPress(
-                                flickAction: FlickAction,
-                                isFlick: Boolean
-                            ) {
-                                when (flickAction) {
-                                    is FlickAction.Action -> {
-                                        this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
-                                            flickAction.action,
-                                            isFlick = isFlick
-                                        )
-                                    }
-
-                                    is FlickAction.Input -> Unit
+                            override fun onFlickUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
+                                if (action !is KeyAction.Text) {
+                                    this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
+                                        action, isFlick = isFlick
+                                    )
                                 }
                             }
                         }
@@ -1092,8 +1073,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                         this.listener =
                             object : StandardFlickInputController.StandardFlickListener {
                                 override fun onFlick(character: String) {
-                                    this@FlickKeyboardView.listener?.onKey(
-                                        character,
+                                    this@FlickKeyboardView.listener?.onAction(
+                                        KeyAction.Text(character),
                                         isFlick = true
                                     )
                                 }
@@ -1251,7 +1232,10 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                         this.listener = object : GridFlickInputController.GridFlickListener {
                             override fun onFlick(character: String, isFlick: Boolean) {
-                                this@FlickKeyboardView.listener?.onKey(character, isFlick = isFlick)
+                                this@FlickKeyboardView.listener?.onAction(
+                                    KeyAction.Text(character),
+                                    isFlick = isFlick
+                                )
                             }
                         }
 
@@ -1281,7 +1265,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                         Log.d("FlickKeyboardView KeyType.NORMAL", "currentAction: $currentAction")
                         this@FlickKeyboardView.listener?.onAction(
                             currentAction,
-                            view = keyView,
                             isFlick = false
                         )
                     }
@@ -1331,8 +1314,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     "$character $first $second"
                                 )
                                 if (character.isNotEmpty()) {
-                                    this@FlickKeyboardView.listener?.onKey(
-                                        text = character,
+                                    this@FlickKeyboardView.listener?.onAction(
+                                        KeyAction.Text(character),
                                         isFlick = !(first == TfbiFlickDirection.TAP && second == TfbiFlickDirection.TAP)
                                     )
                                 }
@@ -1380,8 +1363,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     "$character $first $second"
                                 )
                                 if (character.isNotEmpty()) {
-                                    this@FlickKeyboardView.listener?.onKey(
-                                        text = character,
+                                    this@FlickKeyboardView.listener?.onAction(
+                                        KeyAction.Text(character),
                                         isFlick = !(first == TfbiFlickDirection.TAP && second == TfbiFlickDirection.TAP)
                                     )
                                 }
@@ -1421,8 +1404,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     "Char: $character"
                                 )
                                 if (character.isNotEmpty()) {
-                                    this@FlickKeyboardView.listener?.onKey(
-                                        text = character,
+                                    this@FlickKeyboardView.listener?.onAction(
+                                        KeyAction.Text(character),
                                         isFlick = true
                                     )
                                 }
@@ -1600,13 +1583,13 @@ class FlickKeyboardView @JvmOverloads constructor(
                     if (abs(dx) > abs(dy) && abs(dx) > threshold) {
                         val action2 =
                             if (dx < 0f) KeyAction.MoveCursorLeft else KeyAction.MoveCursorRight
-                        listener?.onAction(action2, this, false)
+                        listener?.onAction(action2, false)
                         cursorInitialX = currentX
                         cursorInitialY = currentY
                     } else if (abs(dy) > abs(dx) && abs(dy) > threshold) {
                         val action2 =
                             if (dy < 0f) KeyAction.MoveCursorUp else KeyAction.MoveCursorDown
-                        listener?.onAction(action2, this, false)
+                        listener?.onAction(action2, false)
                         cursorInitialX = currentX
                         cursorInitialY = currentY
                     }
