@@ -5337,98 +5337,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
-            override fun onKey(text: String, isFlick: Boolean) {
-                // 通常の文字が入力された場合（変更なし）
-                clearDeleteBufferWithView()
-                Timber.d("onKey: [$text] [${qwertyMode.value}] [$isDefaultRomajiHenkanMap]")
-                vibrate()
-
-                when (qwertyMode.value) {
-                    TenKeyQWERTYMode.Custom -> {
-                        if (text.isEmpty()) return
-                        if (text.length == 1) {
-                            if (isCustomLayoutRomajiMode) {
-                                val insertString = inputString.value
-                                val sb = StringBuilder()
-                                sb.append(insertString).append(text)
-                                romajiConverter?.let { converter ->
-                                    if (isDefaultRomajiHenkanMap) {
-                                        _inputString.update {
-                                            converter.convertCustomLayout(sb.toString())
-                                        }
-                                    } else {
-                                        if (customRomajiZenkakuConversionEnablePreference == true) {
-                                            _inputString.update {
-                                                converter.convertQWERTYZenkaku(sb.toString())
-                                            }
-                                        } else {
-                                            _inputString.update {
-                                                converter.convert(sb.toString())
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                handleOnKeyForSumire(
-                                    text, mainView, isFlick
-                                )
-                            }
-                        } else {
-                            if (isCustomKeyboardTwoWordsOutputEnable == true) {
-                                finishComposingText()
-                                setComposingText("", 0)
-                                commitText(text, 1)
-                            } else {
-                                if (isCustomLayoutRomajiMode) {
-                                    val insertString = inputString.value
-                                    val sb = StringBuilder()
-                                    sb.append(insertString).append(text)
-                                    romajiConverter?.let { converter ->
-                                        if (isDefaultRomajiHenkanMap) {
-                                            _inputString.update {
-                                                converter.convertCustomLayout(sb.toString())
-                                            }
-                                        } else {
-                                            if (customRomajiZenkakuConversionEnablePreference == true) {
-                                                _inputString.update {
-                                                    converter.convertQWERTYZenkaku(sb.toString())
-                                                }
-                                            } else {
-                                                _inputString.update {
-                                                    converter.convert(sb.toString())
-                                                }
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    val insertString = inputString.value
-                                    val sb = StringBuilder()
-                                    sb.append(insertString).append(text)
-                                    _inputString.update {
-                                        sb.toString()
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    TenKeyQWERTYMode.Sumire -> {
-                        Timber.d("TenKeyQWERTYMode.Sumire: $text $isFlick")
-                        handleOnKeyForSumire(
-                            text, mainView, isFlick
-                        )
-                    }
-
-                    TenKeyQWERTYMode.Number -> {
-                        handleOnKeyForSumire(
-                            text, mainView, isFlick
-                        )
-                    }
-
-                    else -> {}
-                }
-            }
-
             override fun onActionLongPress(action: KeyAction) {
                 vibrate()
                 clearDeleteBufferWithView()
@@ -5606,6 +5514,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.Cancel -> {}
                     KeyAction.VoiceInput -> {}
+                    is KeyAction.Text -> Unit
                 }
             }
 
@@ -5661,6 +5570,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.VoiceInput -> {}
+                    is KeyAction.Text -> Unit
                 }
             }
 
@@ -5793,6 +5703,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.MoveCursorUp -> {}
                     KeyAction.Cancel -> {}
                     KeyAction.VoiceInput -> {}
+                    is KeyAction.Text -> Unit
                 }
             }
 
@@ -5929,10 +5840,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.VoiceInput -> {}
+                    is KeyAction.Text -> Unit
                 }
             }
 
-            override fun onAction(action: KeyAction, view: View, isFlick: Boolean) {
+            override fun onAction(action: KeyAction, isFlick: Boolean) {
                 vibrate()
 
                 Timber.d("onAction: $action $isFlick")
@@ -5940,6 +5852,87 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     clearDeleteBufferWithView()
                 }
                 when (action) {
+                    is KeyAction.Text -> {
+                        val text = action.text
+                        Timber.d("onAction Text: [$text] [${qwertyMode.value}] [$isDefaultRomajiHenkanMap]")
+                        when (qwertyMode.value) {
+                            TenKeyQWERTYMode.Custom -> {
+                                if (text.isEmpty()) return
+                                if (text.length == 1) {
+                                    if (isCustomLayoutRomajiMode) {
+                                        val insertString = inputString.value
+                                        val sb = StringBuilder()
+                                        sb.append(insertString).append(text)
+                                        romajiConverter?.let { converter ->
+                                            if (isDefaultRomajiHenkanMap) {
+                                                _inputString.update {
+                                                    converter.convertCustomLayout(sb.toString())
+                                                }
+                                            } else {
+                                                if (customRomajiZenkakuConversionEnablePreference == true) {
+                                                    _inputString.update {
+                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                    }
+                                                } else {
+                                                    _inputString.update {
+                                                        converter.convert(sb.toString())
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        handleOnKeyForSumire(text, mainView, isFlick)
+                                    }
+                                } else {
+                                    if (isCustomKeyboardTwoWordsOutputEnable == true) {
+                                        finishComposingText()
+                                        setComposingText("", 0)
+                                        commitText(text, 1)
+                                    } else {
+                                        if (isCustomLayoutRomajiMode) {
+                                            val insertString = inputString.value
+                                            val sb = StringBuilder()
+                                            sb.append(insertString).append(text)
+                                            romajiConverter?.let { converter ->
+                                                if (isDefaultRomajiHenkanMap) {
+                                                    _inputString.update {
+                                                        converter.convertCustomLayout(sb.toString())
+                                                    }
+                                                } else {
+                                                    if (customRomajiZenkakuConversionEnablePreference == true) {
+                                                        _inputString.update {
+                                                            converter.convertQWERTYZenkaku(sb.toString())
+                                                        }
+                                                    } else {
+                                                        _inputString.update {
+                                                            converter.convert(sb.toString())
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        } else {
+                                            val insertString = inputString.value
+                                            val sb = StringBuilder()
+                                            sb.append(insertString).append(text)
+                                            _inputString.update { sb.toString() }
+                                        }
+                                    }
+                                }
+                            }
+
+                            TenKeyQWERTYMode.Sumire -> {
+                                Timber.d("TenKeyQWERTYMode.Sumire: $text $isFlick")
+                                handleOnKeyForSumire(text, mainView, isFlick)
+                            }
+
+                            TenKeyQWERTYMode.Number -> {
+                                handleOnKeyForSumire(text, mainView, isFlick)
+                            }
+
+                            else -> {}
+                        }
+                    }
+
                     is KeyAction.InputText -> {
                         when (action.text) {
                             "^_^" -> {
@@ -6200,14 +6193,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.ShiftKey -> {
                         isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
-                        if (view is AppCompatImageButton) {
-                            view.setImageDrawable(
-                                ContextCompat.getDrawable(
-                                    this@IMEService,
-                                    if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.shift_24px else com.kazumaproject.core.R.drawable.shift_fill_24px
-                                )
-                            )
-                        }
+                        mainLayoutBinding?.customLayoutDefault?.updateKeyIconByAction(
+                            KeyAction.ShiftKey,
+                            if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.shift_24px
+                            else com.kazumaproject.core.R.drawable.shift_fill_24px
+                        )
                     }
 
                     KeyAction.MoveCustomKeyboardTab -> {
