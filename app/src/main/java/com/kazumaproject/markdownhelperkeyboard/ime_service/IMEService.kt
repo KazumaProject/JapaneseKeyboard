@@ -407,6 +407,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var leftLongPressJob: Job? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
+    private var isInputViewActive: Boolean = false
     private val _inputString = MutableStateFlow("")
     private val inputString = _inputString.asStateFlow()
     private var stringInTail = AtomicReference("")
@@ -1319,6 +1320,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
+        isInputViewActive = true
         keyboardSelectionPopupWindow?.dismiss()
         addUserDictionaryPopup?.dismiss()
         _keyboardSymbolViewState.update { SymbolKeyboardState() }
@@ -1754,6 +1756,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
+        isInputViewActive = false
         releaseKeyboardBackgroundVideoPlayer()
         stopVoiceInput()
         floatingCandidateWindow?.dismiss()
@@ -1764,6 +1767,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
+        isInputViewActive = false
         releaseKeyboardBackgroundVideoPlayer()
         super.onDestroy()
         mainLayoutBinding?.apply {
@@ -2031,11 +2035,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 currentWindow.update(x, y, -1, -1)
             } else {
                 // 表示されていない場合は指定した位置に表示
-                currentWindow.showAtLocation(
-                    window.window?.decorView, // 親ビュー
-                    Gravity.NO_GRAVITY,      // スクリーン座標で直接指定
-                    x,                       // x座標
-                    y                        // y座標
+                showPopupWindowSafely(
+                    popupWindow = currentWindow,
+                    anchorView = window.window?.decorView,
+                    gravity = Gravity.NO_GRAVITY,
+                    x = x,
+                    y = y,
+                    source = "onUpdateCursorAnchorInfo"
                 )
             }
         }
@@ -2091,6 +2097,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingDockWindow?.dismiss()
             floatingDockWindow = null
         }
+    }
+
+    private fun canShowPopupWindow(anchorView: View?): Boolean {
+        if (!isInputViewActive) {
+            return false
+        }
+        return anchorView?.windowToken != null
+    }
+
+    private fun showPopupWindowSafely(
+        popupWindow: PopupWindow,
+        anchorView: View?,
+        gravity: Int,
+        x: Int,
+        y: Int,
+        source: String
+    ): Boolean {
+        if (!canShowPopupWindow(anchorView)) {
+            Timber.w("$source: Skip showAtLocation because anchor is not attached.")
+            return false
+        }
+        return runCatching {
+            popupWindow.showAtLocation(anchorView, gravity, x, y)
+            true
+        }.onFailure { throwable ->
+            Timber.w(throwable, "$source: showAtLocation failed")
+        }.getOrDefault(false)
     }
 
     private fun updateComposingText(text: String) {
@@ -3182,11 +3215,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     physicalKeyboardFloatingXPosition, physicalKeyboardFloatingYPosition, -1, -1
                 )
             } else {
-                switchWindow.showAtLocation(
-                    window.window?.decorView,
-                    Gravity.NO_GRAVITY,
-                    physicalKeyboardFloatingXPosition,
-                    physicalKeyboardFloatingYPosition
+                showPopupWindowSafely(
+                    popupWindow = switchWindow,
+                    anchorView = window.window?.decorView,
+                    gravity = Gravity.NO_GRAVITY,
+                    x = physicalKeyboardFloatingXPosition,
+                    y = physicalKeyboardFloatingYPosition,
+                    source = "showFloatingModeSwitchView"
                 )
             }
             // 新しいコルーチンを開始し、そのJobを保存する
@@ -3333,19 +3368,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode ${this.isShowing}")
                 if (!this.isShowing) {
                     val anchorView = window.window?.decorView
-                    if (anchorView != null && anchorView.windowToken != null) {
-                        val savedX = appPreference.keyboard_floating_position_x
-                        val savedY = appPreference.keyboard_floating_position_y
-                        if (savedX != -1 && savedY != -1) {
-                            showAtLocation(
-                                anchorView, Gravity.NO_GRAVITY, savedX, savedY
-                            )
-                        } else {
-                            showAtLocation(
-                                anchorView, Gravity.BOTTOM or Gravity.END, 0, 0
-                            )
-                        }
+                    val savedX = appPreference.keyboard_floating_position_x
+                    val savedY = appPreference.keyboard_floating_position_y
+                    val shown = if (savedX != -1 && savedY != -1) {
+                        showPopupWindowSafely(
+                            popupWindow = this,
+                            anchorView = anchorView,
+                            gravity = Gravity.NO_GRAVITY,
+                            x = savedX,
+                            y = savedY,
+                            source = "applyFloatingModeState(saved)"
+                        )
                     } else {
+                        showPopupWindowSafely(
+                            popupWindow = this,
+                            anchorView = anchorView,
+                            gravity = Gravity.BOTTOM or Gravity.END,
+                            x = 0,
+                            y = 0,
+                            source = "applyFloatingModeState(default)"
+                        )
+                    }
+                    if (!shown) {
                         Timber.w("Could not show floating keyboard, window token is not available yet.")
                     }
                 }
@@ -4249,9 +4293,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardSelectionPopupWindow?.dismiss()
             }
 
-            keyboardSelectionPopupWindow?.showAtLocation(
-                mainView.suggestionRecyclerView, Gravity.TOP, 0, 0
-            )
+            keyboardSelectionPopupWindow?.let { popupWindow ->
+                showPopupWindowSafely(
+                    popupWindow = popupWindow,
+                    anchorView = mainView.suggestionRecyclerView,
+                    gravity = Gravity.TOP,
+                    x = 0,
+                    y = 0,
+                    source = "registerNGWord"
+                )
+            }
         }
     }
 
@@ -4415,7 +4466,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 onKeyboardSwitchLongPressUp = false
             }
 
-            keyboardSelectionPopupWindow?.showAtLocation(mainView.root, Gravity.CENTER, 0, 0)
+            keyboardSelectionPopupWindow?.let { popupWindow ->
+                showPopupWindowSafely(
+                    popupWindow = popupWindow,
+                    anchorView = mainView.root,
+                    gravity = Gravity.CENTER,
+                    x = 0,
+                    y = 0,
+                    source = "showListPopup"
+                )
+            }
         }
     }
 
@@ -7359,8 +7419,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
                     floatingDockWindow?.apply {
                         if (!this.isShowing) {
-                            showAtLocation(
-                                mainView.root, Gravity.BOTTOM, 0, 0
+                            showPopupWindowSafely(
+                                popupWindow = this,
+                                anchorView = mainView.root,
+                                gravity = Gravity.BOTTOM,
+                                x = 0,
+                                y = 0,
+                                source = "physicalKeyboardEnable.collect"
                             )
                         }
                     }
