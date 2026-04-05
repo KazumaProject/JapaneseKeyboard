@@ -24,9 +24,9 @@ import kotlin.math.abs
 class CrossFlickInputController(private val context: Context) {
 
     interface CrossFlickListener {
-        fun onFlick(flickAction: FlickAction, isFlick: Boolean)
-        fun onFlickLongPress(flickAction: FlickAction)
-        fun onFlickUpAfterLongPress(flickAction: FlickAction, isFlick: Boolean)
+        fun onFlick(action: KeyAction, isFlick: Boolean)
+        fun onFlickLongPress(action: KeyAction)
+        fun onFlickUpAfterLongPress(action: KeyAction, isFlick: Boolean)
     }
 
     var listener: CrossFlickListener? = null
@@ -112,7 +112,7 @@ class CrossFlickInputController(private val context: Context) {
                     }
                     val longPressAction = flickActionMap[directionToCommit]
 
-                    longPressAction?.let { listener?.onFlickLongPress(it) }
+                    longPressAction?.let { listener?.onFlickLongPress(it.toKeyAction()) }
 
                     showAllPopups()
                     highlightPopup(currentDirection)
@@ -145,7 +145,7 @@ class CrossFlickInputController(private val context: Context) {
                         }
                         val longPressAction = flickActionMap[directionToCommit]
 
-                        longPressAction?.let { listener?.onFlickLongPress(it) }
+                        longPressAction?.let { listener?.onFlickLongPress(it.toKeyAction()) }
                     }
                 }
                 return true
@@ -169,16 +169,10 @@ class CrossFlickInputController(private val context: Context) {
                 // Log.d("CrossFlick Up", "$flickActionToCommit $isLongPressTriggered $isFlick")
 
                 if (isLongPressTriggered) {
-                    if (flickActionToCommit == null) {
-                        listener?.onFlickUpAfterLongPress(
-                            FlickAction.Action(KeyAction.Cancel),
-                            isFlick
-                        )
-                    } else {
-                        flickActionToCommit.let { listener?.onFlickUpAfterLongPress(it, isFlick) }
-                    }
+                    val keyAction = flickActionToCommit?.toKeyAction() ?: KeyAction.Cancel
+                    listener?.onFlickUpAfterLongPress(keyAction, isFlick)
                 } else {
-                    flickActionToCommit?.let { listener?.onFlick(it, isFlick) }
+                    flickActionToCommit?.let { listener?.onFlick(it.toKeyAction(), isFlick) }
                 }
 
                 dismissAllPopups()
@@ -301,5 +295,10 @@ class CrossFlickInputController(private val context: Context) {
         popupWindows.values.forEach { if (it.isShowing) it.dismiss() }
         popupWindows.clear()
         popupViews.clear()
+    }
+
+    private fun FlickAction.toKeyAction(): KeyAction = when (this) {
+        is FlickAction.Input -> KeyAction.Text(char)
+        is FlickAction.Action -> action
     }
 }
