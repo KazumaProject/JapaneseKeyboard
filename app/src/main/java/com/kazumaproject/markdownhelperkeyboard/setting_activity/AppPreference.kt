@@ -333,6 +333,10 @@ object AppPreference {
         Pair("qwerty_keyboard_margin_end_dp_landscape_preference", 0)
 
     private val ZENZ_MODEL_URI_PREFERENCE = Pair("zenz_model_uri_preference", "")
+    private val ENABLE_GEMMA_TRANSLATION_PREFERENCE =
+        Pair("gemma_translation_enable_preference", false)
+    private val GEMMA_TRANSLATION_MODEL_PATH_PREFERENCE =
+        Pair("gemma_translation_model_path_preference", "")
     private val KEYBOARD_BACKGROUND_IMAGE_URI_PREFERENCE =
         Pair("keyboard_background_image_uri_preference", "")
     private val KEYBOARD_BACKGROUND_IMAGE_DISPLAY_MODE_PREFERENCE =
@@ -1621,6 +1625,24 @@ object AppPreference {
         ) ?: ""
         set(value) = preferences.edit {
             it.putString(ZENZ_MODEL_URI_PREFERENCE.first, value)
+        }
+
+    var enable_gemma_translation_preference: Boolean
+        get() = preferences.getBoolean(
+            ENABLE_GEMMA_TRANSLATION_PREFERENCE.first,
+            ENABLE_GEMMA_TRANSLATION_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENABLE_GEMMA_TRANSLATION_PREFERENCE.first, value)
+        }
+
+    var gemma_translation_model_path_preference: String
+        get() = preferences.getString(
+            GEMMA_TRANSLATION_MODEL_PATH_PREFERENCE.first,
+            GEMMA_TRANSLATION_MODEL_PATH_PREFERENCE.second
+        ) ?: ""
+        set(value) = preferences.edit {
+            it.putString(GEMMA_TRANSLATION_MODEL_PATH_PREFERENCE.first, value)
         }
 
     var keyboard_background_image_uri: String

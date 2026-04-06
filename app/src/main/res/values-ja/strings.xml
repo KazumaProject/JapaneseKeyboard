@@ -54,6 +54,7 @@
     <string name="category_learning_dictionary_title">学習辞書</string>
     <string name="category_user_dictionary_title">ユーザー辞書</string>
     <string name="category_template_title">定型文</string>
+    <string name="category_gemma_translation_title">Gemma 翻訳</string>
 
     <string name="flick_input_only_title">フリック・トグル入力</string>
     <string name="flick_input_only_summary_on">フリック入力のみを使用し、トグル入力を無効にする</string>
@@ -129,6 +130,24 @@
     <string name="user_template_title">定型文</string>
     <string name="user_template_summary_on">定型文を有効化\n登録した単語を変換候補に表示します</string>
     <string name="user_template_summary_off">定型文を無効化</string>
+    <string name="gemma_translation_enable_title">Gemma 4 で候補を翻訳</string>
+    <string name="gemma_translation_enable_summary_on">Gemma 4 のモデル読み込みに成功したとき、変換候補の長押しメニューに翻訳を追加します</string>
+    <string name="gemma_translation_enable_summary_off">Gemma による候補翻訳を無効にします</string>
+    <string name="gemma_translation_model_title">Gemma 4 モデルの読み込み</string>
+    <string name="gemma_translation_model_summary_default">`gemma-4-E2B-it-litert-lm` の `.litertlm` を読み込みます。</string>
+    <string name="gemma_translation_model_summary_missing">Gemma 4 モデルはまだ読み込まれていません。</string>
+    <string name="gemma_translation_model_summary_imported">読み込み済みモデル: %1$s</string>
+    <string name="gemma_translation_model_summary_ready">ロード成功: %1$s</string>
+    <string name="gemma_translation_model_summary_loading">Gemma 4 モデルを読み込み中…</string>
+    <string name="gemma_translation_model_summary_error">Gemma 4 モデルの読み込みに失敗しました: %1$s</string>
+    <string name="gemma_translation_model_summary_unsupported_abi">Gemma 翻訳は 64bit 端末（arm64-v8a / x86_64）が必要です。</string>
+    <string name="gemma_translation_model_import_success">Gemma 4 モデルを読み込みました。</string>
+    <string name="gemma_translation_model_import_failed">Gemma 4 モデルの読み込みに失敗しました。</string>
+    <string name="candidate_action_translate">翻訳する</string>
+    <string name="candidate_action_close">閉じる</string>
+    <string name="candidate_translation_in_progress">候補を翻訳しています…</string>
+    <string name="candidate_translation_failed">翻訳に失敗しました。</string>
+    <string name="candidate_translation_empty">翻訳結果が空でした。</string>
 
     <string name="category_mozc_ut_title">Mozc UT</string>
     <string name="category_about_app_title">アプリについて</string>

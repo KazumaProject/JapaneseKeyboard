@@ -58,6 +58,7 @@ import android.widget.LinearLayout
 import android.widget.ListView
 import android.widget.PopupWindow
 import android.widget.TextView
+import android.widget.Toast
 import androidx.annotation.ColorInt
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.AppCompatImageButton
@@ -138,6 +139,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
+import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
@@ -236,6 +238,12 @@ import javax.inject.Inject
 class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ClipboardHistoryToggleListener, InputManager.InputDeviceListener {
 
+    private enum class CandidateLongPressAction {
+        HideWord,
+        Translate,
+        Close,
+    }
+
     private data class BunsetsuSegmentState(
         val reading: String,
         val displayText: String,
@@ -307,6 +315,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var clipboardUtil: ClipboardUtil
+
+    @Inject
+    lateinit var gemmaTranslationManager: GemmaTranslationManager
 
     private var zenzEngine: ZenzEngine? = null
 
@@ -893,6 +904,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
 
         zenzEngine = providesZenzEngine(this)
+        scope.launch {
+            gemmaTranslationManager.initializeIfEnabled(forceReload = false)
+        }
 
         suggestionAdapter = SuggestionAdapter().apply {
             onListUpdated = {
@@ -4241,7 +4255,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var keyboardSelectionPopupWindow: PopupWindow? = null
 
-    private fun registerNGWord(
+    private fun shouldShowCandidateLongPressActions(): Boolean {
+        return isNgWordEnable == true || gemmaTranslationManager.isTranslationAvailable()
+    }
+
+    private fun showCandidateLongPressActions(
         insertString: String, candidate: Candidate, candidatePosition: Int
     ) {
         mainLayoutBinding?.let { mainView ->
@@ -4249,27 +4267,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
             val listView = popupView.findViewById<ListView>(R.id.popup_listview)
 
-            // A. Enable single choice mode for the ListView
             listView.choiceMode = ListView.CHOICE_MODE_SINGLE
 
-            val items = listOf(
-                "この単語を非表示", "閉じる"
-            )
+            val actions = buildList {
+                if (isNgWordEnable == true) {
+                    add(CandidateLongPressAction.HideWord)
+                }
+                if (gemmaTranslationManager.isTranslationAvailable()) {
+                    add(CandidateLongPressAction.Translate)
+                }
+                add(CandidateLongPressAction.Close)
+            }
 
-            // B. Use your new custom layout file in the ArrayAdapter
-            val adapter = ArrayAdapter(this, R.layout.list_item_layout, items) // Use your layout
+            val items = actions.map { action ->
+                when (action) {
+                    CandidateLongPressAction.HideWord -> "この単語を非表示"
+                    CandidateLongPressAction.Translate -> getString(R.string.candidate_action_translate)
+                    CandidateLongPressAction.Close -> getString(R.string.candidate_action_close)
+                }
+            }
+
+            val adapter = ArrayAdapter(this, R.layout.list_item_layout, items)
             listView.adapter = adapter
 
             keyboardSelectionPopupWindow = PopupWindow(
                 popupView,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-                true // Set focusable to true
+                true
             )
             listView.setOnItemClickListener { _, _, position, _ ->
                 Timber.d("candidate long click: $candidate $candidatePosition")
-                when (position) {
-                    0 -> {
+                when (actions.getOrNull(position)) {
+                    CandidateLongPressAction.HideWord -> {
                         ioScope.launch {
                             val exist = ngWordRepository.exists(
                                 yomi = insertString, tango = candidate.string
@@ -4285,10 +4315,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
 
-                    1 -> {
-
-                    }
-
+                    CandidateLongPressAction.Translate -> translateCandidateInPlace(
+                        candidate = candidate,
+                        candidatePosition = candidatePosition
+                    )
+                    CandidateLongPressAction.Close, null -> Unit
                 }
                 keyboardSelectionPopupWindow?.dismiss()
             }
@@ -4303,6 +4334,79 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     source = "registerNGWord"
                 )
             }
+        }
+    }
+
+    private fun translateCandidateInPlace(candidate: Candidate, candidatePosition: Int) {
+        showToastMessage(getString(R.string.candidate_translation_in_progress))
+        val sourceText = displayTextFromCandidate(candidate)
+        ioScope.launch {
+            runCatching {
+                val translatedText = gemmaTranslationManager.translate(sourceText)
+                translatedText.takeIf { it.isNotBlank() }
+                    ?: throw IllegalStateException(getString(R.string.candidate_translation_empty))
+            }.onSuccess { translatedText ->
+                withContext(Dispatchers.Main) {
+                    replaceCandidateWithTranslation(
+                        originalCandidate = candidate,
+                        candidatePosition = candidatePosition,
+                        translatedText = translatedText
+                    )
+                }
+            }.onFailure { error ->
+                Timber.e(error, "Gemma candidate translation failed.")
+                showToastMessage(
+                    error.localizedMessage ?: getString(R.string.candidate_translation_failed)
+                )
+            }
+        }
+    }
+
+    private fun replaceCandidateWithTranslation(
+        originalCandidate: Candidate,
+        candidatePosition: Int,
+        translatedText: String
+    ) {
+        val translatedCandidate = originalCandidate.copy(
+            string = translatedText,
+            type = GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE.toByte()
+        )
+
+        suggestionAdapter?.let { adapter ->
+            adapter.suggestions = replaceCandidateInList(
+                currentList = adapter.suggestions,
+                originalCandidate = originalCandidate,
+                candidatePosition = candidatePosition,
+                translatedCandidate = translatedCandidate
+            )
+        }
+
+        suggestionAdapterFull?.let { adapter ->
+            adapter.suggestions = replaceCandidateInList(
+                currentList = adapter.suggestions,
+                originalCandidate = originalCandidate,
+                candidatePosition = candidatePosition,
+                translatedCandidate = translatedCandidate
+            )
+        }
+    }
+
+    private fun replaceCandidateInList(
+        currentList: List<Candidate>,
+        originalCandidate: Candidate,
+        candidatePosition: Int,
+        translatedCandidate: Candidate
+    ): List<Candidate> {
+        if (candidatePosition !in currentList.indices) return currentList
+        if (currentList[candidatePosition] != originalCandidate) return currentList
+        return currentList.toMutableList().apply {
+            this[candidatePosition] = translatedCandidate
+        }
+    }
+
+    private fun showToastMessage(message: String) {
+        scope.launch(Dispatchers.Main) {
+            Toast.makeText(this@IMEService, message, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -9988,8 +10092,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
                 val insertString = inputString.value
-                if (isNgWordEnable == true) {
-                    registerNGWord(
+                if (shouldShowCandidateLongPressActions()) {
+                    showCandidateLongPressActions(
                         insertString = insertString, candidate = candidate, candidatePosition = i
                     )
                 }
@@ -10083,8 +10187,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
                 val insertString = inputString.value
-                if (isNgWordEnable == true) {
-                    registerNGWord(
+                if (shouldShowCandidateLongPressActions()) {
+                    showCandidateLongPressActions(
                         insertString = insertString, candidate = candidate, candidatePosition = i
                     )
                 }
@@ -11578,7 +11682,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 commitAndClearInput(readingCorrection.first)
             }
 
-            9, 11, 12, 13, 14, 28, 30 -> {
+            9, 11, 12, 13, 14, 28, 30, GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE -> {
                 commitAndClearInput(candidate.string)
             }
 
