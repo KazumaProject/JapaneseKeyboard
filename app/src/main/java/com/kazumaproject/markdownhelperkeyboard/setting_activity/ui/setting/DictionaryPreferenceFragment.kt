@@ -6,6 +6,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
@@ -203,6 +204,29 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
                 updateGemmaModelSummary()
             }
             true
+        }
+
+        findPreference<ListPreference>("gemma_translation_backend_preference")?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            setOnPreferenceChangeListener { _, newValue ->
+                appPreference.gemma_translation_backend_preference = newValue as String
+                if (appPreference.enable_gemma_translation_preference) {
+                    updateGemmaModelSummary(getString(R.string.gemma_translation_model_summary_loading))
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        gemmaTranslationManager.initializeIfEnabled(forceReload = true)
+                        updateGemmaModelSummary()
+                    }
+                }
+                true
+            }
+        }
+
+        findPreference<ListPreference>("gemma_translation_target_language_preference")?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            setOnPreferenceChangeListener { _, newValue ->
+                appPreference.gemma_translation_target_language_preference = newValue as String
+                true
+            }
         }
 
         val gemmaModelPreference =

@@ -106,6 +106,24 @@
             android:summaryOn="@string/gemma_translation_enable_summary_on"
             android:title="@string/gemma_translation_enable_title" />
 
+        <ListPreference
+            android:defaultValue="cpu"
+            android:dependency="gemma_translation_enable_preference"
+            android:entries="@array/gemma_translation_backend_entries"
+            android:entryValues="@array/gemma_translation_backend_values"
+            android:key="gemma_translation_backend_preference"
+            android:title="@string/gemma_translation_backend_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            android:defaultValue="en"
+            android:dependency="gemma_translation_enable_preference"
+            android:entries="@array/gemma_translation_target_language_entries"
+            android:entryValues="@array/gemma_translation_target_language_values"
+            android:key="gemma_translation_target_language_preference"
+            android:title="@string/gemma_translation_target_language_title"
+            app:useSimpleSummaryProvider="true" />
+
         <Preference
             android:dependency="gemma_translation_enable_preference"
             android:key="gemma_translation_model_preference"

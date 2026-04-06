@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.gemma
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import androidx.annotation.StringRes
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -24,9 +25,54 @@ class GemmaTranslationManager @Inject constructor(
     private val appPreference: AppPreference,
 ) {
 
-    private enum class TranslationDirection {
-        JapaneseToEnglish,
-        EnglishToJapanese,
+    private enum class BackendPreference(val preferenceValue: String) {
+        Cpu("cpu"),
+        GpuIfAvailable("gpu_if_available");
+
+        companion object {
+            fun fromPreference(value: String): BackendPreference {
+                return values().firstOrNull { it.preferenceValue == value } ?: Cpu
+            }
+        }
+    }
+
+    private enum class ActiveBackend(@StringRes val summaryResId: Int) {
+        Cpu(R.string.gemma_translation_backend_runtime_cpu),
+        Gpu(R.string.gemma_translation_backend_runtime_gpu),
+        CpuFallback(R.string.gemma_translation_backend_runtime_cpu_fallback),
+    }
+
+    private enum class TranslationTargetLanguage(
+        val preferenceValue: String,
+        val promptLanguageName: String,
+        val languageCode: String
+    ) {
+        English("en", "English", "en"),
+        Japanese("ja", "Japanese", "ja"),
+        Korean("ko", "Korean", "ko"),
+        ChineseSimplified("zh-Hans", "Simplified Chinese", "zh-Hans"),
+        ChineseTraditional("zh-Hant", "Traditional Chinese", "zh-Hant"),
+        Spanish("es", "Spanish", "es"),
+        French("fr", "French", "fr"),
+        German("de", "German", "de"),
+        Italian("it", "Italian", "it"),
+        Portuguese("pt", "Portuguese", "pt"),
+        Russian("ru", "Russian", "ru"),
+        Arabic("ar", "Arabic", "ar"),
+        Hindi("hi", "Hindi", "hi"),
+        Indonesian("id", "Indonesian", "id"),
+        Thai("th", "Thai", "th"),
+        Vietnamese("vi", "Vietnamese", "vi"),
+        Turkish("tr", "Turkish", "tr"),
+        Polish("pl", "Polish", "pl"),
+        Dutch("nl", "Dutch", "nl"),
+        Ukrainian("uk", "Ukrainian", "uk");
+
+        companion object {
+            fun fromPreference(value: String): TranslationTargetLanguage {
+                return values().firstOrNull { it.preferenceValue == value } ?: English
+            }
+        }
     }
 
     private val initializeMutex = Mutex()
@@ -49,6 +95,9 @@ class GemmaTranslationManager @Inject constructor(
     @Volatile
     private var activeConversation: Any? = null
 
+    @Volatile
+    private var activeBackend: ActiveBackend? = null
+
     fun isTranslationAvailable(): Boolean {
         return appPreference.enable_gemma_translation_preference &&
             isSupportedAbi() &&
@@ -66,7 +115,13 @@ class GemmaTranslationManager @Inject constructor(
 
         return when {
             isTranslationAvailable() -> {
-                context.getString(R.string.gemma_translation_model_summary_ready, modelName)
+                context.getString(
+                    R.string.gemma_translation_model_summary_ready,
+                    modelName,
+                    context.getString(
+                        activeBackend?.summaryResId ?: R.string.gemma_translation_backend_runtime_cpu
+                    )
+                )
             }
 
             lastErrorMessage != null && appPreference.enable_gemma_translation_preference -> {
@@ -137,10 +192,14 @@ class GemmaTranslationManager @Inject constructor(
             closeLocked()
 
             try {
-                // Gemma 4 multi-section .litertlm files can include audio/vision sections
-                // with explicit CPU constraints. For the translation feature we prefer a
-                // conservative CPU-only initialization to avoid native aborts on startup.
-                engineInstance = createEngine(modelFile.absolutePath, "CPU")
+                val (createdEngine, resolvedBackend) = createEngineForPreference(
+                    modelPath = modelFile.absolutePath,
+                    backendPreference = BackendPreference.fromPreference(
+                        appPreference.gemma_translation_backend_preference
+                    )
+                )
+                engineInstance = createdEngine
+                activeBackend = resolvedBackend
 
                 activeModelPath = modelFile.absolutePath
                 initialized = true
@@ -163,8 +222,12 @@ class GemmaTranslationManager @Inject constructor(
     }
 
     suspend fun translate(text: String): String = withContext(Dispatchers.Default) {
-        val direction = detectDirection(text)
-            ?: throw IllegalArgumentException("The selected candidate could not be classified for translation.")
+        if (text.isBlank()) {
+            throw IllegalArgumentException("The selected candidate is empty.")
+        }
+        val targetLanguage = TranslationTargetLanguage.fromPreference(
+            appPreference.gemma_translation_target_language_preference
+        )
 
         val activeEngine = engineInstance
             ?: throw IllegalStateException("Gemma translation model is not ready.")
@@ -173,7 +236,7 @@ class GemmaTranslationManager @Inject constructor(
             val conversation = createConversation(activeEngine)
             activeConversation = conversation
             try {
-                val response = sendPrompt(conversation, buildPrompt(text, direction))
+                val response = sendPrompt(conversation, buildPrompt(text, targetLanguage))
                 val translated = extractTextContents(response).trim()
                 sanitizeOutput(translated)
             } catch (error: Throwable) {
@@ -201,11 +264,53 @@ class GemmaTranslationManager @Inject constructor(
         closeQuietly(conversation)
     }
 
-    private fun createEngine(modelPath: String, backendName: String): Any {
+    private fun createEngineForPreference(
+        modelPath: String,
+        backendPreference: BackendPreference
+    ): Pair<Any, ActiveBackend> {
+        return when (backendPreference) {
+            BackendPreference.Cpu -> {
+                createEngine(
+                    modelPath = modelPath,
+                    textBackendName = "CPU",
+                    visionBackendName = "CPU",
+                    audioBackendName = "CPU"
+                ) to ActiveBackend.Cpu
+            }
+
+            BackendPreference.GpuIfAvailable -> {
+                runCatching {
+                    createEngine(
+                        modelPath = modelPath,
+                        textBackendName = "GPU",
+                        visionBackendName = "CPU",
+                        audioBackendName = "CPU"
+                    ) to ActiveBackend.Gpu
+                }.getOrElse { gpuError ->
+                    Timber.w(gpuError, "GPU Gemma initialization failed. Falling back to CPU.")
+                    createEngine(
+                        modelPath = modelPath,
+                        textBackendName = "CPU",
+                        visionBackendName = "CPU",
+                        audioBackendName = "CPU"
+                    ) to ActiveBackend.CpuFallback
+                }
+            }
+        }
+    }
+
+    private fun createEngine(
+        modelPath: String,
+        textBackendName: String,
+        visionBackendName: String,
+        audioBackendName: String
+    ): Any {
         ensureNativeLibraryLoaded()
         val backendClass = Class.forName(BACKEND_CLASS)
         val engineConfigClass = Class.forName(ENGINE_CONFIG_CLASS)
-        val backendValue = createBackendInstance(backendName)
+        val textBackendValue = createBackendInstance(textBackendName)
+        val visionBackendValue = createBackendInstance(visionBackendName)
+        val audioBackendValue = createBackendInstance(audioBackendName)
         val config = engineConfigClass.getConstructor(
             String::class.java,
             backendClass,
@@ -215,9 +320,9 @@ class GemmaTranslationManager @Inject constructor(
             String::class.java,
         ).newInstance(
             modelPath,
-            backendValue,
-            backendValue,
-            backendValue,
+            textBackendValue,
+            visionBackendValue,
+            audioBackendValue,
             null,
             context.cacheDir.absolutePath,
         )
@@ -295,6 +400,7 @@ class GemmaTranslationManager @Inject constructor(
     private fun closeLocked() {
         initialized = false
         activeModelPath = null
+        activeBackend = null
         closeQuietly(engineInstance)
         engineInstance = null
     }
@@ -347,32 +453,17 @@ class GemmaTranslationManager @Inject constructor(
         return Build.SUPPORTED_64_BIT_ABIS.isNotEmpty()
     }
 
-    private fun detectDirection(text: String): TranslationDirection? {
-        val hasJapanese = JAPANESE_REGEX.containsMatchIn(text)
-        val hasEnglish = ENGLISH_REGEX.containsMatchIn(text)
-        return when {
-            hasJapanese -> TranslationDirection.JapaneseToEnglish
-            hasEnglish -> TranslationDirection.EnglishToJapanese
-            else -> null
-        }
-    }
-
-    private fun buildPrompt(text: String, direction: TranslationDirection): String {
-        return when (direction) {
-            TranslationDirection.JapaneseToEnglish -> """
-                You are translating an IME candidate.
-                Translate the following Japanese text into concise natural English.
-                Return only the translated text.
-                Text: $text
-            """.trimIndent()
-
-            TranslationDirection.EnglishToJapanese -> """
-                You are translating an IME candidate.
-                Translate the following English text into concise natural Japanese.
-                Return only the translated text.
-                Text: $text
-            """.trimIndent()
-        }
+    private fun buildPrompt(text: String, targetLanguage: TranslationTargetLanguage): String {
+        return """
+            You are a translation engine for IME candidates.
+            First detect the source language automatically from the input text.
+            Then translate the input into ${targetLanguage.promptLanguageName} (${targetLanguage.languageCode}).
+            If the input is already primarily ${targetLanguage.promptLanguageName}, return the original text unchanged.
+            Never choose a different target language.
+            Preserve names, emoji, markdown punctuation, spacing, and formatting where possible.
+            Return only the final translated text with no explanation, no language labels, and no quotes.
+            Text: $text
+        """.trimIndent()
     }
 
     private fun sanitizeOutput(output: String): String {
@@ -409,7 +500,5 @@ class GemmaTranslationManager @Inject constructor(
         private const val CONTENT_TEXT_CLASS = "com.google.ai.edge.litertlm.Content\$Text"
         private const val NATIVE_LIBRARY_LOADER_CLASS =
             "com.google.ai.edge.litertlm.NativeLibraryLoader"
-        private val JAPANESE_REGEX = Regex("[\\p{InHiragana}\\p{InKatakana}\\p{IsHan}]")
-        private val ENGLISH_REGEX = Regex("[A-Za-z]")
     }
 }
