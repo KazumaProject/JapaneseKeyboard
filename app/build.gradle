@@ -168,6 +168,9 @@ dependencies {
     testImplementation 'androidx.test.ext:junit-ktx:1.2.1'
 
     implementation 'com.google.code.gson:gson:2.13.1'
+    runtimeOnly('com.google.ai.edge.litertlm:litertlm-android:0.10.0') {
+        transitive = false
+    }
 
     implementation "androidx.hilt:hilt-navigation-fragment:1.2.0"
 
