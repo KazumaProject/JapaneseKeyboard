@@ -140,6 +140,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeybo
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
@@ -170,6 +171,7 @@ import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.GemmaPromptTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.NgWordRepository
@@ -239,10 +241,14 @@ import javax.inject.Inject
 class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ClipboardHistoryToggleListener, InputManager.InputDeviceListener {
 
-    private enum class CandidateLongPressAction {
-        HideWord,
-        Translate,
-        Close,
+    private sealed class CandidateLongPressAction {
+        object HideWord : CandidateLongPressAction()
+        object Translate : CandidateLongPressAction()
+        data class CustomPrompt(
+            val template: GemmaPromptTemplate
+        ) : CandidateLongPressAction()
+
+        object Close : CandidateLongPressAction()
     }
 
     private data class BunsetsuSegmentState(
@@ -319,6 +325,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var gemmaTranslationManager: GemmaTranslationManager
+
+    @Inject
+    lateinit var gemmaPromptTemplateRepository: GemmaPromptTemplateRepository
 
     private var zenzEngine: ZenzEngine? = null
 
@@ -418,6 +427,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var rightLongPressJob: Job? = null
     private var leftLongPressJob: Job? = null
     private var candidateTranslationJob: Job? = null
+    private val customGemmaPromptActionLimit = 5
     private val candidateTranslationRequestId = AtomicLong(0L)
     private var candidateTranslationContextSnapshot: String? = null
 
@@ -4266,6 +4276,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun showCandidateLongPressActions(
         insertString: String, candidate: Candidate, candidatePosition: Int
     ) {
+        ioScope.launch {
+            val enabledPromptTemplates = if (gemmaTranslationManager.isTranslationAvailable()) {
+                gemmaPromptTemplateRepository.getEnabledTemplates(customGemmaPromptActionLimit)
+            } else {
+                emptyList()
+            }
+
+            withContext(Dispatchers.Main) {
+                showCandidateLongPressActionsPopup(
+                    insertString = insertString,
+                    candidate = candidate,
+                    candidatePosition = candidatePosition,
+                    promptTemplates = enabledPromptTemplates
+                )
+            }
+        }
+    }
+
+    private fun showCandidateLongPressActionsPopup(
+        insertString: String,
+        candidate: Candidate,
+        candidatePosition: Int,
+        promptTemplates: List<GemmaPromptTemplate>
+    ) {
         mainLayoutBinding?.let { mainView ->
             val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
             val popupView = inflater.inflate(R.layout.popup_list_layout, mainView.root, false)
@@ -4279,6 +4313,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 if (gemmaTranslationManager.isTranslationAvailable()) {
                     add(CandidateLongPressAction.Translate)
+                    promptTemplates.forEach { template ->
+                        add(CandidateLongPressAction.CustomPrompt(template))
+                    }
                 }
                 add(CandidateLongPressAction.Close)
             }
@@ -4287,6 +4324,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (action) {
                     CandidateLongPressAction.HideWord -> "この単語を非表示"
                     CandidateLongPressAction.Translate -> getString(R.string.candidate_action_translate)
+                    is CandidateLongPressAction.CustomPrompt -> action.template.title
                     CandidateLongPressAction.Close -> getString(R.string.candidate_action_close)
                 }
             }
@@ -4302,7 +4340,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             listView.setOnItemClickListener { _, _, position, _ ->
                 Timber.d("candidate long click: $candidate $candidatePosition")
-                when (actions.getOrNull(position)) {
+                val selectedAction = actions.getOrNull(position)
+                when (selectedAction) {
                     CandidateLongPressAction.HideWord -> {
                         ioScope.launch {
                             val exist = ngWordRepository.exists(
@@ -4320,6 +4359,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     CandidateLongPressAction.Translate -> translateCandidateInPlace(
+                        candidate = candidate,
+                        candidatePosition = candidatePosition
+                    )
+                    is CandidateLongPressAction.CustomPrompt -> executeCustomGemmaPromptInPlace(
+                        template = selectedAction.template,
                         candidate = candidate,
                         candidatePosition = candidatePosition
                     )
@@ -4342,19 +4386,61 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun translateCandidateInPlace(candidate: Candidate, candidatePosition: Int) {
+        executeGemmaCandidateAction(
+            candidate = candidate,
+            candidatePosition = candidatePosition,
+            progressMessage = getString(R.string.candidate_translation_in_progress),
+            emptyResultMessage = getString(R.string.candidate_translation_empty),
+            failureMessage = getString(R.string.candidate_translation_failed),
+            resultCandidateType = GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE
+        ) { sourceText ->
+            gemmaTranslationManager.translate(sourceText)
+        }
+    }
+
+    private fun executeCustomGemmaPromptInPlace(
+        template: GemmaPromptTemplate,
+        candidate: Candidate,
+        candidatePosition: Int
+    ) {
+        executeGemmaCandidateAction(
+            candidate = candidate,
+            candidatePosition = candidatePosition,
+            progressMessage = getString(R.string.candidate_gemma_prompt_in_progress, template.title),
+            emptyResultMessage = getString(R.string.candidate_gemma_prompt_empty),
+            failureMessage = getString(R.string.candidate_gemma_prompt_failed, template.title),
+            resultCandidateType = GemmaTranslationManager.PROMPT_RESULT_CANDIDATE_TYPE
+        ) { sourceText ->
+            gemmaTranslationManager.runCustomPrompt(
+                text = sourceText,
+                promptTitle = template.title,
+                promptBody = template.prompt
+            )
+        }
+    }
+
+    private fun executeGemmaCandidateAction(
+        candidate: Candidate,
+        candidatePosition: Int,
+        progressMessage: String,
+        emptyResultMessage: String,
+        failureMessage: String,
+        resultCandidateType: Int,
+        transform: suspend (String) -> String
+    ) {
         cancelActiveCandidateTranslation()
         val sourceText = displayTextFromCandidate(candidate)
         val expectedPreEditSnapshot = resolveCurrentPreEditText()
         val requestId = candidateTranslationRequestId.incrementAndGet()
         candidateTranslationContextSnapshot = expectedPreEditSnapshot
         setCandidateTranslationProgressVisible(true)
-        showToastMessage(getString(R.string.candidate_translation_in_progress))
+        showToastMessage(progressMessage)
         candidateTranslationJob = ioScope.launch {
             runCatching {
-                val translatedText = gemmaTranslationManager.translate(sourceText)
-                translatedText.takeIf { it.isNotBlank() }
-                    ?: throw IllegalStateException(getString(R.string.candidate_translation_empty))
-            }.onSuccess { translatedText ->
+                val transformedText = transform(sourceText)
+                transformedText.takeIf { it.isNotBlank() }
+                    ?: throw IllegalStateException(emptyResultMessage)
+            }.onSuccess { transformedText ->
                 withContext(Dispatchers.Main) {
                     if (!isCandidateTranslationRequestCurrent(requestId)) return@withContext
                     if (resolveCurrentPreEditText() != expectedPreEditSnapshot) {
@@ -4362,21 +4448,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         return@withContext
                     }
                     finishCandidateTranslation(requestId)
-                    replaceCandidateWithTranslation(
+                    replaceCandidateWithGemmaResult(
                         originalCandidate = candidate,
                         candidatePosition = candidatePosition,
-                        translatedText = translatedText
+                        transformedText = transformedText,
+                        resultCandidateType = resultCandidateType
                     )
                 }
             }.onFailure { error ->
-                Timber.e(error, "Gemma candidate translation failed.")
+                Timber.e(error, "Gemma candidate action failed.")
                 withContext(Dispatchers.Main) {
                     if (!isCandidateTranslationRequestCurrent(requestId)) return@withContext
                     finishCandidateTranslation(requestId)
                     if (error is CancellationException) return@withContext
-                    showToastMessage(
-                        error.localizedMessage ?: getString(R.string.candidate_translation_failed)
-                    )
+                    showToastMessage(error.localizedMessage ?: failureMessage)
                 }
             }
         }
@@ -4442,14 +4527,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cancelActiveCandidateTranslation()
     }
 
-    private fun replaceCandidateWithTranslation(
+    private fun replaceCandidateWithGemmaResult(
         originalCandidate: Candidate,
         candidatePosition: Int,
-        translatedText: String
+        transformedText: String,
+        resultCandidateType: Int
     ) {
-        val translatedCandidate = originalCandidate.copy(
-            string = translatedText,
-            type = GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE.toByte()
+        val updatedCandidate = originalCandidate.copy(
+            string = transformedText,
+            type = resultCandidateType.toByte()
         )
 
         suggestionAdapter?.let { adapter ->
@@ -4457,7 +4543,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 currentList = adapter.suggestions,
                 originalCandidate = originalCandidate,
                 candidatePosition = candidatePosition,
-                translatedCandidate = translatedCandidate
+                translatedCandidate = updatedCandidate
             )
         }
 
@@ -4466,13 +4552,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 currentList = adapter.suggestions,
                 originalCandidate = originalCandidate,
                 candidatePosition = candidatePosition,
-                translatedCandidate = translatedCandidate
+                translatedCandidate = updatedCandidate
             )
         }
 
-        reflectTranslatedCandidateInPreEdit(
+        reflectGemmaResultInPreEdit(
             originalCandidate = originalCandidate,
-            translatedCandidate = translatedCandidate,
+            translatedCandidate = updatedCandidate,
             candidatePosition = candidatePosition
         )
     }
@@ -4490,7 +4576,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun reflectTranslatedCandidateInPreEdit(
+    private fun reflectGemmaResultInPreEdit(
         originalCandidate: Candidate,
         translatedCandidate: Candidate,
         candidatePosition: Int
@@ -11824,7 +11910,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 commitAndClearInput(readingCorrection.first)
             }
 
-            9, 11, 12, 13, 14, 28, 30, GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE -> {
+            9,
+            11,
+            12,
+            13,
+            14,
+            28,
+            30,
+            GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE,
+            GemmaTranslationManager.PROMPT_RESULT_CANDIDATE_TYPE -> {
                 commitAndClearInput(candidate.string)
             }
 

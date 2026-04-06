@@ -139,6 +139,22 @@
     <string name="gemma_translation_backend_runtime_cpu_fallback">CPU fallback</string>
     <string name="gemma_translation_target_language_title">Translation target language</string>
     <string name="gemma_translation_model_title">Load Gemma 4 model</string>
+    <string name="gemma_prompt_template_management_title">Gemma prompt templates</string>
+    <string name="gemma_prompt_template_management_summary">Create reusable prompts and show them in the candidate long-press menu</string>
+    <string name="gemma_prompt_template_fragment_title">Gemma Prompt Templates</string>
+    <string name="gemma_prompt_template_empty_state">No Gemma prompt templates yet. Add one to reuse it from the candidate long-press menu.</string>
+    <string name="gemma_prompt_template_add">Add Gemma prompt template</string>
+    <string name="gemma_prompt_template_edit">Edit template</string>
+    <string name="gemma_prompt_template_delete">Delete template</string>
+    <string name="gemma_prompt_template_dialog_title_add">Add Gemma prompt</string>
+    <string name="gemma_prompt_template_dialog_title_edit">Edit Gemma prompt</string>
+    <string name="gemma_prompt_template_title_hint">Title shown in the long-press menu</string>
+    <string name="gemma_prompt_template_prompt_hint">Prompt to apply to the selected candidate</string>
+    <string name="gemma_prompt_template_enabled">Show in long-press menu</string>
+    <string name="gemma_prompt_template_title_required">Please enter a title.</string>
+    <string name="gemma_prompt_template_prompt_required">Please enter a prompt.</string>
+    <string name="gemma_prompt_template_delete_confirm_title">Delete \"%1$s\"?</string>
+    <string name="gemma_prompt_template_delete_confirm_message">This prompt template will be removed from the long-press menu.</string>
     <string name="gemma_translation_model_summary_default">Import a `.litertlm` file for `gemma-4-E2B-it-litert-lm`.</string>
     <string name="gemma_translation_model_summary_missing">No Gemma 4 model has been imported yet.</string>
     <string name="gemma_translation_model_summary_imported">Imported model: %1$s</string>
@@ -173,6 +189,9 @@
     <string name="candidate_translation_in_progress">Translating candidate…</string>
     <string name="candidate_translation_failed">Translation failed.</string>
     <string name="candidate_translation_empty">No translated text was returned.</string>
+    <string name="candidate_gemma_prompt_in_progress">Running \"%1$s\"…</string>
+    <string name="candidate_gemma_prompt_failed">Failed to run \"%1$s\".</string>
+    <string name="candidate_gemma_prompt_empty">Gemma returned an empty result.</string>
 
     <string name="category_mozc_ut_title">Mozc UT</string>
     <string name="category_about_app_title">About the app</string>

@@ -129,6 +129,11 @@
             android:key="gemma_translation_model_preference"
             android:title="@string/gemma_translation_model_title"
             app:summary="@string/gemma_translation_model_summary_default" />
+
+        <Preference
+            android:key="gemma_prompt_template_management_preference"
+            android:title="@string/gemma_prompt_template_management_title"
+            app:summary="@string/gemma_prompt_template_management_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_mozc_ut_title">

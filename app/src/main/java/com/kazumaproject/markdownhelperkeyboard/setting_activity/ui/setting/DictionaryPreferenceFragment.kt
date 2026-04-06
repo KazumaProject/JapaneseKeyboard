@@ -236,6 +236,13 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("gemma_prompt_template_management_preference")?.setOnPreferenceClickListener {
+            findNavController().navigate(
+                R.id.action_navigation_setting_to_gemmaPromptTemplateFragment
+            )
+            true
+        }
+
         updateGemmaModelSummary()
     }
 
