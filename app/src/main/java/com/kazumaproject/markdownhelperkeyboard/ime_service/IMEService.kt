@@ -230,6 +230,7 @@ import java.util.ArrayDeque
 import java.util.Calendar
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.regex.Pattern
 import javax.inject.Inject
@@ -416,6 +417,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var deleteLongPressJob: Job? = null
     private var rightLongPressJob: Job? = null
     private var leftLongPressJob: Job? = null
+    private var candidateTranslationJob: Job? = null
+    private val candidateTranslationRequestId = AtomicLong(0L)
+    private var candidateTranslationContextSnapshot: String? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
     private var isInputViewActive: Boolean = false
@@ -4338,15 +4342,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun translateCandidateInPlace(candidate: Candidate, candidatePosition: Int) {
-        showToastMessage(getString(R.string.candidate_translation_in_progress))
+        cancelActiveCandidateTranslation()
         val sourceText = displayTextFromCandidate(candidate)
-        ioScope.launch {
+        val expectedPreEditSnapshot = resolveCurrentPreEditText()
+        val requestId = candidateTranslationRequestId.incrementAndGet()
+        candidateTranslationContextSnapshot = expectedPreEditSnapshot
+        setCandidateTranslationProgressVisible(true)
+        showToastMessage(getString(R.string.candidate_translation_in_progress))
+        candidateTranslationJob = ioScope.launch {
             runCatching {
                 val translatedText = gemmaTranslationManager.translate(sourceText)
                 translatedText.takeIf { it.isNotBlank() }
                     ?: throw IllegalStateException(getString(R.string.candidate_translation_empty))
             }.onSuccess { translatedText ->
                 withContext(Dispatchers.Main) {
+                    if (!isCandidateTranslationRequestCurrent(requestId)) return@withContext
+                    if (resolveCurrentPreEditText() != expectedPreEditSnapshot) {
+                        cancelActiveCandidateTranslation()
+                        return@withContext
+                    }
+                    finishCandidateTranslation(requestId)
                     replaceCandidateWithTranslation(
                         originalCandidate = candidate,
                         candidatePosition = candidatePosition,
@@ -4355,11 +4370,76 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }.onFailure { error ->
                 Timber.e(error, "Gemma candidate translation failed.")
-                showToastMessage(
-                    error.localizedMessage ?: getString(R.string.candidate_translation_failed)
-                )
+                withContext(Dispatchers.Main) {
+                    if (!isCandidateTranslationRequestCurrent(requestId)) return@withContext
+                    finishCandidateTranslation(requestId)
+                    if (error is CancellationException) return@withContext
+                    showToastMessage(
+                        error.localizedMessage ?: getString(R.string.candidate_translation_failed)
+                    )
+                }
             }
         }
+    }
+
+    private fun resolveCurrentPreEditText(): String {
+        bunsetsuConversionSession?.let { session ->
+            return session.segments.joinToString(separator = "") { it.displayText } + session.tailText
+        }
+
+        if (isHenkan.get()) {
+            val suggestions = suggestionAdapter?.suggestions.orEmpty()
+            if (suggestions.isNotEmpty()) {
+                val selectedIndex = if (suggestionClickNum <= 0) {
+                    0
+                } else {
+                    (suggestionClickNum - 1).coerceAtMost(suggestions.lastIndex)
+                }
+                return getCandidateCommitString(suggestions[selectedIndex]) + stringInTail.get()
+            }
+        }
+
+        return inputString.value + stringInTail.get()
+    }
+
+    private fun isCandidateTranslationRequestCurrent(requestId: Long): Boolean {
+        return candidateTranslationRequestId.get() == requestId
+    }
+
+    private fun setCandidateTranslationProgressVisible(isVisible: Boolean) {
+        mainLayoutBinding?.suggestionProgressbar?.isVisible = isVisible
+    }
+
+    private fun finishCandidateTranslation(requestId: Long) {
+        if (!isCandidateTranslationRequestCurrent(requestId)) return
+        candidateTranslationJob = null
+        candidateTranslationContextSnapshot = null
+        setCandidateTranslationProgressVisible(false)
+    }
+
+    private fun cancelActiveCandidateTranslation() {
+        val currentJob = candidateTranslationJob
+        val hasActiveTranslation =
+            currentJob?.isActive == true || candidateTranslationContextSnapshot != null
+        if (!hasActiveTranslation) return
+        candidateTranslationRequestId.incrementAndGet()
+        candidateTranslationJob = null
+        candidateTranslationContextSnapshot = null
+        setCandidateTranslationProgressVisible(false)
+        gemmaTranslationManager.cancelActiveTranslation()
+        currentJob?.cancel(CancellationException("Candidate translation cancelled."))
+    }
+
+    private fun cancelCandidateTranslationIfComposingChanges(nextText: CharSequence?) {
+        val snapshot = candidateTranslationContextSnapshot ?: return
+        val nextValue = nextText?.toString().orEmpty()
+        if (nextValue == snapshot) return
+        cancelActiveCandidateTranslation()
+    }
+
+    private fun cancelCandidateTranslationIfPreEditMutates() {
+        if (candidateTranslationContextSnapshot == null) return
+        cancelActiveCandidateTranslation()
     }
 
     private fun replaceCandidateWithTranslation(
@@ -15118,16 +15198,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun deleteSurroundingText(p0: Int, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        cancelCandidateTranslationIfPreEditMutates()
         return currentInputConnection.deleteSurroundingText(p0, p1)
     }
 
     override fun deleteSurroundingTextInCodePoints(p0: Int, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        cancelCandidateTranslationIfPreEditMutates()
         return currentInputConnection.deleteSurroundingTextInCodePoints(p0, p1)
     }
 
     override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        cancelCandidateTranslationIfComposingChanges(p0)
         return currentInputConnection.setComposingText(p0, p1)
     }
 
@@ -15138,11 +15221,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun finishComposingText(): Boolean {
         if (currentInputConnection == null) return false
+        cancelCandidateTranslationIfPreEditMutates()
         return currentInputConnection.finishComposingText()
     }
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        cancelCandidateTranslationIfPreEditMutates()
         return currentInputConnection.commitText(p0, p1)
     }
 
