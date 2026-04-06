@@ -130,7 +130,7 @@
     <string name="user_template_title">定型文</string>
     <string name="user_template_summary_on">定型文を有効化\n登録した単語を変換候補に表示します</string>
     <string name="user_template_summary_off">定型文を無効化</string>
-    <string name="gemma_translation_enable_title">Gemma 4 で候補を翻訳</string>
+    <string name="gemma_translation_enable_title">Gemma 4 を有効にする</string>
     <string name="gemma_translation_enable_summary_on">Gemma 4 のモデル読み込みに成功したとき、変換候補の長押しメニューに翻訳を追加します</string>
     <string name="gemma_translation_enable_summary_off">Gemma による候補翻訳を無効にします</string>
     <string name="gemma_translation_backend_title">Gemma 実行バックエンド</string>
