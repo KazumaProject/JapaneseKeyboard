@@ -27,6 +27,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_16_17
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_17_18
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_18_19
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_19_20
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_1_2
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
@@ -36,6 +37,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_7_8
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_8_9
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_9_10
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplateDao
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
@@ -95,6 +97,7 @@ object AppModule {
             MIGRATION_16_17,
             MIGRATION_17_18,
             MIGRATION_18_19,
+            MIGRATION_19_20,
         )
         .build()
 
@@ -142,6 +145,11 @@ object AppModule {
     @Singleton
     @Provides
     fun providesNgramRuleDao(db: AppDatabase): NgramRuleDao = db.ngramRuleDao()
+
+    @Singleton
+    @Provides
+    fun providesGemmaPromptTemplateDao(db: AppDatabase): GemmaPromptTemplateDao =
+        db.gemmaPromptTemplateDao()
 
     @Singleton
     @Provides

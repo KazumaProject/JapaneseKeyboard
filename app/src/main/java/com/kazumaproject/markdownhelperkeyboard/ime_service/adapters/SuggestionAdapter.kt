@@ -569,6 +569,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (39).toByte() -> ""
             (40).toByte() -> "[AI]"
             GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE.toByte() -> "[訳]"
+            GemmaTranslationManager.PROMPT_RESULT_CANDIDATE_TYPE.toByte() -> "[AI]"
             else -> ""
         }
         holder.itemView.isPressed = position == highlightedPosition

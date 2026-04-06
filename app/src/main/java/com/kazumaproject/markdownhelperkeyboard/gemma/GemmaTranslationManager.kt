@@ -228,29 +228,21 @@ class GemmaTranslationManager @Inject constructor(
         val targetLanguage = TranslationTargetLanguage.fromPreference(
             appPreference.gemma_translation_target_language_preference
         )
+        runPromptAndSanitize(buildTranslationPrompt(text, targetLanguage))
+    }
 
-        val activeEngine = engineInstance
-            ?: throw IllegalStateException("Gemma translation model is not ready.")
-
-        withTimeout(60_000L) {
-            val conversation = createConversation(activeEngine)
-            activeConversation = conversation
-            try {
-                val response = sendPrompt(conversation, buildPrompt(text, targetLanguage))
-                val translated = extractTextContents(response).trim()
-                sanitizeOutput(translated)
-            } catch (error: Throwable) {
-                if (!currentCoroutineContext().isActive || activeConversation !== conversation) {
-                    throw kotlinx.coroutines.CancellationException("Gemma translation was cancelled.", error)
-                }
-                throw error
-            } finally {
-                if (activeConversation === conversation) {
-                    activeConversation = null
-                }
-                closeQuietly(conversation)
-            }
+    suspend fun runCustomPrompt(
+        text: String,
+        promptTitle: String,
+        promptBody: String
+    ): String = withContext(Dispatchers.Default) {
+        if (text.isBlank()) {
+            throw IllegalArgumentException("The selected candidate is empty.")
         }
+        if (promptBody.isBlank()) {
+            throw IllegalArgumentException("The Gemma prompt is empty.")
+        }
+        runPromptAndSanitize(buildCustomPrompt(text, promptTitle, promptBody))
     }
 
     fun cancelActiveTranslation() {
@@ -453,7 +445,38 @@ class GemmaTranslationManager @Inject constructor(
         return Build.SUPPORTED_64_BIT_ABIS.isNotEmpty()
     }
 
-    private fun buildPrompt(text: String, targetLanguage: TranslationTargetLanguage): String {
+    private suspend fun runPromptAndSanitize(prompt: String): String {
+        val activeEngine = engineInstance
+            ?: throw IllegalStateException("Gemma translation model is not ready.")
+
+        return withTimeout(60_000L) {
+            val conversation = createConversation(activeEngine)
+            activeConversation = conversation
+            try {
+                val response = sendPrompt(conversation, prompt)
+                val translated = extractTextContents(response).trim()
+                sanitizeOutput(translated)
+            } catch (error: Throwable) {
+                if (!currentCoroutineContext().isActive || activeConversation !== conversation) {
+                    throw kotlinx.coroutines.CancellationException(
+                        "Gemma translation was cancelled.",
+                        error
+                    )
+                }
+                throw error
+            } finally {
+                if (activeConversation === conversation) {
+                    activeConversation = null
+                }
+                closeQuietly(conversation)
+            }
+        }
+    }
+
+    private fun buildTranslationPrompt(
+        text: String,
+        targetLanguage: TranslationTargetLanguage
+    ): String {
         return """
             You are a translation engine for IME candidates.
             First detect the source language automatically from the input text.
@@ -463,6 +486,27 @@ class GemmaTranslationManager @Inject constructor(
             Preserve names, emoji, markdown punctuation, spacing, and formatting where possible.
             Return only the final translated text with no explanation, no language labels, and no quotes.
             Text: $text
+        """.trimIndent()
+    }
+
+    private fun buildCustomPrompt(
+        text: String,
+        promptTitle: String,
+        promptBody: String
+    ): String {
+        val sanitizedTitle = promptTitle.trim().ifEmpty { "Custom prompt" }
+        val sanitizedPrompt = promptBody.trim()
+        return """
+            You are an IME candidate transformation engine.
+            Apply the following user-defined instruction to the input text.
+            Return only the final transformed text with no explanation, no bullets, no quotes, and no surrounding labels.
+            Preserve markdown punctuation, emoji, whitespace, and formatting where possible unless the instruction asks you to change them.
+            Prompt title: $sanitizedTitle
+            User instruction:
+            $sanitizedPrompt
+
+            Input text:
+            $text
         """.trimIndent()
     }
 
@@ -489,6 +533,7 @@ class GemmaTranslationManager @Inject constructor(
 
     companion object {
         const val TRANSLATED_CANDIDATE_TYPE = 41
+        const val PROMPT_RESULT_CANDIDATE_TYPE = 42
         private const val MODEL_DIR_NAME = "models"
         private const val BACKEND_CLASS = "com.google.ai.edge.litertlm.Backend"
         private const val BACKEND_CPU_CLASS = "com.google.ai.edge.litertlm.Backend\$CPU"
