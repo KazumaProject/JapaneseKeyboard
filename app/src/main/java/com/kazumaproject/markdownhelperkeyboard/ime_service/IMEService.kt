@@ -61,7 +61,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.ColorInt
 import androidx.appcompat.view.ContextThemeWrapper
-import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
@@ -268,6 +267,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val activeSplitPatternIndex: Int = 0
     )
 
+    private sealed class SelectedTextGemmaAction {
+        object Translate : SelectedTextGemmaAction()
+        data class CustomPrompt(val template: GemmaPromptTemplate) : SelectedTextGemmaAction()
+    }
+
+    private data class SelectedTextGemmaSession(
+        val selectedText: String,
+        val actions: List<SelectedTextGemmaAction>
+    )
+
     private data class ZenzRerankEntry(
         val originalPosition: Int,
         val candidate: Candidate,
@@ -370,6 +379,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var speechRecognizer: SpeechRecognizer? = null
     private var isListening = false
 
+    private var enableGemmaTranslationPreference: Boolean? = false
+
     /**
      * クリップボードの内容が変更されたときに呼び出されるリスナー。
      */
@@ -427,9 +438,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var rightLongPressJob: Job? = null
     private var leftLongPressJob: Job? = null
     private var candidateTranslationJob: Job? = null
+    private var selectedTextGemmaActionJob: Job? = null
     private val customGemmaPromptActionLimit = 5
     private val candidateTranslationRequestId = AtomicLong(0L)
     private var candidateTranslationContextSnapshot: String? = null
+    private val selectedTextGemmaActionMenuRequestId = AtomicLong(0L)
+    private val selectedTextGemmaActionRequestId = AtomicLong(0L)
+    private var selectedTextGemmaSession: SelectedTextGemmaSession? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
     private var isInputViewActive: Boolean = false
@@ -842,6 +857,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             override val previewText: String
         ) : EditHistoryEntry
 
+        data class ReplaceCommittedText(
+            val beforeText: String,
+            val afterText: String
+        ) : EditHistoryEntry {
+            override val previewText: String = beforeText
+        }
+
     }
 
     private class EditHistoryBuffer {
@@ -1214,6 +1236,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.enableTypoCorrectionJapaneseFlickKeyboardPreference
         enableTypoCorrectionQwertyEnglishKeyboardPreference =
             preferences.enableTypoCorrectionQwertyEnglishKeyboardPreference
+
+        enableGemmaTranslationPreference = preferences.enableGemmaTranslationPreference
     }
 
     private fun initializeMozcDictionaries(preferences: ImePreferencesSnapshot) {
@@ -1337,7 +1361,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }.getOrDefault(false)
     }
 
-    private fun applyKeyboardContainerTransparencyForVideo(mainView: MainLayoutBinding, enabled: Boolean) {
+    private fun applyKeyboardContainerTransparencyForVideo(
+        mainView: MainLayoutBinding,
+        enabled: Boolean
+    ) {
         if (!enabled) return
         // Keep the original rounded drawable and just make it transparent.
         mainView.root.setDrawableAlpha(0)
@@ -1951,6 +1978,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         bunsetsuSplitPatterns = emptyList()
         bunsetsuConversionSession = null
 
+        enableGemmaTranslationPreference = null
+
         liquidGlassThemePreference = null
         liquidGlassBlurRadiousPreference = null
         liquidGlassKeyBlurRadiousPreference = null
@@ -2539,11 +2568,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
+        val selectedText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
+        if (selectedText.isNotEmpty()) {
+            if (selectedTextGemmaSession?.selectedText != null &&
+                selectedTextGemmaSession?.selectedText != selectedText
+            ) {
+                clearSelectedTextGemmaSession(clearSuggestions = true)
+            }
+            if (appPreference.enable_gemma_translation_preference &&
+                gemmaTranslationManager.isTranslationAvailable()
+            ) {
+                showSelectedTextGemmaActions(selectedText)
+            } else {
+                clearSelectedTextGemmaSession(clearSuggestions = true)
+            }
+            return
+        } else if (selectedTextGemmaSession != null) {
+            clearSelectedTextGemmaSession(clearSuggestions = true)
+        }
+
         Timber.d("onUpdateSelection end called: [${inputString.value}] [${stringInTail.get()}] [${bunsetusMultipleDetect}]")
         if (stringInTail.get().isEmpty()) {
             bunsetusMultipleDetect = false
         }
 
+        
         // Show clipboard preview only if nothing was deleted and clipboard has data
         suggestionAdapter?.apply {
             if (deletedBuffer.isEmpty()) {
@@ -4362,11 +4411,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         candidate = candidate,
                         candidatePosition = candidatePosition
                     )
+
                     is CandidateLongPressAction.CustomPrompt -> executeCustomGemmaPromptInPlace(
                         template = selectedAction.template,
                         candidate = candidate,
                         candidatePosition = candidatePosition
                     )
+
                     CandidateLongPressAction.Close, null -> Unit
                 }
                 keyboardSelectionPopupWindow?.dismiss()
@@ -4383,6 +4434,220 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
+    }
+
+    private fun showSelectedTextGemmaActions(selectedText: String) {
+        if (!gemmaTranslationManager.isTranslationAvailable()) {
+            clearSelectedTextGemmaSession(clearSuggestions = true)
+            return
+        }
+        if (selectedTextGemmaSession?.selectedText == selectedText &&
+            suggestionAdapter?.suggestions.orEmpty().any { isSelectedTextGemmaActionCandidate(it) }
+        ) {
+            return
+        }
+
+        val requestId = selectedTextGemmaActionMenuRequestId.incrementAndGet()
+        ioScope.launch {
+            val templates = gemmaPromptTemplateRepository.getEnabledTemplates(
+                customGemmaPromptActionLimit
+            )
+            withContext(Dispatchers.Main) {
+                if (selectedTextGemmaActionMenuRequestId.get() != requestId) return@withContext
+                val currentSelection = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
+                if (currentSelection != selectedText) return@withContext
+
+                val actions = buildList {
+                    add(SelectedTextGemmaAction.Translate)
+                    templates.forEach { template ->
+                        add(SelectedTextGemmaAction.CustomPrompt(template))
+                    }
+                }
+                if (actions.isEmpty()) {
+                    clearSelectedTextGemmaSession(clearSuggestions = true)
+                    return@withContext
+                }
+
+                selectedTextGemmaSession = SelectedTextGemmaSession(
+                    selectedText = selectedText,
+                    actions = actions
+                )
+                val candidates = buildSelectedTextGemmaActionCandidates(
+                    selectedText = selectedText,
+                    actions = actions
+                )
+                suggestionAdapter?.suggestions = candidates
+                suggestionAdapterFull?.suggestions = candidates
+                suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+                suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
+            }
+        }
+    }
+
+    private fun buildSelectedTextGemmaActionCandidates(
+        selectedText: String,
+        actions: List<SelectedTextGemmaAction>
+    ): List<Candidate> {
+        val candidateLength = selectedText.length
+            .coerceIn(0, UByte.MAX_VALUE.toInt())
+            .toUByte()
+        return actions.mapIndexed { index, action ->
+            when (action) {
+                SelectedTextGemmaAction.Translate -> Candidate(
+                    string = getString(R.string.candidate_action_translate),
+                    type = GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte(),
+                    length = candidateLength,
+                    score = Int.MAX_VALUE - index
+                )
+
+                is SelectedTextGemmaAction.CustomPrompt -> Candidate(
+                    string = action.template.title,
+                    type = GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte(),
+                    length = candidateLength,
+                    score = Int.MAX_VALUE - index,
+                    yomi = action.template.id.toString()
+                )
+            }
+        }
+    }
+
+    private fun clearSelectedTextGemmaSession(clearSuggestions: Boolean) {
+        selectedTextGemmaActionMenuRequestId.incrementAndGet()
+        cancelActiveSelectedTextGemmaAction()
+        selectedTextGemmaSession = null
+        if (!clearSuggestions) return
+        suggestionAdapter?.suggestions = emptyList()
+        suggestionAdapterFull?.suggestions = emptyList()
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
+    }
+
+    private fun handleSelectedTextGemmaActionClick(position: Int): Boolean {
+        val session = selectedTextGemmaSession ?: return false
+        val action = session.actions.getOrNull(position) ?: return false
+        when (action) {
+            SelectedTextGemmaAction.Translate -> executeSelectedTextGemmaAction(
+                actionLabel = getString(R.string.candidate_action_translate),
+                sourceText = session.selectedText,
+                emptyResultMessage = getString(R.string.candidate_translation_empty),
+                failureMessage = getString(R.string.candidate_translation_failed)
+            ) { sourceText ->
+                gemmaTranslationManager.translate(sourceText)
+            }
+
+            is SelectedTextGemmaAction.CustomPrompt -> executeSelectedTextGemmaAction(
+                actionLabel = action.template.title,
+                sourceText = session.selectedText,
+                emptyResultMessage = getString(R.string.candidate_gemma_prompt_empty),
+                failureMessage = getString(
+                    R.string.candidate_gemma_prompt_failed,
+                    action.template.title
+                )
+            ) { sourceText ->
+                gemmaTranslationManager.runCustomPrompt(
+                    text = sourceText,
+                    promptTitle = action.template.title,
+                    promptBody = action.template.prompt
+                )
+            }
+        }
+        return true
+    }
+
+    private fun executeSelectedTextGemmaAction(
+        actionLabel: String,
+        sourceText: String,
+        emptyResultMessage: String,
+        failureMessage: String,
+        transform: suspend (String) -> String
+    ) {
+        cancelActiveCandidateTranslation()
+        cancelActiveSelectedTextGemmaAction()
+        val requestId = selectedTextGemmaActionRequestId.incrementAndGet()
+        setCandidateTranslationProgressVisible(true)
+        showToastMessage(
+            if (actionLabel == getString(R.string.candidate_action_translate)) {
+                getString(R.string.candidate_translation_in_progress)
+            } else {
+                getString(R.string.candidate_gemma_prompt_in_progress, actionLabel)
+            }
+        )
+        selectedTextGemmaActionJob = ioScope.launch {
+            runCatching {
+                val transformedText = transform(sourceText)
+                transformedText.takeIf { it.isNotBlank() }
+                    ?: throw IllegalStateException(emptyResultMessage)
+            }.onSuccess { transformedText ->
+                withContext(Dispatchers.Main) {
+                    if (!isSelectedTextGemmaActionRequestCurrent(requestId)) return@withContext
+                    finishSelectedTextGemmaAction(requestId)
+                    replaceSelectedTextWithGemmaResult(
+                        originalText = sourceText,
+                        transformedText = transformedText
+                    )
+                }
+            }.onFailure { error ->
+                Timber.e(error, "Selected text Gemma action failed.")
+                withContext(Dispatchers.Main) {
+                    if (!isSelectedTextGemmaActionRequestCurrent(requestId)) return@withContext
+                    finishSelectedTextGemmaAction(requestId)
+                    if (error is CancellationException) return@withContext
+                    showToastMessage(error.localizedMessage ?: failureMessage)
+                }
+            }
+        }
+    }
+
+    private fun replaceSelectedTextWithGemmaResult(
+        originalText: String,
+        transformedText: String
+    ) {
+        val inputConnection = currentInputConnection ?: return
+        val currentSelectedText = inputConnection.getSelectedText(0)?.toString().orEmpty()
+        if (currentSelectedText != originalText) return
+        if (transformedText == originalText) {
+            clearSelectedTextGemmaSession(clearSuggestions = true)
+            return
+        }
+
+        beginBatchEdit()
+        try {
+            commitText(transformedText, 1)
+        } finally {
+            endBatchEdit()
+        }
+        pushEditHistoryEntry(
+            EditHistoryEntry.ReplaceCommittedText(
+                beforeText = originalText,
+                afterText = transformedText
+            )
+        )
+        clearSelectedTextGemmaSession(clearSuggestions = true)
+    }
+
+    private fun isSelectedTextGemmaActionCandidate(candidate: Candidate): Boolean {
+        return candidate.type == GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() ||
+            candidate.type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
+    }
+
+    private fun isSelectedTextGemmaActionRequestCurrent(requestId: Long): Boolean {
+        return selectedTextGemmaActionRequestId.get() == requestId
+    }
+
+    private fun finishSelectedTextGemmaAction(requestId: Long) {
+        if (!isSelectedTextGemmaActionRequestCurrent(requestId)) return
+        selectedTextGemmaActionJob = null
+        setCandidateTranslationProgressVisible(false)
+    }
+
+    private fun cancelActiveSelectedTextGemmaAction() {
+        val currentJob = selectedTextGemmaActionJob
+        if (currentJob?.isActive != true) return
+        selectedTextGemmaActionRequestId.incrementAndGet()
+        selectedTextGemmaActionJob = null
+        setCandidateTranslationProgressVisible(false)
+        gemmaTranslationManager.cancelActiveTranslation()
+        currentJob.cancel(CancellationException("Selected text Gemma action cancelled."))
     }
 
     private fun translateCandidateInPlace(candidate: Candidate, candidatePosition: Int) {
@@ -4406,7 +4671,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         executeGemmaCandidateAction(
             candidate = candidate,
             candidatePosition = candidatePosition,
-            progressMessage = getString(R.string.candidate_gemma_prompt_in_progress, template.title),
+            progressMessage = getString(
+                R.string.candidate_gemma_prompt_in_progress,
+                template.title
+            ),
             emptyResultMessage = getString(R.string.candidate_gemma_prompt_empty),
             failureMessage = getString(R.string.candidate_gemma_prompt_failed, template.title),
             resultCandidateType = GemmaTranslationManager.PROMPT_RESULT_CANDIDATE_TYPE
@@ -4429,6 +4697,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         transform: suspend (String) -> String
     ) {
         cancelActiveCandidateTranslation()
+        cancelActiveSelectedTextGemmaAction()
         val sourceText = displayTextFromCandidate(candidate)
         val expectedPreEditSnapshot = resolveCurrentPreEditText()
         val requestId = candidateTranslationRequestId.incrementAndGet()
@@ -10319,6 +10588,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
+                if (isSelectedTextGemmaActionCandidate(candidate)) return@setOnItemLongClickListener
                 val insertString = inputString.value
                 if (shouldShowCandidateLongPressActions()) {
                     showCandidateLongPressActions(
@@ -10414,6 +10684,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
+                if (isSelectedTextGemmaActionCandidate(candidate)) return@setOnItemLongClickListener
                 val insertString = inputString.value
                 if (shouldShowCandidateLongPressActions()) {
                     showCandidateLongPressActions(
@@ -11426,6 +11697,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         Timber.d("setCandidateClick: $candidate")
+        if (isSelectedTextGemmaActionCandidate(candidate) && handleSelectedTextGemmaActionClick(position)) {
+            return
+        }
         if (handleBunsetsuCandidateClick(candidate, currentInputMode, position)) {
             setCusrorLeftAfterCloseBracket(candidate.string)
             return
@@ -11734,6 +12008,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 commitText(entry.deletedText, 1)
             }
 
+            is EditHistoryEntry.ReplaceCommittedText -> {
+                if (!deleteCommittedTextBeforeCursor(entry.afterText)) {
+                    false
+                } else {
+                    commitText(entry.beforeText, 1)
+                }
+            }
+
             is EditHistoryEntry.CompositionChange -> {
                 restoreCompositionState(entry.beforeInput, entry.beforeTail)
                 true
@@ -11745,6 +12027,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return when (entry) {
             is EditHistoryEntry.DeleteCommittedText -> {
                 deleteCommittedTextBeforeCursor(entry.deletedText)
+            }
+
+            is EditHistoryEntry.ReplaceCommittedText -> {
+                if (!deleteCommittedTextBeforeCursor(entry.beforeText)) {
+                    false
+                } else {
+                    commitText(entry.afterText, 1)
+                }
             }
 
             is EditHistoryEntry.CompositionChange -> {

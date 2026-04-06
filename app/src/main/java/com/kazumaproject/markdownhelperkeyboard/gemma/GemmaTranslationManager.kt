@@ -534,6 +534,8 @@ class GemmaTranslationManager @Inject constructor(
     companion object {
         const val TRANSLATED_CANDIDATE_TYPE = 41
         const val PROMPT_RESULT_CANDIDATE_TYPE = 42
+        const val SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE = 43
+        const val SELECTION_PROMPT_ACTION_CANDIDATE_TYPE = 44
         private const val MODEL_DIR_NAME = "models"
         private const val BACKEND_CLASS = "com.google.ai.edge.litertlm.Backend"
         private const val BACKEND_CPU_CLASS = "com.google.ai.edge.litertlm.Backend\$CPU"
