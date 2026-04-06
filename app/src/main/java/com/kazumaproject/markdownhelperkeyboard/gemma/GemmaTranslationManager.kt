@@ -7,6 +7,8 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -43,6 +45,9 @@ class GemmaTranslationManager @Inject constructor(
 
     @Volatile
     private var nativeLibraryLoaded = false
+
+    @Volatile
+    private var activeConversation: Any? = null
 
     fun isTranslationAvailable(): Boolean {
         return appPreference.enable_gemma_translation_preference &&
@@ -166,14 +171,34 @@ class GemmaTranslationManager @Inject constructor(
 
         withTimeout(60_000L) {
             val conversation = createConversation(activeEngine)
+            activeConversation = conversation
             try {
                 val response = sendPrompt(conversation, buildPrompt(text, direction))
                 val translated = extractTextContents(response).trim()
                 sanitizeOutput(translated)
+            } catch (error: Throwable) {
+                if (!currentCoroutineContext().isActive || activeConversation !== conversation) {
+                    throw kotlinx.coroutines.CancellationException("Gemma translation was cancelled.", error)
+                }
+                throw error
             } finally {
+                if (activeConversation === conversation) {
+                    activeConversation = null
+                }
                 closeQuietly(conversation)
             }
         }
+    }
+
+    fun cancelActiveTranslation() {
+        val conversation = activeConversation ?: return
+        activeConversation = null
+        runCatching {
+            conversation.javaClass.getMethod("cancelProcess").invoke(conversation)
+        }.onFailure {
+            Timber.w(it, "Failed to cancel active Gemma conversation.")
+        }
+        closeQuietly(conversation)
     }
 
     private fun createEngine(modelPath: String, backendName: String): Any {
