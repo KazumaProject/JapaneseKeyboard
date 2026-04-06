@@ -19,6 +19,8 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.Keyboar
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.MapTypeConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplateDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleDao
@@ -52,8 +54,9 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         SystemUserDictionaryEntry::class,
         TwoNodeRuleEntity::class,
         ThreeNodeRuleEntity::class,
+        GemmaPromptTemplate::class,
     ],
-    version = 19,
+    version = 20,
     exportSchema = false
 )
 @TypeConverters(
@@ -74,6 +77,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun shortcutDao(): ShortcutDao
     abstract fun systemUserDictionaryDao(): SystemUserDictionaryDao
     abstract fun ngramRuleDao(): NgramRuleDao
+    abstract fun gemmaPromptTemplateDao(): GemmaPromptTemplateDao
 
     companion object {
 
@@ -484,6 +488,36 @@ abstract class AppDatabase : RoomDatabase() {
                     """
                     CREATE UNIQUE INDEX IF NOT EXISTS `index_three_node_rule_firstWord_firstLeftId_firstRightId_secondWord_secondLeftId_secondRightId_thirdWord_thirdLeftId_thirdRightId`
                     ON `three_node_rule`(`firstWord`, `firstLeftId`, `firstRightId`, `secondWord`, `secondLeftId`, `secondRightId`, `thirdWord`, `thirdLeftId`, `thirdRightId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `gemma_prompt_template` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `title` TEXT NOT NULL,
+                      `prompt` TEXT NOT NULL,
+                      `isEnabled` INTEGER NOT NULL,
+                      `sortOrder` INTEGER NOT NULL,
+                      `createdAt` INTEGER NOT NULL,
+                      `updatedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_gemma_prompt_template_sortOrder`
+                    ON `gemma_prompt_template`(`sortOrder`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_gemma_prompt_template_isEnabled`
+                    ON `gemma_prompt_template`(`isEnabled`)
                     """.trimIndent()
                 )
             }

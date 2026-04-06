@@ -98,6 +98,44 @@
             android:title="@string/user_template_title" />
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/category_gemma_translation_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="gemma_translation_enable_preference"
+            android:summaryOff="@string/gemma_translation_enable_summary_off"
+            android:summaryOn="@string/gemma_translation_enable_summary_on"
+            android:title="@string/gemma_translation_enable_title" />
+
+        <ListPreference
+            android:defaultValue="cpu"
+            android:dependency="gemma_translation_enable_preference"
+            android:entries="@array/gemma_translation_backend_entries"
+            android:entryValues="@array/gemma_translation_backend_values"
+            android:key="gemma_translation_backend_preference"
+            android:title="@string/gemma_translation_backend_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            android:defaultValue="en"
+            android:dependency="gemma_translation_enable_preference"
+            android:entries="@array/gemma_translation_target_language_entries"
+            android:entryValues="@array/gemma_translation_target_language_values"
+            android:key="gemma_translation_target_language_preference"
+            android:title="@string/gemma_translation_target_language_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <Preference
+            android:dependency="gemma_translation_enable_preference"
+            android:key="gemma_translation_model_preference"
+            android:title="@string/gemma_translation_model_title"
+            app:summary="@string/gemma_translation_model_summary_default" />
+
+        <Preference
+            android:key="gemma_prompt_template_management_preference"
+            android:title="@string/gemma_prompt_template_management_title"
+            app:summary="@string/gemma_prompt_template_management_summary" />
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/category_mozc_ut_title">
         <SwitchPreferenceCompat
             android:defaultValue="false"

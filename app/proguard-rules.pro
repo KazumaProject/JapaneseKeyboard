@@ -44,3 +44,10 @@
 # Legacy data compatibility: Pair fields may still appear in old JSON payloads.
 -keep class kotlin.Pair { *; }
 
+# Gemma LiteRT-LM is loaded entirely via reflection from GemmaTranslationManager.
+# Keep class names, members, and singleton fields such as NativeLibraryLoader.INSTANCE
+# so release builds behave the same as debug builds.
+-keep class com.google.ai.edge.litertlm.** { *; }
+
+# LiteRT-LM references kotlin-reflect helper APIs from code paths we do not use.
+-dontwarn kotlin.reflect.full.KClasses
