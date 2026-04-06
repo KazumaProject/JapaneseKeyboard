@@ -139,6 +139,7 @@ data class ImePreferencesSnapshot(
     val enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference: Int,
     val enableTypoCorrectionJapaneseFlickKeyboardPreference: Boolean,
     val enableTypoCorrectionQwertyEnglishKeyboardPreference: Boolean,
+    val enableGemmaTranslationPreference: Boolean,
 ) {
     companion object {
         fun from(appPreference: AppPreference): ImePreferencesSnapshot {
@@ -333,6 +334,7 @@ data class ImePreferencesSnapshot(
                     appPreference.enable_typo_correction_japanese_flick_keyboard_preference,
                 enableTypoCorrectionQwertyEnglishKeyboardPreference =
                     appPreference.enable_typo_correction_qwerty_english_keyboard_preference,
+                enableGemmaTranslationPreference = appPreference.enable_gemma_translation_preference
             )
         }
     }
