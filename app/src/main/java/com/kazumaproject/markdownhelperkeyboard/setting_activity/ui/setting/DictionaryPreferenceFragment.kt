@@ -252,10 +252,14 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             runCatching {
                 gemmaTranslationManager.importModelFromUri(uri)
                 gemmaTranslationManager.initializeIfEnabled(forceReload = true)
-            }.onSuccess {
+            }.onSuccess { initialized ->
                 Toast.makeText(
                     requireContext(),
-                    getString(R.string.gemma_translation_model_import_success),
+                    if (initialized) {
+                        getString(R.string.gemma_translation_model_import_success)
+                    } else {
+                        gemmaTranslationManager.getModelSummary()
+                    },
                     Toast.LENGTH_SHORT
                 ).show()
             }.onFailure { error ->
