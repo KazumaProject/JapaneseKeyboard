@@ -335,6 +335,10 @@ object AppPreference {
     private val ZENZ_MODEL_URI_PREFERENCE = Pair("zenz_model_uri_preference", "")
     private val ENABLE_GEMMA_TRANSLATION_PREFERENCE =
         Pair("gemma_translation_enable_preference", false)
+    private val GEMMA_TRANSLATION_BACKEND_PREFERENCE =
+        Pair("gemma_translation_backend_preference", "cpu")
+    private val GEMMA_TRANSLATION_TARGET_LANGUAGE_PREFERENCE =
+        Pair("gemma_translation_target_language_preference", "en")
     private val GEMMA_TRANSLATION_MODEL_PATH_PREFERENCE =
         Pair("gemma_translation_model_path_preference", "")
     private val KEYBOARD_BACKGROUND_IMAGE_URI_PREFERENCE =
@@ -1643,6 +1647,24 @@ object AppPreference {
         ) ?: ""
         set(value) = preferences.edit {
             it.putString(GEMMA_TRANSLATION_MODEL_PATH_PREFERENCE.first, value)
+        }
+
+    var gemma_translation_backend_preference: String
+        get() = preferences.getString(
+            GEMMA_TRANSLATION_BACKEND_PREFERENCE.first,
+            GEMMA_TRANSLATION_BACKEND_PREFERENCE.second
+        ) ?: GEMMA_TRANSLATION_BACKEND_PREFERENCE.second
+        set(value) = preferences.edit {
+            it.putString(GEMMA_TRANSLATION_BACKEND_PREFERENCE.first, value)
+        }
+
+    var gemma_translation_target_language_preference: String
+        get() = preferences.getString(
+            GEMMA_TRANSLATION_TARGET_LANGUAGE_PREFERENCE.first,
+            GEMMA_TRANSLATION_TARGET_LANGUAGE_PREFERENCE.second
+        ) ?: GEMMA_TRANSLATION_TARGET_LANGUAGE_PREFERENCE.second
+        set(value) = preferences.edit {
+            it.putString(GEMMA_TRANSLATION_TARGET_LANGUAGE_PREFERENCE.first, value)
         }
 
     var keyboard_background_image_uri: String

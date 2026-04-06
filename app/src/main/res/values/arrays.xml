@@ -21,5 +21,60 @@
         <item>medium</item>
         <item>low</item>
     </string-array>
-</resources>
 
+    <string-array name="gemma_translation_backend_entries">
+        <item>@string/gemma_translation_backend_cpu_only</item>
+        <item>@string/gemma_translation_backend_gpu_if_available</item>
+    </string-array>
+
+    <string-array name="gemma_translation_backend_values">
+        <item>cpu</item>
+        <item>gpu_if_available</item>
+    </string-array>
+
+    <string-array name="gemma_translation_target_language_entries">
+        <item>@string/gemma_translation_language_english</item>
+        <item>@string/gemma_translation_language_japanese</item>
+        <item>@string/gemma_translation_language_korean</item>
+        <item>@string/gemma_translation_language_chinese_simplified</item>
+        <item>@string/gemma_translation_language_chinese_traditional</item>
+        <item>@string/gemma_translation_language_spanish</item>
+        <item>@string/gemma_translation_language_french</item>
+        <item>@string/gemma_translation_language_german</item>
+        <item>@string/gemma_translation_language_italian</item>
+        <item>@string/gemma_translation_language_portuguese</item>
+        <item>@string/gemma_translation_language_russian</item>
+        <item>@string/gemma_translation_language_arabic</item>
+        <item>@string/gemma_translation_language_hindi</item>
+        <item>@string/gemma_translation_language_indonesian</item>
+        <item>@string/gemma_translation_language_thai</item>
+        <item>@string/gemma_translation_language_vietnamese</item>
+        <item>@string/gemma_translation_language_turkish</item>
+        <item>@string/gemma_translation_language_polish</item>
+        <item>@string/gemma_translation_language_dutch</item>
+        <item>@string/gemma_translation_language_ukrainian</item>
+    </string-array>
+
+    <string-array name="gemma_translation_target_language_values">
+        <item>en</item>
+        <item>ja</item>
+        <item>ko</item>
+        <item>zh-Hans</item>
+        <item>zh-Hant</item>
+        <item>es</item>
+        <item>fr</item>
+        <item>de</item>
+        <item>it</item>
+        <item>pt</item>
+        <item>ru</item>
+        <item>ar</item>
+        <item>hi</item>
+        <item>id</item>
+        <item>th</item>
+        <item>vi</item>
+        <item>tr</item>
+        <item>pl</item>
+        <item>nl</item>
+        <item>uk</item>
+    </string-array>
+</resources>
