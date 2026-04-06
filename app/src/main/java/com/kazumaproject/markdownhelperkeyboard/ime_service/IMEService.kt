@@ -4389,6 +4389,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 translatedCandidate = translatedCandidate
             )
         }
+
+        reflectTranslatedCandidateInPreEdit(
+            originalCandidate = originalCandidate,
+            translatedCandidate = translatedCandidate,
+            candidatePosition = candidatePosition
+        )
     }
 
     private fun replaceCandidateInList(
@@ -4402,6 +4408,62 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return currentList.toMutableList().apply {
             this[candidatePosition] = translatedCandidate
         }
+    }
+
+    private fun reflectTranslatedCandidateInPreEdit(
+        originalCandidate: Candidate,
+        translatedCandidate: Candidate,
+        candidatePosition: Int
+    ) {
+        val safePosition = candidatePosition.coerceAtLeast(0)
+        suggestionClickNum = safePosition + 1
+        suggestionAdapter?.updateHighlightPosition(safePosition)
+        suggestionAdapterFull?.updateHighlightPosition(safePosition)
+
+        val mainView = mainLayoutBinding
+        val session = bunsetsuConversionSession
+        if (mainView != null &&
+            session != null &&
+            isBunsetsuCursorMoveSessionActive() &&
+            session.segments.isNotEmpty()
+        ) {
+            val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
+            val targetSegment = session.segments[focusedIndex]
+            val updatedCandidates = replaceCandidateInList(
+                currentList = targetSegment.candidates,
+                originalCandidate = originalCandidate,
+                candidatePosition = candidatePosition,
+                translatedCandidate = translatedCandidate
+            )
+            val selectedIndex = safePosition.coerceAtMost(
+                (updatedCandidates.lastIndex).coerceAtLeast(0)
+            )
+            val updatedSegments = session.segments.toMutableList()
+            updatedSegments[focusedIndex] = targetSegment.copy(
+                displayText = translatedCandidate.string,
+                candidates = updatedCandidates,
+                selectedIndex = selectedIndex
+            )
+            bunsetsuConversionSession = session.copy(segments = updatedSegments)
+            renderBunsetsuConversionSession(mainView, floatingKeyboardBinding)
+            return
+        }
+
+        applyComposingText(
+            text = translatedCandidate.string + stringInTail.get(),
+            highlightLength = translatedCandidate.string.length,
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputConversionBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.orange)
+            } else {
+                getColor(com.kazumaproject.core.R.color.orange)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputConversionTextColor
+            } else {
+                null
+            }
+        )
     }
 
     private fun showToastMessage(message: String) {
