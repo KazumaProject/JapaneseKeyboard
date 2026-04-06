@@ -3,9 +3,14 @@ package com.kazumaproject.markdownhelperkeyboard.gemma.ui
 import android.app.AlertDialog
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -43,6 +48,7 @@ class GemmaPromptTemplateFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupRecyclerView()
         observeTemplates()
+        setupMenu()
         binding.fabAddTemplate.setOnClickListener {
             showTemplateEditorDialog(null)
         }
@@ -132,7 +138,12 @@ class GemmaPromptTemplateFragment : Fragment() {
 
     private fun showDeleteConfirmationDialog(template: GemmaPromptTemplate) {
         AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.gemma_prompt_template_delete_confirm_title, template.title))
+            .setTitle(
+                getString(
+                    R.string.gemma_prompt_template_delete_confirm_title,
+                    template.title
+                )
+            )
             .setMessage(getString(R.string.gemma_prompt_template_delete_confirm_message))
             .setPositiveButton(R.string.delete_string) { _, _ ->
                 viewModel.deleteTemplate(template)
@@ -144,5 +155,25 @@ class GemmaPromptTemplateFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun setupMenu() {
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                return when (menuItem.itemId) {
+                    android.R.id.home -> {
+                        parentFragmentManager.popBackStack()
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 }
