@@ -1,6 +1,9 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
+import android.net.Uri
 import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
@@ -9,6 +12,7 @@ import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -23,6 +27,15 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
+
+    @Inject
+    lateinit var gemmaTranslationManager: GemmaTranslationManager
+
+    private val openGemmaModelLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+            if (uri == null) return@registerForActivityResult
+            importGemmaModel(uri)
+        }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.pref_dictionary, rootKey)
@@ -174,5 +187,61 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        val gemmaTranslationSwitch =
+            findPreference<SwitchPreferenceCompat>("gemma_translation_enable_preference")
+        gemmaTranslationSwitch?.setOnPreferenceChangeListener { _, newValue ->
+            val enabled = newValue as Boolean
+            appPreference.enable_gemma_translation_preference = enabled
+            updateGemmaModelSummary(getString(R.string.gemma_translation_model_summary_loading))
+            viewLifecycleOwner.lifecycleScope.launch {
+                if (enabled) {
+                    gemmaTranslationManager.initializeIfEnabled(forceReload = false)
+                } else {
+                    gemmaTranslationManager.disable()
+                }
+                updateGemmaModelSummary()
+            }
+            true
+        }
+
+        val gemmaModelPreference =
+            findPreference<Preference>("gemma_translation_model_preference")
+        gemmaModelPreference?.setOnPreferenceClickListener {
+            openGemmaModelLauncher.launch(arrayOf("*/*"))
+            true
+        }
+
+        updateGemmaModelSummary()
+    }
+
+    private fun importGemmaModel(uri: Uri) {
+        updateGemmaModelSummary(getString(R.string.gemma_translation_model_summary_loading))
+        viewLifecycleOwner.lifecycleScope.launch {
+            runCatching {
+                gemmaTranslationManager.importModelFromUri(uri)
+                gemmaTranslationManager.initializeIfEnabled(forceReload = true)
+            }.onSuccess {
+                Toast.makeText(
+                    requireContext(),
+                    getString(R.string.gemma_translation_model_import_success),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }.onFailure { error ->
+                Toast.makeText(
+                    requireContext(),
+                    error.localizedMessage
+                        ?: getString(R.string.gemma_translation_model_import_failed),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+
+            updateGemmaModelSummary()
+        }
+    }
+
+    private fun updateGemmaModelSummary(summaryOverride: String? = null) {
+        findPreference<Preference>("gemma_translation_model_preference")?.summary =
+            summaryOverride ?: gemmaTranslationManager.getModelSummary()
     }
 }
