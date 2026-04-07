@@ -31,8 +31,8 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 717
-        versionName "1.7.23"
+        versionCode 718
+        versionName "1.7.24"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -89,8 +89,9 @@ android {
 
     buildTypes {
         release {
-            if (signingConfigs.release.storeFile) {
-                signingConfig signingConfigs.release
+            def releaseSigning = signingConfigs.findByName("release")
+            if (releaseSigning?.storeFile) {
+                signingConfig releaseSigning
             }
             minifyEnabled true
             shrinkResources true
