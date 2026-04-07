@@ -22,6 +22,7 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.NeologdLi
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.WikiTextLicense
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.other.ZenzLicense
+import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import de.psdev.licensesdialog.LicensesDialog
 import de.psdev.licensesdialog.licenses.ApacheSoftwareLicense20
 import de.psdev.licensesdialog.licenses.MITLicense
@@ -29,41 +30,10 @@ import de.psdev.licensesdialog.model.Notice
 
 class OpenSourceFragment : Fragment() {
 
-    companion object {
-        val OPEN_SOURCE_LICENSES = listOf(
-            "androidx.core:core-ktx",
-            "androidx.appcompat:appcompat",
-            "com.google.android.material:material",
-            "androidx.constraintlayout:constraintlayout",
-            "androidx.preference:preference-ktx",
-            "androidx.lifecycle:lifecycle-extensions",
-            "androidx.lifecycle:lifecycle-livedata-ktx",
-            "androidx.lifecycle:lifecycle-runtime-ktx",
-            "androidx.lifecycle:lifecycle-viewmodel-ktx",
-            "com.google.dagger:hilt-android",
-            "com.google.dagger:hilt-android-compiler",
-            "androidx.lifecycle:lifecycle-livedata-ktx",
-            "androidx.hilt:hilt-compiler",
-            "androidx.room:room-runtime",
-            "androidx.room:room-compiler",
-            "androidx.room:room-ktx",
-            "androidx.navigation:navigation-fragment-ktx",
-            "androidx.navigation:navigation-ui-ktx",
-            "com.google.code.gson:gson",
-            "org.jetbrains.kotlinx:kotlinx-coroutines-core",
-            "de.psdev.licensesdialog:licensesdialog",
-            "mozc",
-            "com.github.MasayukiSuda:BubbleLayout",
-            "jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA",
-            "mecab-ipadic-neologd",
-            "merge-ut-dictionaries",
-            "Salesforce/wikitext",
-            "com.afollestad.material-dialogs:core:3.3.0",
-            "com.afollestad.material-dialogs:color:3.3.0",
-            "Miwa-Keita/zenz-v3.1-xsmall-gguf",
-            "azooKey/llama.cpp"
-        )
-    }
+    private data class LicenseEntry(
+        val label: String,
+        val onClick: () -> Unit,
+    )
 
     private var _binding: FragmentOpenSourceBinding? = null
     private val binding get() = _binding!!
@@ -95,250 +65,218 @@ class OpenSourceFragment : Fragment() {
 
         setupToolbarAndMenu()
 
+        val licenses = buildLicenseEntries()
         val arrayAdapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_list_item_1,
-            OPEN_SOURCE_LICENSES
+            licenses.map { it.label }
         )
         binding.openSourceLicenseList.apply {
             adapter = arrayAdapter
             setOnItemClickListener { _, _, position, _ ->
-                when (position) {
-                    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Copyright (c) 2005-2011, The Android Open Source Project"
-                        val license = ApacheSoftwareLicense20()
-                        val notice = Notice(name, "", copyright, license)
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("Apache Software License")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    19 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Copyright (c) 2018 Wellington Costa"
-                        val license = MITLicense()
-                        val notice = Notice(name, "", copyright, license)
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("MIT Software License")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    20 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Apache License"
-                        val license = LicenseDialogLicense()
-                        val notice =
-                            Notice(
-                                name,
-                                "https://github.com/PSDev/LicensesDialog.git",
-                                copyright,
-                                license
-                            )
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("Apache License")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    21 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Copyright 2010-2018, Google Inc."
-                        val license = MozcLicense()
-                        val notice =
-                            Notice(name, "https://github.com/google/mozc", copyright, license)
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("Copyright 2010-2018, Google Inc.")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    22 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Copyright 2016 MasayukiSuda"
-                        val license = MITLicense()
-                        val notice = Notice(
-                            name,
-                            "https://github.com/MasayukiSuda/BubbleLayout",
-                            copyright,
-                            license
-                        )
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("MIT License")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    23 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright =
-                            "Wikipedia CC BY-SA"
-                        val license = WikiLicense()
-                        val notice = Notice(
-                            name,
-                            "https://ja.wikipedia.org/wiki/Wikipedia:%E3%82%A6%E3%82%A3%E3%82%AD%E3%83%9A%E3%83%87%E3%82%A3%E3%82%A2%E3%82%92%E4%BA%8C%E6%AC%A1%E5%88%A9%E7%94%A8%E3%81%99%E3%82%8B",
-                            copyright,
-                            license
-                        )
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    24 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright =
-                            "2015-2019 Toshinori Sato (@overlast)"
-                        val license = NeologdLicense()
-                        val notice = Notice(
-                            name,
-                            "https://github.com/neologd/mecab-ipadic-neologd/blob/master/COPYING",
-                            copyright,
-                            license
-                        )
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("mecab-ipadic-neologd")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    25 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = ""
-                        val license = ApacheSoftwareLicense20()
-                        val notice = Notice(
-                            name,
-                            "https://github.com/utuhiro78/merge-ut-dictionaries/blob/main/LICENSE",
-                            copyright,
-                            license
-                        )
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("merge-ut-dictionaries")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    26 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright =
-                            " Creative Commons Attribution-ShareAlike License (CC BY-SA 4.0)"
-                        val license = WikiTextLicense()
-                        val notice = Notice(
-                            name,
-                            "https://huggingface.co/datasets/Salesforce/wikitext",
-                            copyright,
-                            license
-                        )
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("Salesforce/wikitext")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    27 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Copyright 2018 Aidan Follestad"
-                        val license = LicenseDialogLicense()
-                        val notice =
-                            Notice(
-                                name,
-                                "https://github.com/afollestad/material-dialogs",
-                                copyright,
-                                license
-                            )
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("com.afollestad.material-dialogs:core:3.3.0")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    28 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Copyright 2018 Aidan Follestad"
-                        val license = LicenseDialogLicense()
-                        val notice =
-                            Notice(
-                                name,
-                                "https://github.com/afollestad/material-dialogs",
-                                copyright,
-                                license
-                            )
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("com.afollestad.material-dialogs:color:3.3.0")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    29 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Copyright 2025 Miwa-Keita"
-                        val license = ZenzLicense()
-                        val notice =
-                            Notice(
-                                name,
-                                "https://huggingface.co/Miwa-Keita/zenz-v3.1-xsmall-gguf",
-                                copyright,
-                                license
-                            )
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("Miwa-Keita/zenz-v3.1-xsmall-gguf")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                    30 -> {
-                        val name = OPEN_SOURCE_LICENSES[position]
-                        val copyright = "Copyright (c) 2023-2024 The ggml authors"
-                        val license = MITLicense()
-                        val notice =
-                            Notice(
-                                name,
-                                "https://github.com/azooKey/llama.cpp.git",
-                                copyright,
-                                license
-                            )
-                        LicensesDialog.Builder(requireContext())
-                            .setTitle("azooKey/llama.cpp")
-                            .setNotices(notice)
-                            .build()
-                            .show()
-                    }
-
-                }
+                licenses[position].onClick()
             }
         }
     }
 
-    private fun setupToolbarAndMenu() {
-        // Set up the activity's action bar
-        (activity as? AppCompatActivity)?.supportActionBar?.apply {
-            title = getString(R.string.open_sorce_title) // Set a title for the screen
-            setDisplayHomeAsUpEnabled(true) // Show the back arrow
+    private fun buildLicenseEntries(): List<LicenseEntry> {
+        val entries = mutableListOf<LicenseEntry>()
+        val apacheLicenses = listOf(
+            "androidx.core:core-ktx",
+            "androidx.appcompat:appcompat",
+            "com.google.android.material:material",
+            "androidx.constraintlayout:constraintlayout",
+            "androidx.preference:preference-ktx",
+            "androidx.lifecycle:lifecycle-extensions",
+            "androidx.lifecycle:lifecycle-livedata-ktx",
+            "androidx.lifecycle:lifecycle-runtime-ktx",
+            "androidx.lifecycle:lifecycle-viewmodel-ktx",
+            "com.google.dagger:hilt-android",
+            "com.google.dagger:hilt-android-compiler",
+            "androidx.lifecycle:lifecycle-livedata-ktx",
+            "androidx.hilt:hilt-compiler",
+            "androidx.room:room-runtime",
+            "androidx.room:room-compiler",
+            "androidx.room:room-ktx",
+            "androidx.navigation:navigation-fragment-ktx",
+            "androidx.navigation:navigation-ui-ktx",
+        )
+
+        apacheLicenses.forEach { name ->
+            entries += LicenseEntry(name) {
+                showLicenseDialog(
+                    title = "Apache Software License",
+                    notice = Notice(
+                        name,
+                        "",
+                        "Copyright (c) 2005-2011, The Android Open Source Project",
+                        ApacheSoftwareLicense20()
+                    )
+                )
+            }
         }
 
-        // Add the menu provider, which is the modern way to handle menus in fragments.
-        val menuHost: MenuHost = requireActivity()
-        menuHost.addMenuProvider(object : MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+        entries += LicenseEntry("org.jetbrains.kotlinx:kotlinx-coroutines-core") {
+            showLicenseDialog(
+                title = "MIT Software License",
+                notice = Notice(
+                    "org.jetbrains.kotlinx:kotlinx-coroutines-core",
+                    "",
+                    "Copyright (c) 2018 Wellington Costa",
+                    MITLicense()
+                )
+            )
+        }
+
+        entries += LicenseEntry("de.psdev.licensesdialog:licensesdialog") {
+            showLicenseDialog(
+                title = "Apache License",
+                notice = Notice(
+                    "de.psdev.licensesdialog:licensesdialog",
+                    "https://github.com/PSDev/LicensesDialog.git",
+                    "Apache License",
+                    LicenseDialogLicense()
+                )
+            )
+        }
+
+        entries += LicenseEntry("mozc") {
+            showLicenseDialog(
+                title = "Copyright 2010-2018, Google Inc.",
+                notice = Notice(
+                    "mozc",
+                    "https://github.com/google/mozc",
+                    "Copyright 2010-2018, Google Inc.",
+                    MozcLicense()
+                )
+            )
+        }
+
+        entries += LicenseEntry("com.github.MasayukiSuda:BubbleLayout") {
+            showLicenseDialog(
+                title = "MIT License",
+                notice = Notice(
+                    "com.github.MasayukiSuda:BubbleLayout",
+                    "https://github.com/MasayukiSuda/BubbleLayout",
+                    "Copyright 2016 MasayukiSuda",
+                    MITLicense()
+                )
+            )
+        }
+
+        entries += LicenseEntry("jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA") {
+            showLicenseDialog(
+                title = "jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA",
+                notice = Notice(
+                    "jawiki-latest-pages-articles-multistream-index.txt: CC BY-SA",
+                    "https://ja.wikipedia.org/wiki/Wikipedia:%E3%82%A6%E3%82%A3%E3%82%AD%E3%83%9A%E3%83%87%E3%82%A3%E3%82%A2%E3%82%92%E4%BA%8C%E6%AC%A1%E5%88%A9%E7%94%A8%E3%81%99%E3%82%8B",
+                    "Wikipedia CC BY-SA",
+                    WikiLicense()
+                )
+            )
+        }
+
+        entries += LicenseEntry("mecab-ipadic-neologd") {
+            showLicenseDialog(
+                title = "mecab-ipadic-neologd",
+                notice = Notice(
+                    "mecab-ipadic-neologd",
+                    "https://github.com/neologd/mecab-ipadic-neologd/blob/master/COPYING",
+                    "2015-2019 Toshinori Sato (@overlast)",
+                    NeologdLicense()
+                )
+            )
+        }
+
+        entries += LicenseEntry("merge-ut-dictionaries") {
+            showLicenseDialog(
+                title = "merge-ut-dictionaries",
+                notice = Notice(
+                    "merge-ut-dictionaries",
+                    "https://github.com/utuhiro78/merge-ut-dictionaries/blob/main/LICENSE",
+                    "",
+                    ApacheSoftwareLicense20()
+                )
+            )
+        }
+
+        entries += LicenseEntry("Salesforce/wikitext") {
+            showLicenseDialog(
+                title = "Salesforce/wikitext",
+                notice = Notice(
+                    "Salesforce/wikitext",
+                    "https://huggingface.co/datasets/Salesforce/wikitext",
+                    "Creative Commons Attribution-ShareAlike License (CC BY-SA 4.0)",
+                    WikiTextLicense()
+                )
+            )
+        }
+
+        listOf(
+            "com.afollestad.material-dialogs:core:3.3.0",
+            "com.afollestad.material-dialogs:color:3.3.0"
+        ).forEach { name ->
+            entries += LicenseEntry(name) {
+                showLicenseDialog(
+                    title = name,
+                    notice = Notice(
+                        name,
+                        "https://github.com/afollestad/material-dialogs",
+                        "Copyright 2018 Aidan Follestad",
+                        LicenseDialogLicense()
+                    )
+                )
+            }
+        }
+
+        if (AppVariantConfig.hasZenz) {
+            entries += LicenseEntry("Miwa-Keita/zenz-v3.1-xsmall-gguf") {
+                showLicenseDialog(
+                    title = "Miwa-Keita/zenz-v3.1-xsmall-gguf",
+                    notice = Notice(
+                        "Miwa-Keita/zenz-v3.1-xsmall-gguf",
+                        "https://huggingface.co/Miwa-Keita/zenz-v3.1-xsmall-gguf",
+                        "Copyright 2025 Miwa-Keita",
+                        ZenzLicense()
+                    )
+                )
             }
 
+            entries += LicenseEntry("azooKey/llama.cpp") {
+                showLicenseDialog(
+                    title = "azooKey/llama.cpp",
+                    notice = Notice(
+                        "azooKey/llama.cpp",
+                        "https://github.com/azooKey/llama.cpp.git",
+                        "Copyright (c) 2023-2024 The ggml authors",
+                        MITLicense()
+                    )
+                )
+            }
+        }
+
+        return entries
+    }
+
+    private fun showLicenseDialog(title: String, notice: Notice) {
+        LicensesDialog.Builder(requireContext())
+            .setTitle(title)
+            .setNotices(notice)
+            .build()
+            .show()
+    }
+
+    private fun setupToolbarAndMenu() {
+        (activity as? AppCompatActivity)?.supportActionBar?.apply {
+            title = getString(R.string.open_sorce_title)
+            setDisplayHomeAsUpEnabled(true)
+        }
+
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) = Unit
+
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                // Handle the menu selection
                 return when (menuItem.itemId) {
                     android.R.id.home -> {
                         findNavController().popBackStack()
@@ -350,5 +288,4 @@ class OpenSourceFragment : Fragment() {
             }
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
-
 }
