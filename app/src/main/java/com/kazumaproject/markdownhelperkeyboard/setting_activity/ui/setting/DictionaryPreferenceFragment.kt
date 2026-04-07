@@ -1,19 +1,14 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
-import android.net.Uri
 import android.os.Bundle
-import android.widget.Toast
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
-import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
@@ -28,15 +23,6 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
-
-    @Inject
-    lateinit var gemmaTranslationManager: GemmaTranslationManager
-
-    private val openGemmaModelLauncher =
-        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            if (uri == null) return@registerForActivityResult
-            importGemmaModel(uri)
-        }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.pref_dictionary, rootKey)
@@ -59,25 +45,21 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val ngWordPreference = findPreference<Preference>("ng_word_preference")
-        ngWordPreference?.setOnPreferenceClickListener {
+        findPreference<Preference>("ng_word_preference")?.setOnPreferenceClickListener {
             findNavController().navigate(
                 R.id.action_navigation_setting_to_ngWordFragment
             )
             true
         }
 
-        val systemUserDictionaryBuilderPreference =
-            findPreference<Preference>("system_user_dictionary_builder_preference")
-        systemUserDictionaryBuilderPreference?.setOnPreferenceClickListener {
+        findPreference<Preference>("system_user_dictionary_builder_preference")?.setOnPreferenceClickListener {
             findNavController().navigate(
                 R.id.action_navigation_setting_to_systemUserDictionaryBuilderFragment
             )
             true
         }
 
-        val ngramRulePreference = findPreference<Preference>("n_gram_rule_preference")
-        ngramRulePreference?.setOnPreferenceClickListener {
+        findPreference<Preference>("n_gram_rule_preference")?.setOnPreferenceClickListener {
             findNavController().navigate(
                 R.id.action_navigation_setting_to_ngramRuleFragment
             )
@@ -88,11 +70,10 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<SeekBarPreference>("learn_prediction_preference")
         learnDictionaryPrefixSeekBar?.apply {
             appPreference.learn_prediction_preference.let {
-                this.summary =
-                    resources.getString(R.string.learn_dictionary_prefix_match_summary, it)
+                summary = resources.getString(R.string.learn_dictionary_prefix_match_summary, it)
             }
-            this.setOnPreferenceChangeListener { _, newValue ->
-                this.summary =
+            setOnPreferenceChangeListener { _, newValue ->
+                summary =
                     resources.getString(
                         R.string.learn_dictionary_prefix_match_summary,
                         newValue as Int
@@ -105,11 +86,10 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<SeekBarPreference>("user_dictionary_prefix_match_number")
         userDictionaryPrefixSeekBar?.apply {
             appPreference.user_dictionary_prefix_match_number_preference?.let {
-                this.summary =
-                    resources.getString(R.string.user_dictionary_prefix_match_summary, it)
+                summary = resources.getString(R.string.user_dictionary_prefix_match_summary, it)
             }
-            this.setOnPreferenceChangeListener { _, newValue ->
-                this.summary =
+            setOnPreferenceChangeListener { _, newValue ->
+                summary =
                     resources.getString(
                         R.string.user_dictionary_prefix_match_summary,
                         newValue as Int
@@ -118,10 +98,8 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val mozcUTPersonName =
-            findPreference<SwitchPreferenceCompat>("mozc_ut_person_name_preference")
-        mozcUTPersonName?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
+        findPreference<SwitchPreferenceCompat>("mozc_ut_person_name_preference")?.apply {
+            setOnPreferenceChangeListener { _, newValue ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     if (newValue as Boolean) {
                         kanaKanjiEngine.buildPersonNamesDictionary(requireContext())
@@ -133,9 +111,8 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val mozcUTPlaces = findPreference<SwitchPreferenceCompat>("mozc_ut_places_preference")
-        mozcUTPlaces?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
+        findPreference<SwitchPreferenceCompat>("mozc_ut_places_preference")?.apply {
+            setOnPreferenceChangeListener { _, newValue ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     if (newValue as Boolean) {
                         kanaKanjiEngine.buildPlaceDictionary(requireContext())
@@ -147,9 +124,8 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val mozcUTWiki = findPreference<SwitchPreferenceCompat>("mozc_ut_wiki_preference")
-        mozcUTWiki?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
+        findPreference<SwitchPreferenceCompat>("mozc_ut_wiki_preference")?.apply {
+            setOnPreferenceChangeListener { _, newValue ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     if (newValue as Boolean) {
                         kanaKanjiEngine.buildWikiDictionary(requireContext())
@@ -161,9 +137,8 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val mozcUTNeologd = findPreference<SwitchPreferenceCompat>("mozc_ut_neologd_preference")
-        mozcUTNeologd?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
+        findPreference<SwitchPreferenceCompat>("mozc_ut_neologd_preference")?.apply {
+            setOnPreferenceChangeListener { _, newValue ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     if (newValue as Boolean) {
                         kanaKanjiEngine.buildNeologdDictionary(requireContext())
@@ -175,9 +150,8 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val mozcUTWeb = findPreference<SwitchPreferenceCompat>("mozc_ut_web_preference")
-        mozcUTWeb?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
+        findPreference<SwitchPreferenceCompat>("mozc_ut_web_preference")?.apply {
+            setOnPreferenceChangeListener { _, newValue ->
                 viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
                     if (newValue as Boolean) {
                         kanaKanjiEngine.buildWebDictionary(requireContext())
@@ -188,95 +162,5 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
-
-        val gemmaTranslationSwitch =
-            findPreference<SwitchPreferenceCompat>("gemma_translation_enable_preference")
-        gemmaTranslationSwitch?.setOnPreferenceChangeListener { _, newValue ->
-            val enabled = newValue as Boolean
-            appPreference.enable_gemma_translation_preference = enabled
-            updateGemmaModelSummary(getString(R.string.gemma_translation_model_summary_loading))
-            viewLifecycleOwner.lifecycleScope.launch {
-                if (enabled) {
-                    gemmaTranslationManager.initializeIfEnabled(forceReload = false)
-                } else {
-                    gemmaTranslationManager.disable()
-                }
-                updateGemmaModelSummary()
-            }
-            true
-        }
-
-        findPreference<ListPreference>("gemma_translation_backend_preference")?.apply {
-            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-            setOnPreferenceChangeListener { _, newValue ->
-                appPreference.gemma_translation_backend_preference = newValue as String
-                if (appPreference.enable_gemma_translation_preference) {
-                    updateGemmaModelSummary(getString(R.string.gemma_translation_model_summary_loading))
-                    viewLifecycleOwner.lifecycleScope.launch {
-                        gemmaTranslationManager.initializeIfEnabled(forceReload = true)
-                        updateGemmaModelSummary()
-                    }
-                }
-                true
-            }
-        }
-
-        findPreference<ListPreference>("gemma_translation_target_language_preference")?.apply {
-            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-            setOnPreferenceChangeListener { _, newValue ->
-                appPreference.gemma_translation_target_language_preference = newValue as String
-                true
-            }
-        }
-
-        val gemmaModelPreference =
-            findPreference<Preference>("gemma_translation_model_preference")
-        gemmaModelPreference?.setOnPreferenceClickListener {
-            openGemmaModelLauncher.launch(arrayOf("*/*"))
-            true
-        }
-
-        findPreference<Preference>("gemma_prompt_template_management_preference")?.setOnPreferenceClickListener {
-            findNavController().navigate(
-                R.id.action_navigation_setting_to_gemmaPromptTemplateFragment
-            )
-            true
-        }
-
-        updateGemmaModelSummary()
-    }
-
-    private fun importGemmaModel(uri: Uri) {
-        updateGemmaModelSummary(getString(R.string.gemma_translation_model_summary_loading))
-        viewLifecycleOwner.lifecycleScope.launch {
-            runCatching {
-                gemmaTranslationManager.importModelFromUri(uri)
-                gemmaTranslationManager.initializeIfEnabled(forceReload = true)
-            }.onSuccess { initialized ->
-                Toast.makeText(
-                    requireContext(),
-                    if (initialized) {
-                        getString(R.string.gemma_translation_model_import_success)
-                    } else {
-                        gemmaTranslationManager.getModelSummary()
-                    },
-                    Toast.LENGTH_SHORT
-                ).show()
-            }.onFailure { error ->
-                Toast.makeText(
-                    requireContext(),
-                    error.localizedMessage
-                        ?: getString(R.string.gemma_translation_model_import_failed),
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-
-            updateGemmaModelSummary()
-        }
-    }
-
-    private fun updateGemmaModelSummary(summaryOverride: String? = null) {
-        findPreference<Preference>("gemma_translation_model_preference")?.summary =
-            summaryOverride ?: gemmaTranslationManager.getModelSummary()
     }
 }
