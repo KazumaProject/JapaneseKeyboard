@@ -124,6 +124,40 @@ zenzModelAssetName=ggml-model-Q5_K_M.gguf
 
 このモードでは生成済みモデルを `zenz/build/generated/assets/zenzModel/main/ggml-model-Q5_K_M.gguf` に出力して APK/AAB に同梱します。Python 3 と CMake が必要で、初回は `huggingface_hub` と `llama.cpp` の変換用依存を自動で入れます。
 
+#### 配布バリアント
+
+このプロジェクトでは `edition` と `channel` の 2 軸で APK を出し分けます。
+
+- `fullStandard`: 既定の全部入り版。`zenz` と `gemma` を含みます
+- `liteStandard`: 軽量版。`zenz` と `gemma` を含みません
+- `liteFdroid`: F-Droid 向け軽量版。`zenz` と `gemma` を含みません
+
+`fullFdroid` は意図的に無効化しています。
+
+各バリアントの `applicationId` は次の通りです。
+
+- `fullStandard`: `com.kazumaproject.markdownhelperkeyboard`
+- `liteStandard`: `com.kazumaproject.markdownhelperkeyboard.lite`
+- `liteFdroid`: `com.kazumaproject.markdownhelperkeyboard.lite.fdroid`
+
+ローカルで unsigned release APK を作る場合は次を使います。
+
+```bash
+./gradlew assembleFullStandardReleaseUnsigned
+./gradlew assembleLiteStandardReleaseUnsigned
+./gradlew assembleLiteFdroidReleaseUnsigned
+```
+
+署名付き release APK を作る場合は `local.properties` に署名情報を設定したうえで次を使います。
+
+```bash
+./gradlew assembleFullStandardRelease
+./gradlew assembleLiteStandardRelease
+./gradlew assembleLiteFdroidRelease
+```
+
+生成物は `app/build/outputs/apk/<variant>/...` に出力されます。GitHub Actions の release workflow でも同じ 3 バリアントを tag push 時にビルドします。
+
 ### 🤝 貢献するには
 
 このプロジェクトはオープンソースです。バグ報告、機能提案、そしてプルリクエストを心から歓迎します。
