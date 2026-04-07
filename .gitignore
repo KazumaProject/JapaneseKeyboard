@@ -19,3 +19,6 @@ local.properties
 app/release
 .gradle-user-home
 .idea/copilot.data.migration.ask2agent.xml
+app/fullStandard/
+app/liteFdroid/
+app/liteStandard
