@@ -95,12 +95,13 @@ class SettingMainFragment : Fragment() {
                     0 -> getString(R.string.category_common)
                     1 -> getString(R.string.keyboardthemefragment)
                     2 -> "zenz"
-                    3 -> getString(R.string.category_dictionary)
-                    4 -> getString(R.string.category_kana)
-                    5 -> "QWERTY"
-                    6 -> getString(R.string.category_sumire_input_keyboard_title) // スミレ入力
-                    7 -> getString(R.string.category_custom_keyboard_title) // カスタムキーボード
-                    8 -> getString(R.string.tablet_preference_category_title) // タブレット
+                    3 -> "Gemma"
+                    4 -> getString(R.string.category_dictionary)
+                    5 -> getString(R.string.category_kana)
+                    6 -> "QWERTY"
+                    7 -> getString(R.string.category_sumire_input_keyboard_title) // スミレ入力
+                    8 -> getString(R.string.category_custom_keyboard_title) // カスタムキーボード
+                    9 -> getString(R.string.tablet_preference_category_title) // タブレット
                     else -> ""
                 }
             }
