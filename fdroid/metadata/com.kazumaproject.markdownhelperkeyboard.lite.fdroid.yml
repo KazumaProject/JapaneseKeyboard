@@ -1,0 +1,48 @@
+Categories:
+  - Keyboard & IME
+License: MIT
+AuthorName: Kazuma Naka
+WebSite: https://github.com/KazumaProject/JapaneseKeyboard
+SourceCode: https://github.com/KazumaProject/JapaneseKeyboard
+IssueTracker: https://github.com/KazumaProject/JapaneseKeyboard/issues
+Changelog: https://github.com/KazumaProject/JapaneseKeyboard/releases
+Donate: https://github.com/sponsors/KazumaProject
+
+RepoType: git
+Repo: https://github.com/KazumaProject/JapaneseKeyboard.git
+
+MaintainerNotes: |
+  Build the liteFdroid flavor only.
+
+  The upstream repository contains the llama.cpp submodule for the full edition,
+  but the published F-Droid package is the lightweight flavor and does not include
+  the optional zenz or gemma model features.
+
+  This is a new package ID for the dedicated F-Droid flavor:
+  com.kazumaproject.markdownhelperkeyboard.lite.fdroid
+
+  Upstream fastlane metadata lives in fastlane/metadata/android/.
+
+  The submission draft builds the existing releaseUnsigned build type and reads
+  the APK from app/build/outputs/apk/liteFdroid/releaseUnsigned/.
+
+AutoUpdateMode: Version +-lite-fdroid %v
+UpdateCheckMode: Tags .*[0-9]$
+UpdateCheckData: app/build.gradle|versionCode\s+(\d+)||v([\d.]+)
+UpdateCheckName: Ignore
+CurrentVersion: 1.7.23-lite-fdroid
+CurrentVersionCode: 717
+
+Builds:
+  - versionName: 1.7.23-lite-fdroid
+    versionCode: 717
+    commit: v1.7.23
+    submodules: true
+    scanignore:
+      - app/src/main/assets/*.dat.zip
+      - app/src/main/assets/*/*.dat.zip
+    scandelete:
+      - zenz/src/main/cpp/llama.cpp/examples/llama.android/gradle/wrapper/gradle-wrapper.jar
+    build:
+      - ./gradlew assembleLiteFdroidReleaseUnsigned
+    output: app/build/outputs/apk/liteFdroid/releaseUnsigned/app-liteFdroid-release-unsigned.apk
