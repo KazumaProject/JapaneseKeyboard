@@ -13,18 +13,24 @@ RepoType: git
 Repo: https://github.com/KazumaProject/JapaneseKeyboard.git
 Binaries: https://github.com/KazumaProject/JapaneseKeyboard/releases/download/v%v/app-release.apk
 
-
 Builds:
   - versionName: 1.7.23-lite-fdroid
     versionCode: 717
-    commit: v1.7.23
+    commit: 21730e6a6c5bcc666732227fe8344f42340b0250
+    output: 
+      app/build/outputs/apk/liteFdroid/releaseUnsigned/app-liteFdroid-release-unsigned.apk
     scanignore:
       - app/src/main/assets/*.dat.zip
       - app/src/main/assets/*/*.dat.zip
+    prebuild:
+      - perl -0pi -e 's/if \(signingConfigs\.release\.storeFile\) \{\n\s*signingConfig signingConfigs\.release\n\s*\}/def releaseSigning = signingConfigs.findByName("release")\n            if (releaseSigning?.storeFile) {\n                signingConfig releaseSigning\n            }/s'
+        app/build.gradle
+    build: gradle assembleLiteFdroidReleaseUnsigned
 
 AllowedAPKSigningKeys: ec676c30f05f3947a1aec86d02ecead150f772790b35fcaf8af484c1dd5eb4c0
 
 AutoUpdateMode: Version +-lite-fdroid %v
 UpdateCheckMode: Tags .*[0-9]$
+UpdateCheckData: app/build.gradle|versionCode\s+(\d+)|app/build.gradle|versionName\s+"([\d.]+)"
 CurrentVersion: 1.7.23-lite-fdroid
 CurrentVersionCode: 717
