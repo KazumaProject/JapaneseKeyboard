@@ -1,0 +1,2 @@
+Added the dedicated Lite F-Droid release flavor.
+Added upstream metadata, localized descriptions, and screenshots for the F-Droid listing.

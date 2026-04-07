@@ -1,0 +1,11 @@
+Sumire is a Japanese keyboard for people who want local-first input and predictable behavior. Typing, conversion, personalization, and learning data stay on the device.
+
+The Lite F-Droid build focuses on the core keyboard experience:
+- kana and romaji input with Japanese candidate conversion
+- user dictionary and reusable text snippets
+- clipboard-based helpers and customizable keyboard layouts
+- emoji and symbol keyboards
+
+This flavor excludes the optional Zenz and Gemma model features so it can be distributed on F-Droid with the free-software components needed for everyday typing.
+
+The app does not request Internet access. Voice input uses the microphone permission only when you choose to use speech recognition provided by your device.
