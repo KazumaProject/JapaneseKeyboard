@@ -189,6 +189,7 @@
     <string name="candidate_translation_in_progress">Translating candidate…</string>
     <string name="candidate_translation_failed">Translation failed.</string>
     <string name="candidate_translation_empty">No translated text was returned.</string>
+    <string name="candidate_translation_cancelled_context_changed">Translation was cancelled because the input text changed.</string>
     <string name="candidate_gemma_prompt_in_progress">Running \"%1$s\"…</string>
     <string name="candidate_gemma_prompt_failed">Failed to run \"%1$s\".</string>
     <string name="candidate_gemma_prompt_empty">Gemma returned an empty result.</string>
