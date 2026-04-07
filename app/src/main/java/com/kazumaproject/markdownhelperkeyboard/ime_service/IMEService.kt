@@ -4592,7 +4592,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (!isSelectedTextGemmaActionRequestCurrent(requestId)) return@withContext
                     finishSelectedTextGemmaAction(requestId)
                     if (error is CancellationException) return@withContext
-                    showToastMessage(error.localizedMessage ?: failureMessage)
+                    showToastMessage(resolveThrowableMessage(error, failureMessage))
                 }
             }
         }
@@ -4602,9 +4602,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         originalText: String,
         transformedText: String
     ) {
-        val inputConnection = currentInputConnection ?: return
+        val inputConnection = currentInputConnection
+        if (inputConnection == null) {
+            showToastMessage(getString(R.string.candidate_translation_cancelled_context_changed))
+            clearSelectedTextGemmaSession(clearSuggestions = true)
+            return
+        }
         val currentSelectedText = inputConnection.getSelectedText(0)?.toString().orEmpty()
-        if (currentSelectedText != originalText) return
+        if (currentSelectedText != originalText) {
+            showToastMessage(getString(R.string.candidate_translation_cancelled_context_changed))
+            clearSelectedTextGemmaSession(clearSuggestions = true)
+            return
+        }
         if (transformedText == originalText) {
             clearSelectedTextGemmaSession(clearSuggestions = true)
             return
@@ -4713,7 +4722,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 withContext(Dispatchers.Main) {
                     if (!isCandidateTranslationRequestCurrent(requestId)) return@withContext
                     if (resolveCurrentPreEditText() != expectedPreEditSnapshot) {
-                        cancelActiveCandidateTranslation()
+                        finishCandidateTranslation(requestId)
+                        showToastMessage(getString(R.string.candidate_translation_cancelled_context_changed))
                         return@withContext
                     }
                     finishCandidateTranslation(requestId)
@@ -4730,7 +4740,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (!isCandidateTranslationRequestCurrent(requestId)) return@withContext
                     finishCandidateTranslation(requestId)
                     if (error is CancellationException) return@withContext
-                    showToastMessage(error.localizedMessage ?: failureMessage)
+                    showToastMessage(resolveThrowableMessage(error, failureMessage))
                 }
             }
         }
@@ -4904,6 +4914,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun showToastMessage(message: String) {
         scope.launch(Dispatchers.Main) {
             Toast.makeText(this@IMEService, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun resolveThrowableMessage(error: Throwable, fallbackMessage: String): String {
+        val localized = error.localizedMessage?.trim().orEmpty()
+        if (localized.isNotEmpty()) return localized
+
+        val message = error.message?.trim().orEmpty()
+        if (message.isNotEmpty()) return message
+
+        val className = error.javaClass.simpleName.trim()
+        return if (className.isNotEmpty()) {
+            "$fallbackMessage ($className)"
+        } else {
+            fallbackMessage
         }
     }
 
