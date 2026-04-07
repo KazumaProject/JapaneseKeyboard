@@ -31,9 +31,47 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 716
-        versionName "1.7.22"
+        versionCode 717
+        versionName "1.7.23"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    flavorDimensions "edition", "channel"
+
+    productFlavors {
+        full {
+            dimension "edition"
+            buildConfigField "boolean", "HAS_ZENZ", "true"
+            buildConfigField "boolean", "HAS_GEMMA", "true"
+            buildConfigField "String", "APP_EDITION", "\"full\""
+        }
+        lite {
+            dimension "edition"
+            applicationIdSuffix ".lite"
+            versionNameSuffix "-lite"
+            buildConfigField "boolean", "HAS_ZENZ", "false"
+            buildConfigField "boolean", "HAS_GEMMA", "false"
+            buildConfigField "String", "APP_EDITION", "\"lite\""
+        }
+        standard {
+            dimension "channel"
+            buildConfigField "boolean", "IS_FDROID", "false"
+            buildConfigField "String", "DIST_CHANNEL", "\"standard\""
+        }
+        fdroid {
+            dimension "channel"
+            applicationIdSuffix ".fdroid"
+            versionNameSuffix "-fdroid"
+            buildConfigField "boolean", "IS_FDROID", "true"
+            buildConfigField "String", "DIST_CHANNEL", "\"fdroid\""
+        }
+    }
+
+    variantFilter { variant ->
+        def flavorNames = variant.flavors*.name
+        if (flavorNames.contains("full") && flavorNames.contains("fdroid")) {
+            setIgnore(true)
+        }
     }
 
     def shouldSplitApks = project.hasProperty('splitApks')
@@ -72,6 +110,7 @@ android {
         jvmTarget = '17'
     }
     buildFeatures {
+        buildConfig true
         viewBinding true
     }
     viewBinding {
@@ -80,6 +119,7 @@ android {
 
     applicationVariants.configureEach { variant ->
         variant.outputs.each { output ->
+            def flavorPrefix = variant.flavorName ? "${variant.flavorName}-" : ""
             // 分割モードが有効な場合のみ実行
             if (shouldSplitApks) {
                 def abi = output.getFilter(com.android.build.OutputFile.ABI)
@@ -89,13 +129,13 @@ android {
                     } else if (abi == "x86_64") {
                         output.versionCodeOverride = variant.versionCode + 2
                     }
-                    output.outputFileName = "app-${abi}-${variant.buildType.name}.apk"
+                    output.outputFileName = "app-${flavorPrefix}${abi}-${variant.buildType.name}.apk"
                 }
             }
 
             // Override name specifically for releaseUnsigned
             if (variant.buildType.name == "releaseUnsigned") {
-                output.outputFileName = "app-release-unsigned.apk"
+                output.outputFileName = "app-${flavorPrefix}release-unsigned.apk"
             }
         }
     }
@@ -118,7 +158,7 @@ dependencies {
     implementation project(':tabletkey')
     implementation project(':qwerty_keyboard')
     implementation project(':custom_keyboard')
-    implementation project(':zenz')
+    fullImplementation project(':zenz')
 
     implementation 'androidx.fragment:fragment-ktx:1.8.8'
     implementation 'androidx.emoji2:emoji2:1.5.0'
@@ -168,7 +208,7 @@ dependencies {
     testImplementation 'androidx.test.ext:junit-ktx:1.2.1'
 
     implementation 'com.google.code.gson:gson:2.13.1'
-    runtimeOnly('com.google.ai.edge.litertlm:litertlm-android:0.10.0') {
+    fullRuntimeOnly('com.google.ai.edge.litertlm:litertlm-android:0.10.0') {
         transitive = false
     }
 
