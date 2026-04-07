@@ -102,6 +102,28 @@ cd JapaneseKeyboard
 ./gradlew installDebug
 ````
 
+#### Zenz モデルをビルド時に生成する
+
+`zenz` モジュールは、開発機のビルド時に Hugging Face から元モデルを取得し、`llama.cpp` で GGUF 変換と量子化を行った結果を APK/AAB に同梱します。アプリ実行時には通信しないため、`INTERNET` 権限は不要です。
+
+```bash
+./gradlew installDebug
+```
+
+必要に応じて以下も上書きできます。
+
+```properties
+# local.properties
+zenzModelRepo=Miwa-Keita/zenz-v3.1-xsmall
+zenzModelRevision=a728931c8b4867a53ca33d1ff3fe7360b0f15cd5
+zenzModelQuantization=Q5_K_M
+zenzModelAssetName=ggml-model-Q5_K_M.gguf
+# 公開モデルなので通常は不要
+# zenzModelHfToken=hf_xxx
+```
+
+このモードでは生成済みモデルを `zenz/build/generated/assets/zenzModel/main/ggml-model-Q5_K_M.gguf` に出力して APK/AAB に同梱します。Python 3 と CMake が必要で、初回は `huggingface_hub` と `llama.cpp` の変換用依存を自動で入れます。
+
 ### 🤝 貢献するには
 
 このプロジェクトはオープンソースです。バグ報告、機能提案、そしてプルリクエストを心から歓迎します。

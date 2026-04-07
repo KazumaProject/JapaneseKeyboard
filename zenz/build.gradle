@@ -3,6 +3,29 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
+}
+
+def zenzModelRepo = providers.gradleProperty("zenzModelRepo")
+        .orElse(localProperties.getProperty("zenzModelRepo") ?: "Miwa-Keita/zenz-v3.1-xsmall")
+        .get()
+def zenzModelRevision = providers.gradleProperty("zenzModelRevision")
+        .orElse(localProperties.getProperty("zenzModelRevision") ?: "a728931c8b4867a53ca33d1ff3fe7360b0f15cd5")
+        .get()
+def zenzModelQuantization = providers.gradleProperty("zenzModelQuantization")
+        .orElse(localProperties.getProperty("zenzModelQuantization") ?: "Q5_K_M")
+        .get()
+def zenzModelAssetName = providers.gradleProperty("zenzModelAssetName")
+        .orElse(localProperties.getProperty("zenzModelAssetName") ?: "ggml-model-Q5_K_M.gguf")
+        .get()
+def zenzModelHfToken = providers.gradleProperty("zenzModelHfToken")
+        .orElse(localProperties.getProperty("zenzModelHfToken") ?: System.getenv("HF_TOKEN") ?: "")
+        .get()
+def generatedZenzAssetsDir = layout.buildDirectory.dir("generated/assets/zenzModel/main")
+
 android {
     namespace 'com.kazumaproject.zenz'
     compileSdk 36
@@ -48,6 +71,39 @@ android {
     buildFeatures {
         viewBinding true
     }
+
+    sourceSets {
+        main {
+            assets.srcDirs = [generatedZenzAssetsDir.get().asFile]
+        }
+    }
+}
+
+def prepareZenzModel = tasks.register("prepareZenzModel", Exec) {
+    group = "zenz"
+    description = "Downloads the Zenz model from Hugging Face, converts it to GGUF, and quantizes it for packaging."
+
+    def outputDir = generatedZenzAssetsDir.get().asFile
+
+    inputs.property("repo", zenzModelRepo)
+    inputs.property("revision", zenzModelRevision)
+    inputs.property("quantization", zenzModelQuantization)
+    inputs.property("assetName", zenzModelAssetName)
+    outputs.file(new File(outputDir, zenzModelAssetName))
+
+    commandLine "bash", "${project.projectDir}/scripts/prepare_zenz_model.sh"
+    environment "ZENZ_MODEL_REPO", zenzModelRepo
+    environment "ZENZ_MODEL_REVISION", zenzModelRevision
+    environment "ZENZ_MODEL_QUANTIZATION", zenzModelQuantization
+    environment "ZENZ_MODEL_ASSET_NAME", zenzModelAssetName
+    environment "ZENZ_MODEL_OUTPUT_DIR", outputDir.absolutePath
+    environment "ZENZ_MODEL_WORK_DIR", layout.buildDirectory.dir("intermediates/zenzModel").get().asFile.absolutePath
+    environment "ZENZ_MODEL_HF_TOKEN", zenzModelHfToken
+    environment "ZENZ_LLAMA_CPP_DIR", file("src/main/cpp/llama.cpp").absolutePath
+}
+
+tasks.named("preBuild").configure {
+    dependsOn(prepareZenzModel)
 }
 
 dependencies {
