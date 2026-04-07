@@ -4,6 +4,7 @@ import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
 data class ImePreferencesSnapshot(
     val keyboardOrder: List<KeyboardType>,
@@ -281,12 +282,15 @@ data class ImePreferencesSnapshot(
                     appPreference.qwerty_keyboard_position_landscape ?: true,
                 qwertyLandscapeBottomMarginPreferenceValue =
                     appPreference.qwerty_keyboard_vertical_margin_bottom_landscape ?: 0,
-                zenzEnableStatePreference = appPreference.enable_zenz_preference,
-                zenzaiEnableStatePreference = appPreference.enable_zenzai_preference,
+                zenzEnableStatePreference =
+                    AppVariantConfig.hasZenz && appPreference.enable_zenz_preference,
+                zenzaiEnableStatePreference =
+                    AppVariantConfig.hasZenz && appPreference.enable_zenzai_preference,
                 zenzProfilePreference = appPreference.zenz_profile_preference,
                 zenzEnableLongPressConversionPreference =
-                    appPreference.enable_zenz_long_press_preference,
-                zenzRerankPreference = appPreference.enable_zenz_rerank_preference,
+                    AppVariantConfig.hasZenz && appPreference.enable_zenz_long_press_preference,
+                zenzRerankPreference =
+                    AppVariantConfig.hasZenz && appPreference.enable_zenz_rerank_preference,
                 qwertyKeyVerticalMargin = appPreference.qwerty_key_vertical_margin ?: 5.0f,
                 qwertyKeyHorizontalGap = appPreference.qwerty_key_horizontal_gap ?: 2.0f,
                 qwertyKeyIndentLarge = appPreference.qwerty_key_indent_large ?: 23.0f,
@@ -314,7 +318,7 @@ data class ImePreferencesSnapshot(
                 conversionCandidatesRomajiEnablePreference =
                     appPreference.conversion_candidates_romaji_enable_preference,
                 enableZenzRightContextPreference =
-                    appPreference.enable_zenz_right_context_preference,
+                    AppVariantConfig.hasZenz && appPreference.enable_zenz_right_context_preference,
                 learnFirstCandidateDictionaryPreference =
                     appPreference.learn_first_candidate_dictionary_preference,
                 enablePredictionSearchLearnDictionaryPreference =
@@ -334,7 +338,8 @@ data class ImePreferencesSnapshot(
                     appPreference.enable_typo_correction_japanese_flick_keyboard_preference,
                 enableTypoCorrectionQwertyEnglishKeyboardPreference =
                     appPreference.enable_typo_correction_qwerty_english_keyboard_preference,
-                enableGemmaTranslationPreference = appPreference.enable_gemma_translation_preference
+                enableGemmaTranslationPreference =
+                    AppVariantConfig.hasGemma && appPreference.enable_gemma_translation_preference
             )
         }
     }
