@@ -191,6 +191,7 @@
     <string name="candidate_translation_in_progress">候補を翻訳しています…</string>
     <string name="candidate_translation_failed">翻訳に失敗しました。</string>
     <string name="candidate_translation_empty">翻訳結果が空でした。</string>
+    <string name="candidate_translation_cancelled_context_changed">入力中の文字列が変わったため翻訳を中止しました。</string>
     <string name="candidate_gemma_prompt_in_progress">「%1$s」を実行しています…</string>
     <string name="candidate_gemma_prompt_failed">「%1$s」の実行に失敗しました。</string>
     <string name="candidate_gemma_prompt_empty">Gemma の結果が空でした。</string>
