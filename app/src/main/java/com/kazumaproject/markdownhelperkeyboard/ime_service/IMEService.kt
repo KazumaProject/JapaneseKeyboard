@@ -180,6 +180,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryReposit
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
+import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
 import com.kazumaproject.tenkey.extensions.getDakutenFlickRight
@@ -939,9 +940,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
 
-        zenzEngine = providesZenzEngine(this)
-        scope.launch {
-            gemmaTranslationManager.initializeIfEnabled(forceReload = false)
+        if (AppVariantConfig.hasZenz) {
+            zenzEngine = providesZenzEngine(this)
+        }
+        if (AppVariantConfig.hasGemma) {
+            scope.launch {
+                gemmaTranslationManager.initializeIfEnabled(forceReload = false)
+            }
         }
 
         suggestionAdapter = SuggestionAdapter().apply {
@@ -2575,7 +2580,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ) {
                 clearSelectedTextGemmaSession(clearSuggestions = true)
             }
-            if (appPreference.enable_gemma_translation_preference &&
+            if (AppVariantConfig.hasGemma &&
+                appPreference.enable_gemma_translation_preference &&
                 gemmaTranslationManager.isTranslationAvailable()
             ) {
                 showSelectedTextGemmaActions(selectedText)
