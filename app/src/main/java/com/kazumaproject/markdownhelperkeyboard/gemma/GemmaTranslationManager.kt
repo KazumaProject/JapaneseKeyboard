@@ -208,7 +208,7 @@ class GemmaTranslationManager @Inject constructor(
             } catch (error: Throwable) {
                 Timber.e(error, "Gemma initialization failed.")
                 closeLocked()
-                lastErrorMessage = error.localizedMessage ?: error.javaClass.simpleName
+                lastErrorMessage = error.toUserVisibleMessage()
                 false
             }
         }
@@ -225,6 +225,7 @@ class GemmaTranslationManager @Inject constructor(
         if (text.isBlank()) {
             throw IllegalArgumentException("The selected candidate is empty.")
         }
+        ensureEngineReady()
         val targetLanguage = TranslationTargetLanguage.fromPreference(
             appPreference.gemma_translation_target_language_preference
         )
@@ -242,7 +243,20 @@ class GemmaTranslationManager @Inject constructor(
         if (promptBody.isBlank()) {
             throw IllegalArgumentException("The Gemma prompt is empty.")
         }
+        ensureEngineReady()
         runPromptAndSanitize(buildCustomPrompt(text, promptTitle, promptBody))
+    }
+
+    private suspend fun ensureEngineReady() {
+        if (initialized && engineInstance != null) return
+
+        val initializedNow = initializeIfEnabled(forceReload = false)
+        if (initializedNow && engineInstance != null) return
+
+        val message = lastErrorMessage
+            ?.takeIf { it.isNotBlank() }
+            ?: context.getString(R.string.gemma_translation_model_summary_missing)
+        throw IllegalStateException(message)
     }
 
     fun cancelActiveTranslation() {
@@ -279,13 +293,29 @@ class GemmaTranslationManager @Inject constructor(
                         audioBackendName = "CPU"
                     ) to ActiveBackend.Gpu
                 }.getOrElse { gpuError ->
-                    Timber.w(gpuError, "GPU Gemma initialization failed. Falling back to CPU.")
-                    createEngine(
-                        modelPath = modelPath,
-                        textBackendName = "CPU",
-                        visionBackendName = "CPU",
-                        audioBackendName = "CPU"
-                    ) to ActiveBackend.CpuFallback
+                    Timber.w(
+                        gpuError,
+                        "GPU Gemma initialization failed. Retrying with GPU_ARTISAN backend."
+                    )
+                    runCatching {
+                        createEngine(
+                            modelPath = modelPath,
+                            textBackendName = "GPU_ARTISAN",
+                            visionBackendName = "CPU",
+                            audioBackendName = "CPU"
+                        ) to ActiveBackend.Gpu
+                    }.getOrElse { gpuArtisanError ->
+                        Timber.w(
+                            gpuArtisanError,
+                            "GPU and GPU_ARTISAN Gemma initialization failed. Falling back to CPU."
+                        )
+                        createEngine(
+                            modelPath = modelPath,
+                            textBackendName = "CPU",
+                            visionBackendName = "CPU",
+                            audioBackendName = "CPU"
+                        ) to ActiveBackend.CpuFallback
+                    }
                 }
             }
         }
@@ -330,6 +360,7 @@ class GemmaTranslationManager @Inject constructor(
     private fun createBackendInstance(backendName: String): Any {
         val backendImplementationClass = when (backendName) {
             "CPU" -> Class.forName(BACKEND_CPU_CLASS)
+            "GPU_ARTISAN" -> Class.forName(BACKEND_GPU_ARTISAN_CLASS)
             "GPU" -> Class.forName(BACKEND_GPU_CLASS)
             "NPU" -> Class.forName(BACKEND_NPU_CLASS)
             else -> error("Unsupported backend: $backendName")
@@ -522,6 +553,16 @@ class GemmaTranslationManager @Inject constructor(
         return firstMeaningfulLine.trim().trim('"', '\'', '「', '」')
     }
 
+    private fun Throwable.toUserVisibleMessage(): String {
+        val localized = localizedMessage?.trim().orEmpty()
+        if (localized.isNotEmpty()) return localized
+
+        val message = message?.trim().orEmpty()
+        if (message.isNotEmpty()) return message
+
+        return javaClass.simpleName
+    }
+
     private fun modelFileName(): String = modelFileCandidates().first()
 
     private fun modelFileCandidates(): List<String> = listOf(
@@ -539,6 +580,8 @@ class GemmaTranslationManager @Inject constructor(
         private const val MODEL_DIR_NAME = "models"
         private const val BACKEND_CLASS = "com.google.ai.edge.litertlm.Backend"
         private const val BACKEND_CPU_CLASS = "com.google.ai.edge.litertlm.Backend\$CPU"
+        private const val BACKEND_GPU_ARTISAN_CLASS =
+            "com.google.ai.edge.litertlm.Backend\$GpuArtisan"
         private const val BACKEND_GPU_CLASS = "com.google.ai.edge.litertlm.Backend\$GPU"
         private const val BACKEND_NPU_CLASS = "com.google.ai.edge.litertlm.Backend\$NPU"
         private const val ENGINE_CONFIG_CLASS = "com.google.ai.edge.litertlm.EngineConfig"
