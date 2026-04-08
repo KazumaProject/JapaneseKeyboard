@@ -39,6 +39,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         const val VIEW_TYPE_EMPTY = 0
         const val VIEW_TYPE_SUGGESTION = 1
         const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
+        const val VIEW_TYPE_GEMMA_ACTION = 3
     }
 
     enum class HelperIcon {
@@ -235,6 +236,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
     }
 
+    inner class GemmaActionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val badgeText: MaterialTextView = itemView.findViewById(R.id.suggestion_gemma_action_badge)
+        val actionText: MaterialTextView = itemView.findViewById(R.id.suggestion_gemma_action_text)
+    }
+
     inner class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val undoIconParent: ConstraintLayout? = itemView.findViewById(R.id.undo_icon_parent)
         val undoIcon: MaterialTextView? = itemView.findViewById(R.id.undo_icon)
@@ -255,7 +261,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     override fun getItemViewType(position: Int): Int {
         return if (suggestions.isNotEmpty()) {
-            VIEW_TYPE_SUGGESTION
+            if (suggestions[position].isSelectedTextGemmaActionCandidate()) {
+                VIEW_TYPE_GEMMA_ACTION
+            } else {
+                VIEW_TYPE_SUGGESTION
+            }
         } else {
             if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty() && showCustomTab) {
                 VIEW_TYPE_CUSTOM_LAYOUT_PICKER
@@ -301,6 +311,15 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 SuggestionViewHolder(itemView)
             }
 
+            VIEW_TYPE_GEMMA_ACTION -> {
+                val itemView = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.suggestion_gemma_action_item, parent, false)
+                itemView.setBackgroundResource(
+                    if (isDynamicColorEnable) com.kazumaproject.core.R.drawable.recyclerview_item_bg_material else com.kazumaproject.core.R.drawable.recyclerview_item_bg
+                )
+                GemmaActionViewHolder(itemView)
+            }
+
             else -> throw IllegalArgumentException("Unknown view type: $viewType")
         }
     }
@@ -310,6 +329,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             VIEW_TYPE_EMPTY -> onBindEmptyViewHolder(holder as EmptyViewHolder)
             VIEW_TYPE_SUGGESTION -> onBindSuggestionViewHolder(
                 holder as SuggestionViewHolder, position
+            )
+            VIEW_TYPE_GEMMA_ACTION -> onBindGemmaActionViewHolder(
+                holder as GemmaActionViewHolder, position
             )
 
             VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> onBindCustomLayoutViewHolder(
@@ -584,6 +606,31 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+    private fun onBindGemmaActionViewHolder(holder: GemmaActionViewHolder, position: Int) {
+        val suggestion = suggestions[position]
+        holder.actionText.text = suggestion.string
+        holder.actionText.textSize = candidateTextSize
+        holder.badgeText.text = when (suggestion.type) {
+            GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() -> "訳"
+            GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte() -> "AI"
+            else -> ""
+        }
+
+        candidateTextColor?.let { color ->
+            holder.actionText.setTextColor(color)
+            holder.badgeText.setTextColor(color)
+        }
+
+        holder.itemView.isPressed = position == highlightedPosition
+        holder.itemView.setOnClickListener {
+            onItemClickListener?.invoke(suggestion, position)
+        }
+        holder.itemView.setOnLongClickListener {
+            onItemLongClickListener?.invoke(suggestion, position)
+            true
+        }
+    }
+
     private fun onBindCustomLayoutViewHolder(holder: CustomLayoutViewHolder, position: Int) {
         val layoutItem = customLayouts[position]
         holder.nameTextView.text = layoutItem.name
@@ -599,5 +646,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             notifyItemChanged(previous)
         }
         notifyItemChanged(highlightedPosition)
+    }
+
+    private fun Candidate.isSelectedTextGemmaActionCandidate(): Boolean {
+        return type == GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() ||
+            type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
     }
 }

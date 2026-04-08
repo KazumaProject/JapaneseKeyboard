@@ -956,6 +956,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             onListUpdated = {
                 if (isKeyboardFloatingMode != true) {
                     mainLayoutBinding?.apply {
+                        setMainSuggestionColumn(this)
                         suggestionRecyclerView.scrollToPosition(0)
                     }
                 }
@@ -10793,6 +10794,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.suggestionRecyclerView.removeItemDecorationAt(0)
         }
 
+        if (shouldUseSelectedTextGemmaActionLayout()) {
+            mainView.suggestionRecyclerView.layoutManager =
+                LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+            mainView.suggestionRecyclerView.adapter = adapter
+            return
+        }
+
         when (columnNum) {
             "1" -> {
                 mainView.suggestionRecyclerView.layoutManager =
@@ -10829,6 +10837,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         mainView.suggestionRecyclerView.adapter = adapter
+    }
+
+    private fun shouldUseSelectedTextGemmaActionLayout(): Boolean {
+        val suggestions = suggestionAdapter?.suggestions.orEmpty()
+        return suggestions.isNotEmpty() && suggestions.all { isSelectedTextGemmaActionCandidate(it) }
     }
 
     private fun setShortCutAdapter(
