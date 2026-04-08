@@ -44,6 +44,8 @@ data class ImePreferencesSnapshot(
     val userDictionaryPrefixMatchNumber: Int,
     val isVibration: Boolean,
     val vibrationTimingStr: String,
+    val isKeySoundEnabled: Boolean,
+    val keySoundVolumePercent: Int,
     val sumireInputKeyType: String,
     val sumireInputKeyLayoutType: String,
     val sumireInputStyle: String,
@@ -195,6 +197,8 @@ data class ImePreferencesSnapshot(
                     appPreference.user_dictionary_prefix_match_number_preference ?: 2,
                 isVibration = appPreference.vibration_preference ?: true,
                 vibrationTimingStr = appPreference.vibration_timing_preference ?: "both",
+                isKeySoundEnabled = appPreference.key_sound_preference ?: false,
+                keySoundVolumePercent = appPreference.key_sound_volume_percent_preference ?: 0,
                 sumireInputKeyType =
                     appPreference.sumire_input_selection_preference ?: "flick-default",
                 sumireInputKeyLayoutType = appPreference.sumire_input_method,

@@ -24,6 +24,7 @@ import kotlin.math.abs
 class CrossFlickInputController(private val context: Context) {
 
     interface CrossFlickListener {
+        fun onPress(action: KeyAction)
         fun onFlick(action: KeyAction, isFlick: Boolean)
         fun onFlickLongPress(action: KeyAction)
         fun onFlickUpAfterLongPress(action: KeyAction, isFlick: Boolean)
@@ -98,6 +99,9 @@ class CrossFlickInputController(private val context: Context) {
                 anchorView = view
                 initialTouchPoint.set(event.rawX, event.rawY)
                 currentDirection = CrossDirection.TAP
+                flickActionMap[FlickDirection.TAP]?.let {
+                    listener?.onPress(it.toKeyAction())
+                }
 
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {

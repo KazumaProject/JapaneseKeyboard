@@ -113,6 +113,13 @@
     <string name="vibration_timing_title">Vibration Timing</string>
     <string name="vibration_timing_summary">Select when to trigger vibration</string>
     <string name="vibration_timing_dialog_title">Please select</string>
+    <string name="key_sound_title">Enable Key Sound</string>
+    <string name="key_sound_summary_on">Plays a sound when a key is pressed</string>
+    <string name="key_sound_summary_off">Does not play a sound when a key is pressed</string>
+    <string name="key_sound_volume_title">Key Sound Volume</string>
+    <string name="key_sound_volume_summary">Set the key sound volume</string>
+    <string name="key_sound_volume_system_default">System default</string>
+    <string name="key_sound_volume_percent">%1$d%%</string>
 
     <string name="ng_word_list_title">List of words to hide</string>
     <string name="ng_word_list_summary">Display the list of words to hide</string>

@@ -1463,10 +1463,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 cancelLongPressForPointer(pointerId)
             }
             currentView?.let {
-                val qwertyKey = qwertyButtonMap[it]
-                qwertyKey?.let { key ->
-                    qwertyKeyListener?.onPressedQWERTYKey(key)
-                }
                 it.isPressed = true
                 pointerButtonMap.put(pointerId, it)
                 pointerStartCoords.put(pointerId, Pair(x, y))

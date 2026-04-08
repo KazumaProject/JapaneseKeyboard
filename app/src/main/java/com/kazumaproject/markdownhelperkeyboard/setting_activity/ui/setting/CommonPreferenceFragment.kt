@@ -472,6 +472,14 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SeekBarPreference>("key_sound_volume_percent_preference")?.apply {
+            updateKeySoundVolumeSummary(value)
+            setOnPreferenceChangeListener { _, newValue ->
+                updateKeySoundVolumeSummary(newValue as Int)
+                true
+            }
+        }
+
         val keyboardUndoEnablePreference =
             findPreference<SwitchPreferenceCompat>("undo_enable_preference")
         keyboardUndoEnablePreference?.apply {
@@ -594,6 +602,15 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             positiveButton(android.R.string.ok)
             negativeButton(android.R.string.cancel)
         }
+    }
+
+    private fun updateKeySoundVolumeSummary(value: Int) {
+        findPreference<SeekBarPreference>("key_sound_volume_percent_preference")?.summary =
+            if (value == 0) {
+                getString(R.string.key_sound_volume_system_default)
+            } else {
+                getString(R.string.key_sound_volume_percent, value)
+            }
     }
 
 }

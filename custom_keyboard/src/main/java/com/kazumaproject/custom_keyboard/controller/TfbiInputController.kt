@@ -25,6 +25,7 @@ class TfbiInputController(
 ) {
 
     interface TfbiListener {
+        fun onPress(first: TfbiFlickDirection, second: TfbiFlickDirection)
         fun onFlick(first: TfbiFlickDirection, second: TfbiFlickDirection)
     }
 
@@ -116,6 +117,7 @@ class TfbiInputController(
         flickState = FlickState.NEUTRAL
         initialTouchX = event.x
         initialTouchY = event.y
+        listener?.onPress(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP)
 
         showPopup(view, TfbiFlickDirection.TAP, false)
     }
