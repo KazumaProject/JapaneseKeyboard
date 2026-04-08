@@ -28,6 +28,7 @@ class CustomAngleFlickController(
 ) {
 
     interface FlickListener {
+        fun onPress(character: String)
         fun onFlick(direction: FlickDirection, character: String)
         fun onStateChanged(view: View, newMap: Map<FlickDirection, String>)
         fun onFlickDirectionChanged(newDirection: FlickDirection)
@@ -118,6 +119,7 @@ class CustomAngleFlickController(
 
                 if (keyMaps.isNotEmpty()) {
                     popupView.setCharacterMap(keyMaps[currentMapIndex])
+                    listener?.onPress(keyMaps[currentMapIndex][FlickDirection.TAP] ?: "")
                 }
                 popupView.updateFlickDirection(FlickDirection.TAP)
 

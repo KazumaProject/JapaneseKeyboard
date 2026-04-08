@@ -182,6 +182,8 @@ class FlickKeyboardSizeSettingsFragment : Fragment() {
 
         keyboardView.setOnKeyboardActionListener(object :
             FlickKeyboardView.OnKeyboardActionListener {
+            override fun onPress(action: com.kazumaproject.custom_keyboard.data.KeyAction) = Unit
+
             override fun onAction(
                 action: com.kazumaproject.custom_keyboard.data.KeyAction,
                 isFlick: Boolean

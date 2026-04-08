@@ -54,6 +54,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 ) : GridLayout(context, attrs, defStyleAttr) {
 
     interface OnKeyboardActionListener {
+        fun onPress(action: KeyAction)
         fun onAction(action: KeyAction, isFlick: Boolean)
         fun onActionLongPress(action: KeyAction)
         fun onActionUpAfterLongPress(action: KeyAction)
@@ -886,6 +887,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                         setPopupColors(dynamicColorTheme)
 
                         this.listener = object : CustomAngleFlickController.FlickListener {
+                            override fun onPress(character: String) {
+                                notifyTextPress(character)
+                            }
+
                             override fun onFlick(direction: FlickDirection, character: String) {
                                 if (character.isNotEmpty()) {
                                     this@FlickKeyboardView.listener?.onAction(
@@ -952,6 +957,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                 if (flickActionMap != null) {
                     val controller = CrossFlickInputController(context).apply {
                         this.listener = object : CrossFlickInputController.CrossFlickListener {
+                            override fun onPress(action: KeyAction) {
+                                this@FlickKeyboardView.listener?.onPress(action)
+                            }
+
                             override fun onFlick(action: KeyAction, isFlick: Boolean) {
                                 this@FlickKeyboardView.listener?.onAction(action, isFlick)
                             }
@@ -1072,6 +1081,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val controller = StandardFlickInputController(context).apply {
                         this.listener =
                             object : StandardFlickInputController.StandardFlickListener {
+                                override fun onPress(character: String) {
+                                    notifyTextPress(character)
+                                }
+
                                 override fun onFlick(character: String) {
                                     this@FlickKeyboardView.listener?.onAction(
                                         KeyAction.Text(character),
@@ -1231,6 +1244,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                         elevation = 1f
 
                         this.listener = object : GridFlickInputController.GridFlickListener {
+                            override fun onPress(character: String) {
+                                notifyTextPress(character)
+                            }
+
                             override fun onFlick(character: String, isFlick: Boolean) {
                                 this@FlickKeyboardView.listener?.onAction(
                                     KeyAction.Text(character),
@@ -1278,6 +1295,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
 
                     keyView.setOnTouchListener { _, event ->
+                        if (event.action == MotionEvent.ACTION_DOWN) {
+                            val currentAction =
+                                dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
+                            this@FlickKeyboardView.listener?.onPress(currentAction)
+                        }
                         if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
                             if (isLongPressTriggered) {
                                 val currentAction =
@@ -1304,6 +1326,13 @@ class FlickKeyboardView @JvmOverloads constructor(
                         flickSensitivity = flickSensitivity.toFloat()
                     ).apply {
                         this.listener = object : TfbiInputController.TfbiListener {
+                            override fun onPress(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection
+                            ) {
+                                notifyTextPress(twoStepMap[first]?.get(second) ?: "")
+                            }
+
                             override fun onFlick(
                                 first: TfbiFlickDirection,
                                 second: TfbiFlickDirection
@@ -1353,6 +1382,13 @@ class FlickKeyboardView @JvmOverloads constructor(
                         flickSensitivity = flickSensitivity.toFloat()
                     ).apply {
                         this.listener = object : TfbiStickyFlickController.TfbiListener {
+                            override fun onPress(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection
+                            ) {
+                                notifyTextPress(twoStepMap[first]?.get(second) ?: "")
+                            }
+
                             override fun onFlick(
                                 first: TfbiFlickDirection,
                                 second: TfbiFlickDirection
@@ -1398,6 +1434,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                         flickSensitivity = flickSensitivity.toFloat()
                     ).apply {
                         this.listener = object : TfbiHierarchicalFlickController.TfbiListener {
+                            override fun onPress(character: String) {
+                                notifyTextPress(character)
+                            }
+
                             override fun onFlick(character: String) {
                                 Log.d(
                                     "FlickKeyboardView KeyType.HIERARCHICAL_FLICK",
@@ -1453,6 +1493,12 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         return null
+    }
+
+    private fun notifyTextPress(character: String) {
+        if (character.isNotEmpty()) {
+            listener?.onPress(KeyAction.Text(character))
+        }
     }
 
     private fun detachKeyBehavior(controller: Any?) {

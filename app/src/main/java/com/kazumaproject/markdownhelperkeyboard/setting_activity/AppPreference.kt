@@ -24,6 +24,9 @@ object AppPreference {
     private val FLICK_SENSITIVITY = Pair("flick_sensitivity_preference", 100)
     private val VIBRATION_PREFERENCE = Pair("vibration_preference", true)
     private val VIBRATION_TIMING_PREFERENCE = Pair("vibration_timing", "both")
+    private val KEY_SOUND_PREFERENCE = Pair("key_sound_preference", false)
+    private val KEY_SOUND_VOLUME_PERCENT_PREFERENCE =
+        Pair("key_sound_volume_percent_preference", 0)
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
     private val USER_DICTIONARY_PREFERENCE = Pair("user_dictionary_preference", true)
     private val USER_DICTIONARY_PREFIX_PREFERENCE = Pair("user_dictionary_prefix_match_number", 2)
@@ -590,6 +593,21 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putString(VIBRATION_TIMING_PREFERENCE.first, value ?: "both")
+        }
+
+    var key_sound_preference: Boolean?
+        get() = preferences.getBoolean(KEY_SOUND_PREFERENCE.first, KEY_SOUND_PREFERENCE.second)
+        set(value) = preferences.edit {
+            it.putBoolean(KEY_SOUND_PREFERENCE.first, value ?: false)
+        }
+
+    var key_sound_volume_percent_preference: Int?
+        get() = preferences.getInt(
+            KEY_SOUND_VOLUME_PERCENT_PREFERENCE.first,
+            KEY_SOUND_VOLUME_PERCENT_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEY_SOUND_VOLUME_PERCENT_PREFERENCE.first, value ?: 0)
         }
 
     var flick_sensitivity_preference: Int?

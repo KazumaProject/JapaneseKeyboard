@@ -14,6 +14,7 @@ import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.hardware.input.InputManager
 import android.inputmethodservice.InputMethodService
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -505,6 +506,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tabletGojuonLayoutPreference: Boolean? = true
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
+    private var isKeySoundEnabled: Boolean? = false
+    private var keySoundVolumePercent: Int? = 0
     private var mozcUTPersonName: Boolean? = false
     private var mozcUTPlaces: Boolean? = false
     private var mozcUTWiki: Boolean? = false
@@ -1118,6 +1121,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         userDictionaryPrefixMatchNumber = preferences.userDictionaryPrefixMatchNumber
         isVibration = preferences.isVibration
         vibrationTimingStr = preferences.vibrationTimingStr
+        isKeySoundEnabled = preferences.isKeySoundEnabled
+        keySoundVolumePercent = preferences.keySoundVolumePercent
         sumireInputKeyType = preferences.sumireInputKeyType
         sumireInputKeyLayoutType = preferences.sumireInputKeyLayoutType
         sumireInputStyle = preferences.sumireInputStyle
@@ -1527,19 +1532,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
 
                                 GestureType.Down -> {
-                                    when (vibrationTimingStr) {
-                                        "both" -> {
-                                            vibrate()
-                                        }
-
-                                        "press" -> {
-                                            vibrate()
-                                        }
-
-                                        "release" -> {
-
-                                        }
-                                    }
+                                    handleKeyPressFeedback(getKeySoundType(key))
                                 }
 
                                 GestureType.Tap -> {
@@ -1891,6 +1884,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         showCandidateInPasswordPreference = null
         tabletGojuonLayoutPreference = null
         isVibration = null
+        isKeySoundEnabled = null
+        keySoundVolumePercent = null
         tenkeyHeightPreferenceValue = null
         tenkeyWidthPreferenceValue = null
         qwertyHeightPreferenceValue = null
@@ -3515,19 +3510,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         GestureType.Down -> {
-                            when (vibrationTimingStr) {
-                                "both" -> {
-                                    vibrate()
-                                }
-
-                                "press" -> {
-                                    vibrate()
-                                }
-
-                                "release" -> {
-
-                                }
-                            }
+                            handleKeyPressFeedback(getKeySoundType(key))
                         }
 
                         GestureType.Tap -> {
@@ -3682,19 +3665,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         GestureType.Down -> {
-                            when (vibrationTimingStr) {
-                                "both" -> {
-                                    vibrate()
-                                }
-
-                                "press" -> {
-                                    vibrate()
-                                }
-
-                                "release" -> {
-
-                                }
-                            }
+                            handleKeyPressFeedback(getKeySoundType(key))
                         }
 
                         GestureType.Tap -> {
@@ -6028,6 +5999,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
+
+            override fun onPress(action: KeyAction) {
+                handleKeyPressFeedback(getKeySoundType(action))
+            }
 
             override fun onActionLongPress(action: KeyAction) {
                 vibrate()
@@ -11119,19 +11094,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
                     Timber.d("Pressed Key: $qwertyKey")
-                    when (vibrationTimingStr) {
-                        "both" -> {
-                            vibrate()
-                        }
-
-                        "press" -> {
-                            vibrate()
-                        }
-
-                        "release" -> {
-
-                        }
-                    }
+                    handleKeyPressFeedback(getKeySoundType(qwertyKey))
                     deleteLongPressJob?.cancel()
                 }
 
@@ -15456,6 +15419,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         } else null
     }
+    private val audioManager by lazy {
+        getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    }
+
+    private enum class KeySoundType {
+        STANDARD,
+        DELETE,
+        ENTER
+    }
 
     private fun vibrate() {
         if (isVibration == false) return
@@ -15465,6 +15437,62 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             vibratorManager?.vibrate(combinedVibration)
         } else {
             vibrator?.vibrate(2)
+        }
+    }
+
+    private fun handleKeyPressFeedback(keySoundType: KeySoundType) {
+        when (vibrationTimingStr) {
+            "both", "press" -> vibrate()
+            "release", null -> Unit
+        }
+        playKeySound(keySoundType)
+    }
+
+    private fun playKeySound(keySoundType: KeySoundType) {
+        if (isKeySoundEnabled != true) return
+        if (audioManager.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+
+        val effectType = when (keySoundType) {
+            KeySoundType.STANDARD -> AudioManager.FX_KEYPRESS_STANDARD
+            KeySoundType.DELETE -> AudioManager.FX_KEYPRESS_DELETE
+            KeySoundType.ENTER -> AudioManager.FX_KEYPRESS_RETURN
+        }
+        val volumePercent = (keySoundVolumePercent ?: 0).coerceIn(0, 100)
+
+        if (volumePercent == 0) {
+            audioManager.playSoundEffect(effectType)
+        } else {
+            audioManager.playSoundEffect(effectType, volumePercent / 100f)
+        }
+    }
+
+    private fun getKeySoundType(key: Key): KeySoundType {
+        return when (key) {
+            Key.SideKeyDelete -> KeySoundType.DELETE
+            Key.SideKeyEnter -> KeySoundType.ENTER
+            else -> KeySoundType.STANDARD
+        }
+    }
+
+    private fun getKeySoundType(qwertyKey: QWERTYKey): KeySoundType {
+        return when (qwertyKey) {
+            QWERTYKey.QWERTYKeyDelete -> KeySoundType.DELETE
+            QWERTYKey.QWERTYKeyReturn -> KeySoundType.ENTER
+            else -> KeySoundType.STANDARD
+        }
+    }
+
+    private fun getKeySoundType(action: KeyAction): KeySoundType {
+        return when (action) {
+            KeyAction.Delete,
+            KeyAction.Backspace,
+            KeyAction.DeleteUntilSymbol -> KeySoundType.DELETE
+
+            KeyAction.Enter,
+            KeyAction.NewLine,
+            KeyAction.Confirm -> KeySoundType.ENTER
+
+            else -> KeySoundType.STANDARD
         }
     }
 
