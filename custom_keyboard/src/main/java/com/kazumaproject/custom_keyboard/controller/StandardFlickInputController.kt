@@ -18,6 +18,7 @@ import kotlin.math.sqrt
 class StandardFlickInputController(context: Context) {
 
     interface StandardFlickListener {
+        fun onPress(character: String)
         fun onFlick(character: String)
     }
 
@@ -88,6 +89,7 @@ class StandardFlickInputController(context: Context) {
                 anchorView = view
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
+                listener?.onPress(characterMap[FlickDirection.TAP] ?: "")
                 segmentedDrawable?.highlightDirection = FlickDirection.TAP
                 showPopup(FlickDirection.TAP)
                 return true

@@ -346,6 +346,23 @@
             android:summaryOn="@string/vibration_summary_on"
             android:title="@string/vibration_title" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="key_sound_preference"
+            android:summaryOff="@string/key_sound_summary_off"
+            android:summaryOn="@string/key_sound_summary_on"
+            android:title="@string/key_sound_title" />
+
+        <SeekBarPreference
+            android:defaultValue="0"
+            android:dependency="key_sound_preference"
+            android:key="key_sound_volume_percent_preference"
+            android:max="100"
+            android:title="@string/key_sound_volume_title"
+            app:min="0"
+            app:showSeekBarValue="true"
+            app:summary="@string/key_sound_volume_summary" />
+
         <ListPreference
             android:defaultValue="@string/vibration_default"
             android:dependency="vibration_preference"
