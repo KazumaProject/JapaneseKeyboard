@@ -59,6 +59,7 @@ class CustomAngleFlickController(
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
     private var isLongPressModeActive = false
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     init {
         // デフォルトの見た目サイズを設定（必要に応じて setPopupViewSize で上書きしてください）
@@ -83,6 +84,10 @@ class CustomAngleFlickController(
     // これにより、flickSensitivity(判定) と centerRadius(見た目) を別々に管理可能
     fun setPopupViewSize(orbit: Float, centerRadius: Float, textSize: Float) {
         popupView.setUiSize(orbit, centerRadius, textSize)
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
     fun cancel() {
@@ -127,7 +132,7 @@ class CustomAngleFlickController(
 
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
-                    delay(ViewConfiguration.getLongPressTimeout().toLong())
+                    delay(longPressTimeout)
                     isLongPressModeActive = true
                     popupView.setFullUIMode(true)
                     popupView.invalidate()

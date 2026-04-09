@@ -18,6 +18,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.Button
 import android.widget.GridLayout
 import androidx.annotation.AttrRes
@@ -75,6 +76,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
     private var defaultTextSize = 14f
     private var specialKeyTextSizeSp = SPECIAL_KEY_BASE_TEXT_SIZE_SP
 
@@ -132,6 +134,13 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     fun setFlickSensitivityValue(sensitivity: Int) {
         flickSensitivity = sensitivity
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        val normalized = timeoutMillis.coerceIn(100L, 2000L)
+        if (longPressTimeout == normalized) return
+        longPressTimeout = normalized
+        currentLayout?.let { setKeyboard(it) }
     }
 
     fun setDefaultTextSize(textSize: Float) {
@@ -814,6 +823,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 Log.d("FlickKeyboardView KeyType.CIRCULAR_FLICK", "$flickKeyMapsList")
                 if (!flickKeyMapsList.isNullOrEmpty()) {
                     val controller = CustomAngleFlickController(context, flickSensitivity).apply {
+                        setLongPressTimeout(longPressTimeout)
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
                         val surfaceContainerLow =
@@ -945,6 +955,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 Log.d("FlickKeyboardView KeyType.CROSS_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
                     val controller = CrossFlickInputController(context).apply {
+                        setLongPressTimeout(longPressTimeout)
                         this.listener = object : CrossFlickInputController.CrossFlickListener {
                             override fun onPress(action: KeyAction) {
                                 this@FlickKeyboardView.listener?.onPress(action)
@@ -1165,6 +1176,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 Log.d("FlickKeyboardView KeyType.PETAL_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
                     val controller = GridFlickInputController(context, flickSensitivity).apply {
+                        setLongPressTimeout(longPressTimeout)
                         val isDarkTheme = context.isDarkThemeOn()
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)

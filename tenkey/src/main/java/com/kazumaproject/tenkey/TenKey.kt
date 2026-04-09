@@ -123,6 +123,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var longPressListener: LongPressListener? = null
 
     private var flickSensitivity: Int = 100
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var keySizeDelta = 0
 
@@ -1267,7 +1268,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                     setKeyPressed()
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                        delay(ViewConfiguration.getLongPressTimeout().toLong())
+                        delay(longPressTimeout)
                         if (pressedKey.key != Key.NotSelected) {
                             longPressListener?.onLongPress(pressedKey.key)
                             isLongPressed = true
@@ -1567,7 +1568,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         )
                         setKeyPressed()
                         longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                            delay(ViewConfiguration.getLongPressTimeout().toLong())
+                            delay(longPressTimeout)
                             if (pressedKey.key != Key.NotSelected) {
                                 longPressListener?.onLongPress(pressedKey.key)
                                 isLongPressed = true
@@ -1686,6 +1687,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setFlickSensitivityValue(sensitivity: Int) {
         flickSensitivity = sensitivity
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
     private fun setTextToAllButtons() {

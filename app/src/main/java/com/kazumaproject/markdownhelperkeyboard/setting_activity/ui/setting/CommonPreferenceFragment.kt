@@ -5,6 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.widget.SeekBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
@@ -20,6 +22,7 @@ import androidx.preference.SwitchPreferenceCompat
 import com.afollestad.materialdialogs.MaterialDialog
 import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
@@ -30,6 +33,12 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class CommonPreferenceFragment : PreferenceFragmentCompat() {
+
+    private companion object {
+        const val LONG_PRESS_TIMEOUT_MIN_MS = 100
+        const val LONG_PRESS_TIMEOUT_MAX_MS = 2000
+        const val LONG_PRESS_TIMEOUT_DEFAULT_MS = 300
+    }
 
     @Inject
     lateinit var appPreference: AppPreference
@@ -480,6 +489,14 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<Preference>("long_press_timeout_preference")?.apply {
+            updateLongPressTimeoutSummary()
+            setOnPreferenceClickListener {
+                showLongPressTimeoutDialog()
+                true
+            }
+        }
+
         val keyboardUndoEnablePreference =
             findPreference<SwitchPreferenceCompat>("undo_enable_preference")
         keyboardUndoEnablePreference?.apply {
@@ -611,6 +628,63 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             } else {
                 getString(R.string.key_sound_volume_percent, value)
             }
+    }
+
+    private fun updateLongPressTimeoutSummary() {
+        val value =
+            (appPreference.long_press_timeout_preference ?: LONG_PRESS_TIMEOUT_DEFAULT_MS)
+                .coerceIn(LONG_PRESS_TIMEOUT_MIN_MS, LONG_PRESS_TIMEOUT_MAX_MS)
+        findPreference<Preference>("long_press_timeout_preference")?.summary =
+            getString(R.string.long_press_timeout_preference_value, value)
+    }
+
+    private fun showLongPressTimeoutDialog() {
+        val dialogView =
+            layoutInflater.inflate(R.layout.dialog_long_press_timeout_preference, null)
+        val valueText =
+            dialogView.findViewById<TextView>(R.id.long_press_timeout_value_text)
+        val seekBar =
+            dialogView.findViewById<SeekBar>(R.id.long_press_timeout_seekbar)
+
+        val initialValue =
+            (appPreference.long_press_timeout_preference ?: LONG_PRESS_TIMEOUT_DEFAULT_MS)
+                .coerceIn(LONG_PRESS_TIMEOUT_MIN_MS, LONG_PRESS_TIMEOUT_MAX_MS)
+
+        fun updateLabel(value: Int) {
+            valueText.text = getString(R.string.long_press_timeout_preference_value, value)
+        }
+
+        seekBar.max = LONG_PRESS_TIMEOUT_MAX_MS - LONG_PRESS_TIMEOUT_MIN_MS
+        seekBar.progress = initialValue - LONG_PRESS_TIMEOUT_MIN_MS
+        updateLabel(initialValue)
+        seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                updateLabel(progress + LONG_PRESS_TIMEOUT_MIN_MS)
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+        })
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.long_press_timeout_preference_title)
+            .setView(dialogView)
+            .setPositiveButton(android.R.string.ok) { _, _ ->
+                appPreference.long_press_timeout_preference =
+                    seekBar.progress + LONG_PRESS_TIMEOUT_MIN_MS
+                updateLongPressTimeoutSummary()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .setNeutralButton(R.string.reset_to_default, null)
+            .create()
+
+        dialog.setOnShowListener {
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL)?.setOnClickListener {
+                seekBar.progress = LONG_PRESS_TIMEOUT_DEFAULT_MS - LONG_PRESS_TIMEOUT_MIN_MS
+            }
+        }
+        dialog.show()
     }
 
 }
