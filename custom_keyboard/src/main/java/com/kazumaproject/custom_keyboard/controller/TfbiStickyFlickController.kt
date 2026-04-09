@@ -23,6 +23,7 @@ class TfbiStickyFlickController(
      * このコントローラー専用のリスナーインターフェース
      */
     interface TfbiListener {
+        fun onPress(first: TfbiFlickDirection, second: TfbiFlickDirection)
         fun onFlick(first: TfbiFlickDirection, second: TfbiFlickDirection)
     }
 
@@ -100,6 +101,7 @@ class TfbiStickyFlickController(
         flickState = FlickState.NEUTRAL
         initialTouchX = event.x
         initialTouchY = event.y
+        listener?.onPress(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP)
 
         // 最初は必ず花びらなしのポップアップを表示する
         showPopup(view, TfbiFlickDirection.TAP, false)

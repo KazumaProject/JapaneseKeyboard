@@ -24,6 +24,7 @@ import kotlin.math.abs
 class CrossFlickInputController(private val context: Context) {
 
     interface CrossFlickListener {
+        fun onPress(action: KeyAction)
         fun onFlick(action: KeyAction, isFlick: Boolean)
         fun onFlickLongPress(action: KeyAction)
         fun onFlickUpAfterLongPress(action: KeyAction, isFlick: Boolean)
@@ -56,6 +57,7 @@ class CrossFlickInputController(private val context: Context) {
     private var longPressJob: Job? = null
     private var isLongPressMode = false
     private var isLongPressTriggered = false
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     // 色設定保持用の変数
     private var popupBackgroundColor: Int? = null
@@ -69,6 +71,10 @@ class CrossFlickInputController(private val context: Context) {
         this.popupBackgroundColor = backgroundColor
         this.popupHighlightedColor = highlightedColor
         this.popupTextColor = textColor
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
     fun cancel() {
@@ -98,10 +104,13 @@ class CrossFlickInputController(private val context: Context) {
                 anchorView = view
                 initialTouchPoint.set(event.rawX, event.rawY)
                 currentDirection = CrossDirection.TAP
+                flickActionMap[FlickDirection.TAP]?.let {
+                    listener?.onPress(it.toKeyAction())
+                }
 
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
-                    delay(ViewConfiguration.getLongPressTimeout().toLong())
+                    delay(longPressTimeout)
                     isLongPressTriggered = true
                     isLongPressMode = true
 

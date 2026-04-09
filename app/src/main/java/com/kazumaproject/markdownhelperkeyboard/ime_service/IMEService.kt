@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import android.annotation.SuppressLint
-import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
@@ -14,6 +13,7 @@ import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.hardware.input.InputManager
 import android.inputmethodservice.InputMethodService
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -78,6 +78,7 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.recyclerview.widget.GridLayoutManager
@@ -180,8 +181,8 @@ import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryReposit
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
-import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
+import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
 import com.kazumaproject.tenkey.extensions.getDakutenFlickRight
 import com.kazumaproject.tenkey.extensions.getDakutenFlickTop
@@ -391,6 +392,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 // 1. 現在クリップボードにあるアイテムを取得 (ClipboardItem.Text or Image)
                 val newItem = clipboardUtil.getPrimaryClipContent()
                 if (newItem is ClipboardItem.Empty) return@withLock
+                if (clipboardUtil.isPrimaryClipSensitive()) return@withLock
 
                 // 2. DBに保存されている最新のメタデータを取得
                 val lastSavedItem = clipboardHistoryRepository.getLatestItem()
@@ -489,6 +491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isLiveConversionEnable: Boolean? = false
     private var nBest: Int? = 4
     private var flickSensitivityPreferenceValue: Int? = 100
+    private var longPressTimeoutPreferenceValue: Int? = 300
     private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyEnableFlickUpPreference: Boolean? = false
@@ -505,6 +508,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tabletGojuonLayoutPreference: Boolean? = true
     private var isVibration: Boolean? = true
     private var vibrationTimingStr: String? = "both"
+    private var isKeySoundEnabled: Boolean? = false
+    private var keySoundVolumePercent: Int? = 0
     private var mozcUTPersonName: Boolean? = false
     private var mozcUTPlaces: Boolean? = false
     private var mozcUTWiki: Boolean? = false
@@ -953,6 +958,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             onListUpdated = {
                 if (isKeyboardFloatingMode != true) {
                     mainLayoutBinding?.apply {
+                        setMainSuggestionColumn(this)
                         suggestionRecyclerView.scrollToPosition(0)
                     }
                 }
@@ -1097,6 +1103,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isLiveConversionEnable = preferences.isLiveConversionEnable
         nBest = preferences.nBest
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
+        longPressTimeoutPreferenceValue = preferences.longPressTimeoutPreferenceValue
         qwertyShowIMEButtonPreference = preferences.qwertyShowIMEButtonPreference
         tenkeyShowIMEButtonPreference = preferences.tenkeyShowIMEButtonPreference
         qwertyShowCursorButtonsPreference = preferences.qwertyShowCursorButtonsPreference
@@ -1118,6 +1125,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         userDictionaryPrefixMatchNumber = preferences.userDictionaryPrefixMatchNumber
         isVibration = preferences.isVibration
         vibrationTimingStr = preferences.vibrationTimingStr
+        isKeySoundEnabled = preferences.isKeySoundEnabled
+        keySoundVolumePercent = preferences.keySoundVolumePercent
         sumireInputKeyType = preferences.sumireInputKeyType
         sumireInputKeyLayoutType = preferences.sumireInputKeyLayoutType
         sumireInputStyle = preferences.sumireInputStyle
@@ -1323,6 +1332,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardBackgroundPlayer = null
     }
 
+    @androidx.annotation.OptIn(UnstableApi::class)
     private fun applyKeyboardBackgroundVideoIfNeeded(mainView: MainLayoutBinding): Boolean {
         val playerView = mainView.keyboardBackgroundVideo
         playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
@@ -1515,6 +1525,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
                     borderWidth = customKeyBorderWidth ?: 1
                 )
+                floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
+                    (longPressTimeoutPreferenceValue ?: 300).toLong()
+                )
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -1527,19 +1540,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
 
                                 GestureType.Down -> {
-                                    when (vibrationTimingStr) {
-                                        "both" -> {
-                                            vibrate()
-                                        }
-
-                                        "press" -> {
-                                            vibrate()
-                                        }
-
-                                        "release" -> {
-
-                                        }
-                                    }
+                                    handleKeyPressFeedback(getKeySoundType(key))
                                 }
 
                                 GestureType.Tap -> {
@@ -1700,6 +1701,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 val defaultLetterSize = when (mainView.keyboardView.currentInputMode.value) {
                     InputMode.ModeJapanese -> 17f
                     InputMode.ModeEnglish -> 12f
@@ -1728,8 +1730,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionProgressbar.isVisible = false
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                tabletView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                customLayoutDefault.setLongPressTimeout(
+                    (longPressTimeoutPreferenceValue ?: 300).toLong()
+                )
                 customLayoutDefault.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
+                qwertyView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 qwertyView.setSpecialKeyVisibility(
                     showCursors = qwertyShowCursorButtonsPreference ?: false,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
@@ -1871,6 +1878,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         nBest = null
         lastCandidate = null
         flickSensitivityPreferenceValue = null
+        longPressTimeoutPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         tenkeyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
@@ -1891,6 +1899,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         showCandidateInPasswordPreference = null
         tabletGojuonLayoutPreference = null
         isVibration = null
+        isKeySoundEnabled = null
+        keySoundVolumePercent = null
         tenkeyHeightPreferenceValue = null
         tenkeyWidthPreferenceValue = null
         qwertyHeightPreferenceValue = null
@@ -2608,7 +2618,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (clipboardPreviewVisibility == true) {
                             if (clipboardPreviewTapToDelete != true) {
                                 setPasteEnabled(true)
-                                setClipboardImagePreview(item.bitmap)
+                                if (clipboardUtil.isPrimaryClipSensitive()) {
+                                    setClipboardPreview(getSensitiveClipboardPreviewText())
+                                } else {
+                                    setClipboardImagePreview(item.bitmap)
+                                }
                             }
                         } else {
                             setPasteEnabled(false)
@@ -2619,7 +2633,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (clipboardPreviewVisibility == true) {
                             if (clipboardPreviewTapToDelete != true) {
                                 setPasteEnabled(true)
-                                setClipboardPreview(item.text)
+                                setClipboardPreview(getClipboardPreviewText(item.text))
                             }
                         } else {
                             setPasteEnabled(false)
@@ -3515,19 +3529,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         GestureType.Down -> {
-                            when (vibrationTimingStr) {
-                                "both" -> {
-                                    vibrate()
-                                }
-
-                                "press" -> {
-                                    vibrate()
-                                }
-
-                                "release" -> {
-
-                                }
-                            }
+                            handleKeyPressFeedback(getKeySoundType(key))
                         }
 
                         GestureType.Tap -> {
@@ -3682,19 +3684,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         GestureType.Down -> {
-                            when (vibrationTimingStr) {
-                                "both" -> {
-                                    vibrate()
-                                }
-
-                                "press" -> {
-                                    vibrate()
-                                }
-
-                                "release" -> {
-
-                                }
-                            }
+                            handleKeyPressFeedback(getKeySoundType(key))
                         }
 
                         GestureType.Tap -> {
@@ -6029,6 +6019,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.customLayoutDefault.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
+            override fun onPress(action: KeyAction) {
+                handleKeyPressFeedback(getKeySoundType(action))
+            }
+
             override fun onActionLongPress(action: KeyAction) {
                 vibrate()
                 clearDeleteBufferWithView()
@@ -6308,7 +6302,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             suggestionAdapter?.apply {
                                 if (clipboardPreviewVisibility == true) {
                                     setPasteEnabled(true)
-                                    setClipboardPreview(selectedText.toString())
+                                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
                                 } else {
                                     setPasteEnabled(false)
                                 }
@@ -6819,7 +6813,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             suggestionAdapter?.apply {
                                 if (clipboardPreviewVisibility == true) {
                                     setPasteEnabled(true)
-                                    setClipboardPreview(selectedText.toString())
+                                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
                                     appPreference.last_pasted_clipboard_text_preference = ""
                                 } else {
                                     setPasteEnabled(false)
@@ -7010,7 +7004,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionAdapter?.apply {
                 if (clipboardPreviewVisibility == true) {
                     setPasteEnabled(true)
-                    setClipboardPreview(selectedText.toString())
+                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
                     appPreference.last_pasted_clipboard_text_preference = ""
                 } else {
                     setPasteEnabled(false)
@@ -7050,7 +7044,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionAdapter?.apply {
                 if (clipboardPreviewVisibility == true) {
                     setPasteEnabled(true)
-                    setClipboardPreview(selectedText.toString())
+                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
                     appPreference.last_pasted_clipboard_text_preference = ""
                 } else {
                     setPasteEnabled(false)
@@ -7200,9 +7194,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun commitBitmapViaClipboard(contentUri: Uri) {
         Timber.d("commitBitmapViaClipboard: 開始")
         try {
-            val clip = ClipData.newUri(contentResolver, "Image", contentUri)
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(clip)
+            clipboardUtil.setClipBoardUri(contentUri, label = "Image")
 
             // 2. ターゲットアプリに読み取り権限を一時的に付与
             // (FileProviderのgrantUriPermissions属性がtrueなら不要な場合もあるが、明示的に行うのが安全)
@@ -7240,7 +7232,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (clipboardPreviewVisibility == true) {
                         if (clipboardPreviewTapToDelete != true) {
                             setPasteEnabled(true)
-                            setClipboardImagePreview(item.bitmap)
+                            if (clipboardUtil.isPrimaryClipSensitive()) {
+                                setClipboardPreview(getSensitiveClipboardPreviewText())
+                            } else {
+                                setClipboardImagePreview(item.bitmap)
+                            }
                         } else {
                             setPasteEnabled(false)
                         }
@@ -7254,7 +7250,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (clipboardPreviewTapToDelete != true) {
                             setPasteEnabled(true)
                             if (appPreference.last_pasted_clipboard_text_preference != item.text) {
-                                setClipboardPreview(item.text)
+                                setClipboardPreview(getClipboardPreviewText(item.text))
                             }
                         }
                     } else {
@@ -7269,6 +7265,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
     }
+
+    private fun getClipboardPreviewText(text: String): String {
+        return if (clipboardUtil.isPrimaryClipSensitive()) {
+            getSensitiveClipboardPreviewText()
+        } else {
+            text
+        }
+    }
+
+    private fun getSensitiveClipboardPreviewText(text: CharSequence? = null): String = "********"
 
     private fun dakutenSmallActionForSumire() {
         val insertString = inputString.value
@@ -7690,7 +7696,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     is ClipboardItem.Image -> {
                                         if (clipboardPreviewVisibility == true) {
                                             setPasteEnabled(true)
-                                            setClipboardImagePreview(item.bitmap)
+                                            if (clipboardUtil.isPrimaryClipSensitive()) {
+                                                setClipboardPreview(getSensitiveClipboardPreviewText())
+                                            } else {
+                                                setClipboardImagePreview(item.bitmap)
+                                            }
                                         } else {
                                             setPasteEnabled(false)
                                         }
@@ -7701,13 +7711,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             if (clipboardPreviewTapToDelete == true) {
                                                 if (appPreference.last_pasted_clipboard_text_preference != item.text) {
                                                     setPasteEnabled(true)
-                                                    setClipboardPreview(item.text)
+                                                    setClipboardPreview(getClipboardPreviewText(item.text))
                                                 } else {
                                                     setPasteEnabled(false)
                                                 }
                                             } else {
                                                 setPasteEnabled(true)
-                                                setClipboardPreview(item.text)
+                                                setClipboardPreview(getClipboardPreviewText(item.text))
                                             }
                                         } else {
                                             setPasteEnabled(false)
@@ -9308,7 +9318,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
-        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetsuPositionList [$currentInputType] [${currentInputType in passwordTypes}] [$suppressSuggestions]")
         if (string.isNotEmpty()) {
             hasConvertedKatakana = false
             if (suppressSuggestions) {
@@ -9321,7 +9330,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 handleDefaultInput(string)
             }
         } else {
-            Timber.d("setSuggestionOnView auto empty: ${stringInTail.get()} $bunsetusMultipleDetect")
             if (stringInTail.get().isNotEmpty()) {
                 setComposingText(stringInTail.get(), 1)
                 onLeftKeyLongPressUp.set(true)
@@ -10818,6 +10826,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.suggestionRecyclerView.removeItemDecorationAt(0)
         }
 
+        if (shouldUseSelectedTextGemmaActionLayout()) {
+            mainView.suggestionRecyclerView.layoutManager =
+                LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+            mainView.suggestionRecyclerView.adapter = adapter
+            return
+        }
+
         when (columnNum) {
             "1" -> {
                 mainView.suggestionRecyclerView.layoutManager =
@@ -10854,6 +10869,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         mainView.suggestionRecyclerView.adapter = adapter
+    }
+
+    private fun shouldUseSelectedTextGemmaActionLayout(): Boolean {
+        val suggestions = suggestionAdapter?.suggestions.orEmpty()
+        return suggestions.isNotEmpty() && suggestions.all { isSelectedTextGemmaActionCandidate(it) }
     }
 
     private fun setShortCutAdapter(
@@ -11119,19 +11139,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
                     Timber.d("Pressed Key: $qwertyKey")
-                    when (vibrationTimingStr) {
-                        "both" -> {
-                            vibrate()
-                        }
-
-                        "press" -> {
-                            vibrate()
-                        }
-
-                        "release" -> {
-
-                        }
-                    }
+                    handleKeyPressFeedback(getKeySoundType(qwertyKey))
                     deleteLongPressJob?.cancel()
                 }
 
@@ -15456,6 +15464,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
         } else null
     }
+    private val audioManager by lazy {
+        getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    }
+
+    private enum class KeySoundType {
+        STANDARD,
+        DELETE,
+        ENTER
+    }
 
     private fun vibrate() {
         if (isVibration == false) return
@@ -15465,6 +15482,62 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             vibratorManager?.vibrate(combinedVibration)
         } else {
             vibrator?.vibrate(2)
+        }
+    }
+
+    private fun handleKeyPressFeedback(keySoundType: KeySoundType) {
+        when (vibrationTimingStr) {
+            "both", "press" -> vibrate()
+            "release", null -> Unit
+        }
+        playKeySound(keySoundType)
+    }
+
+    private fun playKeySound(keySoundType: KeySoundType) {
+        if (isKeySoundEnabled != true) return
+        if (audioManager.ringerMode != AudioManager.RINGER_MODE_NORMAL) return
+
+        val effectType = when (keySoundType) {
+            KeySoundType.STANDARD -> AudioManager.FX_KEYPRESS_STANDARD
+            KeySoundType.DELETE -> AudioManager.FX_KEYPRESS_DELETE
+            KeySoundType.ENTER -> AudioManager.FX_KEYPRESS_RETURN
+        }
+        val volumePercent = (keySoundVolumePercent ?: 0).coerceIn(0, 100)
+
+        if (volumePercent == 0) {
+            audioManager.playSoundEffect(effectType)
+        } else {
+            audioManager.playSoundEffect(effectType, volumePercent / 100f)
+        }
+    }
+
+    private fun getKeySoundType(key: Key): KeySoundType {
+        return when (key) {
+            Key.SideKeyDelete -> KeySoundType.DELETE
+            Key.SideKeyEnter -> KeySoundType.ENTER
+            else -> KeySoundType.STANDARD
+        }
+    }
+
+    private fun getKeySoundType(qwertyKey: QWERTYKey): KeySoundType {
+        return when (qwertyKey) {
+            QWERTYKey.QWERTYKeyDelete -> KeySoundType.DELETE
+            QWERTYKey.QWERTYKeyReturn -> KeySoundType.ENTER
+            else -> KeySoundType.STANDARD
+        }
+    }
+
+    private fun getKeySoundType(action: KeyAction): KeySoundType {
+        return when (action) {
+            KeyAction.Delete,
+            KeyAction.Backspace,
+            KeyAction.DeleteUntilSymbol -> KeySoundType.DELETE
+
+            KeyAction.Enter,
+            KeyAction.NewLine,
+            KeyAction.Confirm -> KeySoundType.ENTER
+
+            else -> KeySoundType.STANDARD
         }
     }
 
