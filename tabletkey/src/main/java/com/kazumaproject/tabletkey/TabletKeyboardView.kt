@@ -105,6 +105,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private lateinit var pressedKey: PressedKey
 
     private var flickSensitivity: Int = 100
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     // All AppCompatButton keys (all the character keys)
     private val allButtonKeys = listOf(
@@ -876,7 +877,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                     }
                     Log.d("ACTION_DOWN: ", "${tabletCapsLockState.value}")
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                        delay(ViewConfiguration.getLongPressTimeout().toLong())
+                        delay(longPressTimeout)
                         if (pressedKey.key != Key.NotSelected) {
                             longPressListener?.onLongPress(pressedKey.key)
                             isLongPressed = true
@@ -1148,7 +1149,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                         )
                         setKeyPressed()
                         longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                            delay(ViewConfiguration.getLongPressTimeout().toLong())
+                            delay(longPressTimeout)
                             if (pressedKey.key != Key.NotSelected) {
                                 longPressListener?.onLongPress(pressedKey.key)
                                 isLongPressed = true
@@ -3383,6 +3384,10 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     fun setFlickSensitivityValue(sensitivity: Int) {
         flickSensitivity = sensitivity
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {

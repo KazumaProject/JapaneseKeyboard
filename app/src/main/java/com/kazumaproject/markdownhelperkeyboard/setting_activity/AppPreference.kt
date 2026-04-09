@@ -22,6 +22,7 @@ object AppPreference {
     private val CLIPBOARD_HISTORY_ENABLE = Pair("clipboard_history_preference", false)
     private val TIME_SAME_PRONOUNCE_TYPING = Pair("time_same_pronounce_typing_preference", 1000)
     private val FLICK_SENSITIVITY = Pair("flick_sensitivity_preference", 100)
+    private val LONG_PRESS_TIMEOUT = Pair("long_press_timeout_preference", 300)
     private val VIBRATION_PREFERENCE = Pair("vibration_preference", true)
     private val VIBRATION_TIMING_PREFERENCE = Pair("vibration_timing", "both")
     private val KEY_SOUND_PREFERENCE = Pair("key_sound_preference", false)
@@ -616,6 +617,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(FLICK_SENSITIVITY.first, value ?: 100)
+        }
+
+    var long_press_timeout_preference: Int?
+        get() = preferences.getInt(
+            LONG_PRESS_TIMEOUT.first, LONG_PRESS_TIMEOUT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(LONG_PRESS_TIMEOUT.first, value ?: 300)
         }
 
     var n_best_preference: Int?

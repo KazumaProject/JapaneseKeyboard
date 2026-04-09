@@ -62,6 +62,7 @@ class FlickInputController(context: Context) {
     private var isLongPressModeActive = false
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var popupPosition: PopupPosition = PopupPosition.CENTER
 
@@ -80,6 +81,10 @@ class FlickInputController(context: Context) {
     fun setPopupViewSize(center: Float, target: Float, orbit: Float, textSize: Float) {
         popupView.setUiSize(center, target, orbit, textSize)
         this.flickThreshold = center
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
 
@@ -120,7 +125,7 @@ class FlickInputController(context: Context) {
 
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
-                    delay(ViewConfiguration.getLongPressTimeout().toLong())
+                    delay(longPressTimeout)
                     isLongPressModeActive = true
                     popupView.setFullUIMode(true)
                     popupView.invalidate()

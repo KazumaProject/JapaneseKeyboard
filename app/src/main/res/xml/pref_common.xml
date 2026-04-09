@@ -51,6 +51,11 @@
             app:summary="@string/key_candidate_letter_size_preference_summary" />
 
         <Preference
+            android:key="long_press_timeout_preference"
+            android:summary="@string/long_press_timeout_preference_summary"
+            android:title="@string/long_press_timeout_preference_title" />
+
+        <Preference
             android:key="keyboard_background_image_select_preference"
             android:summary="@string/keyboard_background_image_select_summary"
             android:title="@string/keyboard_background_image_select_title" />
