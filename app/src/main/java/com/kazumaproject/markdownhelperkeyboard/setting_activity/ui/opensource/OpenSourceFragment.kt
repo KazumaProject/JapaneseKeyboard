@@ -229,6 +229,20 @@ class OpenSourceFragment : Fragment() {
             }
         }
 
+        if (AppVariantConfig.hasGemma) {
+            entries += LicenseEntry("com.google.ai.edge.litertlm:litertlm-android") {
+                showLicenseDialog(
+                    title = "com.google.ai.edge.litertlm:litertlm-android",
+                    notice = Notice(
+                        "com.google.ai.edge.litertlm:litertlm-android",
+                        "https://github.com/google-ai-edge/LiteRT-LM",
+                        "Apache License 2.0",
+                        ApacheSoftwareLicense20()
+                    )
+                )
+            }
+        }
+
         if (AppVariantConfig.hasZenz) {
             entries += LicenseEntry("Miwa-Keita/zenz-v3.1-xsmall-gguf") {
                 showLicenseDialog(

@@ -68,6 +68,9 @@
     <string name="omission_search_summary_on">Omit modifier key input is enabled\ne.g., "かつこう" → "がっこう"</string>
     <string name="omission_search_summary_off">Omit modifier key input is disabled</string>
     <string name="flick_sensitivity_title">Flick Input Sensitivity</string>
+    <string name="long_press_timeout_preference_title">Long-press Time</string>
+    <string name="long_press_timeout_preference_summary">Adjust how long a key must be held before long-press is triggered.</string>
+    <string name="long_press_timeout_preference_value">%1$d ms</string>
 
     <string name="custom_romaji_title">Customize Romaji Conversion</string>
     <string name="custom_romaji_summary">Create and select a Romaji conversion table</string>
@@ -113,6 +116,13 @@
     <string name="vibration_timing_title">Vibration Timing</string>
     <string name="vibration_timing_summary">Select when to trigger vibration</string>
     <string name="vibration_timing_dialog_title">Please select</string>
+    <string name="key_sound_title">Enable Key Sound</string>
+    <string name="key_sound_summary_on">Plays a sound when a key is pressed</string>
+    <string name="key_sound_summary_off">Does not play a sound when a key is pressed</string>
+    <string name="key_sound_volume_title">Key Sound Volume</string>
+    <string name="key_sound_volume_summary">Set the key sound volume</string>
+    <string name="key_sound_volume_system_default">System default</string>
+    <string name="key_sound_volume_percent">%1$d%%</string>
 
     <string name="ng_word_list_title">List of words to hide</string>
     <string name="ng_word_list_summary">Display the list of words to hide</string>
@@ -385,6 +395,7 @@
 
     <string name="pref_clipboard_preview_title">Show clipboard contents in the conversion bar</string>
     <string name="pref_clipboard_preview_summary">When text or images are copied to the clipboard, show them in the conversion bar.</string>
+    <string name="clipboard_sensitive_content_hidden">Sensitive clipboard content</string>
 
     <string name="pref_round_corner_keyboard_title">Round the keyboard’s corners</string>
     <string name="pref_round_corner_keyboard_summary">When on, all four corners of the keyboard are rounded.</string>

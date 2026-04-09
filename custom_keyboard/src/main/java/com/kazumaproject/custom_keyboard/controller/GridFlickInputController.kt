@@ -30,6 +30,7 @@ class GridFlickInputController(
 ) {
 
     interface GridFlickListener {
+        fun onPress(character: String)
         fun onFlick(character: String, isFlick: Boolean)
     }
 
@@ -42,6 +43,7 @@ class GridFlickInputController(
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var originalKeyText: CharSequence? = null
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     // 各方向に対応するPopupWindowを保持するMap
     private val popupMap: MutableMap<FlickDirection, PopupWindow> = mutableMapOf()
@@ -72,6 +74,10 @@ class GridFlickInputController(
 
     fun setPopupColors(theme: FlickPopupColorTheme) {
         this.colorTheme = theme
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
     private fun createPopups() {
@@ -256,6 +262,7 @@ class GridFlickInputController(
                 }
 
                 createPopups()
+                listener?.onPress(characterMap[FlickDirection.TAP] ?: "")
 
                 // 方向の状態を初期化
                 currentFlickDirection = null
@@ -263,7 +270,7 @@ class GridFlickInputController(
                 showPopupForDirection(FlickDirection.TAP)
 
                 longPressJob = controllerScope.launch {
-                    delay(ViewConfiguration.getLongPressTimeout().toLong())
+                    delay(longPressTimeout)
                     isLongPressModeActive = true
                     dismissAllPopups() // 方向ポップアップを消す
                     showGridPopup()

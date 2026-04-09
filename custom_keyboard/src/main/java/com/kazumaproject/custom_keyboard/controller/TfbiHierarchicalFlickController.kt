@@ -32,6 +32,7 @@ class TfbiHierarchicalFlickController(
      * リスナー：最終的に入力が決定した文字を通知します。
      */
     interface TfbiListener {
+        fun onPress(character: String)
         fun onFlick(character: String)
 
         /**
@@ -168,6 +169,10 @@ class TfbiHierarchicalFlickController(
         mapStack.push(rMap)
         highlightStack.push(TfbiFlickDirection.TAP)
         currentHighlight = TfbiFlickDirection.TAP
+        val tapNode = currentMap?.get(TfbiFlickDirection.TAP)
+        if (tapNode is TfbiFlickNode.Input) {
+            listener?.onPress(tapNode.char)
+        }
 
         showPopup(view, false)
     }
