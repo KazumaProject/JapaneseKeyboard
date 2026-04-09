@@ -94,11 +94,6 @@ class FlickGridPopupView(context: Context) : GridLayout(context) {
         }
     }
 
-    fun setCharacters(map: Map<FlickDirection, String>, keyWidth: Int, keyHeight: Int) {
-        val actionMap = map.mapValues { (_, char) -> FlickAction.Input(char) as FlickAction }
-        setActions(actionMap, keyWidth, keyHeight)
-    }
-
     private fun createCell(action: FlickAction, cellWidth: Int, cellHeight: Int): FrameLayout {
         return FrameLayout(context).apply {
             background = createButtonDrawable(false)
