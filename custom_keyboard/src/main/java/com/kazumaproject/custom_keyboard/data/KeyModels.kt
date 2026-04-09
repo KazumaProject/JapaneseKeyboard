@@ -100,12 +100,13 @@ enum class KeyType {
     /** 円形フリックキー */
     CIRCULAR_FLICK,
 
-    /** 十字フリックキー */
-    CROSS_FLICK,
+    /**
+     * 十字フリックキー
+     * PETAL は非推奨。後方互換性のため残す。
+     */
+    CROSS_FLICK, PETAL_FLICK,
 
     STANDARD_FLICK,
-
-    PETAL_FLICK,
 
     TWO_STEP_FLICK,
 
