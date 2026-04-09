@@ -162,8 +162,7 @@ class SegmentedBackgroundDrawable(
 
     override fun setAlpha(alpha: Int) {
         backgroundPaint.alpha = alpha
-        textPaint.alpha = alpha
-        secondaryTextPaint.alpha = alpha
+        invalidateSelf()
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
