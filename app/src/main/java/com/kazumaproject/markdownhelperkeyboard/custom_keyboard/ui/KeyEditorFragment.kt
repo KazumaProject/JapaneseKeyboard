@@ -225,7 +225,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
         binding.keyLabelEdittext.doAfterTextChanged { text ->
             updateDoneButtonState()
-            // ペタルフリックの中央セルラベルをリアルタイム更新
+            // フリックの中央セルラベルをリアルタイム更新
             if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_cross_flick) {
                 val label = text?.toString() ?: ""
                 val tapOutput = currentFlickItems.firstOrNull { it.direction == FlickDirection.TAP }?.output ?: ""
