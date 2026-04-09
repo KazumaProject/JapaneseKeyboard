@@ -24,6 +24,7 @@ data class ImePreferencesSnapshot(
     val isLiveConversionEnable: Boolean,
     val nBest: Int,
     val flickSensitivityPreferenceValue: Int,
+    val longPressTimeoutPreferenceValue: Int,
     val qwertyShowIMEButtonPreference: Boolean,
     val tenkeyShowIMEButtonPreference: Boolean,
     val qwertyShowCursorButtonsPreference: Boolean,
@@ -44,6 +45,8 @@ data class ImePreferencesSnapshot(
     val userDictionaryPrefixMatchNumber: Int,
     val isVibration: Boolean,
     val vibrationTimingStr: String,
+    val isKeySoundEnabled: Boolean,
+    val keySoundVolumePercent: Int,
     val sumireInputKeyType: String,
     val sumireInputKeyLayoutType: String,
     val sumireInputStyle: String,
@@ -162,6 +165,8 @@ data class ImePreferencesSnapshot(
                 isLiveConversionEnable = appPreference.live_conversion_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
                 flickSensitivityPreferenceValue = appPreference.flick_sensitivity_preference ?: 100,
+                longPressTimeoutPreferenceValue =
+                    appPreference.long_press_timeout_preference ?: 300,
                 qwertyShowIMEButtonPreference = appPreference.qwerty_show_ime_button ?: true,
                 tenkeyShowIMEButtonPreference =
                     appPreference.tenkey_show_language_button_preference,
@@ -195,6 +200,8 @@ data class ImePreferencesSnapshot(
                     appPreference.user_dictionary_prefix_match_number_preference ?: 2,
                 isVibration = appPreference.vibration_preference ?: true,
                 vibrationTimingStr = appPreference.vibration_timing_preference ?: "both",
+                isKeySoundEnabled = appPreference.key_sound_preference ?: false,
+                keySoundVolumePercent = appPreference.key_sound_volume_percent_preference ?: 0,
                 sumireInputKeyType =
                     appPreference.sumire_input_selection_preference ?: "flick-default",
                 sumireInputKeyLayoutType = appPreference.sumire_input_method,

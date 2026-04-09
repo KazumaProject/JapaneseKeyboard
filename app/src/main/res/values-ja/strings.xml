@@ -70,6 +70,9 @@
     <string name="omission_search_summary_on">修飾キー省略入力は有効です\nかつこう → がっこう</string>
     <string name="omission_search_summary_off">修飾キー省略入力は無効です</string>
     <string name="flick_sensitivity_title">フリック入力の感度</string>
+    <string name="long_press_timeout_preference_title">長押し時間</string>
+    <string name="long_press_timeout_preference_summary">長押しと判定するまでの時間を変更します。</string>
+    <string name="long_press_timeout_preference_value">%1$d ms</string>
 
     <string name="custom_romaji_title">ローマ字変換のカスタマイズ</string>
     <string name="custom_romaji_summary">ローマ字の変換表を作成、選択します</string>
@@ -115,6 +118,13 @@
     <string name="vibration_timing_title">バイブレーションのタイミング</string>
     <string name="vibration_timing_summary">バイブレーションを発生させるタイミングを選択</string>
     <string name="vibration_timing_dialog_title">選択してください</string>
+    <string name="key_sound_title">キー押下音の有無</string>
+    <string name="key_sound_summary_on">キーを押したときに音を鳴らします</string>
+    <string name="key_sound_summary_off">キーを押しても音を鳴らしません</string>
+    <string name="key_sound_volume_title">キー押下音の音量</string>
+    <string name="key_sound_volume_summary">キー押下音の音量を設定します</string>
+    <string name="key_sound_volume_system_default">システムデフォルト</string>
+    <string name="key_sound_volume_percent">%1$d%%</string>
 
     <string name="ng_word_list_title">非表示にする単語の一覧</string>
     <string name="ng_word_list_summary">非表示にする単語の一覧を表示</string>
@@ -388,6 +398,7 @@
 
     <string name="pref_clipboard_preview_title">クリップボードの内容を変換欄に表示</string>
     <string name="pref_clipboard_preview_summary">クリップボードにコピーした文字や画像を検知したとき、変換欄に表示します。</string>
+    <string name="clipboard_sensitive_content_hidden">機密性の高いクリップボードの内容</string>
 
     <string name="pref_round_corner_keyboard_title">キーボードの角を丸くする</string>
     <string name="pref_round_corner_keyboard_summary">オンにすると、キーボード枠の四隅が丸くなります</string>

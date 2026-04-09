@@ -18,6 +18,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.Button
 import android.widget.GridLayout
 import androidx.annotation.AttrRes
@@ -52,6 +53,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 ) : GridLayout(context, attrs, defStyleAttr) {
 
     interface OnKeyboardActionListener {
+        fun onPress(action: KeyAction)
         fun onAction(action: KeyAction, isFlick: Boolean)
         fun onActionLongPress(action: KeyAction)
         fun onActionUpAfterLongPress(action: KeyAction)
@@ -74,6 +76,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
     private var defaultTextSize = 14f
     private var specialKeyTextSizeSp = SPECIAL_KEY_BASE_TEXT_SIZE_SP
 
@@ -131,6 +134,13 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     fun setFlickSensitivityValue(sensitivity: Int) {
         flickSensitivity = sensitivity
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        val normalized = timeoutMillis.coerceIn(100L, 2000L)
+        if (longPressTimeout == normalized) return
+        longPressTimeout = normalized
+        currentLayout?.let { setKeyboard(it) }
     }
 
     fun setDefaultTextSize(textSize: Float) {
@@ -813,6 +823,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 Log.d("FlickKeyboardView KeyType.CIRCULAR_FLICK", "$flickKeyMapsList")
                 if (!flickKeyMapsList.isNullOrEmpty()) {
                     val controller = CustomAngleFlickController(context, flickSensitivity).apply {
+                        setLongPressTimeout(longPressTimeout)
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
                         val surfaceContainerLow =
@@ -875,6 +886,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                         setPopupColors(dynamicColorTheme)
 
                         this.listener = object : CustomAngleFlickController.FlickListener {
+                            override fun onPress(character: String) {
+                                notifyTextPress(character)
+                            }
+
                             override fun onFlick(direction: FlickDirection, character: String) {
                                 if (character.isNotEmpty()) {
                                     this@FlickKeyboardView.listener?.onAction(
@@ -940,7 +955,12 @@ class FlickKeyboardView @JvmOverloads constructor(
                 Log.d("FlickKeyboardView KeyType.CROSS_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
                     val controller = CrossFlickInputController(context).apply {
+                        setLongPressTimeout(longPressTimeout)
                         this.listener = object : CrossFlickInputController.CrossFlickListener {
+                            override fun onPress(action: KeyAction) {
+                                this@FlickKeyboardView.listener?.onPress(action)
+                            }
+
                             override fun onFlick(action: KeyAction, isFlick: Boolean) {
                                 this@FlickKeyboardView.listener?.onAction(action, isFlick)
                             }
@@ -1058,9 +1078,17 @@ class FlickKeyboardView @JvmOverloads constructor(
                         keyView.setTextColor(Color.TRANSPARENT)
                     }
 
+                    if (liquidGlassEnable) {
+                        keyView.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                    }
+
                     val controller = StandardFlickInputController(context).apply {
                         this.listener =
                             object : StandardFlickInputController.StandardFlickListener {
+                                override fun onPress(character: String) {
+                                    notifyTextPress(character)
+                                }
+
                                 override fun onFlick(character: String) {
                                     this@FlickKeyboardView.listener?.onAction(
                                         KeyAction.Text(character),
@@ -1152,6 +1180,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 Log.d("FlickKeyboardView KeyType.PETAL_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
                     val controller = GridFlickInputController(context, flickSensitivity).apply {
+                        setLongPressTimeout(longPressTimeout)
                         val isDarkTheme = context.isDarkThemeOn()
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
@@ -1220,6 +1249,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                         elevation = 1f
 
                         this.listener = object : GridFlickInputController.GridFlickListener {
+                            override fun onPress(character: String) {
+                                notifyTextPress(character)
+                            }
+
                             override fun onFlick(character: String, isFlick: Boolean) {
                                 this@FlickKeyboardView.listener?.onAction(
                                     KeyAction.Text(character),
@@ -1267,6 +1300,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
 
                     keyView.setOnTouchListener { _, event ->
+                        if (event.action == MotionEvent.ACTION_DOWN) {
+                            val currentAction =
+                                dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
+                            this@FlickKeyboardView.listener?.onPress(currentAction)
+                        }
                         if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
                             if (isLongPressTriggered) {
                                 val currentAction =
@@ -1291,6 +1329,12 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         return null
+    }
+
+    private fun notifyTextPress(character: String) {
+        if (character.isNotEmpty()) {
+            listener?.onPress(KeyAction.Text(character))
+        }
     }
 
     private fun detachKeyBehavior(controller: Any?) {
