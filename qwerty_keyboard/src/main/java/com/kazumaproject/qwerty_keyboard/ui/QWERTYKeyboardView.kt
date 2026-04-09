@@ -112,7 +112,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var shiftDoubleTapped = false
 
     // Long‐press timeout (system default)
-    private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+    private var longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
 
     private val _capsLockState = MutableStateFlow(CapsLockState())
     private val capsLockState: StateFlow<CapsLockState> = _capsLockState.asStateFlow()
@@ -882,6 +882,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setDeleteLeftFlickEnabled(enabled: Boolean) {
         this.enableDeleteLeftFlick = enabled
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
     fun setOnDeleteLeftFlickListener(listener: () -> Unit) {

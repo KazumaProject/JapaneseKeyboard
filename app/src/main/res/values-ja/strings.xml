@@ -70,6 +70,9 @@
     <string name="omission_search_summary_on">修飾キー省略入力は有効です\nかつこう → がっこう</string>
     <string name="omission_search_summary_off">修飾キー省略入力は無効です</string>
     <string name="flick_sensitivity_title">フリック入力の感度</string>
+    <string name="long_press_timeout_preference_title">長押し時間</string>
+    <string name="long_press_timeout_preference_summary">長押しと判定するまでの時間を変更します。</string>
+    <string name="long_press_timeout_preference_value">%1$d ms</string>
 
     <string name="custom_romaji_title">ローマ字変換のカスタマイズ</string>
     <string name="custom_romaji_summary">ローマ字の変換表を作成、選択します</string>

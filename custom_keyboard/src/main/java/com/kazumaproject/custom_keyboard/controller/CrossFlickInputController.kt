@@ -57,6 +57,7 @@ class CrossFlickInputController(private val context: Context) {
     private var longPressJob: Job? = null
     private var isLongPressMode = false
     private var isLongPressTriggered = false
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     // 色設定保持用の変数
     private var popupBackgroundColor: Int? = null
@@ -70,6 +71,10 @@ class CrossFlickInputController(private val context: Context) {
         this.popupBackgroundColor = backgroundColor
         this.popupHighlightedColor = highlightedColor
         this.popupTextColor = textColor
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
     fun cancel() {
@@ -105,7 +110,7 @@ class CrossFlickInputController(private val context: Context) {
 
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
-                    delay(ViewConfiguration.getLongPressTimeout().toLong())
+                    delay(longPressTimeout)
                     isLongPressTriggered = true
                     isLongPressMode = true
 

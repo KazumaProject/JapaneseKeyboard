@@ -490,6 +490,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isLiveConversionEnable: Boolean? = false
     private var nBest: Int? = 4
     private var flickSensitivityPreferenceValue: Int? = 100
+    private var longPressTimeoutPreferenceValue: Int? = 300
     private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyEnableFlickUpPreference: Boolean? = false
@@ -1101,6 +1102,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isLiveConversionEnable = preferences.isLiveConversionEnable
         nBest = preferences.nBest
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
+        longPressTimeoutPreferenceValue = preferences.longPressTimeoutPreferenceValue
         qwertyShowIMEButtonPreference = preferences.qwertyShowIMEButtonPreference
         tenkeyShowIMEButtonPreference = preferences.tenkeyShowIMEButtonPreference
         qwertyShowCursorButtonsPreference = preferences.qwertyShowCursorButtonsPreference
@@ -1521,6 +1523,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
                     borderWidth = customKeyBorderWidth ?: 1
                 )
+                floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
+                    (longPressTimeoutPreferenceValue ?: 300).toLong()
+                )
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -1694,6 +1699,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 val defaultLetterSize = when (mainView.keyboardView.currentInputMode.value) {
                     InputMode.ModeJapanese -> 17f
                     InputMode.ModeEnglish -> 12f
@@ -1722,8 +1728,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionProgressbar.isVisible = false
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                tabletView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                customLayoutDefault.setLongPressTimeout(
+                    (longPressTimeoutPreferenceValue ?: 300).toLong()
+                )
                 customLayoutDefault.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
+                qwertyView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 qwertyView.setSpecialKeyVisibility(
                     showCursors = qwertyShowCursorButtonsPreference ?: false,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
@@ -1865,6 +1876,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         nBest = null
         lastCandidate = null
         flickSensitivityPreferenceValue = null
+        longPressTimeoutPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         tenkeyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null

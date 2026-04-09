@@ -24,6 +24,7 @@ data class ImePreferencesSnapshot(
     val isLiveConversionEnable: Boolean,
     val nBest: Int,
     val flickSensitivityPreferenceValue: Int,
+    val longPressTimeoutPreferenceValue: Int,
     val qwertyShowIMEButtonPreference: Boolean,
     val tenkeyShowIMEButtonPreference: Boolean,
     val qwertyShowCursorButtonsPreference: Boolean,
@@ -164,6 +165,8 @@ data class ImePreferencesSnapshot(
                 isLiveConversionEnable = appPreference.live_conversion_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
                 flickSensitivityPreferenceValue = appPreference.flick_sensitivity_preference ?: 100,
+                longPressTimeoutPreferenceValue =
+                    appPreference.long_press_timeout_preference ?: 300,
                 qwertyShowIMEButtonPreference = appPreference.qwerty_show_ime_button ?: true,
                 tenkeyShowIMEButtonPreference =
                     appPreference.tenkey_show_language_button_preference,
