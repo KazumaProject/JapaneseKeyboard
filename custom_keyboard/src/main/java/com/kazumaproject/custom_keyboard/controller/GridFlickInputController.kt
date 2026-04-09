@@ -31,6 +31,7 @@ class GridFlickInputController(
 ) {
 
     interface GridFlickListener {
+        fun onPress(action: FlickAction)
         fun onFlick(action: FlickAction, isFlick: Boolean)
     }
 
@@ -267,7 +268,7 @@ class GridFlickInputController(
                 }
 
                 createPopups()
-                listener?.onPress(characterMap[FlickDirection.TAP] ?: "")
+                characterMap[FlickDirection.TAP]?.let { listener?.onPress(it) }
 
                 // 方向の状態を初期化
                 currentFlickDirection = null

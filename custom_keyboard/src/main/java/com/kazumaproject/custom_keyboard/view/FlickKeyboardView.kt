@@ -1051,6 +1051,12 @@ class FlickKeyboardView @JvmOverloads constructor(
                         elevation = 1f
 
                         this.listener = object : GridFlickInputController.GridFlickListener {
+                            override fun onPress(action: FlickAction) {
+                                if (action is FlickAction.Input) {
+                                    notifyTextPress(action.char)
+                                }
+                            }
+
                             override fun onFlick(action: FlickAction, isFlick: Boolean) {
                                 val keyAction = when (action) {
                                     is FlickAction.Input -> KeyAction.Text(action.char)
