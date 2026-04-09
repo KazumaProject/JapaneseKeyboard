@@ -1078,6 +1078,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                         keyView.setTextColor(Color.TRANSPARENT)
                     }
 
+                    if (liquidGlassEnable) {
+                        keyView.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+                    }
+
                     val controller = StandardFlickInputController(context).apply {
                         this.listener =
                             object : StandardFlickInputController.StandardFlickListener {
