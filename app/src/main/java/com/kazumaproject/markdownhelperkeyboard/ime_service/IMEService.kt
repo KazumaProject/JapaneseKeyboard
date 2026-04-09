@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import android.annotation.SuppressLint
-import android.content.ClipData
 import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
@@ -393,6 +392,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 // 1. 現在クリップボードにあるアイテムを取得 (ClipboardItem.Text or Image)
                 val newItem = clipboardUtil.getPrimaryClipContent()
                 if (newItem is ClipboardItem.Empty) return@withLock
+                if (clipboardUtil.isPrimaryClipSensitive()) return@withLock
 
                 // 2. DBに保存されている最新のメタデータを取得
                 val lastSavedItem = clipboardHistoryRepository.getLatestItem()
@@ -2618,7 +2618,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (clipboardPreviewVisibility == true) {
                             if (clipboardPreviewTapToDelete != true) {
                                 setPasteEnabled(true)
-                                setClipboardImagePreview(item.bitmap)
+                                if (clipboardUtil.isPrimaryClipSensitive()) {
+                                    setClipboardPreview(getSensitiveClipboardPreviewText())
+                                } else {
+                                    setClipboardImagePreview(item.bitmap)
+                                }
                             }
                         } else {
                             setPasteEnabled(false)
@@ -2629,7 +2633,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (clipboardPreviewVisibility == true) {
                             if (clipboardPreviewTapToDelete != true) {
                                 setPasteEnabled(true)
-                                setClipboardPreview(item.text)
+                                setClipboardPreview(getClipboardPreviewText(item.text))
                             }
                         } else {
                             setPasteEnabled(false)
@@ -6298,7 +6302,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             suggestionAdapter?.apply {
                                 if (clipboardPreviewVisibility == true) {
                                     setPasteEnabled(true)
-                                    setClipboardPreview(selectedText.toString())
+                                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
                                 } else {
                                     setPasteEnabled(false)
                                 }
@@ -6809,7 +6813,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             suggestionAdapter?.apply {
                                 if (clipboardPreviewVisibility == true) {
                                     setPasteEnabled(true)
-                                    setClipboardPreview(selectedText.toString())
+                                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
                                     appPreference.last_pasted_clipboard_text_preference = ""
                                 } else {
                                     setPasteEnabled(false)
@@ -7000,7 +7004,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionAdapter?.apply {
                 if (clipboardPreviewVisibility == true) {
                     setPasteEnabled(true)
-                    setClipboardPreview(selectedText.toString())
+                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
                     appPreference.last_pasted_clipboard_text_preference = ""
                 } else {
                     setPasteEnabled(false)
@@ -7040,7 +7044,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionAdapter?.apply {
                 if (clipboardPreviewVisibility == true) {
                     setPasteEnabled(true)
-                    setClipboardPreview(selectedText.toString())
+                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
                     appPreference.last_pasted_clipboard_text_preference = ""
                 } else {
                     setPasteEnabled(false)
@@ -7190,9 +7194,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun commitBitmapViaClipboard(contentUri: Uri) {
         Timber.d("commitBitmapViaClipboard: 開始")
         try {
-            val clip = ClipData.newUri(contentResolver, "Image", contentUri)
-            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            clipboard.setPrimaryClip(clip)
+            clipboardUtil.setClipBoardUri(contentUri, label = "Image")
 
             // 2. ターゲットアプリに読み取り権限を一時的に付与
             // (FileProviderのgrantUriPermissions属性がtrueなら不要な場合もあるが、明示的に行うのが安全)
@@ -7230,7 +7232,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (clipboardPreviewVisibility == true) {
                         if (clipboardPreviewTapToDelete != true) {
                             setPasteEnabled(true)
-                            setClipboardImagePreview(item.bitmap)
+                            if (clipboardUtil.isPrimaryClipSensitive()) {
+                                setClipboardPreview(getSensitiveClipboardPreviewText())
+                            } else {
+                                setClipboardImagePreview(item.bitmap)
+                            }
                         } else {
                             setPasteEnabled(false)
                         }
@@ -7244,7 +7250,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (clipboardPreviewTapToDelete != true) {
                             setPasteEnabled(true)
                             if (appPreference.last_pasted_clipboard_text_preference != item.text) {
-                                setClipboardPreview(item.text)
+                                setClipboardPreview(getClipboardPreviewText(item.text))
                             }
                         }
                     } else {
@@ -7259,6 +7265,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
     }
+
+    private fun getClipboardPreviewText(text: String): String {
+        return if (clipboardUtil.isPrimaryClipSensitive()) {
+            getSensitiveClipboardPreviewText()
+        } else {
+            text
+        }
+    }
+
+    private fun getSensitiveClipboardPreviewText(text: CharSequence? = null): String = "********"
 
     private fun dakutenSmallActionForSumire() {
         val insertString = inputString.value
@@ -7680,7 +7696,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     is ClipboardItem.Image -> {
                                         if (clipboardPreviewVisibility == true) {
                                             setPasteEnabled(true)
-                                            setClipboardImagePreview(item.bitmap)
+                                            if (clipboardUtil.isPrimaryClipSensitive()) {
+                                                setClipboardPreview(getSensitiveClipboardPreviewText())
+                                            } else {
+                                                setClipboardImagePreview(item.bitmap)
+                                            }
                                         } else {
                                             setPasteEnabled(false)
                                         }
@@ -7691,13 +7711,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             if (clipboardPreviewTapToDelete == true) {
                                                 if (appPreference.last_pasted_clipboard_text_preference != item.text) {
                                                     setPasteEnabled(true)
-                                                    setClipboardPreview(item.text)
+                                                    setClipboardPreview(getClipboardPreviewText(item.text))
                                                 } else {
                                                     setPasteEnabled(false)
                                                 }
                                             } else {
                                                 setPasteEnabled(true)
-                                                setClipboardPreview(item.text)
+                                                setClipboardPreview(getClipboardPreviewText(item.text))
                                             }
                                         } else {
                                             setPasteEnabled(false)
