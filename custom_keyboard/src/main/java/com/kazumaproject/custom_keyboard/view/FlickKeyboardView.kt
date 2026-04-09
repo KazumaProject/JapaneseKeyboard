@@ -976,6 +976,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
             }
 
+            /** PETALは非推奨、CROSSのエイリアス */
             KeyType.CROSS_FLICK, KeyType.PETAL_FLICK -> {
                 val rawFlickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 Log.d("FlickKeyboardView KeyType.CROSS_FLICK", "$rawFlickActionMap")

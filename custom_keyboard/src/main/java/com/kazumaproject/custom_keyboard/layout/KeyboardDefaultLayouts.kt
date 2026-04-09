@@ -3361,55 +3361,55 @@ object KeyboardDefaultLayouts {
                 0,
                 1,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "か",
                 0,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "さ",
                 0,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "た",
                 1,
                 1,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "な",
                 1,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "は",
                 1,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "ま",
                 2,
                 1,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "や",
                 2,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "ら",
                 2,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 dakutenToggleStates[0].label ?: "",
                 3,
@@ -3424,13 +3424,13 @@ object KeyboardDefaultLayouts {
                 3,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "、。?!",
                 3,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "Del",
                 0,
@@ -3807,55 +3807,55 @@ object KeyboardDefaultLayouts {
                 0,
                 1,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "か",
                 0,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "さ",
                 0,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "た",
                 1,
                 1,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "な",
                 1,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "は",
                 1,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "ま",
                 2,
                 1,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "や",
                 2,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "ら",
                 2,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 dakutenToggleStates[1].label ?: "",
                 3,
@@ -3870,13 +3870,13 @@ object KeyboardDefaultLayouts {
                 3,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "、。?!",
                 3,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), // Label fixed to match map key
             KeyData(
                 "Del",
@@ -4110,55 +4110,55 @@ object KeyboardDefaultLayouts {
                 0,
                 1,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "ABC",
                 0,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "DEF",
                 0,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "GHI",
                 1,
                 1,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "JKL",
                 1,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "MNO",
                 1,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "PQRS",
                 2,
                 1,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "TUV",
                 2,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "WXYZ",
                 2,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "a/A", 3, 1, false, action = KeyAction.ToggleCase, isSpecialKey = false
             ), KeyData(
@@ -4166,13 +4166,13 @@ object KeyboardDefaultLayouts {
                 3,
                 2,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 ". , ? !",
                 3,
                 3,
                 true,
-                keyType = if (isDefaultKey) KeyType.PETAL_FLICK else KeyType.STANDARD_FLICK
+                keyType = if (isDefaultKey) KeyType.CROSS_FLICK else KeyType.STANDARD_FLICK
             ), KeyData(
                 "Del",
                 0,
@@ -4488,84 +4488,84 @@ object KeyboardDefaultLayouts {
                 keyId = "switch_next_ime"
             ), KeyData(
                 "あ", 0, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "か", 0, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "さ", 0, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "た", 1, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "な", 1, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "は", 1, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "ま", 2, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "や", 2, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "ら", 2, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 dakutenToggleStates[0].label ?: "",
@@ -4578,21 +4578,21 @@ object KeyboardDefaultLayouts {
                 keyType = KeyType.CROSS_FLICK
             ), KeyData(
                 "わ", 3, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "、。?!", 3, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), if (isFlickDeleteEnabled) {
                 KeyData(
@@ -5404,82 +5404,82 @@ object KeyboardDefaultLayouts {
                 keyId = "switch_next_ime"
             ), KeyData(
                 "@#/_", 0, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "ABC", 0, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "DEF", 0, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "GHI", 1, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "JKL", 1, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "MNO", 1, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "PQRS", 2, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "TUV", 2, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "WXYZ", 2, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "a/A", 3, 1, false, action = KeyAction.ToggleCase, isSpecialKey = false
             ), KeyData(
                 "' \" ( )", 3, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 ". , ? !", 3, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), if (isFlickDeleteEnabled) {
                 KeyData(
@@ -5748,73 +5748,73 @@ object KeyboardDefaultLayouts {
                 keyId = "switch_next_ime"
             ), KeyData(
                 "1\n☆♪→", 0, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "2\n￥$€", 0, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "3\n%°#", 0, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "4\n○*・", 1, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "5\n+x÷", 1, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "6\n< = >", 1, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "7\n「」:", 2, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "8\n〒々〆", 2, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "9\n^|\\", 2, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "0\n〜…", 3, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "( ) [ ]",
@@ -5824,17 +5824,17 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = false,
                 colSpan = 1,
                 keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 ".,-/", 3, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), if (isFlickDeleteEnabled) {
                 KeyData(
@@ -6190,84 +6190,84 @@ object KeyboardDefaultLayouts {
                 keyId = "switch_next_ime"
             ), KeyData(
                 "あ", 0, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "か", 0, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "さ", 0, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "た", 1, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "な", 1, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "は", 1, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "ま", 2, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "や", 2, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "ら", 2, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 dakutenToggleStates[0].label ?: "",
@@ -6280,21 +6280,21 @@ object KeyboardDefaultLayouts {
                 keyType = KeyType.CROSS_FLICK
             ), KeyData(
                 "わ", 3, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "、。?!", 3, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), if (isFlickDeleteEnabled) {
                 KeyData(
@@ -7079,82 +7079,82 @@ object KeyboardDefaultLayouts {
                 keyId = "switch_next_ime"
             ), KeyData(
                 "@#/_", 0, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "ABC", 0, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "DEF", 0, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "GHI", 1, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "JKL", 1, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "MNO", 1, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "PQRS", 2, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "TUV", 2, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "WXYZ", 2, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "a/A", 3, 1, false, action = KeyAction.ToggleCase, isSpecialKey = false
             ), KeyData(
                 "' \" ( )", 3, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 ". , ? !", 3, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), if (isFlickDeleteEnabled) {
                 KeyData(
@@ -7416,82 +7416,82 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom,
             ), KeyData(
                 "@#/_", 0, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "ABC", 0, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "DEF", 0, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "GHI", 1, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "JKL", 1, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "MNO", 1, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "PQRS", 2, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "TUV", 2, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "WXYZ", 2, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "a/A", 3, 1, false, action = KeyAction.ToggleCase, isSpecialKey = false
             ), KeyData(
                 "' \" ( )", 3, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 ". , ? !", 3, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), if (isFlickDeleteEnabled) {
                 KeyData(
@@ -7774,73 +7774,73 @@ object KeyboardDefaultLayouts {
                 keyId = "switch_next_ime"
             ), KeyData(
                 "1\n☆♪→", 0, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "2\n￥$€", 0, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "3\n%°#", 0, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "4\n○*・", 1, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "5\n+x÷", 1, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "6\n< = >", 1, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "7\n「」:", 2, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "8\n〒々〆", 2, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "9\n^|\\", 2, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "0\n〜…", 3, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "( ) [ ]",
@@ -7850,17 +7850,17 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = false,
                 colSpan = 1,
                 keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 ".,-/", 3, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), if (isFlickDeleteEnabled) {
                 KeyData(
@@ -8214,84 +8214,84 @@ object KeyboardDefaultLayouts {
                 drawableResId = com.kazumaproject.core.R.drawable.input_mode_english_custom
             ), KeyData(
                 "あ", 0, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "か", 0, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "さ", 0, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "た", 1, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "な", 1, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "は", 1, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "ま", 2, 1, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "や", 2, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "ら", 2, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 dakutenToggleStates[0].label ?: "",
@@ -8304,21 +8304,21 @@ object KeyboardDefaultLayouts {
                 keyType = KeyType.CROSS_FLICK
             ), KeyData(
                 "わ", 3, 2, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), KeyData(
                 "、。?!", 3, 3, true, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
                     "third-flick" -> KeyType.HIERARCHICAL_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ), if (isFlickDeleteEnabled) {
                 KeyData(
@@ -9178,10 +9178,10 @@ object KeyboardDefaultLayouts {
                 column = 1,
                 isFlickable = false,
                 keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
@@ -9190,10 +9190,10 @@ object KeyboardDefaultLayouts {
                 column = 1,
                 isFlickable = false,
                 keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
@@ -9202,10 +9202,10 @@ object KeyboardDefaultLayouts {
                 column = 1,
                 isFlickable = false,
                 keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
@@ -9214,74 +9214,74 @@ object KeyboardDefaultLayouts {
                 column = 1,
                 isFlickable = false,
                 keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
                 "2\n￥$€", 0, 2, false, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
                 "3\n%°&", 0, 3, false, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
                 "5\n+x÷", 1, 2, false, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
                 "6\n< = >", 1, 3, false, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
                 "8\n〒々〆", 2, 2, false, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
                 "9\n^|\\", 2, 3, false, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
                 "0\n〜…", 3, 2, false, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             KeyData(
                 "#\n.^,", 3, 3, false, keyType = when (inputStyle) {
-                    "default" -> KeyType.PETAL_FLICK
+                    "default" -> KeyType.CROSS_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
-                    else -> KeyType.PETAL_FLICK
+                    else -> KeyType.CROSS_FLICK
                 }
             ),
             if (isFlickDeleteEnabled) {
