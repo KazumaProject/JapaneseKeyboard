@@ -79,6 +79,7 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.recyclerview.widget.GridLayoutManager
@@ -181,8 +182,8 @@ import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryReposit
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
-import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
+import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
 import com.kazumaproject.tenkey.extensions.getDakutenFlickRight
 import com.kazumaproject.tenkey.extensions.getDakutenFlickTop
@@ -1331,6 +1332,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardBackgroundPlayer = null
     }
 
+    @androidx.annotation.OptIn(UnstableApi::class)
     private fun applyKeyboardBackgroundVideoIfNeeded(mainView: MainLayoutBinding): Boolean {
         val playerView = mainView.keyboardBackgroundVideo
         playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
@@ -9296,7 +9298,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
-        Timber.d("launchInputString: inputString: $string stringTail: $stringInTail ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetsuPositionList [$currentInputType] [${currentInputType in passwordTypes}] [$suppressSuggestions]")
         if (string.isNotEmpty()) {
             hasConvertedKatakana = false
             if (suppressSuggestions) {
@@ -9309,7 +9310,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 handleDefaultInput(string)
             }
         } else {
-            Timber.d("setSuggestionOnView auto empty: ${stringInTail.get()} $bunsetusMultipleDetect")
             if (stringInTail.get().isNotEmpty()) {
                 setComposingText(stringInTail.get(), 1)
                 onLeftKeyLongPressUp.set(true)
