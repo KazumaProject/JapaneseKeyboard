@@ -395,6 +395,7 @@
 
     <string name="pref_clipboard_preview_title">Show clipboard contents in the conversion bar</string>
     <string name="pref_clipboard_preview_summary">When text or images are copied to the clipboard, show them in the conversion bar.</string>
+    <string name="clipboard_sensitive_content_hidden">Sensitive clipboard content</string>
 
     <string name="pref_round_corner_keyboard_title">Round the keyboard’s corners</string>
     <string name="pref_round_corner_keyboard_summary">When on, all four corners of the keyboard are rounded.</string>
