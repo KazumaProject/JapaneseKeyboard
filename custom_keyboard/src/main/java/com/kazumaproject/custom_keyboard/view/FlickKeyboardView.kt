@@ -1063,8 +1063,9 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                         this.listener = object : GridFlickInputController.GridFlickListener {
                             override fun onPress(action: FlickAction) {
-                                if (action is FlickAction.Input) {
-                                    notifyTextPress(action.char)
+                                when (action) {
+                                    is FlickAction.Input -> notifyTextPress(action.char)
+                                    is FlickAction.Action -> listener?.onPress(action.action)
                                 }
                             }
 
