@@ -44,8 +44,8 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     // ▼▼▼ 追加: 枠線用の色を保持するプロパティ ▼▼▼
     private var separatorColor = Color.LTGRAY
 
-    // ▼▼▼ 追加: アイコン表示用 ▼▼▼
-    private var iconDrawableResId: Int? = null
+    // アイコン表示用（setAction時にキャッシュ）
+    private var cachedIconDrawable: android.graphics.drawable.Drawable? = null
 
     init {
         // init時のテキスト色はテーマで上書きされる前提
@@ -62,8 +62,9 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         this.defaultColor = theme.centerGradientStartColor
         this.highlightColor = theme.centerGradientStartColor
         this.separatorColor = theme.separatorColor
-        // Viewのテキストカラー状態を更新する
         setTextColor(theme.textColor)
+        // テキストカラー確定後にキャッシュ済みDrawableのtintを更新
+        cachedIconDrawable?.setTint(theme.textColor)
     }
 
     fun setFlickDirection(direction: FlickDirection) {
@@ -86,15 +87,17 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     fun setAction(action: FlickAction) {
         when (action) {
             is FlickAction.Input -> {
-                iconDrawableResId = null
+                cachedIconDrawable = null
                 text = action.char
             }
             is FlickAction.Action -> {
                 if (action.drawableResId != null) {
-                    iconDrawableResId = action.drawableResId
+                    cachedIconDrawable = ContextCompat.getDrawable(context, action.drawableResId)
+                        ?.mutate()
+                        ?.also { it.setTint(currentTextColor) }
                     text = ""
                 } else {
-                    iconDrawableResId = null
+                    cachedIconDrawable = null
                     text = action.label ?: ""
                 }
             }
@@ -128,18 +131,14 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
             drawPath(backgroundPath, strokePaint)
         }
 
-        val resId = iconDrawableResId
-        if (resId != null) {
-            // アイコン描画
-            val drawable = ContextCompat.getDrawable(context, resId)
-            if (drawable != null) {
-                drawable.setTint(this.currentTextColor)
-                val iconSize = (minOf(w, h) * 0.5f).toInt()
-                val left = ((w - iconSize) / 2f).toInt()
-                val top = ((h - iconSize) / 2f).toInt()
-                drawable.setBounds(left, top, left + iconSize, top + iconSize)
-                drawable.draw(canvas)
-            }
+        val drawable = cachedIconDrawable
+        if (drawable != null) {
+            // アイコン描画（setAction時にキャッシュ済み）
+            val iconSize = (minOf(w, h) * 0.5f).toInt()
+            val left = ((w - iconSize) / 2f).toInt()
+            val top = ((h - iconSize) / 2f).toInt()
+            drawable.setBounds(left, top, left + iconSize, top + iconSize)
+            drawable.draw(canvas)
         } else {
             val textToDraw = this.text.toString()
             val textPaint = this.paint
