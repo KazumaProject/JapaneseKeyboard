@@ -11,33 +11,23 @@ AutoName: Sumire Lite
 
 RepoType: git
 Repo: https://github.com/KazumaProject/JapaneseKeyboard.git
+Binaries: https://github.com/KazumaProject/JapaneseKeyboard/releases/latest/download/app-liteFdroid-arm64-v8a-release.apk
 
 Builds:
-  - versionName: 1.7.24-lite-fdroid
-    versionCode: 718
-    commit: 6fd6ad0fcc80f7f294ab075e1bef580be4327b02
-    output: 
-      app/build/outputs/apk/liteFdroid/releaseUnsigned/app-liteFdroid-release-unsigned.apk
-    scanignore:
-      - app/src/main/assets/*.dat.zip
-      - app/src/main/assets/*/*.dat.zip
-    build: gradle assembleLiteFdroidReleaseUnsigned
-
   - versionName: 1.7.25-lite-fdroid
     versionCode: 719
     commit: a1807a22325d08d16d86deec00aa548160ae1db1
-    output: 
-      app/build/outputs/apk/liteFdroid/releaseUnsigned/app-liteFdroid-release-unsigned.apk
+    subdir: app
+    gradle:
+      - lite
+      - fdroid
     scanignore:
       - app/src/main/assets/*.dat.zip
       - app/src/main/assets/*/*.dat.zip
-    build: gradle assembleLiteFdroidReleaseUnsigned
 
-AllowedAPKSigningKeys: ec676c30f05f3947a1aec86d02ecead150f772790b35fcaf8af484c1dd5eb4c0
+AllowedAPKSigningKeys:
+  - ec676c30f05f3947a1aec86d02ecead150f772790b35fcaf8af484c1dd5eb4c0
 
-# Track dedicated F-Droid tags like "fdroid-v1.7.25-lite-fdroid" so
-# checkupdates can keep the full versionName without relying on the broken
-# "+suffix" handling in AutoUpdateMode.
 AutoUpdateMode: Version
 UpdateCheckMode: Tags fdroid-v.*-lite-fdroid$
 UpdateCheckData: app/build.gradle|versionCode\s+(\d+)||fdroid-v([\d.]+-lite-fdroid)$
