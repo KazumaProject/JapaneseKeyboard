@@ -4,6 +4,30 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.KeyAction
 
+private fun KeyAction.toDrawableResId(): Int? = when (this) {
+    KeyAction.Delete -> com.kazumaproject.core.R.drawable.backspace_24px
+    KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+    KeyAction.Space -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+    KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
+    KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+    KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
+    KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
+    KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
+    KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
+    KeyAction.ToggleDakuten -> com.kazumaproject.core.R.drawable.kana_small
+    KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.english_small
+    KeyAction.ShiftKey -> com.kazumaproject.core.R.drawable.shift_24px
+    KeyAction.MoveCustomKeyboardTab -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
+    KeyAction.MoveCursorLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+    KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+    KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
+    KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
+    KeyAction.SwitchToNumberLayout -> com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+    KeyAction.ToggleKatakana -> com.kazumaproject.core.R.drawable.katakana
+    KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
+    else -> null
+}
+
 /**
  * DBから取得したFlickMappingを、UIで扱うFlickActionに変換します。
  */
@@ -37,7 +61,7 @@ fun FlickMapping.toFlickAction(): FlickAction {
         else -> null
     }
     return if (action != null) {
-        FlickAction.Action(action)
+        FlickAction.Action(action, drawableResId = action.toDrawableResId())
     } else if (this.actionType.startsWith("INPUT_")) {
         // 将来的なINPUT_*アクションのために
         FlickAction.Input(this.actionValue ?: "")
