@@ -38,7 +38,7 @@ sealed class CellMode {
  * グリッドモード: どの種類のフリックを表示するか
  */
 enum class GridMode {
-    PETAL,          // 通常キーの1段フリック
+    CROSS,          // 通常キーの1段フリック
     TWO_STEP,       // 通常キーの2段フリック
     SPECIAL_FLICK   // 特殊キーの1段フリック
 }
@@ -103,7 +103,7 @@ class FlickGridEditorView @JvmOverloads constructor(
 
     private val totalGridPx = cellSizePx * 3 + gapPx * 2
 
-    private var gridMode: GridMode = GridMode.PETAL
+    private var gridMode: GridMode = GridMode.CROSS
     private var currentCellMode: CellMode? = null
     private val cellLabels: MutableMap<CellPos, String> = mutableMapOf()
     private val cellEnabled: MutableMap<CellPos, Boolean> = mutableMapOf()
@@ -302,7 +302,7 @@ class FlickGridEditorView @JvmOverloads constructor(
         val mode = currentCellMode ?: return emptySet()
 
         return when {
-            gridMode == GridMode.PETAL || gridMode == GridMode.SPECIAL_FLICK -> {
+            gridMode == GridMode.CROSS || gridMode == GridMode.SPECIAL_FLICK -> {
                 // TAPセル（常に経路の起点）はborder対象
                 setOf(tapPos)
             }
@@ -335,8 +335,8 @@ class FlickGridEditorView @JvmOverloads constructor(
         val mode = currentCellMode
 
         return when {
-            gridMode == GridMode.PETAL || gridMode == GridMode.SPECIAL_FLICK -> {
-                val enabledCells = if (gridMode == GridMode.PETAL) {
+            gridMode == GridMode.CROSS || gridMode == GridMode.SPECIAL_FLICK -> {
+                val enabledCells = if (gridMode == GridMode.CROSS) {
                     petalDirectionGrid.values.toSet()
                 } else {
                     specialFlickDirectionGrid.values.toSet()
@@ -476,7 +476,7 @@ class FlickGridEditorView @JvmOverloads constructor(
         if (!enabled) return
 
         when (gridMode) {
-            GridMode.PETAL -> {
+            GridMode.CROSS -> {
                 val dir = petalDirectionGrid.entries.firstOrNull { it.value == pos }?.key ?: return
                 val newMode = CellMode.Petal(dir)
                 currentCellMode = newMode
@@ -556,7 +556,7 @@ class FlickGridEditorView @JvmOverloads constructor(
     // ---- 公開API ----
 
     fun setPetalContent(items: List<FlickMappingItem>, displayActions: List<DisplayActionUi>, centerLabel: String = "") {
-        gridMode = GridMode.PETAL
+        gridMode = GridMode.CROSS
         currentCellMode = null
         cellLabels.clear()
         cellEnabled.clear()
@@ -655,7 +655,7 @@ class FlickGridEditorView @JvmOverloads constructor(
      */
     fun selectInitialCell() {
         val initialMode: CellMode = when (gridMode) {
-            GridMode.PETAL -> CellMode.Petal(FlickDirection.TAP)
+            GridMode.CROSS -> CellMode.Petal(FlickDirection.TAP)
             GridMode.SPECIAL_FLICK -> CellMode.SpecialFlick(FlickDirection.TAP)
             GridMode.TWO_STEP -> CellMode.TwoStepFirst(TfbiFlickDirection.TAP)
         }
