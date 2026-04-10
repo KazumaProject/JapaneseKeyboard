@@ -481,18 +481,29 @@ class FlickKeyboardView @JvmOverloads constructor(
      * PETAL_FLICK / CROSS_FLICK のマップキーを共通の方向に正規化する。
      * - UP_LEFT / UP_LEFT_FAR → UP_LEFT_FAR
      * - UP_RIGHT / UP_RIGHT_FAR → UP_RIGHT_FAR
+     * *_FAR が既に存在する場合はそちらを優先し、非 FAR はフォールバックとして扱う。
      */
     private fun normalizeDirectionsForCrossFlick(
         actionMap: Map<FlickDirection, FlickAction>
     ): Map<FlickDirection, FlickAction> {
         val result = mutableMapOf<FlickDirection, FlickAction>()
+        // 1パス目: *_FAR と無関係な方向をそのまま登録
         for ((direction, action) in actionMap) {
             val normalized = when (direction) {
-                FlickDirection.UP_LEFT, FlickDirection.UP_LEFT_FAR -> FlickDirection.UP_LEFT_FAR
-                FlickDirection.UP_RIGHT, FlickDirection.UP_RIGHT_FAR -> FlickDirection.UP_RIGHT_FAR
+                FlickDirection.UP_LEFT_FAR, FlickDirection.UP_RIGHT_FAR -> direction
+                FlickDirection.UP_LEFT, FlickDirection.UP_RIGHT -> null // 2パス目で処理
                 else -> direction
             }
-            result[normalized] = action
+            if (normalized != null) result[normalized] = action
+        }
+        // 2パス目: UP_LEFT/UP_RIGHT を *_FAR のフォールバックとして登録（既存の *_FAR を上書きしない）
+        for ((direction, action) in actionMap) {
+            val normalized = when (direction) {
+                FlickDirection.UP_LEFT -> FlickDirection.UP_LEFT_FAR
+                FlickDirection.UP_RIGHT -> FlickDirection.UP_RIGHT_FAR
+                else -> null
+            }
+            if (normalized != null) result.putIfAbsent(normalized, action)
         }
         return result
     }
