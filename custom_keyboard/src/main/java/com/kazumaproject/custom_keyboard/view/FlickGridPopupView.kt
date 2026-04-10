@@ -6,16 +6,20 @@ import android.graphics.drawable.GradientDrawable
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
-import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.GridLayout
+import android.widget.ImageView
+import androidx.appcompat.widget.AppCompatImageView
+import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.drawable.toDrawable
 import androidx.core.graphics.toColorInt
+import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 
 class FlickGridPopupView(context: Context) : GridLayout(context) {
 
-    private val buttons = mutableMapOf<FlickDirection, Button>()
+    private val buttons = mutableMapOf<FlickDirection, FrameLayout>()
 
     // ▼▼▼ 変更点: グリッド全体の背景Drawableは不要になったため削除 ▼▼▼
     // private val backgroundDrawable = GradientDrawable()
@@ -46,7 +50,7 @@ class FlickGridPopupView(context: Context) : GridLayout(context) {
         this.separatorColor = theme.separatorColor
     }
 
-    fun setCharacters(map: Map<FlickDirection, String>, keyWidth: Int, keyHeight: Int) {
+    fun setActions(map: Map<FlickDirection, FlickAction>, keyWidth: Int, keyHeight: Int) {
         this.removeAllViews()
         buttons.clear()
 
@@ -59,20 +63,29 @@ class FlickGridPopupView(context: Context) : GridLayout(context) {
         )
 
         gridPositions.forEach { (direction, pos) ->
-            val char = map[direction]
+            val action = map[direction]
+
+            val margin = dpToPx(1f)
+            val cellWidth = keyWidth - margin * 2
+            val cellHeight = keyHeight - margin * 2
 
             val params = LayoutParams(spec(pos.first), spec(pos.second)).apply {
                 width = keyWidth
                 height = keyHeight
-                val margin = dpToPx(1f)
                 setMargins(margin, margin, margin, margin)
             }
 
-            if (!char.isNullOrEmpty()) {
-                val button = createButton(char)
-                button.layoutParams = params
-                addView(button)
-                buttons[direction] = button
+            val hasContent = when (action) {
+                is FlickAction.Input -> action.char.isNotEmpty()
+                is FlickAction.Action -> true
+                null -> false
+            }
+
+            if (hasContent && action != null) {
+                val cell = createCell(action, cellWidth, cellHeight)
+                cell.layoutParams = params
+                addView(cell)
+                buttons[direction] = cell
             } else {
                 val placeholder = View(context)
                 placeholder.layoutParams = params
@@ -81,20 +94,56 @@ class FlickGridPopupView(context: Context) : GridLayout(context) {
         }
     }
 
-    private fun createButton(text: String): Button {
-        return Button(context).apply {
-            this.text = text
-            isAllCaps = false
-            setTextColor(this@FlickGridPopupView.textColor)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
-            gravity = Gravity.CENTER
+    private fun createCell(action: FlickAction, cellWidth: Int, cellHeight: Int): FrameLayout {
+        return FrameLayout(context).apply {
             background = createButtonDrawable(false)
+
+            when (action) {
+                is FlickAction.Input -> {
+                    val tv = AppCompatTextView(context).apply {
+                        text = action.char
+                        setTextColor(this@FlickGridPopupView.textColor)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                        gravity = Gravity.CENTER
+                    }
+                    addView(tv, FrameLayout.LayoutParams(
+                        FrameLayout.LayoutParams.MATCH_PARENT,
+                        FrameLayout.LayoutParams.MATCH_PARENT
+                    ))
+                }
+                is FlickAction.Action -> {
+                    val resId = action.drawableResId
+                    if (resId != null) {
+                        val iconSize = (minOf(cellWidth, cellHeight) * 0.5f).toInt()
+                        val iv = AppCompatImageView(context).apply {
+                            setImageResource(resId)
+                            setColorFilter(this@FlickGridPopupView.textColor)
+                            scaleType = ImageView.ScaleType.CENTER_INSIDE
+                        }
+                        val ivParams = FrameLayout.LayoutParams(iconSize, iconSize).apply {
+                            gravity = Gravity.CENTER
+                        }
+                        addView(iv, ivParams)
+                    } else {
+                        val tv = AppCompatTextView(context).apply {
+                            text = action.label ?: ""
+                            setTextColor(this@FlickGridPopupView.textColor)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 18f)
+                            gravity = Gravity.CENTER
+                        }
+                        addView(tv, FrameLayout.LayoutParams(
+                            FrameLayout.LayoutParams.MATCH_PARENT,
+                            FrameLayout.LayoutParams.MATCH_PARENT
+                        ))
+                    }
+                }
+            }
         }
     }
 
     fun highlightKey(direction: FlickDirection) {
-        buttons.forEach { (dir, button) ->
-            button.background = createButtonDrawable(dir == direction)
+        buttons.forEach { (dir, cell) ->
+            cell.background = createButtonDrawable(dir == direction)
         }
     }
 
