@@ -1065,7 +1065,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             override fun onPress(action: FlickAction) {
                                 when (action) {
                                     is FlickAction.Input -> notifyTextPress(action.char)
-                                    is FlickAction.Action -> listener?.onPress(action.action)
+                                    is FlickAction.Action -> this@FlickKeyboardView.listener?.onPress(action.action)
                                 }
                             }
 
