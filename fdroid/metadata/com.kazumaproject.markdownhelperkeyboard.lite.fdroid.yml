@@ -11,19 +11,20 @@ AutoName: Sumire Keyboard Lite
 
 RepoType: git
 Repo: https://github.com/KazumaProject/JapaneseKeyboard.git
-Binaries: 
+Binaries:
   https://github.com/KazumaProject/JapaneseKeyboard/releases/download/v%v/app-liteFdroid-release.apk
 
 Builds:
   - versionName: 1.7.27
     versionCode: 721
-    commit: v1.7.27
+    commit: 16f8d3c60241ce20ce4e37c2932ce22d688312dc
     subdir: app
-    output: build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
+    gradle:
+      - lite
+      - fdroid
     scanignore:
       - app/src/main/assets/*.dat.zip
       - app/src/main/assets/*/*.dat.zip
-    build: gradle assembleLiteFdroidRelease
 
 AllowedAPKSigningKeys: ec676c30f05f3947a1aec86d02ecead150f772790b35fcaf8af484c1dd5eb4c0
 
