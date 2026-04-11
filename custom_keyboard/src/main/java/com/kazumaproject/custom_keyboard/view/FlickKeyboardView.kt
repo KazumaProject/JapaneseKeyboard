@@ -994,6 +994,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 val flickActionMap = rawFlickActionMap?.let { normalizeDirectionsForCrossFlick(it) }
                 if (flickActionMap != null) {
                     val controller = GridFlickInputController(context, flickSensitivity).apply {
+                        setLongPressTimeout(longPressTimeout)
                         val isDarkTheme = context.isDarkThemeOn()
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
@@ -1078,6 +1079,26 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     keyAction,
                                     isFlick = isFlick
                                 )
+                            }
+
+                            override fun onLongPress(action: FlickAction) {
+                                if (action is FlickAction.Action) {
+                                    this@FlickKeyboardView.listener?.onFlickActionLongPress(
+                                        action.action
+                                    )
+                                }
+                            }
+
+                            override fun onUpAfterLongPress(
+                                action: FlickAction,
+                                isFlick: Boolean
+                            ) {
+                                if (action is FlickAction.Action) {
+                                    this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
+                                        action.action,
+                                        isFlick
+                                    )
+                                }
                             }
                         }
 
