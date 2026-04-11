@@ -31,9 +31,14 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 719
-        versionName "1.7.25"
+        versionCode 721
+        versionName "1.7.27"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    dependenciesInfo {
+        includeInApk false
+        includeInBundle false
     }
 
     flavorDimensions "edition", "channel"
@@ -132,6 +137,8 @@ android {
                     }
                     output.outputFileName = "app-${flavorPrefix}${abi}-${variant.buildType.name}.apk"
                 }
+            } else if (variant.flavorName == "liteFdroid" && variant.buildType.name == "release") {
+                output.outputFileName = "app-${flavorPrefix}${variant.buildType.name}.apk"
             }
 
             // Override name specifically for releaseUnsigned
