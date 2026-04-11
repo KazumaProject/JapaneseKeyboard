@@ -33,6 +33,8 @@ class GridFlickInputController(
     interface GridFlickListener {
         fun onPress(action: FlickAction)
         fun onFlick(action: FlickAction, isFlick: Boolean)
+        fun onLongPress(action: FlickAction)
+        fun onUpAfterLongPress(action: FlickAction, isFlick: Boolean)
     }
 
     var listener: GridFlickListener? = null
@@ -45,6 +47,8 @@ class GridFlickInputController(
     private var initialTouchY = 0f
     private var originalKeyText: CharSequence? = null
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
+    private var isLongPressTriggered = false
+    private var longPressAction: FlickAction? = null
 
     // 各方向に対応するPopupWindowを保持するMap
     private val popupMap: MutableMap<FlickDirection, PopupWindow> = mutableMapOf()
@@ -261,6 +265,8 @@ class GridFlickInputController(
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
                 isLongPressModeActive = false
+                isLongPressTriggered = false
+                longPressAction = null
 
                 (anchorView as? Button)?.let { button ->
                     originalKeyText = button.text
@@ -275,11 +281,20 @@ class GridFlickInputController(
 
                 showPopupForDirection(FlickDirection.TAP)
 
+                longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
                     delay(longPressTimeout)
                     isLongPressModeActive = true
+                    val tapAction = characterMap[FlickDirection.TAP] as? FlickAction.Action
+                    if (tapAction != null) {
+                        isLongPressTriggered = true
+                        longPressAction = tapAction
+                    }
                     dismissAllPopups() // 方向ポップアップを消す
                     showGridPopup()
+                    if (tapAction != null) {
+                        listener?.onLongPress(tapAction)
+                    }
                 }
                 return true
             }
@@ -316,10 +331,25 @@ class GridFlickInputController(
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 longPressJob?.cancel()
-                if (event.action == MotionEvent.ACTION_UP) {
+                longPressJob = null
+                val finalDirection = if (event.action == MotionEvent.ACTION_UP) {
                     val dx = event.rawX - initialTouchX
                     val dy = event.rawY - initialTouchY
-                    val finalDirection = calculateDirection(dx, dy)
+                    calculateDirection(dx, dy)
+                } else {
+                    FlickDirection.TAP
+                }
+
+                if (isLongPressTriggered) {
+                    val finalAction = characterMap[finalDirection] as? FlickAction.Action
+                        ?: longPressAction
+                    finalAction?.let {
+                        listener?.onUpAfterLongPress(
+                            it,
+                            isFlick = finalDirection != FlickDirection.TAP
+                        )
+                    }
+                } else if (event.action == MotionEvent.ACTION_UP) {
                     characterMap[finalDirection]?.let {
                         listener?.onFlick(
                             it, isFlick = finalDirection != FlickDirection.TAP
@@ -330,6 +360,8 @@ class GridFlickInputController(
                     button.text = originalKeyText
                 }
                 originalKeyText = null
+                isLongPressTriggered = false
+                longPressAction = null
                 dismissAllPopups()
                 return true
             }
