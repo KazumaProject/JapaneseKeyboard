@@ -15,9 +15,9 @@ Binaries:
   https://github.com/KazumaProject/JapaneseKeyboard/releases/download/v%v/app-liteFdroid-release.apk
 
 Builds:
-  - versionName: 1.7.27-lite-fdroid
+  - versionName: 1.7.27
     versionCode: 721
-    commit: v1.7.27-lite-fdroid
+    commit: v1.7.27
     subdir: app
     output: build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
     scanignore:
@@ -28,7 +28,7 @@ Builds:
 AllowedAPKSigningKeys: ec676c30f05f3947a1aec86d02ecead150f772790b35fcaf8af484c1dd5eb4c0
 
 AutoUpdateMode: Version
-UpdateCheckMode: Tags ^v[\d.]+-lite-fdroid$
-UpdateCheckData: app/build.gradle|versionCode\s+(\d+)||v([\d.]+-lite-fdroid)$
-CurrentVersion: 1.7.27-lite-fdroid
+UpdateCheckMode: Tags ^v[\d.]+$
+UpdateCheckData: app/build.gradle|versionCode\s+(\d+)||v([\d.]+)$
+CurrentVersion: 1.7.27
 CurrentVersionCode: 721

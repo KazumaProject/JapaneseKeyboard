@@ -5,7 +5,7 @@ This repository now includes the upstream metadata and build behavior needed to 
 ## What ships on F-Droid
 
 - Package name: `com.kazumaproject.markdownhelperkeyboard.lite.fdroid`
-- Version name: `1.7.27-lite-fdroid`
+- Version name: `1.7.27`
 - Version code: `721`
 - Gradle flavor: `liteFdroid`
 
@@ -61,7 +61,7 @@ fdroid build com.kazumaproject.markdownhelperkeyboard.lite.fdroid
 ## Submission checklist
 
 1. Push the upstream metadata changes to GitHub.
-2. Ensure the release commit is tagged with the F-Droid release tag, for example `v1.7.27-lite-fdroid`.
+2. Ensure the release commit is tagged with the normal release tag, for example `v1.7.27`.
 3. Let the GitHub Release workflow upload `app-liteFdroid-release.apk` for that tag.
 4. Copy the draft YAML into a fork of `fdroiddata`.
 5. Run the `fdroid` validation commands locally or in the official Docker environment.
@@ -70,11 +70,11 @@ The draft points fdroidserver at the universal F-Droid APK and keeps `Binaries` 
 
 ## Tagging command
 
-Create the F-Droid release tag:
+Create the release tag:
 
 ```bash
-git tag v1.7.27-lite-fdroid
-git push origin v1.7.27-lite-fdroid
+git tag v1.7.27
+git push origin v1.7.27
 ```
 
 The repository's GitHub release workflow triggers on tags that start with `v`, so this tag is also where the `Binaries` URL resolves.
