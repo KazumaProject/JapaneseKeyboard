@@ -7,29 +7,28 @@ IssueTracker: https://github.com/KazumaProject/JapaneseKeyboard/issues
 Changelog: https://github.com/KazumaProject/JapaneseKeyboard/releases
 Donate: https://github.com/sponsors/KazumaProject
 
-AutoName: Sumire Lite
+AutoName: Sumire Keyboard Lite
 
 RepoType: git
 Repo: https://github.com/KazumaProject/JapaneseKeyboard.git
-Binaries: https://github.com/KazumaProject/JapaneseKeyboard/releases/latest/download/app-liteFdroid-arm64-v8a-release.apk
+Binaries: 
+  https://github.com/KazumaProject/JapaneseKeyboard/releases/download/v%v/app-liteFdroid-release.apk
 
 Builds:
-  - versionName: 1.7.25-lite-fdroid
-    versionCode: 719
-    commit: a1807a22325d08d16d86deec00aa548160ae1db1
+  - versionName: 1.7.27-lite-fdroid
+    versionCode: 721
+    commit: v1.7.27-lite-fdroid
     subdir: app
-    gradle:
-      - lite
-      - fdroid
+    output: build/outputs/apk/liteFdroid/release/app-liteFdroid-release.apk
     scanignore:
       - app/src/main/assets/*.dat.zip
       - app/src/main/assets/*/*.dat.zip
+    build: gradle assembleLiteFdroidRelease
 
-AllowedAPKSigningKeys:
-  - ec676c30f05f3947a1aec86d02ecead150f772790b35fcaf8af484c1dd5eb4c0
+AllowedAPKSigningKeys: ec676c30f05f3947a1aec86d02ecead150f772790b35fcaf8af484c1dd5eb4c0
 
 AutoUpdateMode: Version
-UpdateCheckMode: Tags fdroid-v.*-lite-fdroid$
-UpdateCheckData: app/build.gradle|versionCode\s+(\d+)||fdroid-v([\d.]+-lite-fdroid)$
-CurrentVersion: 1.7.25-lite-fdroid
-CurrentVersionCode: 719
+UpdateCheckMode: Tags ^v[\d.]+-lite-fdroid$
+UpdateCheckData: app/build.gradle|versionCode\s+(\d+)||v([\d.]+-lite-fdroid)$
+CurrentVersion: 1.7.27-lite-fdroid
+CurrentVersionCode: 721
