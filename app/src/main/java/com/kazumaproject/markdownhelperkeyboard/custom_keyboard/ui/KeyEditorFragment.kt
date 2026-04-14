@@ -209,8 +209,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
         binding.keyLabelEdittext.doAfterTextChanged { text ->
             updateDoneButtonState()
-            // フリックの中央セルラベルをリアルタイム更新
-            if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_cross_flick) {
+            // ペタルフリックの中央セルラベルをリアルタイム更新
+            if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_petal_flick) {
                 val label = text?.toString() ?: ""
                 val tapOutput = currentFlickItems.firstOrNull { it.direction == FlickDirection.TAP }?.output ?: ""
                 binding.flickGridEditorView.updateCellLabel(
@@ -471,7 +471,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
                 // Input style: petal or two-step
                 {
-                    binding.inputStyleChipGroup.check(R.id.chip_cross_flick)
+                    binding.inputStyleChipGroup.check(R.id.chip_petal_flick)
                 }
 
                 // Restore editors
@@ -603,7 +603,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
 
                 
-                    newKeyType = KeyType.CROSS_FLICK
+                    newKeyType = KeyType.PETAL_FLICK
                     newLabel = binding.keyLabelEdittext.text.toString()
                     newFlickMap = currentFlickItems
                         .filter { it.output.isNotEmpty() }
