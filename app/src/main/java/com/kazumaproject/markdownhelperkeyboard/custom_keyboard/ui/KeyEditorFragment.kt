@@ -42,6 +42,11 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
+private enum class OutputEditMode {
+    NORMAL,
+    LONG_PRESS
+}
+
 @AndroidEntryPoint
 class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
@@ -56,7 +61,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var currentKeyData: KeyData? = null
 
     private var currentFlickItems = mutableListOf<FlickMappingItem>()
+    private var currentLongPressFlickItems = mutableListOf<FlickMappingItem>()
     private var currentSpecialFlickItems = mutableListOf<SpecialFlickMappingItem>()
+    private var outputEditMode: OutputEditMode = OutputEditMode.NORMAL
+    private var isUpdatingCharEditText = false
 
     // 現在選択中のセルモード
     private var currentCellMode: CellMode? = null
@@ -121,12 +129,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
         // 文字入力欄の変更コールバック
         binding.textCharEdittext.doAfterTextChanged { editable ->
+            if (isUpdatingCharEditText) return@doAfterTextChanged
             val mode = currentCellMode ?: return@doAfterTextChanged
             val text = editable?.toString() ?: ""
             when (mode) {
                 is CellMode.Petal -> {
-                    val idx = currentFlickItems.indexOfFirst { it.direction == mode.direction }
-                    if (idx != -1) currentFlickItems[idx] = currentFlickItems[idx].copy(output = text)
+                    val items = currentPetalItems()
+                    val idx = items.indexOfFirst { it.direction == mode.direction }
+                    if (idx != -1) items[idx] = items[idx].copy(output = text)
                     binding.flickGridEditorView.updateCellLabel(mode, text)
                 }
 
@@ -167,6 +177,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // Normal UI blocks
             binding.textInputStyleTitle.isVisible = !isSpecialKey
             binding.inputStyleChipGroup.isVisible = !isSpecialKey
+            binding.textOutputModeTitle.isVisible = !isSpecialKey
+            binding.outputModeChipGroup.isVisible = !isSpecialKey
 
             if (isSpecialKey) {
                 // Default category = single if none selected yet
@@ -207,10 +219,21 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             updateDoneButtonState()
         }
 
+        binding.outputModeChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
+            outputEditMode = if (checkedIds.first() == R.id.chip_long_press_output) {
+                OutputEditMode.LONG_PRESS
+            } else {
+                OutputEditMode.NORMAL
+            }
+            handleInputStyleUi()
+            updateDoneButtonState()
+        }
+
         binding.keyLabelEdittext.doAfterTextChanged { text ->
             updateDoneButtonState()
             // ペタルフリックの中央セルラベルをリアルタイム更新
-            if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_petal_flick) {
+            if (binding.inputStyleChipGroup.checkedChipId == R.id.chip_petal_flick && !isLongPressOutputMode()) {
                 val label = text?.toString() ?: ""
                 val tapOutput = currentFlickItems.firstOrNull { it.direction == FlickDirection.TAP }?.output ?: ""
                 binding.flickGridEditorView.updateCellLabel(
@@ -279,6 +302,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         val selectedStyle = binding.inputStyleChipGroup.checkedChipId
 
 
+        if (binding.outputModeChipGroup.checkedChipId == View.NO_ID) {
+            binding.outputModeChipGroup.check(R.id.chip_normal_output)
+        }
+
         binding.keyLabelLayout.isVisible = true
         binding.flickGridEditorView.isVisible = true
         binding.textSelectedDirection.isVisible = false
@@ -292,9 +319,20 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     FlickMappingItem(direction = direction, output = "")
                 }.toMutableList()
             }
+            if (currentLongPressFlickItems.isEmpty()) {
+                currentLongPressFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
+                    FlickMappingItem(direction = direction, output = "")
+                }.toMutableList()
+            }
             val keyLabel = binding.keyLabelEdittext.text.toString()
-            binding.flickGridEditorView.setPetalContent(currentFlickItems.toList(), displayActions, keyLabel)
+            val centerLabel = if (isLongPressOutputMode()) "" else keyLabel
+            binding.flickGridEditorView.setPetalContent(
+                currentPetalItems().toList(),
+                displayActions,
+                centerLabel
+            )
         
+
         binding.flickGridEditorView.selectInitialCell()
     }
 
@@ -308,20 +346,24 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
         }
 
-        binding.textSelectedDirection.text = getString(R.string.direction_action_label, directionLabel)
+        binding.textSelectedDirection.text = if (isLongPressOutputMode() && mode !is CellMode.SpecialFlick) {
+            "長押し: $directionLabel"
+        } else {
+            getString(R.string.direction_action_label, directionLabel)
+        }
         binding.textSelectedDirection.isVisible = true
 
         when (mode) {
             is CellMode.Petal -> {
-                val value = currentFlickItems.firstOrNull { it.direction == mode.direction }?.output ?: ""
-                binding.textCharInputLayout.hint = getString(R.string.two_step_output_label)
+                val value = currentPetalItems().firstOrNull { it.direction == mode.direction }?.output ?: ""
+                binding.textCharInputLayout.hint = if (isLongPressOutputMode()) {
+                    "長押し時の出力"
+                } else {
+                    getString(R.string.two_step_output_label)
+                }
                 binding.textCharInputLayout.isVisible = true
                 binding.specialFlickEditorGroup.isVisible = false
-                val editText = binding.textCharEdittext
-                if (editText.text.toString() != value) {
-                    editText.setText(value)
-                    editText.setSelection(value.length)
-                }
+                setCharEditorValue(value)
             }
 
             is CellMode.SpecialFlick -> {
@@ -335,6 +377,26 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 binding.specialFlickMappingsRecyclerView.setText(currentName, false)
             }
         }
+    }
+
+    private fun isLongPressOutputMode(): Boolean =
+        outputEditMode == OutputEditMode.LONG_PRESS &&
+                binding.outputModeChipGroup.checkedChipId == R.id.chip_long_press_output
+
+    private fun currentPetalItems(): MutableList<FlickMappingItem> =
+        if (isLongPressOutputMode()) currentLongPressFlickItems else currentFlickItems
+
+
+
+
+    private fun setCharEditorValue(value: String) {
+        val editText = binding.textCharEdittext
+        if (editText.text.toString() == value) return
+
+        isUpdatingCharEditText = true
+        editText.setText(value)
+        editText.setSelection(value.length)
+        isUpdatingCharEditText = false
     }
 
     private fun tfbiToDisplayName(dir: TfbiFlickDirection): String =
@@ -435,6 +497,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 // show category UI
                 binding.textSpecialCategoryTitle.isVisible = true
                 binding.specialCategoryChipGroup.isVisible = true
+                binding.textOutputModeTitle.isVisible = false
+                binding.outputModeChipGroup.isVisible = false
 
                 if (isSpecialFlick) {
                     binding.specialCategoryChipGroup.check(R.id.chip_special_flick)
@@ -468,6 +532,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 binding.textSpecialCategoryTitle.isVisible = false
                 binding.specialCategoryChipGroup.isVisible = false
                 binding.keyActionLayout.isVisible = false
+                binding.textOutputModeTitle.isVisible = true
+                binding.outputModeChipGroup.isVisible = true
+                binding.outputModeChipGroup.check(R.id.chip_normal_output)
+                outputEditMode = OutputEditMode.NORMAL
 
                 // Input style: petal or two-step
                 {
@@ -484,6 +552,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                         val output = if (savedAction is FlickAction.Input) savedAction.char else ""
                         FlickMappingItem(direction = direction, output = output)
                     }.toMutableList()
+
+                    val longPressFlickMap = state.layout.longPressFlickKeyMaps[key.keyId] ?: emptyMap()
+                    currentLongPressFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
+                        FlickMappingItem(
+                            direction = direction,
+                            output = longPressFlickMap[direction].orEmpty()
+                        )
+                    }.toMutableList()
                 }
 
                 handleInputStyleUi()
@@ -492,6 +568,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             updateDoneButtonState()
         }
     }
+
+
+
+
 
 
 
@@ -509,6 +589,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         val newAction: KeyAction?
         var newFlickMap: Map<FlickDirection, FlickAction> = emptyMap()
         var newTwoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>> = emptyMap()
+        val newLongPressFlickMap: Map<FlickDirection, String>
+        val newTwoStepLongPressMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
         val newDrawableResId: Int?
 
         when (binding.keyTypeChipGroup.checkedChipId) {
@@ -546,6 +628,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
                     newFlickMap = emptyMap()
                     newTwoStepMap = emptyMap()
+                    newLongPressFlickMap = emptyMap()
+                    newTwoStepLongPressMap = emptyMap()
                 } else {
                     // Special: FLICK (NEW) -> KeyType.CROSS_FLICK + store KeyAction as FlickAction.Action
                     newKeyType = KeyType.CROSS_FLICK
@@ -593,6 +677,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     }
 
                     newTwoStepMap = emptyMap()
+                    newLongPressFlickMap = emptyMap()
+                    newTwoStepLongPressMap = emptyMap()
                 }
             }
 
@@ -608,6 +694,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     newFlickMap = currentFlickItems
                         .filter { it.output.isNotEmpty() }
                         .associate { it.direction to FlickAction.Input(it.output) }
+                    newLongPressFlickMap = currentLongPressFlickItems
+                        .filter { it.output.isNotEmpty() }
+                        .associate { it.direction to it.output }
+                    newTwoStepLongPressMap = emptyMap()
                 
             }
         }
@@ -624,7 +714,13 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             colSpan = currentColSpan
         )
 
-        viewModel.updateKeyAndMappings(updatedKey, newFlickMap, newTwoStepMap)
+        viewModel.updateKeyAndMappings(
+            updatedKey,
+            newFlickMap,
+            newTwoStepMap,
+            newLongPressFlickMap,
+            newTwoStepLongPressMap
+        )
         findNavController().popBackStack()
     }
 
