@@ -13,8 +13,10 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemT
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TfbiFlickDirectionConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.MapTypeConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
@@ -46,6 +48,8 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         KeyDefinition::class,
         FlickMapping::class,
         TwoStepFlickMapping::class,
+        LongPressFlickMapping::class,
+        TwoStepLongPressMappingEntity::class,
         UserTemplate::class,
         ClipboardHistoryItem::class,
         RomajiMapEntity::class,
@@ -56,7 +60,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         ThreeNodeRuleEntity::class,
         GemmaPromptTemplate::class,
     ],
-    version = 20,
+    version = 22,
     exportSchema = false
 )
 @TypeConverters(
@@ -518,6 +522,91 @@ abstract class AppDatabase : RoomDatabase() {
                     """
                     CREATE INDEX IF NOT EXISTS `index_gemma_prompt_template_isEnabled`
                     ON `gemma_prompt_template`(`isEnabled`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `long_press_flick_mappings` (
+                        `ownerKeyId` INTEGER NOT NULL,
+                        `flickDirection` TEXT NOT NULL,
+                        `output` TEXT NOT NULL,
+                        PRIMARY KEY(`ownerKeyId`, `flickDirection`),
+                        FOREIGN KEY(`ownerKeyId`) REFERENCES `key_definitions`(`keyId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_long_press_flick_mappings_ownerKeyId`
+                    ON `long_press_flick_mappings`(`ownerKeyId`)
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `two_step_long_press_mappings` (
+                        `ownerKeyId` INTEGER NOT NULL,
+                        `firstDirection` TEXT NOT NULL,
+                        `secondDirection` TEXT NOT NULL,
+                        `output` TEXT NOT NULL,
+                        PRIMARY KEY(`ownerKeyId`, `firstDirection`, `secondDirection`),
+                        FOREIGN KEY(`ownerKeyId`) REFERENCES `key_definitions`(`keyId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_two_step_long_press_mappings_ownerKeyId`
+                    ON `two_step_long_press_mappings`(`ownerKeyId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS `index_two_step_long_press_mappings_ownerKeyId`")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `two_step_long_press_mappings_new` (
+                        `ownerKeyId` INTEGER NOT NULL,
+                        `firstDirection` TEXT NOT NULL,
+                        `secondDirection` TEXT NOT NULL,
+                        `output` TEXT NOT NULL,
+                        PRIMARY KEY(`ownerKeyId`, `firstDirection`, `secondDirection`),
+                        FOREIGN KEY(`ownerKeyId`) REFERENCES `key_definitions`(`keyId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `two_step_long_press_mappings_new` (
+                        `ownerKeyId`,
+                        `firstDirection`,
+                        `secondDirection`,
+                        `output`
+                    )
+                    SELECT
+                        `ownerKeyId`,
+                        `firstDirection`,
+                        `secondDirection`,
+                        `output`
+                    FROM `two_step_long_press_mappings`
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE `two_step_long_press_mappings`")
+                db.execSQL(
+                    "ALTER TABLE `two_step_long_press_mappings_new` RENAME TO `two_step_long_press_mappings`"
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_two_step_long_press_mappings_ownerKeyId`
+                    ON `two_step_long_press_mappings`(`ownerKeyId`)
                     """.trimIndent()
                 )
             }

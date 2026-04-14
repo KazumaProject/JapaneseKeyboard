@@ -1176,7 +1176,8 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.PETAL_FLICK -> {
-                val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
+                val flickActionMap = layout.flickKeyMaps[keyData.keyId]?.firstOrNull()
+                    ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 Log.d("FlickKeyboardView KeyType.PETAL_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
                     val controller = GridFlickInputController(context, flickSensitivity).apply {
@@ -1262,12 +1263,15 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
 
                         val stringMap = extractInputMap(flickActionMap)
+                        val longPressStringMap = layout.longPressFlickKeyMaps[keyData.keyId]
+                            ?: layout.longPressFlickKeyMaps[keyData.label]
+                            ?: emptyMap()
 
                         if (keyView is AutoSizeButton) {
                             applyGuideLabels(keyView, keyData, stringMap)
                         }
 
-                        attach(keyView, stringMap)
+                        attach(keyView, stringMap, longPressStringMap)
                     }
 
                     petalFlickControllers.add(controller)
