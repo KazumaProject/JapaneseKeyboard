@@ -2,10 +2,10 @@ package com.kazumaproject.custom_keyboard.view
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import kotlin.math.abs
@@ -27,6 +27,7 @@ class TfbiInputController(
     interface TfbiListener {
         fun onPress(first: TfbiFlickDirection, second: TfbiFlickDirection)
         fun onFlick(first: TfbiFlickDirection, second: TfbiFlickDirection)
+        fun onLongPressFlick(first: TfbiFlickDirection, second: TfbiFlickDirection): Boolean = false
     }
 
     private enum class FlickState { NEUTRAL, FIRST_FLICK_DETERMINED }
@@ -43,15 +44,28 @@ class TfbiInputController(
     private var initialTouchY = 0f
     private var intermediateTouchX = 0f
     private var intermediateTouchY = 0f
+    private var isLongPressModeActive = false
 
     var listener: TfbiListener? = null
     private var characterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
+    private var longPressCharacterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
     private var attachedView: View? = null
 
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
 
-    private lateinit var gestureDetector: GestureDetector
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
+    private var isTouchActive = false
+    private val longPressRunnable = Runnable {
+        val view = attachedView ?: return@Runnable
+        if (!isTouchActive || flickState != FlickState.NEUTRAL || isLongPressModeActive) {
+            return@Runnable
+        }
+
+        isLongPressModeActive = true
+        popupWindow?.dismiss()
+        showPopup(view, TfbiFlickDirection.TAP, true)
+    }
 
     // ▼▼▼ 追加: 色設定保持用の変数 ▼▼▼
     private var popupBackgroundColor: Int? = null
@@ -65,34 +79,31 @@ class TfbiInputController(
         this.popupTextColor = textColor
     }
 
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
+    }
+
     fun attach(
         view: View,
-        provider: (TfbiFlickDirection, TfbiFlickDirection) -> String
+        provider: (TfbiFlickDirection, TfbiFlickDirection) -> String,
+        longPressProvider: (TfbiFlickDirection, TfbiFlickDirection) -> String = { _, _ -> "" }
     ) {
         this.attachedView = view
         this.characterMapProvider = provider
-
-        gestureDetector =
-            GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-                override fun onLongPress(e: MotionEvent) {
-                    if (flickState == FlickState.NEUTRAL) {
-                        popupWindow?.dismiss()
-                        showPopup(view, TfbiFlickDirection.TAP, true)
-                    }
-                }
-            })
+        this.longPressCharacterMapProvider = longPressProvider
 
         view.setOnTouchListener { _, event -> handleTouchEvent(event) }
     }
 
     fun cancel() {
+        clearLongPressCallback(attachedView)
+        isTouchActive = false
         resetState()
         attachedView?.setOnTouchListener(null)
         attachedView = null
     }
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
-        gestureDetector.onTouchEvent(event)
         // Log.d("TfbInput", "handleTouchEvent: ${MotionEvent.actionToString(event.action)}")
 
         val view = attachedView ?: return false
@@ -115,11 +126,15 @@ class TfbiInputController(
     private fun handleTouchDown(event: MotionEvent, view: View) {
         resetState()
         flickState = FlickState.NEUTRAL
+        isLongPressModeActive = false
+        isTouchActive = true
         initialTouchX = event.x
         initialTouchY = event.y
         listener?.onPress(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP)
 
         showPopup(view, TfbiFlickDirection.TAP, false)
+        view.removeCallbacks(longPressRunnable)
+        view.postDelayed(longPressRunnable, longPressTimeout)
     }
 
     private fun handleTouchMove(event: MotionEvent, view: View) {
@@ -138,6 +153,7 @@ class TfbiInputController(
                 intermediateTouchX = event.x
                 intermediateTouchY = event.y
                 flickState = FlickState.FIRST_FLICK_DETERMINED
+                clearLongPressCallback(view)
 
                 setupSecondStageUI(firstFlickDirection)
                 popupView?.highlightDirection(determinedDirection)
@@ -149,6 +165,9 @@ class TfbiInputController(
                 (event.y - initialTouchY).toDouble()
             ).toFloat()
             if (distanceFromInitial < CANCEL_THRESHOLD) {
+                if (isLongPressModeActive) {
+                    return
+                }
                 resetState()
                 showPopup(view, TfbiFlickDirection.TAP, false)
                 return
@@ -172,6 +191,9 @@ class TfbiInputController(
     }
 
     private fun handleTouchUp(event: MotionEvent) {
+        isTouchActive = false
+        clearLongPressCallback(attachedView)
+
         var finalSecondDirection: TfbiFlickDirection
         if (flickState == FlickState.FIRST_FLICK_DETERMINED) {
             val dx = event.x - intermediateTouchX
@@ -189,10 +211,21 @@ class TfbiInputController(
             val enabledFirstDirections = getEnabledFirstFlickDirections()
             firstFlickDirection =
                 calculateDirection(dx, dy, flickSensitivity, enabledFirstDirections)
-            finalSecondDirection = TfbiFlickDirection.TAP
+            finalSecondDirection = if (firstFlickDirection == TfbiFlickDirection.TAP) {
+                TfbiFlickDirection.TAP
+            } else {
+                firstFlickDirection
+            }
         }
 
-        listener?.onFlick(firstFlickDirection, finalSecondDirection)
+        if (isLongPressModeActive) {
+            val consumed = listener?.onLongPressFlick(firstFlickDirection, finalSecondDirection) == true
+            if (!consumed) {
+                listener?.onFlick(firstFlickDirection, finalSecondDirection)
+            }
+        } else {
+            listener?.onFlick(firstFlickDirection, finalSecondDirection)
+        }
         resetState()
     }
 
@@ -203,12 +236,12 @@ class TfbiInputController(
     ) {
         if (popupWindow?.isShowing == true && !showPetals) return
 
-        val tapCharacter = characterMapProvider?.invoke(baseDirection, TfbiFlickDirection.TAP) ?: ""
+        val tapCharacter = characterFor(baseDirection, TfbiFlickDirection.TAP)
 
         val petalChars = if (showPetals) {
             val enabledDirections = getEnabledFirstFlickDirections()
             enabledDirections.associateWith { direction ->
-                characterMapProvider?.invoke(direction, direction) ?: ""
+                characterFor(direction, direction)
             }
         } else {
             emptyMap()
@@ -239,37 +272,60 @@ class TfbiInputController(
     }
 
     private fun setupSecondStageUI(firstDirection: TfbiFlickDirection) {
-        val tapCharacter =
-            characterMapProvider?.invoke(firstDirection, TfbiFlickDirection.TAP) ?: ""
+        val tapCharacter = characterFor(firstDirection, TfbiFlickDirection.TAP)
         val enabledDirections = getEnabledSecondFlickDirections(firstDirection)
         val petalChars = enabledDirections.associateWith {
-            characterMapProvider?.invoke(firstDirection, it) ?: ""
+            characterFor(firstDirection, it)
         }
         popupView?.setCharacters(tapCharacter, petalChars)
     }
 
+    private fun characterFor(first: TfbiFlickDirection, second: TfbiFlickDirection): String {
+        val normal = characterMapProvider?.invoke(first, second).orEmpty()
+        val longPress = longPressCharacterMapProvider?.invoke(first, second).orEmpty()
+        return if (isLongPressModeActive && longPress.isNotEmpty()) longPress else normal
+    }
 
     private fun resetState() {
+        clearLongPressCallback(attachedView)
         popupWindow?.dismiss()
         popupWindow = null
         popupView = null
         flickState = FlickState.NEUTRAL
         firstFlickDirection = TfbiFlickDirection.TAP
         currentSecondFlickDirection = TfbiFlickDirection.TAP
+        isLongPressModeActive = false
+    }
+
+    private fun clearLongPressCallback(view: View?) {
+        view?.removeCallbacks(longPressRunnable)
     }
 
     private fun getEnabledFirstFlickDirections(): Set<TfbiFlickDirection> {
         val provider = characterMapProvider ?: return emptySet()
         return TfbiFlickDirection.entries.filter {
-            it != TfbiFlickDirection.TAP && provider(it, TfbiFlickDirection.TAP).isNotEmpty()
+            it != TfbiFlickDirection.TAP && (
+                    provider(it, TfbiFlickDirection.TAP).isNotEmpty() ||
+                            (isLongPressModeActive && hasLongPressOutputForFirstDirection(it))
+                    )
         }.toSet()
     }
 
     private fun getEnabledSecondFlickDirections(baseDirection: TfbiFlickDirection): Set<TfbiFlickDirection> {
         val provider = characterMapProvider ?: return emptySet()
         return TfbiFlickDirection.entries.filter {
-            it != TfbiFlickDirection.TAP && provider(baseDirection, it).isNotEmpty()
+            it != TfbiFlickDirection.TAP && (
+                    provider(baseDirection, it).isNotEmpty() ||
+                            (isLongPressModeActive && longPressCharacterMapProvider?.invoke(baseDirection, it).orEmpty().isNotEmpty())
+                    )
         }.toSet()
+    }
+
+    private fun hasLongPressOutputForFirstDirection(firstDirection: TfbiFlickDirection): Boolean {
+        val provider = longPressCharacterMapProvider ?: return false
+        return TfbiFlickDirection.entries.any { secondDirection ->
+            provider(firstDirection, secondDirection).isNotEmpty()
+        }
     }
 
     private fun calculateDirection(

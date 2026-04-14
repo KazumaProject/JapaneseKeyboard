@@ -1183,7 +1183,8 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.PETAL_FLICK -> {
-                val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
+                val flickActionMap = layout.flickKeyMaps[keyData.keyId]?.firstOrNull()
+                    ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 Log.d("FlickKeyboardView KeyType.PETAL_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
                     val controller = GridFlickInputController(context, flickSensitivity).apply {
@@ -1269,12 +1270,15 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
 
                         val stringMap = extractInputMap(flickActionMap)
+                        val longPressStringMap = layout.longPressFlickKeyMaps[keyData.keyId]
+                            ?: layout.longPressFlickKeyMaps[keyData.label]
+                            ?: emptyMap()
 
                         if (keyView is AutoSizeButton) {
                             applyGuideLabels(keyView, keyData, stringMap)
                         }
 
-                        attach(keyView, stringMap)
+                        attach(keyView, stringMap, longPressStringMap)
                     }
 
                     petalFlickControllers.add(controller)
@@ -1331,12 +1335,15 @@ class FlickKeyboardView @JvmOverloads constructor(
             KeyType.TWO_STEP_FLICK -> {
                 val twoStepMap = layout.twoStepFlickKeyMaps[keyData.keyId]
                     ?: layout.twoStepFlickKeyMaps[keyData.label]
+                val twoStepLongPressMap = layout.twoStepLongPressKeyMaps[keyData.keyId]
+                    ?: layout.twoStepLongPressKeyMaps[keyData.label]
 
                 if (twoStepMap != null) {
                     val controller = TfbiInputController(
                         context,
                         flickSensitivity = flickSensitivity.toFloat()
                     ).apply {
+                        setLongPressTimeout(longPressTimeout)
                         this.listener = object : TfbiInputController.TfbiListener {
                             override fun onPress(
                                 first: TfbiFlickDirection,
@@ -1361,12 +1368,30 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     )
                                 }
                             }
+
+                            override fun onLongPressFlick(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection
+                            ): Boolean {
+                                val output = twoStepLongPressMap?.get(first)?.get(second).orEmpty()
+                                if (output.isEmpty()) return false
+
+                                this@FlickKeyboardView.listener?.onAction(
+                                    KeyAction.Text(output),
+                                    isFlick = !(first == TfbiFlickDirection.TAP &&
+                                            second == TfbiFlickDirection.TAP)
+                                )
+                                return true
+                            }
                         }
 
                         attach(
                             view = keyView,
                             provider = { first, second ->
                                 twoStepMap[first]?.get(second) ?: ""
+                            },
+                            longPressProvider = { first, second ->
+                                twoStepLongPressMap?.get(first)?.get(second).orEmpty()
                             }
                         )
                     }

@@ -87,6 +87,8 @@ data class KeyboardLayout(
     val rowCount: Int,
     val isRomaji: Boolean = false,
     val twoStepFlickKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
+    val longPressFlickKeyMaps: Map<String, Map<FlickDirection, String>> = emptyMap(),
+    val twoStepLongPressKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
     val hierarchicalFlickMaps: Map<String, TfbiFlickNode.StatefulKey> = emptyMap()
 )
 
@@ -118,5 +120,3 @@ enum class ShapeType {
     CIRCLE,
     ROUNDED_SQUARE
 }
-
-
