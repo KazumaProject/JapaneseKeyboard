@@ -1343,6 +1343,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context,
                         flickSensitivity = flickSensitivity.toFloat()
                     ).apply {
+                        setLongPressTimeout(longPressTimeout)
                         this.listener = object : TfbiInputController.TfbiListener {
                             override fun onPress(
                                 first: TfbiFlickDirection,
