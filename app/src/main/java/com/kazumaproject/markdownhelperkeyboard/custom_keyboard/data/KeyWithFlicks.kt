@@ -21,5 +21,19 @@ data class KeyWithFlicks(
         entity = TwoStepFlickMapping::class,
         entityColumn = "ownerKeyId"
     )
-    val twoStepFlicks: List<TwoStepFlickMapping>
+    val twoStepFlicks: List<TwoStepFlickMapping>,
+
+    @Relation(
+        parentColumn = "keyId",
+        entity = LongPressFlickMapping::class,
+        entityColumn = "ownerKeyId"
+    )
+    val longPressFlicks: List<LongPressFlickMapping>,
+
+    @Relation(
+        parentColumn = "keyId",
+        entity = TwoStepLongPressMappingEntity::class,
+        entityColumn = "ownerKeyId"
+    )
+    val twoStepLongPressFlicks: List<TwoStepLongPressMappingEntity>
 )
