@@ -309,8 +309,8 @@ class GridFlickInputController(
                 }
 
                 val direction = calculateDirection(dx, dy)
-                if (isLongPressModeActive || distance >= flickSensitivity) {
-                    // フリック閾値超え or 長押しモード → グリッドポップアップで方向ハイライト
+                if (isLongPressModeActive) {
+                    // 長押しモード → グリッドポップアップで方向ハイライト
                     currentVisiblePopup?.let {
                         if (it !== gridPopup) {
                             it.dismiss()
@@ -320,6 +320,10 @@ class GridFlickInputController(
                     }
                     showGridPopup()
                     (gridPopup.contentView as? FlickGridPopupView)?.highlightKey(direction)
+                } else if (distance >= flickSensitivity) {
+                    // 通常フリック → 方向ごとのポップアップ
+                    if (gridPopup.isShowing) gridPopup.dismiss()
+                    showPopupForDirection(direction)
                 } else {
                     // 閾値未満（TAP 状態）→ TAP ポップアップのみ
                     if (direction == FlickDirection.TAP) {
