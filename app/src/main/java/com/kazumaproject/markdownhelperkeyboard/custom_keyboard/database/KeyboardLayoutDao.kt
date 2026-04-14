@@ -10,7 +10,9 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeybo
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -37,7 +39,9 @@ interface KeyboardLayoutDao {
         layout: CustomKeyboardLayout,
         keys: List<KeyDefinition>,
         flicksMap: Map<String, List<FlickMapping>>,
-        twoStepFlicksMap: Map<String, List<TwoStepFlickMapping>>
+        twoStepFlicksMap: Map<String, List<TwoStepFlickMapping>>,
+        longPressFlicksMap: Map<String, List<LongPressFlickMapping>>,
+        twoStepLongPressFlicksMap: Map<String, List<TwoStepLongPressMappingEntity>>
     ) {
         val layoutId = insertLayout(layout)
 
@@ -67,6 +71,26 @@ interface KeyboardLayoutDao {
         if (twoStepWithRealKeyIds.isNotEmpty()) {
             insertTwoStepFlickMappings(twoStepWithRealKeyIds)
         }
+
+        val longPressWithRealKeyIds = mutableListOf<LongPressFlickMapping>()
+        identifierToIdMap.forEach { (identifier, realKeyId) ->
+            longPressFlicksMap[identifier]?.forEach { mapping ->
+                longPressWithRealKeyIds.add(mapping.copy(ownerKeyId = realKeyId))
+            }
+        }
+        if (longPressWithRealKeyIds.isNotEmpty()) {
+            insertLongPressFlickMappings(longPressWithRealKeyIds)
+        }
+
+        val twoStepLongPressWithRealKeyIds = mutableListOf<TwoStepLongPressMappingEntity>()
+        identifierToIdMap.forEach { (identifier, realKeyId) ->
+            twoStepLongPressFlicksMap[identifier]?.forEach { mapping ->
+                twoStepLongPressWithRealKeyIds.add(mapping.copy(ownerKeyId = realKeyId))
+            }
+        }
+        if (twoStepLongPressWithRealKeyIds.isNotEmpty()) {
+            insertTwoStepLongPressFlickMappings(twoStepLongPressWithRealKeyIds)
+        }
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -80,6 +104,12 @@ interface KeyboardLayoutDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTwoStepFlickMappings(mappings: List<TwoStepFlickMapping>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertLongPressFlickMappings(mappings: List<LongPressFlickMapping>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertTwoStepLongPressFlickMappings(mappings: List<TwoStepLongPressMappingEntity>)
 
     @Query("DELETE FROM keyboard_layouts WHERE layoutId = :layoutId")
     suspend fun deleteLayout(layoutId: Long)
@@ -96,10 +126,18 @@ interface KeyboardLayoutDao {
     @Query("DELETE FROM two_step_flick_mappings WHERE ownerKeyId IN (SELECT keyId FROM key_definitions WHERE ownerLayoutId = :layoutId)")
     suspend fun deleteTwoStepFlicksForLayout(layoutId: Long)
 
+    @Query("DELETE FROM long_press_flick_mappings WHERE ownerKeyId IN (SELECT keyId FROM key_definitions WHERE ownerLayoutId = :layoutId)")
+    suspend fun deleteLongPressFlicksForLayout(layoutId: Long)
+
+    @Query("DELETE FROM two_step_long_press_mappings WHERE ownerKeyId IN (SELECT keyId FROM key_definitions WHERE ownerLayoutId = :layoutId)")
+    suspend fun deleteTwoStepLongPressFlicksForLayout(layoutId: Long)
+
     @Transaction
     suspend fun deleteKeysAndFlicksForLayout(layoutId: Long) {
         deleteFlicksForLayout(layoutId)
         deleteTwoStepFlicksForLayout(layoutId)
+        deleteLongPressFlicksForLayout(layoutId)
+        deleteTwoStepLongPressFlicksForLayout(layoutId)
         deleteKeysForLayout(layoutId)
     }
 

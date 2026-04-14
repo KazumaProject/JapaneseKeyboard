@@ -296,7 +296,9 @@ class KeyboardEditorViewModel @Inject constructor(
     fun updateKeyAndMappings(
         newKeyData: KeyData,
         flickMap: Map<FlickDirection, FlickAction>,
-        twoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
+        twoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>,
+        longPressFlickMap: Map<FlickDirection, String>,
+        twoStepLongPressMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
     ) {
         val keyId = newKeyData.keyId ?: run {
             Timber.e("FATAL: updateKeyAndMappings received a KeyData with a null keyId!")
@@ -325,30 +327,48 @@ class KeyboardEditorViewModel @Inject constructor(
 
             val finalFlickMaps = layout.flickKeyMaps.toMutableMap()
             val finalTwoStepMaps = layout.twoStepFlickKeyMaps.toMutableMap()
+            val finalLongPressFlickMaps = layout.longPressFlickKeyMaps.toMutableMap()
+            val finalTwoStepLongPressMaps = layout.twoStepLongPressKeyMaps.toMutableMap()
 
             crushedKeyIds.forEach {
                 finalFlickMaps.remove(it)
                 finalTwoStepMaps.remove(it)
+                finalLongPressFlickMaps.remove(it)
+                finalTwoStepLongPressMaps.remove(it)
             }
 
             when (newKeyData.keyType) {
                 KeyType.TWO_STEP_FLICK -> {
                     // 2段フリックに切り替えた場合、1段フリック設定を消して2段を保存
                     finalFlickMaps.remove(keyId)
+                    finalLongPressFlickMaps.remove(keyId)
                     finalTwoStepMaps[keyId] = twoStepMap
+                    if (twoStepLongPressMap.isNotEmpty()) {
+                        finalTwoStepLongPressMaps[keyId] = twoStepLongPressMap
+                    } else {
+                        finalTwoStepLongPressMaps.remove(keyId)
+                    }
                 }
 
                 else -> {
                     // 1段フリック系の場合、2段フリック設定を消して1段を保存
                     finalTwoStepMaps.remove(keyId)
+                    finalTwoStepLongPressMaps.remove(keyId)
                     finalFlickMaps[keyId] = listOf(flickMap)
+                    if (longPressFlickMap.isNotEmpty()) {
+                        finalLongPressFlickMaps[keyId] = longPressFlickMap
+                    } else {
+                        finalLongPressFlickMaps.remove(keyId)
+                    }
                 }
             }
 
             val newLayout = layout.copy(
                 keys = finalKeys,
                 flickKeyMaps = finalFlickMaps,
-                twoStepFlickKeyMaps = finalTwoStepMaps
+                twoStepFlickKeyMaps = finalTwoStepMaps,
+                longPressFlickKeyMaps = finalLongPressFlickMaps,
+                twoStepLongPressKeyMaps = finalTwoStepLongPressMaps
             )
             currentState.copy(layout = newLayout)
         }
@@ -469,9 +489,27 @@ class KeyboardEditorViewModel @Inject constructor(
             if (newKeyId != null) newKeyId to flickActions else null
         }.toMap()
 
+        val reKeyedTwoStepMaps = templateLayout.twoStepFlickKeyMaps.mapNotNull { (labelKey, map) ->
+            val newKeyId = labelToIdMap[labelKey]
+            if (newKeyId != null) newKeyId to map else null
+        }.toMap()
+
+        val reKeyedLongPressFlickMaps = templateLayout.longPressFlickKeyMaps.mapNotNull { (labelKey, map) ->
+            val newKeyId = labelToIdMap[labelKey]
+            if (newKeyId != null) newKeyId to map else null
+        }.toMap()
+
+        val reKeyedTwoStepLongPressMaps = templateLayout.twoStepLongPressKeyMaps.mapNotNull { (labelKey, map) ->
+            val newKeyId = labelToIdMap[labelKey]
+            if (newKeyId != null) newKeyId to map else null
+        }.toMap()
+
         val finalLayout = templateLayout.copy(
             keys = keysWithEnsuredIds,
-            flickKeyMaps = reKeyedFlickMaps
+            flickKeyMaps = reKeyedFlickMaps,
+            twoStepFlickKeyMaps = reKeyedTwoStepMaps,
+            longPressFlickKeyMaps = reKeyedLongPressFlickMaps,
+            twoStepLongPressKeyMaps = reKeyedTwoStepLongPressMaps
         )
 
         _uiState.update { currentState ->

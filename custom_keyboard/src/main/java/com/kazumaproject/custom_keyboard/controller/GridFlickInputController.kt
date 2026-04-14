@@ -36,6 +36,7 @@ class GridFlickInputController(
 
     var listener: GridFlickListener? = null
     private var characterMap: Map<FlickDirection, String> = emptyMap()
+    private var longPressCharacterMap: Map<FlickDirection, String> = emptyMap()
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
     private var isLongPressModeActive = false
@@ -221,7 +222,7 @@ class GridFlickInputController(
         val popupView = gridPopup.contentView as FlickGridPopupView
         colorTheme?.let { popupView.setColors(it) }
 
-        popupView.setCharacters(characterMap, currentAnchor.width, currentAnchor.height)
+        popupView.setCharacters(getLongPressDisplayMap(), currentAnchor.width, currentAnchor.height)
         popupView.highlightKey(FlickDirection.TAP)
 
         val location = IntArray(2)
@@ -243,8 +244,13 @@ class GridFlickInputController(
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    fun attach(button: View, map: Map<FlickDirection, String>) {
+    fun attach(
+        button: View,
+        map: Map<FlickDirection, String>,
+        longPressMap: Map<FlickDirection, String> = emptyMap()
+    ) {
         this.characterMap = map
+        this.longPressCharacterMap = longPressMap
         button.setOnTouchListener { v, event -> handleTouchEvent(v, event) }
     }
 
@@ -301,7 +307,13 @@ class GridFlickInputController(
                     val dx = event.rawX - initialTouchX
                     val dy = event.rawY - initialTouchY
                     val finalDirection = calculateDirection(dx, dy)
-                    characterMap[finalDirection]?.let {
+                    val output = if (isLongPressModeActive) {
+                        longPressCharacterMap[finalDirection]?.takeIf { it.isNotEmpty() }
+                            ?: characterMap[finalDirection]
+                    } else {
+                        characterMap[finalDirection]
+                    }
+                    output?.let {
                         listener?.onFlick(
                             it, isFlick = finalDirection != FlickDirection.TAP
                         )
@@ -325,6 +337,10 @@ class GridFlickInputController(
         popupMap.values.forEach { if (it.isShowing) it.dismiss() }
         // 状態をリセット
         currentFlickDirection = null
+    }
+
+    private fun getLongPressDisplayMap(): Map<FlickDirection, String> {
+        return characterMap + longPressCharacterMap.filterValues { it.isNotEmpty() }
     }
 
     private fun calculateDirection(dx: Float, dy: Float): FlickDirection {
