@@ -9,10 +9,8 @@ import android.graphics.Rect
 import android.graphics.RectF
 import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.core.graphics.withRotation
-import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 
@@ -44,9 +42,6 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     // ▼▼▼ 追加: 枠線用の色を保持するプロパティ ▼▼▼
     private var separatorColor = Color.LTGRAY
 
-    // アイコン表示用（setAction時にキャッシュ）
-    private var cachedIconDrawable: android.graphics.drawable.Drawable? = null
-
     init {
         // init時のテキスト色はテーマで上書きされる前提
         setTextColor(Color.WHITE)
@@ -62,9 +57,8 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         this.defaultColor = theme.centerGradientStartColor
         this.highlightColor = theme.centerGradientStartColor
         this.separatorColor = theme.separatorColor
+        // Viewのテキストカラー状態を更新する
         setTextColor(theme.textColor)
-        // テキストカラー確定後にキャッシュ済みDrawableのtintを更新
-        cachedIconDrawable?.setTint(theme.textColor)
     }
 
     fun setFlickDirection(direction: FlickDirection) {
@@ -75,32 +69,6 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
             FlickDirection.UP_LEFT_FAR -> 0f
             FlickDirection.UP_RIGHT_FAR -> 180f
             else -> 0f
-        }
-        invalidate()
-    }
-
-    /**
-     * FlickAction を受け取り、表示内容を設定する。
-     * FlickAction.Input の場合はテキスト表示。
-     * FlickAction.Action の場合は drawableResId があればアイコン、なければ label を表示。
-     */
-    fun setAction(action: FlickAction) {
-        when (action) {
-            is FlickAction.Input -> {
-                cachedIconDrawable = null
-                text = action.char
-            }
-            is FlickAction.Action -> {
-                if (action.drawableResId != null) {
-                    cachedIconDrawable = ContextCompat.getDrawable(context, action.drawableResId)
-                        ?.mutate()
-                        ?.also { it.setTint(currentTextColor) }
-                    text = ""
-                } else {
-                    cachedIconDrawable = null
-                    text = action.label ?: ""
-                }
-            }
         }
         invalidate()
     }
@@ -131,30 +99,20 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
             drawPath(backgroundPath, strokePaint)
         }
 
-        val drawable = cachedIconDrawable
-        if (drawable != null) {
-            // アイコン描画（setAction時にキャッシュ済み）
-            val iconSize = (minOf(w, h) * 0.5f).toInt()
-            val left = ((w - iconSize) / 2f).toInt()
-            val top = ((h - iconSize) / 2f).toInt()
-            drawable.setBounds(left, top, left + iconSize, top + iconSize)
-            drawable.draw(canvas)
-        } else {
-            val textToDraw = this.text.toString()
-            val textPaint = this.paint
+        val textToDraw = this.text.toString()
+        val textPaint = this.paint
 
-            // ▼▼▼ FIX: Paintオブジェクトの色を、現在のテキストカラーで明示的に設定する ▼▼▼
-            // setTextColorで設定された色を描画直前にPaintオブジェクトへ確実に適用します。
-            textPaint.color = this.currentTextColor
+        // ▼▼▼ FIX: Paintオブジェクトの色を、現在のテキストカラーで明示的に設定する ▼▼▼
+        // setTextColorで設定された色を描画直前にPaintオブジェクトへ確実に適用します。
+        textPaint.color = this.currentTextColor
 
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.getTextBounds(textToDraw, 0, textToDraw.length, textBounds)
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.getTextBounds(textToDraw, 0, textToDraw.length, textBounds)
 
-            val textX = w / 2f
-            val textY = h / 2f + textBounds.height() / 2f
+        val textX = w / 2f
+        val textY = h / 2f + textBounds.height() / 2f
 
-            canvas.drawText(textToDraw, textX, textY, textPaint)
-        }
+        canvas.drawText(textToDraw, textX, textY, textPaint)
     }
 
     private fun updatePath(w: Float, h: Float) {

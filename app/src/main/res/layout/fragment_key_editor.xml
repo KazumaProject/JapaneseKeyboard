@@ -95,7 +95,7 @@
                 app:singleSelection="true">
 
                 <com.google.android.material.chip.Chip
-                    android:id="@+id/chip_cross_flick"
+                    android:id="@+id/chip_petal_flick"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -231,7 +231,7 @@
                     tools:text="削除" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- フリックグリッドエディタ (1段・2段・特殊フリック共通) -->
+            <!-- フリックグリッドエディタ (ペタル・2段・特殊フリック共通) -->
             <com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.FlickGridEditorView
                 android:id="@+id/flick_grid_editor_view"
                 android:layout_width="wrap_content"
@@ -252,7 +252,7 @@
                 tools:text="右フリック時の挙動"
                 tools:visibility="visible" />
 
-            <!-- 文字入力欄（1段・2段フリックのテキスト入力用） -->
+            <!-- 文字入力欄（ペタル・2段フリックのテキスト入力用） -->
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/text_char_input_layout"
                 android:layout_width="match_parent"

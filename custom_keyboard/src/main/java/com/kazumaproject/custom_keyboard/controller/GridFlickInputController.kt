@@ -11,7 +11,6 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
-import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.view.DirectionalKeyPopupView
@@ -31,14 +30,12 @@ class GridFlickInputController(
 ) {
 
     interface GridFlickListener {
-        fun onPress(action: FlickAction)
-        fun onFlick(action: FlickAction, isFlick: Boolean)
-        fun onLongPress(action: FlickAction)
-        fun onUpAfterLongPress(action: FlickAction, isFlick: Boolean)
+        fun onPress(character: String)
+        fun onFlick(character: String, isFlick: Boolean)
     }
 
     var listener: GridFlickListener? = null
-    private var characterMap: Map<FlickDirection, FlickAction> = emptyMap()
+    private var characterMap: Map<FlickDirection, String> = emptyMap()
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
     private var isLongPressModeActive = false
@@ -47,8 +44,6 @@ class GridFlickInputController(
     private var initialTouchY = 0f
     private var originalKeyText: CharSequence? = null
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
-    private var isLongPressTriggered = false
-    private var longPressAction: FlickAction? = null
 
     // 各方向に対応するPopupWindowを保持するMap
     private val popupMap: MutableMap<FlickDirection, PopupWindow> = mutableMapOf()
@@ -100,15 +95,10 @@ class GridFlickInputController(
         val currentAnchor = anchorView ?: return
 
         directions.forEach { direction ->
-            val action = characterMap[direction]
-            val hasContent = when (action) {
-                is FlickAction.Input -> action.char.isNotEmpty()
-                is FlickAction.Action -> true
-                null -> false
-            }
-            if (hasContent && action != null) {
+            val text = characterMap[direction] ?: ""
+            if (text.isNotEmpty()) {
                 val popupView = DirectionalKeyPopupView(context).apply {
-                    setAction(action)
+                    this.text = text
                     colorTheme?.let { setColors(it) }
                     setFlickDirection(direction)
                 }
@@ -231,7 +221,7 @@ class GridFlickInputController(
         val popupView = gridPopup.contentView as FlickGridPopupView
         colorTheme?.let { popupView.setColors(it) }
 
-        popupView.setActions(characterMap, currentAnchor.width, currentAnchor.height)
+        popupView.setCharacters(characterMap, currentAnchor.width, currentAnchor.height)
         popupView.highlightKey(FlickDirection.TAP)
 
         val location = IntArray(2)
@@ -253,7 +243,7 @@ class GridFlickInputController(
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    fun attach(button: View, map: Map<FlickDirection, FlickAction>) {
+    fun attach(button: View, map: Map<FlickDirection, String>) {
         this.characterMap = map
         button.setOnTouchListener { v, event -> handleTouchEvent(v, event) }
     }
@@ -265,8 +255,6 @@ class GridFlickInputController(
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
                 isLongPressModeActive = false
-                isLongPressTriggered = false
-                longPressAction = null
 
                 (anchorView as? Button)?.let { button ->
                     originalKeyText = button.text
@@ -274,27 +262,18 @@ class GridFlickInputController(
                 }
 
                 createPopups()
-                characterMap[FlickDirection.TAP]?.let { listener?.onPress(it) }
+                listener?.onPress(characterMap[FlickDirection.TAP] ?: "")
 
                 // 方向の状態を初期化
                 currentFlickDirection = null
 
                 showPopupForDirection(FlickDirection.TAP)
 
-                longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
                     delay(longPressTimeout)
                     isLongPressModeActive = true
-                    val tapAction = characterMap[FlickDirection.TAP] as? FlickAction.Action
-                    if (tapAction != null) {
-                        isLongPressTriggered = true
-                        longPressAction = tapAction
-                    }
                     dismissAllPopups() // 方向ポップアップを消す
                     showGridPopup()
-                    if (tapAction != null) {
-                        listener?.onLongPress(tapAction)
-                    }
                 }
                 return true
             }
@@ -302,58 +281,26 @@ class GridFlickInputController(
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.rawX - initialTouchX
                 val dy = event.rawY - initialTouchY
-                val distance = sqrt(dx * dx + dy * dy)
 
-                if (distance > flickSensitivity * 0.5f) {
+                if (sqrt(dx * dx + dy * dy) > flickSensitivity * 0.5f) {
                     longPressJob?.cancel()
                 }
 
                 val direction = calculateDirection(dx, dy)
                 if (isLongPressModeActive) {
-                    // 長押しモード → グリッドポップアップで方向ハイライト
-                    currentVisiblePopup?.let {
-                        if (it !== gridPopup) {
-                            it.dismiss()
-                            currentVisiblePopup = null
-                            currentFlickDirection = null
-                        }
-                    }
-                    showGridPopup()
                     (gridPopup.contentView as? FlickGridPopupView)?.highlightKey(direction)
-                } else if (distance >= flickSensitivity) {
-                    // 通常フリック → 方向ごとのポップアップ
-                    if (gridPopup.isShowing) gridPopup.dismiss()
-                    showPopupForDirection(direction)
                 } else {
-                    // 閾値未満（TAP 状態）→ TAP ポップアップのみ
-                    if (direction == FlickDirection.TAP) {
-                        showPopupForDirection(FlickDirection.TAP)
-                    }
+                    showPopupForDirection(direction)
                 }
                 return true
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 longPressJob?.cancel()
-                longPressJob = null
-                val finalDirection = if (event.action == MotionEvent.ACTION_UP) {
+                if (event.action == MotionEvent.ACTION_UP) {
                     val dx = event.rawX - initialTouchX
                     val dy = event.rawY - initialTouchY
-                    calculateDirection(dx, dy)
-                } else {
-                    FlickDirection.TAP
-                }
-
-                if (isLongPressTriggered) {
-                    val finalAction = characterMap[finalDirection] as? FlickAction.Action
-                        ?: longPressAction
-                    finalAction?.let {
-                        listener?.onUpAfterLongPress(
-                            it,
-                            isFlick = finalDirection != FlickDirection.TAP
-                        )
-                    }
-                } else if (event.action == MotionEvent.ACTION_UP) {
+                    val finalDirection = calculateDirection(dx, dy)
                     characterMap[finalDirection]?.let {
                         listener?.onFlick(
                             it, isFlick = finalDirection != FlickDirection.TAP
@@ -364,8 +311,6 @@ class GridFlickInputController(
                     button.text = originalKeyText
                 }
                 originalKeyText = null
-                isLongPressTriggered = false
-                longPressAction = null
                 dismissAllPopups()
                 return true
             }
@@ -373,7 +318,7 @@ class GridFlickInputController(
         return false
     }
 
-    fun dismissAllPopups() {
+    private fun dismissAllPopups() {
         currentVisiblePopup?.dismiss()
         currentVisiblePopup = null
         if (gridPopup.isShowing) gridPopup.dismiss()
