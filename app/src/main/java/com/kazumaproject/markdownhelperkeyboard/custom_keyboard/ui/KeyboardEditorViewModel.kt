@@ -278,7 +278,7 @@ class KeyboardEditorViewModel @Inject constructor(
             column = column,
             isFlickable = true,
             keyId = UUID.randomUUID().toString(),
-            keyType = KeyType.CROSS_FLICK
+            keyType = KeyType.PETAL_FLICK
         )
     }
 
