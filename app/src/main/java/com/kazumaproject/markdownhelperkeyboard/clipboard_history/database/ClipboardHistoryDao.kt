@@ -24,6 +24,15 @@ interface ClipboardHistoryDao {
     @Query("SELECT * FROM clipboard_history ORDER BY timestamp DESC LIMIT 1")
     suspend fun getLatestItem(): ClipboardHistoryItem?
 
+    @Query("SELECT * FROM clipboard_history WHERE id = :id LIMIT 1")
+    suspend fun getById(id: Long): ClipboardHistoryItem?
+
+    @Query("UPDATE clipboard_history SET isPinned = :isPinned WHERE id = :id")
+    suspend fun setPinned(id: Long, isPinned: Boolean)
+
+    @Query("SELECT * FROM clipboard_history WHERE isPinned = 0 AND timestamp < :threshold")
+    suspend fun getExpiredUnpinnedItems(threshold: Long): List<ClipboardHistoryItem>
+
     @Query("DELETE FROM clipboard_history WHERE id = :id")
     suspend fun deleteById(id: Long)
 

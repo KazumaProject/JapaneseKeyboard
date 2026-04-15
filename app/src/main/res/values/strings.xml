@@ -421,6 +421,10 @@
     <string name="pref_qwerty_shift_key_action_summary"> Makes only the first letter after Shift uppercase for consistency in all cases</string>
     <string name="pref_clipboard_tap_delete_title">Tap to remove from candidate bar</string>
     <string name="pref_clipboard_tap_delete_summary">When you tap a clipboard item in the candidate bar, it will be removed from the bar.</string>
+    <string name="pref_clipboard_delete_unpinned_after_hours_title">Delete unpinned clipboard items automatically</string>
+    <string name="pref_clipboard_delete_unpinned_after_hours_summary">When enabled, clipboard items that are not pinned are deleted after the selected number of hours.</string>
+    <string name="pref_clipboard_unpinned_retention_hours_title">Delete after</string>
+    <string name="pref_clipboard_unpinned_retention_hours_summary">Choose how many hours to keep unpinned clipboard items.</string>
     <string name="pref_romaji_shift_title">Capitalize only the first character after Shift</string>
     <string name="pref_romaji_shift_summary">In romaji input, only the first character after pressing the Shift key becomes uppercase.</string>
     <string name="tablet_preference_category_title">Tablet</string>
