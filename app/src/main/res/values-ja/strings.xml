@@ -419,6 +419,10 @@
     <string name="pref_qwerty_shift_key_action_summary">Shift 直後の 1 キーのみ大文字英字に統一します</string>
     <string name="pref_clipboard_tap_delete_title">クリップボード タップで候補から削除</string>
     <string name="pref_clipboard_tap_delete_summary">クリップボード項目をタップしたとき、変換欄から削除します。</string>
+    <string name="pref_clipboard_delete_unpinned_after_hours_title">ピン留めしていない項目を自動削除</string>
+    <string name="pref_clipboard_delete_unpinned_after_hours_summary">オンにすると、ピン留めしていないクリップボード項目を指定時間後に削除します。</string>
+    <string name="pref_clipboard_unpinned_retention_hours_title">削除までの時間</string>
+    <string name="pref_clipboard_unpinned_retention_hours_summary">ピン留めしていないクリップボード項目を保持する時間を選択します。</string>
     <string name="pref_romaji_shift_title">Shift直後の1文字だけ大文字</string>
     <string name="pref_romaji_shift_summary">ローマ字入力で、Shiftキーを押した直後の最初の1文字のみをアルファベットの大文字にします。</string>
     <string name="tablet_preference_category_title">タブレット</string>

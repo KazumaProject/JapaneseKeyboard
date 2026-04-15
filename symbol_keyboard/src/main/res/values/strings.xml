@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="symbol_clipboard_section_pinned">Pinned</string>
+    <string name="symbol_clipboard_action_paste">Paste</string>
+    <string name="symbol_clipboard_action_pin">Pin</string>
+    <string name="symbol_clipboard_action_unpin">Unpin</string>
+    <string name="symbol_clipboard_action_delete">Delete</string>
+</resources>
