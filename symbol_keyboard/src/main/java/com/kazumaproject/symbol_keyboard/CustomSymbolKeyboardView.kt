@@ -772,7 +772,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                 add(ClipboardListItem.Header(resources.getString(R.string.symbol_clipboard_section_pinned)))
                 addAll(pinned.map { ClipboardListItem.Content(it) })
             }
-            addAll(unpinned.map { ClipboardListItem.Content(it) })
+            if (unpinned.isNotEmpty()) {
+                add(ClipboardListItem.Header(resources.getString(R.string.symbol_clipboard_section_unpinned)))
+                addAll(unpinned.map { ClipboardListItem.Content(it) })
+            }
         }
     }
 
