@@ -477,7 +477,9 @@
     <string name="indent_large_2nd_row_indent">Indent Large (2nd Row Indent)</string>
     <string name="indent_small_adjustment">Indent Small (Adjustment)</string>
     <string name="side_margin_edge_keys">Side Margin (Edge keys)</string>
-    <string name="qwerty_key_letter_size">キーの文字サイズ</string>
+    <string name="qwerty_key_letter_size">Key Letter Size</string>
+    <string name="qwerty_special_key_text_size">Special Key Text Size</string>
+    <string name="qwerty_special_key_icon_size">Special Key Icon Size</string>
     <string name="reset_to_default">Reset to Default</string>
     <string name="preview">Preview</string>
     <string name="qwertymarginsettingfragment">Key Settings</string>

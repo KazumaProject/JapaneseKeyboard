@@ -85,6 +85,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var keyIndentSmallDp: Float = 9f
     private var keySideMarginDp: Float = 4f
     private var keyTextSizeSp: Float = 20f
+    private var specialKeyTextSizeSp: Float = 12f
+    private var specialKeyIconSizeDp: Float = 24f
 
     /** Map each active pointer ID → the View (key) it’s currently “pressing” (or null). */
     private val pointerButtonMap = SparseArray<View?>()
@@ -606,7 +608,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         indentLargeDp: Float = keyIndentLargeDp,
         indentSmallDp: Float = keyIndentSmallDp,
         sideMarginDp: Float = keySideMarginDp,
-        textSizeSp: Float = keyTextSizeSp
+        textSizeSp: Float = keyTextSizeSp,
+        specialTextSizeSp: Float = specialKeyTextSizeSp,
+        specialIconSizeDp: Float = specialKeyIconSizeDp
     ) {
         this.keyVerticalMarginDp = verticalDp
         this.keyHorizontalGapDp = horizontalGapDp
@@ -614,27 +618,54 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.keyIndentSmallDp = indentSmallDp
         this.keySideMarginDp = sideMarginDp
         this.keyTextSizeSp = textSizeSp
+        this.specialKeyTextSizeSp = specialTextSizeSp
+        this.specialKeyIconSizeDp = specialIconSizeDp
 
         // 現在のモードでレイアウトを再適用
         applyLayoutForMode(qwertyMode.value)
 
         updateAllKeyTextSizes()
+        updateSpecialKeyTextSizes()
+        updateSpecialKeyIconSizes()
     }
 
     private fun updateAllKeyTextSizes() {
         qwertyButtonMap.keys.forEach { view ->
-            if (view.id == binding.keySpace.id ||
-                view.id == binding.keyReturn.id ||
-                view.id == binding.switchNumberLayout.id ||
-                view.id == binding.switchRomajiEnglish.id ||
-                view.id == binding.keyKuten.id ||
-                view.id == binding.keyTouten.id ||
-                view.id == binding.key123.id
-            ) return@forEach
+            if (specialTextButtons.contains(view)) return@forEach
             if (view is TextView) { // QWERTYButton, AppCompatButton は TextView を継承している
                 view.textSize = keyTextSizeSp
             }
         }
+    }
+
+    private fun updateSpecialKeyTextSizes() {
+        specialTextButtons.forEach { view ->
+            view.textSize = specialKeyTextSizeSp
+        }
+    }
+
+    private fun updateSpecialKeyIconSizes() {
+        val iconSizePx = context.dpToPx(specialKeyIconSizeDp).coerceAtLeast(1)
+        specialIconButtons.forEach { button ->
+            button.scaleType = ImageView.ScaleType.FIT_CENTER
+            applyIconPadding(button, iconSizePx)
+            button.post {
+                applyIconPadding(button, iconSizePx)
+            }
+        }
+    }
+
+    private fun applyIconPadding(button: AppCompatImageButton, iconSizePx: Int) {
+        if (button.width == 0 || button.height == 0) return
+
+        val horizontalPadding = ((button.width - iconSizePx) / 2).coerceAtLeast(0)
+        val verticalPadding = ((button.height - iconSizePx) / 2).coerceAtLeast(0)
+        button.setPadding(
+            horizontalPadding,
+            verticalPadding,
+            horizontalPadding,
+            verticalPadding
+        )
     }
 
     /**
@@ -933,6 +964,29 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setReturnKeyText(text: String) {
         binding.keyReturn.text = text
+    }
+
+    private val specialIconButtons: List<AppCompatImageButton> by lazy {
+        listOf(
+            binding.keyShift,
+            binding.keyDelete,
+            binding.keyEmoji,
+            binding.keySwitchDefault,
+            binding.cursorLeft,
+            binding.cursorRight
+        )
+    }
+
+    private val specialTextButtons: List<TextView> by lazy {
+        listOf(
+            binding.keySpace,
+            binding.key123,
+            binding.keyKuten,
+            binding.keyTouten,
+            binding.switchRomajiEnglish,
+            binding.switchNumberLayout,
+            binding.keyReturn
+        )
     }
 
     /** Map each key View → its corresponding QWERTYKey. */
