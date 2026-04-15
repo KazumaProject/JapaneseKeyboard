@@ -114,6 +114,16 @@ class QwertyMarginSettingFragment : Fragment() {
             appPreference.qwerty_key_text_size = value
             updatePreview()
         }
+
+        setupSingleSeekBar(
+            binding.seekbarSpecialIconSize,
+            binding.valueSpecialIconSize,
+            appPreference.qwerty_special_key_icon_size ?: 18.0f,
+            "dp"
+        ) { value ->
+            appPreference.qwerty_special_key_icon_size = value
+            updatePreview()
+        }
     }
 
     private fun setupSingleSeekBar(
@@ -149,7 +159,8 @@ class QwertyMarginSettingFragment : Fragment() {
             appPreference.qwerty_key_indent_large = 23.0f
             appPreference.qwerty_key_indent_small = 9.0f
             appPreference.qwerty_key_side_margin = 4.0f
-            appPreference.qwerty_key_text_size = 18.0f // ★ 追加
+            appPreference.qwerty_key_text_size = 18.0f
+            appPreference.qwerty_special_key_icon_size = 18.0f
 
             // UI反映
             setupSeekBars()
@@ -164,7 +175,8 @@ class QwertyMarginSettingFragment : Fragment() {
         val iLarge = appPreference.qwerty_key_indent_large ?: 23.0f
         val iSmall = appPreference.qwerty_key_indent_small ?: 9.0f
         val side = appPreference.qwerty_key_side_margin ?: 4.0f
-        val textSize = appPreference.qwerty_key_text_size ?: 18.0f // ★ 追加
+        val textSize = appPreference.qwerty_key_text_size ?: 18.0f
+        val specialIconSize = appPreference.qwerty_special_key_icon_size ?: 18.0f
 
         // QWERTYKeyboardViewのマージンとテキストサイズを更新
         binding.previewQwertyView.setKeyMargins(
@@ -173,7 +185,8 @@ class QwertyMarginSettingFragment : Fragment() {
             indentLargeDp = iLarge,
             indentSmallDp = iSmall,
             sideMarginDp = side,
-            textSizeSp = textSize // ★ 引数追加
+            textSizeSp = textSize, // ★ 引数追加
+            specialIconSizeDp = specialIconSize
         )
     }
 
