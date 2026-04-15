@@ -60,7 +60,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         ThreeNodeRuleEntity::class,
         GemmaPromptTemplate::class,
     ],
-    version = 22,
+    version = 23,
     exportSchema = false
 )
 @TypeConverters(
@@ -608,6 +608,14 @@ abstract class AppDatabase : RoomDatabase() {
                     CREATE INDEX IF NOT EXISTS `index_two_step_long_press_mappings_ownerKeyId`
                     ON `two_step_long_press_mappings`(`ownerKeyId`)
                     """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `clipboard_history` ADD COLUMN `isPinned` INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }

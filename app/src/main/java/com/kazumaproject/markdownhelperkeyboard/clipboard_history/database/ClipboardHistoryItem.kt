@@ -16,5 +16,6 @@ data class ClipboardHistoryItem(
     val itemType: ItemType,
     val preview: String,      // 一覧表示用の短い文字列
     val contentPath: String,   // ファイルの絶対パス
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val isPinned: Boolean = false
 )

@@ -125,12 +125,14 @@ import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.data.emoticon.Emoticon
 import com.kazumaproject.data.symbol.Symbol
 import com.kazumaproject.listeners.ClipboardHistoryToggleListener
+import com.kazumaproject.listeners.ClipboardItemAction
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -419,6 +421,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         Timber.d("Saving new clipboard item to file and DB.")
                         // ここで Repository の新メソッドを呼ぶ (ファイル保存 + DB挿入)
                         clipboardHistoryRepository.insertFromClipboard(newItem)
+                        cleanupExpiredClipboardItemsIfNeededNow()
                     }
                 }
             }
@@ -972,6 +975,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         clipboardManager.addPrimaryClipChangedListener(clipboardListener)
         isClipboardHistoryFeatureEnabled = appPreference.clipboard_history_enable ?: false
+        cleanupExpiredClipboardItemsIfNeeded()
 
         inputManager = getSystemService(Context.INPUT_SERVICE) as InputManager
         inputManager.registerInputDeviceListener(this, null)
@@ -7053,6 +7057,106 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshEditHistoryUi()
     }
 
+    private fun pasteClipboardHistoryItem(item: ClipboardItem) {
+        scope.launch {
+            val fullContent = if (item.clipboardId() > 0) {
+                withContext(Dispatchers.IO) {
+                    clipboardHistoryRepository.getFullContentById(item.clipboardId())
+                }
+            } else {
+                item
+            }
+            pasteClipboardItemContent(fullContent)
+        }
+    }
+
+    private fun pasteClipboardItemContent(item: ClipboardItem) {
+        when (item) {
+            is ClipboardItem.Image -> {
+                commitBitmap(item.bitmap)
+            }
+
+            is ClipboardItem.Text -> {
+                if (item.text.isNotEmpty()) {
+                    commitText(item.text, 1)
+                    appPreference.last_pasted_clipboard_text_preference = item.text
+                }
+            }
+
+            ClipboardItem.Empty -> Unit
+        }
+        clearDeletedBufferWithoutResetLayout()
+        refreshEditHistoryUi()
+    }
+
+    private fun handleClipboardHistoryItemAction(item: ClipboardItem, action: ClipboardItemAction) {
+        vibrate()
+        when (action) {
+            ClipboardItemAction.PASTE -> pasteClipboardHistoryItem(item)
+            ClipboardItemAction.PIN -> updateClipboardHistoryPin(item, isPinned = true)
+            ClipboardItemAction.UNPIN -> updateClipboardHistoryPin(item, isPinned = false)
+            ClipboardItemAction.DELETE -> deleteClipboardHistoryItem(item)
+        }
+    }
+
+    private fun updateClipboardHistoryPin(item: ClipboardItem, isPinned: Boolean) {
+        val id = item.clipboardId()
+        if (id <= 0) return
+        ioScope.launch {
+            clipboardHistoryRepository.setPinned(id, isPinned)
+            if (!isPinned) {
+                cleanupExpiredClipboardItemsIfNeededNow()
+            }
+        }
+    }
+
+    private fun deleteClipboardHistoryItem(item: ClipboardItem) {
+        val id = item.clipboardId()
+        if (id <= 0) return
+        ioScope.launch {
+            clipboardHistoryRepository.deleteById(id)
+        }
+    }
+
+    private fun ClipboardItem.clipboardId(): Long {
+        return when (this) {
+            is ClipboardItem.Image -> id
+            is ClipboardItem.Text -> id
+            ClipboardItem.Empty -> 0L
+        }
+    }
+
+    private fun cleanupExpiredClipboardItemsIfNeeded() {
+        if (!isClipboardUnpinnedAutoDeleteEnabled()) return
+        ioScope.launch {
+            cleanupExpiredClipboardItemsIfNeededNow()
+        }
+    }
+
+    private suspend fun cleanupExpiredClipboardItemsIfNeededNow() {
+        if (!isClipboardUnpinnedAutoDeleteEnabled()) return
+        clipboardHistoryRepository.deleteExpiredUnpinnedItems(clipboardUnpinnedRetentionHours())
+    }
+
+    private fun filterClipboardHistoryListByRetention(
+        historyList: List<ClipboardHistoryItem>
+    ): List<ClipboardHistoryItem> {
+        if (!isClipboardUnpinnedAutoDeleteEnabled()) return historyList
+        val threshold = System.currentTimeMillis() -
+            clipboardUnpinnedRetentionHours() * 60L * 60L * 1000L
+        return historyList.filter { item ->
+            item.isPinned || item.timestamp >= threshold
+        }
+    }
+
+    private fun isClipboardUnpinnedAutoDeleteEnabled(): Boolean {
+        return appPreference.clipboard_delete_unpinned_after_hours_preference
+    }
+
+    private fun clipboardUnpinnedRetentionHours(): Int {
+        return appPreference.clipboard_unpinned_retention_hours_preference.coerceIn(1, 72)
+    }
+
     /**
      * Bitmapを入力先アプリに送信します。
      * この関数を呼び出す前に、FileProviderが正しく設定されている必要があります。
@@ -7940,16 +8044,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             clipboardHistoryRepository.allHistory.collectLatest { historyList ->
+                cleanupExpiredClipboardItemsIfNeeded()
+                val visibleHistoryList = filterClipboardHistoryListByRetention(historyList)
                 // 1. DBモデル(軽量メタデータ)のリストからUIモデルのリストに変換する
                 //    CursorWindowクラッシュを避けるため、ここでは実データ(全文/Bitmap)を読み込まず
                 //    プレビュー用のテキストを保持させる、または ID のみの器を作る。
-                val uiItems = historyList.map { entity ->
+                val uiItems = visibleHistoryList.map { entity ->
                     when (entity.itemType) {
                         ItemType.TEXT -> {
                             // 一覧表示には DB の preview を使用する
                             ClipboardItem.Text(
                                 id = entity.id,
-                                text = entity.preview
+                                text = entity.preview,
+                                isPinned = entity.isPinned
                             )
                         }
 
@@ -7961,7 +8068,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (content is ClipboardItem.Image) {
                                 content // 正しい Bitmap が入った ClipboardItem.Image
                             } else {
-                                ClipboardItem.Text(entity.id, "[画像の読み込み失敗]")
+                                ClipboardItem.Text(
+                                    id = entity.id,
+                                    text = "[画像の読み込み失敗]",
+                                    isPinned = entity.isPinned
+                                )
                             }
                         }
                     }
@@ -7972,6 +8083,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 // 3. CustomSymbolKeyboardViewの表示を更新する
                 mainView.keyboardSymbolView.updateClipboardItems(uiItems)
+                floatingKeyboardBinding?.floatingSymbolKeyboard?.updateClipboardItems(uiItems)
             }
         }
 
@@ -10989,23 +11101,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             })
             setOnImageItemClickListener { bitmap -> pasteImageAction(bitmap) }
-            setOnClipboardItemLongClickListener { item, _ ->
-                when (item) {
-                    ClipboardItem.Empty -> {}
-                    is ClipboardItem.Image -> {
-                        vibrate()
-                        ioScope.launch {
-                            clipboardHistoryRepository.deleteById(item.id)
-                        }
-                    }
-
-                    is ClipboardItem.Text -> {
-                        vibrate()
-                        ioScope.launch {
-                            clipboardHistoryRepository.deleteById(item.id)
-                        }
-                    }
-                }
+            setOnClipboardItemClickListener { item ->
+                pasteClipboardHistoryItem(item)
+            }
+            setOnClipboardItemLongClickListener { item, action ->
+                handleClipboardHistoryItemAction(item, action)
             }
             setClipboardHistoryEnabled(isClipboardHistoryFeatureEnabled)
             setOnClipboardHistoryToggleListener(this@IMEService)
@@ -11070,23 +11170,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             })
             setOnImageItemClickListener { bitmap -> pasteImageAction(bitmap) }
-            setOnClipboardItemLongClickListener { item, _ ->
-                when (item) {
-                    ClipboardItem.Empty -> {}
-                    is ClipboardItem.Image -> {
-                        vibrate()
-                        ioScope.launch {
-                            clipboardHistoryRepository.deleteById(item.id)
-                        }
-                    }
-
-                    is ClipboardItem.Text -> {
-                        vibrate()
-                        ioScope.launch {
-                            clipboardHistoryRepository.deleteById(item.id)
-                        }
-                    }
-                }
+            setOnClipboardItemClickListener { item ->
+                pasteClipboardHistoryItem(item)
+            }
+            setOnClipboardItemLongClickListener { item, action ->
+                handleClipboardHistoryItemAction(item, action)
             }
             setClipboardHistoryEnabled(isClipboardHistoryFeatureEnabled)
             setOnClipboardHistoryToggleListener(this@IMEService)
