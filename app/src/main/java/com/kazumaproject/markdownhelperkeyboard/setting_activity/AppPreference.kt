@@ -215,6 +215,12 @@ object AppPreference {
     private val CLIP_BOARD_PREVIEW_TAP_DELETE_PREFERENCE =
         Pair("clipboard_preview_tap_delete_preference", false)
 
+    private val CLIPBOARD_DELETE_UNPINNED_AFTER_HOURS_PREFERENCE =
+        Pair("clipboard_delete_unpinned_after_hours_preference", false)
+
+    private val CLIPBOARD_UNPINNED_RETENTION_HOURS_PREFERENCE =
+        Pair("clipboard_unpinned_retention_hours_preference", 1)
+
     private val ROUND_KEYBOARD_CORNER_PREFERENCE =
         Pair("round_corner_keyboard_preference", false)
 
@@ -1187,6 +1193,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CLIP_BOARD_PREVIEW_TAP_DELETE_PREFERENCE.first, value)
+        }
+
+    var clipboard_delete_unpinned_after_hours_preference: Boolean
+        get() = preferences.getBoolean(
+            CLIPBOARD_DELETE_UNPINNED_AFTER_HOURS_PREFERENCE.first,
+            CLIPBOARD_DELETE_UNPINNED_AFTER_HOURS_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CLIPBOARD_DELETE_UNPINNED_AFTER_HOURS_PREFERENCE.first, value)
+        }
+
+    var clipboard_unpinned_retention_hours_preference: Int
+        get() = preferences.getInt(
+            CLIPBOARD_UNPINNED_RETENTION_HOURS_PREFERENCE.first,
+            CLIPBOARD_UNPINNED_RETENTION_HOURS_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(CLIPBOARD_UNPINNED_RETENTION_HOURS_PREFERENCE.first, value.coerceIn(1, 72))
         }
 
     var keyboard_corner_round_preference: Boolean

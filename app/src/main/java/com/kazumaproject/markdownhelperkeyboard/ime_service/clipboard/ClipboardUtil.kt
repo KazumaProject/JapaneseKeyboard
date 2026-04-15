@@ -47,13 +47,13 @@ class ClipboardUtil(private val context: Context) {
 
         // 1. 画像の取得を最優先で試みる
         getClipboardImageBitmap()?.let { bitmap ->
-            return ClipboardItem.Image(id = 0, bitmap)
+            return ClipboardItem.Image(id = 0, bitmap = bitmap)
         }
 
         // 2. 画像が取得できなかった場合、テキストの取得を試みる
         getFirstClipboardTextOrNull()?.let { text ->
             if (text.isNotBlank()) {
-                return ClipboardItem.Text(id = 0, text)
+                return ClipboardItem.Text(id = 0, text = text)
             }
         }
 

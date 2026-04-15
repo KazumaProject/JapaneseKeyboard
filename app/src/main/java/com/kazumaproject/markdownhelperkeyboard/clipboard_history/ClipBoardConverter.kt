@@ -13,7 +13,8 @@ fun ClipboardHistoryItem.toClipboardItem(fileStore: ClipboardFileStore): Clipboa
             val content = fileStore.readText(this.contentPath) ?: this.preview
             ClipboardItem.Text(
                 id = this.id,
-                text = content
+                text = content,
+                isPinned = this.isPinned
             )
         }
 
@@ -22,7 +23,8 @@ fun ClipboardHistoryItem.toClipboardItem(fileStore: ClipboardFileStore): Clipboa
             if (bitmap != null) {
                 ClipboardItem.Image(
                     id = this.id,
-                    bitmap = bitmap
+                    bitmap = bitmap,
+                    isPinned = this.isPinned
                 )
             } else {
                 ClipboardItem.Empty
