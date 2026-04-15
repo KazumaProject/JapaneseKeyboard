@@ -71,6 +71,13 @@
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
+            android:key="qwerty_show_emoji_button_preference"
+            android:summaryOff="@string/qwerty_show_emoji_button_summary_off"
+            android:summaryOn="@string/qwerty_show_emoji_button_summary_on"
+            android:title="@string/qwerty_show_emoji_button_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
             android:key="qwerty_show_keymap_symbols_romaji_preference"
             android:summaryOff="@string/qwerty_keymap_preference_summary_off"
             android:summaryOn="@string/qwerty_keymap_preference_summary_on"
