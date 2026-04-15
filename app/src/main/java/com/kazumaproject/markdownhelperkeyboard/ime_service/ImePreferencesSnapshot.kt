@@ -309,7 +309,7 @@ data class ImePreferencesSnapshot(
                 qwertyKeySideMargin = appPreference.qwerty_key_side_margin ?: 4.0f,
                 qwertyKeyTextSize = appPreference.qwerty_key_text_size ?: 18.0f,
                 qwertySpecialKeyTextSize = appPreference.qwerty_special_key_text_size ?: 12.0f,
-                qwertySpecialKeyIconSize = appPreference.qwerty_special_key_icon_size ?: 18.0f,
+                qwertySpecialKeyIconSize = appPreference.qwerty_special_key_icon_size ?: 20.0f,
                 keyboardThemeMode = appPreference.theme_mode,
                 customThemeBgColor = appPreference.custom_theme_bg_color,
                 customThemeKeyColor = appPreference.custom_theme_key_color,
