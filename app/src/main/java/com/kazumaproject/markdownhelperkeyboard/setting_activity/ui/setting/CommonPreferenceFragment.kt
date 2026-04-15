@@ -450,6 +450,10 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<ListPreference>("default_emoji_skin_tone_preference")?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        }
+
         findPreference<SeekBarPreference>("flick_sensitivity_preference")?.apply {
             summary = when (this.value) {
                 in 0..50 -> getString(R.string.sensitivity_very_high)

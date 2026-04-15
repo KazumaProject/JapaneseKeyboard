@@ -23,6 +23,30 @@ class EmojiSkinToneSupportTest {
     }
 
     @Test
+    fun withSkinTone_appliesSelectedToneToToneableEmoji() {
+        assertEquals(
+            "👋🏿",
+            EmojiSkinToneSupport.withSkinTone("👋", EmojiSkinToneSupport.DARK_SKIN_TONE)
+        )
+    }
+
+    @Test
+    fun withSkinTone_returnsBaseEmojiForDefaultTone() {
+        assertEquals(
+            "👋",
+            EmojiSkinToneSupport.withSkinTone("👋🏿", EmojiSkinToneSupport.DEFAULT_SKIN_TONE)
+        )
+    }
+
+    @Test
+    fun skinToneValueFromEmoji_detectsSelectedTone() {
+        assertEquals(
+            EmojiSkinToneSupport.MEDIUM_DARK_SKIN_TONE,
+            EmojiSkinToneSupport.skinToneValueFromEmoji("👍🏾")
+        )
+    }
+
+    @Test
     fun hasSkinToneVariants_ignoresPlainFaceEmoji() {
         assertFalse(EmojiSkinToneSupport.hasSkinToneVariants("😀"))
     }
