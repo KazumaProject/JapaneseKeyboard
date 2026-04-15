@@ -28,41 +28,49 @@ class ClipboardHistoryRepository @Inject constructor(
      * 【重要】IMEService から呼ばれる保存メソッド
      * 実データをファイルへ保存し、DBにパスとプレビューを記録します。
      */
-    suspend fun insertFromClipboard(item: ClipboardItem) = withContext(Dispatchers.IO) {
-        val historyItem = when (item) {
-            is ClipboardItem.Text -> {
-                val path = fileStore.saveText(item.text)
-                ClipboardHistoryItem(
-                    itemType = ItemType.TEXT,
-                    preview = createTextPreview(item.text),
-                    contentPath = path
-                )
-            }
+    suspend fun insertFromClipboard(item: ClipboardItem, isPinned: Boolean = false) =
+        withContext(Dispatchers.IO) {
+            val historyItem = when (item) {
+                is ClipboardItem.Text -> {
+                    val path = fileStore.saveText(item.text)
+                    ClipboardHistoryItem(
+                        itemType = ItemType.TEXT,
+                        preview = createTextPreview(item.text),
+                        contentPath = path,
+                        isPinned = isPinned
+                    )
+                }
 
-            is ClipboardItem.Image -> {
-                val path = fileStore.saveImage(item.bitmap)
-                ClipboardHistoryItem(
-                    itemType = ItemType.IMAGE,
-                    preview = "[画像]",
-                    contentPath = path
-                )
-            }
+                is ClipboardItem.Image -> {
+                    val path = fileStore.saveImage(item.bitmap)
+                    ClipboardHistoryItem(
+                        itemType = ItemType.IMAGE,
+                        preview = "[画像]",
+                        contentPath = path,
+                        isPinned = isPinned
+                    )
+                }
 
-            else -> null
+                else -> null
+            }
+            historyItem?.let { dao.insert(it) }
         }
-        historyItem?.let { dao.insert(it) }
-    }
 
     /**
      * insertFromClipboard と同じ処理を別名でも提供（ViewModel等からの呼び出し用）
      */
-    suspend fun insertClipboardItem(item: ClipboardItem) = insertFromClipboard(item)
+    suspend fun insertClipboardItem(item: ClipboardItem, isPinned: Boolean = false) =
+        insertFromClipboard(item, isPinned)
 
     /**
      * 単純なEntityの更新
      */
     suspend fun update(item: ClipboardHistoryItem) = withContext(Dispatchers.IO) {
         dao.update(item)
+    }
+
+    suspend fun setPinned(id: Long, isPinned: Boolean) = withContext(Dispatchers.IO) {
+        dao.setPinned(id, isPinned)
     }
 
     /**
@@ -99,19 +107,24 @@ class ClipboardHistoryRepository @Inject constructor(
             return@withContext when (item.itemType) {
                 ItemType.TEXT -> {
                     val text = fileStore.readText(item.contentPath) ?: item.preview
-                    ClipboardItem.Text(id = item.id, text = text)
+                    ClipboardItem.Text(id = item.id, text = text, isPinned = item.isPinned)
                 }
 
                 ItemType.IMAGE -> {
                     val bitmap = fileStore.readImage(item.contentPath)
                     if (bitmap != null) {
-                        ClipboardItem.Image(id = item.id, bitmap = bitmap)
+                        ClipboardItem.Image(id = item.id, bitmap = bitmap, isPinned = item.isPinned)
                     } else {
                         ClipboardItem.Empty
                     }
                 }
             }
         }
+
+    suspend fun getFullContentById(id: Long): ClipboardItem = withContext(Dispatchers.IO) {
+        val item = dao.getById(id) ?: return@withContext ClipboardItem.Empty
+        return@withContext getFullContent(item)
+    }
 
     /**
      * 一覧表示用の縮小された画像（サムネイル）を取得します。
@@ -127,7 +140,7 @@ class ClipboardHistoryRepository @Inject constructor(
             // FileStore にサムネイル読み込み機能を実装するか、ここでデコードを制御する
             val bitmap = fileStore.readImageThumbnail(item.contentPath, targetWidth, targetHeight)
             return@withContext if (bitmap != null) {
-                ClipboardItem.Image(id = item.id, bitmap = bitmap)
+                ClipboardItem.Image(id = item.id, bitmap = bitmap, isPinned = item.isPinned)
             } else {
                 ClipboardItem.Empty
             }
@@ -141,6 +154,17 @@ class ClipboardHistoryRepository @Inject constructor(
         val path = dao.getContentPathById(id)
         fileStore.deleteFile(path)
         dao.deleteById(id)
+    }
+
+    suspend fun deleteExpiredUnpinnedItems(retentionHours: Int): Int = withContext(Dispatchers.IO) {
+        val retentionMillis = retentionHours.coerceIn(1, 72) * 60L * 60L * 1000L
+        val threshold = System.currentTimeMillis() - retentionMillis
+        val expiredItems = dao.getExpiredUnpinnedItems(threshold)
+        expiredItems.forEach { item ->
+            fileStore.deleteFile(item.contentPath)
+            dao.deleteById(item.id)
+        }
+        return@withContext expiredItems.size
     }
 
     /**

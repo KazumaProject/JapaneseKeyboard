@@ -96,7 +96,7 @@ class ClipboardHistoryViewModel @Inject constructor(
                         }
                     }
                 }
-                clipboardItem?.let { repository.insertClipboardItem(it) }
+                clipboardItem?.let { repository.insertClipboardItem(it, dto.isPinned) }
             }
         }
         return dtoList.size
@@ -113,7 +113,8 @@ class ClipboardHistoryViewModel @Inject constructor(
                 itemType = entity.itemType,
                 textData = if (fullContent is ClipboardItem.Text) fullContent.text else null,
                 imageDataBase64 = if (fullContent is ClipboardItem.Image) bitmapToBase64(fullContent.bitmap) else null,
-                timestamp = entity.timestamp
+                timestamp = entity.timestamp,
+                isPinned = entity.isPinned
             )
         }
         Gson().toJson(dtoList)
