@@ -103,6 +103,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var itemClickListener: SymbolRecyclerViewItemClickListener? = null
     private var itemLongClickListener: SymbolRecyclerViewItemLongClickListener? = null
     private var imageItemClickListener: ImageItemClickListener? = null
+    private var clipboardItemClickListener: ((ClipboardItem) -> Unit)? = null
     private var clipboardItemLongClickListener: ClipboardItemLongClickListener? = null
     private var clipboardHistoryToggleListener: ClipboardHistoryToggleListener? = null
     private var isClipboardHistoryEnabled: Boolean = false
@@ -136,26 +137,11 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
 
         clipboardAdapter.setOnItemClickListener { item ->
-            when (item) {
-                is ClipboardItem.Text -> {
-                    itemClickListener?.onClick(
-                        ClickedSymbol(
-                            mode = currentMode,
-                            symbol = item.text
-                        )
-                    )
-                }
-
-                is ClipboardItem.Image -> {
-                    imageItemClickListener?.onImageClick(item.bitmap)
-                }
-
-                else -> {}
-            }
+            clipboardItemClickListener?.invoke(item)
         }
 
-        clipboardAdapter.setOnItemLongClickListener { item, position ->
-            clipboardItemLongClickListener?.onLongClick(item, position)
+        clipboardAdapter.setOnItemActionListener { item, action ->
+            clipboardItemLongClickListener?.onAction(item, action)
         }
 
         symbolAdapter.setOnItemLongClickListener { str, pos ->
@@ -535,6 +521,10 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         imageItemClickListener = l
     }
 
+    fun setOnClipboardItemClickListener(l: (ClipboardItem) -> Unit) {
+        clipboardItemClickListener = l
+    }
+
     fun setOnClipboardItemLongClickListener(l: ClipboardItemLongClickListener) {
         clipboardItemLongClickListener = l
     }
@@ -734,6 +724,26 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun buildClipboardListItems(items: List<ClipboardItem>): List<ClipboardListItem> {
+        val pinned = items.filter { it.isPinned() }
+        val unpinned = items.filterNot { it.isPinned() }
+        return buildList {
+            if (pinned.isNotEmpty()) {
+                add(ClipboardListItem.Header(resources.getString(R.string.symbol_clipboard_section_pinned)))
+                addAll(pinned.map { ClipboardListItem.Content(it) })
+            }
+            addAll(unpinned.map { ClipboardListItem.Content(it) })
+        }
+    }
+
+    private fun ClipboardItem.isPinned(): Boolean {
+        return when (this) {
+            is ClipboardItem.Image -> isPinned
+            is ClipboardItem.Text -> isPinned
+            ClipboardItem.Empty -> false
+        }
+    }
+
     private fun updateSymbolsForCategory(index: Int) {
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->
@@ -748,14 +758,21 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                         gridLM.spanCount =
                             if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 2 else 4
                         gridLM.orientation = RecyclerView.VERTICAL
+                        gridLM.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                            override fun getSpanSize(position: Int): Int {
+                                return if (clipboardAdapter.isHeader(position)) gridLM.spanCount else 1
+                            }
+                        }
+                        val clipboardListItems = buildClipboardListItems(clipBoardItems)
                         Pager(
                             config = PagingConfig(pageSize = 20, enablePlaceholders = false),
-                            pagingSourceFactory = { ClipboardPagingSource(clipBoardItems) }
+                            pagingSourceFactory = { ClipboardPagingSource(clipboardListItems) }
                         ).flow.collectLatest { clipboardAdapter.submitData(it) }
                     }
 
                     else -> {
                         recycler.adapter = symbolAdapter
+                        gridLM.spanSizeLookup = GridLayoutManager.DefaultSpanSizeLookup()
                         val listForPaging = when (currentMode) {
                             SymbolMode.EMOJI -> {
                                 val hasHistory = historyEmojiList.isNotEmpty()
@@ -862,6 +879,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         itemClickListener = null
         itemLongClickListener = null
         imageItemClickListener = null
+        clipboardItemClickListener = null
         clipboardItemLongClickListener = null
         clipboardHistoryToggleListener = null
     }
