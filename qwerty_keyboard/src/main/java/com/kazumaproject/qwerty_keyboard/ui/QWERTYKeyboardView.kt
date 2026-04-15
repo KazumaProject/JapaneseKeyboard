@@ -969,6 +969,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.keyShift to QWERTYKey.QWERTYKeyShift,
             binding.keyDelete to QWERTYKey.QWERTYKeyDelete,
             binding.keySwitchDefault to QWERTYKey.QWERTYKeySwitchDefaultLayout,
+            binding.keyEmoji to QWERTYKey.QWERTYKeyEmoji,
             binding.key123 to QWERTYKey.QWERTYKeySwitchMode,
             binding.keySpace to QWERTYKey.QWERTYKeySpace,
             binding.keyReturn to QWERTYKey.QWERTYKeyReturn,
@@ -1194,7 +1195,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         } else {
                             val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                             when (qwertyKey) {
-                                QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey -> {
+                                QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey, QWERTYKey.QWERTYKeyEmoji -> {
                                     qwertyKeyListener?.onReleasedQWERTYKey(qwertyKey, null, null)
                                 }
 
@@ -1250,7 +1251,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     val qwertyKey =
                                         qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                                     when (qwertyKey) {
-                                        QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey -> {
+                                        QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey, QWERTYKey.QWERTYKeyEmoji -> {
                                             qwertyKeyListener?.onReleasedQWERTYKey(
                                                 qwertyKey,
                                                 null,
@@ -1366,6 +1367,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 it.id != binding.key123.id &&
                 it.id != binding.keyReturn.id &&
                 it.id != binding.keySwitchDefault.id &&
+                it.id != binding.keyEmoji.id &&
                 it.id != binding.cursorLeft.id &&
                 it.id != binding.cursorRight.id &&
                 it.id != binding.switchRomajiEnglish.id &&
@@ -1477,6 +1479,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     it.id != binding.key123.id &&
                     it.id != binding.keyReturn.id &&
                     it.id != binding.keySwitchDefault.id &&
+                    it.id != binding.keyEmoji.id &&
                     it.id != binding.switchNumberLayout.id &&
                     it.id != binding.cursorRight.id &&
                     it.id != binding.cursorLeft.id
@@ -1791,11 +1794,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun setSpecialKeyVisibility(
         showCursors: Boolean,
         showSwitchKey: Boolean,
-        showKutouten: Boolean
+        showKutouten: Boolean,
+        showEmojiKey: Boolean = false
     ) {
         binding.cursorLeft.isVisible = showCursors
         binding.cursorRight.isVisible = showCursors
         binding.keySwitchDefault.isVisible = showSwitchKey
+        binding.keyEmoji.isVisible = showEmojiKey
         binding.keyKuten.isVisible = showKutouten
         binding.keyTouten.isVisible = showKutouten
     }

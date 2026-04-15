@@ -494,6 +494,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var longPressTimeoutPreferenceValue: Int? = 300
     private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
+    private var qwertyShowEmojiButtonPreference: Boolean? = false
     private var qwertyEnableFlickUpPreference: Boolean? = false
     private var qwertyEnableFlickDownPreference: Boolean? = false
     private var qwertyEnableZenkakuSpacePreference: Boolean? = false
@@ -1105,6 +1106,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
         longPressTimeoutPreferenceValue = preferences.longPressTimeoutPreferenceValue
         qwertyShowIMEButtonPreference = preferences.qwertyShowIMEButtonPreference
+        qwertyShowEmojiButtonPreference = preferences.qwertyShowEmojiButtonPreference
         tenkeyShowIMEButtonPreference = preferences.tenkeyShowIMEButtonPreference
         qwertyShowCursorButtonsPreference = preferences.qwertyShowCursorButtonsPreference
         qwertyShowNumberButtonsPreference = preferences.qwertyShowNumberButtonsPreference
@@ -1740,7 +1742,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.setSpecialKeyVisibility(
                     showCursors = qwertyShowCursorButtonsPreference ?: false,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
-                    showKutouten = qwertyShowKutoutenButtonsPreference ?: false
+                    showKutouten = qwertyShowKutoutenButtonsPreference ?: false,
+                    showEmojiKey = qwertyShowEmojiButtonPreference ?: false
                 )
                 qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(true)
                 qwertyView.updateSymbolKeymapState(qwertyShowKeymapSymbolsPreference ?: false)
@@ -1880,6 +1883,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = null
         longPressTimeoutPreferenceValue = null
         qwertyShowIMEButtonPreference = null
+        qwertyShowEmojiButtonPreference = null
         tenkeyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
         qwertyShowNumberButtonsPreference = null
@@ -6833,13 +6837,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {
-                        _keyboardSymbolViewState.value = SymbolKeyboardState(
-                            isShown = !_keyboardSymbolViewState.value.isShown
-                        )
-                        stringInTail.set("")
-                        finishComposingText()
-                        setComposingText("", 0)
-                        _inputString.update { "" }
+                        toggleEmojiKeyboard()
                     }
 
                     KeyAction.ToggleCase -> {
@@ -11197,6 +11195,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         }
 
+                        QWERTYKey.QWERTYKeyEmoji -> {
+                            toggleEmojiKeyboard()
+                        }
+
                         QWERTYKey.QWERTYKeySpace -> {
                             Timber.d("onReleasedQWERTYKey: QWERTYKeySpace $isSpaceKeyLongPressed")
                             if (!isSpaceKeyLongPressed) {
@@ -15525,6 +15527,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             QWERTYKey.QWERTYKeyReturn -> KeySoundType.ENTER
             else -> KeySoundType.STANDARD
         }
+    }
+
+    private fun toggleEmojiKeyboard() {
+        _keyboardSymbolViewState.value = SymbolKeyboardState(
+            isShown = !_keyboardSymbolViewState.value.isShown
+        )
+        stringInTail.set("")
+        finishComposingText()
+        setComposingText("", 0)
+        _inputString.update { "" }
     }
 
     private fun getKeySoundType(action: KeyAction): KeySoundType {
