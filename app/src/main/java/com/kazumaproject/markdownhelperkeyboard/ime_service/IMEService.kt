@@ -4970,7 +4970,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // --- 2) 2行表示アダプタ ---
             val adapter = object : ArrayAdapter<RowItem>(
                 this@IMEService,
-                android.R.layout.simple_list_item_2,
+                R.layout.list_item_keyboard_switch_popup,
                 android.R.id.text1,
                 rows
             ) {
