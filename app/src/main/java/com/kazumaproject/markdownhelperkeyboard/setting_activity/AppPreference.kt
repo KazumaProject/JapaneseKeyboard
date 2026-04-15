@@ -57,6 +57,9 @@ object AppPreference {
     private val QWERTY_SHOW_IME_SWITCH_BUTTON =
         Pair("qwerty_show_switch_ime_button_preference", true)
 
+    private val QWERTY_SHOW_EMOJI_BUTTON =
+        Pair("qwerty_show_emoji_button_preference", false)
+
     private val QWERTY_SHOW_CURSOR_BUTTONS = Pair("qwerty_show_cursor_buttons_preference", false)
 
     private val QWERTY_SHOW_KEYMAP_SYMBOLS =
@@ -431,6 +434,14 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_IME_SWITCH_BUTTON.first, value ?: true)
+        }
+
+    var qwerty_show_emoji_button: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_SHOW_EMOJI_BUTTON.first, QWERTY_SHOW_EMOJI_BUTTON.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_SHOW_EMOJI_BUTTON.first, value ?: false)
         }
 
     var qwerty_show_cursor_buttons: Boolean?
