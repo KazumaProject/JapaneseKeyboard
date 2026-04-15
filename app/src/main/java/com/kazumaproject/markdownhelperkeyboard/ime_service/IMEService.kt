@@ -571,6 +571,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyKeyIndentSmall: Float? = 9.0f
     private var qwertyKeySideMargin: Float? = 4.0f
     private var qwertyKeyTextSize: Float? = 18.0f
+    private var qwertySpecialKeyTextSize: Float? = 12.0f
     private var qwertySpecialKeyIconSize: Float? = 24.0f
 
     private var keyboardThemeMode: String? = "default"
@@ -1217,6 +1218,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyKeyIndentSmall = preferences.qwertyKeyIndentSmall
         qwertyKeySideMargin = preferences.qwertyKeySideMargin
         qwertyKeyTextSize = preferences.qwertyKeyTextSize
+        qwertySpecialKeyTextSize = preferences.qwertySpecialKeyTextSize
         qwertySpecialKeyIconSize = preferences.qwertySpecialKeyIconSize
         keyboardThemeMode = preferences.keyboardThemeMode
         customThemeBgColor = preferences.customThemeBgColor
@@ -1769,6 +1771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     indentSmallDp = qwertyKeyIndentSmall ?: 9.0f,
                     sideMarginDp = qwertyKeySideMargin ?: 4.0f,
                     textSizeSp = qwertyKeyTextSize ?: 18.0f,
+                    specialTextSizeSp = qwertySpecialKeyTextSize ?: 12.0f,
                     specialIconSizeDp = qwertySpecialKeyIconSize ?: 24.0f
                 )
                 if (isKeyboardFloatingMode == true) {
@@ -1959,6 +1962,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyKeyIndentSmall = null
         qwertyKeySideMargin = null
         qwertyKeyTextSize = null
+        qwertySpecialKeyTextSize = null
         qwertySpecialKeyIconSize = null
 
         keyboardThemeMode = null

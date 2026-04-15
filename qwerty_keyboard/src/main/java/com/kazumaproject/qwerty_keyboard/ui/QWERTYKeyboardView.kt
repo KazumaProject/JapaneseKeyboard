@@ -85,6 +85,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var keyIndentSmallDp: Float = 9f
     private var keySideMarginDp: Float = 4f
     private var keyTextSizeSp: Float = 20f
+    private var specialKeyTextSizeSp: Float = 12f
     private var specialKeyIconSizeDp: Float = 24f
 
     /** Map each active pointer ID → the View (key) it’s currently “pressing” (or null). */
@@ -608,6 +609,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         indentSmallDp: Float = keyIndentSmallDp,
         sideMarginDp: Float = keySideMarginDp,
         textSizeSp: Float = keyTextSizeSp,
+        specialTextSizeSp: Float = specialKeyTextSizeSp,
         specialIconSizeDp: Float = specialKeyIconSizeDp
     ) {
         this.keyVerticalMarginDp = verticalDp
@@ -616,28 +618,29 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.keyIndentSmallDp = indentSmallDp
         this.keySideMarginDp = sideMarginDp
         this.keyTextSizeSp = textSizeSp
+        this.specialKeyTextSizeSp = specialTextSizeSp
         this.specialKeyIconSizeDp = specialIconSizeDp
 
         // 現在のモードでレイアウトを再適用
         applyLayoutForMode(qwertyMode.value)
 
         updateAllKeyTextSizes()
+        updateSpecialKeyTextSizes()
         updateSpecialKeyIconSizes()
     }
 
     private fun updateAllKeyTextSizes() {
         qwertyButtonMap.keys.forEach { view ->
-            if (view.id == binding.keySpace.id ||
-                view.id == binding.keyReturn.id ||
-                view.id == binding.switchNumberLayout.id ||
-                view.id == binding.switchRomajiEnglish.id ||
-                view.id == binding.keyKuten.id ||
-                view.id == binding.keyTouten.id ||
-                view.id == binding.key123.id
-            ) return@forEach
+            if (specialTextButtons.contains(view)) return@forEach
             if (view is TextView) { // QWERTYButton, AppCompatButton は TextView を継承している
                 view.textSize = keyTextSizeSp
             }
+        }
+    }
+
+    private fun updateSpecialKeyTextSizes() {
+        specialTextButtons.forEach { view ->
+            view.textSize = specialKeyTextSizeSp
         }
     }
 
@@ -971,6 +974,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.keySwitchDefault,
             binding.cursorLeft,
             binding.cursorRight
+        )
+    }
+
+    private val specialTextButtons: List<TextView> by lazy {
+        listOf(
+            binding.keySpace,
+            binding.key123,
+            binding.keyKuten,
+            binding.keyTouten,
+            binding.switchRomajiEnglish,
+            binding.switchNumberLayout,
+            binding.keyReturn
         )
     }
 
