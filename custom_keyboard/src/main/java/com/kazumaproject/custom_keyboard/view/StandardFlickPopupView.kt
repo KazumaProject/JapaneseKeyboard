@@ -93,7 +93,7 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
     }
 
     /**
-     * 追加: GridFlickInputController と同じスタイルでテーマを渡せるようにする
+     * 追加: フリックポップアップ共通スタイルでテーマを渡せるようにする
      *
      * FlickPopupColorTheme の実装詳細（プロパティ名/関数名）が不明でもコンパイルできるよう、
      * リフレクションで以下を優先的に探索します:
