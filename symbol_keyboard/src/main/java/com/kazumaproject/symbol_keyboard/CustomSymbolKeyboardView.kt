@@ -6,6 +6,7 @@ import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PorterDuff
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
@@ -16,8 +17,11 @@ import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.GestureDetector
 import android.view.MotionEvent
+import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
+import android.widget.LinearLayout
+import android.widget.PopupWindow
 import android.widget.TextView
 import androidx.annotation.ColorInt
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -42,6 +46,7 @@ import com.kazumaproject.data.emoticon.Emoticon
 import com.kazumaproject.data.emoticon.EmoticonCategory
 import com.kazumaproject.data.symbol.Symbol
 import com.kazumaproject.data.symbol.SymbolCategory
+import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.listeners.ClipboardHistoryToggleListener
 import com.kazumaproject.listeners.ClipboardItemLongClickListener
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
@@ -96,6 +101,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
 
     private var pagingJob: Job? = null
     private var lifecycleOwner: LifecycleOwner? = null
+    private var skinTonePopup: PopupWindow? = null
+    private var defaultEmojiSkinTone: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
 
     private var returnListener: ReturnToTenKeyButtonClickListener? = null
     private var deleteClickListener: DeleteButtonSymbolViewClickListener? = null
@@ -106,6 +113,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     private var clipboardItemClickListener: ((ClipboardItem) -> Unit)? = null
     private var clipboardItemLongClickListener: ClipboardItemLongClickListener? = null
     private var clipboardHistoryToggleListener: ClipboardHistoryToggleListener? = null
+    private var defaultEmojiSkinToneChangeListener: ((String) -> Unit)? = null
     private var isClipboardHistoryEnabled: Boolean = false
     private var onDeleteFingerUpListener: (() -> Unit)? = null
 
@@ -144,7 +152,16 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
             clipboardItemLongClickListener?.onAction(item, action)
         }
 
-        symbolAdapter.setOnItemLongClickListener { str, pos ->
+        symbolAdapter.setOnItemLongClickListener { str, pos, anchor ->
+            if (
+                currentMode == SymbolMode.EMOJI &&
+                !isHistoryCategorySelected() &&
+                EmojiSkinToneSupport.hasSkinToneVariants(str)
+            ) {
+                showSkinTonePopup(str, anchor)
+                return@setOnItemLongClickListener
+            }
+
             val historyList = when (currentMode) {
                 SymbolMode.EMOJI -> historyEmojiList
                 SymbolMode.EMOTICON -> historyEmoticonList
@@ -550,16 +567,39 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         this.clipboardHistoryToggleListener = l
     }
 
+    fun setOnDefaultEmojiSkinToneChangeListener(l: (String) -> Unit) {
+        defaultEmojiSkinToneChangeListener = l
+    }
+
+    fun setDefaultEmojiSkinTone(skinTone: String) {
+        defaultEmojiSkinTone =
+            if (EmojiSkinToneSupport.isSupportedSkinToneValue(skinTone)) {
+                skinTone
+            } else {
+                EmojiSkinToneSupport.DEFAULT_SKIN_TONE
+            }
+        if (currentMode == SymbolMode.EMOJI && !isHistoryCategorySelected()) {
+            updateSymbolsForCategory(categoryTab.selectedTabPosition)
+        }
+    }
+
     fun setSymbolLists(
         emojiList: List<Emoji>,
         emoticons: List<Emoticon>,
         symbols: List<Symbol>,
         clipBoardItems: List<ClipboardItem>,
         symbolsHistory: List<ClickedSymbol>,
-        symbolMode: SymbolMode = SymbolMode.EMOJI
+        symbolMode: SymbolMode = SymbolMode.EMOJI,
+        defaultEmojiSkinTone: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
     ) {
         this.symbolsHistory = symbolsHistory
         this.clipBoardItems = clipBoardItems
+        this.defaultEmojiSkinTone =
+            if (EmojiSkinToneSupport.isSupportedSkinToneValue(defaultEmojiSkinTone)) {
+                defaultEmojiSkinTone
+            } else {
+                EmojiSkinToneSupport.DEFAULT_SKIN_TONE
+            }
 
         historyEmojiList = symbolsHistory
             .filter { it.mode == SymbolMode.EMOJI }
@@ -745,6 +785,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     }
 
     private fun updateSymbolsForCategory(index: Int) {
+        skinTonePopup?.dismiss()
         pagingJob?.cancel()
         lifecycleOwner?.let { owner ->
             pagingJob = owner.lifecycleScope.launch {
@@ -780,7 +821,14 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                                 else {
                                     val adj = index - if (hasHistory) 1 else 0
                                     emojiMap.keys.elementAtOrNull(adj)
-                                        ?.let { emojiMap[it]?.map { e -> e.symbol } } ?: emptyList()
+                                        ?.let {
+                                            emojiMap[it]?.map { e ->
+                                                EmojiSkinToneSupport.withSkinTone(
+                                                    e.symbol,
+                                                    this@CustomSymbolKeyboardView.defaultEmojiSkinTone
+                                                )
+                                            }
+                                        } ?: emptyList()
                                 }
                             }
 
@@ -817,6 +865,9 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                             else -> symbolAdapter.setItemMargins(4, 3, context)
                         }
 
+                        symbolAdapter.showSkinToneIndicators =
+                            currentMode == SymbolMode.EMOJI && !isHistoryCategorySelected()
+
                         symbolAdapter.symbolTextSize = when (currentMode) {
                             SymbolMode.EMOJI -> {
                                 if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 36f else 30f
@@ -845,6 +896,92 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun showSkinTonePopup(symbol: String, anchor: View) {
+        val variants = EmojiSkinToneSupport.skinToneVariants(symbol)
+        if (variants.isEmpty() || !anchor.isAttachedToWindow) return
+
+        skinTonePopup?.dismiss()
+
+        val content = LinearLayout(context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dpToPx(6), dpToPx(5), dpToPx(6), dpToPx(5))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dpToPx(12).toFloat()
+                setColor(themeKeyBackgroundColor)
+            }
+        }
+
+        variants.forEach { variant ->
+            content.addView(
+                TextView(context).apply {
+                    text = variant
+                    textSize =
+                        if (resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT) 30f else 26f
+                    gravity = android.view.Gravity.CENTER
+                    includeFontPadding = false
+                    setTextColor(themeIconColor)
+                    layoutParams = LinearLayout.LayoutParams(dpToPx(44), dpToPx(44))
+                    setOnClickListener {
+                        skinTonePopup?.dismiss()
+                        updateDefaultEmojiSkinTone(
+                            EmojiSkinToneSupport.skinToneValueFromEmoji(variant)
+                        )
+                        itemClickListener?.onClick(
+                            ClickedSymbol(mode = SymbolMode.EMOJI, symbol = variant)
+                        )
+                    }
+                }
+            )
+        }
+
+        content.measure(
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED),
+            View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        )
+
+        skinTonePopup = PopupWindow(
+            content,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            false
+        ).apply {
+            isOutsideTouchable = true
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            elevation = dpToPx(8).toFloat()
+            showAsDropDown(
+                anchor,
+                (anchor.width - content.measuredWidth) / 2,
+                -anchor.height - content.measuredHeight
+            )
+        }
+    }
+
+    private fun updateDefaultEmojiSkinTone(skinTone: String) {
+        val supportedSkinTone =
+            if (EmojiSkinToneSupport.isSupportedSkinToneValue(skinTone)) {
+                skinTone
+            } else {
+                EmojiSkinToneSupport.DEFAULT_SKIN_TONE
+            }
+        if (defaultEmojiSkinTone == supportedSkinTone) return
+
+        defaultEmojiSkinTone = supportedSkinTone
+        defaultEmojiSkinToneChangeListener?.invoke(supportedSkinTone)
+        if (currentMode == SymbolMode.EMOJI && !isHistoryCategorySelected()) {
+            updateSymbolsForCategory(categoryTab.selectedTabPosition)
+        }
+    }
+
+    private fun isHistoryCategorySelected(): Boolean {
+        return when (currentMode) {
+            SymbolMode.EMOJI -> historyEmojiList.isNotEmpty() && categoryTab.selectedTabPosition == 0
+            SymbolMode.EMOTICON -> historyEmoticonList.isNotEmpty() && categoryTab.selectedTabPosition == 0
+            SymbolMode.SYMBOL -> historySymbolList.isNotEmpty() && categoryTab.selectedTabPosition == 0
+            SymbolMode.CLIPBOARD -> false
+        }
+    }
+
     private fun selectPreviousCategory() {
         val i = categoryTab.selectedTabPosition
         if (i > 0) categoryTab.getTabAt(i - 1)?.select()
@@ -870,6 +1007,8 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
     }
 
     fun release() {
+        skinTonePopup?.dismiss()
+        skinTonePopup = null
         pagingJob?.cancel()
         pagingJob = null
         lifecycleOwner = null
@@ -882,6 +1021,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         clipboardItemClickListener = null
         clipboardItemLongClickListener = null
         clipboardHistoryToggleListener = null
+        defaultEmojiSkinToneChangeListener = null
     }
 
     private fun dpToPx(dp: Int): Int {

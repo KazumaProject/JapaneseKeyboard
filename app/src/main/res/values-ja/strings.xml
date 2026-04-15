@@ -96,6 +96,15 @@
     <string name="symbol_mode_title">記号キーボードの初期画面</string>
     <string name="symbol_mode_summary">記号キーボードの初期画面を選択します</string>
     <string name="symbol_mode_dialog_title">初期画面を選択</string>
+    <string name="default_emoji_skin_tone_title">絵文字のデフォルト肌色</string>
+    <string name="default_emoji_skin_tone_summary">肌色変更に対応した絵文字の表示色を選択します。</string>
+    <string name="default_emoji_skin_tone_dialog_title">絵文字の肌色を選択</string>
+    <string name="default_emoji_skin_tone_default">デフォルト</string>
+    <string name="default_emoji_skin_tone_light">明るい</string>
+    <string name="default_emoji_skin_tone_medium_light">やや明るい</string>
+    <string name="default_emoji_skin_tone_medium">中間</string>
+    <string name="default_emoji_skin_tone_medium_dark">やや暗い</string>
+    <string name="default_emoji_skin_tone_dark">暗い</string>
 
     <string name="custom_keyboard_two_words_title">２文字以上の出力を自動で確定</string>
     <string name="custom_keyboard_two_words_summary_on">カスタムキーで2文字以上を出力したとき、自動で確定します。</string>

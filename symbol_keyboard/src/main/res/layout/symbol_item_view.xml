@@ -1,13 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.textview.MaterialTextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/symbol_text"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
-    android:minWidth="32dp"
-    android:minHeight="32dp"
-    android:gravity="center"
-    android:textStyle="bold"
     android:layout_gravity="center"
-    android:textAlignment="center"
-    android:textColor="@color/symbol_text_color"
-    android:textSize="16sp"/>
+    android:minWidth="32dp"
+    android:minHeight="32dp">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/symbol_text"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:textAlignment="center"
+        android:textColor="@color/symbol_text_color"
+        android:textSize="16sp"
+        android:textStyle="bold" />
+
+    <View
+        android:id="@+id/skin_tone_indicator"
+        android:layout_width="9dp"
+        android:layout_height="9dp"
+        android:layout_gravity="end|bottom"
+        android:layout_marginEnd="2dp"
+        android:layout_marginBottom="2dp"
+        android:background="@drawable/skin_tone_indicator_bg"
+        android:visibility="gone" />
+</FrameLayout>

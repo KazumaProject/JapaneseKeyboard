@@ -450,6 +450,11 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<ListPreference>("default_emoji_skin_tone_preference")?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        }
+        syncDefaultEmojiSkinTonePreference()
+
         findPreference<SeekBarPreference>("flick_sensitivity_preference")?.apply {
             summary = when (this.value) {
                 in 0..50 -> getString(R.string.sensitivity_very_high)
@@ -546,6 +551,11 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        syncDefaultEmojiSkinTonePreference()
+    }
+
     // リーク対策: RecyclerViewの参照を断ち切る
     override fun onDestroyView() {
         try {
@@ -554,6 +564,15 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             // Viewが生成されていない場合などを考慮して例外は無視
         }
         super.onDestroyView()
+    }
+
+    private fun syncDefaultEmojiSkinTonePreference() {
+        findPreference<ListPreference>("default_emoji_skin_tone_preference")?.apply {
+            val savedSkinTone = appPreference.default_emoji_skin_tone_preference
+            if (value != savedSkinTone) {
+                value = savedSkinTone
+            }
+        }
     }
 
     @SuppressLint("CheckResult")
