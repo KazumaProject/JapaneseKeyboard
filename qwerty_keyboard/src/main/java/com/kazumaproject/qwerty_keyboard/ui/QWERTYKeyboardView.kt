@@ -85,6 +85,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var keyIndentSmallDp: Float = 9f
     private var keySideMarginDp: Float = 4f
     private var keyTextSizeSp: Float = 20f
+    private var specialKeyIconSizeDp: Float = 24f
 
     /** Map each active pointer ID → the View (key) it’s currently “pressing” (or null). */
     private val pointerButtonMap = SparseArray<View?>()
@@ -606,7 +607,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         indentLargeDp: Float = keyIndentLargeDp,
         indentSmallDp: Float = keyIndentSmallDp,
         sideMarginDp: Float = keySideMarginDp,
-        textSizeSp: Float = keyTextSizeSp
+        textSizeSp: Float = keyTextSizeSp,
+        specialIconSizeDp: Float = specialKeyIconSizeDp
     ) {
         this.keyVerticalMarginDp = verticalDp
         this.keyHorizontalGapDp = horizontalGapDp
@@ -614,11 +616,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.keyIndentSmallDp = indentSmallDp
         this.keySideMarginDp = sideMarginDp
         this.keyTextSizeSp = textSizeSp
+        this.specialKeyIconSizeDp = specialIconSizeDp
 
         // 現在のモードでレイアウトを再適用
         applyLayoutForMode(qwertyMode.value)
 
         updateAllKeyTextSizes()
+        updateSpecialKeyIconSizes()
     }
 
     private fun updateAllKeyTextSizes() {
@@ -635,6 +639,30 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 view.textSize = keyTextSizeSp
             }
         }
+    }
+
+    private fun updateSpecialKeyIconSizes() {
+        val iconSizePx = context.dpToPx(specialKeyIconSizeDp).coerceAtLeast(1)
+        specialIconButtons.forEach { button ->
+            button.scaleType = ImageView.ScaleType.FIT_CENTER
+            applyIconPadding(button, iconSizePx)
+            button.post {
+                applyIconPadding(button, iconSizePx)
+            }
+        }
+    }
+
+    private fun applyIconPadding(button: AppCompatImageButton, iconSizePx: Int) {
+        if (button.width == 0 || button.height == 0) return
+
+        val horizontalPadding = ((button.width - iconSizePx) / 2).coerceAtLeast(0)
+        val verticalPadding = ((button.height - iconSizePx) / 2).coerceAtLeast(0)
+        button.setPadding(
+            horizontalPadding,
+            verticalPadding,
+            horizontalPadding,
+            verticalPadding
+        )
     }
 
     /**
@@ -933,6 +961,17 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setReturnKeyText(text: String) {
         binding.keyReturn.text = text
+    }
+
+    private val specialIconButtons: List<AppCompatImageButton> by lazy {
+        listOf(
+            binding.keyShift,
+            binding.keyDelete,
+            binding.keyEmoji,
+            binding.keySwitchDefault,
+            binding.cursorLeft,
+            binding.cursorRight
+        )
     }
 
     /** Map each key View → its corresponding QWERTYKey. */
