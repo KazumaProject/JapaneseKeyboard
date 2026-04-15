@@ -358,7 +358,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             )
 
             val specialKeys = listOf(
-                keyShift, keyDelete, keySwitchDefault, keyReturn, key123,
+                keyShift, keyDelete, keySwitchDefault, keyEmoji, keyReturn, key123,
                 switchNumberLayout, cursorLeft, cursorRight, switchRomajiEnglish
             )
 
@@ -916,7 +916,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             listOf(
-                keyShift, keyDelete, keySwitchDefault, keyReturn, key123,
+                keyShift, keyDelete, keySwitchDefault, keyEmoji, keyReturn, key123,
                 switchNumberLayout, cursorLeft, cursorRight, switchRomajiEnglish
             ).forEach {
                 it.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
