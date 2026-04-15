@@ -316,6 +316,15 @@
             android:key="symbol_mode_preference"
             android:summary="@string/symbol_mode_summary"
             android:title="@string/symbol_mode_title" />
+
+        <ListPreference
+            android:defaultValue="default"
+            android:dialogTitle="@string/default_emoji_skin_tone_dialog_title"
+            android:entries="@array/default_emoji_skin_tone_entries"
+            android:entryValues="@array/default_emoji_skin_tone_values"
+            android:key="default_emoji_skin_tone_preference"
+            android:summary="@string/default_emoji_skin_tone_summary"
+            android:title="@string/default_emoji_skin_tone_title" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/clipboard_history_title">

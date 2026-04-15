@@ -94,6 +94,15 @@
     <string name="symbol_mode_title">Initial Screen for Symbol Keyboard</string>
     <string name="symbol_mode_summary">Select the initial screen for the symbol keyboard</string>
     <string name="symbol_mode_dialog_title">Select initial screen</string>
+    <string name="default_emoji_skin_tone_title">Default Emoji Skin Tone</string>
+    <string name="default_emoji_skin_tone_summary">Choose the skin tone used for skin-tone-compatible emoji.</string>
+    <string name="default_emoji_skin_tone_dialog_title">Select emoji skin tone</string>
+    <string name="default_emoji_skin_tone_default">Default</string>
+    <string name="default_emoji_skin_tone_light">Light</string>
+    <string name="default_emoji_skin_tone_medium_light">Medium Light</string>
+    <string name="default_emoji_skin_tone_medium">Medium</string>
+    <string name="default_emoji_skin_tone_medium_dark">Medium Dark</string>
+    <string name="default_emoji_skin_tone_dark">Dark</string>
 
     <string name="custom_keyboard_two_words_title">Auto-commit for 2+ characters</string>
     <string name="custom_keyboard_two_words_summary_on">Automatically commits when a custom key outputs 2 or more characters.</string>

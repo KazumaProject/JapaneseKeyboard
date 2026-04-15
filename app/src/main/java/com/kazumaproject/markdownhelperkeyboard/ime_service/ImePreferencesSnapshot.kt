@@ -55,6 +55,7 @@ data class ImePreferencesSnapshot(
     val candidateColumnsLandscape: String,
     val candidateTabVisibility: Boolean,
     val symbolKeyboardFirstItem: SymbolMode,
+    val defaultEmojiSkinTone: String,
     val isCustomKeyboardTwoWordsOutputEnable: Boolean,
     val tenkeyQWERTYSwitchNumber: Boolean,
     val tenkeyQKeymapGuide: Boolean,
@@ -214,6 +215,7 @@ data class ImePreferencesSnapshot(
                 candidateColumnsLandscape = appPreference.candidate_column_landscape_preference,
                 candidateTabVisibility = appPreference.candidate_tab_preference,
                 symbolKeyboardFirstItem = appPreference.symbol_mode_preference,
+                defaultEmojiSkinTone = appPreference.default_emoji_skin_tone_preference,
                 isCustomKeyboardTwoWordsOutputEnable =
                     appPreference.custom_keyboard_two_words_output ?: true,
                 tenkeyQWERTYSwitchNumber =

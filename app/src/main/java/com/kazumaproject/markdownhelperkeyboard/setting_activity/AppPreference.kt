@@ -9,6 +9,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
@@ -159,6 +160,8 @@ object AppPreference {
         Pair("candidate_tab_preference", defaultCandidateTabJson)
 
     private val SYMBOL_MODE_PREFERENCE = Pair("symbol_mode_preference", "EMOJI")
+    private val DEFAULT_EMOJI_SKIN_TONE_PREFERENCE =
+        Pair("default_emoji_skin_tone_preference", EmojiSkinToneSupport.DEFAULT_SKIN_TONE)
 
     private val CANDIDATE_COLUMN_PREFERENCE = Pair("candidate_column_preference", "1")
     private val CANDIDATE_COLUMN_LANDSCAPE_PREFERENCE =
@@ -592,6 +595,27 @@ object AppPreference {
         set(value) = preferences.edit {
             // Enumを文字列として保存
             it.putString(SYMBOL_MODE_PREFERENCE.first, value.name)
+        }
+
+    var default_emoji_skin_tone_preference: String
+        get() {
+            val skinTone = preferences.getString(
+                DEFAULT_EMOJI_SKIN_TONE_PREFERENCE.first,
+                DEFAULT_EMOJI_SKIN_TONE_PREFERENCE.second
+            ) ?: DEFAULT_EMOJI_SKIN_TONE_PREFERENCE.second
+            return if (EmojiSkinToneSupport.isSupportedSkinToneValue(skinTone)) {
+                skinTone
+            } else {
+                DEFAULT_EMOJI_SKIN_TONE_PREFERENCE.second
+            }
+        }
+        set(value) = preferences.edit {
+            val skinTone = if (EmojiSkinToneSupport.isSupportedSkinToneValue(value)) {
+                value
+            } else {
+                DEFAULT_EMOJI_SKIN_TONE_PREFERENCE.second
+            }
+            it.putString(DEFAULT_EMOJI_SKIN_TONE_PREFERENCE.first, skinTone)
         }
 
     var vibration_preference: Boolean?
