@@ -6302,16 +6302,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Copy -> {
                         val selectedText = getSelectedText(0)
                         if (!selectedText.isNullOrEmpty()) {
-                            clipboardUtil.setClipBoard(selectedText.toString())
-                            suggestionAdapter?.apply {
-                                if (clipboardPreviewVisibility == true) {
-                                    setPasteEnabled(true)
-                                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
-                                } else {
-                                    setPasteEnabled(false)
-                                }
-                            }
-                            appPreference.last_pasted_clipboard_text_preference = ""
+                            copySelectedTextToClipboard(selectedText)
                         }
                     }
 
@@ -6813,16 +6804,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Copy -> {
                         val selectedText = getSelectedText(0)
                         if (!selectedText.isNullOrEmpty()) {
-                            clipboardUtil.setClipBoard(selectedText.toString())
-                            suggestionAdapter?.apply {
-                                if (clipboardPreviewVisibility == true) {
-                                    setPasteEnabled(true)
-                                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
-                                    appPreference.last_pasted_clipboard_text_preference = ""
-                                } else {
-                                    setPasteEnabled(false)
-                                }
-                            }
+                            copySelectedTextToClipboard(selectedText)
                         }
                     }
 
@@ -6998,15 +6980,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun copyAction() {
         val selectedText = getSelectedText(0)
         if (!selectedText.isNullOrEmpty()) {
-            clipboardUtil.setClipBoard(selectedText.toString())
-            suggestionAdapter?.apply {
-                if (clipboardPreviewVisibility == true) {
-                    setPasteEnabled(true)
-                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
-                    appPreference.last_pasted_clipboard_text_preference = ""
-                } else {
-                    setPasteEnabled(false)
-                }
+            copySelectedTextToClipboard(selectedText)
+        }
+    }
+
+    private fun copySelectedTextToClipboard(selectedText: CharSequence) {
+        val text = selectedText.toString()
+        val isSensitive = currentInputType.isPassword()
+        clipboardUtil.setClipBoard(text, isSensitive = isSensitive)
+        suggestionAdapter?.apply {
+            if (clipboardPreviewVisibility == true) {
+                setPasteEnabled(true)
+                setClipboardPreview(if (isSensitive) getSensitiveClipboardPreviewText() else text)
+                appPreference.last_pasted_clipboard_text_preference = ""
+            } else {
+                setPasteEnabled(false)
             }
         }
     }
@@ -7038,16 +7026,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun cutAction() {
         val selectedText = getSelectedText(0)
         if (!selectedText.isNullOrEmpty()) {
-            clipboardUtil.setClipBoard(selectedText.toString())
-            suggestionAdapter?.apply {
-                if (clipboardPreviewVisibility == true) {
-                    setPasteEnabled(true)
-                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
-                    appPreference.last_pasted_clipboard_text_preference = ""
-                } else {
-                    setPasteEnabled(false)
-                }
-            }
+            copySelectedTextToClipboard(selectedText)
             sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         }
     }
