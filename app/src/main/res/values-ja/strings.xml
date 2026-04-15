@@ -476,6 +476,8 @@
     <string name="indent_small_adjustment">2段目の余白の微調整</string>
     <string name="side_margin_edge_keys">3段目の両端の余白</string>
     <string name="qwerty_key_letter_size">キーの文字サイズ</string>
+    <string name="qwerty_special_key_text_size">特殊キーの文字サイズ</string>
+    <string name="qwerty_special_key_icon_size">特殊キーのアイコンサイズ</string>
     <string name="reset_to_default">初期値に戻す</string>
     <string name="preview">プレビュー</string>
     <string name="qwertymarginsettingfragment">キーの設定</string>
