@@ -124,6 +124,7 @@ import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
 import com.kazumaproject.data.emoticon.Emoticon
 import com.kazumaproject.data.symbol.Symbol
+import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.listeners.ClipboardHistoryToggleListener
 import com.kazumaproject.listeners.ClipboardItemAction
 import com.kazumaproject.listeners.DeleteButtonSymbolViewClickListener
@@ -498,6 +499,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowEmojiButtonPreference: Boolean? = false
+    private var defaultEmojiSkinTonePreference: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
     private var qwertyEnableFlickUpPreference: Boolean? = false
     private var qwertyEnableFlickDownPreference: Boolean? = false
     private var qwertyEnableZenkakuSpacePreference: Boolean? = false
@@ -1142,6 +1144,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidateColumnsLandscape = preferences.candidateColumnsLandscape
         candidateTabVisibility = preferences.candidateTabVisibility
         symbolKeyboardFirstItem = preferences.symbolKeyboardFirstItem
+        defaultEmojiSkinTonePreference = preferences.defaultEmojiSkinTone
         isCustomKeyboardTwoWordsOutputEnable = preferences.isCustomKeyboardTwoWordsOutputEnable
         tenkeyQWERTYSwitchNumber = preferences.tenkeyQWERTYSwitchNumber
         tenkeyQKeymapGuide = preferences.tenkeyQKeymapGuide
@@ -1894,6 +1897,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         longPressTimeoutPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         qwertyShowEmojiButtonPreference = null
+        defaultEmojiSkinTonePreference = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
         tenkeyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
         qwertyShowNumberButtonsPreference = null
@@ -11117,6 +11121,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             setClipboardHistoryEnabled(isClipboardHistoryFeatureEnabled)
             setOnClipboardHistoryToggleListener(this@IMEService)
+            setDefaultEmojiSkinTone(defaultEmojiSkinTonePreference)
+            setOnDefaultEmojiSkinToneChangeListener { skinTone ->
+                defaultEmojiSkinTonePreference = skinTone
+                appPreference.default_emoji_skin_tone_preference = skinTone
+                floatingKeyboardBinding?.floatingSymbolKeyboard?.setDefaultEmojiSkinTone(skinTone)
+            }
         }
 
         floatingKeyboardBinding?.floatingSymbolKeyboard?.apply {
@@ -11186,6 +11196,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             setClipboardHistoryEnabled(isClipboardHistoryFeatureEnabled)
             setOnClipboardHistoryToggleListener(this@IMEService)
+            setDefaultEmojiSkinTone(defaultEmojiSkinTonePreference)
+            setOnDefaultEmojiSkinToneChangeListener { skinTone ->
+                defaultEmojiSkinTonePreference = skinTone
+                appPreference.default_emoji_skin_tone_preference = skinTone
+                mainView.keyboardSymbolView.setDefaultEmojiSkinTone(skinTone)
+            }
         }
     }
 
@@ -11740,7 +11756,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbols = cachedSymbols ?: emptyList(),
             clipBoardItems = currentClipboardItems,
             symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
-            symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI
+            symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI,
+            defaultEmojiSkinTone = defaultEmojiSkinTonePreference
 
         )
     }
@@ -11769,7 +11786,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbols = cachedSymbols ?: emptyList(),
             clipBoardItems = currentClipboardItems,
             symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
-            symbolMode = SymbolMode.CLIPBOARD
+            symbolMode = SymbolMode.CLIPBOARD,
+            defaultEmojiSkinTone = defaultEmojiSkinTonePreference
 
         )
     }
@@ -11797,7 +11815,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             symbols = cachedSymbols ?: emptyList(),
             clipBoardItems = currentClipboardItems,
             symbolsHistory = cachedClickedSymbolHistory ?: emptyList(),
-            symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI
+            symbolMode = symbolKeyboardFirstItem ?: SymbolMode.EMOJI,
+            defaultEmojiSkinTone = defaultEmojiSkinTonePreference
 
         )
     }

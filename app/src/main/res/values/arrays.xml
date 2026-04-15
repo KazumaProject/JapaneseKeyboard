@@ -22,6 +22,24 @@
         <item>low</item>
     </string-array>
 
+    <string-array name="default_emoji_skin_tone_entries">
+        <item>@string/default_emoji_skin_tone_default</item>
+        <item>@string/default_emoji_skin_tone_light</item>
+        <item>@string/default_emoji_skin_tone_medium_light</item>
+        <item>@string/default_emoji_skin_tone_medium</item>
+        <item>@string/default_emoji_skin_tone_medium_dark</item>
+        <item>@string/default_emoji_skin_tone_dark</item>
+    </string-array>
+
+    <string-array name="default_emoji_skin_tone_values">
+        <item>default</item>
+        <item>1F3FB</item>
+        <item>1F3FC</item>
+        <item>1F3FD</item>
+        <item>1F3FE</item>
+        <item>1F3FF</item>
+    </string-array>
+
     <string-array name="gemma_translation_backend_entries">
         <item>@string/gemma_translation_backend_cpu_only</item>
         <item>@string/gemma_translation_backend_gpu_if_available</item>

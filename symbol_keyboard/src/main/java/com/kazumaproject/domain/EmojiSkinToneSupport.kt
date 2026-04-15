@@ -1,13 +1,20 @@
 package com.kazumaproject.domain
 
 object EmojiSkinToneSupport {
+    const val DEFAULT_SKIN_TONE = "default"
+    const val LIGHT_SKIN_TONE = "1F3FB"
+    const val MEDIUM_LIGHT_SKIN_TONE = "1F3FC"
+    const val MEDIUM_SKIN_TONE = "1F3FD"
+    const val MEDIUM_DARK_SKIN_TONE = "1F3FE"
+    const val DARK_SKIN_TONE = "1F3FF"
+
     private const val VARIATION_SELECTOR_16 = 0xFE0F
     private val skinToneModifiers = listOf(
-        0x1F3FB,
-        0x1F3FC,
-        0x1F3FD,
-        0x1F3FE,
-        0x1F3FF
+        LIGHT_SKIN_TONE to 0x1F3FB,
+        MEDIUM_LIGHT_SKIN_TONE to 0x1F3FC,
+        MEDIUM_SKIN_TONE to 0x1F3FD,
+        MEDIUM_DARK_SKIN_TONE to 0x1F3FE,
+        DARK_SKIN_TONE to 0x1F3FF
     )
 
     fun hasSkinToneVariants(symbol: String): Boolean {
@@ -20,10 +27,36 @@ object EmojiSkinToneSupport {
 
         return buildList {
             add(baseSymbol)
-            skinToneModifiers.forEach { tone ->
+            skinToneModifiers.forEach { (_, tone) ->
                 add(applySkinTone(baseSymbol, tone))
             }
         }
+    }
+
+    fun withSkinTone(symbol: String, skinToneValue: String): String {
+        val baseSymbol = removeSkinToneModifiers(symbol)
+        if (!hasSkinToneVariants(baseSymbol)) return symbol
+
+        val skinTone = skinToneCodePoint(skinToneValue) ?: return baseSymbol
+        return applySkinTone(baseSymbol, skinTone)
+    }
+
+    fun skinToneValueFromEmoji(symbol: String): String {
+        var index = 0
+        while (index < symbol.length) {
+            val codePoint = symbol.codePointAt(index)
+            if (isSkinToneModifier(codePoint)) {
+                return skinToneModifiers.firstOrNull { it.second == codePoint }?.first
+                    ?: DEFAULT_SKIN_TONE
+            }
+            index += Character.charCount(codePoint)
+        }
+        return DEFAULT_SKIN_TONE
+    }
+
+    fun isSupportedSkinToneValue(skinToneValue: String): Boolean {
+        return skinToneValue == DEFAULT_SKIN_TONE ||
+                skinToneModifiers.any { it.first == skinToneValue }
     }
 
     fun removeSkinToneModifiers(symbol: String): String {
@@ -84,6 +117,10 @@ object EmojiSkinToneSupport {
 
     private fun isSkinToneModifier(codePoint: Int): Boolean {
         return codePoint in 0x1F3FB..0x1F3FF
+    }
+
+    private fun skinToneCodePoint(skinToneValue: String): Int? {
+        return skinToneModifiers.firstOrNull { it.first == skinToneValue }?.second
     }
 
     private fun isSkinToneBase(codePoint: Int): Boolean {
