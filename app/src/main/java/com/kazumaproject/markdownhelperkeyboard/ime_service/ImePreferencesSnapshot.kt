@@ -26,6 +26,7 @@ data class ImePreferencesSnapshot(
     val flickSensitivityPreferenceValue: Int,
     val longPressTimeoutPreferenceValue: Int,
     val qwertyShowIMEButtonPreference: Boolean,
+    val qwertyShowEmojiButtonPreference: Boolean,
     val tenkeyShowIMEButtonPreference: Boolean,
     val qwertyShowCursorButtonsPreference: Boolean,
     val qwertyShowNumberButtonsPreference: Boolean,
@@ -168,6 +169,7 @@ data class ImePreferencesSnapshot(
                 longPressTimeoutPreferenceValue =
                     appPreference.long_press_timeout_preference ?: 300,
                 qwertyShowIMEButtonPreference = appPreference.qwerty_show_ime_button ?: true,
+                qwertyShowEmojiButtonPreference = appPreference.qwerty_show_emoji_button ?: false,
                 tenkeyShowIMEButtonPreference =
                     appPreference.tenkey_show_language_button_preference,
                 qwertyShowCursorButtonsPreference = appPreference.qwerty_show_cursor_buttons

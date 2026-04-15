@@ -87,6 +87,9 @@
     <string name="qwerty_show_switch_ime_button_title">Switch IME Button</string>
     <string name="qwerty_show_switch_ime_button_summary_on">Show the keyboard switch (globe icon) button.</string>
     <string name="qwerty_show_switch_ime_button_summary_off">Do not show the keyboard switch (globe icon) button.</string>
+    <string name="qwerty_show_emoji_button_title">Emoji Button</string>
+    <string name="qwerty_show_emoji_button_summary_on">Show the emoji button on the QWERTY keyboard.</string>
+    <string name="qwerty_show_emoji_button_summary_off">Do not show the emoji button on the QWERTY keyboard.</string>
 
     <string name="symbol_mode_title">Initial Screen for Symbol Keyboard</string>
     <string name="symbol_mode_summary">Select the initial screen for the symbol keyboard</string>

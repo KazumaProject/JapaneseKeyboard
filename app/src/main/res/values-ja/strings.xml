@@ -89,6 +89,9 @@
     <string name="qwerty_show_switch_ime_button_title">IME 切り替えボタン</string>
     <string name="qwerty_show_switch_ime_button_summary_on">キーボード切り替え（地球儀アイコン）ボタンを表示します。</string>
     <string name="qwerty_show_switch_ime_button_summary_off">キーボード切り替え（地球儀アイコン）ボタンを表示しません。</string>
+    <string name="qwerty_show_emoji_button_title">絵文字ボタン</string>
+    <string name="qwerty_show_emoji_button_summary_on">QWERTY キーボードに絵文字ボタンを表示します。</string>
+    <string name="qwerty_show_emoji_button_summary_off">QWERTY キーボードに絵文字ボタンを表示しません。</string>
 
     <string name="symbol_mode_title">記号キーボードの初期画面</string>
     <string name="symbol_mode_summary">記号キーボードの初期画面を選択します</string>

@@ -494,6 +494,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var longPressTimeoutPreferenceValue: Int? = 300
     private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
+    private var qwertyShowEmojiButtonPreference: Boolean? = false
     private var qwertyEnableFlickUpPreference: Boolean? = false
     private var qwertyEnableFlickDownPreference: Boolean? = false
     private var qwertyEnableZenkakuSpacePreference: Boolean? = false
@@ -1105,6 +1106,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
         longPressTimeoutPreferenceValue = preferences.longPressTimeoutPreferenceValue
         qwertyShowIMEButtonPreference = preferences.qwertyShowIMEButtonPreference
+        qwertyShowEmojiButtonPreference = preferences.qwertyShowEmojiButtonPreference
         tenkeyShowIMEButtonPreference = preferences.tenkeyShowIMEButtonPreference
         qwertyShowCursorButtonsPreference = preferences.qwertyShowCursorButtonsPreference
         qwertyShowNumberButtonsPreference = preferences.qwertyShowNumberButtonsPreference
@@ -1740,7 +1742,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.setSpecialKeyVisibility(
                     showCursors = qwertyShowCursorButtonsPreference ?: false,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
-                    showKutouten = qwertyShowKutoutenButtonsPreference ?: false
+                    showKutouten = qwertyShowKutoutenButtonsPreference ?: false,
+                    showEmojiKey = qwertyShowEmojiButtonPreference ?: false
                 )
                 qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(true)
                 qwertyView.updateSymbolKeymapState(qwertyShowKeymapSymbolsPreference ?: false)
@@ -1880,6 +1883,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = null
         longPressTimeoutPreferenceValue = null
         qwertyShowIMEButtonPreference = null
+        qwertyShowEmojiButtonPreference = null
         tenkeyShowIMEButtonPreference = null
         qwertyShowCursorButtonsPreference = null
         qwertyShowNumberButtonsPreference = null
@@ -4970,7 +4974,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // --- 2) 2行表示アダプタ ---
             val adapter = object : ArrayAdapter<RowItem>(
                 this@IMEService,
-                android.R.layout.simple_list_item_2,
+                R.layout.list_item_keyboard_switch_popup,
                 android.R.id.text1,
                 rows
             ) {
@@ -6298,16 +6302,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Copy -> {
                         val selectedText = getSelectedText(0)
                         if (!selectedText.isNullOrEmpty()) {
-                            clipboardUtil.setClipBoard(selectedText.toString())
-                            suggestionAdapter?.apply {
-                                if (clipboardPreviewVisibility == true) {
-                                    setPasteEnabled(true)
-                                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
-                                } else {
-                                    setPasteEnabled(false)
-                                }
-                            }
-                            appPreference.last_pasted_clipboard_text_preference = ""
+                            copySelectedTextToClipboard(selectedText)
                         }
                     }
 
@@ -6809,16 +6804,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Copy -> {
                         val selectedText = getSelectedText(0)
                         if (!selectedText.isNullOrEmpty()) {
-                            clipboardUtil.setClipBoard(selectedText.toString())
-                            suggestionAdapter?.apply {
-                                if (clipboardPreviewVisibility == true) {
-                                    setPasteEnabled(true)
-                                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
-                                    appPreference.last_pasted_clipboard_text_preference = ""
-                                } else {
-                                    setPasteEnabled(false)
-                                }
-                            }
+                            copySelectedTextToClipboard(selectedText)
                         }
                     }
 
@@ -6833,13 +6819,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SelectLeft -> {}
                     KeyAction.SelectRight -> {}
                     KeyAction.ShowEmojiKeyboard -> {
-                        _keyboardSymbolViewState.value = SymbolKeyboardState(
-                            isShown = !_keyboardSymbolViewState.value.isShown
-                        )
-                        stringInTail.set("")
-                        finishComposingText()
-                        setComposingText("", 0)
-                        _inputString.update { "" }
+                        toggleEmojiKeyboard()
                     }
 
                     KeyAction.ToggleCase -> {
@@ -7000,15 +6980,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun copyAction() {
         val selectedText = getSelectedText(0)
         if (!selectedText.isNullOrEmpty()) {
-            clipboardUtil.setClipBoard(selectedText.toString())
-            suggestionAdapter?.apply {
-                if (clipboardPreviewVisibility == true) {
-                    setPasteEnabled(true)
-                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
-                    appPreference.last_pasted_clipboard_text_preference = ""
-                } else {
-                    setPasteEnabled(false)
-                }
+            copySelectedTextToClipboard(selectedText)
+        }
+    }
+
+    private fun copySelectedTextToClipboard(selectedText: CharSequence) {
+        val text = selectedText.toString()
+        val isSensitive = currentInputType.isPassword()
+        clipboardUtil.setClipBoard(text, isSensitive = isSensitive)
+        suggestionAdapter?.apply {
+            if (clipboardPreviewVisibility == true) {
+                setPasteEnabled(true)
+                setClipboardPreview(if (isSensitive) getSensitiveClipboardPreviewText() else text)
+                appPreference.last_pasted_clipboard_text_preference = ""
+            } else {
+                setPasteEnabled(false)
             }
         }
     }
@@ -7040,16 +7026,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun cutAction() {
         val selectedText = getSelectedText(0)
         if (!selectedText.isNullOrEmpty()) {
-            clipboardUtil.setClipBoard(selectedText.toString())
-            suggestionAdapter?.apply {
-                if (clipboardPreviewVisibility == true) {
-                    setPasteEnabled(true)
-                    setClipboardPreview(getSensitiveClipboardPreviewText(selectedText.toString()))
-                    appPreference.last_pasted_clipboard_text_preference = ""
-                } else {
-                    setPasteEnabled(false)
-                }
-            }
+            copySelectedTextToClipboard(selectedText)
             sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
         }
     }
@@ -11195,6 +11172,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySwitchMode -> {
 
+                        }
+
+                        QWERTYKey.QWERTYKeyEmoji -> {
+                            toggleEmojiKeyboard()
                         }
 
                         QWERTYKey.QWERTYKeySpace -> {
@@ -15525,6 +15506,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             QWERTYKey.QWERTYKeyReturn -> KeySoundType.ENTER
             else -> KeySoundType.STANDARD
         }
+    }
+
+    private fun toggleEmojiKeyboard() {
+        _keyboardSymbolViewState.value = SymbolKeyboardState(
+            isShown = !_keyboardSymbolViewState.value.isShown
+        )
+        stringInTail.set("")
+        finishComposingText()
+        setComposingText("", 0)
+        _inputString.update { "" }
     }
 
     private fun getKeySoundType(action: KeyAction): KeySoundType {
