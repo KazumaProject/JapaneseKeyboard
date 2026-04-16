@@ -991,11 +991,17 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     when (themeMode) {
                         "custom" -> {
-                            controller.setPopupColors(
-                                backgroundColor = customSpecialKeyColor,
-                                highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                            controller.setPopupColors(FlickPopupColorTheme(
+                                segmentColor = customSpecialKeyColor,
+                                segmentHighlightGradientStartColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                segmentHighlightGradientEndColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                centerGradientStartColor = customSpecialKeyColor,
+                                centerGradientEndColor = customSpecialKeyColor,
+                                centerHighlightGradientStartColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                centerHighlightGradientEndColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                separatorColor = customSpecialKeyTextColor,
                                 textColor = customSpecialKeyTextColor
-                            )
+                            ))
                         }
                     }
 

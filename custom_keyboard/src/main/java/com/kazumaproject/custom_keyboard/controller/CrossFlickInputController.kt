@@ -85,24 +85,11 @@ class CrossFlickInputController(
     private var isLongPressTriggered = false
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
-    private var popupBackgroundColor: Int? = null
-    private var popupHighlightedColor: Int? = null
-    private var popupTextColor: Int? = null
-    private var textPopupColorTheme: FlickPopupColorTheme? = null
+    private var popupColorTheme: FlickPopupColorTheme? = null
 
-    // ACTION モード用の色設定。CrossFlickPopupView に渡す背景色・ハイライト色・テキスト色を個別に指定する。
-    fun setPopupColors(backgroundColor: Int, highlightedColor: Int, textColor: Int) {
-        popupBackgroundColor = backgroundColor
-        popupHighlightedColor = highlightedColor
-        popupTextColor = textColor
-    }
-
-    // TEXT モード用の色設定。FlickPopupColorTheme をまとめて受け取り、両方のポップアップ系に適用する。
+    // 色設定。FlickPopupColorTheme をまとめて受け取り、全ポップアップに適用する。
     fun setPopupColors(theme: FlickPopupColorTheme) {
-        textPopupColorTheme = theme
-        popupBackgroundColor = theme.centerGradientStartColor
-        popupHighlightedColor = theme.segmentHighlightGradientStartColor
-        popupTextColor = theme.textColor
+        popupColorTheme = theme
     }
 
     // 長押し判定までの待機時間を変更する。FlickKeyboardView から端末設定に合わせて呼ばれる。
@@ -382,13 +369,7 @@ class CrossFlickInputController(
 
         val popupView = CrossFlickPopupView(context).apply {
             setContent(flickAction)
-            if (
-                popupBackgroundColor != null &&
-                popupHighlightedColor != null &&
-                popupTextColor != null
-            ) {
-                setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
-            }
+            popupColorTheme?.let { setColors(it) }
             setHighlight(highlighted)
         }
 
@@ -474,7 +455,7 @@ class CrossFlickInputController(
 
             val popupView = DirectionalKeyPopupView(context).apply {
                 this.text = text
-                textPopupColorTheme?.let { setColors(it) }
+                popupColorTheme?.let { setColors(it) }
                 setFlickDirection(direction)
             }
 
@@ -579,7 +560,7 @@ class CrossFlickInputController(
         if (!currentAnchor.isAttachedToWindow) return
 
         val popupView = gridPopup.contentView as FlickGridPopupView
-        textPopupColorTheme?.let { popupView.setColors(it) }
+        popupColorTheme?.let { popupView.setColors(it) }
 
         popupView.setCharacters(getLongPressDisplayMap(), currentAnchor.width, currentAnchor.height)
         popupView.highlightKey(currentDirection)
