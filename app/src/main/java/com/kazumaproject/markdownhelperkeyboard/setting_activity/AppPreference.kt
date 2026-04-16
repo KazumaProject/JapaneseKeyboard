@@ -284,7 +284,7 @@ object AppPreference {
     private val QWERTY_KEY_TEXT_SIZE = Pair("qwerty_key_text_size_preference", 18.0f)
     private val QWERTY_SPECIAL_KEY_TEXT_SIZE = Pair("special_key_text_size_preference", 12.0f)
     private val QWERTY_SPECIAL_KEY_ICON_SIZE =
-        Pair("qwerty_special_key_icon_size_preference", 20.0f)
+        Pair("qwerty_special_key_icon_size_preference", 18.0f)
 
     private val LIQUID_GLASS_ENABLE = Pair("liquid_glass_preference", false)
     private val LIQUID_GLASS_BLUR_RADIUS = Pair("liquid_glass_blur_preference", 220)
