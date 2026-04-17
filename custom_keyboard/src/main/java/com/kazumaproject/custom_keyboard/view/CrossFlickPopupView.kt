@@ -119,6 +119,37 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
         gridLayout.removeAllViews()
         cells.clear()
 
+        if (map.size == 1) {
+            gridLayout.columnCount = 1
+            gridLayout.rowCount = 1
+
+            val (direction, action) = map.entries.first()
+            val params = GridLayout.LayoutParams(
+                GridLayout.spec(0),
+                GridLayout.spec(0)
+            ).apply {
+                width = keyWidth
+                height = keyHeight
+            }
+
+            val cell = CellView(context).apply {
+                setContent(action)
+                val theme = colorTheme
+                if (theme != null) {
+                    applyColors(theme, direction == highlightedDirection)
+                } else {
+                    applyFallbackColors(context, direction == highlightedDirection)
+                }
+            }
+            cell.layoutParams = params
+            gridLayout.addView(cell)
+            cells[direction] = cell
+            return
+        }
+
+        gridLayout.columnCount = 3
+        gridLayout.rowCount = 3
+
         val gridPositions = mapOf(
             FlickDirection.UP to Pair(0, 1),
             FlickDirection.DOWN to Pair(2, 1),
