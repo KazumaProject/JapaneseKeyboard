@@ -168,6 +168,15 @@ class CrossFlickInputController(
 
                 val dx = event.rawX - initialTouchPoint.x
                 val dy = event.rawY - initialTouchPoint.y
+
+                if (inputMode == InputMode.TEXT && !isLongPressMode) {
+                    val cancelThreshold = flickThreshold * 0.5f
+                    val movedEnoughForFlick = (dx * dx + dy * dy) > (cancelThreshold * cancelThreshold)
+                    if (movedEnoughForFlick) {
+                        longPressJob?.cancel()
+                    }
+                }
+
                 val newDirection = calculateDirection(dx, dy)
 
                 if (newDirection != currentDirection) {
