@@ -16,9 +16,8 @@ import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.KeyAction
-import com.kazumaproject.custom_keyboard.view.CrossFlickPopupView
 import com.kazumaproject.custom_keyboard.view.DirectionalKeyPopupView
-import com.kazumaproject.custom_keyboard.view.FlickGridPopupView
+import com.kazumaproject.custom_keyboard.view.CrossFlickPopupView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,7 +65,7 @@ class CrossFlickInputController(
     private var originalKeyText: CharSequence? = null
 
     private val gridPopup = PopupWindow(
-        FlickGridPopupView(context),
+        CrossFlickPopupView(context),
         WindowManager.LayoutParams.WRAP_CONTENT,
         WindowManager.LayoutParams.WRAP_CONTENT,
         false
@@ -368,9 +367,9 @@ class CrossFlickInputController(
         if (!anchor.isAttachedToWindow) return
 
         val popupView = CrossFlickPopupView(context).apply {
-            setContent(flickAction)
+            setCells(mapOf(direction to flickAction), anchor.width, anchor.height)
             popupColorTheme?.let { setColors(it) }
-            setHighlight(highlighted)
+            if (highlighted) highlightDirection(direction)
         }
 
         val popupWindow = PopupWindow(popupView, anchor.width, anchor.height, false).apply {
@@ -421,7 +420,7 @@ class CrossFlickInputController(
     // 全アクションポップアップのうち指定方向だけをハイライト状態にする。長押し中の指移動で呼ばれる。
     private fun highlightActionPopup(direction: FlickDirection) {
         actionPopupViews.forEach { (dir, popupView) ->
-            popupView.setHighlight(dir == direction)
+            popupView.highlightDirection(if (dir == direction) dir else null)
         }
     }
 
@@ -559,11 +558,14 @@ class CrossFlickInputController(
         val currentAnchor = anchorView ?: return
         if (!currentAnchor.isAttachedToWindow) return
 
-        val popupView = gridPopup.contentView as FlickGridPopupView
+        val popupView = gridPopup.contentView as CrossFlickPopupView
         popupColorTheme?.let { popupView.setColors(it) }
 
-        popupView.setCharacters(getLongPressDisplayMap(), currentAnchor.width, currentAnchor.height)
-        popupView.highlightKey(currentDirection)
+        val actionMap = getLongPressDisplayMap().mapValues { (_, text) ->
+            FlickAction.Input(text)
+        }
+        popupView.setCells(actionMap, currentAnchor.width, currentAnchor.height)
+        popupView.highlightDirection(currentDirection)
 
         val location = IntArray(2)
         currentAnchor.getLocationInWindow(location)
@@ -584,18 +586,22 @@ class CrossFlickInputController(
 
     // グリッドポップアップ内の対応セルをハイライトする。長押し中の指移動で呼ばれる。
     private fun highlightGrid(direction: FlickDirection) {
-        (gridPopup.contentView as? FlickGridPopupView)?.highlightKey(direction)
+        (gridPopup.contentView as? CrossFlickPopupView)?.highlightDirection(direction)
     }
 
     // グリッドポップアップに渡す表示文字マップを生成する。各方向で longPressTextMap を優先し、なければ textMap を使う。
     private fun getLongPressDisplayMap(): Map<FlickDirection, String> {
-        return mapOf(
-            FlickDirection.TAP to (resolveText(FlickDirection.TAP, preferLongPress = true) ?: ""),
-            FlickDirection.UP to (resolveText(FlickDirection.UP, preferLongPress = true) ?: ""),
-            FlickDirection.DOWN to (resolveText(FlickDirection.DOWN, preferLongPress = true) ?: ""),
-            FlickDirection.UP_LEFT_FAR to (resolveText(FlickDirection.UP_LEFT_FAR, preferLongPress = true) ?: ""),
-            FlickDirection.UP_RIGHT_FAR to (resolveText(FlickDirection.UP_RIGHT_FAR, preferLongPress = true) ?: "")
+        val directions = listOf(
+            FlickDirection.TAP,
+            FlickDirection.UP,
+            FlickDirection.DOWN,
+            FlickDirection.UP_LEFT_FAR,
+            FlickDirection.UP_RIGHT_FAR
         )
+        return directions.mapNotNull { dir ->
+            val text = resolveText(dir, preferLongPress = true)
+            if (!text.isNullOrEmpty()) dir to text else null
+        }.toMap()
     }
 
     // TEXT モードで ACTION_DOWN 時に消したボタンのラベルを復元する。ACTION_UP/CANCEL および cancel() から呼ばれる。
