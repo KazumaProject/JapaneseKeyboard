@@ -11837,9 +11837,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (handleBunsetsuCandidateClick(candidate, currentInputMode, position)) {
             setCusrorLeftAfterCloseBracket(candidate.string)
+            restoreKeyboardFromFullSuggestionViewIfNeeded()
             return
         }
         if (insertString.isNotEmpty()) {
+            isHenkan.set(false)
+            henkanPressedWithBunsetsuDetect = false
             processCandidate(
                 candidate = candidate,
                 insertString = insertString,
@@ -12497,11 +12500,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _dakutenPressed.value = false
         lastFlickConvertedNextHiragana.set(true)
         isContinuousTapInputEnabled.set(true)
-        _suggestionViewStatus.update { true }
+        restoreKeyboardFromFullSuggestionViewIfNeeded()
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         clearBunsetsuConversionSession()
+        if (stringInTail.get().isEmpty()) {
+            clearSuggestionStateAfterCommit()
+        }
         _inputString.update { "" }
+    }
+
+    private fun restoreKeyboardFromFullSuggestionViewIfNeeded() {
+        _suggestionViewStatus.update { true }
+        mainLayoutBinding?.let { mainView ->
+            mainView.root.post {
+                updateSuggestionViewVisibility(mainView, true)
+            }
+        }
     }
 
     private fun resetFlagsEnterKey() {
