@@ -349,6 +349,14 @@ class FlickKeyboardView @JvmOverloads constructor(
         return specialKeyTextSizeSp.coerceIn(8f, 32f)
     }
 
+    private fun getKeyTextSizeSp(keyData: KeyData): Float {
+        return if (keyData.isSpecialKey) {
+            getSpecialKeyTextSizeSp()
+        } else {
+            defaultTextSize
+        }
+    }
+
     private fun getSpecialIconTargetSizePx(keyData: KeyData): Float {
         val baseTextSizePx = spToPx(SPECIAL_KEY_BASE_TEXT_SIZE_SP).toFloat()
         val iconScale = iconScalePercent / 100f
@@ -447,11 +455,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun applyButtonText(button: AutoSizeButton, keyData: KeyData) {
-        val targetTextSizeSp = if (keyData.isSpecialKey) {
-            getSpecialKeyTextSizeSp()
-        } else {
-            defaultTextSize
-        }
+        val targetTextSizeSp = getKeyTextSizeSp(keyData)
 
         button.setDefaultTextSize(targetTextSizeSp)
         button.setFlickGuideLabels(null)
@@ -1015,6 +1019,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                 if (flickActionMap != null && keyView is Button) {
                     val label = keyData.label
                     val isDarkTheme = context.isDarkThemeOn()
+                    val targetTextSizeSp = getKeyTextSizeSp(keyData)
+                    val primaryTextSizePx = spToPx(targetTextSizeSp).toFloat()
+                    val secondaryTextSizePx =
+                        spToPx((targetTextSizeSp * 0.625f).coerceAtLeast(8f)).toFloat()
 
                     val segmentedDrawable: SegmentedBackgroundDrawable
 
@@ -1035,7 +1043,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 baseColor = Color.TRANSPARENT,
                                 highlightColor = manipulateColor(customKeyColor, 1.2f),
                                 textColor = customKeyTextColor,
-                                cornerRadius = baseCorner
+                                cornerRadius = baseCorner,
+                                primaryTextSizePx = primaryTextSizePx,
+                                secondaryTextSizePx = secondaryTextSizePx
                             )
 
                             val layer = LayerDrawable(arrayOf(baseWithBorder, segmentedDrawable))
@@ -1055,7 +1065,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 baseColor = Color.TRANSPARENT,
                                 highlightColor = manipulateColor(customKeyColor, 1.2f),
                                 textColor = customKeyTextColor,
-                                cornerRadius = dpToPx(8).toFloat()
+                                cornerRadius = dpToPx(8).toFloat(),
+                                primaryTextSizePx = primaryTextSizePx,
+                                secondaryTextSizePx = secondaryTextSizePx
                             )
 
                             val layerDrawable =
@@ -1083,7 +1095,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                             baseColor = keyBaseColor,
                             highlightColor = keyHighlightColor,
                             textColor = keyTextColor,
-                            cornerRadius = 20f
+                            cornerRadius = 20f,
+                            primaryTextSizePx = primaryTextSizePx,
+                            secondaryTextSizePx = secondaryTextSizePx
                         )
 
                         keyView.background = segmentedDrawable
