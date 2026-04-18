@@ -1,6 +1,7 @@
 package com.kazumaproject.custom_keyboard.layout
 
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ColorFilter
 import android.graphics.Paint
 import android.graphics.Path
@@ -9,6 +10,7 @@ import android.graphics.RectF
 import android.graphics.drawable.Drawable
 import androidx.core.graphics.withClip
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import kotlin.math.roundToInt
 
 /**
  * A Drawable that highlights specific areas of the background based on the flick direction.
@@ -18,7 +20,9 @@ class SegmentedBackgroundDrawable(
     private val baseColor: Int,
     private val highlightColor: Int,
     private val textColor: Int,
-    private val cornerRadius: Float
+    private val cornerRadius: Float,
+    private val primaryTextSizePx: Float = 60f,
+    private val secondaryTextSizePx: Float = 40f
 ) : Drawable() {
 
     var highlightDirection: FlickDirection? = null
@@ -33,19 +37,21 @@ class SegmentedBackgroundDrawable(
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
-        textSize = 60f
+        textSize = primaryTextSizePx
     }
 
     // Paint for the smaller, second line of text
     private val secondaryTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = textColor
         textAlign = Paint.Align.CENTER
-        textSize = 40f // Smaller text size for the second line
+        textSize = secondaryTextSizePx
     }
 
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
     }
+
+    private var drawableAlpha = 255
 
     override fun draw(canvas: Canvas) {
         val boundsF = RectF(bounds)
@@ -53,13 +59,13 @@ class SegmentedBackgroundDrawable(
         val centerY = boundsF.centerY()
 
         // 1. Draw the base background
-        backgroundPaint.color = baseColor
+        backgroundPaint.color = applyDrawableAlpha(baseColor)
         canvas.drawRoundRect(boundsF, cornerRadius, cornerRadius, backgroundPaint)
 
         // 2. Create and draw the highlight path
         val highlightPath = getHighlightPath(boundsF)
         if (highlightPath != null) {
-            backgroundPaint.color = highlightColor
+            backgroundPaint.color = applyDrawableAlpha(highlightColor)
             // Clipping by the Path maintains the button's rounded corners
             canvas.withClip(highlightPath) {
                 drawRoundRect(boundsF, cornerRadius, cornerRadius, backgroundPaint)
@@ -161,8 +167,19 @@ class SegmentedBackgroundDrawable(
 
 
     override fun setAlpha(alpha: Int) {
-        backgroundPaint.alpha = alpha
+        drawableAlpha = alpha.coerceIn(0, 255)
         invalidateSelf()
+    }
+
+    override fun getAlpha(): Int {
+        return drawableAlpha
+    }
+
+    private fun applyDrawableAlpha(color: Int): Int {
+        val alpha = (Color.alpha(color) * (drawableAlpha / 255f))
+            .roundToInt()
+            .coerceIn(0, 255)
+        return Color.argb(alpha, Color.red(color), Color.green(color), Color.blue(color))
     }
 
     override fun setColorFilter(colorFilter: ColorFilter?) {
