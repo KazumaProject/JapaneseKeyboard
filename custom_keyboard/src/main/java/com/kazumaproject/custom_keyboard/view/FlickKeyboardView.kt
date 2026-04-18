@@ -33,7 +33,6 @@ import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.CustomAngleFlickController
-import com.kazumaproject.custom_keyboard.controller.GridFlickInputController
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.controller.TfbiHierarchicalFlickController
 import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
@@ -74,7 +73,6 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val flickControllers = mutableListOf<CustomAngleFlickController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
-    private val petalFlickControllers = mutableListOf<GridFlickInputController>()
     private val tfbiControllers = mutableListOf<TfbiInputController>()
     private val stickyTfbiControllers = mutableListOf<TfbiStickyFlickController>()
     private val hierarchicalTfbiControllers = mutableListOf<TfbiHierarchicalFlickController>()
@@ -242,9 +240,6 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         standardFlickControllers.forEach { it.cancel() }
         standardFlickControllers.clear()
-
-        petalFlickControllers.forEach { it.cancel() }
-        petalFlickControllers.clear()
 
         tfbiControllers.forEach { it.cancel() }
         tfbiControllers.clear()
@@ -996,11 +991,17 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     when (themeMode) {
                         "custom" -> {
-                            controller.setPopupColors(
-                                backgroundColor = customSpecialKeyColor,
-                                highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                            controller.setPopupColors(FlickPopupColorTheme(
+                                segmentColor = customSpecialKeyColor,
+                                segmentHighlightGradientStartColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                segmentHighlightGradientEndColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                centerGradientStartColor = customSpecialKeyColor,
+                                centerGradientEndColor = customSpecialKeyColor,
+                                centerHighlightGradientStartColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                centerHighlightGradientEndColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                separatorColor = customSpecialKeyTextColor,
                                 textColor = customSpecialKeyTextColor
-                            )
+                            ))
                         }
                     }
 
@@ -1191,7 +1192,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 Log.d("FlickKeyboardView KeyType.PETAL_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
-                    val controller = GridFlickInputController(context, flickSensitivity).apply {
+                    val controller = CrossFlickInputController(context, flickSensitivity).apply {
                         setLongPressTimeout(longPressTimeout)
                         val isDarkTheme = context.isDarkThemeOn()
                         val secondaryColor =
@@ -1258,18 +1259,31 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
 
                         setPopupColors(dynamicColorTheme)
-                        elevation = 1f
-
-                        this.listener = object : GridFlickInputController.GridFlickListener {
-                            override fun onPress(character: String) {
-                                notifyTextPress(character)
+                        this.listener = object : CrossFlickInputController.CrossFlickListener {
+                            override fun onPress(action: KeyAction) {
+                                when (action) {
+                                    is KeyAction.Text -> notifyTextPress(action.text)
+                                    else -> this@FlickKeyboardView.listener?.onPress(action)
+                                }
                             }
 
-                            override fun onFlick(character: String, isFlick: Boolean) {
-                                this@FlickKeyboardView.listener?.onAction(
-                                    KeyAction.Text(character),
-                                    isFlick = isFlick
-                                )
+                            override fun onFlick(action: KeyAction, isFlick: Boolean) {
+                                this@FlickKeyboardView.listener?.onAction(action, isFlick)
+                            }
+
+                            override fun onFlickLongPress(action: KeyAction) {
+                                if (action !is KeyAction.Text) {
+                                    this@FlickKeyboardView.listener?.onFlickActionLongPress(action)
+                                }
+                            }
+
+                            override fun onFlickUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
+                                if (action !is KeyAction.Text) {
+                                    this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
+                                        action,
+                                        isFlick
+                                    )
+                                }
                             }
                         }
 
@@ -1282,10 +1296,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                             applyGuideLabels(keyView, keyData, stringMap)
                         }
 
-                        attach(keyView, stringMap, longPressStringMap)
+                        attachText(keyView, stringMap, longPressStringMap)
                     }
 
-                    petalFlickControllers.add(controller)
+                    crossFlickControllers.add(controller)
                     return controller
                 }
             }
@@ -1557,11 +1571,6 @@ class FlickKeyboardView @JvmOverloads constructor(
             is StandardFlickInputController -> {
                 controller.cancel()
                 standardFlickControllers.remove(controller)
-            }
-
-            is GridFlickInputController -> {
-                controller.cancel()
-                petalFlickControllers.remove(controller)
             }
 
             is TfbiInputController -> {
@@ -1922,7 +1931,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         flickControllers.forEach { it.cancel() }
         crossFlickControllers.forEach { it.cancel() }
         standardFlickControllers.forEach { it.cancel() }
-        petalFlickControllers.forEach { it.cancel() }
         tfbiControllers.forEach { it.cancel() }
         stickyTfbiControllers.forEach { it.cancel() }
         hierarchicalTfbiControllers.forEach { it.cancel() }
