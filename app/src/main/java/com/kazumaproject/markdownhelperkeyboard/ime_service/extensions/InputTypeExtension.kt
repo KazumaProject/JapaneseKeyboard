@@ -19,7 +19,7 @@ fun InputTypeForIME.isPassword(): Boolean = when (this) {
  */
 fun getCurrentInputTypeForIME2(editorInfo: EditorInfo?): InputTypeForIME {
     if (editorInfo == null || editorInfo.inputType == InputType.TYPE_NULL) {
-        return InputTypeForIME.None
+        return InputTypeForIME.Text
     }
 
     val inputType = editorInfo.inputType
@@ -30,7 +30,7 @@ fun getCurrentInputTypeForIME2(editorInfo: EditorInfo?): InputTypeForIME {
         InputType.TYPE_CLASS_NUMBER -> getNumberRelatedInputType(inputType)
         InputType.TYPE_CLASS_PHONE -> InputTypeForIME.Phone
         InputType.TYPE_CLASS_DATETIME -> getDateTimeRelatedInputType(inputType)
-        else -> InputTypeForIME.None
+        else -> InputTypeForIME.Text
     }
 }
 
