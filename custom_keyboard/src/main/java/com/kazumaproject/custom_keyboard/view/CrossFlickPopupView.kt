@@ -17,7 +17,6 @@ import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.KeyAction
-import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.google.android.material.R as materialR
 
 private data class PopupCellContent(
@@ -26,11 +25,11 @@ private data class PopupCellContent(
     val drawableResId: Int?
 )
 
-private fun FlickAction.toPopupCellContent(context: Context): PopupCellContent = when (this) {
+private fun FlickAction.toPopupCellContent(): PopupCellContent = when (this) {
     is FlickAction.Input -> PopupCellContent(
         text = char.takeUnless { it.isEmpty() },
-        label = null,
-        drawableResId = null
+        label = label?.takeUnless { it.isEmpty() },
+        drawableResId = drawableResId
     )
 
     is FlickAction.Action -> {
@@ -40,15 +39,10 @@ private fun FlickAction.toPopupCellContent(context: Context): PopupCellContent =
             else -> null
         }?.takeUnless { it.isEmpty() }
 
-        val resolvedDrawableResId = drawableResId
-            ?: KeyActionMapper.getDisplayActions(context)
-                .firstOrNull { it.action::class == action::class }
-                ?.iconResId
-
         PopupCellContent(
             text = text,
             label = label?.takeUnless { it.isEmpty() },
-            drawableResId = resolvedDrawableResId
+            drawableResId = drawableResId
         )
     }
 }
@@ -77,7 +71,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
         }
 
         fun setContent(action: FlickAction) {
-            val content = action.toPopupCellContent(context)
+            val content = action.toPopupCellContent()
             if (content.drawableResId != null) {
                 imageView.setImageResource(content.drawableResId)
                 imageView.visibility = View.VISIBLE

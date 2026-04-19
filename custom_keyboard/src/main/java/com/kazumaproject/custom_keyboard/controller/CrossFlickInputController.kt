@@ -16,6 +16,7 @@ import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.view.DirectionalKeyPopupView
 import com.kazumaproject.custom_keyboard.view.CrossFlickPopupView
 import kotlinx.coroutines.CoroutineScope
@@ -85,6 +86,9 @@ class CrossFlickInputController(
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var popupColorTheme: FlickPopupColorTheme? = null
+    private val displayActionsByClass by lazy {
+        KeyActionMapper.getDisplayActions(context).associateBy { it.action::class }
+    }
 
     // 色設定。FlickPopupColorTheme をまとめて受け取り、全ポップアップに適用する。
     fun setPopupColors(theme: FlickPopupColorTheme) {
@@ -108,7 +112,7 @@ class CrossFlickInputController(
     @SuppressLint("ClickableViewAccessibility")
     fun attach(view: View, map: Map<FlickDirection, FlickAction>) {
         inputMode = InputMode.ACTION
-        flickActionMap = map
+        flickActionMap = map.mapValues { (_, action) -> action.withDisplayMetadata() }
         textMap = emptyMap()
         longPressTextMap = emptyMap()
         view.setOnTouchListener { v, event -> handleTouchEvent(v, event) }
@@ -359,6 +363,25 @@ class CrossFlickInputController(
             }
         }
         return null
+    }
+
+    // アクションに表示情報（アイコン/ラベル）が無い場合、KeyActionMapper の定義を補完して空表示を防ぐ。
+    private fun FlickAction.withDisplayMetadata(): FlickAction = when (this) {
+        is FlickAction.Input -> this
+        is FlickAction.Action -> {
+            val displayAction = displayActionsByClass[action::class]
+            if (displayAction == null) {
+                this
+            } else {
+                val resolvedLabel = label?.takeUnless { it.isBlank() } ?: displayAction.displayName
+                val resolvedDrawableResId = drawableResId ?: displayAction.iconResId
+                if (resolvedLabel == label && resolvedDrawableResId == drawableResId) {
+                    this
+                } else {
+                    copy(label = resolvedLabel, drawableResId = resolvedDrawableResId)
+                }
+            }
+        }
     }
 
     // FlickDirection を優先候補リストへ展開する。UP_LEFT_FAR/UP_RIGHT_FAR は near 方向へフォールバックする。
