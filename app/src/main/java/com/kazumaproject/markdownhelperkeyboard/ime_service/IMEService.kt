@@ -574,7 +574,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyKeySideMargin: Float? = 4.0f
     private var qwertyKeyTextSize: Float? = 18.0f
     private var qwertySpecialKeyTextSize: Float? = 12.0f
-    private var qwertySpecialKeyIconSize: Float? = 24.0f
+    private var qwertySpecialKeyIconSize: Float? = 18.0f
 
     private var keyboardThemeMode: String? = "default"
     private var customThemeBgColor: Int? = Color.WHITE
@@ -1775,7 +1775,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     sideMarginDp = qwertyKeySideMargin ?: 4.0f,
                     textSizeSp = qwertyKeyTextSize ?: 18.0f,
                     specialTextSizeSp = qwertySpecialKeyTextSize ?: 12.0f,
-                    specialIconSizeDp = qwertySpecialKeyIconSize ?: 24.0f
+                    specialIconSizeDp = qwertySpecialKeyIconSize ?: 18.0f
                 )
                 if (isKeyboardFloatingMode == true) {
                     suggestionRecyclerView.adapter = null
