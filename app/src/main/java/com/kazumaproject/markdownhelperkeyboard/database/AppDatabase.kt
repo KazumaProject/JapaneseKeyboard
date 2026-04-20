@@ -21,6 +21,8 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.Keyboar
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.MapTypeConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity
+import com.kazumaproject.markdownhelperkeyboard.delete_key_flick.database.DeleteKeyFlickDeleteTarget
+import com.kazumaproject.markdownhelperkeyboard.delete_key_flick.database.DeleteKeyFlickDeleteTargetDao
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplateDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
@@ -59,8 +61,9 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         TwoNodeRuleEntity::class,
         ThreeNodeRuleEntity::class,
         GemmaPromptTemplate::class,
+        DeleteKeyFlickDeleteTarget::class,
     ],
-    version = 23,
+    version = 24,
     exportSchema = false
 )
 @TypeConverters(
@@ -82,6 +85,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun systemUserDictionaryDao(): SystemUserDictionaryDao
     abstract fun ngramRuleDao(): NgramRuleDao
     abstract fun gemmaPromptTemplateDao(): GemmaPromptTemplateDao
+    abstract fun deleteKeyFlickDeleteTargetDao(): DeleteKeyFlickDeleteTargetDao
 
     companion object {
 
@@ -616,6 +620,26 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE `clipboard_history` ADD COLUMN `isPinned` INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `delete_key_flick_delete_targets` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `symbol` TEXT NOT NULL,
+                      `sortOrder` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_delete_key_flick_delete_targets_symbol`
+                    ON `delete_key_flick_delete_targets` (`symbol`)
+                    """.trimIndent()
                 )
             }
         }
