@@ -32,6 +32,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_20_21
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_21_22
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_22_23
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_23_24
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
@@ -40,6 +41,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_7_8
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_8_9
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_9_10
+import com.kazumaproject.markdownhelperkeyboard.delete_key_flick.database.DeleteKeyFlickDeleteTargetDao
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplateDao
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
@@ -104,6 +106,7 @@ object AppModule {
             MIGRATION_20_21,
             MIGRATION_21_22,
             MIGRATION_22_23,
+            MIGRATION_23_24,
         )
         .build()
 
@@ -156,6 +159,11 @@ object AppModule {
     @Provides
     fun providesGemmaPromptTemplateDao(db: AppDatabase): GemmaPromptTemplateDao =
         db.gemmaPromptTemplateDao()
+
+    @Singleton
+    @Provides
+    fun providesDeleteKeyFlickDeleteTargetDao(db: AppDatabase): DeleteKeyFlickDeleteTargetDao =
+        db.deleteKeyFlickDeleteTargetDao()
 
     @Singleton
     @Provides

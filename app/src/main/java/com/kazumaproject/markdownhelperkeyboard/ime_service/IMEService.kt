@@ -174,6 +174,7 @@ import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.DeleteKeyFlickDeleteTargetRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.GemmaPromptTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
@@ -318,6 +319,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var clickedSymbolRepository: ClickedSymbolRepository
+
+    @Inject
+    lateinit var deleteKeyFlickDeleteTargetRepository: DeleteKeyFlickDeleteTargetRepository
 
     @Inject
     lateinit var clipboardHistoryRepository: ClipboardHistoryRepository
@@ -526,6 +530,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var clipboardPreviewVisibility: Boolean? = true
     private var clipboardPreviewTapToDelete: Boolean? = false
     private var isDeleteLeftFlickPreference: Boolean? = true
+    @Volatile
+    private var deleteKeyFlickTargetChars: Set<Char> = DEFAULT_DELETE_KEY_FLICK_TARGETS
     private var tenkeyHeightPreferenceValue: Int? = 280
     private var tenkeyWidthPreferenceValue: Int? = 100
     private var qwertyHeightPreferenceValue: Int? = 280
@@ -753,6 +759,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         private const val ZENZ_RERANK_TOP_K = 4
         private const val ZENZ_RERANK_ALPHA = 0.7f
         private const val ZENZ_RERANK_BETA = 0.3f
+        private val DEFAULT_DELETE_KEY_FLICK_TARGETS =
+            DeleteKeyFlickDeleteTargetRepository.DEFAULT_TARGET_SYMBOLS.toSet()
+        private val ALWAYS_DELETE_KEY_FLICK_BOUNDARIES = setOf(' ', '　', '\n')
 
         private val passwordTypes = setOf(
             InputTypeForIME.TextWebPassword,
@@ -961,6 +970,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 gemmaTranslationManager.initializeIfEnabled(forceReload = false)
             }
         }
+        observeDeleteKeyFlickTargets()
 
         suggestionAdapter = SuggestionAdapter().apply {
             onListUpdated = {
@@ -1039,6 +1049,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     override fun onEvent(eventType: Int, params: Bundle?) {}
                 })
+            }
+        }
+    }
+
+    private fun observeDeleteKeyFlickTargets() {
+        ioScope.launch {
+            deleteKeyFlickDeleteTargetRepository.ensureDefaultTargets()
+            deleteKeyFlickDeleteTargetRepository.observeAll().collect { targets ->
+                deleteKeyFlickTargetChars = targets.mapNotNull { target ->
+                    target.symbol.singleOrNull()
+                }.toSet()
             }
         }
     }
@@ -13751,9 +13772,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)?.toString() ?: ""
             if (textBeforeCursor.isEmpty()) return
 
-            val charsToDelete = setOf(
-                '。', '、', '！', '？', '「', '」', '『', '』', ',', '.', '!', "?", ' ', '　', '\n'
-            )
+            val charsToDelete = deleteKeyFlickTargetChars + ALWAYS_DELETE_KEY_FLICK_BOUNDARIES
 
             var deleteCount = 0
 

@@ -522,6 +522,15 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<Preference>("delete_key_flick_left_targets_preference")?.apply {
+            setOnPreferenceClickListener {
+                findNavController().navigate(
+                    R.id.action_navigation_setting_to_deleteKeyFlickTargetsFragment
+                )
+                true
+            }
+        }
+
         val keyboardSettingPreference = findPreference<Preference>("keyboard_screen_preference")
 
         keyboardSettingPreference?.setOnPreferenceClickListener {

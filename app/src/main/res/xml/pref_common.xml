@@ -223,6 +223,12 @@
             android:summary="@string/delete_key_left_summary"
             android:title="@string/delete_key_left_flick_title" />
 
+        <Preference
+            android:dependency="delete_key_flick_left_preference"
+            android:key="delete_key_flick_left_targets_preference"
+            android:summary="@string/delete_key_flick_targets_summary"
+            android:title="@string/delete_key_flick_targets_title" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="undo_enable_preference"
