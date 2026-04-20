@@ -76,6 +76,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_gemmaPromptTemplateFragment"
             app:destination="@id/gemmaPromptTemplateFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_deleteKeyFlickTargetsFragment"
+            app:destination="@id/deleteKeyFlickTargetsFragment" />
     </fragment>
 
     <fragment
@@ -228,5 +231,10 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.gemma.ui.GemmaPromptTemplateFragment"
         android:label="@string/gemma_prompt_template_fragment_title"
         tools:layout="@layout/fragment_gemma_prompt_template" />
+    <fragment
+        android:id="@+id/deleteKeyFlickTargetsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.delete_key_flick.ui.DeleteKeyFlickTargetsFragment"
+        android:label="@string/delete_key_flick_targets_fragment_title"
+        tools:layout="@layout/fragment_delete_key_flick_targets" />
 
 </navigation>
