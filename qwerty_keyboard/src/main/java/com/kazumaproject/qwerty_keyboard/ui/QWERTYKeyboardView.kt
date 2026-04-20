@@ -34,6 +34,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.util.isNotEmpty
 import androidx.core.util.size
+import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
@@ -86,7 +87,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var keySideMarginDp: Float = 4f
     private var keyTextSizeSp: Float = 20f
     private var specialKeyTextSizeSp: Float = 12f
-    private var specialKeyIconSizeDp: Float = 24f
+    private var specialKeyIconSizeDp: Float = 18f
+    private var pendingSpecialIconSizeRefresh = false
 
     /** Map each active pointer ID → the View (key) it’s currently “pressing” (or null). */
     private val pointerButtonMap = SparseArray<View?>()
@@ -626,7 +628,21 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         updateAllKeyTextSizes()
         updateSpecialKeyTextSizes()
-        updateSpecialKeyIconSizes()
+        refreshSpecialKeyIconSizesWhenLaidOut()
+    }
+
+    private fun refreshSpecialKeyIconSizesWhenLaidOut() {
+        if (isLaidOut) {
+            pendingSpecialIconSizeRefresh = false
+            updateSpecialKeyIconSizes()
+            return
+        }
+        if (pendingSpecialIconSizeRefresh) return
+        pendingSpecialIconSizeRefresh = true
+        doOnLayout {
+            pendingSpecialIconSizeRefresh = false
+            updateSpecialKeyIconSizes()
+        }
     }
 
     private fun updateAllKeyTextSizes() {
@@ -1363,6 +1379,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         binding.apply {
             keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
         }
+        refreshSpecialKeyIconSizesWhenLaidOut()
     }
 
     fun resetQWERTYKeyboard(enterKyeText: String) {
@@ -1373,6 +1390,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
             keyReturn.text = enterKyeText
         }
+        refreshSpecialKeyIconSizesWhenLaidOut()
     }
 
     fun setRomajiKeyboard(enterKeyText: String) {
@@ -1383,6 +1401,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_japanese)
             keyReturn.text = enterKeyText
         }
+        refreshSpecialKeyIconSizesWhenLaidOut()
     }
 
     private fun handlePointerDown(event: MotionEvent, pointerIndex: Int) {
