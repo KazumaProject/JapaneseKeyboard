@@ -79,6 +79,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_deleteKeyFlickTargetsFragment"
             app:destination="@id/deleteKeyFlickTargetsFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_cursorMoveTargetPairsFragment"
+            app:destination="@id/cursorMoveTargetPairsFragment" />
     </fragment>
 
     <fragment
@@ -236,5 +239,10 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.delete_key_flick.ui.DeleteKeyFlickTargetsFragment"
         android:label="@string/delete_key_flick_targets_fragment_title"
         tools:layout="@layout/fragment_delete_key_flick_targets" />
+    <fragment
+        android:id="@+id/cursorMoveTargetPairsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.cursor_move_targets.ui.CursorMoveTargetPairsFragment"
+        android:label="@string/cursor_move_target_pairs_fragment_title"
+        tools:layout="@layout/fragment_cursor_move_target_pairs" />
 
 </navigation>
