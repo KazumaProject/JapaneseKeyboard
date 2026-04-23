@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
@@ -76,12 +75,12 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("gemma_translation_model_preference")?.setOnPreferenceClickListener {
-            openGemmaModelLauncher.launch(arrayOf("*/*"))
+            openGemmaModelLauncher.launch(arrayOf("application/octet-stream", "*/*"))
             true
         }
 
         findPreference<Preference>("gemma_prompt_template_management_preference")?.setOnPreferenceClickListener {
-            findNavController().navigate(
+            navigateSafely(
                 R.id.action_navigation_setting_to_gemmaPromptTemplateFragment
             )
             true

@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.gemma
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.provider.OpenableColumns
 import androidx.annotation.StringRes
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -16,6 +17,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import java.io.File
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -142,25 +144,44 @@ class GemmaTranslationManager @Inject constructor(
     suspend fun importModelFromUri(uri: Uri): String = withContext(Dispatchers.IO) {
         val modelFile = canonicalModelFile()
         val tempFile = File(modelFile.parentFile, "${modelFile.name}.${System.currentTimeMillis()}.tmp")
+        val backupFile = if (modelFile.exists()) {
+            File(modelFile.parentFile, "${modelFile.name}.bak")
+        } else {
+            null
+        }
 
-        context.contentResolver.openInputStream(uri).use { input ->
-            requireNotNull(input) { "Could not open Gemma model uri: $uri" }
-            tempFile.outputStream().use { output ->
-                input.copyTo(output)
+        runCatching {
+            validateImportedModelDisplayName(resolveDisplayName(uri))
+
+            context.contentResolver.openInputStream(uri).use { input ->
+                requireNotNull(input) { "Could not open Gemma model uri: $uri" }
+                tempFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
             }
-        }
+            validateModelFile(tempFile)
 
-        if (modelFile.exists()) {
-            modelFile.delete()
-        }
-        if (!tempFile.renameTo(modelFile)) {
+            if (backupFile != null) {
+                backupFile.delete()
+                if (!modelFile.renameTo(backupFile)) {
+                    throw IllegalStateException("Failed to back up the current Gemma model.")
+                }
+            }
+
+            if (!tempFile.renameTo(modelFile)) {
+                throw IllegalStateException("Failed to move imported Gemma model into place.")
+            }
+
+            backupFile?.delete()
+            appPreference.gemma_translation_model_path_preference = modelFile.absolutePath
+            lastErrorMessage = null
+            modelFile.absolutePath
+        }.onFailure {
             tempFile.delete()
-            throw IllegalStateException("Failed to move imported Gemma model into place.")
-        }
-
-        appPreference.gemma_translation_model_path_preference = modelFile.absolutePath
-        lastErrorMessage = null
-        modelFile.absolutePath
+            if (backupFile != null && backupFile.exists()) {
+                backupFile.renameTo(modelFile)
+            }
+        }.getOrThrow()
     }
 
     suspend fun initializeIfEnabled(forceReload: Boolean = false): Boolean {
@@ -182,6 +203,14 @@ class GemmaTranslationManager @Inject constructor(
             if (modelFile == null) {
                 closeLocked()
                 lastErrorMessage = context.getString(R.string.gemma_translation_model_summary_missing)
+                return@withLock false
+            }
+
+            runCatching {
+                validateModelFile(modelFile)
+            }.onFailure { error ->
+                closeLocked()
+                lastErrorMessage = error.toUserVisibleMessage()
                 return@withLock false
             }
 
@@ -462,6 +491,77 @@ class GemmaTranslationManager @Inject constructor(
         return File(modelDirectory(), modelFileName())
     }
 
+    private fun resolveDisplayName(uri: Uri): String? {
+        return context.contentResolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null
+        )?.use { cursor ->
+            if (!cursor.moveToFirst()) return@use null
+            val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+            if (index < 0) return@use null
+            cursor.getString(index)
+        } ?: uri.lastPathSegment
+    }
+
+    private fun validateImportedModelDisplayName(displayName: String?) {
+        val name = displayName?.trim().orEmpty()
+        if (name.isEmpty()) return
+
+        val normalized = name.lowercase(Locale.ROOT)
+        require(normalized.endsWith(MODEL_EXTENSION)) {
+            context.getString(R.string.gemma_translation_model_import_invalid_extension)
+        }
+        require(normalized.contains(SUPPORTED_MODEL_NAME_FRAGMENT)) {
+            context.getString(R.string.gemma_translation_model_import_invalid_name)
+        }
+    }
+
+    private fun validateModelFile(modelFile: File) {
+        require(modelFile.exists()) {
+            context.getString(R.string.gemma_translation_model_summary_missing)
+        }
+        require(modelFile.isFile) {
+            context.getString(R.string.gemma_translation_model_import_invalid_name)
+        }
+        require(modelFile.length() >= MIN_MODEL_BYTES) {
+            context.getString(R.string.gemma_translation_model_import_invalid_size)
+        }
+
+        val header = modelFile.inputStream().use { input ->
+            input.readNBytes(MODEL_HEADER_SAMPLE_SIZE)
+        }
+        require(header.isNotEmpty()) {
+            context.getString(R.string.gemma_translation_model_import_invalid_size)
+        }
+        require(!looksLikeUnsupportedModelFile(header)) {
+            context.getString(R.string.gemma_translation_model_import_invalid_content)
+        }
+    }
+
+    private fun looksLikeUnsupportedModelFile(header: ByteArray): Boolean {
+        return startsWith(header, ZIP_HEADER) ||
+            startsWith(header, PDF_HEADER) ||
+            startsWith(header, GGUF_HEADER) ||
+            startsWithAscii(header, "{") ||
+            startsWithAscii(header, "[") ||
+            startsWithAscii(header, "\"") ||
+            startsWithAscii(header, "<") ||
+            startsWithAscii(header, "version https://git-lfs.github.com/spec")
+    }
+
+    private fun startsWith(header: ByteArray, prefix: ByteArray): Boolean {
+        if (header.size < prefix.size) return false
+        return prefix.indices.all { index -> header[index] == prefix[index] }
+    }
+
+    private fun startsWithAscii(header: ByteArray, prefix: String): Boolean {
+        val value = header.toString(Charsets.US_ASCII).trimStart()
+        return value.startsWith(prefix)
+    }
+
     private fun modelDirectory(): File {
         val externalBase = context.getExternalFilesDir(null)
         val baseDir = externalBase ?: context.filesDir
@@ -578,6 +678,13 @@ class GemmaTranslationManager @Inject constructor(
         const val SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE = 43
         const val SELECTION_PROMPT_ACTION_CANDIDATE_TYPE = 44
         private const val MODEL_DIR_NAME = "models"
+        private const val MODEL_EXTENSION = ".litertlm"
+        private const val SUPPORTED_MODEL_NAME_FRAGMENT = "gemma-4-e2b-it"
+        private const val MIN_MODEL_BYTES = 1_048_576L
+        private const val MODEL_HEADER_SAMPLE_SIZE = 64
+        private val ZIP_HEADER = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
+        private val PDF_HEADER = "%PDF".toByteArray(Charsets.US_ASCII)
+        private val GGUF_HEADER = "GGUF".toByteArray(Charsets.US_ASCII)
         private const val BACKEND_CLASS = "com.google.ai.edge.litertlm.Backend"
         private const val BACKEND_CPU_CLASS = "com.google.ai.edge.litertlm.Backend\$CPU"
         private const val BACKEND_GPU_ARTISAN_CLASS =
