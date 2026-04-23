@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
-import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -17,7 +16,7 @@ class KanaPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("kana_keyboard_letter_size_preference")
         letterSizePreference?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(R.id.action_navigation_setting_to_tenKeyCandidateLetterSizeFragment)
+                navigateSafely(R.id.action_navigation_setting_to_tenKeyCandidateLetterSizeFragment)
                 true
             }
         }
