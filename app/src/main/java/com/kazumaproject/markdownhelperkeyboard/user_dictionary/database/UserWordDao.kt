@@ -36,6 +36,11 @@ interface UserWordDao {
     @Query("SELECT * FROM user_word WHERE reading = :reading")
     suspend fun searchByReadingExactSuspend(reading: String): List<UserWord>
 
+    @Query(
+        "SELECT EXISTS(SELECT 1 FROM user_word WHERE word = :word AND reading = :reading AND id != :excludeId)"
+    )
+    suspend fun existsDuplicateForUpdate(word: String, reading: String, excludeId: Int): Boolean
+
     /**
      * 【新規】指定した文字列（inputStr）を前方部分に含む読みを、ユーザー辞書から全て検索する（Common Prefix Search）。
      * 例: inputStrが "とうきょうと" の場合、DBにある "とう" や "とうきょう" がヒットする。

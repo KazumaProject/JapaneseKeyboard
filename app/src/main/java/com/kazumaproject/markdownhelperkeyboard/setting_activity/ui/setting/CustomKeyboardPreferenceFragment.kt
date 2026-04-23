@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
-import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -18,7 +17,7 @@ class CustomKeyboardPreferenceFragment : PreferenceFragmentCompat() {
 
         customKeyboardSizePreference?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(R.id.action_navigation_setting_to_flickKeyboardSizeSettingsFragment)
+                navigateSafely(R.id.action_navigation_setting_to_flickKeyboardSizeSettingsFragment)
                 true
             }
         }

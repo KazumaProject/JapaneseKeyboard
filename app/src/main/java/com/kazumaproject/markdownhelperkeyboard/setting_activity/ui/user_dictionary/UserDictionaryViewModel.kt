@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.user_dictionary
 
 import android.app.Application
+import android.database.sqlite.SQLiteConstraintException
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.viewModelScope
@@ -48,6 +49,19 @@ class UserDictionaryViewModel @Inject constructor(
         repository.update(userWord)
     }
 
+    suspend fun updateSafely(userWord: UserWord): UserWordUpdateResult {
+        if (repository.existsDuplicateForUpdate(userWord.word, userWord.reading, userWord.id)) {
+            return UserWordUpdateResult.Duplicate
+        }
+
+        return try {
+            repository.update(userWord)
+            UserWordUpdateResult.Updated
+        } catch (_: SQLiteConstraintException) {
+            UserWordUpdateResult.Duplicate
+        }
+    }
+
     fun delete(id: Int) = viewModelScope.launch {
         repository.delete(id)
     }
@@ -66,3 +80,7 @@ class UserDictionaryViewModel @Inject constructor(
     }
 }
 
+enum class UserWordUpdateResult {
+    Updated,
+    Duplicate,
+}

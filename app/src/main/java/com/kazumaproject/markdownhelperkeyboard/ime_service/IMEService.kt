@@ -157,7 +157,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTY
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTYReturnTextInJp
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiraganaWithSymbols
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
@@ -526,6 +525,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
     private var switchQWERTYPassword: Boolean? = false
+    private var landscapeForceQwertyPreference: Boolean? = false
+    private var landscapeForceQwertyRomajiPreference: Boolean? = false
     private var shortcutTollbarVisibility: Boolean? = false
     private var clipboardPreviewVisibility: Boolean? = true
     private var clipboardPreviewTapToDelete: Boolean? = false
@@ -1177,6 +1178,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         conversionKeySwipePreference = preferences.conversionKeySwipePreference
         _keyboardFloatingMode.update { preferences.isKeyboardFloatingMode }
         switchQWERTYPassword = preferences.switchQWERTYPassword
+        landscapeForceQwertyPreference = preferences.landscapeForceQwertyPreference
+        landscapeForceQwertyRomajiPreference = preferences.landscapeForceQwertyRomajiPreference
         shortcutTollbarVisibility = preferences.shortcutTollbarVisibility
         isDeleteLeftFlickPreference = preferences.isDeleteLeftFlickPreference
         zenzDebounceTimePreference = preferences.zenzDebounceTimePreference
@@ -1929,6 +1932,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyEnableFlickDownPreference = null
         qwertyEnableZenkakuSpacePreference = null
         switchQWERTYPassword = null
+        landscapeForceQwertyPreference = null
+        landscapeForceQwertyRomajiPreference = null
         shortcutTollbarVisibility = null
         clipboardPreviewVisibility = null
         clipboardPreviewTapToDelete = null
@@ -2194,6 +2199,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setupKeyboardView()
             currentNightMode = newNightMode
         }
+
+        refreshKeyboardForCurrentOrientation()
 
     }
 
@@ -5566,9 +5573,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun showKeyboard(type: KeyboardType) {
         hideAllKeyboards()
-        Timber.d("showKeyboard called: $type")
+        val resolvedType = resolveKeyboardTypeForCurrentOrientation(type)
+        Timber.d("showKeyboard called: requested=$type resolved=$resolvedType")
         mainLayoutBinding?.apply {
-            when (type) {
+            when (resolvedType) {
                 KeyboardType.TENKEY -> {
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         if (isTablet == true && tabletGojuonLayoutPreference == true) {
@@ -7438,6 +7446,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentKeyboardOrder = 0
             showKeyboard(keyboardOrder[0])
         }
+    }
+
+    private fun isLandscapeOrientation(): Boolean {
+        return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    }
+
+    private fun resolveKeyboardTypeForCurrentOrientation(requestedType: KeyboardType): KeyboardType {
+        if (landscapeForceQwertyPreference != true || !isLandscapeOrientation()) {
+            return requestedType
+        }
+        return if (landscapeForceQwertyRomajiPreference == true) {
+            KeyboardType.ROMAJI
+        } else {
+            KeyboardType.QWERTY
+        }
+    }
+
+    private fun refreshKeyboardForCurrentOrientation() {
+        val mainView = mainLayoutBinding ?: return
+        if (keyboardOrder.isEmpty()) return
+        val requestedType = keyboardOrder.getOrNull(currentKeyboardOrder)
+            ?: keyboardOrder.getOrNull(lastSavedKeyboardPosition ?: -1)
+            ?: keyboardOrder.firstOrNull()
+            ?: return
+        showKeyboard(requestedType)
+        setKeyboardSizeSwitchKeyboard(mainView)
     }
 
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
@@ -11857,7 +11891,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         if (handleBunsetsuCandidateClick(candidate, currentInputMode, position)) {
-            setCusrorLeftAfterCloseBracket(candidate.string)
+            setCursorLeftAfterCommitPair(candidate.string)
             restoreKeyboardFromFullSuggestionViewIfNeeded()
             return
         }
@@ -11870,7 +11904,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 currentInputMode = currentInputMode,
                 position = position
             )
-            setCusrorLeftAfterCloseBracket(candidate.string)
+            setCursorLeftAfterCommitPair(candidate.string)
         }
         resetFlagsSuggestionClick()
     }
@@ -14302,13 +14336,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                         } else {
                             finishInputEnterKey()
-                            setCusrorLeftAfterCloseBracket(insertString)
+                            setCursorLeftAfterCommitPair(insertString)
                         }
                     }
 
                     else -> {
                         finishInputEnterKey()
-                        setCusrorLeftAfterCloseBracket(insertString)
+                        setCursorLeftAfterCommitPair(insertString)
                     }
                 }
             }
@@ -14320,13 +14354,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                         } else {
                             finishInputEnterKey()
-                            setCusrorLeftAfterCloseBracket(insertString)
+                            setCursorLeftAfterCommitPair(insertString)
                         }
                     }
 
                     else -> {
                         finishInputEnterKey()
-                        setCusrorLeftAfterCloseBracket(insertString)
+                        setCursorLeftAfterCommitPair(insertString)
                     }
                 }
             }
@@ -14348,20 +14382,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                     } else {
                         finishInputEnterKey()
-                        setCusrorLeftAfterCloseBracket(insertString)
+                        setCursorLeftAfterCommitPair(insertString)
                     }
                 }
 
                 else -> {
                     finishInputEnterKey()
-                    setCusrorLeftAfterCloseBracket(insertString)
+                    setCursorLeftAfterCommitPair(insertString)
                 }
             }
         }
     }
 
-    private fun setCusrorLeftAfterCloseBracket(insertString: String) {
-        if (insertString.isOnlyTwoCharBracketPair()) {
+    private fun setCursorLeftAfterCommitPair(insertString: String) {
+        if (appPreference.cursor_move_after_commit_target_pairs_preference.contains(insertString)) {
             moveCursorLeftBySelection()
         }
     }
