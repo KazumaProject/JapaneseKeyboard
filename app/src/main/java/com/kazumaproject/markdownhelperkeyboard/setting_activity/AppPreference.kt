@@ -194,6 +194,30 @@ object AppPreference {
     private val CUSTOM_THEME_BORDER_COLOR = Pair("theme_custom_border_color", Color.BLACK)
 
     private val DELETE_KEY_LEFT_FLICK_PREFERENCE = Pair("delete_key_flick_left_preference", true)
+    private val DEFAULT_CURSOR_MOVE_AFTER_COMMIT_TARGET_PAIRS = listOf(
+        "()",
+        "[]",
+        "{}",
+        "<>",
+        "「」",
+        "（）",
+        "［］",
+        "｛｝",
+        "＜＞",
+        "〔〕",
+        "〘〙",
+        "〚〛",
+        "〈〉",
+        "《》",
+        "«»",
+        "‹›",
+        "『』",
+        "【】"
+    )
+    private val CURSOR_MOVE_AFTER_COMMIT_TARGET_PAIRS_PREFERENCE = Pair(
+        "cursor_move_after_commit_target_pairs_preference",
+        gson.toJson(DEFAULT_CURSOR_MOVE_AFTER_COMMIT_TARGET_PAIRS)
+    )
 
     private val KEY_LETTER_SIZE = Pair("key_letter_size_preference", 0.0f)
     private val TENKEY_KEY_WIDTH_SCALE_PERCENT =
@@ -402,6 +426,11 @@ object AppPreference {
         val editor = edit()
         operation(editor)
         editor.apply()
+    }
+
+    private fun normalizeCursorMoveTargetPair(value: String): String? {
+        val trimmed = value.trim()
+        return if (trimmed.length == 2) trimmed else null
     }
 
     var clipboard_history_enable: Boolean?
@@ -1129,6 +1158,34 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(DELETE_KEY_LEFT_FLICK_PREFERENCE.first, value)
         }
+
+    var cursor_move_after_commit_target_pairs_preference: List<String>
+        get() {
+            val raw = preferences.getString(
+                CURSOR_MOVE_AFTER_COMMIT_TARGET_PAIRS_PREFERENCE.first,
+                CURSOR_MOVE_AFTER_COMMIT_TARGET_PAIRS_PREFERENCE.second
+            ) ?: CURSOR_MOVE_AFTER_COMMIT_TARGET_PAIRS_PREFERENCE.second
+
+            val parsed = runCatching {
+                gson.fromJson<List<String>>(
+                    raw,
+                    object : TypeToken<List<String>>() {}.type
+                )
+            }.getOrNull()
+
+            return parsed?.mapNotNull(::normalizeCursorMoveTargetPair)?.distinct()
+                ?: DEFAULT_CURSOR_MOVE_AFTER_COMMIT_TARGET_PAIRS
+        }
+        set(value) = preferences.edit {
+            val normalized = value.mapNotNull(::normalizeCursorMoveTargetPair).distinct()
+            it.putString(
+                CURSOR_MOVE_AFTER_COMMIT_TARGET_PAIRS_PREFERENCE.first,
+                gson.toJson(normalized)
+            )
+        }
+
+    fun defaultCursorMoveAfterCommitTargetPairs(): List<String> =
+        DEFAULT_CURSOR_MOVE_AFTER_COMMIT_TARGET_PAIRS
 
     var key_letter_size: Float?
         get() = preferences.getFloat(KEY_LETTER_SIZE.first, KEY_LETTER_SIZE.second)

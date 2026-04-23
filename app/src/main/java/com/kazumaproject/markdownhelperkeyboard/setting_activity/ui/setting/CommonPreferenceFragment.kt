@@ -530,6 +530,16 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<Preference>("cursor_move_after_commit_target_pairs_preference")?.apply {
+            updateCursorMoveTargetPairsSummary()
+            setOnPreferenceClickListener {
+                navigateSafely(
+                    R.id.action_navigation_setting_to_cursorMoveTargetPairsFragment
+                )
+                true
+            }
+        }
+
         val keyboardSettingPreference = findPreference<Preference>("keyboard_screen_preference")
 
         keyboardSettingPreference?.setOnPreferenceClickListener {
@@ -562,6 +572,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
     override fun onResume() {
         super.onResume()
         syncDefaultEmojiSkinTonePreference()
+        updateCursorMoveTargetPairsSummary()
     }
 
     // リーク対策: RecyclerViewの参照を断ち切る
@@ -581,6 +592,15 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
                 value = savedSkinTone
             }
         }
+    }
+
+    private fun updateCursorMoveTargetPairsSummary() {
+        findPreference<Preference>("cursor_move_after_commit_target_pairs_preference")?.summary =
+            getString(
+                R.string.cursor_move_target_pairs_summary_current,
+                appPreference.cursor_move_after_commit_target_pairs_preference.joinToString(" ")
+                    .ifBlank { getString(R.string.keyboard_background_image_not_set) }
+            )
     }
 
     @SuppressLint("CheckResult")

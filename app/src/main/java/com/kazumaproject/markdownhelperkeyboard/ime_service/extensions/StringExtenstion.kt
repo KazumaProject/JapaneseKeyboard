@@ -231,17 +231,6 @@ fun getLastCharacterAsString(ic: InputConnection): String {
     return beforeText.substring(start, end)
 }
 
-private val validTwoCharBrackets = setOf(
-    "()", "[]", "{}", "<>", "「」",
-    "（）", "［］", "｛｝", "＜＞",
-    "〔〕", "〘〙", "〘〙", "〚〛", "〈〉",
-    "《》", "«»", "‹›", "『』", "【】"
-)
-
-fun String.isOnlyTwoCharBracketPair(): Boolean {
-    return validTwoCharBrackets.contains(this)
-}
-
 fun String.replaceJapaneseCharactersForEnglish(): String {
     return this.replace('あ', '@')
         .replace('い', '#')
