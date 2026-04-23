@@ -526,6 +526,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var mozcUTNeologd: Boolean? = false
     private var mozcUTWeb: Boolean? = false
     private var switchQWERTYPassword: Boolean? = false
+    private var landscapeForceQwertyPreference: Boolean? = false
+    private var landscapeForceQwertyRomajiPreference: Boolean? = false
     private var shortcutTollbarVisibility: Boolean? = false
     private var clipboardPreviewVisibility: Boolean? = true
     private var clipboardPreviewTapToDelete: Boolean? = false
@@ -1177,6 +1179,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         conversionKeySwipePreference = preferences.conversionKeySwipePreference
         _keyboardFloatingMode.update { preferences.isKeyboardFloatingMode }
         switchQWERTYPassword = preferences.switchQWERTYPassword
+        landscapeForceQwertyPreference = preferences.landscapeForceQwertyPreference
+        landscapeForceQwertyRomajiPreference = preferences.landscapeForceQwertyRomajiPreference
         shortcutTollbarVisibility = preferences.shortcutTollbarVisibility
         isDeleteLeftFlickPreference = preferences.isDeleteLeftFlickPreference
         zenzDebounceTimePreference = preferences.zenzDebounceTimePreference
@@ -1929,6 +1933,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyEnableFlickDownPreference = null
         qwertyEnableZenkakuSpacePreference = null
         switchQWERTYPassword = null
+        landscapeForceQwertyPreference = null
+        landscapeForceQwertyRomajiPreference = null
         shortcutTollbarVisibility = null
         clipboardPreviewVisibility = null
         clipboardPreviewTapToDelete = null
@@ -2194,6 +2200,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setupKeyboardView()
             currentNightMode = newNightMode
         }
+
+        refreshKeyboardForCurrentOrientation()
 
     }
 
@@ -5566,9 +5574,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun showKeyboard(type: KeyboardType) {
         hideAllKeyboards()
-        Timber.d("showKeyboard called: $type")
+        val resolvedType = resolveKeyboardTypeForCurrentOrientation(type)
+        Timber.d("showKeyboard called: requested=$type resolved=$resolvedType")
         mainLayoutBinding?.apply {
-            when (type) {
+            when (resolvedType) {
                 KeyboardType.TENKEY -> {
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         if (isTablet == true && tabletGojuonLayoutPreference == true) {
@@ -7438,6 +7447,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentKeyboardOrder = 0
             showKeyboard(keyboardOrder[0])
         }
+    }
+
+    private fun isLandscapeOrientation(): Boolean {
+        return resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    }
+
+    private fun resolveKeyboardTypeForCurrentOrientation(requestedType: KeyboardType): KeyboardType {
+        if (landscapeForceQwertyPreference != true || !isLandscapeOrientation()) {
+            return requestedType
+        }
+        return if (landscapeForceQwertyRomajiPreference == true) {
+            KeyboardType.ROMAJI
+        } else {
+            KeyboardType.QWERTY
+        }
+    }
+
+    private fun refreshKeyboardForCurrentOrientation() {
+        val mainView = mainLayoutBinding ?: return
+        if (keyboardOrder.isEmpty()) return
+        val requestedType = keyboardOrder.getOrNull(currentKeyboardOrder)
+            ?: keyboardOrder.getOrNull(lastSavedKeyboardPosition ?: -1)
+            ?: keyboardOrder.firstOrNull()
+            ?: return
+        showKeyboard(requestedType)
+        setKeyboardSizeSwitchKeyboard(mainView)
     }
 
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {

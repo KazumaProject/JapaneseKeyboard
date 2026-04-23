@@ -44,6 +44,20 @@
             android:summary="@string/keyboard_screen_preference_summary"
             android:title="@string/keyboard_screen_landscape_size_preference_title" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="landscape_force_qwerty_preference"
+            android:title="@string/landscape_force_qwerty_preference_title"
+            app:summary="@string/landscape_force_qwerty_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="landscape_force_qwerty_preference"
+            android:key="landscape_force_qwerty_romaji_preference"
+            android:summaryOff="@string/landscape_force_qwerty_romaji_preference_summary_off"
+            android:summaryOn="@string/landscape_force_qwerty_romaji_preference_summary_on"
+            android:title="@string/landscape_force_qwerty_romaji_preference_title" />
+
         <Preference
             android:icon="@drawable/outline_border_color_24"
             android:key="keyboard_key_letter_size_fragment_preference"

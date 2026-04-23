@@ -19,6 +19,11 @@
     <string name="keyboard_screen_size_preference_title">位置とサイズの設定(縦画面)</string>
     <string name="keyboard_screen_landscape_size_preference_title">位置とサイズの設定(横画面)</string>
     <string name="keyboard_screen_preference_summary">キーボードの位置とサイズの設定を変更できます</string>
+    <string name="landscape_force_qwerty_preference_title">横画面では常に QWERTY に切り替える</string>
+    <string name="landscape_force_qwerty_preference_summary">端末が横画面のとき、一時的に QWERTY キーボードへ切り替えます。</string>
+    <string name="landscape_force_qwerty_romaji_preference_title">横画面 QWERTY の入力モード</string>
+    <string name="landscape_force_qwerty_romaji_preference_summary_on">横画面で QWERTY に切り替えるとき、日本語モードでローマ字変換を有効にします。</string>
+    <string name="landscape_force_qwerty_romaji_preference_summary_off">横画面で QWERTY に切り替えるとき、英語モードにします。</string>
     <string name="keyboard_height_fix_specific_device_title">端末別の高さ補正</string>
     <string name="keyboard_height_fix_specific_device_summary_on">一部端末向けの高さ補正は有効です（例：Galaxy）。</string>
     <string name="keyboard_height_fix_specific_device_summary_off">一部端末向けの高さ補正は無効です。</string>

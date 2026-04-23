@@ -18,6 +18,11 @@
     <string name="category_title_keyboard">Keyboard</string>
     <string name="keyboard_screen_size_preference_title">Position and Size</string>
     <string name="keyboard_screen_preference_summary">Adjust keyboard position and size</string>
+    <string name="landscape_force_qwerty_preference_title">Always use QWERTY in landscape</string>
+    <string name="landscape_force_qwerty_preference_summary">When the device is in landscape, temporarily switch to a QWERTY keyboard.</string>
+    <string name="landscape_force_qwerty_romaji_preference_title">Landscape QWERTY input mode</string>
+    <string name="landscape_force_qwerty_romaji_preference_summary_on">Use Japanese mode with Romaji conversion when switching to QWERTY in landscape.</string>
+    <string name="landscape_force_qwerty_romaji_preference_summary_off">Use English mode when switching to QWERTY in landscape.</string>
     <string name="keyboard_height_fix_specific_device_title">Height Adjustment by Device</string>
     <string name="keyboard_height_fix_specific_device_summary_on">Height adjustment for certain devices is enabled (e.g., Galaxy).</string>
     <string name="keyboard_height_fix_specific_device_summary_off">Height adjustment for certain devices is disabled.</string>
