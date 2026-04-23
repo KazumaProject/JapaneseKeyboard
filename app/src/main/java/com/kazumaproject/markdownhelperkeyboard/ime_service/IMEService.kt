@@ -157,7 +157,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTY
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTYReturnTextInJp
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiraganaWithSymbols
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isOnlyTwoCharBracketPair
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
@@ -11892,7 +11891,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         if (handleBunsetsuCandidateClick(candidate, currentInputMode, position)) {
-            setCusrorLeftAfterCloseBracket(candidate.string)
+            setCursorLeftAfterCommitPair(candidate.string)
             restoreKeyboardFromFullSuggestionViewIfNeeded()
             return
         }
@@ -11905,7 +11904,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 currentInputMode = currentInputMode,
                 position = position
             )
-            setCusrorLeftAfterCloseBracket(candidate.string)
+            setCursorLeftAfterCommitPair(candidate.string)
         }
         resetFlagsSuggestionClick()
     }
@@ -14337,13 +14336,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                         } else {
                             finishInputEnterKey()
-                            setCusrorLeftAfterCloseBracket(insertString)
+                            setCursorLeftAfterCommitPair(insertString)
                         }
                     }
 
                     else -> {
                         finishInputEnterKey()
-                        setCusrorLeftAfterCloseBracket(insertString)
+                        setCursorLeftAfterCommitPair(insertString)
                     }
                 }
             }
@@ -14355,13 +14354,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                         } else {
                             finishInputEnterKey()
-                            setCusrorLeftAfterCloseBracket(insertString)
+                            setCursorLeftAfterCommitPair(insertString)
                         }
                     }
 
                     else -> {
                         finishInputEnterKey()
-                        setCusrorLeftAfterCloseBracket(insertString)
+                        setCursorLeftAfterCommitPair(insertString)
                     }
                 }
             }
@@ -14383,20 +14382,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         handleHenkanModeEnterKey(suggestions, inputMode, insertString)
                     } else {
                         finishInputEnterKey()
-                        setCusrorLeftAfterCloseBracket(insertString)
+                        setCursorLeftAfterCommitPair(insertString)
                     }
                 }
 
                 else -> {
                     finishInputEnterKey()
-                    setCusrorLeftAfterCloseBracket(insertString)
+                    setCursorLeftAfterCommitPair(insertString)
                 }
             }
         }
     }
 
-    private fun setCusrorLeftAfterCloseBracket(insertString: String) {
-        if (insertString.isOnlyTwoCharBracketPair()) {
+    private fun setCursorLeftAfterCommitPair(insertString: String) {
+        if (appPreference.cursor_move_after_commit_target_pairs_preference.contains(insertString)) {
             moveCursorLeftBySelection()
         }
     }
