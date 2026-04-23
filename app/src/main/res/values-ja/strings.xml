@@ -188,6 +188,10 @@
     <string name="gemma_translation_model_summary_unsupported_abi">Gemma 翻訳は 64bit 端末（arm64-v8a / x86_64）が必要です。</string>
     <string name="gemma_translation_model_import_success">Gemma 4 モデルを読み込みました。</string>
     <string name="gemma_translation_model_import_failed">Gemma 4 モデルの読み込みに失敗しました。</string>
+    <string name="gemma_translation_model_import_invalid_extension">`.litertlm` のモデルファイルを選択してください。</string>
+    <string name="gemma_translation_model_import_invalid_name">Gemma 4 E2B の LiteRT-LM モデルファイルを選択してください。</string>
+    <string name="gemma_translation_model_import_invalid_size">選択したファイルは Gemma モデルとして小さすぎます。</string>
+    <string name="gemma_translation_model_import_invalid_content">選択したファイルは有効な LiteRT-LM モデルに見えません。</string>
     <string name="gemma_translation_language_english">英語</string>
     <string name="gemma_translation_language_japanese">日本語</string>
     <string name="gemma_translation_language_korean">韓国語</string>
@@ -339,6 +343,7 @@
     <string name="there_is_no_template_to_export">エクスポートする定型文がありません。</string>
     <string name="there_is_no_word_to_export">エクスポートする単語がありません。</string>
     <string name="is_registered_string"> を登録しました。</string>
+    <string name="user_dictionary_duplicate_entry">この単語と読みはすでに登録されています。</string>
     <string name="updated_string">更新しました。</string>
     <string name="deleted_string">削除しました。</string>
     <string name="score_string">スコア</string>

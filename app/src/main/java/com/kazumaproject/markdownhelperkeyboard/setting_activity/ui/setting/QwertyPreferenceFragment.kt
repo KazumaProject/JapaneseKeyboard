@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
 import android.view.View
-import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -21,7 +20,7 @@ class QwertyPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("qwerty_button_size_preference")
         qwertyButtonMarginPreference?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(R.id.action_navigation_setting_to_qwertyMarginSettingFragment)
+                navigateSafely(R.id.action_navigation_setting_to_qwertyMarginSettingFragment)
                 true
             }
         }

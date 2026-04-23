@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
-import androidx.navigation.fragment.findNavController
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
@@ -68,14 +67,14 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
 
         sumireKeyboardSizePreference?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(R.id.action_navigation_setting_to_flickKeyboardSizeSettingsFragment)
+                navigateSafely(R.id.action_navigation_setting_to_flickKeyboardSizeSettingsFragment)
                 true
             }
         }
 
         sumireCustomAnglePreference?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(R.id.action_navigation_setting_to_circularFlickSettingsFragment)
+                navigateSafely(R.id.action_navigation_setting_to_circularFlickSettingsFragment)
                 true
             }
         }

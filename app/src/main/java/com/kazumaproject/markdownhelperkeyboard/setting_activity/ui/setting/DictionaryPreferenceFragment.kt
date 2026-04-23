@@ -2,7 +2,6 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
@@ -46,21 +45,21 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
         }
 
         findPreference<Preference>("ng_word_preference")?.setOnPreferenceClickListener {
-            findNavController().navigate(
+            navigateSafely(
                 R.id.action_navigation_setting_to_ngWordFragment
             )
             true
         }
 
         findPreference<Preference>("system_user_dictionary_builder_preference")?.setOnPreferenceClickListener {
-            findNavController().navigate(
+            navigateSafely(
                 R.id.action_navigation_setting_to_systemUserDictionaryBuilderFragment
             )
             true
         }
 
         findPreference<Preference>("n_gram_rule_preference")?.setOnPreferenceClickListener {
-            findNavController().navigate(
+            navigateSafely(
                 R.id.action_navigation_setting_to_ngramRuleFragment
             )
             true

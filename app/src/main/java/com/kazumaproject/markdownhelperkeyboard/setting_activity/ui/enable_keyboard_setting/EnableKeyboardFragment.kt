@@ -10,9 +10,9 @@ import android.view.inputmethod.InputMethodManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentEnableKeyboardBinding
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navigateSafely
 import dagger.hilt.android.AndroidEntryPoint
 import java.util.Calendar // 1. Calendarをインポート
 
@@ -64,7 +64,7 @@ class EnableKeyboardFragment : Fragment() {
 
         isKeyboardBoardEnabled()?.let {
             if (it) {
-                findNavController().navigate(R.id.navigation_setting)
+                navigateSafely(R.id.navigation_setting)
             }
         }
 

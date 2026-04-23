@@ -10,7 +10,6 @@ import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
 import com.google.android.material.tabs.TabLayoutMediator
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSettingMainBinding
@@ -113,7 +112,7 @@ class SettingMainFragment : Fragment() {
             }
             binding.settingProgressBar.isVisible = false
             if (enabled == false) {
-                findNavController().navigate(
+                navigateSafely(
                     R.id.action_navigation_setting_to_enableKeyboardFragment
                 )
             }
