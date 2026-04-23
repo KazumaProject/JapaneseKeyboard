@@ -42,6 +42,10 @@ object AppPreference {
     private val MOZCUT_WEB = Pair("mozc_ut_web_preference", false)
 
     private val SWITCH_QWERTY_PASSWORD = Pair("switch_qwerty_keyboard_password_preference", false)
+    private val LANDSCAPE_FORCE_QWERTY_PREFERENCE =
+        Pair("landscape_force_qwerty_preference", false)
+    private val LANDSCAPE_FORCE_QWERTY_ROMAJI_PREFERENCE =
+        Pair("landscape_force_qwerty_romaji_preference", false)
 
     private val TENKEY_SWITCH_QWERTY_PREFERENCE =
         Pair("tenkey_kana_english_qwerty_preference", false)
@@ -494,6 +498,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SWITCH_QWERTY_PASSWORD.first, value ?: false)
+        }
+
+    var landscape_force_qwerty_preference: Boolean
+        get() = preferences.getBoolean(
+            LANDSCAPE_FORCE_QWERTY_PREFERENCE.first,
+            LANDSCAPE_FORCE_QWERTY_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(LANDSCAPE_FORCE_QWERTY_PREFERENCE.first, value)
+        }
+
+    var landscape_force_qwerty_romaji_preference: Boolean
+        get() = preferences.getBoolean(
+            LANDSCAPE_FORCE_QWERTY_ROMAJI_PREFERENCE.first,
+            LANDSCAPE_FORCE_QWERTY_ROMAJI_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(LANDSCAPE_FORCE_QWERTY_ROMAJI_PREFERENCE.first, value)
         }
 
     var qwerty_enable_flick_up_preference: Boolean?
