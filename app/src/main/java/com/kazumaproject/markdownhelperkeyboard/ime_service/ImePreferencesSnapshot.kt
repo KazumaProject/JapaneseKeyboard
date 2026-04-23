@@ -66,6 +66,8 @@ data class ImePreferencesSnapshot(
     val bunsetsuCursorMove: Boolean,
     val conversionKeySwipePreference: Boolean,
     val switchQWERTYPassword: Boolean,
+    val landscapeForceQwertyPreference: Boolean,
+    val landscapeForceQwertyRomajiPreference: Boolean,
     val shortcutTollbarVisibility: Boolean,
     val isDeleteLeftFlickPreference: Boolean,
     val zenzDebounceTimePreference: Int,
@@ -229,6 +231,10 @@ data class ImePreferencesSnapshot(
                 conversionKeySwipePreference =
                     appPreference.conversion_key_swipe_cursor_move_preference,
                 switchQWERTYPassword = appPreference.switch_qwerty_password ?: false,
+                landscapeForceQwertyPreference =
+                    appPreference.landscape_force_qwerty_preference,
+                landscapeForceQwertyRomajiPreference =
+                    appPreference.landscape_force_qwerty_romaji_preference,
                 shortcutTollbarVisibility =
                     appPreference.shortcut_toolbar_visibility_preference,
                 isDeleteLeftFlickPreference = appPreference.delete_key_left_flick_preference,

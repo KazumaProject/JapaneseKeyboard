@@ -24,6 +24,7 @@ import androidx.core.view.isGone
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -32,6 +33,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_dictionary.adapter.UserWord
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.FileOutputStream
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class UserDictionaryFragment : Fragment() {
@@ -441,9 +443,25 @@ class UserDictionaryFragment : Fragment() {
                         posIndex = updatedPosIndex,
                         posScore = updatedPosScore
                     )
-                    viewModel.update(updatedUserWord)
-                    Toast.makeText(context, getString(R.string.updated_string), Toast.LENGTH_SHORT)
-                        .show()
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        when (viewModel.updateSafely(updatedUserWord)) {
+                            UserWordUpdateResult.Updated -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.updated_string),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            UserWordUpdateResult.Duplicate -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.user_dictionary_duplicate_entry),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
                 }
             }
             .setNegativeButton(getString(R.string.cancel_string), null)

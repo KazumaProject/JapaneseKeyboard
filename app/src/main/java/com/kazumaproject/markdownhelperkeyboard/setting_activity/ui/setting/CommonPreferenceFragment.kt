@@ -13,7 +13,6 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
 import androidx.core.os.LocaleListCompat
-import androidx.navigation.fragment.findNavController
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
@@ -292,7 +291,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
         val customRomajiPreference = findPreference<Preference>("custom_romaji_preference")
         customRomajiPreference?.setOnPreferenceClickListener {
-            findNavController().navigate(
+            navigateSafely(
                 R.id.action_navigation_setting_to_romajiMapFragment
             )
             true
@@ -303,7 +302,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         )
         shortCutToolbarItemSettingPreference?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(
+                navigateSafely(
                     R.id.action_navigation_setting_to_shortcutSettingFragment
                 )
                 true
@@ -314,7 +313,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("candidate_tab_order_preference")
         candidateTabOrderPreference?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(
+                navigateSafely(
                     R.id.action_navigation_setting_to_candidateTabOrderFragment
                 )
                 true
@@ -325,7 +324,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("keyboard_selection_preference")
 
         keyboardSelectionPreference?.setOnPreferenceClickListener {
-            findNavController().navigate(
+            navigateSafely(
                 R.id.action_navigation_setting_to_keyboardSelectionFragment
             )
             true
@@ -335,7 +334,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("keyboard_key_letter_size_fragment_preference")
 
         keyboardLetterSizePreference?.setOnPreferenceClickListener {
-            findNavController().navigate(
+            navigateSafely(
                 R.id.action_navigation_setting_to_keyCandidateLetterSizeFragment
             )
             true
@@ -390,7 +389,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("keyboard_screen_landscape_preference")
 
         keyboardSizeLandscapePreference?.setOnPreferenceClickListener {
-            findNavController().navigate(
+            navigateSafely(
                 R.id.action_navigation_setting_to_keyboardSizeLandscapeFragment
             )
             true
@@ -400,7 +399,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("candidate_view_height_setting_fragment_preference")
         candidateHeightFragmentSetting?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(
+                navigateSafely(
                     R.id.action_navigation_setting_to_candidateViewHeightSettingFragment
                 )
                 true
@@ -411,7 +410,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("candidate_view_height_landscape_setting_fragment_preference")
         candidateHeightLandscapeFragmentSetting?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(
+                navigateSafely(
                     R.id.action_navigation_setting_to_candidateHeightLandscapeSettingFragment
                 )
                 true
@@ -422,7 +421,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("clipboard_history_preference_fragment")
         clipBoardHistoryPreference?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(
+                navigateSafely(
                     R.id.action_navigation_setting_to_clipboardHistoryFragment
                 )
                 true
@@ -524,8 +523,18 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
         findPreference<Preference>("delete_key_flick_left_targets_preference")?.apply {
             setOnPreferenceClickListener {
-                findNavController().navigate(
+                navigateSafely(
                     R.id.action_navigation_setting_to_deleteKeyFlickTargetsFragment
+                )
+                true
+            }
+        }
+
+        findPreference<Preference>("cursor_move_after_commit_target_pairs_preference")?.apply {
+            updateCursorMoveTargetPairsSummary()
+            setOnPreferenceClickListener {
+                navigateSafely(
+                    R.id.action_navigation_setting_to_cursorMoveTargetPairsFragment
                 )
                 true
             }
@@ -534,7 +543,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         val keyboardSettingPreference = findPreference<Preference>("keyboard_screen_preference")
 
         keyboardSettingPreference?.setOnPreferenceClickListener {
-            findNavController().navigate(
+            navigateSafely(
                 R.id.action_navigation_setting_to_keyboardSettingFragment
             )
             true
@@ -543,7 +552,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         val openSourcePreference = findPreference<Preference>("preference_open_source")
 
         openSourcePreference?.setOnPreferenceClickListener {
-            findNavController().navigate(
+            navigateSafely(
                 R.id.action_navigation_dashboard_to_openSourceFragment
             )
             true
@@ -563,6 +572,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
     override fun onResume() {
         super.onResume()
         syncDefaultEmojiSkinTonePreference()
+        updateCursorMoveTargetPairsSummary()
     }
 
     // リーク対策: RecyclerViewの参照を断ち切る
@@ -582,6 +592,15 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
                 value = savedSkinTone
             }
         }
+    }
+
+    private fun updateCursorMoveTargetPairsSummary() {
+        findPreference<Preference>("cursor_move_after_commit_target_pairs_preference")?.summary =
+            getString(
+                R.string.cursor_move_target_pairs_summary_current,
+                appPreference.cursor_move_after_commit_target_pairs_preference.joinToString(" ")
+                    .ifBlank { getString(R.string.keyboard_background_image_not_set) }
+            )
     }
 
     @SuppressLint("CheckResult")
