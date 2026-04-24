@@ -43,7 +43,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     enum class HelperIcon {
-        UNDO, REDO, PASTE
+        UNDO, REDO, RECONVERT, PASTE
     }
 
     // Listeners for clicks
@@ -62,6 +62,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var clipboardBitmap: Bitmap? = null // ★追加: Bitmapを保持するフィールド
     private var undoText: String = ""
     private var redoText: String = ""
+    private var isReconvertEnabled: Boolean = false
 
     // Internal flags to track enable/disable state
     private var isUndoEnabled: Boolean = false
@@ -145,6 +146,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     fun setRedoEnabled(enabled: Boolean) {
         isRedoEnabled = enabled
+        if (suggestions.isEmpty()) {
+            notifyItemChanged(0)
+        }
+    }
+
+    fun setReconvertEnabled(enabled: Boolean) {
+        isReconvertEnabled = enabled
         if (suggestions.isEmpty()) {
             notifyItemChanged(0)
         }
@@ -246,6 +254,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val undoIcon: MaterialTextView? = itemView.findViewById(R.id.undo_icon)
         val redoIconParent: ConstraintLayout? = itemView.findViewById(R.id.redo_icon_parent)
         val redoIcon: MaterialTextView? = itemView.findViewById(R.id.redo_icon)
+        val reconvertIconParent: ConstraintLayout? = itemView.findViewById(R.id.reconvert_icon_parent)
+        val reconvertIcon: MaterialTextView? = itemView.findViewById(R.id.reconvert_icon)
+        val reconvertImageView: ImageView? = itemView.findViewById(R.id.reconvert_image_view)
         val pasteIconParent: ConstraintLayout? = itemView.findViewById(R.id.paste_icon_patent)
         val pasteIcon: ImageView? = itemView.findViewById(R.id.paste_icon)
         val clipboardPreviewText: MaterialTextView? =
@@ -365,6 +376,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 isFocusable = false
                 text = redoText
             }
+            reconvertIcon?.apply {
+                isVisible = isReconvertEnabled
+                isFocusable = false
+            }
             pasteIconParent?.apply {
                 isEnabled = isPasteEnabled
                 visibility = if (isPasteEnabled) View.VISIBLE else View.INVISIBLE
@@ -395,6 +410,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             clipboardPreviewText?.text = if (clipboardBitmap == null) clipboardText else ""
             candidateEmptyDrawableTextColor?.let {
                 clipboardPreviewText?.setTextColor(it)
+            }
+            candidateEmptyDrawableTextColor?.let { color ->
+                reconvertIcon?.setTextColor(color)
+                reconvertImageView?.setColorFilter(color)
             }
 
             undoIconParent?.apply {
@@ -438,6 +457,27 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 setOnLongClickListener {
                     onItemHelperIconLongClickListener?.invoke(HelperIcon.REDO)
                     true
+                }
+            }
+
+            reconvertIconParent?.apply {
+                if (isDynamicColorEnable) {
+                    if (this.context.isDarkThemeOn()) {
+                        setBackgroundResource(
+                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                        )
+                    } else {
+                        setBackgroundResource(
+                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                        )
+                    }
+                }
+                isVisible = isReconvertEnabled
+                setOnClickListener {
+                    onItemHelperIconClickListener?.invoke(HelperIcon.RECONVERT)
+                }
+                setOnLongClickListener {
+                    false
                 }
             }
 

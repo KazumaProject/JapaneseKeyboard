@@ -272,6 +272,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val activeSplitPatternIndex: Int = 0
     )
 
+    private data class ReconversionEntry(
+        val committedText: String,
+        val reading: String
+    )
+
+    private data class BunsetsuReconversionDraft(
+        val originalReading: String,
+        val committedText: String = ""
+    )
+
     private sealed class SelectedTextGemmaAction {
         object Translate : SelectedTextGemmaAction()
         data class CustomPrompt(val template: GemmaPromptTemplate) : SelectedTextGemmaAction()
@@ -378,9 +388,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isKeyboardRounded: Boolean? = false
     private var bunsetsuSeparation: Boolean? = false
     private var bunsetsuCursorMove: Boolean? = false
+    private var reconversionEnabledPreference: Boolean = false
     private var bunsetsuPositionList: List<Int>? = emptyList()
     private var bunsetsuSplitPatterns: List<List<Int>> = emptyList()
     private var bunsetsuConversionSession: BunsetsuConversionSession? = null
+    private var pendingReconversionEntry: ReconversionEntry? = null
+    private var bunsetsuReconversionDraft: BunsetsuReconversionDraft? = null
+    private var preserveBunsetsuReconversionDraftOnNextProcessInput = false
+    private var isRestoringReconversionInput = false
     private var henkanPressedWithBunsetsuDetect: Boolean = false
     private var conversionKeySwipePreference: Boolean? = false
 
@@ -1175,6 +1190,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isKeyboardRounded = preferences.isKeyboardRounded
         bunsetsuSeparation = preferences.bunsetsuSeparation
         bunsetsuCursorMove = preferences.bunsetsuCursorMove
+        reconversionEnabledPreference = preferences.reconversionEnabled
         conversionKeySwipePreference = preferences.conversionKeySwipePreference
         _keyboardFloatingMode.update { preferences.isKeyboardFloatingMode }
         switchQWERTYPassword = preferences.switchQWERTYPassword
@@ -1289,6 +1305,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.enableTypoCorrectionQwertyEnglishKeyboardPreference
 
         enableGemmaTranslationPreference = preferences.enableGemmaTranslationPreference
+        refreshReconversionUi()
     }
 
     private fun initializeMozcDictionaries(preferences: ImePreferencesSnapshot) {
@@ -2034,10 +2051,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isKeyboardRounded = null
         bunsetsuSeparation = null
         bunsetsuCursorMove = null
+        reconversionEnabledPreference = false
         conversionKeySwipePreference = null
         bunsetsuPositionList = null
         bunsetsuSplitPatterns = emptyList()
         bunsetsuConversionSession = null
+        pendingReconversionEntry = null
+        bunsetsuReconversionDraft = null
+        preserveBunsetsuReconversionDraftOnNextProcessInput = false
+        isRestoringReconversionInput = false
 
         enableGemmaTranslationPreference = null
 
@@ -2737,6 +2759,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 endBatchEdit()
             }
         }
+        refreshReconversionUi()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -8788,6 +8811,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         scope.launch {
             _suggestionFlag.emit(CandidateShowFlag.Idle)
         }
+        refreshReconversionUi()
     }
 
     private fun updateBunsetsuSpaceKeyIfNeeded(
@@ -9476,8 +9500,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         if (string.isNotEmpty()) {
             hasConvertedKatakana = false
+            if (isRestoringReconversionInput) {
+                isRestoringReconversionInput = false
+            } else {
+                clearPendingReconversionEntry()
+            }
+            if (preserveBunsetsuReconversionDraftOnNextProcessInput) {
+                preserveBunsetsuReconversionDraftOnNextProcessInput = false
+            } else {
+                clearBunsetsuReconversionDraft()
+            }
             if (suppressSuggestions) {
                 setComposingText(string, 1)
+                refreshReconversionUi()
                 return
             }
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
@@ -9580,6 +9615,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
         }
+        refreshReconversionUi()
     }
 
     /**
@@ -10255,6 +10291,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val session = bunsetsuConversionSession ?: return false
         val commitString = session.segments.joinToString(separator = "") { it.displayText }
         val tailText = session.tailText
+        if (tailText.isEmpty()) {
+            finalizeBunsetsuReconversion(
+                originalReading = session.rawInput,
+                committedText = commitString
+            )
+        }
         beginBatchEdit()
         try {
             setComposingText("", 0)
@@ -10826,6 +10868,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         redoLastHistoryEntry()
                     }
 
+                    SuggestionAdapter.HelperIcon.RECONVERT -> {
+                        performPendingReconversion()
+                    }
+
                     SuggestionAdapter.HelperIcon.PASTE -> {
                         Timber.d("SuggestionAdapter.HelperIcon.PASTE: clicked")
                         pasteAction()
@@ -10850,6 +10896,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (!isEditHistoryEnabled()) return@setOnItemHelperIconLongClickListener
                         redoAllHistoryEntries()
                     }
+
+                    SuggestionAdapter.HelperIcon.RECONVERT -> Unit
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
                         clipboardUtil.clearClipboard()
@@ -10899,6 +10947,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         redoLastHistoryEntry()
                     }
 
+                    SuggestionAdapter.HelperIcon.RECONVERT -> {
+                        performPendingReconversion()
+                    }
+
                     SuggestionAdapter.HelperIcon.PASTE -> {
                         pasteAction()
                     }
@@ -10915,6 +10967,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (!isEditHistoryEnabled()) return@setOnItemHelperIconLongClickListener
                         redoAllHistoryEntries()
                     }
+
+                    SuggestionAdapter.HelperIcon.RECONVERT -> Unit
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
                         clipboardUtil.clearClipboard()
@@ -11983,6 +12037,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ""
         }
 
+        if (nextInput.isEmpty()) {
+            finalizeBunsetsuReconversion(
+                originalReading = session.rawInput,
+                committedText = committedText
+            )
+        } else {
+            appendBunsetsuReconversionDraft(
+                originalReading = session.rawInput,
+                committedText = committedText
+            )
+            preserveBunsetsuReconversionDraftOnNextProcessInput = true
+        }
+
         beginBatchEdit()
         try {
             setComposingText("", 0)
@@ -12078,6 +12145,156 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateSideKeyPreviousDrawableForHistory()
         if (!hasUndoHistory && !hasRedoHistory) {
             updateClipboardPreview()
+        }
+        refreshReconversionUi()
+    }
+
+    private fun canPerformPendingReconversion(entry: ReconversionEntry): Boolean {
+        if (entry.committedText.isEmpty() || entry.reading.isEmpty()) return false
+        val textBeforeCursor = currentInputConnection
+            ?.getTextBeforeCursor(entry.committedText.length, 0)
+            ?.toString()
+            .orEmpty()
+        return textBeforeCursor.endsWith(entry.committedText)
+    }
+
+    private fun shouldShowReconversionButton(): Boolean {
+        if (!reconversionEnabledPreference) return false
+        if (inputString.value.isNotEmpty() || stringInTail.get().isNotEmpty()) return false
+        if (isHenkan.get()) return false
+        val entry = pendingReconversionEntry ?: return false
+        return canPerformPendingReconversion(entry)
+    }
+
+    private fun refreshReconversionUi() {
+        val isEnabled = shouldShowReconversionButton()
+        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setReconvertEnabled(isEnabled)
+        }
+    }
+
+    private fun clearPendingReconversionEntry() {
+        pendingReconversionEntry = null
+        refreshReconversionUi()
+    }
+
+    private fun clearBunsetsuReconversionDraft() {
+        bunsetsuReconversionDraft = null
+        preserveBunsetsuReconversionDraftOnNextProcessInput = false
+    }
+
+    private fun rememberCommittedTextForReconversion(
+        reading: String,
+        committedText: String
+    ) {
+        if (reading.isEmpty() || committedText.isEmpty()) return
+        val draft = bunsetsuReconversionDraft
+        pendingReconversionEntry = if (draft != null) {
+            ReconversionEntry(
+                committedText = draft.committedText + committedText,
+                reading = draft.originalReading
+            )
+        } else {
+            ReconversionEntry(
+                committedText = committedText,
+                reading = reading
+            )
+        }
+        clearBunsetsuReconversionDraft()
+        refreshReconversionUi()
+    }
+
+    private fun appendBunsetsuReconversionDraft(
+        originalReading: String,
+        committedText: String
+    ) {
+        if (originalReading.isEmpty() || committedText.isEmpty()) return
+        val existing = bunsetsuReconversionDraft
+        bunsetsuReconversionDraft = if (existing != null) {
+            existing.copy(committedText = existing.committedText + committedText)
+        } else {
+            BunsetsuReconversionDraft(
+                originalReading = originalReading,
+                committedText = committedText
+            )
+        }
+    }
+
+    private fun finalizeBunsetsuReconversion(
+        originalReading: String,
+        committedText: String
+    ) {
+        if (committedText.isEmpty()) return
+        val draft = bunsetsuReconversionDraft
+        val entry = if (draft != null) {
+            ReconversionEntry(
+                committedText = draft.committedText + committedText,
+                reading = draft.originalReading
+            )
+        } else {
+            ReconversionEntry(
+                committedText = committedText,
+                reading = originalReading
+            )
+        }
+        pendingReconversionEntry = entry
+        clearBunsetsuReconversionDraft()
+        refreshReconversionUi()
+    }
+
+    private fun restoreReadingToPreEdit(
+        reading: String,
+        mainView: MainLayoutBinding
+    ) {
+        if (reading.isEmpty()) return
+        resetHistoryInteractionFlags()
+        stringInTail.set("")
+        _inputString.update { reading }
+        val spannable = createSpannableWithTail(reading)
+        setComposingTextPreEdit(
+            inputString = reading,
+            spannableString = spannable,
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputCompositionBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.char_in_edit_color)
+            } else {
+                getColor(com.kazumaproject.core.R.color.char_in_edit_color)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputCompositionTextColor
+            } else {
+                null
+            }
+        )
+        isRestoringReconversionInput = true
+        scope.launch {
+            processInputString(reading, mainView)
+        }
+    }
+
+    private fun performPendingReconversion() {
+        val entry = pendingReconversionEntry ?: return
+        val mainView = mainLayoutBinding ?: return
+        if (!canPerformPendingReconversion(entry)) {
+            clearPendingReconversionEntry()
+            return
+        }
+
+        var restored = false
+        suppressedSelectionCleanupCount += 1
+        beginBatchEdit()
+        try {
+            if (!deleteCommittedTextBeforeCursor(entry.committedText)) {
+                return
+            }
+            restoreReadingToPreEdit(entry.reading, mainView)
+            restored = true
+        } finally {
+            endBatchEdit()
+        }
+
+        if (restored) {
+            clearPendingReconversionEntry()
         }
     }
 
@@ -12318,6 +12535,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun commitAndClearInput(candidateString: String) {
+        val reading = inputString.value
+        if (reading.isNotEmpty() && stringInTail.get().isEmpty()) {
+            rememberCommittedTextForReconversion(
+                reading = reading,
+                committedText = candidateString
+            )
+        }
         _inputString.update { "" }
         commitText(candidateString, 1)
     }
@@ -12451,6 +12675,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         // 2) 共通の後処理（入力クリア＋コミット）
+        if (insertString.isNotEmpty() && stringInTail.get().isEmpty()) {
+            rememberCommittedTextForReconversion(
+                reading = insertString,
+                committedText = candidate.string
+            )
+        }
         _inputString.update { "" }
         commitText(candidate.string, 1)
     }
@@ -12482,6 +12712,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         // 共通後処理
+        if (insertString.isNotEmpty() && stringInTail.get().isEmpty()) {
+            rememberCommittedTextForReconversion(
+                reading = insertString,
+                committedText = candidate.string
+            )
+        }
         _inputString.update { "" }
         commitText(candidate.string, 1)
     }
@@ -12527,6 +12763,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentSpaceKeyIndex = 0
         currentKatakanaKeyIndex = 0
         currentDakutenKeyIndex = 0
+        clearPendingReconversionEntry()
+        clearBunsetsuReconversionDraft()
         bunsetsuPositionList = emptyList()
         bunsetsuSplitPatterns = emptyList()
         clearBunsetsuConversionSession()
@@ -12564,6 +12802,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearSuggestionStateAfterCommit()
         }
         _inputString.update { "" }
+        refreshReconversionUi()
     }
 
     private fun restoreKeyboardFromFullSuggestionViewIfNeeded() {
@@ -12588,6 +12827,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFirstClickHasStringTail = false
         clearBunsetsuConversionSession()
         _inputString.update { "" }
+        refreshReconversionUi()
     }
 
     private fun resetFlagsEnterKeyNotHenkan() {
@@ -12605,6 +12845,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFirstClickHasStringTail = false
         clearBunsetsuConversionSession()
         learnMultiple.stop()
+        refreshReconversionUi()
     }
 
     private fun resetFlagsKeySpace() {
