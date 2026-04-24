@@ -64,6 +64,9 @@
     <string name="flick_input_only_summary_off">Enable toggle input</string>
     <string name="undo_enable_title">Undo Function</string>
     <string name="undo_enable_summary">Disable the undo function</string>
+    <string name="reconversion_preference_title">Restore Reading</string>
+    <string name="reconversion_preference_summary">Adds a \"Restore Reading\" button that restores the last committed reading to pre-edit.</string>
+    <string name="reconversion_symbol">Restore Reading</string>
     <string name="space_key_title">Use half-width space</string>
     <string name="space_key_summary">Always use half-width space regardless of the input mode</string>
     <string name="live_conversion_title">Live Conversion β</string>
