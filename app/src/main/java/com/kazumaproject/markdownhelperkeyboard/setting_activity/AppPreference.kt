@@ -261,6 +261,9 @@ object AppPreference {
     private val BUNSETSU_CURSOR_MOVE_PREFERENCE =
         Pair("conversion_bunsetsu_cursor_move_preference", false)
 
+    private val RECONVERSION_PREFERENCE =
+        Pair("reconversion_preference", false)
+
     private val CONVERSION_KEY_SWIPE_CURSOR_MOVE_PREFERENCE =
         Pair("conversion_key_swipe_cursor_move_preference", false)
 
@@ -1344,6 +1347,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(BUNSETSU_CURSOR_MOVE_PREFERENCE.first, value)
+        }
+
+    var reconversion_preference: Boolean
+        get() = preferences.getBoolean(
+            RECONVERSION_PREFERENCE.first,
+            RECONVERSION_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(RECONVERSION_PREFERENCE.first, value)
         }
 
     var conversion_key_swipe_cursor_move_preference: Boolean
