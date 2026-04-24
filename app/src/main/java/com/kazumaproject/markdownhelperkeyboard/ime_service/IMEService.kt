@@ -1231,7 +1231,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.enableShowLastShownKeyboardInRestart
         lastSavedKeyboardPosition = preferences.lastSavedKeyboardPosition
         if (preferences.enableShowLastShownKeyboardInRestart) {
-            currentKeyboardOrder = preferences.lastSavedKeyboardPosition
+            currentKeyboardOrder =
+                normalizeKeyboardOrderIndex(preferences.lastSavedKeyboardPosition)
+            if (currentKeyboardOrder != preferences.lastSavedKeyboardPosition) {
+                lastSavedKeyboardPosition = currentKeyboardOrder
+                appPreference.save_last_used_keyboard_position_preference = currentKeyboardOrder
+            }
+        } else {
+            currentKeyboardOrder = 0
         }
         tenkeyHeightLandScapePreferenceValue = preferences.tenkeyHeightLandscapePreferenceValue
         tenkeyWidthLandScapePreferenceValue = preferences.tenkeyWidthLandscapePreferenceValue
@@ -1827,7 +1834,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 candidateTabLayout.visibility = View.INVISIBLE
                 shortcutToolbarRecyclerview.isVisible = shortcutTollbarVisibility == true
-                if (tenkeyQWERTYSwitchNumber == true && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish && keyboardOrder[currentKeyboardOrder] == KeyboardType.TENKEY) {
+                val currentKeyboardType = keyboardOrder.getOrNull(currentKeyboardOrder)
+                if (tenkeyQWERTYSwitchNumber == true && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish && currentKeyboardType == KeyboardType.TENKEY) {
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                     mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
                     mainView.qwertyView.setRomajiMode(false)
@@ -7458,13 +7466,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("resetKeyboard called for showKeyboard")
         if (keyboardOrder.isEmpty()) return
         if (enableShowLastShownKeyboardInRestart == true) {
-            if ((lastSavedKeyboardPosition ?: 0) >= keyboardOrder.size) {
-                lastSavedKeyboardPosition = 0
-                showKeyboard(keyboardOrder.first())
-            } else {
-                showKeyboard(keyboardOrder[lastSavedKeyboardPosition ?: 0])
+            val resolvedIndex = normalizeKeyboardOrderIndex(lastSavedKeyboardPosition ?: 0)
+            if (resolvedIndex != (lastSavedKeyboardPosition ?: 0)) {
+                lastSavedKeyboardPosition = resolvedIndex
+                appPreference.save_last_used_keyboard_position_preference = resolvedIndex
             }
-
+            currentKeyboardOrder = resolvedIndex
+            showKeyboard(keyboardOrder[resolvedIndex])
         } else {
             currentKeyboardOrder = 0
             showKeyboard(keyboardOrder[0])
@@ -7495,6 +7503,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ?: return
         showKeyboard(requestedType)
         setKeyboardSizeSwitchKeyboard(mainView)
+    }
+
+    private fun normalizeKeyboardOrderIndex(index: Int): Int {
+        if (keyboardOrder.isEmpty()) return 0
+        return index.takeIf { it in keyboardOrder.indices } ?: 0
     }
 
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
