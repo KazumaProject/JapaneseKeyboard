@@ -66,6 +66,9 @@
     <string name="flick_input_only_summary_off">トグル入力を有効にします</string>
     <string name="undo_enable_title">元に戻す機能</string>
     <string name="undo_enable_summary">元に戻す機能を無効にする</string>
+    <string name="reconversion_preference_title">読みを戻す</string>
+    <string name="reconversion_preference_summary">候補が空のときに「読みを戻す」ボタンを表示し、直前に確定した読みを PreEdit に戻せます。</string>
+    <string name="reconversion_symbol">読みを戻す</string>
     <string name="space_key_title">半角スペースの利用</string>
     <string name="space_key_summary">入力モードに関わらず、常に半角スペースを使用します。</string>
     <string name="live_conversion_title">ライブ変換 β</string>

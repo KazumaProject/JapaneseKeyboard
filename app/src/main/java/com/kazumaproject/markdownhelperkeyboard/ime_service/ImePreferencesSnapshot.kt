@@ -64,6 +64,7 @@ data class ImePreferencesSnapshot(
     val isKeyboardRounded: Boolean,
     val bunsetsuSeparation: Boolean,
     val bunsetsuCursorMove: Boolean,
+    val reconversionEnabled: Boolean,
     val conversionKeySwipePreference: Boolean,
     val switchQWERTYPassword: Boolean,
     val landscapeForceQwertyPreference: Boolean,
@@ -228,6 +229,7 @@ data class ImePreferencesSnapshot(
                 isKeyboardRounded = appPreference.keyboard_corner_round_preference,
                 bunsetsuSeparation = appPreference.bunsetsu_separation_preference,
                 bunsetsuCursorMove = appPreference.bunsetsu_cursor_move_preference,
+                reconversionEnabled = appPreference.reconversion_preference,
                 conversionKeySwipePreference =
                     appPreference.conversion_key_swipe_cursor_move_preference,
                 switchQWERTYPassword = appPreference.switch_qwerty_password ?: false,

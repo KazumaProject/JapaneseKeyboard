@@ -127,6 +127,12 @@
             app:summary="@string/conversion_bunsetsu_cursor_move_summary" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="reconversion_preference"
+            android:title="@string/reconversion_preference_title"
+            app:summary="@string/reconversion_preference_summary" />
+
+        <SwitchPreferenceCompat
             android:key="shortcut_toolbar_visibility_preference"
             android:title="@string/shortcut_toolbar_title"
             app:defaultValue="false"
