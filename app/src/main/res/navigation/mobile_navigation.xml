@@ -82,6 +82,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_cursorMoveTargetPairsFragment"
             app:destination="@id/cursorMoveTargetPairsFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_physicalKeyboardShortcutListFragment"
+            app:destination="@id/physicalKeyboardShortcutListFragment" />
     </fragment>
 
     <fragment
@@ -244,5 +247,22 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.cursor_move_targets.ui.CursorMoveTargetPairsFragment"
         android:label="@string/cursor_move_target_pairs_fragment_title"
         tools:layout="@layout/fragment_cursor_move_target_pairs" />
+    <fragment
+        android:id="@+id/physicalKeyboardShortcutListFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.ui.PhysicalKeyboardShortcutListFragment"
+        android:label="@string/physical_keyboard_shortcut_list_title">
+        <action
+            android:id="@+id/action_physicalKeyboardShortcutListFragment_to_physicalKeyboardShortcutEditFragment"
+            app:destination="@id/physicalKeyboardShortcutEditFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/physicalKeyboardShortcutEditFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.ui.PhysicalKeyboardShortcutEditFragment"
+        android:label="@string/physical_keyboard_shortcut_edit_title">
+        <argument
+            android:name="shortcutId"
+            android:defaultValue="0L"
+            app:argType="long" />
+    </fragment>
 
 </navigation>
