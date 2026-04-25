@@ -489,6 +489,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _inputString = MutableStateFlow("")
     private val inputString = _inputString.asStateFlow()
     private var stringInTail = AtomicReference("")
+    private var functionKeyConversionSource: String? = null
     private var suppressedSelectionCleanupCount = 0
     private val _dakutenPressed = MutableStateFlow(false)
     private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>(replay = 0)
@@ -2761,6 +2762,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("onUpdateSelection hasTail && caretTop: $tail $caretTop")
                 stringInTail.set("")
                 if (_inputString.value.isNotEmpty()) {
+                    clearFunctionKeyConversionSource()
                     _inputString.update { "" }
                     beginBatchEdit()
                     setComposingText("", 0)
@@ -2782,6 +2784,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // No tail but still holding input → cleanup
             _inputString.value.isNotEmpty() -> {
                 Timber.d("onUpdateSelection _inputString.value.isNotEmpty() : $tail")
+                clearFunctionKeyConversionSource()
                 _inputString.update { "" }
                 beginBatchEdit()
                 setComposingText("", 0)
@@ -2816,6 +2819,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val e = event ?: return super.onKeyDown(keyCode, event)
         val insertString = inputString.value
         val suggestions = listAdapter.currentList
+
+        if (!isFunctionKeyConversionKeyCode(keyCode)) {
+            clearFunctionKeyConversionSource()
+        }
 
         handleBunsetsuPhysicalNavigation(keyCode, e)?.let {
             return it
@@ -2976,6 +2983,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun isFunctionKeyConversionKeyCode(keyCode: Int): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_F6,
+            KeyEvent.KEYCODE_F7,
+            KeyEvent.KEYCODE_F8,
+            KeyEvent.KEYCODE_F9,
+            KeyEvent.KEYCODE_F10 -> true
+
+            else -> false
+        }
+    }
+
+    private fun clearFunctionKeyConversionSource() {
+        functionKeyConversionSource = null
+    }
+
+    private fun getFunctionKeyConversionSource(insertString: String): String {
+        val currentSource = functionKeyConversionSource
+        if (currentSource != null) {
+            return currentSource
+        }
+        functionKeyConversionSource = insertString
+        return insertString
+    }
+
     private fun handlePhysicalKeyboardShortcut(
         keyCode: Int,
         event: KeyEvent,
@@ -3113,56 +3145,59 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun handleConversionKeyFloating(keyCode: Int, insertString: String): Boolean {
         if (insertString.isEmpty()) {
+            clearFunctionKeyConversionSource()
             return true // 元のロジックでは何もせず true を返していた
         }
 
-        Timber.d("onKeyDown: F-Key $keyCode Pressed $insertString")
+        val sourceString = getFunctionKeyConversionSource(insertString)
+
+        Timber.d("onKeyDown: F-Key $keyCode Pressed $sourceString")
 
         val resultString = when (keyCode) {
             KeyEvent.KEYCODE_F6, KeyEvent.KEYCODE_F7, KeyEvent.KEYCODE_F8 -> {
-                if (insertString.isAllEnglishLetters()) {
+                if (sourceString.isAllEnglishLetters()) {
                     romajiConverter?.let { converter ->
                         val romajiResult = if (isDefaultRomajiHenkanMap) {
-                            converter.convertCustomLayout(insertString.lowercase())
+                            converter.convertCustomLayout(sourceString.lowercase())
                         } else {
-                            converter.convert(insertString.lowercase())
+                            converter.convert(sourceString.lowercase())
                         }
                         when (keyCode) {
                             KeyEvent.KEYCODE_F6 -> romajiResult.toHiragana()
                             KeyEvent.KEYCODE_F7 -> romajiResult.toZenkakuKatakana()
                             KeyEvent.KEYCODE_F8 -> romajiResult.toHankakuKatakana()
-                            else -> insertString // ありえない
+                            else -> sourceString // ありえない
                         }
-                    } ?: insertString
+                    } ?: sourceString
                 } else {
                     when (keyCode) {
-                        KeyEvent.KEYCODE_F6 -> insertString.toHiragana()
-                        KeyEvent.KEYCODE_F7 -> insertString.toZenkakuKatakana()
-                        KeyEvent.KEYCODE_F8 -> insertString.toHankakuKatakana()
-                        else -> insertString // ありえない
+                        KeyEvent.KEYCODE_F6 -> sourceString.toHiragana()
+                        KeyEvent.KEYCODE_F7 -> sourceString.toZenkakuKatakana()
+                        KeyEvent.KEYCODE_F8 -> sourceString.toHankakuKatakana()
+                        else -> sourceString // ありえない
                     }
                 }
             }
 
             KeyEvent.KEYCODE_F9 -> {
-                if (insertString.isAllEnglishLetters()) {
-                    insertString.lowercase().toZenkakuAlphabet()
+                if (sourceString.isAllEnglishLetters()) {
+                    sourceString.lowercase().toZenkakuAlphabet()
                 } else {
-                    romajiConverter?.hiraganaToRomaji(insertString.toHiragana())
-                        ?.toZenkakuAlphabet() ?: insertString
+                    romajiConverter?.hiraganaToRomaji(sourceString.toHiragana())
+                        ?.toZenkakuAlphabet() ?: sourceString
                 }
             }
 
             KeyEvent.KEYCODE_F10 -> {
-                if (insertString.isAllEnglishLetters()) {
-                    insertString.lowercase().toHankakuAlphabet()
+                if (sourceString.isAllEnglishLetters()) {
+                    sourceString.lowercase().toHankakuAlphabet()
                 } else {
-                    romajiConverter?.hiraganaToRomaji(insertString.toHiragana())
-                        ?.toHankakuAlphabet() ?: insertString
+                    romajiConverter?.hiraganaToRomaji(sourceString.toHiragana())
+                        ?.toHankakuAlphabet() ?: sourceString
                 }
             }
 
-            else -> insertString // 来ないはず
+            else -> sourceString // 来ないはず
         }
 
         _inputString.update { resultString }
@@ -12943,6 +12978,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
+        clearFunctionKeyConversionSource()
         _inputString.update { "" }
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
         suggestionAdapter?.suggestions = emptyList()
@@ -15332,6 +15368,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun deleteStringCommon(insertString: String) {
+        clearFunctionKeyConversionSource()
         val length = insertString.length
         when {
             length > 1 -> {
@@ -16344,12 +16381,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun finishComposingText(): Boolean {
         if (currentInputConnection == null) return false
+        clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         return currentInputConnection.finishComposingText()
     }
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         return currentInputConnection.commitText(p0, p1)
     }
