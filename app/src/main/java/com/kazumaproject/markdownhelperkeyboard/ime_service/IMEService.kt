@@ -106,16 +106,16 @@ import com.kazumaproject.core.domain.extensions.toHiragana
 import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
 import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
+import com.kazumaproject.core.domain.key.Key
+import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.LongPressListener
+import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateTailResolver
 import com.kazumaproject.core.domain.physical_keyboard.KanaDakutenComposer
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKanaMapper
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardInputMode
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardLayout
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardSymbolMapper
-import com.kazumaproject.core.domain.key.Key
-import com.kazumaproject.core.domain.listener.FlickListener
-import com.kazumaproject.core.domain.listener.LongPressListener
-import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
@@ -3179,10 +3179,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             restoreRawInputFromBunsetsuSession()
             listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
             currentHighlightIndex = RecyclerView.NO_POSITION
-            return true
-        }
-        if (isHenkan.get()) {
-            cancelFloatingCandidateConversion(insertString)
             return true
         }
         deleteStringCommon(insertString)
