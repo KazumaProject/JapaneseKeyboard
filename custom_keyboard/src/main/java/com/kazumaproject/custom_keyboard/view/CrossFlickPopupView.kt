@@ -16,7 +16,36 @@ import androidx.appcompat.widget.AppCompatTextView
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.google.android.material.R as materialR
+
+private data class PopupCellContent(
+    val text: String?,
+    val label: String?,
+    val drawableResId: Int?
+)
+
+private fun FlickAction.toPopupCellContent(): PopupCellContent = when (this) {
+    is FlickAction.Input -> PopupCellContent(
+        text = char.takeUnless { it.isEmpty() },
+        label = label?.takeUnless { it.isEmpty() },
+        drawableResId = drawableResId
+    )
+
+    is FlickAction.Action -> {
+        val text = when (val keyAction = action) {
+            is KeyAction.Text -> keyAction.text
+            is KeyAction.InputText -> keyAction.text
+            else -> null
+        }?.takeUnless { it.isEmpty() }
+
+        PopupCellContent(
+            text = text,
+            label = label?.takeUnless { it.isEmpty() },
+            drawableResId = drawableResId
+        )
+    }
+}
 
 class CrossFlickPopupView(context: Context) : FrameLayout(context) {
 
@@ -42,28 +71,24 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
         }
 
         fun setContent(action: FlickAction) {
-            when (action) {
-                is FlickAction.Input -> {
-                    textView.text = action.char
-                    textView.visibility = View.VISIBLE
-                    imageView.visibility = View.GONE
-                }
-                is FlickAction.Action -> {
-                    if (action.drawableResId != null) {
-                        imageView.setImageResource(action.drawableResId)
-                        imageView.visibility = View.VISIBLE
-                        textView.visibility = View.GONE
-                    } else if (!action.label.isNullOrEmpty()) {
-                        textView.text = action.label
-                        textView.visibility = View.VISIBLE
-                        imageView.visibility = View.GONE
-                    } else {
-                        textView.text = action.action.javaClass.simpleName.first().toString()
-                        textView.visibility = View.VISIBLE
-                        imageView.visibility = View.GONE
-                    }
-                }
+            val content = action.toPopupCellContent()
+            if (content.drawableResId != null) {
+                imageView.setImageResource(content.drawableResId)
+                imageView.visibility = View.VISIBLE
+                textView.visibility = View.GONE
+                return
             }
+
+            val text = content.label ?: content.text
+            if (text.isNullOrEmpty()) {
+                textView.visibility = View.GONE
+                imageView.visibility = View.GONE
+                return
+            }
+
+            textView.text = text
+            textView.visibility = View.VISIBLE
+            imageView.visibility = View.GONE
         }
 
         fun applyColors(theme: FlickPopupColorTheme, highlighted: Boolean) {

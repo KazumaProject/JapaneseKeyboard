@@ -16,6 +16,7 @@ import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.view.DirectionalKeyPopupView
 import com.kazumaproject.custom_keyboard.view.CrossFlickPopupView
 import kotlinx.coroutines.CoroutineScope
@@ -85,6 +86,9 @@ class CrossFlickInputController(
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var popupColorTheme: FlickPopupColorTheme? = null
+    private val displayActionsByClass by lazy {
+        KeyActionMapper.getDisplayActions(context).associateBy { it.action::class }
+    }
 
     // 色設定。FlickPopupColorTheme をまとめて受け取り、全ポップアップに適用する。
     fun setPopupColors(theme: FlickPopupColorTheme) {
@@ -108,7 +112,7 @@ class CrossFlickInputController(
     @SuppressLint("ClickableViewAccessibility")
     fun attach(view: View, map: Map<FlickDirection, FlickAction>) {
         inputMode = InputMode.ACTION
-        flickActionMap = map
+        flickActionMap = map.mapValues { (_, action) -> action.withDisplayMetadata() }
         textMap = emptyMap()
         longPressTextMap = emptyMap()
         view.setOnTouchListener { v, event -> handleTouchEvent(v, event) }
@@ -208,7 +212,7 @@ class CrossFlickInputController(
     }
 
     // 長押しタイマーが満了したときに呼ばれる。モードに応じてポップアップ表示を切り替える。
-    // ACTION: 全方向のアクションポップアップを展開。TEXT: 方向ポップアップを閉じてグリッド表示に切り替える。
+    // ACTION: 全方向のアクションポップアップを展開。TEXT: TAP中のみグリッド表示に切り替え（フリック中は方向ポップアップを維持）。
     private fun onLongPressTriggered() {
         when (inputMode) {
             InputMode.ACTION -> {
@@ -218,9 +222,11 @@ class CrossFlickInputController(
             }
 
             InputMode.TEXT -> {
-                dismissDirectionalPopups()
-                showGridPopup()
-                highlightGrid(currentDirection)
+                if (currentDirection == FlickDirection.TAP) {
+                    dismissDirectionalPopups()
+                    showGridPopup()
+                    highlightGrid(currentDirection)
+                }
             }
         }
     }
@@ -288,7 +294,13 @@ class CrossFlickInputController(
                 notifyLongPressActionPreview()
             }
 
-            InputMode.TEXT -> highlightGrid(direction)
+            InputMode.TEXT -> {
+                if (gridPopup.isShowing) {
+                    highlightGrid(direction)
+                } else {
+                    showDirectionalPopup(direction)
+                }
+            }
         }
     }
 
@@ -353,6 +365,25 @@ class CrossFlickInputController(
         return null
     }
 
+    // アクションに表示情報（アイコン/ラベル）が無い場合、KeyActionMapper の定義を補完して空表示を防ぐ。
+    private fun FlickAction.withDisplayMetadata(): FlickAction = when (this) {
+        is FlickAction.Input -> this
+        is FlickAction.Action -> {
+            val displayAction = displayActionsByClass[action::class]
+            if (displayAction == null) {
+                this
+            } else {
+                val resolvedLabel = label?.takeUnless { it.isBlank() } ?: displayAction.displayName
+                val resolvedDrawableResId = drawableResId ?: displayAction.iconResId
+                if (resolvedLabel == label && resolvedDrawableResId == drawableResId) {
+                    this
+                } else {
+                    copy(label = resolvedLabel, drawableResId = resolvedDrawableResId)
+                }
+            }
+        }
+    }
+
     // FlickDirection を優先候補リストへ展開する。UP_LEFT_FAR/UP_RIGHT_FAR は near 方向へフォールバックする。
     // UP_LEFT/UP_RIGHT は far→near の逆順でフォールバックし、どちらの表記で渡されても解決できる。
     private fun getDirectionCandidates(direction: FlickDirection): List<FlickDirection> {
@@ -412,7 +443,6 @@ class CrossFlickInputController(
 
     // ACTION モードの長押し発動時に全方向のポップアップをまとめて表示する。
     private fun showAllActionPopups() {
-        dismissAllActionPopups()
         val anchor = anchorView ?: return
         if (!anchor.isAttachedToWindow) return
 
@@ -422,7 +452,16 @@ class CrossFlickInputController(
             FlickDirection.UP_LEFT_FAR,
             FlickDirection.UP_RIGHT_FAR
         ).forEach { direction ->
-            showActionPopup(direction, highlighted = false)
+            val existingPopup = actionPopupWindows[direction]
+            val existingPopupView = actionPopupViews[direction]
+            if (existingPopup?.isShowing == true && existingPopupView != null) {
+                existingPopupView.highlightDirection(null)
+            } else {
+                existingPopup?.dismiss()
+                actionPopupWindows.remove(direction)
+                actionPopupViews.remove(direction)
+                showActionPopup(direction, highlighted = false)
+            }
         }
     }
 
@@ -509,7 +548,6 @@ class CrossFlickInputController(
         }
 
         currentVisibleDirectionalPopup?.dismiss()
-        if (isLongPressMode) return
 
         val popupToShow = directionalPopupMap[direction] ?: return
         val currentAnchor = anchorView ?: return
