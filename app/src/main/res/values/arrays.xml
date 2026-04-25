@@ -1,5 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="physical_keyboard_layout_entries">
+        <item>@string/physical_keyboard_layout_japanese_109a</item>
+        <item>@string/physical_keyboard_layout_jis</item>
+        <item>@string/physical_keyboard_layout_us</item>
+    </string-array>
+
+    <string-array name="physical_keyboard_layout_values">
+        <item>japanese_109a</item>
+        <item>jis</item>
+        <item>us</item>
+    </string-array>
+
+    <string-array name="physical_keyboard_input_mode_entries">
+        <item>@string/physical_keyboard_input_mode_romaji</item>
+        <item>@string/physical_keyboard_input_mode_kana</item>
+    </string-array>
+
+    <string-array name="physical_keyboard_input_mode_values">
+        <item>romaji</item>
+        <item>kana</item>
+    </string-array>
+
     <string-array name="keyboard_background_image_display_mode_entries">
         <item>@string/keyboard_background_image_display_mode_fit</item>
         <item>@string/keyboard_background_image_display_mode_center_crop</item>
