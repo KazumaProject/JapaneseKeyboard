@@ -32,6 +32,8 @@ import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.ThreeNodeRul
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.TwoNodeRuleEntity
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutDao
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.data.ShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryDao
@@ -62,8 +64,9 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         ThreeNodeRuleEntity::class,
         GemmaPromptTemplate::class,
         DeleteKeyFlickDeleteTarget::class,
+        PhysicalKeyboardShortcutItem::class,
     ],
-    version = 24,
+    version = 25,
     exportSchema = false
 )
 @TypeConverters(
@@ -86,6 +89,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ngramRuleDao(): NgramRuleDao
     abstract fun gemmaPromptTemplateDao(): GemmaPromptTemplateDao
     abstract fun deleteKeyFlickDeleteTargetDao(): DeleteKeyFlickDeleteTargetDao
+    abstract fun physicalKeyboardShortcutDao(): PhysicalKeyboardShortcutDao
 
     companion object {
 
@@ -639,6 +643,34 @@ abstract class AppDatabase : RoomDatabase() {
                     """
                     CREATE UNIQUE INDEX IF NOT EXISTS `index_delete_key_flick_delete_targets_symbol`
                     ON `delete_key_flick_delete_targets` (`symbol`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `physical_keyboard_shortcut_items` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `context` TEXT NOT NULL,
+                      `keyCode` INTEGER NOT NULL,
+                      `scanCode` INTEGER,
+                      `ctrl` INTEGER NOT NULL,
+                      `shift` INTEGER NOT NULL,
+                      `alt` INTEGER NOT NULL,
+                      `meta` INTEGER NOT NULL,
+                      `actionId` TEXT NOT NULL,
+                      `enabled` INTEGER NOT NULL,
+                      `sortOrder` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_physical_keyboard_shortcut_items_context_keyCode_scanCode_ctrl_shift_alt_meta`
+                    ON `physical_keyboard_shortcut_items` (`context`, `keyCode`, `scanCode`, `ctrl`, `shift`, `alt`, `meta`)
                     """.trimIndent()
                 )
             }

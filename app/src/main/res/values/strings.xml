@@ -1,5 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="hardware_keyboard_category_title">物理キーボード</string>
+    <string name="physical_keyboard_layout_title">物理キーボード配列</string>
+    <string name="physical_keyboard_layout_summary">使用している物理キーボードの配列を選択します。</string>
+    <string name="physical_keyboard_layout_japanese_109a">日本語109A</string>
+    <string name="physical_keyboard_layout_jis">JIS</string>
+    <string name="physical_keyboard_layout_us">US</string>
+    <string name="physical_keyboard_input_mode_title">日本語入力方式</string>
+    <string name="physical_keyboard_input_mode_romaji">ローマ字入力</string>
+    <string name="physical_keyboard_input_mode_kana">かな入力</string>
+    <string name="physical_keyboard_shortcut_setting_title">物理キーボードショートカット</string>
+    <string name="physical_keyboard_shortcut_setting_summary">Ctrl+C、変換キー、無変換キー、Fキーなどにアクションを割り当てます。</string>
+    <string name="physical_keyboard_shortcut_list_title">物理キーボードショートカット</string>
+    <string name="physical_keyboard_shortcut_add">追加</string>
+    <string name="physical_keyboard_shortcut_edit_title">ショートカット編集</string>
+    <string name="physical_keyboard_shortcut_empty">ショートカットがありません。</string>
+    <string name="physical_keyboard_shortcut_duplicate">同じキー割り当てが既に登録されています。</string>
+    <string name="physical_keyboard_shortcut_enabled">有効</string>
+    <string name="physical_keyboard_shortcut_context">Context</string>
+    <string name="physical_keyboard_shortcut_key">Key</string>
+    <string name="physical_keyboard_shortcut_action">Action</string>
+    <string name="physical_keyboard_shortcut_modifiers">Modifiers</string>
+    <string name="physical_keyboard_shortcut_ctrl">Ctrl</string>
+    <string name="physical_keyboard_shortcut_shift">Shift</string>
+    <string name="physical_keyboard_shortcut_alt">Alt</string>
+    <string name="physical_keyboard_shortcut_meta">Meta</string>
     <string name="edit_text">Edit</string>
     <string name="user_dictionary_title">User Dictionary</string>
     <string name="duplicate_keyboard">Duplicate Keyboard</string>

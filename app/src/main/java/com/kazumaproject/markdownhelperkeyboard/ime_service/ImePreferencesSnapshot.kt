@@ -66,6 +66,8 @@ data class ImePreferencesSnapshot(
     val bunsetsuCursorMove: Boolean,
     val reconversionEnabled: Boolean,
     val conversionKeySwipePreference: Boolean,
+    val physicalKeyboardLayout: String,
+    val physicalKeyboardInputMode: String,
     val switchQWERTYPassword: Boolean,
     val landscapeForceQwertyPreference: Boolean,
     val landscapeForceQwertyRomajiPreference: Boolean,
@@ -232,6 +234,8 @@ data class ImePreferencesSnapshot(
                 reconversionEnabled = appPreference.reconversion_preference,
                 conversionKeySwipePreference =
                     appPreference.conversion_key_swipe_cursor_move_preference,
+                physicalKeyboardLayout = appPreference.physical_keyboard_layout_preference,
+                physicalKeyboardInputMode = appPreference.physical_keyboard_input_mode_preference,
                 switchQWERTYPassword = appPreference.switch_qwerty_password ?: false,
                 landscapeForceQwertyPreference =
                     appPreference.landscape_force_qwerty_preference,

@@ -267,6 +267,12 @@ object AppPreference {
     private val CONVERSION_KEY_SWIPE_CURSOR_MOVE_PREFERENCE =
         Pair("conversion_key_swipe_cursor_move_preference", false)
 
+    private val PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE =
+        Pair("physical_keyboard_layout_preference", "japanese_109a")
+
+    private val PHYSICAL_KEYBOARD_INPUT_MODE_PREFERENCE =
+        Pair("physical_keyboard_input_mode_preference", "romaji")
+
     private val ROMAJI_MAP_DATA_VERSION = Pair("romaji_map_data_version", 0)
 
     private val QWERTY_ROMAJI_SHIFT_CONVERSION_PREFERENCE =
@@ -1365,6 +1371,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CONVERSION_KEY_SWIPE_CURSOR_MOVE_PREFERENCE.first, value)
+        }
+
+    var physical_keyboard_layout_preference: String
+        get() = preferences.getString(
+            PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE.first,
+            PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE.second
+        ) ?: PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE.second
+        set(value) = preferences.edit {
+            it.putString(PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE.first, value)
+        }
+
+    var physical_keyboard_input_mode_preference: String
+        get() = preferences.getString(
+            PHYSICAL_KEYBOARD_INPUT_MODE_PREFERENCE.first,
+            PHYSICAL_KEYBOARD_INPUT_MODE_PREFERENCE.second
+        ) ?: PHYSICAL_KEYBOARD_INPUT_MODE_PREFERENCE.second
+        set(value) = preferences.edit {
+            it.putString(PHYSICAL_KEYBOARD_INPUT_MODE_PREFERENCE.first, value)
         }
 
     var romaji_map_data_version: Int
