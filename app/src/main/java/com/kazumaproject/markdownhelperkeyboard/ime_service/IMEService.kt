@@ -2799,6 +2799,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
+            event?.let { e ->
+                val insertString = inputString.value
+                val suggestions = listAdapter.currentList
+                if (handlePhysicalKeyboardShortcut(keyCode, e, mainView, insertString, suggestions)) {
+                    return true
+                }
+            }
+
             // モードに応じて処理を振り分ける
             return when (mainView.keyboardView.currentInputMode.value) {
                 InputMode.ModeJapanese -> handleJapaneseKeyDown(keyCode, event, mainView)
@@ -2836,10 +2844,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     keyCode == KeyEvent.KEYCODE_ESCAPE)
         ) {
             return handleJapaneseDeleteFloating(keyCode, e, insertString)
-        }
-
-        if (handlePhysicalKeyboardShortcut(keyCode, e, mainView, insertString, suggestions)) {
-            return true
         }
 
         if (e.isCtrlPressed) {
@@ -3027,7 +3031,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentContext = currentPhysicalShortcutContext(),
             keyCode = keyCode,
             event = event
-        ) ?: return false
+        ) ?: physicalKeyboardShortcuts.firstOrNull {
+            it.enabled &&
+                it.actionId == PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE.id &&
+                it.keyCode == keyCode &&
+                it.ctrl == event.isCtrlPressed &&
+                it.shift == event.isShiftPressed &&
+                it.alt == event.isAltPressed &&
+                it.meta == event.isMetaPressed &&
+                (it.scanCode == null || it.scanCode == event.scanCode)
+        } ?: return false
         val action = PhysicalKeyboardShortcutAction.fromId(shortcut.actionId) ?: return false
         return executePhysicalKeyboardShortcutAction(action, mainView, insertString, suggestions)
     }
@@ -3061,7 +3074,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             PhysicalKeyboardShortcutAction.SWITCH_TO_JAPANESE -> switchToHiraganaMode(mainView)
             PhysicalKeyboardShortcutAction.SWITCH_TO_ENGLISH -> switchToEnglishModeFloating(mainView)
-            PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE -> cycleInputMode(mainView)
+            PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE -> toggleJapaneseEnglishMode(mainView)
             PhysicalKeyboardShortcutAction.CONVERT -> handleJapaneseSpaceFloating(
                 mainView,
                 insertString,
@@ -3247,10 +3260,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentHighlightIndex = RecyclerView.NO_POSITION
             return true
         }
-        if (isHenkan.get()) {
-            currentHighlightIndex = 0
-            suggestionClickNum = 0
-        }
+
         deleteStringCommon(insertString)
         resetFlagsDeleteKey()
         event?.let { e ->
@@ -3610,6 +3620,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         finishComposingText()
         _inputString.update { "" }
         return true
+    }
+
+    private fun toggleJapaneseEnglishMode(mainView: MainLayoutBinding): Boolean {
+        return when (mainView.keyboardView.currentInputMode.value) {
+            InputMode.ModeEnglish -> switchToHiraganaMode(mainView)
+            else -> switchToEnglishModeFloating(mainView)
+        }
     }
 
     /**
