@@ -560,6 +560,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var clipboardPreviewVisibility: Boolean? = true
     private var clipboardPreviewTapToDelete: Boolean? = false
     private var isDeleteLeftFlickPreference: Boolean? = true
+
     @Volatile
     private var deleteKeyFlickTargetChars: Set<Char> = DEFAULT_DELETE_KEY_FLICK_TARGETS
     private var tenkeyHeightPreferenceValue: Int? = 280
@@ -849,8 +850,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var countToggleKatakana = 0
 
     private var hardKeyboardShiftPressd = false
-    private var physicalKeyboardLayout: PhysicalKeyboardLayout = PhysicalKeyboardLayout.JAPANESE_109A
-    private var physicalKeyboardInputMode: PhysicalKeyboardInputMode = PhysicalKeyboardInputMode.ROMAJI
+    private var physicalKeyboardLayout: PhysicalKeyboardLayout =
+        PhysicalKeyboardLayout.JAPANESE_109A
+    private var physicalKeyboardInputMode: PhysicalKeyboardInputMode =
+        PhysicalKeyboardInputMode.ROMAJI
     private var physicalKeyboardShortcuts: List<PhysicalKeyboardShortcutItem> = emptyList()
 
     private var isDefaultRomajiHenkanMap = false
@@ -2708,7 +2711,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             bunsetusMultipleDetect = false
         }
 
-        
+
         // Show clipboard preview only if nothing was deleted and clipboard has data
         suggestionAdapter?.apply {
             if (deletedBuffer.isEmpty()) {
@@ -2852,7 +2855,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyEvent.KEYCODE_HENKAN -> switchToHiraganaMode(mainView)
             KeyEvent.KEYCODE_MUHENKAN -> switchToEnglishModeFloating(mainView)
 
-            KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL -> handleJapaneseDeleteFloating(keyCode, e, insertString)
+            KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL -> handleJapaneseDeleteFloating(
+                keyCode,
+                e,
+                insertString
+            )
 
             KeyEvent.KEYCODE_SPACE -> handleJapaneseSpaceFloating(
                 mainView, insertString, suggestions
@@ -3055,7 +3062,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             PhysicalKeyboardShortcutAction.SWITCH_TO_JAPANESE -> switchToHiraganaMode(mainView)
             PhysicalKeyboardShortcutAction.SWITCH_TO_ENGLISH -> switchToEnglishModeFloating(mainView)
             PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE -> cycleInputMode(mainView)
-            PhysicalKeyboardShortcutAction.CONVERT -> handleJapaneseSpaceFloating(mainView, insertString, suggestions)
+            PhysicalKeyboardShortcutAction.CONVERT -> handleJapaneseSpaceFloating(
+                mainView,
+                insertString,
+                suggestions
+            )
+
             PhysicalKeyboardShortcutAction.CONVERT_NEXT -> {
                 if (cycleFocusedBunsetsuCandidate(delta = 1)) true else {
                     floatingCandidateNextItem(insertString)
@@ -3092,11 +3104,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             PhysicalKeyboardShortcutAction.SEGMENT_FOCUS_RIGHT -> moveFocusedBunsetsuSegment(delta = 1)
             PhysicalKeyboardShortcutAction.SEGMENT_WIDTH_SHRINK -> switchBunsetsuSplitPattern(delta = -1)
             PhysicalKeyboardShortcutAction.SEGMENT_WIDTH_EXPAND -> switchBunsetsuSplitPattern(delta = 1)
-            PhysicalKeyboardShortcutAction.CONVERT_TO_HIRAGANA -> handleConversionKeyFloating(KeyEvent.KEYCODE_F6, insertString)
-            PhysicalKeyboardShortcutAction.CONVERT_TO_FULL_KATAKANA -> handleConversionKeyFloating(KeyEvent.KEYCODE_F7, insertString)
-            PhysicalKeyboardShortcutAction.CONVERT_TO_HALF_WIDTH -> handleConversionKeyFloating(KeyEvent.KEYCODE_F8, insertString)
-            PhysicalKeyboardShortcutAction.CONVERT_TO_FULL_ALPHANUMERIC -> handleConversionKeyFloating(KeyEvent.KEYCODE_F9, insertString)
-            PhysicalKeyboardShortcutAction.CONVERT_TO_HALF_ALPHANUMERIC -> handleConversionKeyFloating(KeyEvent.KEYCODE_F10, insertString)
+            PhysicalKeyboardShortcutAction.CONVERT_TO_HIRAGANA -> handleConversionKeyFloating(
+                KeyEvent.KEYCODE_F6,
+                insertString
+            )
+
+            PhysicalKeyboardShortcutAction.CONVERT_TO_FULL_KATAKANA -> handleConversionKeyFloating(
+                KeyEvent.KEYCODE_F7,
+                insertString
+            )
+
+            PhysicalKeyboardShortcutAction.CONVERT_TO_HALF_WIDTH -> handleConversionKeyFloating(
+                KeyEvent.KEYCODE_F8,
+                insertString
+            )
+
+            PhysicalKeyboardShortcutAction.CONVERT_TO_FULL_ALPHANUMERIC -> handleConversionKeyFloating(
+                KeyEvent.KEYCODE_F9,
+                insertString
+            )
+
+            PhysicalKeyboardShortcutAction.CONVERT_TO_HALF_ALPHANUMERIC -> handleConversionKeyFloating(
+                KeyEvent.KEYCODE_F10,
+                insertString
+            )
         }
     }
 
@@ -3215,6 +3246,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
             currentHighlightIndex = RecyclerView.NO_POSITION
             return true
+        }
+        if (isHenkan.get()) {
+            currentHighlightIndex = 0
+            suggestionClickNum = 0
         }
         deleteStringCommon(insertString)
         resetFlagsDeleteKey()
@@ -4764,7 +4799,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             withContext(Dispatchers.Main) {
                 if (selectedTextGemmaActionMenuRequestId.get() != requestId) return@withContext
-                val currentSelection = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
+                val currentSelection =
+                    currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
                 if (currentSelection != selectedText) return@withContext
 
                 val actions = buildList {
@@ -4946,7 +4982,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun isSelectedTextGemmaActionCandidate(candidate: Candidate): Boolean {
         return candidate.type == GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() ||
-            candidate.type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
+                candidate.type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
     }
 
     private fun isSelectedTextGemmaActionRequestCurrent(requestId: Long): Boolean {
@@ -7450,7 +7486,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): List<ClipboardHistoryItem> {
         if (!isClipboardUnpinnedAutoDeleteEnabled()) return historyList
         val threshold = System.currentTimeMillis() -
-            clipboardUnpinnedRetentionHours() * 60L * 60L * 1000L
+                clipboardUnpinnedRetentionHours() * 60L * 60L * 1000L
         return historyList.filter { item ->
             item.isPinned || item.timestamp >= threshold
         }
@@ -12195,7 +12231,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         Timber.d("setCandidateClick: $candidate")
-        if (isSelectedTextGemmaActionCandidate(candidate) && handleSelectedTextGemmaActionClick(position)) {
+        if (isSelectedTextGemmaActionCandidate(candidate) && handleSelectedTextGemmaActionClick(
+                position
+            )
+        ) {
             return
         }
         if (handleBunsetsuCandidateClick(candidate, currentInputMode, position)) {
