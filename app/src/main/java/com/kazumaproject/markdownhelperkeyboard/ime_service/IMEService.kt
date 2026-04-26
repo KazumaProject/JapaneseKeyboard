@@ -491,6 +491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var stringInTail = AtomicReference("")
     private var functionKeyConversionSource: String? = null
     private var suppressedSelectionCleanupCount = 0
+    private var preservePreEditOnNextSelectionUpdate: String? = null
     private val _dakutenPressed = MutableStateFlow(false)
     private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>(replay = 0)
     private val suggestionFlag = _suggestionFlag.asSharedFlow()
@@ -2706,6 +2707,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearSelectedTextGemmaSession(clearSuggestions = true)
         }
 
+        val preservedPreEdit = preservePreEditOnNextSelectionUpdate
+        if (preservedPreEdit != null) {
+            preservePreEditOnNextSelectionUpdate = null
+            if (_inputString.value == preservedPreEdit && preservedPreEdit.isNotEmpty()) {
+                Timber.d("onUpdateSelection preserve preedit after cancel: $preservedPreEdit")
+                refreshReconversionUi()
+                return
+            }
+        }
+
         Timber.d("onUpdateSelection end called: [${inputString.value}] [${stringInTail.get()}] [${bunsetusMultipleDetect}]")
         if (stringInTail.get().isEmpty()) {
             bunsetusMultipleDetect = false
@@ -3270,6 +3281,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun cancelFloatingCandidateConversion(insertString: String) {
+        preservePreEditOnNextSelectionUpdate = insertString
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         stringInTail.set("")
