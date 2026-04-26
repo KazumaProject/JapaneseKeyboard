@@ -110,7 +110,12 @@ import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
-import com.kazumaproject.core.domain.physical_shift_key.PhysicalShiftKeyCodeMap
+import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateTailResolver
+import com.kazumaproject.core.domain.physical_keyboard.KanaDakutenComposer
+import com.kazumaproject.core.domain.physical_keyboard.PhysicalKanaMapper
+import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardInputMode
+import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardLayout
+import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardSymbolMapper
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
@@ -171,6 +176,10 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutAction
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutContext
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalShortcutMatcher
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.DeleteKeyFlickDeleteTargetRepository
@@ -178,6 +187,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.GemmaPromptTemplateRe
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.NgWordRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.PhysicalKeyboardShortcutRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ShortcutRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
@@ -348,6 +358,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     lateinit var shortCurRepository: ShortcutRepository
 
     @Inject
+    lateinit var physicalKeyboardShortcutRepository: PhysicalKeyboardShortcutRepository
+
+    @Inject
     lateinit var clipboardUtil: ClipboardUtil
 
     @Inject
@@ -476,6 +489,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _inputString = MutableStateFlow("")
     private val inputString = _inputString.asStateFlow()
     private var stringInTail = AtomicReference("")
+    private var functionKeyConversionSource: String? = null
     private var suppressedSelectionCleanupCount = 0
     private val _dakutenPressed = MutableStateFlow(false)
     private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>(replay = 0)
@@ -546,6 +560,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var clipboardPreviewVisibility: Boolean? = true
     private var clipboardPreviewTapToDelete: Boolean? = false
     private var isDeleteLeftFlickPreference: Boolean? = true
+
     @Volatile
     private var deleteKeyFlickTargetChars: Set<Char> = DEFAULT_DELETE_KEY_FLICK_TARGETS
     private var tenkeyHeightPreferenceValue: Int? = 280
@@ -835,6 +850,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var countToggleKatakana = 0
 
     private var hardKeyboardShiftPressd = false
+    private var physicalKeyboardLayout: PhysicalKeyboardLayout =
+        PhysicalKeyboardLayout.JAPANESE_109A
+    private var physicalKeyboardInputMode: PhysicalKeyboardInputMode =
+        PhysicalKeyboardInputMode.ROMAJI
+    private var physicalKeyboardShortcuts: List<PhysicalKeyboardShortcutItem> = emptyList()
 
     private var isDefaultRomajiHenkanMap = false
 
@@ -1023,6 +1043,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ioScope.launch {
             customLayouts = keyboardRepository.getLayoutsNotFlow()
             shortCurRepository.initDefaultShortcutsIfNeeded()
+            physicalKeyboardShortcutRepository.ensureDefaultShortcuts()
         }
 
         if (SpeechRecognizer.isRecognitionAvailable(this)) {
@@ -1192,6 +1213,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         bunsetsuCursorMove = preferences.bunsetsuCursorMove
         reconversionEnabledPreference = preferences.reconversionEnabled
         conversionKeySwipePreference = preferences.conversionKeySwipePreference
+        physicalKeyboardLayout =
+            PhysicalKeyboardLayout.fromPreferenceValue(preferences.physicalKeyboardLayout)
+        physicalKeyboardInputMode =
+            PhysicalKeyboardInputMode.fromPreferenceValue(preferences.physicalKeyboardInputMode)
         _keyboardFloatingMode.update { preferences.isKeyboardFloatingMode }
         switchQWERTYPassword = preferences.switchQWERTYPassword
         landscapeForceQwertyPreference = preferences.landscapeForceQwertyPreference
@@ -2686,7 +2711,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             bunsetusMultipleDetect = false
         }
 
-        
+
         // Show clipboard preview only if nothing was deleted and clipboard has data
         suggestionAdapter?.apply {
             if (deletedBuffer.isEmpty()) {
@@ -2740,6 +2765,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("onUpdateSelection hasTail && caretTop: $tail $caretTop")
                 stringInTail.set("")
                 if (_inputString.value.isNotEmpty()) {
+                    clearFunctionKeyConversionSource()
                     _inputString.update { "" }
                     beginBatchEdit()
                     setComposingText("", 0)
@@ -2761,6 +2787,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // No tail but still holding input → cleanup
             _inputString.value.isNotEmpty() -> {
                 Timber.d("onUpdateSelection _inputString.value.isNotEmpty() : $tail")
+                clearFunctionKeyConversionSource()
                 _inputString.update { "" }
                 beginBatchEdit()
                 setComposingText("", 0)
@@ -2792,35 +2819,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleJapaneseKeyDown(
         keyCode: Int, event: KeyEvent?, mainView: MainLayoutBinding
     ): Boolean {
-
+        val e = event ?: return super.onKeyDown(keyCode, event)
         val insertString = inputString.value
         val suggestions = listAdapter.currentList
 
-        // 1. 修飾キー（Shift, Ctrl）の処理を先に行う
-        event?.let { e ->
-            if (e.isShiftPressed || e.isCapsLockOn) {
-                return handleJapaneseShiftPressed(keyCode, e, insertString)
-            }
-            if (e.isCtrlPressed) {
-                return handleJapaneseCtrlPressed(keyCode, e, mainView, insertString)
-            }
+        if (!isFunctionKeyConversionKeyCode(keyCode)) {
+            clearFunctionKeyConversionSource()
         }
 
-        // 2. 通常のキーコード処理
+        handleBunsetsuPhysicalNavigation(keyCode, e)?.let {
+            return it
+        }
+
+        if (isHenkan.get() && (keyCode == KeyEvent.KEYCODE_DEL ||
+                    keyCode == KeyEvent.KEYCODE_FORWARD_DEL ||
+                    keyCode == KeyEvent.KEYCODE_ESCAPE)
+        ) {
+            return handleJapaneseDeleteFloating(keyCode, e, insertString)
+        }
+
+        if (handlePhysicalKeyboardShortcut(keyCode, e, mainView, insertString, suggestions)) {
+            return true
+        }
+
+        if (e.isCtrlPressed) {
+            return handleJapaneseCtrlPressed(keyCode, e, mainView, insertString)
+        }
+
         return when (keyCode) {
-            // Fキー (変換)
             KeyEvent.KEYCODE_F6, KeyEvent.KEYCODE_F7, KeyEvent.KEYCODE_F8, KeyEvent.KEYCODE_F9, KeyEvent.KEYCODE_F10 -> handleConversionKeyFloating(
                 keyCode,
                 insertString
             )
 
-            // モード切替
+            KeyEvent.KEYCODE_HENKAN -> switchToHiraganaMode(mainView)
             KeyEvent.KEYCODE_MUHENKAN -> switchToEnglishModeFloating(mainView)
 
-            // 編集x
-            KeyEvent.KEYCODE_DEL -> handleJapaneseDeleteFloating(keyCode, event, insertString)
+            KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL -> handleJapaneseDeleteFloating(
+                keyCode,
+                e,
+                insertString
+            )
 
-            // 変換・候補選択
             KeyEvent.KEYCODE_SPACE -> handleJapaneseSpaceFloating(
                 mainView, insertString, suggestions
             )
@@ -2832,23 +2872,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainView, insertString, suggestions
             )
 
-            // 確定
             KeyEvent.KEYCODE_ENTER -> handleJapaneseEnterFloating(
                 mainView, insertString, suggestions
             )
 
-            // 無視して親に渡す
-            KeyEvent.KEYCODE_BACK -> super.onKeyDown(keyCode, event)
+            KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> super.onKeyDown(keyCode, e)
 
-            // 文字入力
             in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> {
                 handleJapaneseCharacterKeyFloating(
-                    keyCode, event, insertString
+                    keyCode, e, insertString
                 )
             }
 
-            // それ以外
-            else -> super.onKeyDown(keyCode, event)
+            else -> super.onKeyDown(keyCode, e)
         }
     }
 
@@ -2922,6 +2958,179 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 // 2. 日本語入力のヘルパー関数
 // ---------------------------------------------------------------------------------
 
+    private fun handleBunsetsuPhysicalNavigation(keyCode: Int, event: KeyEvent): Boolean? {
+        if (!isBunsetsuCursorMoveSessionActive()) return null
+        return when (keyCode) {
+            KeyEvent.KEYCODE_DPAD_LEFT -> {
+                if (event.isShiftPressed) {
+                    switchBunsetsuSplitPattern(delta = -1)
+                } else {
+                    moveFocusedBunsetsuSegment(delta = -1)
+                }
+            }
+
+            KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                if (event.isShiftPressed) {
+                    switchBunsetsuSplitPattern(delta = 1)
+                } else {
+                    moveFocusedBunsetsuSegment(delta = 1)
+                }
+            }
+
+            else -> null
+        }
+    }
+
+    private fun currentPhysicalShortcutContext(): PhysicalKeyboardShortcutContext {
+        return when {
+            isBunsetsuCursorMoveSessionActive() -> PhysicalKeyboardShortcutContext.BUNSETSU_CONVERSION
+            isHenkan.get() -> PhysicalKeyboardShortcutContext.CONVERSION
+            inputString.value.isNotEmpty() -> PhysicalKeyboardShortcutContext.COMPOSITION
+            else -> PhysicalKeyboardShortcutContext.ANY
+        }
+    }
+
+    private fun isFunctionKeyConversionKeyCode(keyCode: Int): Boolean {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_F6,
+            KeyEvent.KEYCODE_F7,
+            KeyEvent.KEYCODE_F8,
+            KeyEvent.KEYCODE_F9,
+            KeyEvent.KEYCODE_F10 -> true
+
+            else -> false
+        }
+    }
+
+    private fun clearFunctionKeyConversionSource() {
+        functionKeyConversionSource = null
+    }
+
+    private fun getFunctionKeyConversionSource(insertString: String): String {
+        val currentSource = functionKeyConversionSource
+        if (currentSource != null) {
+            return currentSource
+        }
+        functionKeyConversionSource = insertString
+        return insertString
+    }
+
+    private fun handlePhysicalKeyboardShortcut(
+        keyCode: Int,
+        event: KeyEvent,
+        mainView: MainLayoutBinding,
+        insertString: String,
+        suggestions: List<CandidateItem>
+    ): Boolean {
+        val shortcut = PhysicalShortcutMatcher.match(
+            shortcuts = physicalKeyboardShortcuts,
+            currentContext = currentPhysicalShortcutContext(),
+            keyCode = keyCode,
+            event = event
+        ) ?: return false
+        val action = PhysicalKeyboardShortcutAction.fromId(shortcut.actionId) ?: return false
+        return executePhysicalKeyboardShortcutAction(action, mainView, insertString, suggestions)
+    }
+
+    private fun executePhysicalKeyboardShortcutAction(
+        action: PhysicalKeyboardShortcutAction,
+        mainView: MainLayoutBinding,
+        insertString: String,
+        suggestions: List<CandidateItem>
+    ): Boolean {
+        return when (action) {
+            PhysicalKeyboardShortcutAction.COPY -> {
+                copyAction()
+                true
+            }
+
+            PhysicalKeyboardShortcutAction.PASTE -> {
+                pasteAction()
+                true
+            }
+
+            PhysicalKeyboardShortcutAction.CUT -> {
+                cutAction()
+                true
+            }
+
+            PhysicalKeyboardShortcutAction.SELECT_ALL -> {
+                selectAllText()
+                true
+            }
+
+            PhysicalKeyboardShortcutAction.SWITCH_TO_JAPANESE -> switchToHiraganaMode(mainView)
+            PhysicalKeyboardShortcutAction.SWITCH_TO_ENGLISH -> switchToEnglishModeFloating(mainView)
+            PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE -> cycleInputMode(mainView)
+            PhysicalKeyboardShortcutAction.CONVERT -> handleJapaneseSpaceFloating(
+                mainView,
+                insertString,
+                suggestions
+            )
+
+            PhysicalKeyboardShortcutAction.CONVERT_NEXT -> {
+                if (cycleFocusedBunsetsuCandidate(delta = 1)) true else {
+                    floatingCandidateNextItem(insertString)
+                    true
+                }
+            }
+
+            PhysicalKeyboardShortcutAction.CONVERT_PREV -> {
+                if (cycleFocusedBunsetsuCandidate(delta = -1)) true else {
+                    floatingCandidatePreviousItem(insertString)
+                    true
+                }
+            }
+
+            PhysicalKeyboardShortcutAction.COMMIT -> {
+                if (isBunsetsuCursorMoveSessionActive()) {
+                    commitBunsetsuConversionSession()
+                } else {
+                    handleJapaneseEnterFloating(mainView, insertString, suggestions)
+                }
+                true
+            }
+
+            PhysicalKeyboardShortcutAction.CANCEL -> {
+                if (isBunsetsuCursorMoveSessionActive()) {
+                    restoreRawInputFromBunsetsuSession()
+                } else if (isHenkan.get()) {
+                    cancelFloatingCandidateConversion(insertString)
+                }
+                true
+            }
+
+            PhysicalKeyboardShortcutAction.SEGMENT_FOCUS_LEFT -> moveFocusedBunsetsuSegment(delta = -1)
+            PhysicalKeyboardShortcutAction.SEGMENT_FOCUS_RIGHT -> moveFocusedBunsetsuSegment(delta = 1)
+            PhysicalKeyboardShortcutAction.SEGMENT_WIDTH_SHRINK -> switchBunsetsuSplitPattern(delta = -1)
+            PhysicalKeyboardShortcutAction.SEGMENT_WIDTH_EXPAND -> switchBunsetsuSplitPattern(delta = 1)
+            PhysicalKeyboardShortcutAction.CONVERT_TO_HIRAGANA -> handleConversionKeyFloating(
+                KeyEvent.KEYCODE_F6,
+                insertString
+            )
+
+            PhysicalKeyboardShortcutAction.CONVERT_TO_FULL_KATAKANA -> handleConversionKeyFloating(
+                KeyEvent.KEYCODE_F7,
+                insertString
+            )
+
+            PhysicalKeyboardShortcutAction.CONVERT_TO_HALF_WIDTH -> handleConversionKeyFloating(
+                KeyEvent.KEYCODE_F8,
+                insertString
+            )
+
+            PhysicalKeyboardShortcutAction.CONVERT_TO_FULL_ALPHANUMERIC -> handleConversionKeyFloating(
+                KeyEvent.KEYCODE_F9,
+                insertString
+            )
+
+            PhysicalKeyboardShortcutAction.CONVERT_TO_HALF_ALPHANUMERIC -> handleConversionKeyFloating(
+                KeyEvent.KEYCODE_F10,
+                insertString
+            )
+        }
+    }
+
     private fun handleJapaneseShiftPressed(
         keyCode: Int, event: KeyEvent, insertString: String
     ): Boolean {
@@ -2933,7 +3142,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         hardKeyboardShiftPressd = true
-        val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
+        val char = PhysicalKeyboardSymbolMapper.resolve(
+            keyCode = keyCode,
+            isShift = event.isShiftPressed,
+            layout = physicalKeyboardLayout
+        )
         char?.let { c ->
             val sb = StringBuilder()
             if (insertString.isNotEmpty()) {
@@ -2963,56 +3176,59 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun handleConversionKeyFloating(keyCode: Int, insertString: String): Boolean {
         if (insertString.isEmpty()) {
+            clearFunctionKeyConversionSource()
             return true // 元のロジックでは何もせず true を返していた
         }
 
-        Timber.d("onKeyDown: F-Key $keyCode Pressed $insertString")
+        val sourceString = getFunctionKeyConversionSource(insertString)
+
+        Timber.d("onKeyDown: F-Key $keyCode Pressed $sourceString")
 
         val resultString = when (keyCode) {
             KeyEvent.KEYCODE_F6, KeyEvent.KEYCODE_F7, KeyEvent.KEYCODE_F8 -> {
-                if (insertString.isAllEnglishLetters()) {
+                if (sourceString.isAllEnglishLetters()) {
                     romajiConverter?.let { converter ->
                         val romajiResult = if (isDefaultRomajiHenkanMap) {
-                            converter.convertCustomLayout(insertString.lowercase())
+                            converter.convertCustomLayout(sourceString.lowercase())
                         } else {
-                            converter.convert(insertString.lowercase())
+                            converter.convert(sourceString.lowercase())
                         }
                         when (keyCode) {
                             KeyEvent.KEYCODE_F6 -> romajiResult.toHiragana()
                             KeyEvent.KEYCODE_F7 -> romajiResult.toZenkakuKatakana()
                             KeyEvent.KEYCODE_F8 -> romajiResult.toHankakuKatakana()
-                            else -> insertString // ありえない
+                            else -> sourceString // ありえない
                         }
-                    } ?: insertString
+                    } ?: sourceString
                 } else {
                     when (keyCode) {
-                        KeyEvent.KEYCODE_F6 -> insertString.toHiragana()
-                        KeyEvent.KEYCODE_F7 -> insertString.toZenkakuKatakana()
-                        KeyEvent.KEYCODE_F8 -> insertString.toHankakuKatakana()
-                        else -> insertString // ありえない
+                        KeyEvent.KEYCODE_F6 -> sourceString.toHiragana()
+                        KeyEvent.KEYCODE_F7 -> sourceString.toZenkakuKatakana()
+                        KeyEvent.KEYCODE_F8 -> sourceString.toHankakuKatakana()
+                        else -> sourceString // ありえない
                     }
                 }
             }
 
             KeyEvent.KEYCODE_F9 -> {
-                if (insertString.isAllEnglishLetters()) {
-                    insertString.lowercase().toZenkakuAlphabet()
+                if (sourceString.isAllEnglishLetters()) {
+                    sourceString.lowercase().toZenkakuAlphabet()
                 } else {
-                    romajiConverter?.hiraganaToRomaji(insertString.toHiragana())
-                        ?.toZenkakuAlphabet() ?: insertString
+                    romajiConverter?.hiraganaToRomaji(sourceString.toHiragana())
+                        ?.toZenkakuAlphabet() ?: sourceString
                 }
             }
 
             KeyEvent.KEYCODE_F10 -> {
-                if (insertString.isAllEnglishLetters()) {
-                    insertString.lowercase().toHankakuAlphabet()
+                if (sourceString.isAllEnglishLetters()) {
+                    sourceString.lowercase().toHankakuAlphabet()
                 } else {
-                    romajiConverter?.hiraganaToRomaji(insertString.toHiragana())
-                        ?.toHankakuAlphabet() ?: insertString
+                    romajiConverter?.hiraganaToRomaji(sourceString.toHiragana())
+                        ?.toHankakuAlphabet() ?: sourceString
                 }
             }
 
-            else -> insertString // 来ないはず
+            else -> sourceString // 来ないはず
         }
 
         _inputString.update { resultString }
@@ -3022,30 +3238,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleJapaneseDeleteFloating(
         keyCode: Int, event: KeyEvent?, insertString: String
     ): Boolean {
-        when {
-            insertString.isNotEmpty() -> {
-                if (isBunsetsuCursorMoveSessionActive()) {
-                    restoreRawInputFromBunsetsuSession()
-                    listAdapter.updateHighlightPosition(-1)
-                    currentHighlightIndex = -1
-                    return true
-                } else if (isHenkan.get()) {
-                    cancelHenkanByLongPressDeleteKey()
-                    listAdapter.updateHighlightPosition(-1)
-                    currentHighlightIndex = -1
-                    return true
-                } else {
-                    deleteStringCommon(insertString)
-                    resetFlagsDeleteKey()
-                    event?.let { e ->
-                        romajiConverter?.handleDelete(e)
-                    }
-                    return true
-                }
-            }
-
-            else -> return super.onKeyDown(keyCode, event)
+        if (insertString.isEmpty()) {
+            return super.onKeyDown(keyCode, event)
         }
+        if (isBunsetsuCursorMoveSessionActive()) {
+            restoreRawInputFromBunsetsuSession()
+            listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+            currentHighlightIndex = RecyclerView.NO_POSITION
+            return true
+        }
+        if (isHenkan.get()) {
+            currentHighlightIndex = 0
+            suggestionClickNum = 0
+        }
+        deleteStringCommon(insertString)
+        resetFlagsDeleteKey()
+        event?.let { e ->
+            romajiConverter?.handleDelete(e)
+        }
+        return true
+    }
+
+    private fun cancelFloatingCandidateConversion(insertString: String) {
+        isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
+        stringInTail.set("")
+        currentHighlightIndex = RecyclerView.NO_POSITION
+        suggestionClickNum = 0
+        isFirstClickHasStringTail = false
+        listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapter?.suggestions = emptyList()
+        suggestionAdapterFull?.suggestions = emptyList()
+        updateSuggestionsForFloatingCandidate(emptyList())
+        val spannableString = SpannableString(insertString)
+        setComposingTextAfterEdit(
+            inputString = insertString,
+            spannableString = spannableString,
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputCompositionAfterBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.blue)
+            } else {
+                getColor(com.kazumaproject.core.R.color.blue)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputCompositionTextColor
+            } else {
+                null
+            }
+        )
     }
 
     private fun handleJapaneseSpaceFloating(
@@ -3232,37 +3473,65 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 listAdapter.selectHighlightedItem()
                 scope.launch {
                     delay(32)
-                    val letterConverted = if (isDefaultRomajiHenkanMap) {
-                        romajiConverter?.handleKeyEventZenkaku(e)
+                    if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA &&
+                        !e.isCtrlPressed && !e.isAltPressed && !e.isMetaPressed
+                    ) {
+                        PhysicalKanaMapper.resolve(
+                            keyCode = keyCode,
+                            isShift = e.isShiftPressed,
+                            layout = physicalKeyboardLayout
+                        )?.let { kana ->
+                            _inputString.update { KanaDakutenComposer.append("", kana) }
+                        }
                     } else {
-                        romajiConverter?.handleKeyEvent(e)
-                    }
-                    letterConverted?.let { romajiResult ->
-                        Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
-                        _inputString.update {
-                            romajiResult.first
+                        val letterConverted = if (isDefaultRomajiHenkanMap) {
+                            romajiConverter?.handleKeyEventZenkaku(e)
+                        } else {
+                            romajiConverter?.handleKeyEvent(e)
+                        }
+                        letterConverted?.let { romajiResult ->
+                            Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
+                            _inputString.update {
+                                romajiResult.first
+                            }
                         }
                     }
                 }
                 return true
             }
-            if (hardKeyboardShiftPressd) {
-                val char = PhysicalShiftKeyCodeMap.keymap[keyCode]
-                char?.let { c ->
-                    if (insertString.isNotEmpty()) {
-                        sb.append(
-                            insertString
-                        ).append(c.lowercase())
-                        _inputString.update {
-                            sb.toString()
-                        }
-                    } else {
-                        _inputString.update {
-                            c.lowercase()
-                        }
+            if (e.isAltPressed || e.isMetaPressed) {
+                return super.onKeyDown(keyCode, e)
+            }
+            if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA && !e.isCtrlPressed) {
+                val kana = PhysicalKanaMapper.resolve(
+                    keyCode = keyCode,
+                    isShift = e.isShiftPressed,
+                    layout = physicalKeyboardLayout
+                )
+                kana?.let {
+                    _inputString.update { current ->
+                        KanaDakutenComposer.append(current, it)
                     }
                     return true
                 }
+            }
+            val shiftSymbol = PhysicalKeyboardSymbolMapper.resolve(
+                keyCode = keyCode,
+                isShift = e.isShiftPressed,
+                layout = physicalKeyboardLayout
+            )
+            if (shiftSymbol != null) {
+                if (insertString.isNotEmpty()) {
+                    sb.append(insertString).append(shiftSymbol)
+                    _inputString.update {
+                        sb.toString()
+                    }
+                } else {
+                    _inputString.update {
+                        shiftSymbol
+                    }
+                }
+                return true
             } else {
                 val letterConverted = if (isDefaultRomajiHenkanMap) {
                     romajiConverter?.handleKeyEventZenkaku(e)
@@ -3475,13 +3744,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun displayComposingTextInHardwareKeyboardConnected(
         insertString: String
     ) {
-        val selectedSuggestion = listAdapter.currentList[currentHighlightIndex]
-        if (insertString.length > selectedSuggestion.length.toInt()) {
-            val subString = insertString.substring(selectedSuggestion.length.toInt())
-            stringInTail.set(subString)
-            Timber.d("displayComposingTextInHardwareKeyboardConnected: ${selectedSuggestion.word} ${selectedSuggestion.length} $insertString $subString ${insertString.length} ${selectedSuggestion.length.toInt()}")
-        }
-        val spannableString = SpannableString(selectedSuggestion.word + stringInTail)
+        val selectedSuggestion = listAdapter.currentList.getOrNull(currentHighlightIndex) ?: return
+        val tail = FloatingCandidateTailResolver.resolveTail(
+            originalInput = insertString,
+            selectedCandidateLength = selectedSuggestion.length.toInt()
+        )
+        stringInTail.set(tail)
+        Timber.d("displayComposingTextInHardwareKeyboardConnected: ${selectedSuggestion.word} ${selectedSuggestion.length} $insertString $tail ${insertString.length} ${selectedSuggestion.length.toInt()}")
+        val spannableString = SpannableString(selectedSuggestion.word + tail)
         setComposingTextAfterEdit(
             inputString = selectedSuggestion.word,
             spannableString = spannableString,
@@ -4529,7 +4799,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             withContext(Dispatchers.Main) {
                 if (selectedTextGemmaActionMenuRequestId.get() != requestId) return@withContext
-                val currentSelection = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
+                val currentSelection =
+                    currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
                 if (currentSelection != selectedText) return@withContext
 
                 val actions = buildList {
@@ -4711,7 +4982,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun isSelectedTextGemmaActionCandidate(candidate: Candidate): Boolean {
         return candidate.type == GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() ||
-            candidate.type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
+                candidate.type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
     }
 
     private fun isSelectedTextGemmaActionRequestCurrent(requestId: Long): Boolean {
@@ -7215,7 +7486,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): List<ClipboardHistoryItem> {
         if (!isClipboardUnpinnedAutoDeleteEnabled()) return historyList
         val threshold = System.currentTimeMillis() -
-            clipboardUnpinnedRetentionHours() * 60L * 60L * 1000L
+                clipboardUnpinnedRetentionHours() * 60L * 60L * 1000L
         return historyList.filter { item ->
             item.isPinned || item.timestamp >= threshold
         }
@@ -8282,6 +8553,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             shortCurRepository.enabledShortcutsFlow.collectLatest {
                 shortcutAdapter?.submitList(it)
+            }
+        }
+
+        launch {
+            physicalKeyboardShortcutRepository.getEnabled().collectLatest {
+                physicalKeyboardShortcuts = it
             }
         }
 
@@ -11954,7 +12231,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         Timber.d("setCandidateClick: $candidate")
-        if (isSelectedTextGemmaActionCandidate(candidate) && handleSelectedTextGemmaActionClick(position)) {
+        if (isSelectedTextGemmaActionCandidate(candidate) && handleSelectedTextGemmaActionClick(
+                position
+            )
+        ) {
             return
         }
         if (handleBunsetsuCandidateClick(candidate, currentInputMode, position)) {
@@ -12737,6 +13017,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
+        clearFunctionKeyConversionSource()
         _inputString.update { "" }
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
         suggestionAdapter?.suggestions = emptyList()
@@ -15126,6 +15407,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun deleteStringCommon(insertString: String) {
+        clearFunctionKeyConversionSource()
         val length = insertString.length
         when {
             length > 1 -> {
@@ -16138,12 +16420,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun finishComposingText(): Boolean {
         if (currentInputConnection == null) return false
+        clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         return currentInputConnection.finishComposingText()
     }
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
         return currentInputConnection.commitText(p0, p1)
     }
