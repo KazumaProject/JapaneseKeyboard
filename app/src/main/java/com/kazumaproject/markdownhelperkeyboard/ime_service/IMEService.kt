@@ -491,6 +491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var stringInTail = AtomicReference("")
     private var functionKeyConversionSource: String? = null
     private var suppressedSelectionCleanupCount = 0
+    private var preservePreEditOnNextSelectionUpdate: String? = null
     private val _dakutenPressed = MutableStateFlow(false)
     private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>(replay = 0)
     private val suggestionFlag = _suggestionFlag.asSharedFlow()
@@ -2706,6 +2707,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearSelectedTextGemmaSession(clearSuggestions = true)
         }
 
+        val preservedPreEdit = preservePreEditOnNextSelectionUpdate
+        if (preservedPreEdit != null) {
+            preservePreEditOnNextSelectionUpdate = null
+            if (_inputString.value == preservedPreEdit && preservedPreEdit.isNotEmpty()) {
+                Timber.d("onUpdateSelection preserve preedit after cancel: $preservedPreEdit")
+                refreshReconversionUi()
+                return
+            }
+        }
+
         Timber.d("onUpdateSelection end called: [${inputString.value}] [${stringInTail.get()}] [${bunsetusMultipleDetect}]")
         if (stringInTail.get().isEmpty()) {
             bunsetusMultipleDetect = false
@@ -2799,6 +2810,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
+            event?.let { e ->
+                val insertString = inputString.value
+                val suggestions = listAdapter.currentList
+                if (handlePhysicalKeyboardShortcut(keyCode, e, mainView, insertString, suggestions)) {
+                    return true
+                }
+            }
+
             // モードに応じて処理を振り分ける
             return when (mainView.keyboardView.currentInputMode.value) {
                 InputMode.ModeJapanese -> handleJapaneseKeyDown(keyCode, event, mainView)
@@ -2836,10 +2855,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     keyCode == KeyEvent.KEYCODE_ESCAPE)
         ) {
             return handleJapaneseDeleteFloating(keyCode, e, insertString)
-        }
-
-        if (handlePhysicalKeyboardShortcut(keyCode, e, mainView, insertString, suggestions)) {
-            return true
         }
 
         if (e.isCtrlPressed) {
@@ -3027,7 +3042,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentContext = currentPhysicalShortcutContext(),
             keyCode = keyCode,
             event = event
-        ) ?: return false
+        ) ?: physicalKeyboardShortcuts.firstOrNull {
+            it.enabled &&
+                it.actionId == PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE.id &&
+                it.keyCode == keyCode &&
+                it.ctrl == event.isCtrlPressed &&
+                it.shift == event.isShiftPressed &&
+                it.alt == event.isAltPressed &&
+                it.meta == event.isMetaPressed &&
+                (it.scanCode == null || it.scanCode == event.scanCode)
+        } ?: return false
         val action = PhysicalKeyboardShortcutAction.fromId(shortcut.actionId) ?: return false
         return executePhysicalKeyboardShortcutAction(action, mainView, insertString, suggestions)
     }
@@ -3061,7 +3085,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             PhysicalKeyboardShortcutAction.SWITCH_TO_JAPANESE -> switchToHiraganaMode(mainView)
             PhysicalKeyboardShortcutAction.SWITCH_TO_ENGLISH -> switchToEnglishModeFloating(mainView)
-            PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE -> cycleInputMode(mainView)
+            PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE -> toggleJapaneseEnglishMode(mainView)
             PhysicalKeyboardShortcutAction.CONVERT -> handleJapaneseSpaceFloating(
                 mainView,
                 insertString,
@@ -3247,10 +3271,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentHighlightIndex = RecyclerView.NO_POSITION
             return true
         }
-        if (isHenkan.get()) {
-            currentHighlightIndex = 0
-            suggestionClickNum = 0
-        }
+
         deleteStringCommon(insertString)
         resetFlagsDeleteKey()
         event?.let { e ->
@@ -3260,6 +3281,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun cancelFloatingCandidateConversion(insertString: String) {
+        preservePreEditOnNextSelectionUpdate = insertString
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
         stringInTail.set("")
@@ -3610,6 +3632,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         finishComposingText()
         _inputString.update { "" }
         return true
+    }
+
+    private fun toggleJapaneseEnglishMode(mainView: MainLayoutBinding): Boolean {
+        return when (mainView.keyboardView.currentInputMode.value) {
+            InputMode.ModeEnglish -> switchToHiraganaMode(mainView)
+            else -> switchToEnglishModeFloating(mainView)
+        }
     }
 
     /**
