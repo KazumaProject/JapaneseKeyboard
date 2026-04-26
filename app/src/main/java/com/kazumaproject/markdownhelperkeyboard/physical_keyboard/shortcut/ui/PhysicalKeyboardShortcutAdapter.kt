@@ -42,9 +42,13 @@ class PhysicalKeyboardShortcutAdapter(
         private val enabled: Switch
     ) : RecyclerView.ViewHolder(root) {
         fun bind(item: PhysicalKeyboardShortcutItem) {
-            val context = PhysicalKeyboardShortcutContext.fromId(item.context).label
-            val action = PhysicalKeyboardShortcutAction.fromId(item.actionId)?.label ?: item.actionId
-            text.text = "$context / ${PhysicalShortcutFormatter.format(item)}\n$action"
+            val contextLabel = root.context.getString(
+                PhysicalKeyboardShortcutContext.fromId(item.context).labelResId
+            )
+            val actionLabel = PhysicalKeyboardShortcutAction.fromId(item.actionId)
+                ?.let { root.context.getString(it.labelResId) }
+                ?: item.actionId
+            text.text = "$contextLabel / ${PhysicalShortcutFormatter.format(root.context, item)}\n$actionLabel"
             enabled.setOnCheckedChangeListener(null)
             enabled.isChecked = item.enabled
             enabled.setOnCheckedChangeListener { _, checked -> onEnabledChange(item, checked) }
