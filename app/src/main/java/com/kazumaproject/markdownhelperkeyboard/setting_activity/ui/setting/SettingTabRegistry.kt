@@ -63,6 +63,10 @@ object SettingTabRegistry {
                 title = { context -> context.getString(R.string.tablet_preference_category_title) },
                 fragmentFactory = { TabletPreferenceFragment() },
             ),
+            SettingTabSpec(
+                title = { context -> context.getString(R.string.hardware_keyboard_category_title) },
+                fragmentFactory = { HardwareKeyboardPreferenceFragment() },
+            ),
         )
 
         return tabs

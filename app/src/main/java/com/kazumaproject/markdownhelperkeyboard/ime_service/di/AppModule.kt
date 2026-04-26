@@ -33,6 +33,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_21_22
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_22_23
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_23_24
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_24_25
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
@@ -50,6 +51,7 @@ import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleDao
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutDao
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
@@ -107,6 +109,7 @@ object AppModule {
             MIGRATION_21_22,
             MIGRATION_22_23,
             MIGRATION_23_24,
+            MIGRATION_24_25,
         )
         .build()
 
@@ -164,6 +167,11 @@ object AppModule {
     @Provides
     fun providesDeleteKeyFlickDeleteTargetDao(db: AppDatabase): DeleteKeyFlickDeleteTargetDao =
         db.deleteKeyFlickDeleteTargetDao()
+
+    @Singleton
+    @Provides
+    fun providesPhysicalKeyboardShortcutDao(db: AppDatabase): PhysicalKeyboardShortcutDao =
+        db.physicalKeyboardShortcutDao()
 
     @Singleton
     @Provides
