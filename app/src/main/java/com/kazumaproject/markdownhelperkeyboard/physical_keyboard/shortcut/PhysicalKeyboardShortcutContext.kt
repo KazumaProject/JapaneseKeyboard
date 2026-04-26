@@ -1,10 +1,16 @@
 package com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut
 
-enum class PhysicalKeyboardShortcutContext(val id: String, val label: String) {
-    ANY("any", "Any"),
-    COMPOSITION("composition", "Composition"),
-    CONVERSION("conversion", "Conversion"),
-    BUNSETSU_CONVERSION("bunsetsu_conversion", "Bunsetsu conversion");
+import androidx.annotation.StringRes
+import com.kazumaproject.markdownhelperkeyboard.R
+
+enum class PhysicalKeyboardShortcutContext(
+    val id: String,
+    @StringRes val labelResId: Int
+) {
+    ANY("any", R.string.physical_keyboard_shortcut_context_any),
+    COMPOSITION("composition", R.string.physical_keyboard_shortcut_context_composition),
+    CONVERSION("conversion", R.string.physical_keyboard_shortcut_context_conversion),
+    BUNSETSU_CONVERSION("bunsetsu_conversion", R.string.physical_keyboard_shortcut_context_bunsetsu_conversion);
 
     companion object {
         fun fromId(id: String?): PhysicalKeyboardShortcutContext {

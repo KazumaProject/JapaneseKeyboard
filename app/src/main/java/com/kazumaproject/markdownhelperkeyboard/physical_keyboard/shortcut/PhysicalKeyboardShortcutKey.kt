@@ -1,8 +1,10 @@
 package com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut
 
+import android.content.Context
 import android.view.KeyEvent
+import com.kazumaproject.markdownhelperkeyboard.R as AppR
 
-enum class PhysicalKeyboardShortcutKey(val keyCode: Int, val label: String) {
+enum class PhysicalKeyboardShortcutKey(val keyCode: Int, private val defaultLabel: String) {
     A(KeyEvent.KEYCODE_A, "A"), B(KeyEvent.KEYCODE_B, "B"), C(KeyEvent.KEYCODE_C, "C"),
     D(KeyEvent.KEYCODE_D, "D"), E(KeyEvent.KEYCODE_E, "E"), F(KeyEvent.KEYCODE_F, "F"),
     G(KeyEvent.KEYCODE_G, "G"), H(KeyEvent.KEYCODE_H, "H"), I(KeyEvent.KEYCODE_I, "I"),
@@ -39,6 +41,38 @@ enum class PhysicalKeyboardShortcutKey(val keyCode: Int, val label: String) {
     APOSTROPHE(KeyEvent.KEYCODE_APOSTROPHE, "Apostrophe"),
     COMMA(KeyEvent.KEYCODE_COMMA, "Comma"), PERIOD(KeyEvent.KEYCODE_PERIOD, "Period"),
     SLASH(KeyEvent.KEYCODE_SLASH, "Slash"), GRAVE(KeyEvent.KEYCODE_GRAVE, "Grave");
+
+    fun displayLabel(context: Context): String {
+        val resId = when (this) {
+            SPACE -> AppR.string.physical_keyboard_shortcut_key_space
+            ENTER -> AppR.string.physical_keyboard_shortcut_key_enter
+            BACKSPACE -> AppR.string.physical_keyboard_shortcut_key_backspace
+            DELETE -> AppR.string.physical_keyboard_shortcut_key_delete
+            ESCAPE -> AppR.string.physical_keyboard_shortcut_key_escape
+            TAB -> AppR.string.physical_keyboard_shortcut_key_tab
+            LEFT -> AppR.string.physical_keyboard_shortcut_key_left
+            RIGHT -> AppR.string.physical_keyboard_shortcut_key_right
+            UP -> AppR.string.physical_keyboard_shortcut_key_up
+            DOWN -> AppR.string.physical_keyboard_shortcut_key_down
+            HENKAN -> AppR.string.physical_keyboard_shortcut_key_henkan
+            MUHENKAN -> AppR.string.physical_keyboard_shortcut_key_muhenkan
+            ZENKAKU_HANKAKU -> AppR.string.physical_keyboard_shortcut_key_zenkaku_hankaku
+            KANA -> AppR.string.physical_keyboard_shortcut_key_kana
+            MINUS -> AppR.string.physical_keyboard_shortcut_key_minus
+            EQUALS -> AppR.string.physical_keyboard_shortcut_key_equals
+            LEFT_BRACKET -> AppR.string.physical_keyboard_shortcut_key_left_bracket
+            RIGHT_BRACKET -> AppR.string.physical_keyboard_shortcut_key_right_bracket
+            BACKSLASH -> AppR.string.physical_keyboard_shortcut_key_backslash
+            SEMICOLON -> AppR.string.physical_keyboard_shortcut_key_semicolon
+            APOSTROPHE -> AppR.string.physical_keyboard_shortcut_key_apostrophe
+            COMMA -> AppR.string.physical_keyboard_shortcut_key_comma
+            PERIOD -> AppR.string.physical_keyboard_shortcut_key_period
+            SLASH -> AppR.string.physical_keyboard_shortcut_key_slash
+            GRAVE -> AppR.string.physical_keyboard_shortcut_key_grave
+            else -> null
+        }
+        return resId?.let(context::getString) ?: defaultLabel
+    }
 
     companion object {
         fun fromKeyCode(keyCode: Int): PhysicalKeyboardShortcutKey? {
