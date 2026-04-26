@@ -5,7 +5,7 @@
     <PreferenceCategory android:title="@string/hardware_keyboard_category_title">
 
         <ListPreference
-            android:defaultValue="japanese_109a"
+            android:defaultValue="us"
             android:entries="@array/physical_keyboard_layout_entries"
             android:entryValues="@array/physical_keyboard_layout_values"
             android:key="physical_keyboard_layout_preference"
