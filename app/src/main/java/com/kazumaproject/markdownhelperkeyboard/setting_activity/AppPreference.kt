@@ -268,7 +268,7 @@ object AppPreference {
         Pair("conversion_key_swipe_cursor_move_preference", false)
 
     private val PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE =
-        Pair("physical_keyboard_layout_preference", "japanese_109a")
+        Pair("physical_keyboard_layout_preference", "us")
 
     private val PHYSICAL_KEYBOARD_INPUT_MODE_PREFERENCE =
         Pair("physical_keyboard_input_mode_preference", "romaji")
