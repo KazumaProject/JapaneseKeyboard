@@ -256,6 +256,21 @@ object AppPreference {
     private val ROUND_KEYBOARD_CORNER_PREFERENCE =
         Pair("round_corner_keyboard_preference", false)
 
+    private val KEYBOARD_CORNER_RADIUS_DP_PREFERENCE =
+        Pair("keyboard_corner_radius_dp_preference", 32)
+
+    private val KEYBOARD_CORNER_TOP_LEFT_PREFERENCE =
+        Pair("keyboard_corner_top_left_preference", true)
+
+    private val KEYBOARD_CORNER_TOP_RIGHT_PREFERENCE =
+        Pair("keyboard_corner_top_right_preference", true)
+
+    private val KEYBOARD_CORNER_BOTTOM_LEFT_PREFERENCE =
+        Pair("keyboard_corner_bottom_left_preference", true)
+
+    private val KEYBOARD_CORNER_BOTTOM_RIGHT_PREFERENCE =
+        Pair("keyboard_corner_bottom_right_preference", true)
+
     private val BUNSETSU_SEPARATION_PREFERENCE =
         Pair("conversion_bunsetsu_separation_preference", false)
 
@@ -1348,6 +1363,54 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(ROUND_KEYBOARD_CORNER_PREFERENCE.first, value)
+        }
+
+    var keyboard_corner_radius_dp_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_CORNER_RADIUS_DP_PREFERENCE.first,
+            KEYBOARD_CORNER_RADIUS_DP_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_CORNER_RADIUS_DP_PREFERENCE.first,
+                value.coerceIn(0, 64)
+            )
+        }
+
+    var keyboard_corner_top_left_preference: Boolean
+        get() = preferences.getBoolean(
+            KEYBOARD_CORNER_TOP_LEFT_PREFERENCE.first,
+            KEYBOARD_CORNER_TOP_LEFT_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_CORNER_TOP_LEFT_PREFERENCE.first, value)
+        }
+
+    var keyboard_corner_top_right_preference: Boolean
+        get() = preferences.getBoolean(
+            KEYBOARD_CORNER_TOP_RIGHT_PREFERENCE.first,
+            KEYBOARD_CORNER_TOP_RIGHT_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_CORNER_TOP_RIGHT_PREFERENCE.first, value)
+        }
+
+    var keyboard_corner_bottom_left_preference: Boolean
+        get() = preferences.getBoolean(
+            KEYBOARD_CORNER_BOTTOM_LEFT_PREFERENCE.first,
+            KEYBOARD_CORNER_BOTTOM_LEFT_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_CORNER_BOTTOM_LEFT_PREFERENCE.first, value)
+        }
+
+    var keyboard_corner_bottom_right_preference: Boolean
+        get() = preferences.getBoolean(
+            KEYBOARD_CORNER_BOTTOM_RIGHT_PREFERENCE.first,
+            KEYBOARD_CORNER_BOTTOM_RIGHT_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_CORNER_BOTTOM_RIGHT_PREFERENCE.first, value)
         }
 
     var bunsetsu_separation_preference: Boolean
