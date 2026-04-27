@@ -95,6 +95,12 @@
     <string name="keyboard_screen_size_preference_title">位置とサイズの設定(縦画面)</string>
     <string name="keyboard_screen_landscape_size_preference_title">位置とサイズの設定(横画面)</string>
     <string name="keyboard_screen_preference_summary">キーボードの位置とサイズの設定を変更できます</string>
+    <string name="keyboard_corner_radius_dp_preference_title">キーボードの角丸半径</string>
+    <string name="keyboard_corner_radius_dp_preference_summary">キーボード背景の角丸の大きさを調整します。</string>
+    <string name="keyboard_corner_top_left_preference_title">左上を角丸にする</string>
+    <string name="keyboard_corner_top_right_preference_title">右上を角丸にする</string>
+    <string name="keyboard_corner_bottom_left_preference_title">左下を角丸にする</string>
+    <string name="keyboard_corner_bottom_right_preference_title">右下を角丸にする</string>
     <string name="landscape_force_qwerty_preference_title">横画面では常に QWERTY に切り替える</string>
     <string name="landscape_force_qwerty_preference_summary">端末が横画面のとき、一時的に QWERTY キーボードへ切り替えます。</string>
     <string name="landscape_force_qwerty_romaji_preference_title">横画面 QWERTY の入力モード</string>

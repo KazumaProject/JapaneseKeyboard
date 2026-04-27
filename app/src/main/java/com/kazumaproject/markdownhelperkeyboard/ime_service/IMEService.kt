@@ -11,6 +11,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.GradientDrawable
 import android.hardware.input.InputManager
 import android.inputmethodservice.InputMethodService
 import android.media.AudioManager
@@ -86,6 +87,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.DynamicColorsOptions
+import com.google.android.material.R as MaterialR
 import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
@@ -99,6 +101,7 @@ import com.kazumaproject.core.domain.extensions.kanjiCount
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setLayerTypeSolidColor
+import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
 import com.kazumaproject.core.domain.extensions.toHankakuKigou
@@ -399,6 +402,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var keyboardBackgroundPlayer: ExoPlayer? = null
     private var isKeyboardFloatingMode: Boolean? = false
     private var isKeyboardRounded: Boolean? = false
+    private var keyboardCornerRadiusDp: Int = 32
+    private var keyboardCornerTopLeft: Boolean = true
+    private var keyboardCornerTopRight: Boolean = true
+    private var keyboardCornerBottomLeft: Boolean = true
+    private var keyboardCornerBottomRight: Boolean = true
     private var bunsetsuSeparation: Boolean? = false
     private var bunsetsuCursorMove: Boolean? = false
     private var reconversionEnabledPreference: Boolean = false
@@ -1212,6 +1220,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickKeymapGuidePreference = preferences.flickKeymapGuide
         isKeyboardFloatingMode = preferences.isKeyboardFloatingMode
         isKeyboardRounded = preferences.isKeyboardRounded
+        keyboardCornerRadiusDp = preferences.keyboardCornerRadiusDp.coerceIn(0, 64)
+        keyboardCornerTopLeft = preferences.keyboardCornerTopLeft
+        keyboardCornerTopRight = preferences.keyboardCornerTopRight
+        keyboardCornerBottomLeft = preferences.keyboardCornerBottomLeft
+        keyboardCornerBottomRight = preferences.keyboardCornerBottomRight
         bunsetsuSeparation = preferences.bunsetsuSeparation
         bunsetsuCursorMove = preferences.bunsetsuCursorMove
         reconversionEnabledPreference = preferences.reconversionEnabled
@@ -1477,6 +1490,112 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.shortcutToolbarRecyclerview.setBackgroundColor(Color.TRANSPARENT)
     }
 
+    private fun createKeyboardBackgroundDrawable(
+        @ColorInt color: Int,
+        radiusDp: Int,
+        topLeft: Boolean,
+        topRight: Boolean,
+        bottomRight: Boolean,
+        bottomLeft: Boolean
+    ): GradientDrawable {
+        val radiusPx = radiusDp * resources.displayMetrics.density
+        return GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            setColor(color)
+            cornerRadii = floatArrayOf(
+                if (topLeft) radiusPx else 0f,
+                if (topLeft) radiusPx else 0f,
+                if (topRight) radiusPx else 0f,
+                if (topRight) radiusPx else 0f,
+                if (bottomRight) radiusPx else 0f,
+                if (bottomRight) radiusPx else 0f,
+                if (bottomLeft) radiusPx else 0f,
+                if (bottomLeft) radiusPx else 0f
+            )
+        }
+    }
+
+    private fun applyKeyboardContainerBackgrounds(mainView: MainLayoutBinding) {
+        val isDynamic = DynamicColors.isDynamicColorAvailable()
+        if (isKeyboardRounded == true) {
+            val defaultColor = if (isDynamic) {
+                getThemeColor(MaterialR.attr.colorSurfaceContainer)
+            } else {
+                getColor(com.kazumaproject.core.R.color.keyboard_bg)
+            }
+            val customColor = customThemeBgColor ?: Color.WHITE
+            val backgroundColor = when (keyboardThemeMode) {
+                "custom" -> customColor
+                else -> defaultColor
+            }
+            mainView.root.background = createKeyboardBackgroundDrawable(
+                color = backgroundColor,
+                radiusDp = keyboardCornerRadiusDp,
+                topLeft = keyboardCornerTopLeft,
+                topRight = keyboardCornerTopRight,
+                bottomRight = keyboardCornerBottomRight,
+                bottomLeft = keyboardCornerBottomLeft
+            )
+            mainView.suggestionViewParent.background = createKeyboardBackgroundDrawable(
+                color = backgroundColor,
+                radiusDp = keyboardCornerRadiusDp,
+                topLeft = keyboardCornerTopLeft,
+                topRight = keyboardCornerTopRight,
+                bottomRight = keyboardCornerBottomRight,
+                bottomLeft = keyboardCornerBottomLeft
+            )
+            mainView.candidateTabLayout.background = createKeyboardBackgroundDrawable(
+                color = backgroundColor,
+                radiusDp = keyboardCornerRadiusDp,
+                topLeft = keyboardCornerTopLeft,
+                topRight = keyboardCornerTopRight,
+                bottomRight = keyboardCornerBottomRight,
+                bottomLeft = keyboardCornerBottomLeft
+            )
+            return
+        }
+
+        when (keyboardThemeMode) {
+            "default" -> {
+                if (isDynamic) {
+                    mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                    mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                    mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                } else {
+                    mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                    mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                    mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                }
+            }
+
+            "custom" -> {
+                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+
+                mainView.root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
+                mainView.suggestionViewParent.setDrawableSolidColor(
+                    customThemeBgColor ?: Color.WHITE
+                )
+                mainView.candidateTabLayout.setDrawableSolidColor(
+                    customThemeBgColor ?: Color.WHITE
+                )
+            }
+
+            else -> {
+                if (isDynamic) {
+                    mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                    mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                    mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
+                } else {
+                    mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                    mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                    mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                }
+            }
+        }
+    }
+
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         isInputViewActive = true
@@ -1686,87 +1805,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 checkForPhysicalKeyboard(true)
             }
             mainView.apply {
-                if (isKeyboardRounded == true) {
-                    when (keyboardThemeMode) {
-                        "default" -> {
-                            if (DynamicColors.isDynamicColorAvailable()) {
-                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_root)
-                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
-                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
-                            } else {
-                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_root)
-                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
-                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
-                            }
-                        }
-
-                        "custom" -> {
-                            mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_root)
-                            mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
-                            mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
-
-                            mainView.root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
-                            mainView.suggestionViewParent.setDrawableSolidColor(
-                                customThemeBgColor ?: Color.WHITE
-                            )
-                            mainView.candidateTabLayout.setDrawableSolidColor(
-                                customThemeBgColor ?: Color.WHITE
-                            )
-                        }
-
-                        else -> {
-                            if (DynamicColors.isDynamicColorAvailable()) {
-                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_root)
-                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
-                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_material_dark)
-                            } else {
-                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_root)
-                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
-                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.rounded_corners_bg_suggestion)
-                            }
-                        }
-                    }
-                } else {
-                    when (keyboardThemeMode) {
-                        "default" -> {
-                            if (DynamicColors.isDynamicColorAvailable()) {
-                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
-                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
-                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
-                            } else {
-                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-                            }
-                        }
-
-                        "custom" -> {
-                            mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-                            mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-                            mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-
-                            mainView.root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
-                            mainView.suggestionViewParent.setDrawableSolidColor(
-                                customThemeBgColor ?: Color.WHITE
-                            )
-                            mainView.candidateTabLayout.setDrawableSolidColor(
-                                customThemeBgColor ?: Color.WHITE
-                            )
-                        }
-
-                        else -> {
-                            if (DynamicColors.isDynamicColorAvailable()) {
-                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
-                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
-                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_material_root)
-                            } else {
-                                mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-                                mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-                                mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
-                            }
-                        }
-                    }
-                }
+                applyKeyboardContainerBackgrounds(mainView)
 
                 if (liquidGlassThemePreference == true) {
                     mainView.root.setDrawableAlpha(liquidGlassBlurRadiousPreference ?: 220)
