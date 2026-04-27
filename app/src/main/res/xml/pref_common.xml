@@ -286,6 +286,16 @@
             android:summaryOn="@string/live_conversion_summary_on"
             android:title="@string/live_conversion_title" />
 
+        <SeekBarPreference
+            android:defaultValue="1"
+            android:dependency="live_conversion_preference"
+            android:key="live_conversion_start_length_preference"
+            android:max="10"
+            android:summary="@string/live_conversion_start_length_summary"
+            android:title="@string/live_conversion_start_length_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="omission_search_preference"
