@@ -94,6 +94,12 @@
     <string name="category_title_keyboard">Keyboard</string>
     <string name="keyboard_screen_size_preference_title">Position and Size</string>
     <string name="keyboard_screen_preference_summary">Adjust keyboard position and size</string>
+    <string name="keyboard_corner_radius_dp_preference_title">Keyboard corner radius</string>
+    <string name="keyboard_corner_radius_dp_preference_summary">Adjust the corner radius of the keyboard background.</string>
+    <string name="keyboard_corner_top_left_preference_title">Round top-left corner</string>
+    <string name="keyboard_corner_top_right_preference_title">Round top-right corner</string>
+    <string name="keyboard_corner_bottom_left_preference_title">Round bottom-left corner</string>
+    <string name="keyboard_corner_bottom_right_preference_title">Round bottom-right corner</string>
     <string name="landscape_force_qwerty_preference_title">Always use QWERTY in landscape</string>
     <string name="landscape_force_qwerty_preference_summary">When the device is in landscape, temporarily switch to a QWERTY keyboard.</string>
     <string name="landscape_force_qwerty_romaji_preference_title">Landscape QWERTY input mode</string>
