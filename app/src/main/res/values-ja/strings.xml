@@ -150,6 +150,8 @@
     <string name="live_conversion_title">ライブ変換 β</string>
     <string name="live_conversion_summary_on">ライブ変換は有効です</string>
     <string name="live_conversion_summary_off">ライブ変換は無効です</string>
+    <string name="live_conversion_start_length_title">ライブ変換の開始文字数</string>
+    <string name="live_conversion_start_length_summary">入力文字数がこの値以上になったらライブ変換を開始します。</string>
     <string name="omission_search_title">修飾キー省略入力</string>
     <string name="omission_search_summary_on">修飾キー省略入力は有効です\nかつこう → がっこう</string>
     <string name="omission_search_summary_off">修飾キー省略入力は無効です</string>

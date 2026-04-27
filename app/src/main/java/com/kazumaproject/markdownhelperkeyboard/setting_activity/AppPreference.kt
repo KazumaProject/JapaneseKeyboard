@@ -128,6 +128,7 @@ object AppPreference {
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
+    private val LIVE_CONVERSION_START_LENGTH = Pair("live_conversion_start_length_preference", 1)
     private const val OLD_SUMIRE_PREFERENCE_KEY = "sumire_keyboard_input_type_preference"
     private const val NEW_SUMIRE_STYLE_KEY = "sumire_keyboard_style_preference"
     private const val NEW_SUMIRE_METHOD_KEY = "sumire_input_method_preference"
@@ -991,6 +992,18 @@ object AppPreference {
         get() = preferences.getBoolean(LIVE_CONVERSION_ENABLE.first, LIVE_CONVERSION_ENABLE.second)
         set(value) = preferences.edit {
             it.putBoolean(LIVE_CONVERSION_ENABLE.first, value ?: false)
+        }
+
+    var live_conversion_start_length_preference: Int?
+        get() = preferences.getInt(
+            LIVE_CONVERSION_START_LENGTH.first,
+            LIVE_CONVERSION_START_LENGTH.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                LIVE_CONVERSION_START_LENGTH.first,
+                value ?: LIVE_CONVERSION_START_LENGTH.second
+            )
         }
 
     var delete_key_high_light_preference: Boolean?
