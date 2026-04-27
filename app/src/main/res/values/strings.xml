@@ -148,6 +148,8 @@
     <string name="live_conversion_title">Live Conversion β</string>
     <string name="live_conversion_summary_on">Live conversion is enabled</string>
     <string name="live_conversion_summary_off">Live conversion is disabled</string>
+    <string name="live_conversion_start_length_title">Live conversion start length</string>
+    <string name="live_conversion_start_length_summary">Start live conversion after this many characters are entered.</string>
     <string name="omission_search_title">Omit Modifier Key Input</string>
     <string name="omission_search_summary_on">Omit modifier key input is enabled\ne.g., "かつこう" → "がっこう"</string>
     <string name="omission_search_summary_off">Omit modifier key input is disabled</string>
