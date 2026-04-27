@@ -526,6 +526,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isUserTemplateEnable: Boolean? = false
     private var hankakuPreference: Boolean? = false
     private var isLiveConversionEnable: Boolean? = false
+    private var liveConversionStartLength: Int = 1
     private var nBest: Int? = 4
     private var flickSensitivityPreferenceValue: Int? = 100
     private var longPressTimeoutPreferenceValue: Int? = 300
@@ -1169,6 +1170,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isUserTemplateEnable = preferences.isUserTemplateEnable
         hankakuPreference = preferences.hankakuPreference
         isLiveConversionEnable = preferences.isLiveConversionEnable
+        liveConversionStartLength = preferences.liveConversionStartLength.coerceIn(1, 10)
         nBest = preferences.nBest
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
         longPressTimeoutPreferenceValue = preferences.longPressTimeoutPreferenceValue
@@ -8638,7 +8640,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 suggestionAdapter?.suggestions =
                                     (resultFromZenzToCandidate + (suggestions)).distinctBy { it.string }
 
-                                if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+                                if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
                                     isContinuousTapInputEnabled.set(true)
                                     lastFlickConvertedNextHiragana.set(true)
                                     if (!hasConvertedKatakana) applyFirstSuggestion(
@@ -9177,7 +9179,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             if (
                 requestToken == zenzRerankRequestToken &&
-                isLiveConversionEnable == true &&
+                shouldStartLiveConversion(insertString) &&
                 !hasConvertedKatakana &&
                 inputString.value == insertString &&
                 reranked.isNotEmpty()
@@ -9943,7 +9945,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun handleTenKeyQwertyInput(string: String) {
         val spannable = createSpannableWithTail(string)
         _suggestionFlag.emit(CandidateShowFlag.Updating)
-        if (!(isLiveConversionEnable == true && isFlickOnlyMode == true)) {
+        if (!(shouldStartLiveConversion(string) && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
                 inputString = string,
                 spannableString = spannable,
@@ -9981,7 +9983,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private suspend fun handleDefaultInput(string: String) {
         val spannable = createSpannableWithTail(string)
-        if (!(isLiveConversionEnable == true && isFlickOnlyMode == true)) {
+        if (!(shouldStartLiveConversion(string) && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
                 inputString = string,
                 spannableString = spannable,
@@ -10038,6 +10040,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidate.string
         }
+    }
+
+    private fun shouldStartLiveConversion(input: String): Boolean {
+        return isLiveConversionEnable == true && input.length >= liveConversionStartLength
     }
 
     private fun applyFirstSuggestion(
@@ -13669,7 +13675,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         updateDisplayedCandidates(insertString, displayedCandidates)
 
-        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+        if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
             }
@@ -13731,7 +13737,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         updateDisplayedCandidates(insertString, displayedCandidates)
 
-        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+        if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
             }
@@ -13789,7 +13795,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
         }
-        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+        if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
             }
@@ -13847,7 +13853,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
         }
-        if (isLiveConversionEnable == true && !hasConvertedKatakana) {
+        if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
             if (isFlickOnlyMode != true) {
                 delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
             }

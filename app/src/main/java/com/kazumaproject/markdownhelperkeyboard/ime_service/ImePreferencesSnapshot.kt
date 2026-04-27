@@ -22,6 +22,7 @@ data class ImePreferencesSnapshot(
     val isUserTemplateEnable: Boolean,
     val hankakuPreference: Boolean,
     val isLiveConversionEnable: Boolean,
+    val liveConversionStartLength: Int,
     val nBest: Int,
     val flickSensitivityPreferenceValue: Int,
     val longPressTimeoutPreferenceValue: Int,
@@ -172,6 +173,8 @@ data class ImePreferencesSnapshot(
                 isUserTemplateEnable = appPreference.user_template_preference ?: true,
                 hankakuPreference = appPreference.space_hankaku_preference ?: false,
                 isLiveConversionEnable = appPreference.live_conversion_preference ?: false,
+                liveConversionStartLength =
+                    appPreference.live_conversion_start_length_preference ?: 1,
                 nBest = appPreference.n_best_preference ?: 4,
                 flickSensitivityPreferenceValue = appPreference.flick_sensitivity_preference ?: 100,
                 longPressTimeoutPreferenceValue =
