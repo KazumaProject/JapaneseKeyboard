@@ -100,6 +100,46 @@
             android:summary="@string/keyboard_background_video_clear_summary"
             android:title="@string/keyboard_background_video_clear_title" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="round_corner_keyboard_preference"
+            android:summary="@string/pref_round_corner_keyboard_summary"
+            android:title="@string/pref_round_corner_keyboard_title" />
+
+        <SeekBarPreference
+            android:defaultValue="32"
+            android:dependency="round_corner_keyboard_preference"
+            android:key="keyboard_corner_radius_dp_preference"
+            android:max="64"
+            android:title="@string/keyboard_corner_radius_dp_preference_title"
+            app:min="0"
+            app:showSeekBarValue="true"
+            app:summary="@string/keyboard_corner_radius_dp_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:dependency="round_corner_keyboard_preference"
+            android:key="keyboard_corner_top_left_preference"
+            android:title="@string/keyboard_corner_top_left_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:dependency="round_corner_keyboard_preference"
+            android:key="keyboard_corner_top_right_preference"
+            android:title="@string/keyboard_corner_top_right_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:dependency="round_corner_keyboard_preference"
+            android:key="keyboard_corner_bottom_left_preference"
+            android:title="@string/keyboard_corner_bottom_left_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:dependency="round_corner_keyboard_preference"
+            android:key="keyboard_corner_bottom_right_preference"
+            android:title="@string/keyboard_corner_bottom_right_preference_title" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/conversion_preference_title">
