@@ -78,6 +78,7 @@ class CustomAngleFlickController(
 
     fun setMapSwitchDirection(direction: CircularFlickDirection?) {
         mapSwitchDirection = direction?.takeIf { it != CircularFlickDirection.TAP }
+        popupView.setMapSwitchDirection(mapSwitchDirection)
     }
 
     fun setShapeType(shape: ShapeType) {
@@ -106,6 +107,7 @@ class CustomAngleFlickController(
     fun attach(button: View, maps: List<Map<CircularFlickDirection, String>>) {
         if (maps.isEmpty()) return
         this.keyMaps = maps
+        popupView.setMapSwitchIconEnabled(keyMaps.size >= 2)
         button.setOnTouchListener { v, event ->
             handleTouchEvent(v, event)
         }
