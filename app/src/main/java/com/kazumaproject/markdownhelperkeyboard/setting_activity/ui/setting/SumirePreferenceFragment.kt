@@ -33,6 +33,7 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
 
             // 【追加】初期表示状態の設定 ("sumire" の場合のみ表示)
             sumireCustomAnglePreference?.isVisible = (value == "sumire")
+            circularSlotActionSettingPreference?.isVisible = (value == "sumire")
 
             setOnPreferenceChangeListener { preference, newValue ->
                 val stringValue = newValue as String
