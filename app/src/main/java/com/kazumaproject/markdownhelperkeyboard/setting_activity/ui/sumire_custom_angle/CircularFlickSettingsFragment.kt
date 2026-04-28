@@ -7,12 +7,15 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
-import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentCircularFlickSettingsBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
@@ -27,16 +30,12 @@ class CircularFlickSettingsFragment : Fragment() {
     private var _binding: FragmentCircularFlickSettingsBinding? = null
     private val binding get() = _binding!!
 
-    private var directionOrder = mutableListOf<FlickDirection>()
-    private val angleData = mutableMapOf<FlickDirection, Pair<Float, Float>>()
+    private var directionOrder = mutableListOf<CircularFlickDirection>()
+    private val angleData = mutableMapOf<CircularFlickDirection, Pair<Float, Float>>()
 
-    private var currentEditingDirection: FlickDirection = FlickDirection.UP
+    private var currentEditingDirection: CircularFlickDirection = CircularFlickDirection.SLOT_0
     private var isUpdatingUi = false
     private val minSweepAngle = 15f
-
-    // 新規作成: カウンター変数
-    private var resetClickCount = 0
-    private var chipDownClickCount = 0
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -49,15 +48,11 @@ class CircularFlickSettingsFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val is5Way = appPreference.circularFlick5DirectionsEnable
+        val directionCount = appPreference.circularFlickDirectionCount
 
-        // 初期状態ではスイッチを非表示にする（ただし、既に設定が有効な場合は表示したままにする等の調整が必要な場合はここを変更してください）
-        // 要件に従い、隠しコマンド未達成なら非表示、既にONなら表示などのロジックを入れるのが親切ですが、
-        // 今回は「条件達成時に表示」という要件のため、初期状態は、設定がOFFならGONEにします。
-        binding.switchFiveDirections.isVisible = is5Way
-        binding.switchFiveDirections.isChecked = is5Way
-
-        updateDirectionOrder(is5Way)
+        setupDirectionCountSpinner(directionCount)
+        setupMapSwitchDirectionSpinner()
+        updateDirectionOrder(directionCount)
 
         val ranges = appPreference.getCircularFlickRanges()
         angleData.putAll(ranges)
@@ -74,110 +69,123 @@ class CircularFlickSettingsFragment : Fragment() {
         }
 
         setupMenu()
-        setupFiveWaySwitch()
         setupChipGroup()
         setupSliders()
         setupResetButton()
 
-        updateChipVisibility(is5Way)
+        updateChipVisibility(directionCount)
         refreshAll()
     }
 
-    // 新規作成: 隠し機能解除チェック
-    private fun checkSecretUnlock() {
-        if (resetClickCount >= 16 && chipDownClickCount >= 16) {
-            if (!binding.switchFiveDirections.isVisible) {
-                binding.switchFiveDirections.isVisible = true
+    private fun setupDirectionCountSpinner(initialCount: Int) {
+        val items = listOf("4方向" to 4, "5方向" to 5, "6方向" to 6, "7方向" to 7)
+        binding.spinnerDirectionCount.adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_dropdown_item,
+            items.map { it.first }
+        )
+        binding.spinnerDirectionCount.setSelection(items.indexOfFirst { it.second == initialCount }.coerceAtLeast(0))
+        binding.spinnerDirectionCount.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (isUpdatingUi) return
+                val count = items[position].second
+                appPreference.circularFlickDirectionCount = count
+                appPreference.circularFlick5DirectionsEnable = count == 5
+                updateDirectionOrder(count)
+                updateChipVisibility(count)
+                resetAnglesToDefault(count)
+                binding.chipGroupDirection.check(binding.chipUp.id)
+                currentEditingDirection = CircularFlickDirection.SLOT_0
+                refreshAll()
             }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
         }
     }
 
-    private fun updateDirectionOrder(is5Way: Boolean) {
+    private fun setupMapSwitchDirectionSpinner() {
+        val items = listOf("なし" to null) +
+            CircularFlickDirection.slots(7).map { it.name to it }
+        binding.spinnerMapSwitchDirection.adapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_dropdown_item,
+            items.map { it.first }
+        )
+        val current = appPreference.circularFlickMapSwitchDirection
+        binding.spinnerMapSwitchDirection.setSelection(items.indexOfFirst { it.second == current }.coerceAtLeast(0))
+        binding.spinnerMapSwitchDirection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (isUpdatingUi) return
+                appPreference.circularFlickMapSwitchDirection = items[position].second
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
+    }
+
+    private fun updateDirectionOrder(directionCount: Int) {
         directionOrder.clear()
-        if (is5Way) {
-            directionOrder.add(FlickDirection.UP)
-            directionOrder.add(FlickDirection.UP_RIGHT_FAR)
-            directionOrder.add(FlickDirection.DOWN)
-            directionOrder.add(FlickDirection.UP_RIGHT)
-            directionOrder.add(FlickDirection.UP_LEFT_FAR)
-        } else {
-            directionOrder.add(FlickDirection.UP)
-            directionOrder.add(FlickDirection.UP_RIGHT_FAR)
-            directionOrder.add(FlickDirection.DOWN)
-            directionOrder.add(FlickDirection.UP_LEFT_FAR)
-        }
+        directionOrder.addAll(CircularFlickDirection.slots(directionCount))
     }
 
-    private fun setupFiveWaySwitch() {
-        binding.switchFiveDirections.setOnCheckedChangeListener { _, isChecked ->
-            appPreference.circularFlick5DirectionsEnable = isChecked
-            updateDirectionOrder(isChecked)
-            updateChipVisibility(isChecked)
-            resetAnglesToDefault(isChecked)
-
-            binding.chipGroupDirection.check(binding.chipUp.id)
-            currentEditingDirection = FlickDirection.UP
-            refreshAll()
-        }
-    }
-
-    private fun updateChipVisibility(is5Way: Boolean) {
-        binding.chipUpRight.isVisible = is5Way
+    private fun updateChipVisibility(directionCount: Int) {
+        binding.chipUpRight.isVisible = directionCount >= 5
+        binding.chipSlot5.isVisible = directionCount >= 6
+        binding.chipSlot6.isVisible = directionCount >= 7
     }
 
     private fun setupResetButton() {
         binding.btnReset.setOnClickListener {
-            // 変更点: カウントアップとチェック
-            resetClickCount++
-            checkSecretUnlock()
-
-            val is5Way = appPreference.circularFlick5DirectionsEnable
-            resetAnglesToDefault(is5Way)
+            val count = appPreference.circularFlickDirectionCount
+            resetAnglesToDefault(count)
             appPreference.circular_flickWindow_scale = 1.0f
             binding.chipGroupDirection.check(binding.chipUp.id)
-            currentEditingDirection = FlickDirection.UP
+            currentEditingDirection = CircularFlickDirection.SLOT_0
             refreshAll()
         }
     }
 
-    private fun resetAnglesToDefault(is5Way: Boolean) {
-        if (is5Way) {
-            saveData(FlickDirection.UP, 234f, 72f)
-            saveData(FlickDirection.UP_RIGHT_FAR, 306f, 72f)
-            saveData(FlickDirection.DOWN, 18f, 72f)
-            saveData(FlickDirection.UP_RIGHT, 90f, 72f)
-            saveData(FlickDirection.UP_LEFT_FAR, 162f, 72f)
+    private fun resetAnglesToDefault(directionCount: Int) {
+        if (directionCount >= 6) {
+            angleData.clear()
+            angleData.putAll(buildEvenCircularRanges(directionCount))
+        } else if (directionCount == 5) {
+            saveData(CircularFlickDirection.SLOT_0, 234f, 72f)
+            saveData(CircularFlickDirection.SLOT_1, 306f, 72f)
+            saveData(CircularFlickDirection.SLOT_2, 18f, 72f)
+            saveData(CircularFlickDirection.SLOT_4, 90f, 72f)
+            saveData(CircularFlickDirection.SLOT_3, 162f, 72f)
         } else {
-            saveData(FlickDirection.UP, 225f, 90f)
-            saveData(FlickDirection.UP_RIGHT_FAR, 315f, 90f)
-            saveData(FlickDirection.DOWN, 45f, 90f)
-            saveData(FlickDirection.UP_LEFT_FAR, 135f, 90f)
+            saveData(CircularFlickDirection.SLOT_0, 225f, 90f)
+            saveData(CircularFlickDirection.SLOT_1, 315f, 90f)
+            saveData(CircularFlickDirection.SLOT_2, 45f, 90f)
+            saveData(CircularFlickDirection.SLOT_3, 135f, 90f)
 
-            angleData.remove(FlickDirection.UP_RIGHT)
+            angleData.remove(CircularFlickDirection.SLOT_4)
         }
     }
 
-    private fun saveData(direction: FlickDirection, start: Float, sweep: Float) {
+    private fun saveData(direction: CircularFlickDirection, start: Float, sweep: Float) {
         angleData[direction] = Pair(start, sweep)
 
         when (direction) {
-            FlickDirection.UP -> {
+            CircularFlickDirection.SLOT_0 -> {
                 appPreference.circularFlickUpStart = start
                 appPreference.circularFlickUpSweep = sweep
             }
-            FlickDirection.UP_RIGHT -> {
+            CircularFlickDirection.SLOT_4 -> {
                 appPreference.circularFlickUpRightStart = start
                 appPreference.circularFlickUpRightSweep = sweep
             }
-            FlickDirection.UP_RIGHT_FAR -> {
+            CircularFlickDirection.SLOT_1 -> {
                 appPreference.circularFlickRightStart = start
                 appPreference.circularFlickRightSweep = sweep
             }
-            FlickDirection.DOWN -> {
+            CircularFlickDirection.SLOT_2 -> {
                 appPreference.circularFlickDownStart = start
                 appPreference.circularFlickDownSweep = sweep
             }
-            FlickDirection.UP_LEFT_FAR -> {
+            CircularFlickDirection.SLOT_3 -> {
                 appPreference.circularFlickLeftStart = start
                 appPreference.circularFlickLeftSweep = sweep
             }
@@ -187,19 +195,15 @@ class CircularFlickSettingsFragment : Fragment() {
 
     private fun setupChipGroup() {
         binding.chipGroupDirection.setOnCheckedChangeListener { _, checkedId ->
-            // 変更点: DOWNチップ選択時のカウントとチェック
-            if (checkedId == binding.chipDown.id) {
-                chipDownClickCount++
-                checkSecretUnlock()
-            }
-
             val direction = when (checkedId) {
-                binding.chipUp.id -> FlickDirection.UP
-                binding.chipUpRight.id -> FlickDirection.UP_RIGHT
-                binding.chipRight.id -> FlickDirection.UP_RIGHT_FAR
-                binding.chipDown.id -> FlickDirection.DOWN
-                binding.chipLeft.id -> FlickDirection.UP_LEFT_FAR
-                else -> FlickDirection.UP
+                binding.chipUp.id -> CircularFlickDirection.SLOT_0
+                binding.chipUpRight.id -> CircularFlickDirection.SLOT_4
+                binding.chipRight.id -> CircularFlickDirection.SLOT_1
+                binding.chipDown.id -> CircularFlickDirection.SLOT_2
+                binding.chipLeft.id -> CircularFlickDirection.SLOT_3
+                binding.chipSlot5.id -> CircularFlickDirection.SLOT_5
+                binding.chipSlot6.id -> CircularFlickDirection.SLOT_6
+                else -> CircularFlickDirection.SLOT_0
             }
             currentEditingDirection = direction
             updateSlidersFromData()
@@ -286,13 +290,13 @@ class CircularFlickSettingsFragment : Fragment() {
         return if (a == 0f) 0f else a
     }
 
-    private fun getNextDirection(current: FlickDirection): FlickDirection {
+    private fun getNextDirection(current: CircularFlickDirection): CircularFlickDirection {
         val index = directionOrder.indexOf(current)
         if (index == -1) return directionOrder[0]
         return directionOrder[(index + 1) % directionOrder.size]
     }
 
-    private fun getNeighbors(current: FlickDirection): Pair<FlickDirection, FlickDirection> {
+    private fun getNeighbors(current: CircularFlickDirection): Pair<CircularFlickDirection, CircularFlickDirection> {
         val index = directionOrder.indexOf(current)
         if (index == -1) return Pair(directionOrder[0], directionOrder[0])
         val prev = directionOrder[(index - 1 + directionOrder.size) % directionOrder.size]
