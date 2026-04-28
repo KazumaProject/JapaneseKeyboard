@@ -14,7 +14,9 @@ import android.util.AttributeSet
 import android.view.View
 import androidx.core.graphics.toColorInt
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.ShapeType
 import com.kazumaproject.custom_keyboard.data.getDirectionForAngle
 import kotlin.math.cos
@@ -59,7 +61,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     }
 
     private var currentFlickDirection = CircularFlickDirection.TAP
-    private val characterMap = mutableMapOf<CircularFlickDirection, String>()
+    private val characterMap = mutableMapOf<CircularFlickDirection, FlickAction>()
     private val directionRanges = mutableMapOf<CircularFlickDirection, Pair<Float, Float>>()
     private val targetPositions = mutableMapOf<CircularFlickDirection, PointF>()
     private val segmentPaths = mutableMapOf<CircularFlickDirection, Path>()
@@ -118,7 +120,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun setCharacterMap(map: Map<CircularFlickDirection, String>) {
+    fun setCharacterMap(map: Map<CircularFlickDirection, FlickAction>) {
         characterMap.clear()
         characterMap.putAll(map)
         invalidate()
@@ -184,7 +186,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
                     canvas.drawPath(path, paint)
                     canvas.drawPath(path, separatorPaint)
 
-                    val text = characterMap[direction] ?: ""
+                    val text = characterMap[direction].toDisplayLabel()
                     val pos = targetPositions[direction] ?: centerPoint
                     if (direction == mapSwitchDirection && showMapSwitchLabel) {
                         val label = mapSwitchLabel.orEmpty()
@@ -204,9 +206,25 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         val centerPaint = if (isCenterSelected) centerHighlightPaint else centerCirclePaint
         canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, centerPaint)
 
-        val centerText =
-            characterMap[currentFlickDirection] ?: characterMap[CircularFlickDirection.TAP] ?: ""
+        val centerText = characterMap[currentFlickDirection].toDisplayLabel()
+            .ifEmpty { characterMap[CircularFlickDirection.TAP].toDisplayLabel() }
         drawCenteredText(canvas, centerText, centerPoint.x, centerPoint.y)
+    }
+
+    private fun FlickAction?.toDisplayLabel(): String {
+        return when (this) {
+            is FlickAction.Input -> label ?: char
+            is FlickAction.Action -> label ?: when (action) {
+                KeyAction.ShowEmojiKeyboard -> "絵"
+                KeyAction.SwitchToNextIme -> "IME"
+                KeyAction.SwitchToKanaLayout -> "かな"
+                KeyAction.SwitchToEnglishLayout -> "英"
+                KeyAction.SwitchToNumberLayout -> "数"
+                else -> ""
+            }
+
+            null -> ""
+        }
     }
 
     private fun drawCenteredText(canvas: Canvas, text: String, x: Float, y: Float) {

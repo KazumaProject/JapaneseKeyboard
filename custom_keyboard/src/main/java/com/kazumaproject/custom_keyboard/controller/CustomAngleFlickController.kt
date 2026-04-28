@@ -8,7 +8,9 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.ShapeType
 import com.kazumaproject.custom_keyboard.view.CustomAngleFlickPopupView
 import kotlinx.coroutines.CoroutineScope
@@ -28,9 +30,9 @@ class CustomAngleFlickController(
 ) {
 
     interface FlickListener {
-        fun onPress(character: String)
-        fun onFlick(direction: CircularFlickDirection, character: String)
-        fun onStateChanged(view: View, newMap: Map<CircularFlickDirection, String>)
+        fun onPress(action: FlickAction?)
+        fun onFlick(direction: CircularFlickDirection, action: FlickAction)
+        fun onStateChanged(view: View, newMap: Map<CircularFlickDirection, FlickAction>)
         fun onFlickDirectionChanged(newDirection: CircularFlickDirection)
     }
 
@@ -51,7 +53,7 @@ class CustomAngleFlickController(
     private var initialTouchX = 0f
     private var initialTouchY = 0f
 
-    private var keyMaps: List<Map<CircularFlickDirection, String>> = emptyList()
+    private var keyMaps: List<Map<CircularFlickDirection, FlickAction>> = emptyList()
     private var currentMapIndex = 0
 
     private var previousDirection = CircularFlickDirection.TAP
@@ -108,7 +110,7 @@ class CustomAngleFlickController(
     @SuppressLint("ClickableViewAccessibility")
     fun attach(
         button: View,
-        maps: List<Map<CircularFlickDirection, String>>,
+        maps: List<Map<CircularFlickDirection, FlickAction>>,
         switchLabels: List<String?>
     ) {
         if (maps.isEmpty()) return
@@ -121,12 +123,38 @@ class CustomAngleFlickController(
     }
 
     private fun updateMapSwitchLabelState() {
-        val enabled = mapSwitchDirection != null && keyMaps.size >= 2
+        val enabled = keyMaps.size >= 2 && getActiveMapSwitchDirection() != null
         popupView.setMapSwitchLabelEnabled(enabled)
         if (enabled) {
             popupView.setMapSwitchLabel(mapSwitchLabels.getOrNull(currentMapIndex))
         } else {
             popupView.setMapSwitchLabel(null)
+        }
+    }
+
+    private fun isMapSwitchAction(action: FlickAction?): Boolean {
+        return action is FlickAction.Action &&
+            action.action == KeyAction.MoveCustomKeyboardTab &&
+            action.label == "⇄"
+    }
+
+    private fun isExplicitSlotAction(action: FlickAction?): Boolean {
+        return when (action) {
+            is FlickAction.Input -> action.label != null
+            is FlickAction.Action -> action.label != null
+            null -> false
+        }
+    }
+
+    private fun getActiveMapSwitchDirection(): CircularFlickDirection? {
+        if (keyMaps.isEmpty()) return null
+        val currentMap = keyMaps[currentMapIndex]
+        return currentMap.entries.firstOrNull { (direction, action) ->
+            direction != CircularFlickDirection.TAP &&
+                enabledSlots.contains(direction) &&
+                isMapSwitchAction(action)
+        }?.key ?: mapSwitchDirection?.takeIf { direction ->
+            enabledSlots.contains(direction) && !isExplicitSlotAction(currentMap[direction])
         }
     }
 
@@ -151,7 +179,7 @@ class CustomAngleFlickController(
 
                 if (keyMaps.isNotEmpty()) {
                     popupView.setCharacterMap(keyMaps[currentMapIndex])
-                    listener?.onPress(keyMaps[currentMapIndex][CircularFlickDirection.TAP] ?: "")
+                    listener?.onPress(keyMaps[currentMapIndex][CircularFlickDirection.TAP])
                 }
                 updateMapSwitchLabelState()
                 popupView.updateFlickDirection(CircularFlickDirection.TAP)
@@ -177,7 +205,7 @@ class CustomAngleFlickController(
                     }
                 }
 
-                val switchDirection = mapSwitchDirection
+                val switchDirection = getActiveMapSwitchDirection()
                 if (
                     switchDirection != null &&
                     keyMaps.size > 1 &&
@@ -208,7 +236,7 @@ class CustomAngleFlickController(
 
                 val finalDirection = calculateDirection(event.rawX, event.rawY)
 
-                val switchDirection = mapSwitchDirection
+                val switchDirection = getActiveMapSwitchDirection()
                 val isSwitchDirection =
                     switchDirection != null &&
                         keyMaps.size > 1 &&
@@ -218,14 +246,14 @@ class CustomAngleFlickController(
                 if (!isSwitchDirection) {
                     if (keyMaps.isNotEmpty()) {
                         val currentMap = keyMaps[currentMapIndex]
-                        val character = currentMap[finalDirection] ?: ""
+                        val action = currentMap[finalDirection]
 
-                        if (character.isNotEmpty()) {
-                            listener?.onFlick(finalDirection, character)
+                        if (action != null) {
+                            listener?.onFlick(finalDirection, action)
                         } else if (finalDirection == CircularFlickDirection.TAP) {
-                            val tapChar = currentMap[CircularFlickDirection.TAP] ?: ""
-                            if (tapChar.isNotEmpty()) {
-                                listener?.onFlick(CircularFlickDirection.TAP, tapChar)
+                            val tapAction = currentMap[CircularFlickDirection.TAP]
+                            if (tapAction != null) {
+                                listener?.onFlick(CircularFlickDirection.TAP, tapAction)
                             }
                         }
                     }
