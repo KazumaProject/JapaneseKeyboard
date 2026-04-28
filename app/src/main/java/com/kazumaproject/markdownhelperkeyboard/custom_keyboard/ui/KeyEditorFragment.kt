@@ -424,15 +424,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun createDefaultCircularItems(
         source: Map<CircularFlickDirection, FlickAction> = emptyMap()
     ): MutableList<CircularFlickMappingItem> {
-        val mapSwitchDirection = appPreference.circularFlickMapSwitchDirection
         val directions = listOf(CircularFlickDirection.TAP) +
             CircularFlickDirection.slots(appPreference.circularFlickDirectionCount)
         return directions.map { direction ->
             val action = source[direction] as? FlickAction.Input
             CircularFlickMappingItem(
                 direction = direction,
-                output = if (direction == mapSwitchDirection) "" else action?.char.orEmpty(),
-                isMapSwitch = direction == mapSwitchDirection
+                output = action?.char.orEmpty(),
+                isMapSwitch = false
             )
         }.toMutableList()
     }
@@ -448,7 +447,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
     private fun refreshCircularEditor() {
-        val mapSwitchDirection = appPreference.circularFlickMapSwitchDirection
         val currentItems = currentCircularFlickMaps
             .getOrNull(currentCircularMapIndex)
             ?: createDefaultCircularItems().also { currentCircularFlickMaps.add(it) }
@@ -457,12 +455,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             CircularFlickDirection.slots(appPreference.circularFlickDirectionCount)).toSet()
         val normalizedItems = currentItems
             .filter { visibleDirections.contains(it.direction) }
-            .map {
-                it.copy(
-                    output = if (it.direction == mapSwitchDirection) "" else it.output,
-                    isMapSwitch = it.direction == mapSwitchDirection
-                )
-            }
+            .map { it.copy(isMapSwitch = false) }
         circularFlickAdapter.submitList(normalizedItems)
     }
 
@@ -835,11 +828,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 if (isCircular) {
                     newKeyType = KeyType.CIRCULAR_FLICK
                     newLabel = binding.keyLabelEdittext.text.toString()
-                    val mapSwitchDirection = appPreference.circularFlickMapSwitchDirection
                     newCircularFlickMaps = currentCircularFlickMaps.map { items ->
                         items
                             .filter {
-                                it.output.isNotEmpty() && it.direction != mapSwitchDirection
+                                it.output.isNotEmpty()
                             }
                             .associate { it.direction to FlickAction.Input(it.output) }
                     }.ifEmpty {
