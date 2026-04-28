@@ -30,6 +30,12 @@ class QWERTYButton @JvmOverloads constructor(
             invalidate() // Viewの再描画をリクエストする
         }
 
+    var bottomRightChar: Char? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
+
     /**
      * ✅ STEP 2: 文字描画用のPaintオブジェクトを準備
      */
@@ -70,6 +76,12 @@ class QWERTYButton @JvmOverloads constructor(
             val y = paddingTop.toFloat() + topRightPaint.textSize
 
             // Canvasに文字を描画
+            canvas.drawText(charText, x, y, topRightPaint)
+        }
+
+        bottomRightChar?.toString()?.let { charText ->
+            val x = (width - paddingRight).toFloat()
+            val y = height - paddingBottom.toFloat() - topRightPaint.fontMetrics.descent
             canvas.drawText(charText, x, y, topRightPaint)
         }
     }

@@ -147,6 +147,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private var isNumberKeysShow: Boolean = false
     private var isSymbolKeymapShow: Boolean = false
+    private var numberKeyFlickUpChars: Map<String, String> = emptyMap()
+    private var numberKeyFlickDownChars: Map<String, String> = emptyMap()
 
     private var liquidGlassEnable: Boolean = false
 
@@ -921,10 +923,22 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setFlickUpDetectionEnabled(enabled: Boolean) {
         this.enableFlickUpDetection = enabled
+        updateNumberKeyFlickGuides()
     }
 
     fun setFlickDownDetectionEnabled(enabled: Boolean) {
         this.enableFlickDownDetection = enabled
+        updateNumberKeyFlickGuides()
+    }
+
+    fun setNumberKeyFlickUpChars(map: Map<String, String>) {
+        numberKeyFlickUpChars = map
+        updateNumberKeyFlickGuides()
+    }
+
+    fun setNumberKeyFlickDownChars(map: Map<String, String>) {
+        numberKeyFlickDownChars = map
+        updateNumberKeyFlickGuides()
     }
 
     fun setDeleteLeftFlickEnabled(enabled: Boolean) {
@@ -1476,6 +1490,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun handleUpFlick(previousView: View) {
         val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
+        getNumberKeyFlickUpChar(qwertyKey)?.let { charToInsert ->
+            qwertyKeyListener?.onFlickUPQWERTYKey(
+                qwertyKey = qwertyKey,
+                tap = charToInsert,
+                variations = listOf(charToInsert)
+            )
+            return
+        }
         val variations = getVariationInfo(qwertyKey)
         variations?.let { variation ->
             qwertyKeyListener?.onFlickUPQWERTYKey(
@@ -1489,10 +1511,32 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun handleDownFlick(previousView: View) {
         if (previousView !is QWERTYButton) return
         val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
+        getNumberKeyFlickDownChar(qwertyKey)?.let { charToInsert ->
+            qwertyKeyListener?.onFlickDownQWERTYKey(qwertyKey = qwertyKey, character = charToInsert)
+            return
+        }
         if (qwertyKey == QWERTYKey.QWERTYKeySpace) return
         val baseChar = previousView.text.firstOrNull()?.uppercaseChar() ?: return
         val charToInsert = if (romajiModeState.value) baseChar.toZenkaku() else baseChar
         qwertyKeyListener?.onFlickDownQWERTYKey(qwertyKey = qwertyKey, character = charToInsert)
+    }
+
+    private fun getNumberKeyFlickUpChar(qwertyKey: QWERTYKey): Char? {
+        return QwertyNumberKeyFlickConfig.charForKeyWhenEnabled(
+            key = qwertyKey,
+            chars = numberKeyFlickUpChars,
+            isNumberKeysShown = isNumberKeysShow,
+            isFlickEnabled = enableFlickUpDetection
+        )
+    }
+
+    private fun getNumberKeyFlickDownChar(qwertyKey: QWERTYKey): Char? {
+        return QwertyNumberKeyFlickConfig.charForKeyWhenEnabled(
+            key = qwertyKey,
+            chars = numberKeyFlickDownChars,
+            isNumberKeysShown = isNumberKeysShow,
+            isFlickEnabled = enableFlickDownDetection
+        )
     }
 
     private fun handlePointerMove(event: MotionEvent, pointerIndex: Int, pointerId: Int) {
@@ -1959,6 +2003,35 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         displayOrHideNumberKeys(state)
         // Ensure topRightChars update correctly when number row toggles
         updateTopRightCharsForDefaultMode()
+        updateNumberKeyFlickGuides()
+    }
+
+    private fun updateNumberKeyFlickGuides() {
+        qwertyButtonMap.forEach { (view, key) ->
+            if (view !is QWERTYButton || !QwertyNumberKeyFlickConfig.isQwertyNumberKey(key)) {
+                return@forEach
+            }
+            view.topRightChar = if (isNumberKeysShow && enableFlickUpDetection) {
+                QwertyNumberKeyFlickConfig.charForKeyWhenEnabled(
+                    key = key,
+                    chars = numberKeyFlickUpChars,
+                    isNumberKeysShown = isNumberKeysShow,
+                    isFlickEnabled = enableFlickUpDetection
+                )
+            } else {
+                null
+            }
+            view.bottomRightChar = if (isNumberKeysShow && enableFlickDownDetection) {
+                QwertyNumberKeyFlickConfig.charForKeyWhenEnabled(
+                    key = key,
+                    chars = numberKeyFlickDownChars,
+                    isNumberKeysShown = isNumberKeysShow,
+                    isFlickEnabled = enableFlickDownDetection
+                )
+            } else {
+                null
+            }
+        }
     }
 
     fun updateSwitchRomajiEnglishState(state: Boolean) {
