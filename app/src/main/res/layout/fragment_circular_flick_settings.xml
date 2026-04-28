@@ -121,37 +121,37 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:checked="true"
-                android:text="上 (UP)" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chipUpRight"
-                style="@style/Widget.MaterialComponents.Chip.Choice"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="左下 (UP_RIGHT)"
-                android:visibility="gone"
-                tools:visibility="visible" />
+                android:text="SLOT 0" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipRight"
                 style="@style/Widget.MaterialComponents.Chip.Choice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="右 (RIGHT)" />
+                android:text="SLOT 1" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipDown"
                 style="@style/Widget.MaterialComponents.Chip.Choice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="下 (DOWN)" />
+                android:text="SLOT 2" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipLeft"
                 style="@style/Widget.MaterialComponents.Chip.Choice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="左 (LEFT)" />
+                android:text="SLOT 3" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipUpRight"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SLOT 4"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipSlot5"
