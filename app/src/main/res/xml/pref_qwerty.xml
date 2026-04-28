@@ -62,6 +62,11 @@
             android:summaryOn="@string/qwerty_number_keys_summary_on"
             android:title="@string/qwerty_number_keys_title" />
 
+        <Preference
+            android:key="qwerty_number_key_flick_setting_preference"
+            android:summary="QWERTY 数字キーの上・下フリックで出力する文字を設定します"
+            android:title="数字キーのフリック設定" />
+
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="qwerty_show_switch_ime_button_preference"

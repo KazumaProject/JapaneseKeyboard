@@ -56,6 +56,9 @@
             android:id="@+id/action_navigation_setting_to_qwertyMarginSettingFragment"
             app:destination="@id/qwertyMarginSettingFragment" />
         <action
+            android:id="@+id/action_navigation_setting_to_qwertyNumberKeyFlickSettingFragment"
+            app:destination="@id/qwertyNumberKeyFlickSettingFragment" />
+        <action
             android:id="@+id/action_navigation_setting_to_keyboardThemeFragment"
             app:destination="@id/keyboardThemeFragment" />
         <action
@@ -206,6 +209,11 @@
         android:id="@+id/qwertyMarginSettingFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.qwerty_button_size.QwertyMarginSettingFragment"
         android:label="@string/qwertymarginsettingfragment" />
+    <fragment
+        android:id="@+id/qwertyNumberKeyFlickSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.qwerty_number_key_flick.QwertyNumberKeyFlickSettingFragment"
+        android:label="QWERTY 数字キーのフリック設定"
+        tools:layout="@layout/fragment_qwerty_number_key_flick_setting" />
     <fragment
         android:id="@+id/keyboardThemeFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_theme.KeyboardThemeFragment"

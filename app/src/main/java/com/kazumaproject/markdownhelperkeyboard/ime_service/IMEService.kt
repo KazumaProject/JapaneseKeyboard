@@ -544,6 +544,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var defaultEmojiSkinTonePreference: String = EmojiSkinToneSupport.DEFAULT_SKIN_TONE
     private var qwertyEnableFlickUpPreference: Boolean? = false
     private var qwertyEnableFlickDownPreference: Boolean? = false
+    private var qwertyNumberKeyFlickUpChars: Map<String, String> = emptyMap()
+    private var qwertyNumberKeyFlickDownChars: Map<String, String> = emptyMap()
     private var qwertyEnableZenkakuSpacePreference: Boolean? = false
     private var qwertyShowPopupWindowPreference: Boolean? = true
     private var qwertyShowCursorButtonsPreference: Boolean? = false
@@ -1192,6 +1194,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowPopupWindowPreference = preferences.qwertyShowPopupWindowPreference
         qwertyEnableFlickUpPreference = preferences.qwertyEnableFlickUpPreference
         qwertyEnableFlickDownPreference = preferences.qwertyEnableFlickDownPreference
+        qwertyNumberKeyFlickUpChars = preferences.qwertyNumberKeyFlickUpChars
+        qwertyNumberKeyFlickDownChars = preferences.qwertyNumberKeyFlickDownChars
         qwertyEnableZenkakuSpacePreference = preferences.qwertyEnableZenkakuSpacePreference
         qwertyShowKutoutenButtonsPreference = preferences.qwertyShowKutoutenButtonsPreference
         showCandidateInPasswordPreference = preferences.showCandidateInPasswordPreference
@@ -1877,6 +1881,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.setPopUpViewState(qwertyShowPopupWindowPreference ?: true)
                 qwertyView.setFlickUpDetectionEnabled(qwertyEnableFlickUpPreference ?: false)
                 qwertyView.setFlickDownDetectionEnabled(qwertyEnableFlickDownPreference ?: false)
+                qwertyView.setNumberKeyFlickUpChars(qwertyNumberKeyFlickUpChars)
+                qwertyView.setNumberKeyFlickDownChars(qwertyNumberKeyFlickDownChars)
                 qwertyView.setNumberSwitchKeyTextStyle(
                     excludeNumber = qwertySwitchNumberKeyWithoutNumberPreference ?: false
                 )
@@ -2022,6 +2028,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowPopupWindowPreference = null
         qwertyEnableFlickUpPreference = null
         qwertyEnableFlickDownPreference = null
+        qwertyNumberKeyFlickUpChars = emptyMap()
+        qwertyNumberKeyFlickDownChars = emptyMap()
         qwertyEnableZenkakuSpacePreference = null
         switchQWERTYPassword = null
         landscapeForceQwertyPreference = null
