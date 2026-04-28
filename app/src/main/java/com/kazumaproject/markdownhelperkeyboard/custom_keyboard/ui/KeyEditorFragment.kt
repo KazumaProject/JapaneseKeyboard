@@ -8,6 +8,7 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.AdapterView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -20,21 +21,27 @@ import androidx.hilt.navigation.fragment.hiltNavGraphViewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import androidx.recyclerview.widget.LinearLayoutManager
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.toCircularFlickMap
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepMappingItem
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.CircularFlickMappingAdapter
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.CircularFlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.DisplayActionUi
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.SpecialFlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyEditorBinding
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -53,6 +60,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     @Inject
     lateinit var keyboardRepository: KeyboardRepository
 
+    @Inject
+    lateinit var appPreference: AppPreference
+
     private val viewModel: KeyboardEditorViewModel by hiltNavGraphViewModels(R.id.mobile_navigation)
 
     private var _binding: FragmentKeyEditorBinding? = null
@@ -65,6 +75,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var currentTwoStepItems = mutableListOf<TwoStepMappingItem>()
     private var currentTwoStepLongPressItems = mutableListOf<TwoStepMappingItem>()
     private var currentSpecialFlickItems = mutableListOf<SpecialFlickMappingItem>()
+    private var currentCircularFlickMaps = mutableListOf<MutableList<CircularFlickMappingItem>>()
+    private var currentCircularMapIndex = 0
     private var outputEditMode: OutputEditMode = OutputEditMode.NORMAL
     private var isUpdatingCharEditText = false
 
@@ -72,6 +84,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var currentCellMode: CellMode? = null
 
     private lateinit var keyActionAdapter: ArrayAdapter<String>
+    private lateinit var circularFlickAdapter: CircularFlickMappingAdapter
+    private lateinit var circularMapAdapter: ArrayAdapter<String>
 
     // NEW: UI-friendly display actions (avoids depending on unknown internal display type)
     private lateinit var displayActions: List<DisplayActionUi>
@@ -122,6 +136,26 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             specialActionNames
         )
         binding.specialFlickMappingsRecyclerView.setAdapter(specialActionAdapter)
+
+        circularFlickAdapter = CircularFlickMappingAdapter { updated ->
+            val currentMap = currentCircularFlickMaps.getOrNull(currentCircularMapIndex)
+                ?: return@CircularFlickMappingAdapter
+            val idx = currentMap.indexOfFirst { it.direction == updated.direction }
+            if (idx != -1) {
+                currentMap[idx] = updated
+                updateDoneButtonState()
+            }
+        }
+        binding.circularFlickMappingsRecyclerView.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = circularFlickAdapter
+        }
+        circularMapAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_dropdown_item,
+            mutableListOf<String>()
+        )
+        binding.spinnerCircularMap.adapter = circularMapAdapter
 
         // グリッドのセル選択コールバック
         binding.flickGridEditorView.onCellSelected = { mode ->
@@ -232,6 +266,43 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             updateDoneButtonState()
         }
 
+        binding.spinnerCircularMap.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (position == currentCircularMapIndex) return
+                currentCircularMapIndex = position
+                refreshCircularEditor()
+            }
+
+            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+        }
+
+        binding.btnCircularMapAdd.setOnClickListener {
+            currentCircularFlickMaps.add(createDefaultCircularItems())
+            currentCircularMapIndex = currentCircularFlickMaps.lastIndex
+            refreshCircularMapSelector()
+            refreshCircularEditor()
+            updateDoneButtonState()
+        }
+
+        binding.btnCircularMapDuplicate.setOnClickListener {
+            val source = currentCircularFlickMaps.getOrNull(currentCircularMapIndex)
+                ?: createDefaultCircularItems()
+            currentCircularFlickMaps.add(source.map { it.copy(id = java.util.UUID.randomUUID().toString()) }.toMutableList())
+            currentCircularMapIndex = currentCircularFlickMaps.lastIndex
+            refreshCircularMapSelector()
+            refreshCircularEditor()
+            updateDoneButtonState()
+        }
+
+        binding.btnCircularMapDelete.setOnClickListener {
+            if (currentCircularFlickMaps.size <= 1) return@setOnClickListener
+            currentCircularFlickMaps.removeAt(currentCircularMapIndex)
+            currentCircularMapIndex = currentCircularMapIndex.coerceAtMost(currentCircularFlickMaps.lastIndex)
+            refreshCircularMapSelector()
+            refreshCircularEditor()
+            updateDoneButtonState()
+        }
+
         binding.outputModeChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
             if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
             outputEditMode = if (checkedIds.first() == R.id.chip_long_press_output) {
@@ -314,6 +385,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun handleInputStyleUi() {
         val selectedStyle = binding.inputStyleChipGroup.checkedChipId
         val isTwoStep = selectedStyle == R.id.chip_two_step_flick
+        val isCircular = selectedStyle == R.id.chip_circular_flick
 
         if (binding.outputModeChipGroup.checkedChipId == View.NO_ID) {
             binding.outputModeChipGroup.check(R.id.chip_normal_output)
@@ -321,12 +393,23 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
         binding.keyLabelLayout.isVisible = true
         binding.flickGridEditorView.isVisible = true
+        binding.circularFlickEditorGroup.isVisible = false
         binding.textSelectedDirection.isVisible = false
         binding.textCharInputLayout.isVisible = false
         binding.specialFlickEditorGroup.isVisible = false
         currentCellMode = null
 
-        if (!isTwoStep) {
+        if (isCircular) {
+            binding.flickGridEditorView.isVisible = false
+            binding.textSelectedDirection.isVisible = false
+            binding.textCharInputLayout.isVisible = false
+            binding.circularFlickEditorGroup.isVisible = true
+            if (currentCircularFlickMaps.isEmpty()) {
+                currentCircularFlickMaps.add(createDefaultCircularItems())
+            }
+            refreshCircularMapSelector()
+            refreshCircularEditor()
+        } else if (!isTwoStep) {
             if (currentFlickItems.isEmpty()) {
                 currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
                     FlickMappingItem(direction = direction, output = "")
@@ -357,7 +440,54 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             )
         }
 
-        binding.flickGridEditorView.selectInitialCell()
+        if (!isCircular) {
+            binding.flickGridEditorView.selectInitialCell()
+        }
+    }
+
+    private fun createDefaultCircularItems(
+        source: Map<CircularFlickDirection, FlickAction> = emptyMap()
+    ): MutableList<CircularFlickMappingItem> {
+        val mapSwitchDirection = appPreference.circularFlickMapSwitchDirection
+        val directions = listOf(CircularFlickDirection.TAP) +
+            CircularFlickDirection.slots(appPreference.circularFlickDirectionCount)
+        return directions.map { direction ->
+            val action = source[direction] as? FlickAction.Input
+            CircularFlickMappingItem(
+                direction = direction,
+                output = if (direction == mapSwitchDirection) "" else action?.char.orEmpty(),
+                isMapSwitch = direction == mapSwitchDirection
+            )
+        }.toMutableList()
+    }
+
+    private fun refreshCircularMapSelector() {
+        circularMapAdapter.clear()
+        circularMapAdapter.addAll(currentCircularFlickMaps.indices.map { "Map ${it + 1}" })
+        circularMapAdapter.notifyDataSetChanged()
+        if (currentCircularFlickMaps.isNotEmpty()) {
+            binding.spinnerCircularMap.setSelection(currentCircularMapIndex, false)
+        }
+        binding.btnCircularMapDelete.isEnabled = currentCircularFlickMaps.size > 1
+    }
+
+    private fun refreshCircularEditor() {
+        val mapSwitchDirection = appPreference.circularFlickMapSwitchDirection
+        val currentItems = currentCircularFlickMaps
+            .getOrNull(currentCircularMapIndex)
+            ?: createDefaultCircularItems().also { currentCircularFlickMaps.add(it) }
+
+        val visibleDirections = (listOf(CircularFlickDirection.TAP) +
+            CircularFlickDirection.slots(appPreference.circularFlickDirectionCount)).toSet()
+        val normalizedItems = currentItems
+            .filter { visibleDirections.contains(it.direction) }
+            .map {
+                it.copy(
+                    output = if (it.direction == mapSwitchDirection) "" else it.output,
+                    isMapSwitch = it.direction == mapSwitchDirection
+                )
+            }
+        circularFlickAdapter.submitList(normalizedItems)
     }
 
     /**
@@ -611,6 +741,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 // Input style: petal or two-step
                 if (key.keyType == KeyType.TWO_STEP_FLICK) {
                     binding.inputStyleChipGroup.check(R.id.chip_two_step_flick)
+                } else if (key.keyType == KeyType.CIRCULAR_FLICK) {
+                    binding.inputStyleChipGroup.check(R.id.chip_circular_flick)
                 } else {
                     binding.inputStyleChipGroup.check(R.id.chip_petal_flick)
                 }
@@ -629,6 +761,15 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     applyTwoStepOutputs(currentTwoStepLongPressItems, longPressMap)
 
                     // グリッドはhandleInputStyleUi()で更新
+                } else if (key.keyType == KeyType.CIRCULAR_FLICK) {
+                    binding.keyLabelEdittext.setText(key.label)
+                    val circularMaps = state.layout.circularFlickKeyMaps[key.keyId]
+                        ?: state.layout.flickKeyMaps[key.keyId]?.map { it.toCircularFlickMap() }
+                        ?: listOf(emptyMap())
+                    currentCircularFlickMaps = circularMaps
+                        .map { createDefaultCircularItems(it) }
+                        .toMutableList()
+                    currentCircularMapIndex = 0
                 } else {
                     binding.keyLabelEdittext.setText(key.label)
 
@@ -700,7 +841,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     }
 
     private val requestRecordAudioPermission =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
 
         }
 
@@ -712,6 +853,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         val isSpecial: Boolean
         val newAction: KeyAction?
         var newFlickMap: Map<FlickDirection, FlickAction> = emptyMap()
+        var newCircularFlickMaps: List<Map<CircularFlickDirection, FlickAction>> = emptyList()
         var newTwoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>> = emptyMap()
         val newLongPressFlickMap: Map<FlickDirection, String>
         val newTwoStepLongPressMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
@@ -813,8 +955,26 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
                 val isTwoStep =
                     binding.inputStyleChipGroup.checkedChipId == R.id.chip_two_step_flick
+                val isCircular =
+                    binding.inputStyleChipGroup.checkedChipId == R.id.chip_circular_flick
 
-                if (!isTwoStep) {
+                if (isCircular) {
+                    newKeyType = KeyType.CIRCULAR_FLICK
+                    newLabel = binding.keyLabelEdittext.text.toString()
+                    val mapSwitchDirection = appPreference.circularFlickMapSwitchDirection
+                    newCircularFlickMaps = currentCircularFlickMaps.map { items ->
+                        items
+                            .filter {
+                                it.output.isNotEmpty() && it.direction != mapSwitchDirection
+                            }
+                            .associate { it.direction to FlickAction.Input(it.output) }
+                    }.ifEmpty {
+                        listOf(emptyMap())
+                    }
+                    newFlickMap = emptyMap()
+                    newLongPressFlickMap = emptyMap()
+                    newTwoStepLongPressMap = emptyMap()
+                } else if (!isTwoStep) {
                     newKeyType = KeyType.PETAL_FLICK
                     newLabel = binding.keyLabelEdittext.text.toString()
                     newFlickMap = currentFlickItems
@@ -864,7 +1024,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             newFlickMap,
             newTwoStepMap,
             newLongPressFlickMap,
-            newTwoStepLongPressMap
+            newTwoStepLongPressMap,
+            newCircularFlickMaps
         )
         findNavController().popBackStack()
     }

@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -153,6 +154,8 @@ data class ImePreferencesSnapshot(
     val enablePredictionSearchLearnDictionaryPreference: Boolean,
     val learnPredictionPreference: Int,
     val circularFlickWindowScale: Float,
+    val circularFlickDirectionCount: Int,
+    val circularFlickMapSwitchDirection: CircularFlickDirection?,
     val customKeyBorderWidth: Int,
     val qwertySwitchNumberKeyWithoutNumberPreference: Boolean,
     val customRomajiZenkakuConversionEnablePreference: Boolean,
@@ -370,6 +373,8 @@ data class ImePreferencesSnapshot(
                     appPreference.enable_prediction_search_learn_dictionary_preference,
                 learnPredictionPreference = appPreference.learn_prediction_preference,
                 circularFlickWindowScale = appPreference.circular_flickWindow_scale,
+                circularFlickDirectionCount = appPreference.circularFlickDirectionCount,
+                circularFlickMapSwitchDirection = appPreference.circularFlickMapSwitchDirection,
                 customKeyBorderWidth = appPreference.custom_theme_border_width,
                 qwertySwitchNumberKeyWithoutNumberPreference =
                     appPreference.qwerty_switch_number_key_without_number_preference,

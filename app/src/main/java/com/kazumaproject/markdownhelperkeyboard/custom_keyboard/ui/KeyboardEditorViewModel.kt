@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyData
@@ -298,7 +299,8 @@ class KeyboardEditorViewModel @Inject constructor(
         flickMap: Map<FlickDirection, FlickAction>,
         twoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>,
         longPressFlickMap: Map<FlickDirection, String>,
-        twoStepLongPressMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
+        twoStepLongPressMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>,
+        circularFlickMaps: List<Map<CircularFlickDirection, FlickAction>> = emptyList()
     ) {
         val keyId = newKeyData.keyId ?: run {
             Timber.e("FATAL: updateKeyAndMappings received a KeyData with a null keyId!")
@@ -326,12 +328,14 @@ class KeyboardEditorViewModel @Inject constructor(
                 .plus(newEmptyKeys)
 
             val finalFlickMaps = layout.flickKeyMaps.toMutableMap()
+            val finalCircularFlickMaps = layout.circularFlickKeyMaps.toMutableMap()
             val finalTwoStepMaps = layout.twoStepFlickKeyMaps.toMutableMap()
             val finalLongPressFlickMaps = layout.longPressFlickKeyMaps.toMutableMap()
             val finalTwoStepLongPressMaps = layout.twoStepLongPressKeyMaps.toMutableMap()
 
             crushedKeyIds.forEach {
                 finalFlickMaps.remove(it)
+                finalCircularFlickMaps.remove(it)
                 finalTwoStepMaps.remove(it)
                 finalLongPressFlickMaps.remove(it)
                 finalTwoStepLongPressMaps.remove(it)
@@ -341,6 +345,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 KeyType.TWO_STEP_FLICK -> {
                     // 2段フリックに切り替えた場合、1段フリック設定を消して2段を保存
                     finalFlickMaps.remove(keyId)
+                    finalCircularFlickMaps.remove(keyId)
                     finalLongPressFlickMaps.remove(keyId)
                     finalTwoStepMaps[keyId] = twoStepMap
                     if (twoStepLongPressMap.isNotEmpty()) {
@@ -350,10 +355,20 @@ class KeyboardEditorViewModel @Inject constructor(
                     }
                 }
 
+                KeyType.CIRCULAR_FLICK -> {
+                    finalFlickMaps.remove(keyId)
+                    finalTwoStepMaps.remove(keyId)
+                    finalTwoStepLongPressMaps.remove(keyId)
+                    finalLongPressFlickMaps.remove(keyId)
+                    finalCircularFlickMaps[keyId] =
+                        circularFlickMaps.ifEmpty { listOf(emptyMap()) }
+                }
+
                 else -> {
                     // 1段フリック系の場合、2段フリック設定を消して1段を保存
                     finalTwoStepMaps.remove(keyId)
                     finalTwoStepLongPressMaps.remove(keyId)
+                    finalCircularFlickMaps.remove(keyId)
                     finalFlickMaps[keyId] = listOf(flickMap)
                     if (longPressFlickMap.isNotEmpty()) {
                         finalLongPressFlickMaps[keyId] = longPressFlickMap
@@ -366,6 +381,7 @@ class KeyboardEditorViewModel @Inject constructor(
             val newLayout = layout.copy(
                 keys = finalKeys,
                 flickKeyMaps = finalFlickMaps,
+                circularFlickKeyMaps = finalCircularFlickMaps,
                 twoStepFlickKeyMaps = finalTwoStepMaps,
                 longPressFlickKeyMaps = finalLongPressFlickMaps,
                 twoStepLongPressKeyMaps = finalTwoStepLongPressMaps
@@ -489,6 +505,11 @@ class KeyboardEditorViewModel @Inject constructor(
             if (newKeyId != null) newKeyId to flickActions else null
         }.toMap()
 
+        val reKeyedCircularFlickMaps = templateLayout.circularFlickKeyMaps.mapNotNull { (labelKey, flickActions) ->
+            val newKeyId = labelToIdMap[labelKey]
+            if (newKeyId != null) newKeyId to flickActions else null
+        }.toMap()
+
         val reKeyedTwoStepMaps = templateLayout.twoStepFlickKeyMaps.mapNotNull { (labelKey, map) ->
             val newKeyId = labelToIdMap[labelKey]
             if (newKeyId != null) newKeyId to map else null
@@ -507,6 +528,7 @@ class KeyboardEditorViewModel @Inject constructor(
         val finalLayout = templateLayout.copy(
             keys = keysWithEnsuredIds,
             flickKeyMaps = reKeyedFlickMaps,
+            circularFlickKeyMaps = reKeyedCircularFlickMaps,
             twoStepFlickKeyMaps = reKeyedTwoStepMaps,
             longPressFlickKeyMaps = reKeyedLongPressFlickMaps,
             twoStepLongPressKeyMaps = reKeyedTwoStepLongPressMaps
