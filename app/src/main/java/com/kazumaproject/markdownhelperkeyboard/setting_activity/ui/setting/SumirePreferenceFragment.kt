@@ -47,6 +47,7 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
 
                 // 【追加】変更時の表示切り替え ("sumire" が選ばれたら表示、それ以外は非表示)
                 sumireCustomAnglePreference?.isVisible = (stringValue == "sumire")
+                circularSlotActionSettingPreference?.isVisible = (stringValue == "sumire")
 
                 true
             }
