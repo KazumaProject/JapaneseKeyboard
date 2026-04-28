@@ -127,8 +127,6 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var customAngleAndRange: Map<CircularFlickDirection, Pair<Float, Float>> = emptyMap()
     private var circularViewScale: Float = 1.0f
     private var circularFlickDirectionCount: Int = 4
-    private var circularFlickMapSwitchDirection: CircularFlickDirection? =
-        CircularFlickDirection.SLOT_4
     private var borderWidth: Int = 1
     private var flickGuideEnabled: Boolean = false
 
@@ -191,14 +189,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.circularViewScale = circularPopViewScale
     }
 
-    fun setCircularFlickOptions(
-        directionCount: Int,
-        mapSwitchDirection: CircularFlickDirection?
-    ) {
+    fun setCircularFlickOptions(directionCount: Int) {
         circularFlickDirectionCount = directionCount.coerceIn(4, 7)
-        circularFlickMapSwitchDirection = mapSwitchDirection?.takeIf {
-            it != CircularFlickDirection.TAP
-        }
     }
 
     fun applyKeyboardTheme(
@@ -498,14 +490,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
-    private fun extractCircularInputMap(
-        actionMap: Map<CircularFlickDirection, FlickAction>
-    ): Map<CircularFlickDirection, String> {
-        return actionMap.mapValues { (_, flickAction) ->
-            (flickAction as? FlickAction.Input)?.char ?: ""
-        }
-    }
-
     private fun circularActionLabel(action: FlickAction?): String {
         return when (action) {
             is FlickAction.Input -> action.label ?: action.char
@@ -532,14 +516,6 @@ class FlickKeyboardView @JvmOverloads constructor(
         return action is FlickAction.Action &&
             action.action == KeyAction.MoveCustomKeyboardTab &&
             action.label == "⇄"
-    }
-
-    private fun isExplicitCircularSlotAction(action: FlickAction?): Boolean {
-        return when (action) {
-            is FlickAction.Input -> action.label != null
-            is FlickAction.Action -> action.label != null
-            null -> false
-        }
     }
 
     private fun getGuideLabels(stringMap: Map<FlickDirection, String>): AutoSizeButton.FlickGuideLabels {
@@ -1051,40 +1027,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         }
 
-                        val rawMaps = circularKeyMapsList.map(::extractCircularLabelMap)
-                        val switchDirection = circularFlickMapSwitchDirection
-                        val hasMapSwitch = switchDirection != null && rawMaps.size >= 2
-                        val mapSwitchLabels = if (hasMapSwitch && switchDirection != null) {
-                            circularKeyMapsList.mapIndexed { index, map ->
-                                if (isExplicitCircularSlotAction(map[switchDirection])) {
-                                    null
-                                } else {
-                                    rawMaps[index][switchDirection]?.takeIf { it.isNotEmpty() }
-                                }
-                            }
-                        } else {
-                            List(rawMaps.size) { null }
-                        }
-                        val stringMaps = circularKeyMapsList.map { map ->
-                            val mutable = map.toMutableMap()
-                            if (
-                                hasMapSwitch &&
-                                switchDirection != null &&
-                                mutable.containsKey(switchDirection) &&
-                                !isExplicitCircularSlotAction(mutable[switchDirection])
-                            ) {
-                                mutable.remove(switchDirection)
-                            }
-                            mutable.toMap()
-                        }
+                        val mapSwitchLabels = List(circularKeyMapsList.size) { null }
+                        val stringMaps = circularKeyMapsList
                         val guideMaps = stringMaps.map { map ->
-                            if (hasMapSwitch && switchDirection != null && map.containsKey(switchDirection)) {
-                                extractCircularLabelMap(map.toMutableMap().apply {
-                                    remove(switchDirection)
-                                })
-                            } else {
-                                extractCircularLabelMap(map)
-                            }
+                            extractCircularLabelMap(map)
                         }
 
                         if (keyView is AutoSizeButton) {
@@ -1094,7 +1040,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                         }
 
                         attach(keyView, stringMaps, mapSwitchLabels)
-                        setMapSwitchDirection(circularFlickMapSwitchDirection)
 
                         val newCenter = 64f * circularViewScale
                         val newOrbit = 170f * circularViewScale

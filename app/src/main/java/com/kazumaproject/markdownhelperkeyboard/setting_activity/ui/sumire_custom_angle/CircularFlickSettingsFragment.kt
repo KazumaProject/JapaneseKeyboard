@@ -54,7 +54,6 @@ class CircularFlickSettingsFragment : Fragment() {
         val directionCount = appPreference.circularFlickDirectionCount
 
         setupDirectionCountSpinner(directionCount)
-        setupMapSwitchDirectionSpinner()
         updateDirectionOrder(directionCount)
 
         val ranges = appPreference.getCircularFlickRanges()
@@ -122,47 +121,6 @@ class CircularFlickSettingsFragment : Fragment() {
                     currentEditingDirection = CircularFlickDirection.SLOT_0
 
                     refreshAll()
-                }
-
-                override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-            }
-    }
-
-    private fun setupMapSwitchDirectionSpinner() {
-        val allowedDirections = listOf(
-            CircularFlickDirection.SLOT_4,
-            CircularFlickDirection.SLOT_5,
-            CircularFlickDirection.SLOT_6,
-        )
-        val items = listOf("なし" to null) +
-            allowedDirections.map { it.name to it }
-
-        binding.spinnerMapSwitchDirection.adapter = ArrayAdapter(
-            requireContext(),
-            android.R.layout.simple_spinner_dropdown_item,
-            items.map { it.first },
-        )
-
-        val rawCurrent = appPreference.circularFlickMapSwitchDirection
-        val current = rawCurrent?.takeIf { allowedDirections.contains(it) }
-        if (rawCurrent != null && current == null) {
-            appPreference.circularFlickMapSwitchDirection = null
-        }
-
-        binding.spinnerMapSwitchDirection.setSelection(
-            items.indexOfFirst { it.second == current }.coerceAtLeast(0),
-        )
-
-        binding.spinnerMapSwitchDirection.onItemSelectedListener =
-            object : AdapterView.OnItemSelectedListener {
-                override fun onItemSelected(
-                    parent: AdapterView<*>?,
-                    view: View?,
-                    position: Int,
-                    id: Long,
-                ) {
-                    if (isUpdatingUi) return
-                    appPreference.circularFlickMapSwitchDirection = items[position].second
                 }
 
                 override fun onNothingSelected(parent: AdapterView<*>?) = Unit

@@ -39,30 +39,13 @@
             app:layout_constraintTop_toBottomOf="@id/tvDirectionCountLabel" />
 
         <TextView
-            android:id="@+id/tvMapSwitchDirectionLabel"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="フリック map 切り替え方向"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/spinnerDirectionCount" />
-
-        <Spinner
-            android:id="@+id/spinnerMapSwitchDirection"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginTop="8dp"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvMapSwitchDirectionLabel" />
-
-        <TextView
             android:id="@+id/tvScaleLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="ウィンドウサイズ倍率"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/spinnerMapSwitchDirection" />
+            app:layout_constraintTop_toBottomOf="@id/spinnerDirectionCount" />
 
         <TextView
             android:id="@+id/tvScaleValue"

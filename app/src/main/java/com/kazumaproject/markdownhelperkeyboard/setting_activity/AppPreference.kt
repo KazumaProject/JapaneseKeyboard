@@ -400,8 +400,6 @@ object AppPreference {
     private val PREF_UP_RIGHT_START = Pair("circular_flick_up_right_start", 90f)
     private val PREF_UP_RIGHT_SWEEP = Pair("circular_flick_up_right_sweep", 72f)
     private val PREF_CIRCULAR_DIRECTION_COUNT = Pair("circular_flick_direction_count", 4)
-    private val PREF_CIRCULAR_MAP_SWITCH_DIRECTION =
-        Pair("circular_flick_map_switch_direction", "SLOT_4")
     private val CIRCULAR_SLOT_ACTION_SETTINGS =
         Pair("circular_slot_action_settings", "[]")
 
@@ -1877,24 +1875,6 @@ object AppPreference {
         }
         set(value) = preferences.edit {
             it.putInt(PREF_CIRCULAR_DIRECTION_COUNT.first, value.coerceIn(4, 7))
-        }
-
-    var circularFlickMapSwitchDirection: CircularFlickDirection?
-        get() {
-            val raw = preferences.getString(
-                PREF_CIRCULAR_MAP_SWITCH_DIRECTION.first,
-                PREF_CIRCULAR_MAP_SWITCH_DIRECTION.second
-            ) ?: PREF_CIRCULAR_MAP_SWITCH_DIRECTION.second
-            if (raw == "NONE") return null
-            return runCatching { CircularFlickDirection.valueOf(raw) }
-                .getOrNull()
-                ?.takeIf { it != CircularFlickDirection.TAP }
-        }
-        set(value) = preferences.edit {
-            it.putString(
-                PREF_CIRCULAR_MAP_SWITCH_DIRECTION.first,
-                value?.takeIf { direction -> direction != CircularFlickDirection.TAP }?.name ?: "NONE"
-            )
         }
 
     var circularFlickUpStart: Float
