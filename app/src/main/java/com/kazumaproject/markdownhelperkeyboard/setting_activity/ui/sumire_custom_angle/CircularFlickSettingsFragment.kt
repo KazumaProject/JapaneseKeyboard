@@ -14,12 +14,14 @@ import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import com.google.android.material.slider.Slider
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentCircularFlickSettingsBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 @AndroidEntryPoint
 class CircularFlickSettingsFragment : Fragment() {
@@ -38,8 +40,9 @@ class CircularFlickSettingsFragment : Fragment() {
     private val minSweepAngle = 15f
 
     override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?,
-        savedInstanceState: Bundle?
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
     ): View {
         _binding = FragmentCircularFlickSettingsBinding.inflate(inflater, container, false)
         return binding.root
@@ -55,6 +58,7 @@ class CircularFlickSettingsFragment : Fragment() {
         updateDirectionOrder(directionCount)
 
         val ranges = appPreference.getCircularFlickRanges()
+        angleData.clear()
         angleData.putAll(ranges)
 
         binding.sliderSweepAngle.apply {
@@ -78,49 +82,82 @@ class CircularFlickSettingsFragment : Fragment() {
     }
 
     private fun setupDirectionCountSpinner(initialCount: Int) {
-        val items = listOf("4方向" to 4, "5方向" to 5, "6方向" to 6, "7方向" to 7)
+        val items = listOf(
+            "4方向" to 4,
+            "5方向" to 5,
+            "6方向" to 6,
+            "7方向" to 7,
+        )
+
         binding.spinnerDirectionCount.adapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_dropdown_item,
-            items.map { it.first }
+            items.map { it.first },
         )
-        binding.spinnerDirectionCount.setSelection(items.indexOfFirst { it.second == initialCount }.coerceAtLeast(0))
-        binding.spinnerDirectionCount.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (isUpdatingUi) return
-                val count = items[position].second
-                appPreference.circularFlickDirectionCount = count
-                appPreference.circularFlick5DirectionsEnable = count == 5
-                updateDirectionOrder(count)
-                updateChipVisibility(count)
-                resetAnglesToDefault(count)
-                binding.chipGroupDirection.check(binding.chipUp.id)
-                currentEditingDirection = CircularFlickDirection.SLOT_0
-                refreshAll()
-            }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-        }
+        binding.spinnerDirectionCount.setSelection(
+            items.indexOfFirst { it.second == initialCount }.coerceAtLeast(0),
+        )
+
+        binding.spinnerDirectionCount.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long,
+                ) {
+                    if (isUpdatingUi) return
+
+                    val count = items[position].second
+
+                    appPreference.circularFlickDirectionCount = count
+                    appPreference.circularFlick5DirectionsEnable = count == 5
+
+                    updateDirectionOrder(count)
+                    updateChipVisibility(count)
+                    resetAnglesToDefault(count)
+
+                    binding.chipGroupDirection.check(binding.chipUp.id)
+                    currentEditingDirection = CircularFlickDirection.SLOT_0
+
+                    refreshAll()
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+            }
     }
 
     private fun setupMapSwitchDirectionSpinner() {
         val items = listOf("なし" to null) +
-            CircularFlickDirection.slots(7).map { it.name to it }
+                CircularFlickDirection.slots(7).map { it.name to it }
+
         binding.spinnerMapSwitchDirection.adapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_dropdown_item,
-            items.map { it.first }
+            items.map { it.first },
         )
-        val current = appPreference.circularFlickMapSwitchDirection
-        binding.spinnerMapSwitchDirection.setSelection(items.indexOfFirst { it.second == current }.coerceAtLeast(0))
-        binding.spinnerMapSwitchDirection.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
-                if (isUpdatingUi) return
-                appPreference.circularFlickMapSwitchDirection = items[position].second
-            }
 
-            override fun onNothingSelected(parent: AdapterView<*>?) = Unit
-        }
+        val current = appPreference.circularFlickMapSwitchDirection
+
+        binding.spinnerMapSwitchDirection.setSelection(
+            items.indexOfFirst { it.second == current }.coerceAtLeast(0),
+        )
+
+        binding.spinnerMapSwitchDirection.onItemSelectedListener =
+            object : AdapterView.OnItemSelectedListener {
+                override fun onItemSelected(
+                    parent: AdapterView<*>?,
+                    view: View?,
+                    position: Int,
+                    id: Long,
+                ) {
+                    if (isUpdatingUi) return
+                    appPreference.circularFlickMapSwitchDirection = items[position].second
+                }
+
+                override fun onNothingSelected(parent: AdapterView<*>?) = Unit
+            }
     }
 
     private fun updateDirectionOrder(directionCount: Int) {
@@ -137,18 +174,27 @@ class CircularFlickSettingsFragment : Fragment() {
     private fun setupResetButton() {
         binding.btnReset.setOnClickListener {
             val count = appPreference.circularFlickDirectionCount
+
             resetAnglesToDefault(count)
             appPreference.circular_flickWindow_scale = 1.0f
+
             binding.chipGroupDirection.check(binding.chipUp.id)
             currentEditingDirection = CircularFlickDirection.SLOT_0
+
             refreshAll()
         }
     }
 
     private fun resetAnglesToDefault(directionCount: Int) {
+        angleData.clear()
+
         if (directionCount >= 6) {
-            angleData.clear()
-            angleData.putAll(buildEvenCircularRanges(directionCount))
+            val defaultRanges = buildEvenCircularRanges(directionCount)
+            angleData.putAll(defaultRanges)
+
+            defaultRanges.forEach { (direction, range) ->
+                saveData(direction, range.first, range.second)
+            }
         } else if (directionCount == 5) {
             saveData(CircularFlickDirection.SLOT_0, 234f, 72f)
             saveData(CircularFlickDirection.SLOT_1, 306f, 72f)
@@ -160,36 +206,39 @@ class CircularFlickSettingsFragment : Fragment() {
             saveData(CircularFlickDirection.SLOT_1, 315f, 90f)
             saveData(CircularFlickDirection.SLOT_2, 45f, 90f)
             saveData(CircularFlickDirection.SLOT_3, 135f, 90f)
-
-            angleData.remove(CircularFlickDirection.SLOT_4)
         }
     }
 
     private fun saveData(direction: CircularFlickDirection, start: Float, sweep: Float) {
-        angleData[direction] = Pair(start, sweep)
+        angleData[direction] = start to sweep
 
         when (direction) {
             CircularFlickDirection.SLOT_0 -> {
                 appPreference.circularFlickUpStart = start
                 appPreference.circularFlickUpSweep = sweep
             }
+
             CircularFlickDirection.SLOT_4 -> {
                 appPreference.circularFlickUpRightStart = start
                 appPreference.circularFlickUpRightSweep = sweep
             }
+
             CircularFlickDirection.SLOT_1 -> {
                 appPreference.circularFlickRightStart = start
                 appPreference.circularFlickRightSweep = sweep
             }
+
             CircularFlickDirection.SLOT_2 -> {
                 appPreference.circularFlickDownStart = start
                 appPreference.circularFlickDownSweep = sweep
             }
+
             CircularFlickDirection.SLOT_3 -> {
                 appPreference.circularFlickLeftStart = start
                 appPreference.circularFlickLeftSweep = sweep
             }
-            else -> {}
+
+            else -> Unit
         }
     }
 
@@ -205,6 +254,7 @@ class CircularFlickSettingsFragment : Fragment() {
                 binding.chipSlot6.id -> CircularFlickDirection.SLOT_6
                 else -> CircularFlickDirection.SLOT_0
             }
+
             currentEditingDirection = direction
             updateSlidersFromData()
         }
@@ -213,20 +263,22 @@ class CircularFlickSettingsFragment : Fragment() {
     private fun setupSliders() {
         binding.sliderWindowScale.addOnChangeListener { _, value, fromUser ->
             if (!fromUser || isUpdatingUi) return@addOnChangeListener
+
             appPreference.circular_flickWindow_scale = value
             binding.tvScaleValue.text = String.format("%.1f", value)
         }
 
         binding.sliderStartAngle.addOnChangeListener { _, newStartValue, fromUser ->
             if (!fromUser || isUpdatingUi) return@addOnChangeListener
+            if (directionOrder.isEmpty()) return@addOnChangeListener
 
             val (prevDirection, nextDirection) = getNeighbors(currentEditingDirection)
-            val (prevStart, _) = angleData[prevDirection] ?: Pair(0f, 90f)
+            val (prevStart, _) = angleData[prevDirection] ?: (0f to 90f)
 
             val newPrevSweep = normalizeAngle(newStartValue - prevStart)
             if (newPrevSweep < minSweepAngle) return@addOnChangeListener
 
-            val (nextStart, _) = angleData[nextDirection] ?: Pair(0f, 90f)
+            val (nextStart, _) = angleData[nextDirection] ?: (0f to 90f)
 
             val newCurrentSweep = normalizeAngle(nextStart - newStartValue)
             if (newCurrentSweep < minSweepAngle) return@addOnChangeListener
@@ -239,12 +291,13 @@ class CircularFlickSettingsFragment : Fragment() {
 
         binding.sliderSweepAngle.addOnChangeListener { _, newSweepValue, fromUser ->
             if (!fromUser || isUpdatingUi) return@addOnChangeListener
+            if (directionOrder.isEmpty()) return@addOnChangeListener
 
-            val (currentStart, _) = angleData[currentEditingDirection] ?: Pair(0f, 90f)
+            val (currentStart, _) = angleData[currentEditingDirection] ?: (0f to 90f)
             val nextDirection = getNextDirection(currentEditingDirection)
 
             val newNextStart = normalizeAngle(currentStart + newSweepValue)
-            val (oldNextStart, oldNextSweep) = angleData[nextDirection] ?: Pair(0f, 90f)
+            val (oldNextStart, oldNextSweep) = angleData[nextDirection] ?: (0f to 90f)
             val nextEnd = normalizeAngle(oldNextStart + oldNextSweep)
 
             val newNextSweep = normalizeAngle(nextEnd - newNextStart)
@@ -265,43 +318,81 @@ class CircularFlickSettingsFragment : Fragment() {
 
     private fun updateSlidersFromData() {
         isUpdatingUi = true
-        val (start, sweep) = angleData[currentEditingDirection] ?: Pair(0f, 90f)
 
-        binding.sliderStartAngle.value =
-            start.coerceIn(binding.sliderStartAngle.valueFrom, binding.sliderStartAngle.valueTo)
-        binding.sliderSweepAngle.value =
-            sweep.coerceIn(binding.sliderSweepAngle.valueFrom, binding.sliderSweepAngle.valueTo)
+        val (start, sweep) = angleData[currentEditingDirection] ?: (0f to 90f)
+
+        binding.sliderStartAngle.value = coerceSliderValue(
+            slider = binding.sliderStartAngle,
+            value = start,
+        )
+
+        binding.sliderSweepAngle.value = coerceSliderValue(
+            slider = binding.sliderSweepAngle,
+            value = sweep,
+        )
 
         binding.tvStartValue.text = "${start.toInt()}°"
         binding.tvSweepValue.text = "${sweep.toInt()}°"
 
         val scale = appPreference.circular_flickWindow_scale
-        binding.sliderWindowScale.value =
-            scale.coerceIn(binding.sliderWindowScale.valueFrom, binding.sliderWindowScale.valueTo)
+
+        binding.sliderWindowScale.value = coerceSliderValue(
+            slider = binding.sliderWindowScale,
+            value = scale,
+        )
+
         binding.tvScaleValue.text = String.format("%.1f", scale)
 
         isUpdatingUi = false
     }
 
+    private fun coerceSliderValue(slider: Slider, value: Float): Float {
+        val coerced = value.coerceIn(slider.valueFrom, slider.valueTo)
+
+        if (slider.stepSize <= 0f) {
+            return coerced
+        }
+
+        val steps = ((coerced - slider.valueFrom) / slider.stepSize).roundToInt()
+        return slider.valueFrom + steps * slider.stepSize
+    }
+
     private fun normalizeAngle(angle: Float): Float {
-        var a = angle % 360
-        if (a < 0) a += 360
-        if (a == 0f && angle > 0) return 360f
+        var a = angle % 360f
+        if (a < 0f) a += 360f
+        if (a == 0f && angle > 0f) return 360f
         return if (a == 0f) 0f else a
     }
 
     private fun getNextDirection(current: CircularFlickDirection): CircularFlickDirection {
+        if (directionOrder.isEmpty()) {
+            return CircularFlickDirection.SLOT_0
+        }
+
         val index = directionOrder.indexOf(current)
-        if (index == -1) return directionOrder[0]
+        if (index == -1) {
+            return directionOrder[0]
+        }
+
         return directionOrder[(index + 1) % directionOrder.size]
     }
 
-    private fun getNeighbors(current: CircularFlickDirection): Pair<CircularFlickDirection, CircularFlickDirection> {
+    private fun getNeighbors(
+        current: CircularFlickDirection,
+    ): Pair<CircularFlickDirection, CircularFlickDirection> {
+        if (directionOrder.isEmpty()) {
+            return CircularFlickDirection.SLOT_0 to CircularFlickDirection.SLOT_0
+        }
+
         val index = directionOrder.indexOf(current)
-        if (index == -1) return Pair(directionOrder[0], directionOrder[0])
+        if (index == -1) {
+            return directionOrder[0] to directionOrder[0]
+        }
+
         val prev = directionOrder[(index - 1 + directionOrder.size) % directionOrder.size]
         val next = directionOrder[(index + 1) % directionOrder.size]
-        return Pair(prev, next)
+
+        return prev to next
     }
 
     override fun onDestroyView() {
@@ -311,18 +402,26 @@ class CircularFlickSettingsFragment : Fragment() {
 
     private fun setupMenu() {
         val menuHost: MenuHost = requireActivity()
-        menuHost.addMenuProvider(object : MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {}
-            override fun onPrepareMenu(menu: Menu) {}
-            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                return when (menuItem.itemId) {
-                    android.R.id.home -> {
-                        parentFragmentManager.popBackStack()
-                        true
+
+        menuHost.addMenuProvider(
+            object : MenuProvider {
+                override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) = Unit
+
+                override fun onPrepareMenu(menu: Menu) = Unit
+
+                override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                    return when (menuItem.itemId) {
+                        android.R.id.home -> {
+                            parentFragmentManager.popBackStack()
+                            true
+                        }
+
+                        else -> false
                     }
-                    else -> false
                 }
-            }
-        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+            },
+            viewLifecycleOwner,
+            Lifecycle.State.RESUMED,
+        )
     }
 }
