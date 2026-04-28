@@ -68,6 +68,9 @@
             android:id="@+id/action_navigation_setting_to_circularFlickSettingsFragment"
             app:destination="@id/circularFlickSettingsFragment" />
         <action
+            android:id="@+id/action_navigation_setting_to_circularSlotActionSettingFragment"
+            app:destination="@id/circularSlotActionSettingFragment" />
+        <action
             android:id="@+id/action_navigation_setting_to_flickKeyboardSizeSettingsFragment"
             app:destination="@id/flickKeyboardSizeSettingsFragment" />
         <action
@@ -226,6 +229,10 @@
         android:id="@+id/circularFlickSettingsFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.sumire_custom_angle.CircularFlickSettingsFragment"
         android:label="@string/circularflicksettingsfragment" />
+    <fragment
+        android:id="@+id/circularSlotActionSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.circular_slot.CircularSlotActionSettingFragment"
+        android:label="Circular Flick SLOT4〜6 設定" />
     <fragment
         android:id="@+id/flickKeyboardSizeSettingsFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.sumire_custom_key_setting.FlickKeyboardSizeSettingsFragment"

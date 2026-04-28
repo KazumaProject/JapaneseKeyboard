@@ -128,6 +128,7 @@ import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
@@ -198,6 +199,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryReposit
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionApplier
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
@@ -6061,17 +6063,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = true
                         if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                             currentEnterKeyIndex = currentInputType.getEnterKeyIndexSumire()
-                            val hiraganaLayout = KeyboardDefaultLayouts.createFinalLayout(
-                                mode = customKeyboardMode,
-                                dynamicKeyStates = mapOf(
-                                    "enter_key" to currentEnterKeyIndex,
-                                    "dakuten_toggle_key" to currentDakutenKeyIndex,
-                                    "katakana_toggle_key" to currentKatakanaKeyIndex,
-                                    "space_convert_key" to currentSpaceKeyIndex,
+                            val hiraganaLayout = applyCircularSlotActionSettings(
+                                KeyboardDefaultLayouts.createFinalLayout(
+                                    mode = customKeyboardMode,
+                                    dynamicKeyStates = mapOf(
+                                        "enter_key" to currentEnterKeyIndex,
+                                        "dakuten_toggle_key" to currentDakutenKeyIndex,
+                                        "katakana_toggle_key" to currentKatakanaKeyIndex,
+                                        "space_convert_key" to currentSpaceKeyIndex,
+                                    ),
+                                    inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                                    inputStyle = sumireInputStyle ?: "default",
+                                    isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
                                 ),
-                                inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
-                                inputStyle = sumireInputStyle ?: "default",
-                                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                                customKeyboardMode
                             )
                             customLayoutDefault.setKeyboard(hiraganaLayout)
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -6153,6 +6158,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun applyCircularSlotActionSettings(
+        layout: KeyboardLayout,
+        mode: KeyboardInputMode
+    ): KeyboardLayout {
+        return CircularSlotActionApplier.apply(
+            layout = layout,
+            mode = mode,
+            settings = appPreference.getCircularSlotActionSettings()
+        )
+    }
+
     private fun createNewKeyboardLayoutForSumire() {
         Timber.d("updateKeyboardLayout: ${qwertyMode.value} $currentEnterKeyIndex")
         when (qwertyMode.value) {
@@ -6206,12 +6222,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
 
-                        val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
-                            mode = customKeyboardMode,
-                            dynamicKeyStates = dynamicStates,
-                            inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
-                            inputStyle = sumireInputStyle ?: "default",
-                            isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                        val finalLayout = applyCircularSlotActionSettings(
+                            KeyboardDefaultLayouts.createFinalLayout(
+                                mode = customKeyboardMode,
+                                dynamicKeyStates = dynamicStates,
+                                inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                                inputStyle = sumireInputStyle ?: "default",
+                                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                            ),
+                            customKeyboardMode
                         )
                         mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
                     }
@@ -6241,12 +6260,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                             Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
 
-                            val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
-                                mode = customKeyboardMode,
-                                dynamicKeyStates = dynamicStates,
-                                inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
-                                inputStyle = sumireInputStyle ?: "default",
-                                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                            val finalLayout = applyCircularSlotActionSettings(
+                                KeyboardDefaultLayouts.createFinalLayout(
+                                    mode = customKeyboardMode,
+                                    dynamicKeyStates = dynamicStates,
+                                    inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                                    inputStyle = sumireInputStyle ?: "default",
+                                    isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                                ),
+                                customKeyboardMode
                             )
                             mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
                         }
@@ -6262,12 +6284,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
 
-                        val finalLayout = KeyboardDefaultLayouts.createFinalLayout(
-                            mode = customKeyboardMode,
-                            dynamicKeyStates = dynamicStates,
-                            inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
-                            inputStyle = sumireInputStyle ?: "default",
-                            isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                        val finalLayout = applyCircularSlotActionSettings(
+                            KeyboardDefaultLayouts.createFinalLayout(
+                                mode = customKeyboardMode,
+                                dynamicKeyStates = dynamicStates,
+                                inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                                inputStyle = sumireInputStyle ?: "default",
+                                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                            ),
+                            customKeyboardMode
                         )
                         mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
                     }
