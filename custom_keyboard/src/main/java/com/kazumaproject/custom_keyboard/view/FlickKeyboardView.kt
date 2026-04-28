@@ -996,9 +996,16 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         }
 
-                        val stringMaps = circularKeyMapsList.map(::extractCircularInputMap).map { map ->
-                            val switchDirection = circularFlickMapSwitchDirection
-                            if (switchDirection != null && map.containsKey(switchDirection)) {
+                        val rawMaps = circularKeyMapsList.map(::extractCircularInputMap)
+                        val switchDirection = circularFlickMapSwitchDirection
+                        val hasMapSwitch = switchDirection != null && rawMaps.size >= 2
+                        val mapSwitchLabels = if (hasMapSwitch && switchDirection != null) {
+                            rawMaps.map { map -> map[switchDirection]?.takeIf { it.isNotEmpty() } }
+                        } else {
+                            List(rawMaps.size) { null }
+                        }
+                        val stringMaps = rawMaps.map { map ->
+                            if (hasMapSwitch && switchDirection != null && map.containsKey(switchDirection)) {
                                 map.toMutableMap().apply { this[switchDirection] = "" }.toMap()
                             } else {
                                 map
@@ -1011,7 +1018,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             } ?: keyView.setFlickGuideLabels(null)
                         }
 
-                        attach(keyView, stringMaps)
+                        attach(keyView, stringMaps, mapSwitchLabels)
                         setMapSwitchDirection(circularFlickMapSwitchDirection)
 
                         val newCenter = 64f * circularViewScale

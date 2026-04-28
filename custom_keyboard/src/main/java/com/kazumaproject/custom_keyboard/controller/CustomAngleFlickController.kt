@@ -58,6 +58,7 @@ class CustomAngleFlickController(
     private var mapSwitchDirection: CircularFlickDirection? = CircularFlickDirection.SLOT_4
     private var enabledSlots: Set<CircularFlickDirection> =
         CircularFlickDirection.slots(4).toSet()
+    private var mapSwitchLabels: List<String?> = emptyList()
 
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
@@ -79,6 +80,7 @@ class CustomAngleFlickController(
     fun setMapSwitchDirection(direction: CircularFlickDirection?) {
         mapSwitchDirection = direction?.takeIf { it != CircularFlickDirection.TAP }
         popupView.setMapSwitchDirection(mapSwitchDirection)
+        updateMapSwitchLabelState()
     }
 
     fun setShapeType(shape: ShapeType) {
@@ -104,12 +106,27 @@ class CustomAngleFlickController(
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    fun attach(button: View, maps: List<Map<CircularFlickDirection, String>>) {
+    fun attach(
+        button: View,
+        maps: List<Map<CircularFlickDirection, String>>,
+        switchLabels: List<String?>
+    ) {
         if (maps.isEmpty()) return
         this.keyMaps = maps
-        popupView.setMapSwitchIconEnabled(keyMaps.size >= 2)
+        this.mapSwitchLabels = switchLabels
+        updateMapSwitchLabelState()
         button.setOnTouchListener { v, event ->
             handleTouchEvent(v, event)
+        }
+    }
+
+    private fun updateMapSwitchLabelState() {
+        val enabled = mapSwitchDirection != null && keyMaps.size >= 2
+        popupView.setMapSwitchLabelEnabled(enabled)
+        if (enabled) {
+            popupView.setMapSwitchLabel(mapSwitchLabels.getOrNull(currentMapIndex))
+        } else {
+            popupView.setMapSwitchLabel(null)
         }
     }
 
@@ -136,6 +153,7 @@ class CustomAngleFlickController(
                     popupView.setCharacterMap(keyMaps[currentMapIndex])
                     listener?.onPress(keyMaps[currentMapIndex][CircularFlickDirection.TAP] ?: "")
                 }
+                updateMapSwitchLabelState()
                 popupView.updateFlickDirection(CircularFlickDirection.TAP)
 
                 showPopup()
@@ -173,6 +191,7 @@ class CustomAngleFlickController(
                         currentMapIndex = (currentMapIndex + 1) % keyMaps.size
                         val newMap = keyMaps[currentMapIndex]
                         popupView.setCharacterMap(newMap)
+                        updateMapSwitchLabelState()
                         listener?.onStateChanged(view, newMap)
                     }
                 }
