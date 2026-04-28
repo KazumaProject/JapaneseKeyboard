@@ -129,8 +129,13 @@ class CircularFlickSettingsFragment : Fragment() {
     }
 
     private fun setupMapSwitchDirectionSpinner() {
+        val allowedDirections = listOf(
+            CircularFlickDirection.SLOT_4,
+            CircularFlickDirection.SLOT_5,
+            CircularFlickDirection.SLOT_6,
+        )
         val items = listOf("なし" to null) +
-                CircularFlickDirection.slots(7).map { it.name to it }
+            allowedDirections.map { it.name to it }
 
         binding.spinnerMapSwitchDirection.adapter = ArrayAdapter(
             requireContext(),
@@ -138,7 +143,11 @@ class CircularFlickSettingsFragment : Fragment() {
             items.map { it.first },
         )
 
-        val current = appPreference.circularFlickMapSwitchDirection
+        val rawCurrent = appPreference.circularFlickMapSwitchDirection
+        val current = rawCurrent?.takeIf { allowedDirections.contains(it) }
+        if (rawCurrent != null && current == null) {
+            appPreference.circularFlickMapSwitchDirection = null
+        }
 
         binding.spinnerMapSwitchDirection.setSelection(
             items.indexOfFirst { it.second == current }.coerceAtLeast(0),

@@ -12,6 +12,7 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
+import androidx.appcompat.content.res.AppCompatResources
 import androidx.core.graphics.toColorInt
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -65,6 +66,12 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     private val segmentPaths = mutableMapOf<CircularFlickDirection, Path>()
     private var isFullUIModeActive = false
     private var shapeType: ShapeType = ShapeType.CIRCLE
+    private var mapSwitchDirection: CircularFlickDirection? = null
+    private var showMapSwitchIcon = false
+    private val mapSwitchIcon = AppCompatResources.getDrawable(
+        context,
+        com.kazumaproject.core.R.drawable.swap_horiz_24px
+    )?.mutate()
 
     // --- Size Properties ---
     // デフォルト値を設定（後で setUiSize で上書き可能）
@@ -133,6 +140,17 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setMapSwitchDirection(direction: CircularFlickDirection?) {
+        mapSwitchDirection = direction?.takeIf { it != CircularFlickDirection.TAP }
+        invalidate()
+    }
+
+    fun setMapSwitchIconEnabled(enabled: Boolean) {
+        if (showMapSwitchIcon == enabled) return
+        showMapSwitchIcon = enabled
+        invalidate()
+    }
+
     // --- Drawing Logic ---
     // (onMeasure, onSizeChanged, onDraw, updateShaders などは既存のままでOK)
     // ※ createPathForDirection 内で centerCircleRadius が使われますが、
@@ -166,8 +184,10 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
                     canvas.drawPath(path, separatorPaint)
 
                     val text = characterMap[direction] ?: ""
-                    if (text.isNotEmpty()) {
-                        val pos = targetPositions[direction] ?: centerPoint
+                    val pos = targetPositions[direction] ?: centerPoint
+                    if (direction == mapSwitchDirection && showMapSwitchIcon) {
+                        drawMapSwitchIcon(canvas, pos.x, pos.y)
+                    } else if (text.isNotEmpty()) {
                         drawCenteredText(canvas, text, pos.x, pos.y)
                     }
                 }
@@ -186,6 +206,19 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     private fun drawCenteredText(canvas: Canvas, text: String, x: Float, y: Float) {
         val textOffset = (textPaint.descent() + textPaint.ascent()) / 2
         canvas.drawText(text, x, y - textOffset, textPaint)
+    }
+
+    private fun drawMapSwitchIcon(canvas: Canvas, x: Float, y: Float) {
+        val icon = mapSwitchIcon ?: return
+        val size = (textPaint.textSize * 1.2f).toInt().coerceAtLeast(1)
+        val half = size / 2
+        icon.setBounds(
+            (x - half).toInt(),
+            (y - half).toInt(),
+            (x + half).toInt(),
+            (y + half).toInt()
+        )
+        icon.draw(canvas)
     }
 
     private fun recalculateUiComponents() {
@@ -265,6 +298,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         targetPaint.color = colorTheme.segmentColor
         separatorPaint.color = colorTheme.separatorColor
         textPaint.color = colorTheme.textColor
+        mapSwitchIcon?.setTint(textPaint.color)
     }
 
     private fun updateSizesAndRequestLayout() {
