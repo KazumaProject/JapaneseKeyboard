@@ -102,6 +102,13 @@
                     android:text="@string/input_style_petal" />
 
                 <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_circular_flick"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="円形" />
+
+                <com.google.android.material.chip.Chip
                     android:id="@+id/chip_two_step_flick"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
@@ -260,6 +267,56 @@
                     android:inputType="none"
                     tools:text="削除" />
             </com.google.android.material.textfield.TextInputLayout>
+
+            <LinearLayout
+                android:id="@+id/circular_flick_editor_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <Spinner
+                        android:id="@+id/spinner_circular_map"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_circular_map_add"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:text="追加" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_circular_map_duplicate"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:text="複製" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_circular_map_delete"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:text="削除" />
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/circular_flick_mappings_recycler_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+            </LinearLayout>
 
             <!-- フリックグリッドエディタ (ペタル・2段・特殊フリック共通) -->
             <com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.FlickGridEditorView

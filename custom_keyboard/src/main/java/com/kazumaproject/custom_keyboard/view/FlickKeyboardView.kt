@@ -36,6 +36,7 @@ import com.kazumaproject.custom_keyboard.controller.CustomAngleFlickController
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.controller.TfbiHierarchicalFlickController
 import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -43,6 +44,9 @@ import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
+import com.kazumaproject.custom_keyboard.data.toCircularFlickKeyMaps
+import com.kazumaproject.custom_keyboard.data.toLegacyFlickDirection
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import kotlin.math.abs
 import kotlin.math.pow
@@ -120,8 +124,11 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var liquidGlassKeyAlphaEnable: Int = 255
     private var customBorderEnable: Boolean = false
     private var customBorderColor: Int = Color.BLACK
-    private var customAngleAndRange: Map<FlickDirection, Pair<Float, Float>> = emptyMap()
+    private var customAngleAndRange: Map<CircularFlickDirection, Pair<Float, Float>> = emptyMap()
     private var circularViewScale: Float = 1.0f
+    private var circularFlickDirectionCount: Int = 4
+    private var circularFlickMapSwitchDirection: CircularFlickDirection? =
+        CircularFlickDirection.SLOT_4
     private var borderWidth: Int = 1
     private var flickGuideEnabled: Boolean = false
 
@@ -177,11 +184,21 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     fun setAngleAndRange(
-        range: Map<FlickDirection, Pair<Float, Float>>,
+        range: Map<CircularFlickDirection, Pair<Float, Float>>,
         circularPopViewScale: Float
     ) {
         this.customAngleAndRange = range
         this.circularViewScale = circularPopViewScale
+    }
+
+    fun setCircularFlickOptions(
+        directionCount: Int,
+        mapSwitchDirection: CircularFlickDirection?
+    ) {
+        circularFlickDirectionCount = directionCount.coerceIn(4, 7)
+        circularFlickMapSwitchDirection = mapSwitchDirection?.takeIf {
+            it != CircularFlickDirection.TAP
+        }
     }
 
     fun applyKeyboardTheme(
@@ -481,6 +498,14 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun extractCircularInputMap(
+        actionMap: Map<CircularFlickDirection, FlickAction>
+    ): Map<CircularFlickDirection, String> {
+        return actionMap.mapValues { (_, flickAction) ->
+            (flickAction as? FlickAction.Input)?.char ?: ""
+        }
+    }
+
     private fun getGuideLabels(stringMap: Map<FlickDirection, String>): AutoSizeButton.FlickGuideLabels {
         val tap = sanitizeGuideCharacter(stringMap[FlickDirection.TAP] ?: "") ?: ""
         val left = sanitizeGuideCharacter(
@@ -502,6 +527,23 @@ class FlickKeyboardView @JvmOverloads constructor(
         ) ?: ""
         val up = sanitizeGuideCharacter(stringMap[FlickDirection.UP] ?: "") ?: ""
 
+        return AutoSizeButton.FlickGuideLabels(
+            tap = tap,
+            up = up,
+            right = right,
+            down = down,
+            left = left
+        )
+    }
+
+    private fun getCircularGuideLabels(
+        stringMap: Map<CircularFlickDirection, String>
+    ): AutoSizeButton.FlickGuideLabels {
+        val tap = sanitizeGuideCharacter(stringMap[CircularFlickDirection.TAP] ?: "") ?: ""
+        val up = sanitizeGuideCharacter(stringMap[CircularFlickDirection.SLOT_0] ?: "") ?: ""
+        val right = sanitizeGuideCharacter(stringMap[CircularFlickDirection.SLOT_1] ?: "") ?: ""
+        val down = sanitizeGuideCharacter(stringMap[CircularFlickDirection.SLOT_2] ?: "") ?: ""
+        val left = sanitizeGuideCharacter(stringMap[CircularFlickDirection.SLOT_3] ?: "") ?: ""
         return AutoSizeButton.FlickGuideLabels(
             tap = tap,
             up = up,
@@ -545,6 +587,24 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         button.setFlickGuideLabels(getGuideLabels(stringMap), getGuideTextColor(keyData))
+    }
+
+    private fun applyCircularGuideLabels(
+        button: AutoSizeButton,
+        keyData: KeyData,
+        stringMap: Map<CircularFlickDirection, String>
+    ) {
+        if (!flickGuideEnabled) {
+            button.setFlickGuideLabels(null)
+            return
+        }
+
+        if (!isSingleGuideCharacter(keyData.label)) {
+            button.setFlickGuideLabels(null)
+            return
+        }
+
+        button.setFlickGuideLabels(getCircularGuideLabels(stringMap), getGuideTextColor(keyData))
     }
 
     private fun isSingleGuideCharacter(value: String): Boolean {
@@ -829,9 +889,15 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         when (keyData.keyType) {
             KeyType.CIRCULAR_FLICK -> {
-                val flickKeyMapsList = layout.flickKeyMaps[keyData.label]
-                Log.d("FlickKeyboardView KeyType.CIRCULAR_FLICK", "$flickKeyMapsList")
-                if (!flickKeyMapsList.isNullOrEmpty()) {
+                val circularKeyMapsList =
+                    keyData.keyId?.let { layout.circularFlickKeyMaps[it] }
+                        ?: layout.circularFlickKeyMaps[keyData.label]
+                        ?: (
+                            keyData.keyId?.let { layout.flickKeyMaps[it] }
+                                ?: layout.flickKeyMaps[keyData.label]
+                            )?.let { mapOf(keyData.label to it).toCircularFlickKeyMaps()[keyData.label] }
+                Log.d("FlickKeyboardView KeyType.CIRCULAR_FLICK", "$circularKeyMapsList")
+                if (!circularKeyMapsList.isNullOrEmpty()) {
                     val controller = CustomAngleFlickController(context, flickSensitivity).apply {
                         setLongPressTimeout(longPressTimeout)
                         val secondaryColor =
@@ -900,40 +966,53 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 notifyTextPress(character)
                             }
 
-                            override fun onFlick(direction: FlickDirection, character: String) {
+                            override fun onFlick(
+                                direction: CircularFlickDirection,
+                                character: String
+                            ) {
                                 if (character.isNotEmpty()) {
                                     this@FlickKeyboardView.listener?.onAction(
                                         KeyAction.Text(character),
-                                        isFlick = direction != FlickDirection.TAP
+                                        isFlick = direction != CircularFlickDirection.TAP
                                     )
                                 }
                             }
 
                             override fun onStateChanged(
                                 view: View,
-                                newMap: Map<FlickDirection, String>
+                                newMap: Map<CircularFlickDirection, String>
                             ) {
                                 if (view is AutoSizeButton) {
-                                    applyGuideLabels(view, keyData, newMap)
+                                    applyCircularGuideLabels(view, keyData, newMap)
                                 }
                             }
 
-                            override fun onFlickDirectionChanged(newDirection: FlickDirection) {
+                            override fun onFlickDirectionChanged(
+                                newDirection: CircularFlickDirection
+                            ) {
                                 this@FlickKeyboardView.listener?.onFlickDirectionChanged(
-                                    newDirection
+                                    newDirection.toLegacyFlickDirection()
                                 )
                             }
                         }
 
-                        val stringMaps = flickKeyMapsList.map(::extractInputMap)
+                        val stringMaps = circularKeyMapsList.map(::extractCircularInputMap).map { map ->
+                            val switchDirection = circularFlickMapSwitchDirection
+                            if (switchDirection != null && map.containsKey(switchDirection)) {
+                                map.toMutableMap().apply { this[switchDirection] = "" }.toMap()
+                            } else {
+                                map
+                            }
+                        }
 
                         if (keyView is AutoSizeButton) {
                             stringMaps.firstOrNull()?.let { firstMap ->
-                                applyGuideLabels(keyView, keyData, firstMap)
+                                applyCircularGuideLabels(keyView, keyData, firstMap)
                             } ?: keyView.setFlickGuideLabels(null)
                         }
 
                         attach(keyView, stringMaps)
+                        setMapSwitchDirection(circularFlickMapSwitchDirection)
 
                         val newCenter = 64f * circularViewScale
                         val newOrbit = 170f * circularViewScale
@@ -946,12 +1025,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
 
                     val ranges = customAngleAndRange.ifEmpty {
-                        mapOf(
-                            FlickDirection.UP to Pair(225f, 90f),
-                            FlickDirection.UP_RIGHT_FAR to Pair(315f, 90f),
-                            FlickDirection.DOWN to Pair(45f, 90f),
-                            FlickDirection.UP_LEFT_FAR to Pair(135f, 90f)
-                        )
+                        buildEvenCircularRanges(circularFlickDirectionCount)
+                    }.filterKeys {
+                        CircularFlickDirection.slots(circularFlickDirectionCount).contains(it)
                     }
 
                     controller.setFlickRanges(ranges)

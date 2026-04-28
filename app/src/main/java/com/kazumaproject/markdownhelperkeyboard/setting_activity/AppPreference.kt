@@ -7,8 +7,9 @@ import androidx.core.graphics.toColorInt
 import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
-import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
@@ -391,6 +392,9 @@ object AppPreference {
     private val PREF_FIVE_DIRECTIONS_ENABLE = Pair("circular_flick_five_directions_enable", false)
     private val PREF_UP_RIGHT_START = Pair("circular_flick_up_right_start", 90f)
     private val PREF_UP_RIGHT_SWEEP = Pair("circular_flick_up_right_sweep", 72f)
+    private val PREF_CIRCULAR_DIRECTION_COUNT = Pair("circular_flick_direction_count", 4)
+    private val PREF_CIRCULAR_MAP_SWITCH_DIRECTION =
+        Pair("circular_flick_map_switch_direction", "SLOT_4")
 
     private val QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE =
         Pair("qwerty_switch_number_key_without_number_preference", false)
@@ -1847,6 +1851,43 @@ object AppPreference {
         )
         set(value) = preferences.edit { it.putBoolean(PREF_FIVE_DIRECTIONS_ENABLE.first, value) }
 
+    var circularFlickDirectionCount: Int
+        get() {
+            val hasNewPreference = preferences.contains(PREF_CIRCULAR_DIRECTION_COUNT.first)
+            val raw = if (hasNewPreference) {
+                preferences.getInt(
+                    PREF_CIRCULAR_DIRECTION_COUNT.first,
+                    PREF_CIRCULAR_DIRECTION_COUNT.second
+                )
+            } else if (circularFlick5DirectionsEnable) {
+                5
+            } else {
+                PREF_CIRCULAR_DIRECTION_COUNT.second
+            }
+            return raw.coerceIn(4, 7)
+        }
+        set(value) = preferences.edit {
+            it.putInt(PREF_CIRCULAR_DIRECTION_COUNT.first, value.coerceIn(4, 7))
+        }
+
+    var circularFlickMapSwitchDirection: CircularFlickDirection?
+        get() {
+            val raw = preferences.getString(
+                PREF_CIRCULAR_MAP_SWITCH_DIRECTION.first,
+                PREF_CIRCULAR_MAP_SWITCH_DIRECTION.second
+            ) ?: PREF_CIRCULAR_MAP_SWITCH_DIRECTION.second
+            if (raw == "NONE") return null
+            return runCatching { CircularFlickDirection.valueOf(raw) }
+                .getOrNull()
+                ?.takeIf { it != CircularFlickDirection.TAP }
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                PREF_CIRCULAR_MAP_SWITCH_DIRECTION.first,
+                value?.takeIf { direction -> direction != CircularFlickDirection.TAP }?.name ?: "NONE"
+            )
+        }
+
     var circularFlickUpStart: Float
         get() = preferences.getFloat(PREF_UP_START.first, PREF_UP_START.second)
         set(value) = preferences.edit { it.putFloat(PREF_UP_START.first, value) }
@@ -2135,20 +2176,27 @@ object AppPreference {
      * キーボード側で使用するためのマップ取得メソッド
      * 戻り値: Map<FlickDirection, Pair<StartAngle, SweepAngle>>
      */
-    fun getCircularFlickRanges(): Map<FlickDirection, Pair<Float, Float>> {
+    fun getCircularFlickSlotRanges(): Map<CircularFlickDirection, Pair<Float, Float>> {
+        val count = circularFlickDirectionCount
+        if (count >= 6) return buildEvenCircularRanges(count)
+
         val baseMap = mutableMapOf(
-            FlickDirection.UP to Pair(circularFlickUpStart, circularFlickUpSweep),
-            FlickDirection.UP_RIGHT_FAR to Pair(circularFlickRightStart, circularFlickRightSweep),
-            FlickDirection.DOWN to Pair(circularFlickDownStart, circularFlickDownSweep),
-            FlickDirection.UP_LEFT_FAR to Pair(circularFlickLeftStart, circularFlickLeftSweep)
+            CircularFlickDirection.SLOT_0 to Pair(circularFlickUpStart, circularFlickUpSweep),
+            CircularFlickDirection.SLOT_1 to Pair(circularFlickRightStart, circularFlickRightSweep),
+            CircularFlickDirection.SLOT_2 to Pair(circularFlickDownStart, circularFlickDownSweep),
+            CircularFlickDirection.SLOT_3 to Pair(circularFlickLeftStart, circularFlickLeftSweep)
         )
 
-        if (circularFlick5DirectionsEnable) {
-            baseMap[FlickDirection.UP_RIGHT] =
+        if (count == 5) {
+            baseMap[CircularFlickDirection.SLOT_4] =
                 Pair(circularFlickUpRightStart, circularFlickUpRightSweep)
         }
 
         return baseMap
+    }
+
+    fun getCircularFlickRanges(): Map<CircularFlickDirection, Pair<Float, Float>> {
+        return getCircularFlickSlotRanges()
     }
 
     /**

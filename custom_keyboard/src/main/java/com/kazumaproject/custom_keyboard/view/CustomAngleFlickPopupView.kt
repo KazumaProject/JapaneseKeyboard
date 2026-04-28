@@ -13,9 +13,10 @@ import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
 import androidx.core.graphics.toColorInt
-import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.ShapeType
+import com.kazumaproject.custom_keyboard.data.getDirectionForAngle
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -57,11 +58,11 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         applyThemeToPaints()
     }
 
-    private var currentFlickDirection = FlickDirection.TAP
-    private val characterMap = mutableMapOf<FlickDirection, String>()
-    private val directionRanges = mutableMapOf<FlickDirection, Pair<Float, Float>>()
-    private val targetPositions = mutableMapOf<FlickDirection, PointF>()
-    private val segmentPaths = mutableMapOf<FlickDirection, Path>()
+    private var currentFlickDirection = CircularFlickDirection.TAP
+    private val characterMap = mutableMapOf<CircularFlickDirection, String>()
+    private val directionRanges = mutableMapOf<CircularFlickDirection, Pair<Float, Float>>()
+    private val targetPositions = mutableMapOf<CircularFlickDirection, PointF>()
+    private val segmentPaths = mutableMapOf<CircularFlickDirection, Path>()
     private var isFullUIModeActive = false
     private var shapeType: ShapeType = ShapeType.CIRCLE
 
@@ -90,7 +91,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
 
     // ... (setCustomRanges, setShapeType, setColors などは変更なし) ...
 
-    fun setCustomRanges(ranges: Map<FlickDirection, Pair<Float, Float>>) {
+    fun setCustomRanges(ranges: Map<CircularFlickDirection, Pair<Float, Float>>) {
         directionRanges.clear()
         directionRanges.putAll(ranges)
         if (width > 0 && height > 0) {
@@ -114,13 +115,13 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         invalidate()
     }
 
-    fun setCharacterMap(map: Map<FlickDirection, String>) {
+    fun setCharacterMap(map: Map<CircularFlickDirection, String>) {
         characterMap.clear()
         characterMap.putAll(map)
         invalidate()
     }
 
-    fun updateFlickDirection(direction: FlickDirection) {
+    fun updateFlickDirection(direction: CircularFlickDirection) {
         if (currentFlickDirection != direction) {
             currentFlickDirection = direction
             invalidate()
@@ -154,7 +155,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         val cy = height / 2f
         val centerPoint = PointF(cx, cy)
 
-        if (isFullUIModeActive || currentFlickDirection != FlickDirection.TAP) {
+        if (isFullUIModeActive || currentFlickDirection != CircularFlickDirection.TAP) {
             directionRanges.forEach { (direction, _) ->
                 if (isFullUIModeActive || direction == currentFlickDirection) {
                     val path = segmentPaths[direction] ?: return@forEach
@@ -173,12 +174,12 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
             }
         }
 
-        val isCenterSelected = (currentFlickDirection == FlickDirection.TAP)
+        val isCenterSelected = (currentFlickDirection == CircularFlickDirection.TAP)
         val centerPaint = if (isCenterSelected) centerHighlightPaint else centerCirclePaint
         canvas.drawCircle(centerPoint.x, centerPoint.y, centerCircleRadius, centerPaint)
 
         val centerText =
-            characterMap[currentFlickDirection] ?: characterMap[FlickDirection.TAP] ?: ""
+            characterMap[currentFlickDirection] ?: characterMap[CircularFlickDirection.TAP] ?: ""
         drawCenteredText(canvas, centerText, centerPoint.x, centerPoint.y)
     }
 
@@ -200,11 +201,11 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
             createPathForDirection(direction, range.first, range.second, centerX, centerY)
         }
 
-        targetPositions[FlickDirection.TAP] = PointF(centerX, centerY)
+        targetPositions[CircularFlickDirection.TAP] = PointF(centerX, centerY)
     }
 
     private fun createPathForDirection(
-        direction: FlickDirection,
+        direction: CircularFlickDirection,
         startAngle: Float,
         sweepAngle: Float,
         cx: Float,
@@ -256,25 +257,8 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         targetPositions[direction] = PointF(tx, ty)
     }
 
-    fun getDirectionForAngle(angle: Double): FlickDirection {
-        directionRanges.forEach { (direction, range) ->
-            if (isAngleInSegment(angle, range)) return direction
-        }
-        return FlickDirection.TAP
-    }
-
-    private fun isAngleInSegment(angle: Double, segment: Pair<Float, Float>): Boolean {
-        val start = segment.first
-        val sweep = segment.second
-        val end = start + sweep
-        val normalizedAngle = (angle + 360) % 360
-
-        return if (end > 360f) {
-            val wrappedEnd = end % 360f
-            normalizedAngle >= start || normalizedAngle < wrappedEnd
-        } else {
-            normalizedAngle >= start && normalizedAngle < end
-        }
+    fun getDirectionForAngle(angle: Double): CircularFlickDirection {
+        return getDirectionForAngle(angle.toFloat(), directionRanges)
     }
 
     private fun applyThemeToPaints() {
