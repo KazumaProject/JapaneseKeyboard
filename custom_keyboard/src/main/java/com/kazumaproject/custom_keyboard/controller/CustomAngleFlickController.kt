@@ -57,7 +57,6 @@ class CustomAngleFlickController(
     private var currentMapIndex = 0
 
     private var previousDirection = CircularFlickDirection.TAP
-    private var mapSwitchDirection: CircularFlickDirection? = CircularFlickDirection.SLOT_4
     private var enabledSlots: Set<CircularFlickDirection> =
         CircularFlickDirection.slots(4).toSet()
     private var mapSwitchLabels: List<String?> = emptyList()
@@ -77,12 +76,6 @@ class CustomAngleFlickController(
     fun setFlickRanges(ranges: Map<CircularFlickDirection, Pair<Float, Float>>) {
         popupView.setCustomRanges(ranges)
         enabledSlots = ranges.keys.filter { it != CircularFlickDirection.TAP }.toSet()
-    }
-
-    fun setMapSwitchDirection(direction: CircularFlickDirection?) {
-        mapSwitchDirection = direction?.takeIf { it != CircularFlickDirection.TAP }
-        popupView.setMapSwitchDirection(mapSwitchDirection)
-        updateMapSwitchLabelState()
     }
 
     fun setShapeType(shape: ShapeType) {
@@ -123,7 +116,9 @@ class CustomAngleFlickController(
     }
 
     private fun updateMapSwitchLabelState() {
-        val enabled = keyMaps.size >= 2 && getActiveMapSwitchDirection() != null
+        val activeMapSwitchDirection = getActiveMapSwitchDirection()
+        popupView.setMapSwitchDirection(activeMapSwitchDirection)
+        val enabled = keyMaps.size >= 2 && activeMapSwitchDirection != null
         popupView.setMapSwitchLabelEnabled(enabled)
         if (enabled) {
             popupView.setMapSwitchLabel(mapSwitchLabels.getOrNull(currentMapIndex))
@@ -138,14 +133,6 @@ class CustomAngleFlickController(
             action.label == "⇄"
     }
 
-    private fun isExplicitSlotAction(action: FlickAction?): Boolean {
-        return when (action) {
-            is FlickAction.Input -> action.label != null
-            is FlickAction.Action -> action.label != null
-            null -> false
-        }
-    }
-
     private fun getActiveMapSwitchDirection(): CircularFlickDirection? {
         if (keyMaps.isEmpty()) return null
         val currentMap = keyMaps[currentMapIndex]
@@ -153,9 +140,7 @@ class CustomAngleFlickController(
             direction != CircularFlickDirection.TAP &&
                 enabledSlots.contains(direction) &&
                 isMapSwitchAction(action)
-        }?.key ?: mapSwitchDirection?.takeIf { direction ->
-            enabledSlots.contains(direction) && !isExplicitSlotAction(currentMap[direction])
-        }
+        }?.key
     }
 
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {

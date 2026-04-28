@@ -124,7 +124,6 @@ import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.core.domain.window.getScreenHeight
-import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
@@ -685,8 +684,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var learnPredictionPreference: Int? = 2
     private var circularFlickWindowScale: Float? = 1.0f
     private var circularFlickDirectionCount: Int? = 4
-    private var circularFlickMapSwitchDirection: CircularFlickDirection? =
-        CircularFlickDirection.SLOT_4
 
     private var customKeyBorderWidth: Int? = 1
 
@@ -1350,7 +1347,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         learnPredictionPreference = preferences.learnPredictionPreference
         circularFlickWindowScale = preferences.circularFlickWindowScale
         circularFlickDirectionCount = preferences.circularFlickDirectionCount
-        circularFlickMapSwitchDirection = preferences.circularFlickMapSwitchDirection
         customKeyBorderWidth = preferences.customKeyBorderWidth
         qwertySwitchNumberKeyWithoutNumberPreference =
             preferences.qwertySwitchNumberKeyWithoutNumberPreference
@@ -6467,8 +6463,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             circularFlickWindowScale ?: 1.0f
         )
         mainView.customLayoutDefault.setCircularFlickOptions(
-            directionCount = circularFlickDirectionCount ?: appPreference.circularFlickDirectionCount,
-            mapSwitchDirection = circularFlickMapSwitchDirection
+            directionCount = circularFlickDirectionCount ?: appPreference.circularFlickDirectionCount
         )
 
         mainView.customLayoutDefault.applyKeySizing(
