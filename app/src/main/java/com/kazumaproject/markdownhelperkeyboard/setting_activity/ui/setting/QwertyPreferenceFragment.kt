@@ -24,5 +24,19 @@ class QwertyPreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        findPreference<Preference>(QWERTY_NUMBER_KEY_FLICK_SETTING_PREFERENCE)?.apply {
+            setOnPreferenceClickListener {
+                navigateSafely(
+                    R.id.action_navigation_setting_to_qwertyNumberKeyFlickSettingFragment
+                )
+                true
+            }
+        }
+    }
+
+    companion object {
+        private const val QWERTY_NUMBER_KEY_FLICK_SETTING_PREFERENCE =
+            "qwerty_number_key_flick_setting_preference"
     }
 }

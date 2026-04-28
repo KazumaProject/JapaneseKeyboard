@@ -73,6 +73,12 @@ object AppPreference {
     private val QWERTY_SHOW_NUMBER_BUTTONS =
         Pair("qwerty_show_number_keys_buttons_preference", false)
 
+    private val QWERTY_NUMBER_KEY_FLICK_UP_CHARS =
+        Pair("qwerty_number_key_flick_up_chars", "{}")
+
+    private val QWERTY_NUMBER_KEY_FLICK_DOWN_CHARS =
+        Pair("qwerty_number_key_flick_down_chars", "{}")
+
     private val QWERTY_SHOW_SWITCH_ROMAJI_ENGLISH =
         Pair("qwerty_show_switch_romaji_english_preference", true)
 
@@ -458,6 +464,29 @@ object AppPreference {
         return if (trimmed.length == 2) trimmed else null
     }
 
+    private fun normalizeQwertyNumberKeyFlickChars(map: Map<String, String?>): Map<String, String> {
+        val allowedKeys = setOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
+        return map.mapNotNull { (key, value) ->
+            val normalizedValue = value?.trim().orEmpty()
+            if (key in allowedKeys && normalizedValue.isNotEmpty()) {
+                key to normalizedValue.take(1)
+            } else {
+                null
+            }
+        }.toMap()
+    }
+
+    private fun readQwertyNumberKeyFlickChars(preferenceKey: String): Map<String, String> {
+        val raw = preferences.getString(preferenceKey, "{}") ?: "{}"
+        val parsed = runCatching {
+            gson.fromJson<Map<String, String?>>(
+                raw,
+                object : TypeToken<Map<String, String?>>() {}.type
+            )
+        }.getOrNull()
+        return normalizeQwertyNumberKeyFlickChars(parsed ?: emptyMap())
+    }
+
     var clipboard_history_enable: Boolean?
         get() = preferences.getBoolean(
             CLIPBOARD_HISTORY_ENABLE.first, CLIPBOARD_HISTORY_ENABLE.second
@@ -537,6 +566,26 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_NUMBER_BUTTONS.first, value ?: false)
         }
+
+    fun getQwertyNumberKeyFlickUpChars(): Map<String, String> =
+        readQwertyNumberKeyFlickChars(QWERTY_NUMBER_KEY_FLICK_UP_CHARS.first)
+
+    fun saveQwertyNumberKeyFlickUpChars(map: Map<String, String>) = preferences.edit {
+        it.putString(
+            QWERTY_NUMBER_KEY_FLICK_UP_CHARS.first,
+            gson.toJson(normalizeQwertyNumberKeyFlickChars(map))
+        )
+    }
+
+    fun getQwertyNumberKeyFlickDownChars(): Map<String, String> =
+        readQwertyNumberKeyFlickChars(QWERTY_NUMBER_KEY_FLICK_DOWN_CHARS.first)
+
+    fun saveQwertyNumberKeyFlickDownChars(map: Map<String, String>) = preferences.edit {
+        it.putString(
+            QWERTY_NUMBER_KEY_FLICK_DOWN_CHARS.first,
+            gson.toJson(normalizeQwertyNumberKeyFlickChars(map))
+        )
+    }
 
     var qwerty_show_switch_romaji_english_button: Boolean?
         get() = preferences.getBoolean(
