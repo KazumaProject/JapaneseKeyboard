@@ -8,6 +8,7 @@ import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
@@ -15,11 +16,17 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
 
 object AppPreference {
 
     private lateinit var preferences: SharedPreferences
     private val gson = Gson()
+    private val circularSlotActionEditableSlots = setOf(
+        CircularFlickDirection.SLOT_4,
+        CircularFlickDirection.SLOT_5,
+        CircularFlickDirection.SLOT_6
+    )
 
     private val CLIPBOARD_HISTORY_ENABLE = Pair("clipboard_history_preference", false)
     private val TIME_SAME_PRONOUNCE_TYPING = Pair("time_same_pronounce_typing_preference", 1000)
@@ -395,6 +402,8 @@ object AppPreference {
     private val PREF_CIRCULAR_DIRECTION_COUNT = Pair("circular_flick_direction_count", 4)
     private val PREF_CIRCULAR_MAP_SWITCH_DIRECTION =
         Pair("circular_flick_map_switch_direction", "SLOT_4")
+    private val CIRCULAR_SLOT_ACTION_SETTINGS =
+        Pair("circular_slot_action_settings", "[]")
 
     private val QWERTY_SWITCH_NUMBER_KEY_WITHOUT_NUMBER_PREFERENCE =
         Pair("qwerty_switch_number_key_without_number_preference", false)
@@ -2197,6 +2206,68 @@ object AppPreference {
 
     fun getCircularFlickRanges(): Map<CircularFlickDirection, Pair<Float, Float>> {
         return getCircularFlickSlotRanges()
+    }
+
+    fun getCircularSlotActionSettings(): List<CircularSlotActionSetting> {
+        val raw = preferences.getString(
+            CIRCULAR_SLOT_ACTION_SETTINGS.first,
+            CIRCULAR_SLOT_ACTION_SETTINGS.second
+        ) ?: CIRCULAR_SLOT_ACTION_SETTINGS.second
+
+        return runCatching {
+            gson.fromJson<List<CircularSlotActionSetting>>(
+                raw,
+                object : TypeToken<List<CircularSlotActionSetting>>() {}.type
+            )
+        }.getOrNull()
+            ?.filter { it.slot in circularSlotActionEditableSlots }
+            ?: emptyList()
+    }
+
+    fun saveCircularSlotActionSettings(settings: List<CircularSlotActionSetting>) {
+        preferences.edit {
+            it.putString(
+                CIRCULAR_SLOT_ACTION_SETTINGS.first,
+                gson.toJson(settings.filter { setting ->
+                    setting.slot in circularSlotActionEditableSlots &&
+                        setting.keyIdentifier.isNotBlank()
+                })
+            )
+        }
+    }
+
+    fun getCircularSlotActionSetting(
+        mode: KeyboardInputMode,
+        keyIdentifier: String,
+        slot: CircularFlickDirection
+    ): CircularSlotActionSetting? {
+        return getCircularSlotActionSettings().firstOrNull {
+            it.mode == mode && it.keyIdentifier == keyIdentifier && it.slot == slot
+        }
+    }
+
+    fun upsertCircularSlotActionSetting(setting: CircularSlotActionSetting) {
+        if (setting.slot !in circularSlotActionEditableSlots || setting.keyIdentifier.isBlank()) return
+        val nextSettings = getCircularSlotActionSettings()
+            .filterNot {
+                it.mode == setting.mode &&
+                    it.keyIdentifier == setting.keyIdentifier &&
+                    it.slot == setting.slot
+            }
+            .plus(setting)
+        saveCircularSlotActionSettings(nextSettings)
+    }
+
+    fun deleteCircularSlotActionSetting(
+        mode: KeyboardInputMode,
+        keyIdentifier: String,
+        slot: CircularFlickDirection
+    ) {
+        saveCircularSlotActionSettings(
+            getCircularSlotActionSettings().filterNot {
+                it.mode == mode && it.keyIdentifier == keyIdentifier && it.slot == slot
+            }
+        )
     }
 
     /**

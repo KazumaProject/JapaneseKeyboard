@@ -506,6 +506,42 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun circularActionLabel(action: FlickAction?): String {
+        return when (action) {
+            is FlickAction.Input -> action.label ?: action.char
+            is FlickAction.Action -> action.label ?: when (action.action) {
+                KeyAction.ShowEmojiKeyboard -> "絵"
+                KeyAction.SwitchToNextIme -> "IME"
+                KeyAction.SwitchToKanaLayout -> "かな"
+                KeyAction.SwitchToEnglishLayout -> "英"
+                KeyAction.SwitchToNumberLayout -> "数"
+                else -> ""
+            }
+
+            null -> ""
+        }
+    }
+
+    private fun extractCircularLabelMap(
+        actionMap: Map<CircularFlickDirection, FlickAction>
+    ): Map<CircularFlickDirection, String> {
+        return actionMap.mapValues { (_, flickAction) -> circularActionLabel(flickAction) }
+    }
+
+    private fun isCircularMapSwitchAction(action: FlickAction?): Boolean {
+        return action is FlickAction.Action &&
+            action.action == KeyAction.MoveCustomKeyboardTab &&
+            action.label == "⇄"
+    }
+
+    private fun isExplicitCircularSlotAction(action: FlickAction?): Boolean {
+        return when (action) {
+            is FlickAction.Input -> action.label != null
+            is FlickAction.Action -> action.label != null
+            null -> false
+        }
+    }
+
     private fun getGuideLabels(stringMap: Map<FlickDirection, String>): AutoSizeButton.FlickGuideLabels {
         val tap = sanitizeGuideCharacter(stringMap[FlickDirection.TAP] ?: "") ?: ""
         val left = sanitizeGuideCharacter(
@@ -962,28 +998,47 @@ class FlickKeyboardView @JvmOverloads constructor(
                         setPopupColors(dynamicColorTheme)
 
                         this.listener = object : CustomAngleFlickController.FlickListener {
-                            override fun onPress(character: String) {
-                                notifyTextPress(character)
+                            override fun onPress(action: FlickAction?) {
+                                when (action) {
+                                    is FlickAction.Input -> notifyTextPress(action.char)
+                                    is FlickAction.Action -> this@FlickKeyboardView.listener?.onPress(action.action)
+                                    null -> Unit
+                                }
                             }
 
                             override fun onFlick(
                                 direction: CircularFlickDirection,
-                                character: String
+                                action: FlickAction
                             ) {
-                                if (character.isNotEmpty()) {
-                                    this@FlickKeyboardView.listener?.onAction(
-                                        KeyAction.Text(character),
-                                        isFlick = direction != CircularFlickDirection.TAP
-                                    )
+                                when (action) {
+                                    is FlickAction.Input -> {
+                                        if (action.char.isNotEmpty()) {
+                                            this@FlickKeyboardView.listener?.onAction(
+                                                KeyAction.Text(action.char),
+                                                isFlick = direction != CircularFlickDirection.TAP
+                                            )
+                                        }
+                                    }
+
+                                    is FlickAction.Action -> {
+                                        this@FlickKeyboardView.listener?.onAction(
+                                            action.action,
+                                            isFlick = direction != CircularFlickDirection.TAP
+                                        )
+                                    }
                                 }
                             }
 
                             override fun onStateChanged(
                                 view: View,
-                                newMap: Map<CircularFlickDirection, String>
+                                newMap: Map<CircularFlickDirection, FlickAction>
                             ) {
                                 if (view is AutoSizeButton) {
-                                    applyCircularGuideLabels(view, keyData, newMap)
+                                    applyCircularGuideLabels(
+                                        view,
+                                        keyData,
+                                        extractCircularLabelMap(newMap)
+                                    )
                                 }
                             }
 
@@ -996,24 +1051,44 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         }
 
-                        val rawMaps = circularKeyMapsList.map(::extractCircularInputMap)
+                        val rawMaps = circularKeyMapsList.map(::extractCircularLabelMap)
                         val switchDirection = circularFlickMapSwitchDirection
                         val hasMapSwitch = switchDirection != null && rawMaps.size >= 2
                         val mapSwitchLabels = if (hasMapSwitch && switchDirection != null) {
-                            rawMaps.map { map -> map[switchDirection]?.takeIf { it.isNotEmpty() } }
+                            circularKeyMapsList.mapIndexed { index, map ->
+                                if (isExplicitCircularSlotAction(map[switchDirection])) {
+                                    null
+                                } else {
+                                    rawMaps[index][switchDirection]?.takeIf { it.isNotEmpty() }
+                                }
+                            }
                         } else {
                             List(rawMaps.size) { null }
                         }
-                        val stringMaps = rawMaps.map { map ->
+                        val stringMaps = circularKeyMapsList.map { map ->
+                            val mutable = map.toMutableMap()
+                            if (
+                                hasMapSwitch &&
+                                switchDirection != null &&
+                                mutable.containsKey(switchDirection) &&
+                                !isExplicitCircularSlotAction(mutable[switchDirection])
+                            ) {
+                                mutable.remove(switchDirection)
+                            }
+                            mutable.toMap()
+                        }
+                        val guideMaps = stringMaps.map { map ->
                             if (hasMapSwitch && switchDirection != null && map.containsKey(switchDirection)) {
-                                map.toMutableMap().apply { this[switchDirection] = "" }.toMap()
+                                extractCircularLabelMap(map.toMutableMap().apply {
+                                    remove(switchDirection)
+                                })
                             } else {
-                                map
+                                extractCircularLabelMap(map)
                             }
                         }
 
                         if (keyView is AutoSizeButton) {
-                            stringMaps.firstOrNull()?.let { firstMap ->
+                            guideMaps.firstOrNull()?.let { firstMap ->
                                 applyCircularGuideLabels(keyView, keyData, firstMap)
                             } ?: keyView.setFlickGuideLabels(null)
                         }
