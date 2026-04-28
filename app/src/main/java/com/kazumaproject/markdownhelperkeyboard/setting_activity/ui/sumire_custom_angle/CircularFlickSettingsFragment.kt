@@ -272,19 +272,22 @@ class CircularFlickSettingsFragment : Fragment() {
             if (!fromUser || isUpdatingUi) return@addOnChangeListener
             if (directionOrder.isEmpty()) return@addOnChangeListener
 
+            rebuildDirectionOrderFromAngles()
+
             val (prevDirection, nextDirection) = getNeighbors(currentEditingDirection)
             val (prevStart, _) = angleData[prevDirection] ?: (0f to 90f)
-
-            val newPrevSweep = normalizeAngle(newStartValue - prevStart)
-            if (newPrevSweep < minSweepAngle) return@addOnChangeListener
-
             val (nextStart, _) = angleData[nextDirection] ?: (0f to 90f)
 
-            val newCurrentSweep = normalizeAngle(nextStart - newStartValue)
-            if (newCurrentSweep < minSweepAngle) return@addOnChangeListener
+            val totalArc = normalizeAngle(nextStart - prevStart)
+            if (totalArc <= minSweepAngle * 2f) return@addOnChangeListener
+
+            val rawPrevSweep = normalizeAngle(newStartValue - prevStart)
+            val newPrevSweep = rawPrevSweep.coerceIn(minSweepAngle, totalArc - minSweepAngle)
+            val newStart = normalizeAngle(prevStart + newPrevSweep)
+            val newCurrentSweep = totalArc - newPrevSweep
 
             saveData(prevDirection, prevStart, newPrevSweep)
-            saveData(currentEditingDirection, newStartValue, newCurrentSweep)
+            saveData(currentEditingDirection, newStart, newCurrentSweep)
 
             refreshAll()
         }
@@ -293,6 +296,8 @@ class CircularFlickSettingsFragment : Fragment() {
             if (!fromUser || isUpdatingUi) return@addOnChangeListener
             if (directionOrder.isEmpty()) return@addOnChangeListener
 
+            rebuildDirectionOrderFromAngles()
+
             val (currentStart, _) = angleData[currentEditingDirection] ?: (0f to 90f)
             val nextDirection = getNextDirection(currentEditingDirection)
 
@@ -300,20 +305,38 @@ class CircularFlickSettingsFragment : Fragment() {
             val (oldNextStart, oldNextSweep) = angleData[nextDirection] ?: (0f to 90f)
             val nextEnd = normalizeAngle(oldNextStart + oldNextSweep)
 
-            val newNextSweep = normalizeAngle(nextEnd - newNextStart)
+            val totalArc = normalizeAngle(nextEnd - currentStart)
+            if (totalArc <= minSweepAngle * 2f) return@addOnChangeListener
 
-            if (newNextSweep < minSweepAngle) return@addOnChangeListener
+            val clampedCurrentSweep = newSweepValue.coerceIn(minSweepAngle, totalArc - minSweepAngle)
+            val clampedNextStart = normalizeAngle(currentStart + clampedCurrentSweep)
+            val newNextSweep = totalArc - clampedCurrentSweep
 
-            saveData(currentEditingDirection, currentStart, newSweepValue)
-            saveData(nextDirection, newNextStart, newNextSweep)
+            saveData(currentEditingDirection, currentStart, clampedCurrentSweep)
+            saveData(nextDirection, clampedNextStart, newNextSweep)
 
             refreshAll()
         }
     }
 
     private fun refreshAll() {
+        rebuildDirectionOrderFromAngles()
         binding.previewView.setRanges(angleData)
         updateSlidersFromData()
+    }
+
+    private fun rebuildDirectionOrderFromAngles() {
+        val count = appPreference.circularFlickDirectionCount
+        val targets = CircularFlickDirection.slots(count)
+        if (targets.isEmpty()) return
+
+        val sorted = targets.sortedBy { direction ->
+            val start = angleData[direction]?.first ?: 0f
+            normalizeAngle(start)
+        }
+
+        directionOrder.clear()
+        directionOrder.addAll(sorted)
     }
 
     private fun updateSlidersFromData() {
