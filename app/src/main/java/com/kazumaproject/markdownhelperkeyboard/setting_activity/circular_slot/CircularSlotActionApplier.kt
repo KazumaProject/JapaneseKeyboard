@@ -20,12 +20,14 @@ object CircularSlotActionApplier {
         mode: KeyboardInputMode,
         settings: List<CircularSlotActionSetting>
     ): KeyboardLayout {
-        val editableKeyIdentifiers = layout.keys
+        val editableKeys = layout.keys
             .filter { key ->
                 !key.isSpecialKey &&
                     key.label.isNotBlank() &&
                     key.keyType == KeyType.CIRCULAR_FLICK
             }
+
+        val editableKeyIdentifiers = editableKeys
             .map { key -> key.keyId ?: key.label }
             .toSet()
 
@@ -35,36 +37,45 @@ object CircularSlotActionApplier {
                 setting.slot in editableSlots
         }
 
-        if (modeSettings.isEmpty()) return layout
-
         val nextCircularMaps = layout.circularFlickKeyMaps.toMutableMap()
-        modeSettings
-            .groupBy { it.keyIdentifier }
-            .forEach { (keyIdentifier, keySettings) ->
-                val maps = nextCircularMaps[keyIdentifier]?.ifEmpty { null }
-                    ?: layout.keys
-                        .firstOrNull { (it.keyId ?: it.label) == keyIdentifier }
-                        ?.label
-                        ?.let { label -> nextCircularMaps[label] }
-                    ?: return@forEach
+        val settingsByKey = modeSettings.groupBy { it.keyIdentifier }
 
-                val updatedMaps = maps.map { stateMap ->
-                    val mutable = stateMap.toMutableMap()
-                    keySettings.forEach { setting ->
-                        mutable[setting.slot] = setting.toFlickAction()
-                    }
-                    mutable.toMap()
-                }
-                nextCircularMaps[keyIdentifier] = updatedMaps
+        editableKeys.forEach { key ->
+            val keyIdentifier = key.keyId ?: key.label
+            val mapKey = when {
+                nextCircularMaps.containsKey(keyIdentifier) -> keyIdentifier
+                nextCircularMaps.containsKey(key.label) -> key.label
+                else -> return@forEach
             }
+            val keySettings = settingsByKey[keyIdentifier].orEmpty()
+            val maps = nextCircularMaps[mapKey].orEmpty()
+
+            val updatedMaps = maps.map { stateMap ->
+                val mutable = stateMap.toMutableMap()
+                editableSlots.forEach { slot -> mutable.remove(slot) }
+                keySettings.forEach { setting ->
+                    val action = setting.toFlickAction()
+                    if (action == null) {
+                        mutable.remove(setting.slot)
+                    } else {
+                        mutable[setting.slot] = action
+                    }
+                }
+                mutable.toMap()
+            }
+            nextCircularMaps[mapKey] = updatedMaps
+        }
 
         return layout.copy(circularFlickKeyMaps = nextCircularMaps)
     }
 
-    private fun CircularSlotActionSetting.toFlickAction(): FlickAction {
+    private fun CircularSlotActionSetting.toFlickAction(): FlickAction? {
         return when (actionType) {
-            CircularSlotActionType.NONE -> FlickAction.Input("", label = "")
-            CircularSlotActionType.INPUT_TEXT -> FlickAction.Input(value.orEmpty(), label = value.orEmpty())
+            CircularSlotActionType.NONE -> null
+            CircularSlotActionType.INPUT_TEXT -> value
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { FlickAction.Input(it, label = it) }
+
             CircularSlotActionType.SHOW_EMOJI_KEYBOARD -> FlickAction.Action(
                 KeyAction.ShowEmojiKeyboard,
                 label = "絵"
