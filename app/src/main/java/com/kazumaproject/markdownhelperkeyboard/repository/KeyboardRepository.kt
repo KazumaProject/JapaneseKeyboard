@@ -2,13 +2,16 @@ package com.kazumaproject.markdownhelperkeyboard.repository
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
@@ -28,6 +31,7 @@ import javax.inject.Singleton
 private data class DbKeyboardLayoutParts(
     val keys: List<KeyDefinition>,
     val flicksMap: Map<String, List<FlickMapping>>,
+    val circularFlicksMap: Map<String, List<CircularFlickMapping>>,
     val twoStepMap: Map<String, List<TwoStepFlickMapping>>,
     val longPressFlicksMap: Map<String, List<LongPressFlickMapping>>,
     val twoStepLongPressMap: Map<String, List<TwoStepLongPressMappingEntity>>
@@ -81,6 +85,10 @@ class KeyboardRepository @Inject constructor(
                 keyWithFlicks.key.keyIdentifier to keyWithFlicks.flicks
             }
 
+            val circularFlicksMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
+                keyWithFlicks.key.keyIdentifier to keyWithFlicks.circularFlicks
+            }
+
             val twoStepMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
                 keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepFlicks
             }
@@ -97,6 +105,7 @@ class KeyboardRepository @Inject constructor(
                 layoutToInsert,
                 keysToInsert,
                 flicksMap,
+                circularFlicksMap,
                 twoStepMap,
                 longPressFlicksMap,
                 twoStepLongPressMap
@@ -201,6 +210,7 @@ class KeyboardRepository @Inject constructor(
             dbLayout,
             parts.keys,
             parts.flicksMap,
+            parts.circularFlicksMap,
             parts.twoStepMap,
             parts.longPressFlicksMap,
             parts.twoStepLongPressMap
@@ -246,6 +256,13 @@ class KeyboardRepository @Inject constructor(
             keyWithFlicks.key.keyIdentifier to newFlicks
         }
 
+        val newCircularFlicksMap = originalLayout.keysWithFlicks.associate { keyWithFlicks ->
+            val newFlicks = keyWithFlicks.circularFlicks.map { flick ->
+                flick.copy(ownerKeyId = 0)
+            }
+            keyWithFlicks.key.keyIdentifier to newFlicks
+        }
+
         val newTwoStepMap = originalLayout.keysWithFlicks.associate { keyWithFlicks ->
             val newTwoStep = keyWithFlicks.twoStepFlicks.map { m ->
                 m.copy(ownerKeyId = 0)
@@ -271,6 +288,7 @@ class KeyboardRepository @Inject constructor(
             newLayoutInfo,
             newKeys,
             newFlicksMap,
+            newCircularFlicksMap,
             newTwoStepMap,
             newLongPressFlicksMap,
             newTwoStepLongPressMap
@@ -358,6 +376,24 @@ class KeyboardRepository @Inject constructor(
 
                 identifier to flicksByState
             }
+
+        val circularFlickMaps: Map<String, List<Map<CircularFlickDirection, FlickAction>>> =
+            dbLayout.keysWithFlicks.associate { keyWithFlicks ->
+                val identifier = keyWithFlicks.key.keyIdentifier
+
+                val flicksByState = keyWithFlicks.circularFlicks
+                    .groupBy { it.stateIndex }
+                    .mapValues { (_, stateFlicks) ->
+                        stateFlicks.associate { flick ->
+                            flick.circularDirection to flick.toFlickAction()
+                        }
+                    }
+                    .toSortedMap()
+                    .values
+                    .toList()
+
+                identifier to flicksByState
+            }.filterValues { it.isNotEmpty() }
 
         val twoStepMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> =
             dbLayout.keysWithFlicks.mapNotNull { keyWithFlicks ->
@@ -469,6 +505,15 @@ class KeyboardRepository @Inject constructor(
             columnCount = dbLayout.layout.columnCount,
             rowCount = dbLayout.layout.rowCount,
             isRomaji = dbLayout.layout.isRomaji,
+            circularFlickKeyMaps = circularFlickMaps.ifEmpty {
+                flickMaps.mapValues { (_, states) ->
+                    states.map { stateMap ->
+                        stateMap.mapKeys { (direction, _) ->
+                            direction.toCircularFlickDirection()
+                        }
+                    }
+                }
+            },
             twoStepFlickKeyMaps = twoStepMaps,
             longPressFlickKeyMaps = longPressFlickMaps,
             twoStepLongPressKeyMaps = twoStepLongPressMaps
@@ -481,6 +526,7 @@ class KeyboardRepository @Inject constructor(
 
         val keys = mutableListOf<KeyDefinition>()
         val flicksMap = mutableMapOf<String, MutableList<FlickMapping>>()
+        val circularFlicksMap = mutableMapOf<String, MutableList<CircularFlickMapping>>()
         val twoStepMap = mutableMapOf<String, MutableList<TwoStepFlickMapping>>()
         val longPressFlicksMap = mutableMapOf<String, MutableList<LongPressFlickMapping>>()
         val twoStepLongPressMap = mutableMapOf<String, MutableList<TwoStepLongPressMappingEntity>>()
@@ -522,6 +568,20 @@ class KeyboardRepository @Inject constructor(
                         actionValue = actionValue
                     )
                     flicksMap.getOrPut(keyIdentifier) { mutableListOf() }.add(flick)
+                }
+            }
+
+            uiLayout.circularFlickKeyMaps[keyIdentifier]?.forEachIndexed { stateIndex, stateMap ->
+                stateMap.forEach { (direction, flickAction) ->
+                    val (actionType, actionValue) = flickAction.toDbStrings()
+                    val flick = CircularFlickMapping(
+                        ownerKeyId = 0,
+                        stateIndex = stateIndex,
+                        circularDirection = direction,
+                        actionType = actionType,
+                        actionValue = actionValue
+                    )
+                    circularFlicksMap.getOrPut(keyIdentifier) { mutableListOf() }.add(flick)
                 }
             }
 
@@ -570,6 +630,7 @@ class KeyboardRepository @Inject constructor(
         return DbKeyboardLayoutParts(
             keys = keys,
             flicksMap = flicksMap.mapValues { it.value.toList() },
+            circularFlicksMap = circularFlicksMap.mapValues { it.value.toList() },
             twoStepMap = twoStepMap.mapValues { it.value.toList() },
             longPressFlicksMap = longPressFlicksMap.mapValues { it.value.toList() },
             twoStepLongPressMap = twoStepLongPressMap.mapValues { it.value.toList() }

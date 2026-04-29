@@ -19,6 +19,8 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
         // 先に sumireCustomAnglePreference を取得しておく（リスナー内で使うため）
         val sumireCustomAnglePreference =
             findPreference<Preference>("sumire_custom_angle_preference")
+        val circularSlotActionSettingPreference =
+            findPreference<Preference>("circular_slot_action_setting_preference")
 
         val sumireStylePreference =
             findPreference<ListPreference>("sumire_keyboard_style_preference")
@@ -31,6 +33,7 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
 
             // 【追加】初期表示状態の設定 ("sumire" の場合のみ表示)
             sumireCustomAnglePreference?.isVisible = (value == "sumire")
+            circularSlotActionSettingPreference?.isVisible = (value == "sumire")
 
             setOnPreferenceChangeListener { preference, newValue ->
                 val stringValue = newValue as String
@@ -44,6 +47,7 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
 
                 // 【追加】変更時の表示切り替え ("sumire" が選ばれたら表示、それ以外は非表示)
                 sumireCustomAnglePreference?.isVisible = (stringValue == "sumire")
+                circularSlotActionSettingPreference?.isVisible = (stringValue == "sumire")
 
                 true
             }
@@ -75,6 +79,13 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
         sumireCustomAnglePreference?.apply {
             setOnPreferenceClickListener {
                 navigateSafely(R.id.action_navigation_setting_to_circularFlickSettingsFragment)
+                true
+            }
+        }
+
+        circularSlotActionSettingPreference?.apply {
+            setOnPreferenceClickListener {
+                navigateSafely(R.id.action_navigation_setting_to_circularSlotActionSettingFragment)
                 true
             }
         }

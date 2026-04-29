@@ -11,6 +11,7 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.Clipb
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemTypeConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
@@ -51,6 +52,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         CustomKeyboardLayout::class,
         KeyDefinition::class,
         FlickMapping::class,
+        CircularFlickMapping::class,
         TwoStepFlickMapping::class,
         LongPressFlickMapping::class,
         TwoStepLongPressMappingEntity::class,
@@ -66,7 +68,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         DeleteKeyFlickDeleteTarget::class,
         PhysicalKeyboardShortcutItem::class,
     ],
-    version = 25,
+    version = 26,
     exportSchema = false
 )
 @TypeConverters(
@@ -671,6 +673,24 @@ abstract class AppDatabase : RoomDatabase() {
                     """
                     CREATE UNIQUE INDEX IF NOT EXISTS `index_physical_keyboard_shortcut_items_context_keyCode_scanCode_ctrl_shift_alt_meta`
                     ON `physical_keyboard_shortcut_items` (`context`, `keyCode`, `scanCode`, `ctrl`, `shift`, `alt`, `meta`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `circular_flick_mappings` (
+                        `ownerKeyId` INTEGER NOT NULL,
+                        `stateIndex` INTEGER NOT NULL,
+                        `circularDirection` TEXT NOT NULL,
+                        `actionType` TEXT NOT NULL,
+                        `actionValue` TEXT,
+                        PRIMARY KEY(`ownerKeyId`, `stateIndex`, `circularDirection`),
+                        FOREIGN KEY(`ownerKeyId`) REFERENCES `key_definitions`(`keyId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
                     """.trimIndent()
                 )
             }
