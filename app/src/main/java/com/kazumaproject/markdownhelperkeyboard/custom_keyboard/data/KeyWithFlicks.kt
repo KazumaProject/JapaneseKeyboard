@@ -18,6 +18,13 @@ data class KeyWithFlicks(
 
     @Relation(
         parentColumn = "keyId",
+        entity = CircularFlickMapping::class,
+        entityColumn = "ownerKeyId"
+    )
+    val circularFlicks: List<CircularFlickMapping>,
+
+    @Relation(
+        parentColumn = "keyId",
         entity = TwoStepFlickMapping::class,
         entityColumn = "ownerKeyId"
     )

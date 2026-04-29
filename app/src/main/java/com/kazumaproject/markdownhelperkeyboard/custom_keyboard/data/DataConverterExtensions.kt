@@ -46,6 +46,44 @@ fun FlickMapping.toFlickAction(): FlickAction {
     }
 }
 
+fun CircularFlickMapping.toFlickAction(): FlickAction {
+    val action = when (this.actionType) {
+        "INPUT_TEXT" -> return FlickAction.Input(this.actionValue ?: "")
+        "DELETE" -> KeyAction.Delete
+        "BACKSPACE" -> KeyAction.Backspace
+        "SPACE" -> KeyAction.Space
+        "NEW_LINE" -> KeyAction.NewLine
+        "ENTER" -> KeyAction.Enter
+        "CONVERT" -> KeyAction.Convert
+        "CONFIRM" -> KeyAction.Confirm
+        "MOVE_CURSOR_LEFT" -> KeyAction.MoveCursorLeft
+        "MOVE_CURSOR_RIGHT" -> KeyAction.MoveCursorRight
+        "SELECT_ALL" -> KeyAction.SelectAll
+        "PASTE" -> KeyAction.Paste
+        "COPY" -> KeyAction.Copy
+        "CHANGE_INPUT_MODE" -> KeyAction.ChangeInputMode
+        "SWITCH_TO_NEXT_IME" -> KeyAction.SwitchToNextIme
+        "TOGGLE_DAKUTEN" -> KeyAction.ToggleDakuten
+        "TOGGLE_CASE" -> KeyAction.ToggleCase
+        "ShowEmojiKeyboard" -> KeyAction.ShowEmojiKeyboard
+        "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
+        "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
+        "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
+        "SwitchKatakana" -> KeyAction.ToggleKatakana
+        "VoiceInput" -> KeyAction.VoiceInput
+        "ShiftKey" -> KeyAction.ShiftKey
+        "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
+        else -> null
+    }
+    return if (action != null) {
+        FlickAction.Action(action)
+    } else if (this.actionType.startsWith("INPUT_")) {
+        FlickAction.Input(this.actionValue ?: "")
+    } else {
+        FlickAction.Input("")
+    }
+}
+
 /**
  * UIのFlickActionを、DBに保存可能な2つの文字列に変換します。
  * @return Pair<ActionType: String, ActionValue: String?>
