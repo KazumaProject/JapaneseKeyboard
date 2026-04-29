@@ -1570,35 +1570,35 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("b"),
             FlickDirection.UP to FlickAction.Input("c"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("2")
+            FlickDirection.DOWN to FlickAction.Input("2")
         )
         val defLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("d"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("e"),
             FlickDirection.UP to FlickAction.Input("f"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("3")
+            FlickDirection.DOWN to FlickAction.Input("3")
         )
         val ghiLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("g"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("h"),
             FlickDirection.UP to FlickAction.Input("i"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("4")
+            FlickDirection.DOWN to FlickAction.Input("4")
         )
         val jklLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("j"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("k"),
             FlickDirection.UP to FlickAction.Input("l"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("5")
+            FlickDirection.DOWN to FlickAction.Input("5")
         )
         val mnoLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("m"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("n"),
             FlickDirection.UP to FlickAction.Input("o"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("6")
+            FlickDirection.DOWN to FlickAction.Input("6")
         )
         val pqrsLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("p"),
@@ -1613,7 +1613,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("u"),
             FlickDirection.UP to FlickAction.Input("v"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("8")
+            FlickDirection.DOWN to FlickAction.Input("8")
         )
         val wxyzLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("w"),
@@ -1871,35 +1871,35 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("b"),
             FlickDirection.UP to FlickAction.Input("c"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("2")
+            FlickDirection.DOWN to FlickAction.Input("2")
         )
         val defLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("d"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("e"),
             FlickDirection.UP to FlickAction.Input("f"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("3")
+            FlickDirection.DOWN to FlickAction.Input("3")
         )
         val ghiLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("g"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("h"),
             FlickDirection.UP to FlickAction.Input("i"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("4")
+            FlickDirection.DOWN to FlickAction.Input("4")
         )
         val jklLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("j"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("k"),
             FlickDirection.UP to FlickAction.Input("l"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("5")
+            FlickDirection.DOWN to FlickAction.Input("5")
         )
         val mnoLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("m"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("n"),
             FlickDirection.UP to FlickAction.Input("o"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("6")
+            FlickDirection.DOWN to FlickAction.Input("6")
         )
         val pqrsLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("p"),
@@ -1914,7 +1914,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("u"),
             FlickDirection.UP to FlickAction.Input("v"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("8")
+            FlickDirection.DOWN to FlickAction.Input("8")
         )
         val wxyzLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("w"),
@@ -2207,35 +2207,35 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("b"),
             FlickDirection.UP to FlickAction.Input("c"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("2")
+            FlickDirection.DOWN to FlickAction.Input("2")
         )
         val defLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("d"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("e"),
             FlickDirection.UP to FlickAction.Input("f"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("3")
+            FlickDirection.DOWN to FlickAction.Input("3")
         )
         val ghiLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("g"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("h"),
             FlickDirection.UP to FlickAction.Input("i"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("4")
+            FlickDirection.DOWN to FlickAction.Input("4")
         )
         val jklLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("j"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("k"),
             FlickDirection.UP to FlickAction.Input("l"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("5")
+            FlickDirection.DOWN to FlickAction.Input("5")
         )
         val mnoLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("m"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("n"),
             FlickDirection.UP to FlickAction.Input("o"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("6")
+            FlickDirection.DOWN to FlickAction.Input("6")
         )
         val pqrsLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("p"),
@@ -2250,7 +2250,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("u"),
             FlickDirection.UP to FlickAction.Input("v"),
 
-            FlickDirection.UP_RIGHT_FAR to FlickAction.Input("8")
+            FlickDirection.DOWN to FlickAction.Input("8")
         )
         val wxyzLower = mapOf(
             FlickDirection.TAP to FlickAction.Input("w"),
