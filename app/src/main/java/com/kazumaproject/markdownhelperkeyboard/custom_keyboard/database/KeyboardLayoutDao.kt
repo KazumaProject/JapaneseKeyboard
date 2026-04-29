@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
@@ -39,6 +40,7 @@ interface KeyboardLayoutDao {
         layout: CustomKeyboardLayout,
         keys: List<KeyDefinition>,
         flicksMap: Map<String, List<FlickMapping>>,
+        circularFlicksMap: Map<String, List<CircularFlickMapping>>,
         twoStepFlicksMap: Map<String, List<TwoStepFlickMapping>>,
         longPressFlicksMap: Map<String, List<LongPressFlickMapping>>,
         twoStepLongPressFlicksMap: Map<String, List<TwoStepLongPressMappingEntity>>
@@ -60,6 +62,16 @@ interface KeyboardLayoutDao {
         }
         if (flicksWithRealKeyIds.isNotEmpty()) {
             insertFlickMappings(flicksWithRealKeyIds)
+        }
+
+        val circularFlicksWithRealKeyIds = mutableListOf<CircularFlickMapping>()
+        identifierToIdMap.forEach { (identifier, realKeyId) ->
+            circularFlicksMap[identifier]?.forEach { flick ->
+                circularFlicksWithRealKeyIds.add(flick.copy(ownerKeyId = realKeyId))
+            }
+        }
+        if (circularFlicksWithRealKeyIds.isNotEmpty()) {
+            insertCircularFlickMappings(circularFlicksWithRealKeyIds)
         }
 
         val twoStepWithRealKeyIds = mutableListOf<TwoStepFlickMapping>()
@@ -103,6 +115,9 @@ interface KeyboardLayoutDao {
     suspend fun insertFlickMappings(flicks: List<FlickMapping>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCircularFlickMappings(flicks: List<CircularFlickMapping>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTwoStepFlickMappings(mappings: List<TwoStepFlickMapping>)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -123,6 +138,9 @@ interface KeyboardLayoutDao {
     @Query("DELETE FROM flick_mappings WHERE ownerKeyId IN (SELECT keyId FROM key_definitions WHERE ownerLayoutId = :layoutId)")
     suspend fun deleteFlicksForLayout(layoutId: Long)
 
+    @Query("DELETE FROM circular_flick_mappings WHERE ownerKeyId IN (SELECT keyId FROM key_definitions WHERE ownerLayoutId = :layoutId)")
+    suspend fun deleteCircularFlicksForLayout(layoutId: Long)
+
     @Query("DELETE FROM two_step_flick_mappings WHERE ownerKeyId IN (SELECT keyId FROM key_definitions WHERE ownerLayoutId = :layoutId)")
     suspend fun deleteTwoStepFlicksForLayout(layoutId: Long)
 
@@ -135,6 +153,7 @@ interface KeyboardLayoutDao {
     @Transaction
     suspend fun deleteKeysAndFlicksForLayout(layoutId: Long) {
         deleteFlicksForLayout(layoutId)
+        deleteCircularFlicksForLayout(layoutId)
         deleteTwoStepFlicksForLayout(layoutId)
         deleteLongPressFlicksForLayout(layoutId)
         deleteTwoStepLongPressFlicksForLayout(layoutId)
