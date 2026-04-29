@@ -109,6 +109,7 @@ class CircularFlickSettingsFragment : Fragment() {
                     if (isUpdatingUi) return
 
                     val count = items[position].second
+                    if (count == appPreference.circularFlickDirectionCount) return
 
                     appPreference.circularFlickDirectionCount = count
                     appPreference.circularFlick5DirectionsEnable = count == 5
@@ -203,6 +204,16 @@ class CircularFlickSettingsFragment : Fragment() {
             CircularFlickDirection.SLOT_3 -> {
                 appPreference.circularFlickLeftStart = start
                 appPreference.circularFlickLeftSweep = sweep
+            }
+
+            CircularFlickDirection.SLOT_5 -> {
+                appPreference.circularFlickSlot5Start = start
+                appPreference.circularFlickSlot5Sweep = sweep
+            }
+
+            CircularFlickDirection.SLOT_6 -> {
+                appPreference.circularFlickSlot6Start = start
+                appPreference.circularFlickSlot6Sweep = sweep
             }
 
             else -> Unit
