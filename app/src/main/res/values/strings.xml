@@ -416,6 +416,10 @@
     <string name="fail_to_export_string">Export failed.</string>
     <string name="success_to_export_string">Success to export.</string>
     <string name="no_export_keymap_string">There is no keymap to export.</string>
+    <string name="search_dictionary_hint">Search</string>
+    <string name="search_learn_dictionary_hint">Search learning dictionary</string>
+    <string name="search_user_dictionary_hint">Search user dictionary</string>
+    <string name="search_user_template_hint">Search templates</string>
     <string name="delete_keymap_dialog_title">Delete Keymap</string>
     <string name="confirm_to_delete_text"> will be deleted.This action cannot be undone.</string>
     <string name="create_new_keymap_dialog_title">Create a new keymap</string>
