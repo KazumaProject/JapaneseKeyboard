@@ -97,6 +97,12 @@ object AppPreference {
     private val QWERTY_ZENKAKU_SPACE_PREFERENCE =
         Pair("qwerty_romaji_zenkaku_space_preference", false)
 
+    private val QWERTY_ROMAJI_HANKAKU_NUMBER_PREFERENCE =
+        Pair("qwerty_romaji_hankaku_number_preference", false)
+
+    private val QWERTY_ROMAJI_HANKAKU_SYMBOL_PREFERENCE =
+        Pair("qwerty_romaji_hankaku_symbol_preference", false)
+
     private val QWERTY_SHOW_POPUP_WINDOW = Pair("qwerty_show_popup_window_preference", true)
 
     private val CANDIDATE_IN_PASSWORD = Pair("hide_candidate_password_preference", true)
@@ -661,6 +667,23 @@ object AppPreference {
             it.putBoolean(QWERTY_ZENKAKU_SPACE_PREFERENCE.first, value ?: false)
         }
 
+    var qwerty_romaji_hankaku_number_preference: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_ROMAJI_HANKAKU_NUMBER_PREFERENCE.first,
+            QWERTY_ROMAJI_HANKAKU_NUMBER_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_ROMAJI_HANKAKU_NUMBER_PREFERENCE.first, value ?: false)
+        }
+
+    var qwerty_romaji_hankaku_symbol_preference: Boolean?
+        get() = preferences.getBoolean(
+            QWERTY_ROMAJI_HANKAKU_SYMBOL_PREFERENCE.first,
+            QWERTY_ROMAJI_HANKAKU_SYMBOL_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_ROMAJI_HANKAKU_SYMBOL_PREFERENCE.first, value ?: false)
+        }
 
     var qwerty_show_popup_window: Boolean?
         get() = preferences.getBoolean(
