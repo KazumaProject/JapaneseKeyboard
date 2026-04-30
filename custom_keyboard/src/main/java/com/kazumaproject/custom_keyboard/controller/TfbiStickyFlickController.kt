@@ -263,7 +263,7 @@ class TfbiStickyFlickController(
         }
         val windowAnchor = popupWindowAnchorProvider?.invoke() ?: anchorView
         if (!isAnchorReady(anchorView, windowAnchor)) return
-        val location = IntArray(2).also { anchorView.getLocationInWindow(it) }
+        val location = getLocationRelativeToWindowAnchor(anchorView, windowAnchor)
         val offsetX = location[0] - anchorView.width
         val offsetY = location[1] - anchorView.height
         runCatching {
