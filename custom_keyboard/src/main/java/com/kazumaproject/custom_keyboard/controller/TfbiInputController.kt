@@ -54,6 +54,8 @@ class TfbiInputController(
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
 
+    private var popupWindowAnchorProvider: (() -> View?)? = null
+
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
     private var isTouchActive = false
     private val longPressRunnable = Runnable {
@@ -81,6 +83,10 @@ class TfbiInputController(
 
     fun setLongPressTimeout(timeoutMillis: Long) {
         longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
+    }
+
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
     }
 
     fun attach(
@@ -264,11 +270,14 @@ class TfbiInputController(
             setBackgroundDrawable(android.graphics.Color.TRANSPARENT.toDrawable())
             isClippingEnabled = false
         }
-        if (!anchorView.isAttachedToWindow) return
+        val windowAnchor = popupWindowAnchorProvider?.invoke() ?: anchorView
+        if (!isAnchorReady(anchorView, windowAnchor)) return
         val location = IntArray(2).also { anchorView.getLocationInWindow(it) }
         val offsetX = location[0] - anchorView.width
         val offsetY = location[1] - anchorView.height
-        popupWindow?.showAtLocation(anchorView, Gravity.NO_GRAVITY, offsetX, offsetY)
+        runCatching {
+            popupWindow?.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, offsetX, offsetY)
+        }
     }
 
     private fun setupSecondStageUI(firstDirection: TfbiFlickDirection) {
@@ -371,5 +380,12 @@ class TfbiInputController(
         }
 
         return closestDirectionData.first
+    }
+
+    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
+        if (!keyAnchor.isAttachedToWindow) return false
+        if (windowAnchor == null) return false
+        if (!windowAnchor.isAttachedToWindow) return false
+        return windowAnchor.windowToken != null
     }
 }
