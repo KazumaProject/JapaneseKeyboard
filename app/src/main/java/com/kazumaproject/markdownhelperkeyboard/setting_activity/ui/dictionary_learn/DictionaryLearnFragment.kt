@@ -167,14 +167,46 @@ class DictionaryLearnFragment : Fragment() {
         learnDictionaryAdapter.learnDataList = if (query.isEmpty()) {
             allLearnItems
         } else {
-            allLearnItems.filter { (input, outputs) ->
-                input.contains(query, ignoreCase = true) ||
-                    outputs.any { it.contains(query, ignoreCase = true) }
-            }
+            allLearnItems
+                .filter { (input, outputs) ->
+                    input.startsWith(query, ignoreCase = true) ||
+                        outputs.any { it.startsWith(query, ignoreCase = true) }
+                }
+                .sortedWith(compareBy<Pair<String, List<String>>> {
+                    learnDictionarySearchRank(it, query)
+                }.thenBy {
+                    learnDictionaryMatchedLength(it, query)
+                }.thenBy {
+                    it.first
+                })
         }
         binding.learnDictionaryRecyclerView.post {
             _binding?.learnDictionaryFastScroller?.invalidate()
         }
+    }
+
+    private fun learnDictionarySearchRank(item: Pair<String, List<String>>, query: String): Int {
+        val (input, outputs) = item
+        return when {
+            input.equals(query, ignoreCase = true) ||
+                outputs.any { it.equals(query, ignoreCase = true) } -> 0
+
+            input.startsWith(query, ignoreCase = true) ||
+                outputs.any { it.startsWith(query, ignoreCase = true) } -> 1
+
+            else -> 2
+        }
+    }
+
+    private fun learnDictionaryMatchedLength(
+        item: Pair<String, List<String>>,
+        query: String
+    ): Int {
+        val (input, outputs) = item
+        return sequenceOf(input)
+            .plus(outputs.asSequence())
+            .filter { it.startsWith(query, ignoreCase = true) }
+            .minOfOrNull { it.length } ?: Int.MAX_VALUE
     }
 
     private fun launchExportFilePicker() {
