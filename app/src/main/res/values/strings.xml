@@ -384,6 +384,8 @@
     <string name="key_size_position_button_text_left">Align Left</string>
     <string name="key_size_floating_button_text_on">Floating ON</string>
     <string name="key_size_floating_button_text_off">Floating OFF</string>
+    <string name="keyboard_floating_preference_title">Floating keyboard</string>
+    <string name="keyboard_floating_preference_summary">Show the keyboard as a movable floating keyboard</string>
     <string name="reset_keyboard_size_button_text">Reset Setting</string>
     <string name="keyboard_size_setting_fragment_title">Keyboard Size</string>
     <string name="keyboard_size_direct_input_title">Keyboard Size Direct Input</string>
