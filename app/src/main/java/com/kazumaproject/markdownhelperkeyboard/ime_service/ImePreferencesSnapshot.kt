@@ -38,6 +38,8 @@ data class ImePreferencesSnapshot(
     val qwertyNumberKeyFlickUpChars: Map<String, String>,
     val qwertyNumberKeyFlickDownChars: Map<String, String>,
     val qwertyEnableZenkakuSpacePreference: Boolean,
+    val qwertyRomajiHankakuNumberPreference: Boolean,
+    val qwertyRomajiHankakuSymbolPreference: Boolean,
     val qwertyShowKutoutenButtonsPreference: Boolean,
     val showCandidateInPasswordPreference: Boolean,
     val qwertyShowKeymapSymbolsPreference: Boolean,
@@ -206,6 +208,10 @@ data class ImePreferencesSnapshot(
                 qwertyNumberKeyFlickDownChars = appPreference.getQwertyNumberKeyFlickDownChars(),
                 qwertyEnableZenkakuSpacePreference =
                     appPreference.qwerty_enable_zenkaku_space_preference ?: false,
+                qwertyRomajiHankakuNumberPreference =
+                    appPreference.qwerty_romaji_hankaku_number_preference ?: false,
+                qwertyRomajiHankakuSymbolPreference =
+                    appPreference.qwerty_romaji_hankaku_symbol_preference ?: false,
                 qwertyShowKutoutenButtonsPreference =
                     appPreference.qwerty_show_kutouten_buttons ?: false,
                 showCandidateInPasswordPreference = appPreference.show_candidates_password ?: true,
