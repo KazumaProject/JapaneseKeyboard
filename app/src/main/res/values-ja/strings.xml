@@ -419,6 +419,10 @@
     <string name="fail_to_export_string">エクスポートに失敗しました。</string>
     <string name="success_to_export_string">エクスポートが完了しました。</string>
     <string name="no_export_keymap_string">エクスポートするカスタムマップがありません。</string>
+    <string name="search_dictionary_hint">検索</string>
+    <string name="search_learn_dictionary_hint">学習辞書を検索</string>
+    <string name="search_user_dictionary_hint">ユーザー辞書を検索</string>
+    <string name="search_user_template_hint">定型文を検索</string>
     <string name="delete_keymap_dialog_title">キーマップの削除</string>
     <string name="confirm_to_delete_text"> を削除しますか？この操作は元に戻せません。</string>
     <string name="create_new_keymap_dialog_title">新しいマップを作成</string>
