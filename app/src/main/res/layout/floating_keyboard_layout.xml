@@ -15,7 +15,7 @@
             android:id="@+id/suggestionView_parent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:layout_constraintBottom_toTopOf="@+id/keyboard_view_floating">
+            app:layout_constraintBottom_toTopOf="@+id/floating_keyboard_container">
 
             <!-- RecyclerView for Suggestions -->
             <androidx.recyclerview.widget.RecyclerView
@@ -47,14 +47,36 @@
                 app:layout_constraintTop_toTopOf="parent" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <com.kazumaproject.tenkey.TenKey
-            android:id="@+id/keyboard_view_floating"
+        <FrameLayout
+            android:id="@+id/floating_keyboard_container"
             android:layout_width="match_parent"
             android:layout_height="200dp"
             android:layout_marginBottom="16dp"
-            android:clickable="true"
-            android:focusable="true"
-            app:layout_constraintBottom_toTopOf="@+id/drag_handle" />
+            app:layout_constraintBottom_toTopOf="@+id/drag_handle">
+
+            <com.kazumaproject.tenkey.TenKey
+                android:id="@+id/keyboard_view_floating"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
+                android:id="@+id/qwerty_view_floating"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone" />
+
+            <com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+                android:id="@+id/custom_layout_floating"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone" />
+        </FrameLayout>
 
         <com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
             android:id="@+id/floating_symbol_keyboard"
