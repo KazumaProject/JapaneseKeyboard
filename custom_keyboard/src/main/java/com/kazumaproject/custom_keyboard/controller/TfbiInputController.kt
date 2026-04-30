@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.custom_keyboard.controller.getLocationRelativeToWindowAnchor
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.hypot
@@ -272,7 +273,7 @@ class TfbiInputController(
         }
         val windowAnchor = popupWindowAnchorProvider?.invoke() ?: anchorView
         if (!isAnchorReady(anchorView, windowAnchor)) return
-        val location = IntArray(2).also { anchorView.getLocationInWindow(it) }
+        val location = getLocationRelativeToWindowAnchor(anchorView, windowAnchor)
         val offsetX = location[0] - anchorView.width
         val offsetY = location[1] - anchorView.height
         runCatching {

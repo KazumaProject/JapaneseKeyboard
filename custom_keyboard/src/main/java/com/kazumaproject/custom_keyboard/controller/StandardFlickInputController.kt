@@ -148,8 +148,7 @@ class StandardFlickInputController(context: Context) {
         val baseOffsetY = 10
         val flickUpAdditionalOffset = 80
 
-        val location = IntArray(2)
-        keyAnchor.getLocationInWindow(location)
+        val location = getLocationRelativeToWindowAnchor(keyAnchor, windowAnchor)
         val x = location[0] + (keyAnchor.width / 2) - (popupView.viewSize / 2)
         var y = location[1] - popupView.viewSize - baseOffsetY
 
