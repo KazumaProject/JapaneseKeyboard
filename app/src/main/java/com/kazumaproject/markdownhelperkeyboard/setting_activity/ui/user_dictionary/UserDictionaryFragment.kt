@@ -21,6 +21,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.view.isGone
+import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -42,6 +43,9 @@ class UserDictionaryFragment : Fragment() {
 
     private var _binding: FragmentUserDictionaryBinding? = null
     private val binding get() = _binding!!
+    private lateinit var userWordAdapter: UserWordAdapter
+    private var allUserWords: List<UserWord> = emptyList()
+    private var userDictionarySearchQuery: String = ""
 
     // Export
     private val exportLauncher =
@@ -76,6 +80,7 @@ class UserDictionaryFragment : Fragment() {
 
         setupMenu()
         setupRecyclerView()
+        setupSearch()
         setupListeners()
         observeViewModel()
         setupSpinner()
@@ -318,10 +323,18 @@ class UserDictionaryFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        val adapter = UserWordAdapter { userWord ->
+        userWordAdapter = UserWordAdapter { userWord ->
             showEditDialog(userWord)
         }
-        binding.recyclerViewUserWords.adapter = adapter
+        binding.recyclerViewUserWords.adapter = userWordAdapter
+        binding.userDictionaryFastScroller.attachToRecyclerView(binding.recyclerViewUserWords)
+    }
+
+    private fun setupSearch() {
+        binding.editTextSearchUserDictionary.addTextChangedListener { text ->
+            userDictionarySearchQuery = text?.toString().orEmpty()
+            applyUserDictionaryFilter()
+        }
     }
 
     private fun setupListeners() {
@@ -369,9 +382,55 @@ class UserDictionaryFragment : Fragment() {
     private fun observeViewModel() {
         viewModel.allWords.observe(viewLifecycleOwner) { words ->
             words?.let {
-                (binding.recyclerViewUserWords.adapter as UserWordAdapter).submitList(it)
+                allUserWords = it
+                applyUserDictionaryFilter()
             }
         }
+    }
+
+    private fun applyUserDictionaryFilter() {
+        val binding = _binding ?: return
+        val query = userDictionarySearchQuery.trim()
+        val filteredWords = if (query.isEmpty()) {
+            allUserWords
+        } else {
+            allUserWords
+                .filter {
+                    it.word.startsWith(query, ignoreCase = true) ||
+                        it.reading.startsWith(query, ignoreCase = true)
+                }
+                .sortedWith(compareBy<UserWord> {
+                    userWordSearchRank(it, query)
+                }.thenBy {
+                    userWordMatchedLength(it, query)
+                }.thenBy {
+                    it.reading
+                }.thenBy {
+                    it.word
+                })
+        }
+        userWordAdapter.submitList(filteredWords)
+        binding.recyclerViewUserWords.post {
+            _binding?.userDictionaryFastScroller?.invalidate()
+        }
+    }
+
+    private fun userWordSearchRank(userWord: UserWord, query: String): Int {
+        return when {
+            userWord.word.equals(query, ignoreCase = true) ||
+                userWord.reading.equals(query, ignoreCase = true) -> 0
+
+            userWord.word.startsWith(query, ignoreCase = true) ||
+                userWord.reading.startsWith(query, ignoreCase = true) -> 1
+
+            else -> 2
+        }
+    }
+
+    private fun userWordMatchedLength(userWord: UserWord, query: String): Int {
+        return sequenceOf(userWord.reading, userWord.word)
+            .filter { it.startsWith(query, ignoreCase = true) }
+            .minOfOrNull { it.length } ?: Int.MAX_VALUE
     }
 
     private fun addWord() {
@@ -495,6 +554,7 @@ class UserDictionaryFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        binding.userDictionaryFastScroller.detachFromRecyclerView()
         super.onDestroyView()
         _binding = null
     }
