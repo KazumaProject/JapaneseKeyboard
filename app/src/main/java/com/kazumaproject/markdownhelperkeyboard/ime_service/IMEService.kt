@@ -6798,6 +6798,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isFloatingView) {
             Timber.d("Configuring floating FlickKeyboardView mirror surface")
         }
+        if (isFloatingView) {
+            flickView.setPopupWindowAnchorProvider { window.window?.decorView }
+        } else {
+            flickView.setPopupWindowAnchorProvider(null)
+        }
         flickView.applyKeyboardTheme(
             themeMode = keyboardThemeMode ?: "default",
             currentNightMode = currentNightMode,
