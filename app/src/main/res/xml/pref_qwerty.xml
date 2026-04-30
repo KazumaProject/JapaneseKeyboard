@@ -35,6 +35,18 @@
             android:title="@string/qwerty_romaji_zenkaku_space_preference_title" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_romaji_hankaku_number_preference"
+            android:summary="@string/qwerty_romaji_hankaku_number_preference_summary"
+            android:title="@string/qwerty_romaji_hankaku_number_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="qwerty_romaji_hankaku_symbol_preference"
+            android:summary="@string/qwerty_romaji_hankaku_symbol_preference_summary"
+            android:title="@string/qwerty_romaji_hankaku_symbol_preference_title" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="qwerty_show_popup_window_preference"
             android:summaryOff="@string/qwerty_show_popup_window_summary_off"
