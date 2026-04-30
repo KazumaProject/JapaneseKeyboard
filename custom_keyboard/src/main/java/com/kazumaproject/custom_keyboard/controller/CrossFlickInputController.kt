@@ -427,8 +427,7 @@ class CrossFlickInputController(
             exitTransition = null
         }
 
-        val location = IntArray(2)
-        anchor.getLocationInWindow(location)
+        val location = getLocationRelativeToWindowAnchor(anchor, windowAnchor)
         val x = location[0]
         val y = location[1]
 
@@ -571,8 +570,7 @@ class CrossFlickInputController(
             return
         }
 
-        val location = IntArray(2)
-        currentAnchor.getLocationInWindow(location)
+        val location = getLocationRelativeToWindowAnchor(currentAnchor, windowAnchor)
         val anchorX = location[0]
         val anchorY = location[1]
         val keyWidth = currentAnchor.width
@@ -644,8 +642,7 @@ class CrossFlickInputController(
         popupView.setCells(actionMap, currentAnchor.width, currentAnchor.height)
         popupView.highlightDirection(currentDirection)
 
-        val location = IntArray(2)
-        currentAnchor.getLocationInWindow(location)
+        val location = getLocationRelativeToWindowAnchor(currentAnchor, windowAnchor)
         popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
 
         val x = location[0] + currentAnchor.width / 2 - popupView.measuredWidth / 2
