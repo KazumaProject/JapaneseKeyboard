@@ -97,6 +97,8 @@ import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
+import com.kazumaproject.core.domain.extensions.isAsciiDigitForRomajiQwerty
+import com.kazumaproject.core.domain.extensions.isAsciiSymbolForRomajiQwerty
 import com.kazumaproject.core.domain.extensions.kanjiCount
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
@@ -106,6 +108,7 @@ import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
 import com.kazumaproject.core.domain.extensions.toHankakuKigou
 import com.kazumaproject.core.domain.extensions.toHiragana
+import com.kazumaproject.core.domain.extensions.toRomajiQwertyOutputChar
 import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
 import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
@@ -549,6 +552,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyNumberKeyFlickUpChars: Map<String, String> = emptyMap()
     private var qwertyNumberKeyFlickDownChars: Map<String, String> = emptyMap()
     private var qwertyEnableZenkakuSpacePreference: Boolean? = false
+    private var qwertyRomajiHankakuNumberPreference: Boolean? = false
+    private var qwertyRomajiHankakuSymbolPreference: Boolean? = false
     private var qwertyShowPopupWindowPreference: Boolean? = true
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowNumberButtonsPreference: Boolean? = false
@@ -1200,6 +1205,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyNumberKeyFlickUpChars = preferences.qwertyNumberKeyFlickUpChars
         qwertyNumberKeyFlickDownChars = preferences.qwertyNumberKeyFlickDownChars
         qwertyEnableZenkakuSpacePreference = preferences.qwertyEnableZenkakuSpacePreference
+        qwertyRomajiHankakuNumberPreference = preferences.qwertyRomajiHankakuNumberPreference
+        qwertyRomajiHankakuSymbolPreference = preferences.qwertyRomajiHankakuSymbolPreference
         qwertyShowKutoutenButtonsPreference = preferences.qwertyShowKutoutenButtonsPreference
         showCandidateInPasswordPreference = preferences.showCandidateInPasswordPreference
         qwertyShowKeymapSymbolsPreference = preferences.qwertyShowKeymapSymbolsPreference
@@ -2035,6 +2042,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyNumberKeyFlickUpChars = emptyMap()
         qwertyNumberKeyFlickDownChars = emptyMap()
         qwertyEnableZenkakuSpacePreference = null
+        qwertyRomajiHankakuNumberPreference = null
+        qwertyRomajiHankakuSymbolPreference = null
         switchQWERTYPassword = null
         landscapeForceQwertyPreference = null
         landscapeForceQwertyRomajiPreference = null
@@ -4623,6 +4632,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
+    }
+
+    private fun Char.toRomajiQwertyOutputChar(): Char {
+        return toRomajiQwertyOutputChar(
+            useHankakuNumber = qwertyRomajiHankakuNumberPreference == true,
+            useHankakuSymbol = qwertyRomajiHankakuSymbolPreference == true
+        )
+    }
+
+    private fun Char.shouldApplyRomajiQwertyWidthPreference(): Boolean {
+        return isLowerCase() ||
+                isAsciiDigitForRomajiQwerty() ||
+                isAsciiSymbolForRomajiQwerty()
+    }
+
+    private fun Char.shouldUseRomajiQwertyOutputCharAfterShift(): Boolean {
+        return !hardKeyboardShiftPressd || shouldApplyRomajiQwertyWidthPreference()
     }
 
     private fun handleTapFloating(
@@ -12011,8 +12037,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             Timber.d("QWERTY romaji hardKeyboardShiftPressd: $tap")
                                             tap?.let { c ->
                                                 val charToAppend =
-                                                    if (isDefaultRomajiHenkanMap && c.isLowerCase()) {
-                                                        c.toZenkaku()
+                                                    if (isDefaultRomajiHenkanMap &&
+                                                        c.shouldApplyRomajiQwertyWidthPreference()
+                                                    ) {
+                                                        c.toRomajiQwertyOutputChar()
                                                     } else {
                                                         c
                                                     }
@@ -12028,7 +12056,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         } else {
                                             tap?.let { c ->
                                                 val charToAppend = if (isDefaultRomajiHenkanMap) {
-                                                    c.toZenkaku()
+                                                    c.toRomajiQwertyOutputChar()
                                                 } else {
                                                     c
                                                 }
@@ -12049,7 +12077,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         } else {
                                             tap?.let { c ->
                                                 val charToAppend = if (isDefaultRomajiHenkanMap) {
-                                                    c.toZenkaku()
+                                                    c.toRomajiQwertyOutputChar()
                                                 } else {
                                                     c
                                                 }
@@ -12068,8 +12096,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     tap?.let { c ->
                                         romajiConverter?.let { converter ->
                                             val charToAppend =
-                                                if (isDefaultRomajiHenkanMap && !hardKeyboardShiftPressd) {
-                                                    c.toZenkaku()
+                                                if (isDefaultRomajiHenkanMap &&
+                                                    c.shouldUseRomajiQwertyOutputCharAfterShift()
+                                                ) {
+                                                    c.toRomajiQwertyOutputChar()
                                                 } else {
                                                     c
                                                 }

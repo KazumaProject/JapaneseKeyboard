@@ -599,6 +599,10 @@
     <string name="shortcut_toolbar_preference_summary">Open the screen to edit the icons shown on the toolbar.</string>
     <string name="qwerty_romaji_zenkaku_space_preference_title">Full-width space on QWERTY keyboard</string>
     <string name="qwerty_romaji_zenkaku_space_preference_summary">When enabled, the space key on the romaji (QWERTY) keyboard inserts a full-width space.</string>
+    <string name="qwerty_romaji_hankaku_number_preference_title">Half-width numbers in Romaji input</string>
+    <string name="qwerty_romaji_hankaku_number_preference_summary">When enabled, numbers typed on the Romaji QWERTY keyboard are inserted as half-width characters.</string>
+    <string name="qwerty_romaji_hankaku_symbol_preference_title">Half-width symbols in Romaji input</string>
+    <string name="qwerty_romaji_hankaku_symbol_preference_summary">When enabled, symbols typed on the Romaji QWERTY keyboard are inserted as half-width characters.</string>
     <string name="zenz_preference_category_title">Settings for zenz</string>
     <string name="category_common">Common</string>
     <string name="category_dictionary">Dictionary</string>
