@@ -22,6 +22,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardsizeLandscapeBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.adapter.KeyboardViewPagerAdapter
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navigateSafely
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import javax.inject.Inject
@@ -54,7 +55,6 @@ class KeyboardSizeLandscapeFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         setupMenu()
         isRightAligned = appPreference.keyboard_position_landscape ?: true
 
@@ -68,6 +68,11 @@ class KeyboardSizeLandscapeFragment : Fragment() {
         setupMoveHandle()
 
         updateControlsVisibility()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        (requireActivity() as AppCompatActivity).supportActionBar?.title = ""
     }
 
     private fun setupViewPager() {
@@ -205,6 +210,13 @@ class KeyboardSizeLandscapeFragment : Fragment() {
                     R.id.action_toggle_visibility -> {
                         areControlsVisible = !areControlsVisible
                         updateControlsVisibility()
+                        true
+                    }
+
+                    R.id.action_keyboard_size_direct_input -> {
+                        navigateSafely(
+                            R.id.action_keyboardSizeLandscapeFragment_to_keyboardSizeDirectInputFragment
+                        )
                         true
                     }
 

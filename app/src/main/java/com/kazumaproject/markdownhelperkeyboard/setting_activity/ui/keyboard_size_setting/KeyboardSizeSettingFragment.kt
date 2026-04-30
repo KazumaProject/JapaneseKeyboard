@@ -22,6 +22,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardSettingBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.adapter.KeyboardViewPagerAdapter
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navigateSafely
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import javax.inject.Inject
@@ -55,7 +56,6 @@ class KeyboardSettingFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         setupMenu()
         isRightAligned = appPreference.keyboard_position ?: true
         isFloatingMode = appPreference.is_floating_mode ?: false
@@ -72,6 +72,11 @@ class KeyboardSettingFragment : Fragment() {
         setupMoveHandle()             // vertical + horizontal move
 
         updateControlsVisibility()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        (requireActivity() as AppCompatActivity).supportActionBar?.title = ""
     }
 
     private fun setupViewPager() {
@@ -219,6 +224,13 @@ class KeyboardSettingFragment : Fragment() {
                     R.id.action_toggle_visibility -> {
                         areControlsVisible = !areControlsVisible
                         updateControlsVisibility()
+                        true
+                    }
+
+                    R.id.action_keyboard_size_direct_input -> {
+                        navigateSafely(
+                            R.id.action_keyboardSettingFragment_to_keyboardSizeDirectInputFragment
+                        )
                         true
                     }
 
