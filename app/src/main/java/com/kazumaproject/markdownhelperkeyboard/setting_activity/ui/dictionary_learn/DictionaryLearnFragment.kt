@@ -20,6 +20,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
+import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
@@ -49,6 +50,8 @@ class DictionaryLearnFragment : Fragment() {
     lateinit var learnRepository: LearnRepository
 
     private lateinit var learnDictionaryAdapter: LearnDictionaryAdapter
+    private var allLearnItems: List<Pair<String, List<String>>> = emptyList()
+    private var learnSearchQuery: String = ""
 
     // Export
     private val exportLauncher =
@@ -83,6 +86,7 @@ class DictionaryLearnFragment : Fragment() {
 
         setupMenu()
         setupRecyclerView()
+        setupSearch()
         observeDictionaryData()
     }
 
@@ -121,6 +125,7 @@ class DictionaryLearnFragment : Fragment() {
             layoutManager = LinearLayoutManager(context)
             adapter = learnDictionaryAdapter
         }
+        binding.learnDictionaryFastScroller.attachToRecyclerView(binding.learnDictionaryRecyclerView)
 
         learnDictionaryAdapter.setOnItemChildrenClickListener { input, output ->
             showEditDeleteDialog(input, output)
@@ -139,14 +144,69 @@ class DictionaryLearnFragment : Fragment() {
         }
     }
 
+    private fun setupSearch() {
+        binding.editTextSearchLearnDictionary.addTextChangedListener { text ->
+            learnSearchQuery = text?.toString().orEmpty()
+            applyLearnDictionaryFilter()
+        }
+    }
+
     private fun observeDictionaryData() {
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             learnRepository.all().collectLatest { data ->
-                val transformedData = data.groupBy { it.input }.toSortedMap(compareBy { it })
+                allLearnItems = data.groupBy { it.input }.toSortedMap(compareBy { it })
                     .map { (key, value) -> key to value.map { it.out } }
-                learnDictionaryAdapter.learnDataList = transformedData
+                applyLearnDictionaryFilter()
             }
         }
+    }
+
+    private fun applyLearnDictionaryFilter() {
+        val binding = _binding ?: return
+        val query = learnSearchQuery.trim()
+        learnDictionaryAdapter.learnDataList = if (query.isEmpty()) {
+            allLearnItems
+        } else {
+            allLearnItems
+                .filter { (input, outputs) ->
+                    input.startsWith(query, ignoreCase = true) ||
+                        outputs.any { it.startsWith(query, ignoreCase = true) }
+                }
+                .sortedWith(compareBy<Pair<String, List<String>>> {
+                    learnDictionarySearchRank(it, query)
+                }.thenBy {
+                    learnDictionaryMatchedLength(it, query)
+                }.thenBy {
+                    it.first
+                })
+        }
+        binding.learnDictionaryRecyclerView.post {
+            _binding?.learnDictionaryFastScroller?.invalidate()
+        }
+    }
+
+    private fun learnDictionarySearchRank(item: Pair<String, List<String>>, query: String): Int {
+        val (input, outputs) = item
+        return when {
+            input.equals(query, ignoreCase = true) ||
+                outputs.any { it.equals(query, ignoreCase = true) } -> 0
+
+            input.startsWith(query, ignoreCase = true) ||
+                outputs.any { it.startsWith(query, ignoreCase = true) } -> 1
+
+            else -> 2
+        }
+    }
+
+    private fun learnDictionaryMatchedLength(
+        item: Pair<String, List<String>>,
+        query: String
+    ): Int {
+        val (input, outputs) = item
+        return sequenceOf(input)
+            .plus(outputs.asSequence())
+            .filter { it.startsWith(query, ignoreCase = true) }
+            .minOfOrNull { it.length } ?: Int.MAX_VALUE
     }
 
     private fun launchExportFilePicker() {
@@ -384,6 +444,7 @@ class DictionaryLearnFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        binding.learnDictionaryFastScroller.detachFromRecyclerView()
         super.onDestroyView()
         _binding = null
     }
