@@ -394,15 +394,43 @@ class UserDictionaryFragment : Fragment() {
         val filteredWords = if (query.isEmpty()) {
             allUserWords
         } else {
-            allUserWords.filter {
-                it.word.contains(query, ignoreCase = true) ||
-                    it.reading.contains(query, ignoreCase = true)
-            }
+            allUserWords
+                .filter {
+                    it.word.startsWith(query, ignoreCase = true) ||
+                        it.reading.startsWith(query, ignoreCase = true)
+                }
+                .sortedWith(compareBy<UserWord> {
+                    userWordSearchRank(it, query)
+                }.thenBy {
+                    userWordMatchedLength(it, query)
+                }.thenBy {
+                    it.reading
+                }.thenBy {
+                    it.word
+                })
         }
         userWordAdapter.submitList(filteredWords)
         binding.recyclerViewUserWords.post {
             _binding?.userDictionaryFastScroller?.invalidate()
         }
+    }
+
+    private fun userWordSearchRank(userWord: UserWord, query: String): Int {
+        return when {
+            userWord.word.equals(query, ignoreCase = true) ||
+                userWord.reading.equals(query, ignoreCase = true) -> 0
+
+            userWord.word.startsWith(query, ignoreCase = true) ||
+                userWord.reading.startsWith(query, ignoreCase = true) -> 1
+
+            else -> 2
+        }
+    }
+
+    private fun userWordMatchedLength(userWord: UserWord, query: String): Int {
+        return sequenceOf(userWord.reading, userWord.word)
+            .filter { it.startsWith(query, ignoreCase = true) }
+            .minOfOrNull { it.length } ?: Int.MAX_VALUE
     }
 
     private fun addWord() {
