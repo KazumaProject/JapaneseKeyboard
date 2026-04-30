@@ -285,15 +285,43 @@ class UserTemplateFragment : Fragment() {
         val filteredTemplates = if (query.isEmpty()) {
             allUserTemplates
         } else {
-            allUserTemplates.filter {
-                it.word.contains(query, ignoreCase = true) ||
-                    it.reading.contains(query, ignoreCase = true)
-            }
+            allUserTemplates
+                .filter {
+                    it.word.startsWith(query, ignoreCase = true) ||
+                        it.reading.startsWith(query, ignoreCase = true)
+                }
+                .sortedWith(compareBy<UserTemplate> {
+                    userTemplateSearchRank(it, query)
+                }.thenBy {
+                    userTemplateMatchedLength(it, query)
+                }.thenBy {
+                    it.reading
+                }.thenBy {
+                    it.word
+                })
         }
         userTemplateAdapter.submitList(filteredTemplates)
         binding.recyclerViewUserWords.post {
             _binding?.userTemplateFastScroller?.invalidate()
         }
+    }
+
+    private fun userTemplateSearchRank(userTemplate: UserTemplate, query: String): Int {
+        return when {
+            userTemplate.word.equals(query, ignoreCase = true) ||
+                userTemplate.reading.equals(query, ignoreCase = true) -> 0
+
+            userTemplate.word.startsWith(query, ignoreCase = true) ||
+                userTemplate.reading.startsWith(query, ignoreCase = true) -> 1
+
+            else -> 2
+        }
+    }
+
+    private fun userTemplateMatchedLength(userTemplate: UserTemplate, query: String): Int {
+        return sequenceOf(userTemplate.reading, userTemplate.word)
+            .filter { it.startsWith(query, ignoreCase = true) }
+            .minOfOrNull { it.length } ?: Int.MAX_VALUE
     }
 
     private fun addTemplate() {
