@@ -87,7 +87,6 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.DynamicColorsOptions
-import com.google.android.material.R as MaterialR
 import com.google.android.material.tabs.TabLayout
 import com.kazumaproject.android.flexbox.FlexDirection
 import com.kazumaproject.android.flexbox.FlexboxLayoutManager
@@ -96,6 +95,7 @@ import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
+import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.extensions.isAsciiDigitForRomajiQwerty
 import com.kazumaproject.core.domain.extensions.isAsciiSymbolForRomajiQwerty
@@ -103,7 +103,6 @@ import com.kazumaproject.core.domain.extensions.kanjiCount
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setLayerTypeSolidColor
-import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.toHankakuAlphabet
 import com.kazumaproject.core.domain.extensions.toHankakuKatakana
 import com.kazumaproject.core.domain.extensions.toHankakuKigou
@@ -262,6 +261,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.regex.Pattern
 import javax.inject.Inject
+import com.google.android.material.R as MaterialR
 
 @AndroidEntryPoint
 class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
@@ -2887,7 +2887,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             event?.let { e ->
                 val insertString = inputString.value
                 val suggestions = listAdapter.currentList
-                if (handlePhysicalKeyboardShortcut(keyCode, e, mainView, insertString, suggestions)) {
+                if (handlePhysicalKeyboardShortcut(
+                        keyCode,
+                        e,
+                        mainView,
+                        insertString,
+                        suggestions
+                    )
+                ) {
                     return true
                 }
             }
@@ -3118,13 +3125,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             event = event
         ) ?: physicalKeyboardShortcuts.firstOrNull {
             it.enabled &&
-                it.actionId == PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE.id &&
-                it.keyCode == keyCode &&
-                it.ctrl == event.isCtrlPressed &&
-                it.shift == event.isShiftPressed &&
-                it.alt == event.isAltPressed &&
-                it.meta == event.isMetaPressed &&
-                (it.scanCode == null || it.scanCode == event.scanCode)
+                    it.actionId == PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE.id &&
+                    it.keyCode == keyCode &&
+                    it.ctrl == event.isCtrlPressed &&
+                    it.shift == event.isShiftPressed &&
+                    it.alt == event.isAltPressed &&
+                    it.meta == event.isMetaPressed &&
+                    (it.scanCode == null || it.scanCode == event.scanCode)
         } ?: return false
         val action = PhysicalKeyboardShortcutAction.fromId(shortcut.actionId) ?: return false
         return executePhysicalKeyboardShortcutAction(action, mainView, insertString, suggestions)
@@ -4086,7 +4093,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             TenKeyQWERTYMode.TenKeyQWERTY -> {
-                configureQwertyView(floatingView.qwertyViewFloating, mainView, isFloatingView = true)
+                configureQwertyView(
+                    floatingView.qwertyViewFloating,
+                    mainView,
+                    isFloatingView = true
+                )
                 floatingView.qwertyViewFloating.resetQWERTYKeyboard(
                     currentInputType.getQWERTYReturnTextInEn()
                 )
@@ -4094,7 +4105,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                configureQwertyView(floatingView.qwertyViewFloating, mainView, isFloatingView = true)
+                configureQwertyView(
+                    floatingView.qwertyViewFloating,
+                    mainView,
+                    isFloatingView = true
+                )
                 floatingView.qwertyViewFloating.setRomajiKeyboard(
                     currentInputType.getQWERTYReturnTextInJp()
                 )
@@ -5019,7 +5034,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
             Key.KeyDakutenSmall -> {
-                //showListPopup()
+                showListPopup()
             }
 
             Key.SideKeyCursorLeft -> {
@@ -6804,7 +6819,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             circularFlickWindowScale ?: 1.0f
         )
         flickView.setCircularFlickOptions(
-            directionCount = circularFlickDirectionCount ?: appPreference.circularFlickDirectionCount
+            directionCount = circularFlickDirectionCount
+                ?: appPreference.circularFlickDirectionCount
         )
 
         flickView.applyKeySizing(
@@ -16072,10 +16088,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun dakutenSmallLetterFloating(
-        sb: StringBuilder, insertString: String, gestureType: GestureType
+        sb: StringBuilder,
+        insertString: String,
+        gestureType: GestureType
     ) {
         _dakutenPressed.value = true
         englishSpaceKeyPressed.set(false)
+
         if (insertString.isNotEmpty()) {
             val insertPosition = insertString.last()
             insertPosition.let { c ->
@@ -16084,7 +16103,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         GestureType.Tap, GestureType.FlickBottom -> {
                             c.getDakutenSmallChar()?.let { dakutenChar ->
                                 setStringBuilderForConvertStringInHiragana(
-                                    dakutenChar, sb, insertString
+                                    dakutenChar,
+                                    sb,
+                                    insertString
                                 )
                             }
                         }
@@ -16092,7 +16113,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         GestureType.FlickLeft -> {
                             c.getDakutenFlickLeft()?.let { dakutenChar ->
                                 setStringBuilderForConvertStringInHiragana(
-                                    dakutenChar, sb, insertString
+                                    dakutenChar,
+                                    sb,
+                                    insertString
                                 )
                             }
                         }
@@ -16100,7 +16123,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         GestureType.FlickRight -> {
                             c.getDakutenFlickRight()?.let { dakutenChar ->
                                 setStringBuilderForConvertStringInHiragana(
-                                    dakutenChar, sb, insertString
+                                    dakutenChar,
+                                    sb,
+                                    insertString
                                 )
                             }
                         }
@@ -16108,7 +16133,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         GestureType.FlickTop -> {
                             c.getDakutenFlickTop()?.let { dakutenChar ->
                                 setStringBuilderForConvertStringInHiragana(
-                                    dakutenChar, sb, insertString
+                                    dakutenChar,
+                                    sb,
+                                    insertString
                                 )
                             }
                         }
@@ -16116,6 +16143,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         else -> {}
                     }
                 }
+            }
+        } else {
+            if (!onKeyboardSwitchLongPressUp &&
+                qwertyMode.value != TenKeyQWERTYMode.Custom &&
+                tenkeyShowIMEButtonPreference == true
+            ) {
+                switchNextKeyboard()
             }
         }
     }
