@@ -22,6 +22,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.view.isGone
+import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
@@ -41,6 +42,9 @@ class UserTemplateFragment : Fragment() {
 
     private var _binding: FragmentUserTemplateBinding? = null
     private val binding get() = _binding!!
+    private lateinit var userTemplateAdapter: UserTemplateAdapter
+    private var allUserTemplates: List<UserTemplate> = emptyList()
+    private var userTemplateSearchQuery: String = ""
 
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -81,6 +85,7 @@ class UserTemplateFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupMenu()
         setupRecyclerView()
+        setupSearch()
         setupListeners()
         observeViewModel()
         resetInputFields()
@@ -219,10 +224,18 @@ class UserTemplateFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        val adapter = UserTemplateAdapter { userTemplate ->
+        userTemplateAdapter = UserTemplateAdapter { userTemplate ->
             showEditDialog(userTemplate)
         }
-        binding.recyclerViewUserWords.adapter = adapter
+        binding.recyclerViewUserWords.adapter = userTemplateAdapter
+        binding.userTemplateFastScroller.attachToRecyclerView(binding.recyclerViewUserWords)
+    }
+
+    private fun setupSearch() {
+        binding.editTextSearchUserTemplate.addTextChangedListener { text ->
+            userTemplateSearchQuery = text?.toString().orEmpty()
+            applyUserTemplateFilter()
+        }
     }
 
     private fun setupListeners() {
@@ -260,8 +273,26 @@ class UserTemplateFragment : Fragment() {
     private fun observeViewModel() {
         viewModel.allTemplates.observe(viewLifecycleOwner) { templates ->
             templates?.let {
-                (binding.recyclerViewUserWords.adapter as UserTemplateAdapter).submitList(it)
+                allUserTemplates = it
+                applyUserTemplateFilter()
             }
+        }
+    }
+
+    private fun applyUserTemplateFilter() {
+        val binding = _binding ?: return
+        val query = userTemplateSearchQuery.trim()
+        val filteredTemplates = if (query.isEmpty()) {
+            allUserTemplates
+        } else {
+            allUserTemplates.filter {
+                it.word.contains(query, ignoreCase = true) ||
+                    it.reading.contains(query, ignoreCase = true)
+            }
+        }
+        userTemplateAdapter.submitList(filteredTemplates)
+        binding.recyclerViewUserWords.post {
+            _binding?.userTemplateFastScroller?.invalidate()
         }
     }
 
@@ -377,6 +408,7 @@ class UserTemplateFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        binding.userTemplateFastScroller.detachFromRecyclerView()
         super.onDestroyView()
         _binding = null
     }
