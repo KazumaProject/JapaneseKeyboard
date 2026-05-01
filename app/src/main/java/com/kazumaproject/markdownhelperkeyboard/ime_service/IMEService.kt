@@ -409,6 +409,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var floatingKeyboardView: PopupWindow? = null
     private var floatingKeyboardBinding: FloatingKeyboardLayoutBinding? = null
+
+    /**
+     * Floating QWERTY view に対して configureQwertyView() を実行済みかどうかを示すフラグ。
+     *
+     * Floating QWERTY の listener bind / 各 preference 適用は 1 回だけ行えば十分なため、
+     * syncFloatingKeyboardContentForMode() からの再呼び出しによる listener 多重登録や
+     * QWERTY 内部状態の不要な上書きを防ぐ。floatingKeyboardBinding が再生成された場合は
+     * actionInDestroy 等でこのフラグを false に戻すこと。
+     */
+    private var isFloatingQwertyConfigured: Boolean = false
     private var keyboardBackgroundPlayer: ExoPlayer? = null
     private var floatingKeyboardBackgroundPlayer: ExoPlayer? = null
     private var floatingKeyboardBackgroundVideoConfig: KeyboardBackgroundVideoConfig? = null
@@ -2844,6 +2854,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         releaseFloatingKeyboardBackgroundVideoPlayer()
         floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
+        // floatingKeyboardBinding を作り直したので configureQwertyView guard をリセット。
+        isFloatingQwertyConfigured = false
 
         floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
             setFloatingKeyboardListeners(floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding)
@@ -4253,9 +4265,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 applyFloatingKeyboardBackgroundIfNeeded(floatingView)
             }
             syncFloatingKeyboardContentForMode(qwertyMode.value)
+            // Floating mode ON に切り替えた直後は、通常 QWERTY が持っている
+            // QWERTYMode / Shift / CapsLock / Romaji 等の現在状態を Floating 側に反映する。
+            // syncFloatingKeyboardContentForMode は ensureFloatingQwertyConfigured のみを行い、
+            // 内部状態のミラーはここで明示的に実施する (sync 内でミラーすると、ユーザーが
+            // Floating 側で操作した内部状態を意図せず main の古い状態で上書きしてしまうため)。
+            floatingKeyboardBinding?.let { floatingView ->
+                if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY ||
+                    qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji
+                ) {
+                    mirrorMainQwertyStateToFloating(mainView, floatingView)
+                }
+            }
             renderCurrentKeyboardStateOnActiveSurface()
             updateFloatingKeyboardSizeForMode(qwertyMode.value)
         } else {
+            // Floating mode OFF に戻す際は、Floating 中にユーザーが操作した
+            // QWERTY 内部状態を通常 QWERTY 側へ引き継ぐ。
+            floatingKeyboardBinding?.let { floatingView ->
+                if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY ||
+                    qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji
+                ) {
+                    mirrorFloatingQwertyStateToMain(mainView, floatingView)
+                }
+            }
             bindSuggestionAdaptersForFloatingMode(mainView, isFloatingMode = false)
             mainView.root.isVisible = true
             mainView.root.alpha = 1f
@@ -4533,27 +4566,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             TenKeyQWERTYMode.TenKeyQWERTY -> {
-                configureQwertyView(
-                    floatingView.qwertyViewFloating,
-                    mainView
-                )
-                floatingView.qwertyViewFloating.resetQWERTYKeyboard(
-                    currentInputType.getQWERTYReturnTextInEn()
-                )
-                floatingView.qwertyViewFloating.setRomajiEnglishSwitchKeyVisibility(false)
+                // listener bind / preference 適用は最初の 1 回だけにする。
+                // ここで resetQWERTYKeyboard() を呼ぶと Floating 側 QWERTY の
+                // qwertyMode / Shift / CapsLock / Romaji 等の内部状態が破壊されるため呼ばない。
+                // 状態同期は toggle ON/OFF 時 (applyFloatingModeState) に行う。
+                ensureFloatingQwertyConfigured(floatingView.qwertyViewFloating, mainView)
             }
 
             TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                configureQwertyView(
-                    floatingView.qwertyViewFloating,
-                    mainView
-                )
-                floatingView.qwertyViewFloating.setRomajiKeyboard(
-                    currentInputType.getQWERTYReturnTextInJp()
-                )
-                floatingView.qwertyViewFloating.setRomajiEnglishSwitchKeyVisibility(
-                    qwertyShowSwitchRomajiEnglishPreference == true
-                )
+                // setRomajiKeyboard() は内部状態を初期化してしまうため呼ばない。
+                // 状態同期は toggle ON/OFF 時 (applyFloatingModeState) に行う。
+                ensureFloatingQwertyConfigured(floatingView.qwertyViewFloating, mainView)
             }
 
             TenKeyQWERTYMode.Sumire -> {
@@ -4583,6 +4606,58 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setNumberLayoutTo(floatingView.customLayoutFloating)
             }
         }
+    }
+
+    /**
+     * Floating 側 QWERTY view の listener bind / preference 適用を 1 回だけ行うための guard。
+     *
+     * 同じ View に対して configureQwertyView() を何度も呼ぶと listener の上書き再登録や
+     * setSwitchNumberLayoutKeyVisibility(false) などの副作用が発生するため、
+     * 初回のみ configure する。Floating mode が toggle されたり keyboard view が
+     * 再生成された際は [isFloatingQwertyConfigured] を false にリセットすること。
+     */
+    private fun ensureFloatingQwertyConfigured(
+        qwertyView: QWERTYKeyboardView,
+        mainView: MainLayoutBinding,
+    ) {
+        if (isFloatingQwertyConfigured) return
+        configureQwertyView(qwertyView, mainView)
+        isFloatingQwertyConfigured = true
+    }
+
+    /**
+     * 通常 QWERTY (mainView.qwertyView) の現在の表示状態を Floating 側 QWERTY に
+     * 非破壊的にコピーする。
+     *
+     * resetQWERTYKeyboard() / setRomajiKeyboard() のような状態初期化を行わず、
+     * snapshotUiState / renderUiState を経由して以下の状態のみを反映する:
+     * - QWERTYMode (Default / Number / Symbol)
+     * - Shift / CapsLock 状態
+     * - Romaji / English モード
+     * - Return / Space キーの label
+     * - Romaji / English 切替キーの可視状態
+     */
+    private fun mirrorMainQwertyStateToFloating(
+        mainView: MainLayoutBinding,
+        floatingView: FloatingKeyboardLayoutBinding,
+    ) {
+        val state = mainView.qwertyView.snapshotUiState()
+        floatingView.qwertyViewFloating.renderUiState(state)
+    }
+
+    /**
+     * Floating QWERTY (floatingView.qwertyViewFloating) の現在の表示状態を
+     * 通常 QWERTY 側へ非破壊的にコピーする。
+     *
+     * Floating mode を OFF に戻す際に呼ぶことで、ユーザーが Floating 中に変更した
+     * Shift / CapsLock / Number / Symbol / Romaji 等の内部状態を引き継ぐ。
+     */
+    private fun mirrorFloatingQwertyStateToMain(
+        mainView: MainLayoutBinding,
+        floatingView: FloatingKeyboardLayoutBinding,
+    ) {
+        val state = floatingView.qwertyViewFloating.snapshotUiState()
+        mainView.qwertyView.renderUiState(state)
     }
 
     private fun configureFloatingTenKeyView(
@@ -13938,6 +14013,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         releaseFloatingKeyboardBackgroundVideoPlayer()
         mainLayoutBinding = null
         floatingKeyboardBinding = null
+        isFloatingQwertyConfigured = false
         closeConnection()
         scope.cancel()
         ioScope.cancel()
