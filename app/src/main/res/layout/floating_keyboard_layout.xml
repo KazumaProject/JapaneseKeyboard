@@ -5,6 +5,7 @@
     android:layout_height="wrap_content"
     android:layout_gravity="bottom"
     android:background="@drawable/rounded_corners_bg"
+    android:clipToOutline="true"
     android:fitsSystemWindows="true">
 
     <FrameLayout
@@ -123,6 +124,7 @@
             android:layout_width="match_parent"
             android:layout_height="200dp"
             android:layout_gravity="bottom"
+            android:layout_marginBottom="16dp"
             android:visibility="gone"
             app:layout_constraintBottom_toTopOf="@+id/drag_handle" />
 
