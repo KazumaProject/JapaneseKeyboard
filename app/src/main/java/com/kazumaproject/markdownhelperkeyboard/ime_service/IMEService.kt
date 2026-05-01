@@ -4216,6 +4216,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             floatingKeyboardView?.dismiss()
             releaseFloatingKeyboardBackgroundVideoPlayer()
+            // 物理キーボード接続中は Floating UI を出さないため、isKeyboardFloatingMode は
+            // 必ず false として扱う。これを忘れると、Floating ON 状態で物理キーボードが
+            // 接続されたまま applyFloatingModeState が呼ばれた場合に isKeyboardFloatingMode が
+            // 古い値 (true) のまま残り、getActiveKeyboardSurface() が見えていない floating 側を
+            // 返してしまう。
+            this.isKeyboardFloatingMode = false
             return
         }
         this.isKeyboardFloatingMode = isFloatingMode
@@ -4296,13 +4302,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             releaseFloatingKeyboardBackgroundVideoPlayer()
             setKeyboardSizeSwitchKeyboard(mainView)
             applyKeyboardBackgroundIfNeeded(mainView, skipForFloatingMode = false)
-            getNormalKeyboardSurface()?.let { surface ->
-                renderKeyboardMode(
-                    surface = surface,
-                    mode = qwertyMode.value,
-                    isFloating = false
-                )
-            }
+            // isKeyboardFloatingMode は既に false にセット済みなので、
+            // renderCurrentKeyboardStateOnActiveSurface() は main surface に対して動作する。
+            // renderKeyboardMode 単体ではなく、本関数を呼ぶことで:
+            //   - main surface の visibility (TenKey/QWERTY/Custom) を再評価
+            //   - mainView.keyboardView.currentInputMode を currentInputModeForSession と同期
+            //     (Floating ON 中に setCurrentInputModeForSession で更新された値は floating 側
+            //      にしか反映されておらず、main の TenKey が古い InputMode を保持している
+            //      可能性があるため、ここで明示的に再同期する)
+            //   - customLayoutDefault の dynamic key を最新状態で再描画
+            //   - mainView.qwertyView の romaji / 切替キー可視状態を最新状態で再描画
+            // が一括で行われ、Floating ON -> OFF 復帰時に main 側表示が古い値で残るのを防ぐ。
+            renderCurrentKeyboardStateOnActiveSurface()
         }
     }
 
@@ -4651,13 +4662,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      *
      * Floating mode を OFF に戻す際に呼ぶことで、ユーザーが Floating 中に変更した
      * Shift / CapsLock / Number / Symbol / Romaji 等の内部状態を引き継ぐ。
+     *
+     * ただし enterKeyText / spaceKeyText は InputType に応じて showKeyboard() が常に
+     * mainView.qwertyView 側に正しい値をセットするのが source of truth であり、
+     * Floating 側はその値を mirrorMainQwertyStateToFloating 経由でしか受け取らない。
+     * Floating ON 中に showKeyboard(QWERTY/ROMAJI) が走ると mainView.qwertyView だけ
+     * resetQWERTYKeyboard / setRomajiKeyboard で更新され、Floating 側の text label は
+     * 古い (場合によっては空) 値のままになる可能性がある。その状態のまま OFF に戻す際に
+     * Floating 側の text label を main へ書き戻すと、せっかく main 側に正しく載っていた
+     * Return / Space ラベルを破壊してしまう。
+     *
+     * そのため text label は main の現在値を維持し、ユーザーが Floating ON 中に
+     * 操作した QWERTYMode / Shift / CapsLock / Romaji / Romaji-English 切替キー可視状態
+     * のみを Floating 側から引き継ぐ。
      */
     private fun mirrorFloatingQwertyStateToMain(
         mainView: MainLayoutBinding,
         floatingView: FloatingKeyboardLayoutBinding,
     ) {
-        val state = floatingView.qwertyViewFloating.snapshotUiState()
-        mainView.qwertyView.renderUiState(state)
+        val floatingState = floatingView.qwertyViewFloating.snapshotUiState()
+        val mainState = mainView.qwertyView.snapshotUiState()
+        val merged = floatingState.copy(
+            enterKeyText = mainState.enterKeyText,
+            spaceKeyText = mainState.spaceKeyText
+        )
+        mainView.qwertyView.renderUiState(merged)
     }
 
     private fun configureFloatingTenKeyView(
@@ -7266,13 +7295,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         if (isFloatingView) {
             Timber.d("Configuring floating FlickKeyboardView mirror surface")
-        }
-        flickView.setPopupWindowAnchorProvider {
-            window.window?.decorView ?: if (isFloatingView) {
-                floatingKeyboardBinding?.root
-            } else {
-                mainView.root
+            // Floating ON のときだけ、popup の window anchor を IME decorView (or floating root)
+            // に切り替える。Floating の PopupWindow は floating の root に attach されており、
+            // 各 key (anchor view) は popup から見て別 window 扱いになるため、座標計算を
+            // window anchor 基準に補正する必要がある。
+            flickView.setPopupWindowAnchorProvider {
+                window.window?.decorView ?: floatingKeyboardBinding?.root
             }
+        } else {
+            // Floating OFF のときは PR 前と同じ挙動を維持する。
+            // anchor provider を null にしておくことで、各 controller の resolveWindowAnchor が
+            // keyAnchor 自身を window anchor としてフォールバックし、
+            // popupWindow.showAtLocation も従来通り keyAnchor の window へ表示される。
+            // これにより Floating OFF の通常 popup 表示位置 / 表示先が PR 前と同等になる。
+            flickView.setPopupWindowAnchorProvider(null)
         }
         flickView.applyKeyboardTheme(
             themeMode = keyboardThemeMode ?: "default",
