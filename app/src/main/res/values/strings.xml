@@ -455,7 +455,9 @@
     <string name="there_is_no_template_to_export">Could not find templates to export.</string>
     <string name="is_registered_string"> is registered.</string>
     <string name="user_dictionary_duplicate_entry">That word and reading are already registered.</string>
+    <string name="duplicate_item_exists">This item already exists</string>
     <string name="updated_string">Updated.</string>
+    <string name="update_failed">Failed to update</string>
     <string name="deleted_string">Deleted.</string>
     <string name="about_user_dictionary">About User Dictionary</string>
     <string name="registered_words">Registered words</string>

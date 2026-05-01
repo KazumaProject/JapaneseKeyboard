@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -50,15 +51,18 @@ class UserDictionaryViewModel @Inject constructor(
     }
 
     suspend fun updateSafely(userWord: UserWord): UserWordUpdateResult {
-        if (repository.existsDuplicateForUpdate(userWord.word, userWord.reading, userWord.id)) {
-            return UserWordUpdateResult.Duplicate
-        }
-
         return try {
+            if (repository.existsDuplicateForUpdate(userWord.word, userWord.reading, userWord.id)) {
+                return UserWordUpdateResult.Duplicate
+            }
             repository.update(userWord)
             UserWordUpdateResult.Updated
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: SQLiteConstraintException) {
             UserWordUpdateResult.Duplicate
+        } catch (_: Exception) {
+            UserWordUpdateResult.Error
         }
     }
 
@@ -83,4 +87,5 @@ class UserDictionaryViewModel @Inject constructor(
 enum class UserWordUpdateResult {
     Updated,
     Duplicate,
+    Error,
 }
