@@ -95,7 +95,7 @@ import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.domain.extensions.dpToPx
-import com.kazumaproject.core.domain.extensions.getThemeColor
+import com.kazumaproject.core.domain.extensions.getThemeColorOrFallback
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
 import com.kazumaproject.core.domain.extensions.isAsciiDigitForRomajiQwerty
 import com.kazumaproject.core.domain.extensions.isAsciiSymbolForRomajiQwerty
@@ -1545,10 +1545,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyKeyboardContainerBackgrounds(mainView: MainLayoutBinding) {
         val isDynamic = DynamicColors.isDynamicColorAvailable()
         if (isKeyboardRounded == true) {
+            val fallbackColor = getColor(com.kazumaproject.core.R.color.keyboard_bg)
             val defaultColor = if (isDynamic) {
-                getThemeColor(MaterialR.attr.colorSurfaceContainer)
+                mainView.root.context.getThemeColorOrFallback(
+                    attrRes = MaterialR.attr.colorSurfaceContainer,
+                    fallbackColor = fallbackColor
+                )
             } else {
-                getColor(com.kazumaproject.core.R.color.keyboard_bg)
+                fallbackColor
             }
             val customColor = customThemeBgColor ?: Color.WHITE
             val backgroundColor = when (keyboardThemeMode) {
