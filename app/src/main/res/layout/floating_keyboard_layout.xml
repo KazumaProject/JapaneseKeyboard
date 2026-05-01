@@ -7,9 +7,39 @@
     android:background="@drawable/rounded_corners_bg"
     android:fitsSystemWindows="true">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <FrameLayout
+        android:id="@+id/floating_keyboard_background_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="306dp"
+        android:clickable="false"
+        android:focusable="false">
+
+        <androidx.media3.ui.PlayerView
+            android:id="@+id/floating_keyboard_background_video"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
+            android:visibility="gone"
+            app:surface_type="texture_view"
+            app:shutter_background_color="@android:color/transparent"
+            app:use_controller="false" />
+
+        <ImageView
+            android:id="@+id/floating_keyboard_background_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:contentDescription="@null"
+            android:focusable="false"
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/floating_keyboard_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/suggestionView_parent"
