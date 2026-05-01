@@ -1584,6 +1584,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFloatingKeyboardBackgroundIfNeeded(
         floatingView: FloatingKeyboardLayoutBinding
     ) {
+        applyFloatingKeyboardRoundedClipping(floatingView)
         updateFloatingKeyboardBackgroundBounds(floatingView)
         val isBackgroundVideoApplied = applyFloatingKeyboardBackgroundVideoIfNeeded(floatingView)
         if (isBackgroundVideoApplied) {
@@ -1596,6 +1597,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 enabled = isBackgroundImageApplied
             )
         }
+    }
+
+    private fun applyFloatingKeyboardRoundedClipping(floatingView: FloatingKeyboardLayoutBinding) {
+        val clipDrawable = createKeyboardBackgroundDrawable(
+            color = Color.TRANSPARENT,
+            radiusDp = 16,
+            topLeft = true,
+            topRight = true,
+            bottomRight = true,
+            bottomLeft = true
+        )
+        floatingView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
+        floatingView.root.clipToOutline = true
+        floatingView.floatingKeyboardBackgroundContainer.background = clipDrawable
+        floatingView.floatingKeyboardBackgroundContainer.outlineProvider = ViewOutlineProvider.BACKGROUND
+        floatingView.floatingKeyboardBackgroundContainer.clipToOutline = true
     }
 
     private fun updateFloatingKeyboardBackgroundBounds(
@@ -1619,6 +1636,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingView.root.post {
             applyHeight(floatingView.floatingKeyboardContent.height)
         }
+    }
+
+    private fun updateFloatingFullCandidatesHeight(
+        floatingView: FloatingKeyboardLayoutBinding,
+        heightPx: Int
+    ) {
+        (floatingView.candidatesRowView.layoutParams as? ConstraintLayout.LayoutParams)
+            ?.let { params ->
+                if (params.height != heightPx) {
+                    params.height = heightPx
+                    floatingView.candidatesRowView.layoutParams = params
+                }
+            }
     }
 
     private fun applyKeyboardContainerTransparencyForVideo(
@@ -2791,6 +2821,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
             updateFloatingKeyboardBackgroundBounds(floatingKeyboardLayoutBinding, heightPx)
+            updateFloatingFullCandidatesHeight(floatingKeyboardLayoutBinding, heightPx)
         }
 
         keyboardContainer?.let { container ->
@@ -4557,6 +4588,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 params.height = heightPx
                 floatingView.floatingKeyboardContainer.layoutParams = params
             }
+        updateFloatingFullCandidatesHeight(floatingView, heightPx)
         updateFloatingKeyboardBackgroundBounds(floatingView, heightPx)
         val savedX = appPreference.keyboard_floating_position_x
         val savedY = appPreference.keyboard_floating_position_y
