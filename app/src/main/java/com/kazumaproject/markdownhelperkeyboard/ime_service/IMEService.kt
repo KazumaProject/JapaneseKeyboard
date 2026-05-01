@@ -4099,8 +4099,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             TenKeyQWERTYMode.TenKeyQWERTY -> {
                 configureQwertyView(
                     floatingView.qwertyViewFloating,
-                    mainView,
-                    isFloatingView = true
+                    mainView
                 )
                 floatingView.qwertyViewFloating.resetQWERTYKeyboard(
                     currentInputType.getQWERTYReturnTextInEn()
@@ -4111,8 +4110,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
                 configureQwertyView(
                     floatingView.qwertyViewFloating,
-                    mainView,
-                    isFloatingView = true
+                    mainView
                 )
                 floatingView.qwertyViewFloating.setRomajiKeyboard(
                     currentInputType.getQWERTYReturnTextInJp()
@@ -12036,17 +12034,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setQWERTYKeyboard(
         mainView: MainLayoutBinding
     ) {
-        configureQwertyView(mainView.qwertyView, mainView, isFloatingView = false)
+        configureQwertyView(mainView.qwertyView, mainView)
     }
 
     private fun configureQwertyView(
         qwertyView: QWERTYKeyboardView,
         mainView: MainLayoutBinding,
-        isFloatingView: Boolean
     ) {
-        if (isFloatingView) {
-            // Floating QWERTY uses mainView as the IME state source, while the floating QWERTY view is the touch/display surface.
-        }
         qwertyView.apply {
             applyKeyboardTheme(
                 themeMode = keyboardThemeMode ?: "default",
