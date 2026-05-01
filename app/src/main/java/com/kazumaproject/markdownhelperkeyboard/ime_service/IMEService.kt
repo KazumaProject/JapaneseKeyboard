@@ -2358,10 +2358,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun canShowPopupWindow(anchorView: View?): Boolean {
-        if (!isInputViewActive) {
-            return false
+        if (!isInputViewActive) return false
+        if (anchorView == null) return false
+        if (!anchorView.isAttachedToWindow) return false
+        if (anchorView.windowToken == null) return false
+        return true
+    }
+
+    private fun resolveShowListPopupAnchor(mainView: MainLayoutBinding): View? {
+        if (isKeyboardFloatingMode != true) {
+            return requireActiveKeyboardSurface()?.rootView ?: mainView.root
         }
-        return anchorView?.windowToken != null
+
+        val mainRoot = mainLayoutBinding?.root
+        if (mainRoot?.isAttachedToWindow == true && mainRoot.windowToken != null) {
+            return mainRoot
+        }
+
+        val decorView = window.window?.decorView
+        if (decorView?.isAttachedToWindow == true && decorView.windowToken != null) {
+            return decorView
+        }
+
+        return null
     }
 
     private fun showPopupWindowSafely(
@@ -5988,7 +6007,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardSelectionPopupWindow?.let { popupWindow ->
                 showPopupWindowSafely(
                     popupWindow = popupWindow,
-                    anchorView = requireActiveKeyboardSurface()?.rootView ?: mainView.root,
+                    anchorView = resolveShowListPopupAnchor(mainView),
                     gravity = Gravity.CENTER,
                     x = 0,
                     y = 0,
