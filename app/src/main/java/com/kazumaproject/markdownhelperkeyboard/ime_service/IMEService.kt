@@ -411,6 +411,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var floatingKeyboardBinding: FloatingKeyboardLayoutBinding? = null
     private var keyboardBackgroundPlayer: ExoPlayer? = null
     private var floatingKeyboardBackgroundPlayer: ExoPlayer? = null
+    private var floatingKeyboardBackgroundVideoConfig: KeyboardBackgroundVideoConfig? = null
     private var isKeyboardFloatingMode: Boolean? = false
     private var isKeyboardRounded: Boolean? = false
     private var keyboardCornerRadiusDp: Int = 32
@@ -428,6 +429,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var bunsetsuReconversionDraft: BunsetsuReconversionDraft? = null
     private var preserveBunsetsuReconversionDraftOnNextProcessInput = false
     private var isRestoringReconversionInput = false
+
+    private data class KeyboardBackgroundVideoConfig(
+        val uriString: String,
+        val quality: String
+    )
+
     private var henkanPressedWithBunsetsuDetect: Boolean = false
     private var conversionKeySwipePreference: Boolean? = false
 
@@ -1545,18 +1552,69 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardBinding?.floatingKeyboardBackgroundVideo?.isVisible = false
         floatingKeyboardBackgroundPlayer?.release()
         floatingKeyboardBackgroundPlayer = null
+        floatingKeyboardBackgroundVideoConfig = null
     }
 
     @androidx.annotation.OptIn(UnstableApi::class)
     private fun applyFloatingKeyboardBackgroundVideoIfNeeded(
         floatingView: FloatingKeyboardLayoutBinding
     ): Boolean {
-        return applyKeyboardBackgroundVideoToViewIfNeeded(
-            playerView = floatingView.floatingKeyboardBackgroundVideo,
-            releasePlayer = ::releaseFloatingKeyboardBackgroundVideoPlayer,
-            onPlayerCreated = { floatingKeyboardBackgroundPlayer = it },
-            surfaceName = "floating"
+        val playerView = floatingView.floatingKeyboardBackgroundVideo
+        playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+        playerView.setKeepContentOnPlayerReset(true)
+
+        val uriString = appPreference.keyboard_background_video_uri
+        if (uriString.isBlank()) {
+            releaseFloatingKeyboardBackgroundVideoPlayer()
+            playerView.isVisible = false
+            return false
+        }
+
+        val uri = runCatching { uriString.toUri() }.getOrNull()
+        if (uri == null) {
+            releaseFloatingKeyboardBackgroundVideoPlayer()
+            playerView.isVisible = false
+            return false
+        }
+
+        val quality = appPreference.keyboard_background_video_quality
+        val videoConfig = KeyboardBackgroundVideoConfig(
+            uriString = uriString,
+            quality = quality
         )
+        floatingKeyboardBackgroundPlayer?.takeIf {
+            floatingKeyboardBackgroundVideoConfig == videoConfig
+        }?.let { existingPlayer ->
+            playerView.player = existingPlayer
+            playerView.isVisible = true
+            return true
+        }
+
+        val (maxWidth, maxHeight) = resolveVideoQualityMaxSize(quality)
+        return runCatching {
+            releaseFloatingKeyboardBackgroundVideoPlayer()
+            val player = ExoPlayer.Builder(this).build().apply {
+                repeatMode = Player.REPEAT_MODE_ALL
+                volume = 0f
+                playWhenReady = true
+                videoScalingMode = C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
+                trackSelectionParameters = trackSelectionParameters
+                    .buildUpon()
+                    .setMaxVideoSize(maxWidth, maxHeight)
+                    .build()
+                setMediaItem(MediaItem.fromUri(uri))
+                prepare()
+            }
+            playerView.player = player
+            playerView.isVisible = true
+            floatingKeyboardBackgroundPlayer = player
+            floatingKeyboardBackgroundVideoConfig = videoConfig
+            true
+        }.onFailure {
+            Timber.w(it, "Failed to play floating keyboard background video: $uriString")
+            releaseFloatingKeyboardBackgroundVideoPlayer()
+            playerView.isVisible = false
+        }.getOrDefault(false)
     }
 
     private fun clearNormalKeyboardBackgroundForFloatingMode(mainView: MainLayoutBinding) {
@@ -1608,11 +1666,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             bottomRight = true,
             bottomLeft = true
         )
-        floatingView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
-        floatingView.root.clipToOutline = true
+        floatingView.root.clipToOutline = false
         floatingView.floatingKeyboardBackgroundContainer.background = clipDrawable
         floatingView.floatingKeyboardBackgroundContainer.outlineProvider = ViewOutlineProvider.BACKGROUND
         floatingView.floatingKeyboardBackgroundContainer.clipToOutline = true
+    }
+
+    private fun bindSuggestionAdaptersForFloatingMode(
+        mainView: MainLayoutBinding,
+        isFloatingMode: Boolean
+    ) {
+        val floatingView = floatingKeyboardBinding
+        if (isFloatingMode) {
+            floatingView?.suggestionRecyclerView?.adapter = suggestionAdapter
+            floatingView?.candidatesRowView?.adapter = suggestionAdapterFull
+            mainView.suggestionRecyclerView.adapter = null
+            mainView.candidatesRowView.adapter = null
+        } else {
+            mainView.suggestionRecyclerView.adapter = suggestionAdapter
+            mainView.candidatesRowView.adapter = suggestionAdapterFull
+            floatingView?.suggestionRecyclerView?.adapter = null
+            floatingView?.candidatesRowView?.adapter = null
+        }
     }
 
     private fun updateFloatingKeyboardBackgroundBounds(
@@ -4131,6 +4206,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             releaseFloatingKeyboardBackgroundVideoPlayer()
             return
         }
+        this.isKeyboardFloatingMode = isFloatingMode
         if (isFloatingMode) {
             (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                 params.width = ViewGroup.LayoutParams.MATCH_PARENT
@@ -4138,7 +4214,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainView.root.layoutParams = params
             }
             mainView.root.alpha = 0f
+            bindSuggestionAdaptersForFloatingMode(mainView, isFloatingMode = true)
             clearNormalKeyboardBackgroundForFloatingMode(mainView)
+            floatingKeyboardBinding?.let { floatingView ->
+                applyFloatingKeyboardBackgroundIfNeeded(floatingView)
+            }
             floatingKeyboardView?.apply {
                 Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode ${this.isShowing}")
                 if (!this.isShowing) {
@@ -4176,12 +4256,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             renderCurrentKeyboardStateOnActiveSurface()
             updateFloatingKeyboardSizeForMode(qwertyMode.value)
         } else {
+            bindSuggestionAdaptersForFloatingMode(mainView, isFloatingMode = false)
+            mainView.root.isVisible = true
             mainView.root.alpha = 1f
-            setKeyboardSizeForHeightForFloatingMode(mainView)
             floatingKeyboardView?.dismiss()
             releaseFloatingKeyboardBackgroundVideoPlayer()
+            setKeyboardSizeSwitchKeyboard(mainView)
             applyKeyboardBackgroundIfNeeded(mainView, skipForFloatingMode = false)
-            renderCurrentKeyboardStateOnActiveSurface()
+            getNormalKeyboardSurface()?.let { surface ->
+                renderKeyboardMode(
+                    surface = surface,
+                    mode = qwertyMode.value,
+                    isFloating = false
+                )
+            }
         }
     }
 
@@ -7105,7 +7193,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d("Configuring floating FlickKeyboardView mirror surface")
         }
         flickView.setPopupWindowAnchorProvider {
-            requireActiveKeyboardSurface()?.rootView ?: window.window?.decorView
+            if (isFloatingView) {
+                floatingKeyboardBinding?.root ?: window.window?.decorView
+            } else {
+                window.window?.decorView ?: mainView.root
+            }
         }
         flickView.applyKeyboardTheme(
             themeMode = keyboardThemeMode ?: "default",
