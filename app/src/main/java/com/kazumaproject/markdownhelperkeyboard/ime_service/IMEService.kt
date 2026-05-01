@@ -82,6 +82,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
+import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -409,6 +410,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var floatingKeyboardView: PopupWindow? = null
     private var floatingKeyboardBinding: FloatingKeyboardLayoutBinding? = null
     private var keyboardBackgroundPlayer: ExoPlayer? = null
+    private var floatingKeyboardBackgroundPlayer: ExoPlayer? = null
     private var isKeyboardFloatingMode: Boolean? = false
     private var isKeyboardRounded: Boolean? = false
     private var keyboardCornerRadiusDp: Int = 32
@@ -1423,14 +1425,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }.getOrNull()
     }
 
-    private fun applyKeyboardBackgroundImageIfNeeded(mainView: MainLayoutBinding) {
-        val imageView = mainView.keyboardBackgroundImage
+    private fun clearKeyboardBackgroundImage(imageView: ImageView) {
+        imageView.setImageDrawable(null)
+        imageView.background = null
+        imageView.isVisible = false
+    }
+
+    private fun applyKeyboardBackgroundImageToViewIfNeeded(imageView: ImageView): Boolean {
         val bitmap = loadKeyboardBackgroundBitmap()
         if (bitmap == null) {
-            imageView.setImageDrawable(null)
-            imageView.background = null
-            imageView.isVisible = false
-            return
+            clearKeyboardBackgroundImage(imageView)
+            return false
         }
 
         val displayMode = appPreference.keyboard_background_image_display_mode
@@ -1449,6 +1454,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         imageView.isVisible = true
+        return true
+    }
+
+    private fun applyKeyboardBackgroundImageIfNeeded(mainView: MainLayoutBinding): Boolean {
+        return applyKeyboardBackgroundImageToViewIfNeeded(mainView.keyboardBackgroundImage)
+    }
+
+    private fun applyFloatingKeyboardBackgroundImageIfNeeded(
+        floatingView: FloatingKeyboardLayoutBinding
+    ): Boolean {
+        return applyKeyboardBackgroundImageToViewIfNeeded(floatingView.floatingKeyboardBackgroundImage)
     }
 
     private fun resolveVideoQualityMaxSize(quality: String): Pair<Int, Int> {
@@ -1461,31 +1477,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun releaseKeyboardBackgroundVideoPlayer() {
         mainLayoutBinding?.keyboardBackgroundVideo?.player = null
+        mainLayoutBinding?.keyboardBackgroundVideo?.isVisible = false
         keyboardBackgroundPlayer?.release()
         keyboardBackgroundPlayer = null
     }
 
     @androidx.annotation.OptIn(UnstableApi::class)
-    private fun applyKeyboardBackgroundVideoIfNeeded(mainView: MainLayoutBinding): Boolean {
-        val playerView = mainView.keyboardBackgroundVideo
+    private fun applyKeyboardBackgroundVideoToViewIfNeeded(
+        playerView: PlayerView,
+        releasePlayer: () -> Unit,
+        onPlayerCreated: (ExoPlayer) -> Unit,
+        surfaceName: String
+    ): Boolean {
         playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM
         val uriString = appPreference.keyboard_background_video_uri
         if (uriString.isBlank()) {
-            releaseKeyboardBackgroundVideoPlayer()
+            releasePlayer()
             playerView.isVisible = false
             return false
         }
 
         val uri = runCatching { uriString.toUri() }.getOrNull()
         if (uri == null) {
-            releaseKeyboardBackgroundVideoPlayer()
+            releasePlayer()
             playerView.isVisible = false
             return false
         }
 
         val (maxWidth, maxHeight) = resolveVideoQualityMaxSize(appPreference.keyboard_background_video_quality)
         return runCatching {
-            releaseKeyboardBackgroundVideoPlayer()
+            releasePlayer()
             val player = ExoPlayer.Builder(this).build().apply {
                 repeatMode = Player.REPEAT_MODE_ALL
                 volume = 0f
@@ -1500,13 +1521,104 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             playerView.player = player
             playerView.isVisible = true
-            keyboardBackgroundPlayer = player
+            onPlayerCreated(player)
             true
         }.onFailure {
-            Timber.w(it, "Failed to play keyboard background video: $uriString")
-            releaseKeyboardBackgroundVideoPlayer()
+            Timber.w(it, "Failed to play $surfaceName keyboard background video: $uriString")
+            releasePlayer()
             playerView.isVisible = false
         }.getOrDefault(false)
+    }
+
+    @androidx.annotation.OptIn(UnstableApi::class)
+    private fun applyKeyboardBackgroundVideoIfNeeded(mainView: MainLayoutBinding): Boolean {
+        return applyKeyboardBackgroundVideoToViewIfNeeded(
+            playerView = mainView.keyboardBackgroundVideo,
+            releasePlayer = ::releaseKeyboardBackgroundVideoPlayer,
+            onPlayerCreated = { keyboardBackgroundPlayer = it },
+            surfaceName = "main"
+        )
+    }
+
+    private fun releaseFloatingKeyboardBackgroundVideoPlayer() {
+        floatingKeyboardBinding?.floatingKeyboardBackgroundVideo?.player = null
+        floatingKeyboardBinding?.floatingKeyboardBackgroundVideo?.isVisible = false
+        floatingKeyboardBackgroundPlayer?.release()
+        floatingKeyboardBackgroundPlayer = null
+    }
+
+    @androidx.annotation.OptIn(UnstableApi::class)
+    private fun applyFloatingKeyboardBackgroundVideoIfNeeded(
+        floatingView: FloatingKeyboardLayoutBinding
+    ): Boolean {
+        return applyKeyboardBackgroundVideoToViewIfNeeded(
+            playerView = floatingView.floatingKeyboardBackgroundVideo,
+            releasePlayer = ::releaseFloatingKeyboardBackgroundVideoPlayer,
+            onPlayerCreated = { floatingKeyboardBackgroundPlayer = it },
+            surfaceName = "floating"
+        )
+    }
+
+    private fun clearNormalKeyboardBackgroundForFloatingMode(mainView: MainLayoutBinding) {
+        releaseKeyboardBackgroundVideoPlayer()
+        clearKeyboardBackgroundImage(mainView.keyboardBackgroundImage)
+    }
+
+    private fun applyKeyboardBackgroundIfNeeded(
+        mainView: MainLayoutBinding,
+        skipForFloatingMode: Boolean = true
+    ) {
+        if (skipForFloatingMode && isKeyboardFloatingMode == true) {
+            clearNormalKeyboardBackgroundForFloatingMode(mainView)
+            return
+        }
+        val isBackgroundVideoApplied = applyKeyboardBackgroundVideoIfNeeded(mainView)
+        if (isBackgroundVideoApplied) {
+            applyKeyboardContainerTransparencyForVideo(mainView, enabled = true)
+            clearKeyboardBackgroundImage(mainView.keyboardBackgroundImage)
+        } else {
+            applyKeyboardBackgroundImageIfNeeded(mainView)
+        }
+    }
+
+    private fun applyFloatingKeyboardBackgroundIfNeeded(
+        floatingView: FloatingKeyboardLayoutBinding
+    ) {
+        updateFloatingKeyboardBackgroundBounds(floatingView)
+        val isBackgroundVideoApplied = applyFloatingKeyboardBackgroundVideoIfNeeded(floatingView)
+        if (isBackgroundVideoApplied) {
+            clearKeyboardBackgroundImage(floatingView.floatingKeyboardBackgroundImage)
+            applyFloatingKeyboardContainerTransparencyForBackgroundMedia(floatingView, enabled = true)
+        } else {
+            val isBackgroundImageApplied = applyFloatingKeyboardBackgroundImageIfNeeded(floatingView)
+            applyFloatingKeyboardContainerTransparencyForBackgroundMedia(
+                floatingView,
+                enabled = isBackgroundImageApplied
+            )
+        }
+    }
+
+    private fun updateFloatingKeyboardBackgroundBounds(
+        floatingView: FloatingKeyboardLayoutBinding,
+        fallbackKeyboardHeightPx: Int? = null
+    ) {
+        fun applyHeight(height: Int) {
+            if (height <= 0) return
+            val params = floatingView.floatingKeyboardBackgroundContainer.layoutParams
+            if (params.height != height) {
+                params.height = height
+                floatingView.floatingKeyboardBackgroundContainer.layoutParams = params
+            }
+        }
+
+        val fallbackHeight = fallbackKeyboardHeightPx?.let { keyboardHeight ->
+            val chromeHeightPx = (106 * resources.displayMetrics.density).toInt()
+            keyboardHeight + chromeHeightPx
+        }
+        applyHeight(floatingView.floatingKeyboardContent.height.takeIf { it > 0 } ?: fallbackHeight ?: 0)
+        floatingView.root.post {
+            applyHeight(floatingView.floatingKeyboardContent.height)
+        }
     }
 
     private fun applyKeyboardContainerTransparencyForVideo(
@@ -1519,6 +1631,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.suggestionViewParent.setDrawableAlpha(0)
         mainView.candidateTabLayout.setDrawableAlpha(0)
         mainView.shortcutToolbarRecyclerview.setBackgroundColor(Color.TRANSPARENT)
+    }
+
+    private fun applyFloatingKeyboardContainerTransparencyForBackgroundMedia(
+        floatingView: FloatingKeyboardLayoutBinding,
+        enabled: Boolean
+    ) {
+        if (enabled) {
+            floatingView.suggestionViewParent.background = null
+            floatingView.candidatesRowView.setBackgroundColor(Color.TRANSPARENT)
+        } else {
+            applyFloatingKeyboardContainerBackgrounds(floatingView)
+        }
     }
 
     private fun createKeyboardBackgroundDrawable(
@@ -1626,6 +1750,47 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
                     mainView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
                     mainView.candidateTabLayout.setBackgroundResource(com.kazumaproject.core.R.drawable.square_corners_bg_root)
+                }
+            }
+        }
+    }
+
+    private fun applyFloatingKeyboardContainerBackgrounds(
+        floatingView: FloatingKeyboardLayoutBinding
+    ) {
+        val isDynamic = DynamicColors.isDynamicColorAvailable()
+        when (keyboardThemeMode) {
+            "default" -> {
+                if (isDynamic) {
+                    floatingView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                    floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                    floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                } else {
+                    floatingView.suggestionViewParent.background = null
+                }
+            }
+
+            "custom" -> {
+                floatingView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+
+                floatingView.root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
+                floatingView.suggestionViewParent.setDrawableSolidColor(
+                    customThemeBgColor ?: Color.WHITE
+                )
+                floatingView.suggestionVisibility.setDrawableSolidColor(
+                    customThemeSpecialKeyColor ?: Color.GRAY
+                )
+            }
+
+            else -> {
+                if (isDynamic) {
+                    floatingView.root.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                    floatingView.suggestionViewParent.setBackgroundResource(com.kazumaproject.core.R.drawable.keyboard_root_material_floating)
+                    floatingView.suggestionVisibility.setBackgroundResource(com.kazumaproject.core.R.drawable.recyclerview_size_button_bg_material)
+                } else {
+                    floatingView.suggestionViewParent.background = null
                 }
             }
         }
@@ -1851,14 +2016,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
                 mainView.root.clipToOutline = isKeyboardRounded == true
 
-                val isBackgroundVideoApplied = applyKeyboardBackgroundVideoIfNeeded(mainView)
-                if (isBackgroundVideoApplied) {
-                    applyKeyboardContainerTransparencyForVideo(mainView, enabled = true)
-                    mainView.keyboardBackgroundImage.setImageDrawable(null)
-                    mainView.keyboardBackgroundImage.background = null
-                    mainView.keyboardBackgroundImage.isVisible = false
-                } else {
-                    applyKeyboardBackgroundImageIfNeeded(mainView)
+                applyKeyboardBackgroundIfNeeded(mainView)
+                if (isKeyboardFloatingMode == true) {
+                    floatingKeyboardBinding?.let { applyFloatingKeyboardBackgroundIfNeeded(it) }
                 }
 
                 suggestionRecyclerView.isVisible = true
@@ -1994,6 +2154,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onUpdate onFinishInputView")
         isInputViewActive = false
         releaseKeyboardBackgroundVideoPlayer()
+        releaseFloatingKeyboardBackgroundVideoPlayer()
         stopVoiceInput()
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
@@ -2005,6 +2166,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onUpdate onDestroy")
         isInputViewActive = false
         releaseKeyboardBackgroundVideoPlayer()
+        releaseFloatingKeyboardBackgroundVideoPlayer()
         super.onDestroy()
         mainLayoutBinding?.apply {
             keyboardView.cancelTenKeyScope()
@@ -2575,6 +2737,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
 
+        releaseFloatingKeyboardBackgroundVideoPlayer()
         floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
 
         floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
@@ -2627,6 +2790,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
             }
+            updateFloatingKeyboardBackgroundBounds(floatingKeyboardLayoutBinding, heightPx)
         }
 
         keyboardContainer?.let { container ->
@@ -2730,14 +2894,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
                     mainView.root.clipToOutline = isKeyboardRounded == true
-                    val isBackgroundVideoApplied = applyKeyboardBackgroundVideoIfNeeded(mainView)
-                    if (isBackgroundVideoApplied) {
-                        applyKeyboardContainerTransparencyForVideo(mainView, enabled = true)
-                        mainView.keyboardBackgroundImage.setImageDrawable(null)
-                        mainView.keyboardBackgroundImage.background = null
-                        mainView.keyboardBackgroundImage.isVisible = false
-                    } else {
-                        applyKeyboardBackgroundImageIfNeeded(mainView)
+                    applyKeyboardBackgroundIfNeeded(mainView)
+                    if (isKeyboardFloatingMode == true) {
+                        floatingKeyboardBinding?.let { applyFloatingKeyboardBackgroundIfNeeded(it) }
                     }
                     ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
                         val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
@@ -3938,6 +4097,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val mainView = mainLayoutBinding ?: return
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             floatingKeyboardView?.dismiss()
+            releaseFloatingKeyboardBackgroundVideoPlayer()
             return
         }
         if (isFloatingMode) {
@@ -3947,6 +4107,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainView.root.layoutParams = params
             }
             mainView.root.alpha = 0f
+            clearNormalKeyboardBackgroundForFloatingMode(mainView)
             floatingKeyboardView?.apply {
                 Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode ${this.isShowing}")
                 if (!this.isShowing) {
@@ -3977,6 +4138,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
             }
+            floatingKeyboardBinding?.let { floatingView ->
+                applyFloatingKeyboardBackgroundIfNeeded(floatingView)
+            }
             syncFloatingKeyboardContentForMode(qwertyMode.value)
             renderCurrentKeyboardStateOnActiveSurface()
             updateFloatingKeyboardSizeForMode(qwertyMode.value)
@@ -3984,6 +4148,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.root.alpha = 1f
             setKeyboardSizeForHeightForFloatingMode(mainView)
             floatingKeyboardView?.dismiss()
+            releaseFloatingKeyboardBackgroundVideoPlayer()
+            applyKeyboardBackgroundIfNeeded(mainView, skipForFloatingMode = false)
             renderCurrentKeyboardStateOnActiveSurface()
         }
     }
@@ -4391,6 +4557,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 params.height = heightPx
                 floatingView.floatingKeyboardContainer.layoutParams = params
             }
+        updateFloatingKeyboardBackgroundBounds(floatingView, heightPx)
         val savedX = appPreference.keyboard_floating_position_x
         val savedY = appPreference.keyboard_floating_position_y
         popupWindow.update(savedX, savedY, widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
@@ -9029,6 +9196,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     floatingDockView.setText(showInputModeText)
                     floatingKeyboardView?.dismiss()
+                    releaseFloatingKeyboardBackgroundVideoPlayer()
                     (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                         params.width = ViewGroup.LayoutParams.MATCH_PARENT
                         params.height = getScreenHeight(this@IMEService)
@@ -13643,6 +13811,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             layoutManager = null
             adapter = null
         }
+        releaseFloatingKeyboardBackgroundVideoPlayer()
         mainLayoutBinding = null
         floatingKeyboardBinding = null
         closeConnection()
