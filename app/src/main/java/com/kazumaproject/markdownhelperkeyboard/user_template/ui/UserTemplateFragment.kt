@@ -26,6 +26,7 @@ import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -33,6 +34,7 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentUserTemplate
 import com.kazumaproject.markdownhelperkeyboard.user_template.adapter.UserTemplateAdapter
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import java.io.FileOutputStream
 
 @AndroidEntryPoint
@@ -400,9 +402,33 @@ class UserTemplateFragment : Fragment() {
                             posIndex = updatedPosIndex,
                             posScore = updatedPosScore
                         )
-                    viewModel.update(updatedTemplate)
-                    Toast.makeText(context, getString(R.string.updated_string), Toast.LENGTH_SHORT)
-                        .show()
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        when (viewModel.updateSafely(updatedTemplate)) {
+                            UserTemplateUpdateResult.Updated -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.updated_string),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            UserTemplateUpdateResult.Duplicate -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.duplicate_item_exists),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            UserTemplateUpdateResult.Error -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.update_failed),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
                 }
             }
             .setNegativeButton(getString(R.string.cancel_string), null)

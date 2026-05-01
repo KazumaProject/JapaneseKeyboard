@@ -33,6 +33,7 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentLearnDiction
 import com.kazumaproject.markdownhelperkeyboard.learning.adapter.LearnDictionaryAdapter
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.LearnUpdateResult
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.first
@@ -385,7 +386,25 @@ class DictionaryLearnFragment : Fragment() {
             binding.progressBarLearnDictionaryFragment.isVisible = true
             val updatedEntity =
                 originalEntity.copy(input = newInput, out = newOutput, score = newScore)
-            learnRepository.update(updatedEntity)
+            when (learnRepository.updateSafely(updatedEntity)) {
+                LearnUpdateResult.Updated -> {
+                    Toast.makeText(context, getString(R.string.updated_string), Toast.LENGTH_SHORT)
+                        .show()
+                }
+
+                LearnUpdateResult.Duplicate -> {
+                    Toast.makeText(
+                        context,
+                        getString(R.string.duplicate_item_exists),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+
+                LearnUpdateResult.Error -> {
+                    Toast.makeText(context, getString(R.string.update_failed), Toast.LENGTH_SHORT)
+                        .show()
+                }
+            }
             binding.progressBarLearnDictionaryFragment.isVisible = false
         }
     }

@@ -23,6 +23,7 @@ class StandardFlickInputController(context: Context) {
     }
 
     var listener: StandardFlickListener? = null
+    private var popupWindowAnchorProvider: (() -> View?)? = null
     private var characterMap: Map<FlickDirection, String> = emptyMap()
     private var anchorView: View? = null
     private var segmentedDrawable: SegmentedBackgroundDrawable? = null
@@ -58,6 +59,10 @@ class StandardFlickInputController(context: Context) {
         this.popupBackgroundColor = theme.segmentHighlightGradientStartColor
         this.popupTextColor = theme.textColor
         this.popupStrokeColor = theme.separatorColor
+    }
+
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -122,15 +127,14 @@ class StandardFlickInputController(context: Context) {
     }
 
     private fun showPopup(direction: FlickDirection) {
-        val currentAnchor = anchorView ?: return
-
-        // ★★★ START: 修正箇所 ★★★
-        // PopupWindowを表示する前に、アンカービューがウィンドウにアタッチされているか必ず確認する。
-        // これで BadTokenException クラッシュを回避できる。
-        if (!currentAnchor.isAttachedToWindow) {
+        val keyAnchor = anchorView ?: return
+        val windowAnchor = popupWindowAnchorProvider?.invoke() ?: keyAnchor
+        if (!isAnchorReady(keyAnchor, windowAnchor)) {
+            if (popupWindow.isShowing) {
+                popupWindow.dismiss()
+            }
             return
         }
-        // ★★★ END: 修正箇所 ★★★
 
         popupView.setColors(popupBackgroundColor, popupTextColor, popupStrokeColor)
 
@@ -144,9 +148,8 @@ class StandardFlickInputController(context: Context) {
         val baseOffsetY = 10
         val flickUpAdditionalOffset = 80
 
-        val location = IntArray(2)
-        currentAnchor.getLocationInWindow(location)
-        val x = location[0] + (currentAnchor.width / 2) - (popupView.viewSize / 2)
+        val location = getLocationRelativeToWindowAnchor(keyAnchor, windowAnchor)
+        val x = location[0] + (keyAnchor.width / 2) - (popupView.viewSize / 2)
         var y = location[1] - popupView.viewSize - baseOffsetY
 
         if (direction == FlickDirection.UP) {
@@ -154,9 +157,13 @@ class StandardFlickInputController(context: Context) {
         }
 
         if (popupWindow.isShowing) {
-            popupWindow.update(x, y, -1, -1)
+            runCatching {
+                popupWindow.update(x, y, -1, -1)
+            }
         } else {
-            popupWindow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
+            runCatching {
+                popupWindow.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, x, y)
+            }
         }
     }
 
@@ -184,5 +191,12 @@ class StandardFlickInputController(context: Context) {
 
     fun cancel() {
         dismissPopup()
+    }
+
+    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
+        if (!keyAnchor.isAttachedToWindow) return false
+        if (windowAnchor == null) return false
+        if (!windowAnchor.isAttachedToWindow) return false
+        return windowAnchor.windowToken != null
     }
 }

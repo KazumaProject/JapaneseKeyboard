@@ -519,6 +519,14 @@ class UserDictionaryFragment : Fragment() {
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
+
+                            UserWordUpdateResult.Error -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.update_failed),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
                         }
                     }
                 }

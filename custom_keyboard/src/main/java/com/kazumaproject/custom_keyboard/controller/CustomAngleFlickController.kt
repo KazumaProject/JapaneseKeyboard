@@ -39,6 +39,8 @@ class CustomAngleFlickController(
 
     var listener: FlickListener? = null
 
+    private var popupWindowAnchorProvider: (() -> View?)? = null
+
     private val popupView = CustomAngleFlickPopupView(context)
     private val popupWindow = PopupWindow(
         popupView,
@@ -110,6 +112,10 @@ class CustomAngleFlickController(
         longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
+    }
+
     private fun updateEffectiveRangesForMap(
         map: Map<CircularFlickDirection, FlickAction>
     ) {
@@ -124,6 +130,7 @@ class CustomAngleFlickController(
     }
 
     fun cancel() {
+        hidePopup()
         controllerScope.cancel()
     }
 
@@ -284,21 +291,38 @@ class CustomAngleFlickController(
     }
 
     private fun showPopup() {
-        val currentAnchor = anchorView ?: return
+        val keyAnchor = anchorView ?: return
+        val windowAnchor = popupWindowAnchorProvider?.invoke() ?: keyAnchor
+        if (!isAnchorReady(keyAnchor, windowAnchor)) {
+            if (popupWindow.isShowing) {
+                popupWindow.dismiss()
+            }
+            return
+        }
         popupWindow.width = popupView.preferredWidth
         popupWindow.height = popupView.preferredHeight
 
-        val location = IntArray(2)
-        currentAnchor.getLocationInWindow(location)
+        val location = getLocationRelativeToWindowAnchor(keyAnchor, windowAnchor)
 
-        val x = location[0] + (currentAnchor.width / 2) - (popupWindow.width / 2)
-        val y = location[1] + (currentAnchor.height / 2) - (popupWindow.height / 2)
+        val x = location[0] + (keyAnchor.width / 2) - (popupWindow.width / 2)
+        val y = location[1] + (keyAnchor.height / 2) - (popupWindow.height / 2)
 
         if (!popupWindow.isShowing) {
-            popupWindow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
+            runCatching {
+                popupWindow.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, x, y)
+            }
         } else {
-            popupWindow.update(x, y, popupWindow.width, popupWindow.height)
+            runCatching {
+                popupWindow.update(x, y, popupWindow.width, popupWindow.height)
+            }
         }
+    }
+
+    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
+        if (!keyAnchor.isAttachedToWindow) return false
+        if (windowAnchor == null) return false
+        if (!windowAnchor.isAttachedToWindow) return false
+        return windowAnchor.windowToken != null
     }
 
     private fun hidePopup() {
