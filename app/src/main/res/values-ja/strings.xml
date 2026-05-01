@@ -457,7 +457,9 @@
     <string name="there_is_no_word_to_export">エクスポートする単語がありません。</string>
     <string name="is_registered_string"> を登録しました。</string>
     <string name="user_dictionary_duplicate_entry">この単語と読みはすでに登録されています。</string>
+    <string name="duplicate_item_exists">同じ項目が既に存在します</string>
     <string name="updated_string">更新しました。</string>
+    <string name="update_failed">更新に失敗しました</string>
     <string name="deleted_string">削除しました。</string>
     <string name="score_string">スコア</string>
     <string name="part_of_speech_string">品詞</string>
