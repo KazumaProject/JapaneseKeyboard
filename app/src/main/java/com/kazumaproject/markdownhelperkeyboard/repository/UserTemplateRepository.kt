@@ -32,6 +32,10 @@ class UserTemplateRepository @Inject constructor(
         userTemplateDao.update(userTemplate)
     }
 
+    suspend fun existsDuplicateForUpdate(word: String, reading: String, excludeId: Int): Boolean {
+        return userTemplateDao.existsDuplicateForUpdate(word, reading, excludeId)
+    }
+
     suspend fun delete(id: Int) {
         userTemplateDao.delete(id)
     }
