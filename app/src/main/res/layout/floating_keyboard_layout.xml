@@ -7,15 +7,46 @@
     android:background="@drawable/rounded_corners_bg"
     android:fitsSystemWindows="true">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <FrameLayout
+        android:id="@+id/floating_keyboard_background_container"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="306dp"
+        android:clickable="false"
+        android:focusable="false">
+
+        <androidx.media3.ui.PlayerView
+            android:id="@+id/floating_keyboard_background_video"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
+            android:visibility="gone"
+            app:keep_content_on_player_reset="true"
+            app:surface_type="texture_view"
+            app:shutter_background_color="@android:color/transparent"
+            app:use_controller="false" />
+
+        <ImageView
+            android:id="@+id/floating_keyboard_background_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:contentDescription="@null"
+            android:focusable="false"
+            android:scaleType="fitCenter"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/floating_keyboard_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/suggestionView_parent"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            app:layout_constraintBottom_toTopOf="@+id/keyboard_view_floating">
+            app:layout_constraintBottom_toTopOf="@+id/floating_keyboard_container">
 
             <!-- RecyclerView for Suggestions -->
             <androidx.recyclerview.widget.RecyclerView
@@ -47,14 +78,36 @@
                 app:layout_constraintTop_toTopOf="parent" />
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <com.kazumaproject.tenkey.TenKey
-            android:id="@+id/keyboard_view_floating"
+        <FrameLayout
+            android:id="@+id/floating_keyboard_container"
             android:layout_width="match_parent"
             android:layout_height="200dp"
             android:layout_marginBottom="16dp"
-            android:clickable="true"
-            android:focusable="true"
-            app:layout_constraintBottom_toTopOf="@+id/drag_handle" />
+            app:layout_constraintBottom_toTopOf="@+id/drag_handle">
+
+            <com.kazumaproject.tenkey.TenKey
+                android:id="@+id/keyboard_view_floating"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
+                android:id="@+id/qwerty_view_floating"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone" />
+
+            <com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+                android:id="@+id/custom_layout_floating"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone" />
+        </FrameLayout>
 
         <com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
             android:id="@+id/floating_symbol_keyboard"
@@ -71,6 +124,7 @@
             android:layout_width="match_parent"
             android:layout_height="200dp"
             android:layout_gravity="bottom"
+            android:layout_marginBottom="16dp"
             android:visibility="gone"
             app:layout_constraintBottom_toTopOf="@+id/drag_handle" />
 

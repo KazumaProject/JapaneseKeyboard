@@ -76,6 +76,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
 
+    private var popupWindowAnchorProvider: (() -> View?)? = null
+
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
@@ -133,6 +135,15 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
+    }
+
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
+        flickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
+        crossFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
+        standardFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
+
+
     }
 
     fun setFlickSensitivityValue(sensitivity: Int) {
@@ -901,6 +912,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 if (!circularKeyMapsList.isNullOrEmpty()) {
                     val controller = CustomAngleFlickController(context, flickSensitivity).apply {
                         setLongPressTimeout(longPressTimeout)
+                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
                         val surfaceContainerLow =
@@ -1058,6 +1070,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 if (flickActionMap != null) {
                     val controller = CrossFlickInputController(context).apply {
                         setLongPressTimeout(longPressTimeout)
+                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         this.listener = object : CrossFlickInputController.CrossFlickListener {
                             override fun onPress(action: KeyAction) {
                                 this@FlickKeyboardView.listener?.onPress(action)
@@ -1201,6 +1214,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
 
                     val controller = StandardFlickInputController(context).apply {
+                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         this.listener =
                             object : StandardFlickInputController.StandardFlickListener {
                                 override fun onPress(character: String) {
@@ -1300,6 +1314,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 if (flickActionMap != null) {
                     val controller = CrossFlickInputController(context, flickSensitivity).apply {
                         setLongPressTimeout(longPressTimeout)
+                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         val isDarkTheme = context.isDarkThemeOn()
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)

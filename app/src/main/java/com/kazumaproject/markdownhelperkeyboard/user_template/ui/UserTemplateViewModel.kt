@@ -1,12 +1,14 @@
 package com.kazumaproject.markdownhelperkeyboard.user_template.ui
 
 import android.app.Application
+import android.database.sqlite.SQLiteConstraintException
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.viewModelScope
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -44,6 +46,27 @@ class UserTemplateViewModel @Inject constructor(
         repository.update(userTemplate)
     }
 
+    suspend fun updateSafely(userTemplate: UserTemplate): UserTemplateUpdateResult {
+        return try {
+            if (repository.existsDuplicateForUpdate(
+                    userTemplate.word,
+                    userTemplate.reading,
+                    userTemplate.id
+                )
+            ) {
+                return UserTemplateUpdateResult.Duplicate
+            }
+            repository.update(userTemplate)
+            UserTemplateUpdateResult.Updated
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: SQLiteConstraintException) {
+            UserTemplateUpdateResult.Duplicate
+        } catch (_: Exception) {
+            UserTemplateUpdateResult.Error
+        }
+    }
+
     fun delete(id: Int) = viewModelScope.launch {
         repository.delete(id)
     }
@@ -51,4 +74,10 @@ class UserTemplateViewModel @Inject constructor(
     fun deleteAll() = viewModelScope.launch {
         repository.deleteAll()
     }
+}
+
+enum class UserTemplateUpdateResult {
+    Updated,
+    Duplicate,
+    Error,
 }

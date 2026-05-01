@@ -47,6 +47,8 @@ class CrossFlickInputController(
 
     var listener: CrossFlickListener? = null
 
+    private var popupWindowAnchorProvider: (() -> View?)? = null
+
     private var inputMode: InputMode = InputMode.ACTION
     private var anchorView: View? = null
     private var initialTouchPoint = PointF(0f, 0f)
@@ -98,6 +100,10 @@ class CrossFlickInputController(
     // 長押し判定までの待機時間を変更する。FlickKeyboardView から端末設定に合わせて呼ばれる。
     fun setLongPressTimeout(timeoutMillis: Long) {
         longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
+    }
+
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
     }
 
     // コントローラを破棄する。ビューのデタッチやキーボードビューの再構築時に FlickKeyboardView から呼ばれる。
@@ -404,7 +410,8 @@ class CrossFlickInputController(
 
         val flickAction = resolveAction(direction) ?: return
         val anchor = anchorView ?: return
-        if (!anchor.isAttachedToWindow) return
+        val windowAnchor = resolveWindowAnchor(anchor)
+        if (!isAnchorReady(anchor, windowAnchor)) return
 
         val popupView = CrossFlickPopupView(context).apply {
             setCells(mapOf(direction to flickAction), anchor.width, anchor.height)
@@ -420,8 +427,7 @@ class CrossFlickInputController(
             exitTransition = null
         }
 
-        val location = IntArray(2)
-        anchor.getLocationInWindow(location)
+        val location = getLocationRelativeToWindowAnchor(anchor, windowAnchor)
         val x = location[0]
         val y = location[1]
 
@@ -436,9 +442,15 @@ class CrossFlickInputController(
             else -> y
         }
 
-        popupWindow.showAtLocation(anchor, Gravity.NO_GRAVITY, popupX, popupY)
-        actionPopupWindows[direction] = popupWindow
-        actionPopupViews[direction] = popupView
+        val shown = runCatching {
+            popupWindow.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, popupX, popupY)
+            true
+        }.getOrDefault(false)
+
+        if (shown) {
+            actionPopupWindows[direction] = popupWindow
+            actionPopupViews[direction] = popupView
+        }
     }
 
     // ACTION モードの長押し発動時に全方向のポップアップをまとめて表示する。
@@ -551,10 +563,14 @@ class CrossFlickInputController(
 
         val popupToShow = directionalPopupMap[direction] ?: return
         val currentAnchor = anchorView ?: return
-        if (!currentAnchor.isAttachedToWindow) return
+        val windowAnchor = resolveWindowAnchor(currentAnchor)
+        if (!isAnchorReady(currentAnchor, windowAnchor)) {
+            currentVisibleDirectionalPopup = null
+            currentVisibleDirectional = null
+            return
+        }
 
-        val location = IntArray(2)
-        currentAnchor.getLocationInWindow(location)
+        val location = getLocationRelativeToWindowAnchor(currentAnchor, windowAnchor)
         val anchorX = location[0]
         val anchorY = location[1]
         val keyWidth = currentAnchor.width
@@ -595,15 +611,27 @@ class CrossFlickInputController(
             }
         }
 
-        popupToShow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
-        currentVisibleDirectionalPopup = popupToShow
-        currentVisibleDirectional = direction
+        val shown = runCatching {
+            popupToShow.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, x, y)
+            true
+        }.getOrDefault(false)
+
+        if (shown) {
+            currentVisibleDirectionalPopup = popupToShow
+            currentVisibleDirectional = direction
+        }
     }
 
     // TEXT モードの長押し発動時にグリッドポップアップを表示する。既に表示中なら位置を更新する。
     private fun showGridPopup() {
         val currentAnchor = anchorView ?: return
-        if (!currentAnchor.isAttachedToWindow) return
+        val windowAnchor = resolveWindowAnchor(currentAnchor)
+        if (!isAnchorReady(currentAnchor, windowAnchor)) {
+            if (gridPopup.isShowing) {
+                gridPopup.dismiss()
+            }
+            return
+        }
 
         val popupView = gridPopup.contentView as CrossFlickPopupView
         popupColorTheme?.let { popupView.setColors(it) }
@@ -614,8 +642,7 @@ class CrossFlickInputController(
         popupView.setCells(actionMap, currentAnchor.width, currentAnchor.height)
         popupView.highlightDirection(currentDirection)
 
-        val location = IntArray(2)
-        currentAnchor.getLocationInWindow(location)
+        val location = getLocationRelativeToWindowAnchor(currentAnchor, windowAnchor)
         popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
 
         val x = location[0] + currentAnchor.width / 2 - popupView.measuredWidth / 2
@@ -625,9 +652,13 @@ class CrossFlickInputController(
         gridPopup.height = WindowManager.LayoutParams.WRAP_CONTENT
 
         if (!gridPopup.isShowing) {
-            gridPopup.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
+            runCatching {
+                gridPopup.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, x, y)
+            }
         } else {
-            gridPopup.update(x, y, -1, -1)
+            runCatching {
+                gridPopup.update(x, y, -1, -1)
+            }
         }
     }
 
@@ -682,5 +713,16 @@ class CrossFlickInputController(
     private fun FlickAction.toKeyAction(): KeyAction = when (this) {
         is FlickAction.Input -> KeyAction.Text(char)
         is FlickAction.Action -> action
+    }
+
+    private fun resolveWindowAnchor(keyAnchor: View): View? {
+        return popupWindowAnchorProvider?.invoke() ?: keyAnchor
+    }
+
+    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
+        if (!keyAnchor.isAttachedToWindow) return false
+        if (windowAnchor == null) return false
+        if (!windowAnchor.isAttachedToWindow) return false
+        return windowAnchor.windowToken != null
     }
 }

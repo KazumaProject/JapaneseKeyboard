@@ -20,6 +20,9 @@ interface LearnDao {
     @Query("SELECT * FROM learn_table WHERE input = :input AND out = :output LIMIT 1")
     suspend fun findByInputAndOutput(input: String, output: String): LearnEntity?
 
+    @Query("SELECT EXISTS(SELECT 1 FROM learn_table WHERE input = :input AND out = :output AND id != :excludeId)")
+    suspend fun existsDuplicateForUpdate(input: String, output: String, excludeId: Int): Boolean
+
     @Query("SELECT * FROM learn_table ORDER BY score ASC")
     fun all(): Flow<List<LearnEntity>>
 
