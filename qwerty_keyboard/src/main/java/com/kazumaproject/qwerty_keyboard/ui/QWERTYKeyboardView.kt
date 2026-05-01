@@ -96,8 +96,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     /** For each pointer, store a coroutine Job to detect long‐press. */
     private val longPressJobs = SparseArray<Job>()
 
-    /** CoroutineScope on main dispatcher. */
-    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    /** StateFlow collectors are tied to the current View attach lifecycle. */
+    private var renderScope: CoroutineScope? = null
+
+    /** Touch jobs are also recreated after PopupWindow detach / reattach. */
+    private var touchScope: CoroutineScope? = null
 
     /** If a second finger cancels the first, we suppress that first pointer until it lifts. */
     private var suppressedPointerId: Int? = null
@@ -224,40 +227,98 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
 
-        scope.launch {
-            launch {
-                capsLockState.collectLatest { state ->
-                    updateCapsLockUI(state)
-                }
-            }
-            launch {
-                qwertyMode.collectLatest { state ->
-                    Log.d("qwertyMode", "$state")
-                    // ★ レイアウトとコンテンツを適用するメソッドを呼び出し
-                    applyLayoutForMode(state)
-                    applyContentForMode(state)
-                }
-            }
-            launch {
-                romajiModeState.collectLatest { romajiMode ->
-                    // モード変更時にレイアウトとコンテンツを再適用
-                    applyLayoutForMode(qwertyMode.value)
-                    applyContentForMode(qwertyMode.value)
+        touchScope = createViewScope()
+    }
 
-                    if (romajiMode) {
-                        binding.keySpace.text =
-                            resources.getString(com.kazumaproject.core.R.string.space_japanese)
-                        binding.key123.text =
-                            resources.getString(com.kazumaproject.core.R.string.string_123)
-                        binding.keyKuten.text = "。"
-                        binding.keyTouten.text = "、"
-                    } else {
-                        binding.keySpace.text =
-                            resources.getString(com.kazumaproject.core.R.string.space_english)
-                        binding.keyKuten.text = "."
-                        binding.keyTouten.text = ","
-                    }
-                }
+    private fun createViewScope(): CoroutineScope {
+        return CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (touchScope == null) {
+            touchScope = createViewScope()
+        }
+        val enterKeyText = binding.keyReturn.text
+        val spaceKeyText = binding.keySpace.text
+        startStateCollectors()
+        renderCurrentStateImmediately(enterKeyText, spaceKeyText)
+    }
+
+    override fun onDetachedFromWindow() {
+        stopStateCollectors()
+        stopTouchScope()
+        super.onDetachedFromWindow()
+    }
+
+    private fun startStateCollectors() {
+        if (renderScope != null) return
+
+        val newScope = createViewScope()
+        renderScope = newScope
+
+        newScope.launch {
+            capsLockState.collectLatest { state ->
+                updateCapsLockUI(state)
+                renderShiftKeyDrawable()
+            }
+        }
+        newScope.launch {
+            qwertyMode.collectLatest { state ->
+                Log.d("qwertyMode", "$state")
+                applyLayoutForMode(state)
+                applyContentForMode(state)
+                renderShiftKeyDrawable()
+            }
+        }
+        newScope.launch {
+            romajiModeState.collectLatest { romajiMode ->
+                applyLayoutForMode(qwertyMode.value)
+                applyContentForMode(qwertyMode.value)
+                applyRomajiModeLabels(romajiMode)
+                renderShiftKeyDrawable()
+            }
+        }
+    }
+
+    private fun stopStateCollectors() {
+        renderScope?.cancel()
+        renderScope = null
+    }
+
+    private fun stopTouchScope() {
+        for (i in 0 until longPressJobs.size()) {
+            longPressJobs.valueAt(i)?.cancel()
+        }
+        longPressJobs.clear()
+        touchScope?.cancel()
+        touchScope = null
+    }
+
+    private fun renderCurrentStateImmediately(
+        enterKeyText: CharSequence? = binding.keyReturn.text,
+        spaceKeyText: CharSequence? = binding.keySpace.text,
+    ) {
+        applyLayoutForMode(qwertyMode.value)
+        applyContentForMode(qwertyMode.value)
+        applyRomajiModeLabels(romajiModeState.value)
+        updateCapsLockUI(capsLockState.value)
+        renderShiftKeyDrawable()
+        binding.keyReturn.text = enterKeyText
+        binding.keySpace.text = spaceKeyText
+        refreshSpecialKeyIconSizesWhenLaidOut()
+    }
+
+    private fun applyRomajiModeLabels(romajiMode: Boolean) {
+        binding.apply {
+            if (romajiMode) {
+                keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_japanese)
+                keyKuten.text = "。"
+                keyTouten.text = "、"
+            } else {
+                keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
+                keyKuten.text = "."
+                keyTouten.text = ","
             }
         }
     }
@@ -1362,11 +1423,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         return true
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        scope.cancel()
-    }
-
     private fun setToggleShiftState(view: View) {
         if (view.id == binding.keyShift.id) {
             if (capsLockState.value.capsLockOn || capsLockState.value.shiftOn) {
@@ -1454,9 +1510,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             switchRomajiEnglish.isVisible = state.showRomajiEnglishSwitchKey
         }
 
-        // StateFlow の collectLatest 経由で applyContentForMode が呼ばれるが、
-        // 値が変化しなかったケースに備えて Shift drawable も明示的に再評価する。
+        // Floating PopupWindow の detach 中は collector が止まっているため、
+        // StateFlow の emit だけに依存せず、渡された状態をこの場で描画する。
+        applyLayoutForMode(state.qwertyMode)
+        applyContentForMode(state.qwertyMode)
+        applyRomajiModeLabels(state.romajiMode)
+        updateCapsLockUI(state.capsLockState)
         renderShiftKeyDrawable()
+        binding.apply {
+            keyReturn.text = state.enterKeyText
+            keySpace.text = state.spaceKeyText
+            switchRomajiEnglish.isVisible = state.showRomajiEnglishSwitchKey
+        }
         refreshSpecialKeyIconSizesWhenLaidOut()
     }
 
@@ -1834,7 +1899,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun scheduleLongPressForPointer(pointerId: Int, view: View) {
         cancelLongPressForPointer(pointerId)
-        val job = scope.launch {
+        val activeTouchScope = touchScope ?: createViewScope().also { touchScope = it }
+        val job = activeTouchScope.launch {
             delay(longPressTimeout)
             val currentView = pointerButtonMap[pointerId]
             if (currentView == view) {
