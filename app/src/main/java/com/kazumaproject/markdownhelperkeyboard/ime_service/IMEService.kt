@@ -7193,10 +7193,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d("Configuring floating FlickKeyboardView mirror surface")
         }
         flickView.setPopupWindowAnchorProvider {
-            if (isFloatingView) {
-                floatingKeyboardBinding?.root ?: window.window?.decorView
+            window.window?.decorView ?: if (isFloatingView) {
+                floatingKeyboardBinding?.root
             } else {
-                window.window?.decorView ?: mainView.root
+                mainView.root
             }
         }
         flickView.applyKeyboardTheme(
