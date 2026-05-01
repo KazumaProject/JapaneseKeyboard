@@ -688,6 +688,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     /**
      * キーの文字内容（ラベル、右上の文字など）を適用するメソッド
+     *
+     * 注意: keyShift の drawable はここでは直接 setImageResource を呼ばず、
+     * [renderShiftKeyDrawable] に集約して上書き競合を避ける。
      */
     private fun applyContentForMode(mode: QWERTYMode) {
         when (mode) {
@@ -697,7 +700,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         defaultQWERTYButtonsRoman.forEach { it.topRightChar = null }
                     }
 
-                    keyShift.setImageResource(com.kazumaproject.core.R.drawable.shift_24px)
                     key123.text = resources.getString(com.kazumaproject.core.R.string.string_123)
 
                     // 右上の文字の更新ロジック
@@ -708,7 +710,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
             QWERTYMode.Number -> {
                 binding.apply {
-                    keyShift.setImageResource(com.kazumaproject.core.R.drawable.qwerty_symbol)
                     key123.text = if (romajiModeState.value) {
                         resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
                     } else {
@@ -738,7 +739,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
             QWERTYMode.Symbol -> {
                 binding.apply {
-                    keyShift.setImageResource(com.kazumaproject.core.R.drawable.qwerty_number)
                     key123.text = if (romajiModeState.value) {
                         resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
                     } else {
@@ -773,47 +773,42 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 defaultQWERTYButtonsRoman.forEach { it.topRightChar = null }
             }
         }
+        // キーラベルが切り替わった後に Shift drawable を再評価する。
+        renderShiftKeyDrawable()
+    }
+
+    /**
+     * Shift キーの drawable を一箇所で決定する関数。
+     *
+     * Number / Symbol mode の場合は Shift キーが Number/Symbol 切替キーとして使われるため、
+     * CapsLockState よりも QWERTYMode の drawable を優先する。
+     * Default mode の場合のみ CapsLock / Shift の状態に応じた drawable を選択する。
+     */
+    private fun renderShiftKeyDrawable() {
+        val drawableRes = when (qwertyMode.value) {
+            QWERTYMode.Number -> com.kazumaproject.core.R.drawable.qwerty_symbol
+            QWERTYMode.Symbol -> com.kazumaproject.core.R.drawable.qwerty_number
+            QWERTYMode.Default -> {
+                val state = capsLockState.value
+                when {
+                    state.capsLockOn -> com.kazumaproject.core.R.drawable.caps_lock
+                    state.shiftOn -> com.kazumaproject.core.R.drawable.shift_fill_24px
+                    else -> com.kazumaproject.core.R.drawable.shift_24px
+                }
+            }
+        }
+        binding.keyShift.setImageResource(drawableRes)
     }
 
     // CapsLock UI update extraction
     private fun updateCapsLockUI(state: CapsLockState) {
-        when {
-            state.shiftOn && state.capsLockOn -> {
-                qwertyButtonMap.keys.forEach { button ->
-                    if (button is AppCompatButton) button.isAllCaps = true
-                    if (button is AppCompatImageButton && button.id == binding.keyShift.id) {
-                        button.setImageResource(com.kazumaproject.core.R.drawable.caps_lock)
-                    }
-                }
-            }
-
-            !state.shiftOn && state.capsLockOn -> {
-                qwertyButtonMap.keys.forEach { button ->
-                    if (button is AppCompatButton) button.isAllCaps = true
-                    if (button is AppCompatImageButton && button.id == binding.keyShift.id) {
-                        button.setImageResource(com.kazumaproject.core.R.drawable.caps_lock)
-                    }
-                }
-            }
-
-            state.shiftOn && !state.capsLockOn -> {
-                qwertyButtonMap.keys.forEach { button ->
-                    if (button is AppCompatButton) button.isAllCaps = true
-                    if (button is AppCompatImageButton && button.id == binding.keyShift.id) {
-                        button.setImageResource(com.kazumaproject.core.R.drawable.shift_fill_24px)
-                    }
-                }
-            }
-
-            else -> {
-                qwertyButtonMap.keys.forEach { button ->
-                    if (button is AppCompatButton) button.isAllCaps = false
-                    if (button is AppCompatImageButton && button.id == binding.keyShift.id) {
-                        button.setImageResource(com.kazumaproject.core.R.drawable.shift_24px)
-                    }
-                }
-            }
+        // 大文字表示の切り替え
+        val allCaps = state.shiftOn || state.capsLockOn
+        qwertyButtonMap.keys.forEach { button ->
+            if (button is AppCompatButton) button.isAllCaps = allCaps
         }
+        // Shift キーの drawable は renderShiftKeyDrawable() に集約。
+        renderShiftKeyDrawable()
     }
 
     private fun updateTopRightCharsForDefaultMode() {
@@ -1415,6 +1410,53 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_japanese)
             keyReturn.text = enterKeyText
         }
+        refreshSpecialKeyIconSizesWhenLaidOut()
+    }
+
+    /**
+     * 現在の QWERTY 表示状態のスナップショットを返す。
+     *
+     * Floating mode と通常モードのように 2 つの QWERTYKeyboardView インスタンス間で
+     * 状態を非破壊的にコピーするために [renderUiState] と組み合わせて利用する。
+     */
+    fun snapshotUiState(): QwertyKeyboardUiState {
+        return QwertyKeyboardUiState(
+            qwertyMode = qwertyMode.value,
+            capsLockState = capsLockState.value,
+            romajiMode = romajiModeState.value,
+            enterKeyText = binding.keyReturn.text?.toString().orEmpty(),
+            spaceKeyText = binding.keySpace.text?.toString().orEmpty(),
+            showRomajiEnglishSwitchKey = binding.switchRomajiEnglish.isVisible
+        )
+    }
+
+    /**
+     * 渡された [state] をそのまま反映する。
+     *
+     * [resetQWERTYKeyboard] のように内部状態を初期化する関数ではない。
+     * - Shift / CapsLock を無条件にクリアしない
+     * - qwertyMode を Default に戻さない
+     *
+     * Floating mode ON / OFF 切り替え時、または surface 再描画時に
+     * もう一方の QWERTYKeyboardView へ現在状態を伝搬する用途で利用する。
+     */
+    fun renderUiState(state: QwertyKeyboardUiState) {
+        // romaji を先に反映してから qwertyMode を反映することで、
+        // applyContentForMode で参照される romajiMode の値が正しい状態で
+        // 各キーラベルが描画されるようにする。
+        _romajiModeState.value = state.romajiMode
+        _qwertyMode.value = state.qwertyMode
+        _capsLockState.value = state.capsLockState
+
+        binding.apply {
+            keyReturn.text = state.enterKeyText
+            keySpace.text = state.spaceKeyText
+            switchRomajiEnglish.isVisible = state.showRomajiEnglishSwitchKey
+        }
+
+        // StateFlow の collectLatest 経由で applyContentForMode が呼ばれるが、
+        // 値が変化しなかったケースに備えて Shift drawable も明示的に再評価する。
+        renderShiftKeyDrawable()
         refreshSpecialKeyIconSizesWhenLaidOut()
     }
 
