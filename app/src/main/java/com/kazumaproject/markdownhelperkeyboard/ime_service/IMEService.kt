@@ -862,6 +862,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var currentDakutenKeyIndex: Int = 0 // 0:^_^, 1:゛゜
     private var currentSpaceKeyIndex: Int = 0 // 0: Space, 1: Convert
     private var currentKatakanaKeyIndex: Int = 0 // 0: SiwtchToNumber, 1: Katakana
+    private var currentInputModeForSession: InputMode = InputMode.ModeJapanese
+    private var currentQwertyRomajiModeForSession: Boolean = true
 
     private var initialX = 0
     private var initialY = 0
@@ -1017,10 +1019,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
 
     private data class KeyboardSurface(
-        val tenKey: TenKey?,
+        val rootView: View,
+        val keyboardView: TenKey?,
         val tabletView: View?,
         val qwertyView: QWERTYKeyboardView?,
         val customLayout: FlickKeyboardView?,
+        val suggestionRecyclerView: RecyclerView?,
         val symbolKeyboard: CustomSymbolKeyboardView?
     )
 
@@ -1652,8 +1656,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
             mainLayoutBinding?.let { mainView ->
-                Timber.d("TenKeyQWERTYMode.Sumire: ${mainView.keyboardView.currentInputMode.value} ${switchQWERTYPassword}")
-                when (mainView.keyboardView.currentInputMode.value) {
+                Timber.d("TenKeyQWERTYMode.Sumire: ${currentInputModeForSession} ${switchQWERTYPassword}")
+                when (currentInputModeForSession) {
                     InputMode.ModeJapanese -> {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         updateKeyboardLayout()
@@ -1662,7 +1666,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     InputMode.ModeEnglish -> {
                         if (switchQWERTYPassword == true) {
                             if (currentInputType in passwordTypesWithOutNumber) {
-                                mainView.qwertyView.resetQWERTYKeyboard()
+                                updateQwertyOnActiveSurface { resetQWERTYKeyboard() }
                                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                             } else {
                                 if (currentInputType !in numberTypes) {
@@ -1694,7 +1698,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (currentInputType in passwordTypesWithOutNumber) {
             if (switchQWERTYPassword == true) {
-                Timber.d("current input type in OnStartView passwordTypesWithOutNumber: [$currentInputType] [$restarting] [${mainLayoutBinding?.keyboardView?.currentInputMode?.value}] [${qwertyMode.value}]")
+                Timber.d("current input type in OnStartView passwordTypesWithOutNumber: [$currentInputType] [$restarting] [${currentInputModeForSession}] [${qwertyMode.value}]")
                 suggestionAdapter?.updateState(
                     TenKeyQWERTYMode.TenKeyQWERTY, emptyList()
                 )
@@ -1716,7 +1720,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (isTablet == true) {
                     mainLayoutBinding?.tabletView?.currentInputMode?.set(InputMode.ModeEnglish)
                 } else {
-                    mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeEnglish)
+                    setCurrentInputModeForSession(InputMode.ModeEnglish)
                 }
             }
         } else {
@@ -1861,7 +1865,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
-                val defaultLetterSize = when (mainView.keyboardView.currentInputMode.value) {
+                val defaultLetterSize = when (currentInputModeForSession) {
                     InputMode.ModeJapanese -> 17f
                     InputMode.ModeEnglish -> 12f
                     InputMode.ModeNumber -> 16f
@@ -1935,10 +1939,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 candidateTabLayout.visibility = View.INVISIBLE
                 shortcutToolbarRecyclerview.isVisible = shortcutTollbarVisibility == true
                 val currentKeyboardType = keyboardOrder.getOrNull(currentKeyboardOrder)
-                if (tenkeyQWERTYSwitchNumber == true && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish && currentKeyboardType == KeyboardType.TENKEY) {
+                if (tenkeyQWERTYSwitchNumber == true && currentInputModeForSession == InputMode.ModeEnglish && currentKeyboardType == KeyboardType.TENKEY) {
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                    mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
-                    mainView.qwertyView.setRomajiMode(false)
+                    setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                    setCurrentQwertyRomajiModeForSession(false)
                     setKeyboardSizeSwitchKeyboard(mainView)
                 }
             }
@@ -2407,7 +2411,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {
-                if (mainView.qwertyView.getRomajiMode()) {
+                if (currentQwertyRomajiModeForSession) {
                     "ja-JP"
                 } else {
                     "en-CA"
@@ -2423,7 +2427,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             isTablet != true -> {
-                when (mainView.keyboardView.currentInputMode.value) {
+                when (currentInputModeForSession) {
                     InputMode.ModeJapanese -> "ja-JP"
                     InputMode.ModeEnglish -> "en-CA"
                     InputMode.ModeNumber -> "ja-JP"
@@ -2904,7 +2908,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             // モードに応じて処理を振り分ける
-            return when (mainView.keyboardView.currentInputMode.value) {
+            return when (currentInputModeForSession) {
                 InputMode.ModeJapanese -> handleJapaneseKeyDown(keyCode, event, mainView)
                 InputMode.ModeEnglish -> handleEnglishKeyDown(keyCode, event, mainView)
                 InputMode.ModeNumber -> handleNumberKeyDown(keyCode, event, mainView)
@@ -3011,7 +3015,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         KeyboardInputMode.SYMBOLS -> InputMode.ModeJapanese
                     }
                     floatingDockView.setText("あ")
-                    mainView.keyboardView.setCurrentMode(inputMode)
+                    setCurrentInputModeForSession(inputMode)
                     showFloatingModeSwitchView("あ")
                     return true
                 }
@@ -3404,7 +3408,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return true
         }
 
-        when (mainView.keyboardView.currentInputMode.value) {
+        when (currentInputModeForSession) {
             InputMode.ModeJapanese -> {
                 if (insertString.isNotEmpty()) {
                     val normalizedInsertString = if (isDefaultRomajiHenkanMap) {
@@ -3694,7 +3698,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         Timber.d("e.isCtrlPressed Space: $inputMode $showInputModeText")
         floatingDockView.setText(showInputModeText)
-        mainView.keyboardView.setCurrentMode(inputMode)
+        setCurrentInputModeForSession(inputMode)
 
         showFloatingModeSwitchView(showInputModeText)
         finishComposingText()
@@ -3712,7 +3716,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val showInputModeText = "あ"
         Timber.d("switchToHiraganaMode: $inputMode $showInputModeText")
         floatingDockView.setText(showInputModeText)
-        mainView.keyboardView.setCurrentMode(inputMode)
+        setCurrentInputModeForSession(inputMode)
         showFloatingModeSwitchView(showInputModeText)
         finishComposingText()
         _inputString.update { "" }
@@ -3720,7 +3724,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun toggleJapaneseEnglishMode(mainView: MainLayoutBinding): Boolean {
-        return when (mainView.keyboardView.currentInputMode.value) {
+        return when (currentInputModeForSession) {
             InputMode.ModeEnglish -> switchToHiraganaMode(mainView)
             else -> switchToEnglishModeFloating(mainView)
         }
@@ -3736,7 +3740,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val showInputModeText = "A"
         Timber.d("switchToEnglishMode (MUHENKAN): $inputMode $showInputModeText")
         floatingDockView.setText(showInputModeText)
-        mainView.keyboardView.setCurrentMode(inputMode)
+        setCurrentInputModeForSession(inputMode)
         showFloatingModeSwitchView(showInputModeText)
         finishComposingText()
         _inputString.update { "" }
@@ -3955,23 +3959,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             syncFloatingKeyboardContentForMode(qwertyMode.value)
-            renderCurrentKeyboardSurface()
+            renderCurrentKeyboardStateOnActiveSurface()
             updateFloatingKeyboardSizeForMode(qwertyMode.value)
         } else {
             mainView.root.alpha = 1f
             setKeyboardSizeForHeightForFloatingMode(mainView)
             floatingKeyboardView?.dismiss()
-            renderCurrentKeyboardSurface()
+            renderCurrentKeyboardStateOnActiveSurface()
         }
     }
 
     private fun getNormalKeyboardSurface(): KeyboardSurface? {
         val mainView = mainLayoutBinding ?: return null
         return KeyboardSurface(
-            tenKey = mainView.keyboardView,
+            rootView = mainView.root,
+            keyboardView = mainView.keyboardView,
             tabletView = mainView.tabletView,
             qwertyView = mainView.qwertyView,
             customLayout = mainView.customLayoutDefault,
+            suggestionRecyclerView = mainView.suggestionRecyclerView,
             symbolKeyboard = mainView.keyboardSymbolView
         )
     }
@@ -3979,10 +3985,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun getFloatingKeyboardSurface(): KeyboardSurface? {
         val floatingView = floatingKeyboardBinding ?: return null
         return KeyboardSurface(
-            tenKey = floatingView.keyboardViewFloating,
+            rootView = floatingView.root,
+            keyboardView = floatingView.keyboardViewFloating,
             tabletView = null,
             qwertyView = floatingView.qwertyViewFloating,
             customLayout = floatingView.customLayoutFloating,
+            suggestionRecyclerView = floatingView.suggestionRecyclerView,
             symbolKeyboard = floatingView.floatingSymbolKeyboard
         )
     }
@@ -3995,8 +4003,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun requireActiveKeyboardSurface(): KeyboardSurface? {
+        return getActiveKeyboardSurface()
+    }
+
     private fun hideKeyboardViews(surface: KeyboardSurface) {
-        surface.tenKey?.isVisible = false
+        surface.keyboardView?.isVisible = false
         surface.tabletView?.isVisible = false
         surface.qwertyView?.isVisible = false
         surface.customLayout?.isVisible = false
@@ -4013,7 +4025,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (!isFloating && isTablet == true && tabletGojuonLayoutPreference == true) {
                     surface.tabletView?.isVisible = true
                 } else {
-                    surface.tenKey?.isVisible = true
+                    surface.keyboardView?.isVisible = true
                 }
             }
 
@@ -4044,6 +4056,120 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mode = qwertyMode.value,
             isFloating = isKeyboardFloatingMode == true
         )
+    }
+
+    private fun updateDynamicKeyOnActiveSurface(
+        keyId: String,
+        stateIndex: Int
+    ) {
+        getActiveKeyboardSurface()
+            ?.customLayout
+            ?.updateDynamicKey(
+                keyId = keyId,
+                stateIndex = stateIndex
+            )
+    }
+
+    private fun renderDynamicKeysOnActiveSurface() {
+        val customLayout = getActiveKeyboardSurface()?.customLayout ?: return
+        customLayout.updateDynamicKey(
+            keyId = "enter_key",
+            stateIndex = currentEnterKeyIndex
+        )
+        customLayout.updateDynamicKey(
+            keyId = "dakuten_toggle_key",
+            stateIndex = currentDakutenKeyIndex
+        )
+        customLayout.updateDynamicKey(
+            keyId = "space_convert_key",
+            stateIndex = currentSpaceKeyIndex
+        )
+        customLayout.updateDynamicKey(
+            keyId = "katakana_toggle_key",
+            stateIndex = currentKatakanaKeyIndex
+        )
+    }
+
+    private fun setInputModeOnActiveSurface(inputMode: InputMode) {
+        getActiveKeyboardSurface()
+            ?.keyboardView
+            ?.setCurrentMode(inputMode)
+    }
+
+    private fun setCurrentInputModeForSession(inputMode: InputMode) {
+        currentInputModeForSession = inputMode
+        setInputModeOnActiveSurface(inputMode)
+    }
+
+    private fun setQwertyRomajiModeOnActiveSurface(enabled: Boolean) {
+        getActiveKeyboardSurface()
+            ?.qwertyView
+            ?.setRomajiMode(enabled)
+    }
+
+    private fun setCurrentQwertyRomajiModeForSession(enabled: Boolean) {
+        currentQwertyRomajiModeForSession = enabled
+        setQwertyRomajiModeOnActiveSurface(enabled)
+    }
+
+    private fun setQwertyRomajiSwitchTextOnActiveSurface(isJapanese: Boolean) {
+        getActiveKeyboardSurface()
+            ?.qwertyView
+            ?.setRomajiEnglishSwitchKeyTextWithStyle(isJapanese)
+    }
+
+    private fun setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(isVisible: Boolean) {
+        getActiveKeyboardSurface()
+            ?.qwertyView
+            ?.setSwitchNumberLayoutKeyVisibility(isVisible)
+    }
+
+    private fun renderQwertyStateOnActiveSurface() {
+        val qwertyView = getActiveKeyboardSurface()?.qwertyView ?: return
+        qwertyView.setRomajiMode(currentQwertyRomajiModeForSession)
+        qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(
+            currentInputModeForSession == InputMode.ModeJapanese
+        )
+        qwertyView.setRomajiEnglishSwitchKeyVisibility(
+            qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji &&
+                    qwertyShowSwitchRomajiEnglishPreference == true
+        )
+    }
+
+    private fun updateQwertyOnActiveSurface(block: QWERTYKeyboardView.() -> Unit) {
+        getActiveKeyboardSurface()
+            ?.qwertyView
+            ?.block()
+    }
+
+    private fun renderCurrentKeyboardStateOnActiveSurface() {
+        renderCurrentKeyboardSurface()
+        setInputModeOnActiveSurface(currentInputModeForSession)
+        renderDynamicKeysOnActiveSurface()
+        renderQwertyStateOnActiveSurface()
+    }
+
+    private fun defaultInputModeFor(inputType: InputTypeForIME): InputMode {
+        return when (inputType) {
+            InputTypeForIME.TextEmailAddress,
+            InputTypeForIME.TextEditTextInWebView,
+            InputTypeForIME.TextPostalAddress,
+            InputTypeForIME.TextWebEmailAddress,
+            InputTypeForIME.TextPassword,
+            InputTypeForIME.TextVisiblePassword,
+            InputTypeForIME.TextWebPassword -> InputMode.ModeEnglish
+
+            InputTypeForIME.Number,
+            InputTypeForIME.NumberDecimal,
+            InputTypeForIME.NumberPassword,
+            InputTypeForIME.NumberSigned,
+            InputTypeForIME.Phone,
+            InputTypeForIME.Date,
+            InputTypeForIME.Datetime,
+            InputTypeForIME.Time -> InputMode.ModeNumber
+
+            else -> InputMode.ModeJapanese
+        }
     }
 
     private fun createSumireKeyboardLayout(): KeyboardLayout {
@@ -4085,6 +4211,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 flickView.setKeyboard(finalLayout)
             }
         }
+    }
+
+    private fun setCustomLayoutOnActiveSurface(layout: KeyboardLayout) {
+        getActiveKeyboardSurface()
+            ?.customLayout
+            ?.setKeyboard(layout)
     }
 
     private fun syncFloatingKeyboardContentForMode(mode: TenKeyQWERTYMode) {
@@ -5808,21 +5940,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val nextType = row.type
                         when (nextType) {
                             KeyboardType.TENKEY -> {
-                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                setCurrentInputModeForSession(InputMode.ModeJapanese)
                             }
 
                             KeyboardType.SUMIRE -> {
-                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                setCurrentInputModeForSession(InputMode.ModeJapanese)
                             }
 
                             KeyboardType.ROMAJI -> {
-                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                                mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
+                                setCurrentInputModeForSession(InputMode.ModeJapanese)
+                                setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(false)
                             }
 
                             KeyboardType.QWERTY -> {
-                                mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                                mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
+                                setCurrentInputModeForSession(InputMode.ModeEnglish)
+                                setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(false)
                             }
 
                             KeyboardType.CUSTOM -> { /* 任意 */
@@ -5856,7 +5988,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardSelectionPopupWindow?.let { popupWindow ->
                 showPopupWindowSafely(
                     popupWindow = popupWindow,
-                    anchorView = mainView.root,
+                    anchorView = requireActiveKeyboardSurface()?.rootView ?: mainView.root,
                     gravity = Gravity.CENTER,
                     x = 0,
                     y = 0,
@@ -6088,7 +6220,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 } else {
                     mainLayoutBinding?.let {
-                        if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                        if (currentInputModeForSession == InputMode.ModeJapanese) {
                             if (isHenkan.get()) return
                             isSpaceKeyLongPressed = true
                             if (hasConvertedKatakana) {
@@ -6154,7 +6286,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val insertString = inputString.value
         if (insertString.isNotEmpty()) {
             mainLayoutBinding?.let {
-                if (it.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                if (currentInputModeForSession == InputMode.ModeJapanese) {
                     if (isHenkan.get()) return
                     isSpaceKeyLongPressed = true
                     if (hasConvertedKatakana) {
@@ -6308,7 +6440,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
-                        keyboardView.setCurrentMode(InputMode.ModeNumber)
+                        setCurrentInputModeForSession(InputMode.ModeNumber)
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
@@ -6321,13 +6453,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         keyboardView.isVisible = false
                         customLayoutDefault.isVisible = false
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                        keyboardView.setCurrentMode(InputMode.ModeEnglish)
+                        setCurrentInputModeForSession(InputMode.ModeEnglish)
+                        setCurrentQwertyRomajiModeForSession(false)
                         val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInEn()
                         qwertyView.resetQWERTYKeyboard(qwertyEnterKeyText)
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
-                        keyboardView.setCurrentMode(InputMode.ModeNumber)
+                        setCurrentInputModeForSession(InputMode.ModeNumber)
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
@@ -6340,7 +6473,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         keyboardView.isVisible = false
                         customLayoutDefault.isVisible = false
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
-                        keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                        setCurrentInputModeForSession(InputMode.ModeJapanese)
+                        setCurrentQwertyRomajiModeForSession(true)
                         val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInJp()
                         qwertyView.setRomajiKeyboard(
                             qwertyEnterKeyText
@@ -6349,7 +6483,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
-                        keyboardView.setCurrentMode(InputMode.ModeNumber)
+                        setCurrentInputModeForSession(InputMode.ModeNumber)
                         customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
@@ -6357,12 +6491,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 KeyboardType.SUMIRE -> {
-                    Timber.d("showKeyboard keyboard: ${this.keyboardView.currentInputMode.value} [$customKeyboardMode]")
+                    Timber.d("showKeyboard keyboard: $currentInputModeForSession [$customKeyboardMode]")
                     if (sumireEnglishQwertyPreference == true && customKeyboardMode == KeyboardInputMode.ENGLISH) {
                         if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                            qwertyView.setSwitchNumberLayoutKeyVisibility(true)
-                            qwertyView.setRomajiMode(false)
+                            setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                            setCurrentQwertyRomajiModeForSession(false)
                             setKeyboardSizeSwitchKeyboard(this)
                             previousTenKeyQWERTYMode = TenKeyQWERTYMode.Sumire
                             qwertyView.isVisible = true
@@ -6374,7 +6508,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             qwertyView.isVisible = false
                             keyboardView.isVisible = false
 
-                            customKeyboardMode = when (keyboardView.currentInputMode.value) {
+                            customKeyboardMode = when (currentInputModeForSession) {
                                 InputMode.ModeJapanese -> {
                                     KeyboardInputMode.HIRAGANA
                                 }
@@ -6415,7 +6549,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
 
-                        customKeyboardMode = when (keyboardView.currentInputMode.value) {
+                        customKeyboardMode = when (currentInputModeForSession) {
                             InputMode.ModeJapanese -> {
                                 KeyboardInputMode.HIRAGANA
                             }
@@ -6442,14 +6576,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         //_tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                     }
                     customLayoutDefault.isVisible = true
-                    keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                    setCurrentInputModeForSession(InputMode.ModeJapanese)
                     qwertyView.isVisible = false
                     keyboardView.isVisible = false
                 }
             }
             suggestionRecyclerView.isVisible = true
             syncFloatingKeyboardContentForMode(qwertyMode.value)
-            renderCurrentKeyboardSurface()
+            renderCurrentKeyboardStateOnActiveSurface()
             updateFloatingKeyboardSizeForMode(qwertyMode.value)
         }
     }
@@ -6466,21 +6600,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             TenKeyQWERTYMode.TenKeyQWERTYRomaji -> {}
             TenKeyQWERTYMode.Sumire -> {
                 Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
-
-                mainLayoutBinding?.customLayoutDefault?.apply {
-                    updateDynamicKey(
-                        keyId = "enter_key", stateIndex = currentEnterKeyIndex
-                    )
-                    updateDynamicKey(
-                        keyId = "dakuten_toggle_key", stateIndex = currentDakutenKeyIndex
-                    )
-                    updateDynamicKey(
-                        keyId = "space_convert_key", stateIndex = currentSpaceKeyIndex
-                    )
-                    updateDynamicKey(
-                        keyId = "katakana_toggle_key", stateIndex = currentKatakanaKeyIndex
-                    )
-                }
+                renderDynamicKeysOnActiveSurface()
             }
 
             TenKeyQWERTYMode.Number -> {
@@ -6489,6 +6609,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         }
         syncFloatingKeyboardContentForMode(qwertyMode.value)
+        renderCurrentKeyboardStateOnActiveSurface()
     }
 
     private fun applyCircularSlotActionSettings(
@@ -6512,7 +6633,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setInitialKeyboardTab()
                             setKeyboardTab(0)
                             mainView.customLayoutDefault.isVisible = true
-                            mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                            setCurrentInputModeForSession(InputMode.ModeJapanese)
                             mainView.qwertyView.isVisible = false
                             mainView.keyboardView.isVisible = false
                         }
@@ -6522,8 +6643,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val insertString = inputString.value
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         mainLayoutBinding?.let { mainView ->
-                            mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
-                            mainView.qwertyView.setRomajiMode(false)
+                            setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                            setCurrentQwertyRomajiModeForSession(false)
                             if (insertString.isEmpty()) {
                                 setKeyboardSizeSwitchKeyboard(mainView)
                             } else {
@@ -6534,7 +6655,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
-                        mainLayoutBinding?.customLayoutDefault?.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                        setCustomLayoutOnActiveSurface(KeyboardDefaultLayouts.createNumberLayout())
                     }
 
                 }
@@ -6565,7 +6686,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             ),
                             customKeyboardMode
                         )
-                        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+                        setCustomLayoutOnActiveSurface(finalLayout)
                     }
 
                     KeyboardInputMode.ENGLISH -> {
@@ -6573,9 +6694,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             val insertString = inputString.value
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                             mainLayoutBinding?.let { mainView ->
-                                mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
-                                mainView.qwertyView.setRomajiMode(false)
-                                mainView.qwertyView.setDefaultView()
+                                setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                                setCurrentQwertyRomajiModeForSession(false)
+                                updateQwertyOnActiveSurface { setDefaultView() }
                                 if (insertString.isEmpty()) {
                                     setKeyboardSizeSwitchKeyboard(mainView)
                                 } else {
@@ -6603,7 +6724,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 ),
                                 customKeyboardMode
                             )
-                            mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+                            setCustomLayoutOnActiveSurface(finalLayout)
                         }
                     }
 
@@ -6627,7 +6748,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             ),
                             customKeyboardMode
                         )
-                        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
+                        setCustomLayoutOnActiveSurface(finalLayout)
                     }
                 }
             }
@@ -6654,10 +6775,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             isCustomLayoutRomajiMode = finalLayout.isRomaji
             withContext(Dispatchers.Main) {
-                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
-                if (isKeyboardFloatingMode == true) {
-                    floatingKeyboardBinding?.customLayoutFloating?.setKeyboard(finalLayout)
-                }
+                setCustomLayoutOnActiveSurface(finalLayout)
             }
         }
     }
@@ -6675,10 +6793,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Timber.d("setKeyboardTab: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
                     isCustomLayoutRomajiMode = finalLayout.isRomaji
                     withContext(Dispatchers.Main) {
-                        mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
-                        if (isKeyboardFloatingMode == true) {
-                            floatingKeyboardBinding?.customLayoutFloating?.setKeyboard(finalLayout)
-                        }
+                        setCustomLayoutOnActiveSurface(finalLayout)
                     }
                 }
                 return@launch
@@ -6690,10 +6805,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d("setKeyboardTab: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
             isCustomLayoutRomajiMode = finalLayout.isRomaji
             withContext(Dispatchers.Main) {
-                mainLayoutBinding?.customLayoutDefault?.setKeyboard(finalLayout)
-                if (isKeyboardFloatingMode == true) {
-                    floatingKeyboardBinding?.customLayoutFloating?.setKeyboard(finalLayout)
-                }
+                setCustomLayoutOnActiveSurface(finalLayout)
             }
         }
     }
@@ -6704,38 +6816,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setSumireKeyboardDakutenKey() {
         // 0と1を交互に切り替える
         currentDakutenKeyIndex = 1
-        mainLayoutBinding?.customLayoutDefault?.apply {
-            updateDynamicKey(
-                keyId = "dakuten_toggle_key", stateIndex = 1
-            )
-        }
+        updateDynamicKeyOnActiveSurface("dakuten_toggle_key", currentDakutenKeyIndex)
     }
 
     private fun setSumireKeyboardEnterKey(index: Int) {
         currentEnterKeyIndex = index
-        mainLayoutBinding?.customLayoutDefault?.apply {
-            updateDynamicKey(
-                keyId = "enter_key", stateIndex = index
-            )
-        }
+        updateDynamicKeyOnActiveSurface("enter_key", currentEnterKeyIndex)
     }
 
     private fun setSumireKeyboardSpaceKey(index: Int) {
         currentSpaceKeyIndex = index
-        mainLayoutBinding?.customLayoutDefault?.apply {
-            updateDynamicKey(
-                keyId = "space_convert_key", stateIndex = index
-            )
-        }
+        updateDynamicKeyOnActiveSurface("space_convert_key", currentSpaceKeyIndex)
     }
 
     private fun setSumireKeyboardSwitchNumberAndKatakanaKey(index: Int) {
         currentKatakanaKeyIndex = index
-        mainLayoutBinding?.customLayoutDefault?.apply {
-            updateDynamicKey(
-                keyId = "katakana_toggle_key", stateIndex = index
-            )
-        }
+        updateDynamicKeyOnActiveSurface("katakana_toggle_key", currentKatakanaKeyIndex)
     }
 
     private fun resetSumireKeyboardDakutenMode() {
@@ -6743,17 +6839,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentEnterKeyIndex = currentInputType.getEnterKeyIndexSumire()
         currentSpaceKeyIndex = 0
         Timber.d("resetSumireKeyboardDakutenMode called: $currentEnterKeyIndex")
-        mainLayoutBinding?.customLayoutDefault?.apply {
-            updateDynamicKey(
-                keyId = "enter_key", stateIndex = currentEnterKeyIndex
-            )
-            updateDynamicKey(
-                keyId = "dakuten_toggle_key", stateIndex = 0
-            )
-            updateDynamicKey(
-                keyId = "space_convert_key", stateIndex = 0
-            )
-        }
+        renderDynamicKeysOnActiveSurface()
     }
 
     private fun showKeyboardPicker() {
@@ -6800,10 +6886,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isFloatingView) {
             Timber.d("Configuring floating FlickKeyboardView mirror surface")
         }
-        if (isFloatingView) {
-            flickView.setPopupWindowAnchorProvider { window.window?.decorView }
-        } else {
-            flickView.setPopupWindowAnchorProvider(null)
+        flickView.setPopupWindowAnchorProvider {
+            requireActiveKeyboardSurface()?.rootView ?: window.window?.decorView
         }
         flickView.applyKeyboardTheme(
             themeMode = keyboardThemeMode ?: "default",
@@ -6988,21 +7072,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customKeyboardMode = KeyboardInputMode.ENGLISH
                         createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeEnglish
-                        mainView.keyboardView.setCurrentMode(inputMode)
+                        setCurrentInputModeForSession(inputMode)
                     }
 
                     KeyAction.SwitchToKanaLayout -> {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeJapanese
-                        mainView.keyboardView.setCurrentMode(inputMode)
+                        setCurrentInputModeForSession(inputMode)
                     }
 
                     KeyAction.SwitchToNumberLayout -> {
                         customKeyboardMode = KeyboardInputMode.SYMBOLS
                         createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeNumber
-                        mainView.keyboardView.setCurrentMode(inputMode)
+                        setCurrentInputModeForSession(inputMode)
                     }
 
                     KeyAction.ShiftKey -> {}
@@ -7530,7 +7614,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (isTablet == true) {
                             mainView.tabletView.currentInputMode.set(inputMode)
                         }
-                        mainView.keyboardView.setCurrentMode(inputMode)
+                        setCurrentInputModeForSession(inputMode)
                     }
 
                     KeyAction.Delete -> {
@@ -7656,7 +7740,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (isTablet == true) {
                             mainView.tabletView.currentInputMode.set(inputMode)
                         }
-                        mainView.keyboardView.setCurrentMode(inputMode)
+                        setCurrentInputModeForSession(inputMode)
                     }
 
                     KeyAction.SwitchToKanaLayout -> {
@@ -7666,20 +7750,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (isTablet == true) {
                             mainView.tabletView.currentInputMode.set(inputMode)
                         }
-                        mainView.keyboardView.setCurrentMode(inputMode)
+                        setCurrentInputModeForSession(inputMode)
                     }
 
                     KeyAction.SwitchToNumberLayout -> {
                         customKeyboardMode = KeyboardInputMode.SYMBOLS
                         createNewKeyboardLayoutForSumire()
                         val inputMode = InputMode.ModeNumber
-                        mainView.keyboardView.setCurrentMode(inputMode)
+                        setCurrentInputModeForSession(inputMode)
                     }
 
                     KeyAction.ShiftKey -> {
                         isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
                         Handler(mainLooper).post {
-                            mainLayoutBinding?.customLayoutDefault?.updateKeyIconByAction(
+                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
                                 KeyAction.ShiftKey,
                                 if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.shift_fill_24px
                                 else com.kazumaproject.core.R.drawable.shift_24px
@@ -8545,18 +8629,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         updateUIinHenkan(mainView, insertString)
                     }
                     setSumireKeyboardSwitchNumberAndKatakanaKey(1)
-                    if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                        mainView.qwertyView.apply {
+                    if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && currentInputModeForSession == InputMode.ModeJapanese) {
+                        updateQwertyOnActiveSurface {
                             setSpaceKeyText("変換")
                             setReturnKeyText("確定")
                         }
-                    } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
-                        mainView.qwertyView.setReturnKeyText("done")
+                    } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && currentInputModeForSession == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && currentInputModeForSession == InputMode.ModeEnglish) {
+                        updateQwertyOnActiveSurface { setReturnKeyText("done") }
                     }
                     if (mainView.customLayoutDefault.isVisible) {
                         setSumireKeyboardDakutenKey()
                         setSumireKeyboardEnterKey(5)
-                        when (mainView.keyboardView.currentInputMode.value) {
+                        when (currentInputModeForSession) {
                             InputMode.ModeJapanese -> {
                                 setSumireKeyboardSpaceKey(1)
                             }
@@ -8596,16 +8680,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (mainView.customLayoutDefault.isVisible) {
                                 resetSumireKeyboardDakutenMode()
                             }
-                            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                                mainView.qwertyView.apply {
+                            if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && currentInputModeForSession == InputMode.ModeJapanese) {
+                                updateQwertyOnActiveSurface {
                                     setSpaceKeyText("空白")
                                     val qwertyEnterKeyText =
                                         currentInputType.getQWERTYReturnTextInJp()
                                     setReturnKeyText(qwertyEnterKeyText)
                                 }
-                            } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && mainView.keyboardView.currentInputMode.value == InputMode.ModeEnglish) {
+                            } else if ((qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY && currentInputModeForSession == InputMode.ModeEnglish) || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && currentInputModeForSession == InputMode.ModeEnglish) {
                                 val qwertyEnterKeyText = currentInputType.getQWERTYReturnTextInEn()
-                                mainView.qwertyView.setReturnKeyText(qwertyEnterKeyText)
+                                updateQwertyOnActiveSurface { setReturnKeyText(qwertyEnterKeyText) }
                             }
                             setKeyboardHeightDefault(mainView)
                             setSumireKeyboardSwitchNumberAndKatakanaKey(0)
@@ -8690,7 +8774,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = true
                         } else {
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = false
-                            renderCurrentKeyboardSurface()
+                            renderCurrentKeyboardStateOnActiveSurface()
                         }
                     }
                 } else {
@@ -8824,7 +8908,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
                 syncFloatingKeyboardContentForMode(it)
-                renderCurrentKeyboardSurface()
+                renderCurrentKeyboardStateOnActiveSurface()
                 updateFloatingKeyboardSizeForMode(it)
             }
         }
@@ -8918,7 +9002,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         window.window?.setBackgroundBlurRadius(0)
                     }
 
-                    val showInputModeText = when (mainView.keyboardView.currentInputMode.value) {
+                    val showInputModeText = when (currentInputModeForSession) {
                         InputMode.ModeJapanese -> "あ"
                         InputMode.ModeEnglish -> "A"
                         InputMode.ModeNumber -> "A"
@@ -11077,6 +11161,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setCurrentInputType(attribute: EditorInfo?) {
         attribute?.apply {
             currentInputType = getCurrentInputTypeForIME2(this)
+            currentInputModeForSession = defaultInputModeFor(currentInputType)
             Timber.d("setCurrentInputType: $currentInputType $inputType ${attribute.hintText} ${attribute.actionId} ${attribute.fieldName} ${attribute.inputType} ")
             if (isTablet == true) {
                 mainLayoutBinding?.tabletView?.apply {
@@ -11531,7 +11616,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemClickListener { candidate, position ->
                 val insertString = inputString.value
                 val currentInputMode: InputMode =
-                    if (isTablet == true) mainView.tabletView.currentInputMode.get() else mainView.keyboardView.currentInputMode.value
+                    if (isTablet == true) mainView.tabletView.currentInputMode.get() else currentInputModeForSession
                 vibrate()
                 setCandidateClick(
                     candidate = candidate,
@@ -11633,7 +11718,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemClickListener { candidate, position ->
                 val insertString = inputString.value
                 val currentInputMode: InputMode =
-                    if (isTablet == true) mainView.tabletView.currentInputMode.get() else mainView.keyboardView.currentInputMode.value
+                    if (isTablet == true) mainView.tabletView.currentInputMode.get() else currentInputModeForSession
                 vibrate()
                 setCandidateClick(
                     candidate = candidate,
@@ -12141,7 +12226,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 _inputString.update { "" }
                                 finishComposingText()
                                 setComposingText("", 0)
-                                mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(false)
+                                setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(false)
                             }
                         }
 
@@ -12232,23 +12317,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         QWERTYKey.QWERTYKeySwitchRomajiEnglish -> {
-                            val romajiMode = mainView.qwertyView.getRomajiMode()
-                            mainView.qwertyView.setRomajiMode(!romajiMode)
-                            if (qwertyView !== mainView.qwertyView) {
-                                qwertyView.setRomajiMode(!romajiMode)
-                            }
-                            if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
-                                mainView.keyboardView.setCurrentMode(InputMode.ModeEnglish)
-                                mainView.qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(false)
-                                if (qwertyView !== mainView.qwertyView) {
-                                    qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(false)
-                                }
+                            val romajiMode = currentQwertyRomajiModeForSession
+                            setCurrentQwertyRomajiModeForSession(!romajiMode)
+                            if (currentInputModeForSession == InputMode.ModeJapanese) {
+                                setCurrentInputModeForSession(InputMode.ModeEnglish)
+                                setQwertyRomajiSwitchTextOnActiveSurface(false)
                             } else {
-                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
-                                mainView.qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(true)
-                                if (qwertyView !== mainView.qwertyView) {
-                                    qwertyView.setRomajiEnglishSwitchKeyTextWithStyle(true)
-                                }
+                                setCurrentInputModeForSession(InputMode.ModeJapanese)
+                                setQwertyRomajiSwitchTextOnActiveSurface(true)
                             }
                         }
 
@@ -12256,7 +12332,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (previousTenKeyQWERTYMode == null) {
                                 if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
                                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                    mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                    setCurrentInputModeForSession(InputMode.ModeJapanese)
                                     if (insertString.isEmpty()) {
                                         setKeyboardSizeSwitchKeyboard(mainView)
                                     } else {
@@ -12264,7 +12340,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     }
                                 } else {
                                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                    mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                                    setCurrentInputModeForSession(InputMode.ModeNumber)
                                     if (insertString.isEmpty()) {
                                         setKeyboardSizeSwitchKeyboard(mainView)
                                     } else {
@@ -12277,7 +12353,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         TenKeyQWERTYMode.Default -> {
                                             if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
                                                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                                setCurrentInputModeForSession(InputMode.ModeJapanese)
                                                 if (insertString.isEmpty()) {
                                                     setKeyboardSizeSwitchKeyboard(mainView)
                                                 } else {
@@ -12285,7 +12361,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 }
                                             } else {
                                                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                                mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                                                setCurrentInputModeForSession(InputMode.ModeNumber)
                                                 if (insertString.isEmpty()) {
                                                     setKeyboardSizeSwitchKeyboard(mainView)
                                                 } else {
@@ -12298,7 +12374,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                             if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
                                                 customKeyboardMode = KeyboardInputMode.HIRAGANA
                                                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
-                                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                                setCurrentInputModeForSession(InputMode.ModeJapanese)
                                                 createNewKeyboardLayoutForSumire()
                                                 if (insertString.isEmpty()) {
                                                     setKeyboardSizeSwitchKeyboard(mainView)
@@ -12331,7 +12407,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         else -> {
                                             if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
                                                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                                mainView.keyboardView.setCurrentMode(InputMode.ModeJapanese)
+                                                setCurrentInputModeForSession(InputMode.ModeJapanese)
                                                 if (insertString.isEmpty()) {
                                                     setKeyboardSizeSwitchKeyboard(mainView)
                                                 } else {
@@ -12339,7 +12415,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 }
                                             } else {
                                                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                                mainView.keyboardView.setCurrentMode(InputMode.ModeNumber)
+                                                setCurrentInputModeForSession(InputMode.ModeNumber)
                                                 if (insertString.isEmpty()) {
                                                     setKeyboardSizeSwitchKeyboard(mainView)
                                                 } else {
@@ -12364,7 +12440,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 effectiveInsertString
                             }
-                            if (mainView.keyboardView.currentInputMode.value == InputMode.ModeJapanese) {
+                            if (currentInputModeForSession == InputMode.ModeJapanese) {
                                 if (inputForAppend.isNotEmpty()) {
                                     Timber.d("QWERTY romaji not empty: $hardKeyboardShiftPressd $qwertyRomajiShiftConversionPreference")
                                     if (qwertyRomajiShiftConversionPreference == true) {
@@ -12480,7 +12556,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 isSpaceKeyLongPressed = true
                                 return
                             }
-                            if (insertString.isEmpty() || !mainView.qwertyView.getRomajiMode()) {
+                            if (insertString.isEmpty() || !currentQwertyRomajiModeForSession) {
                                 setCursorMode(true)
                                 isSpaceKeyLongPressed = true
                             } else {
@@ -13778,8 +13854,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     is InputMode.ModeJapanese -> {
                         if (tenkeyQWERTYSwitchNumber == true) {
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                            mainView.qwertyView.setSwitchNumberLayoutKeyVisibility(true)
-                            mainView.qwertyView.setRomajiMode(false)
+                            setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                            setCurrentQwertyRomajiModeForSession(false)
                             if (insertString.isEmpty()) {
                                 setKeyboardSizeSwitchKeyboard(mainView)
                             } else {
@@ -14375,7 +14451,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             enableFlickPref && (qwertyMode.value == TenKeyQWERTYMode.Default || qwertyMode.value == TenKeyQWERTYMode.Sumire)
         val enableTypoCorrectionQwertyEnglish =
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
-                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !mainView.qwertyView.getRomajiMode()))
+                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !currentQwertyRomajiModeForSession))
 
         var engineResult: BunsetsuCandidateResult? = null
         val engineCandidates = withContext(Dispatchers.Default) {
@@ -14516,7 +14592,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val enableTypoCorrectionQwertyEnglish =
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
-                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !mainView.qwertyView.getRomajiMode()))
+                    (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !currentQwertyRomajiModeForSession))
 
         var engineResult: BunsetsuCandidateResult? = null
         val engineCandidates = withContext(Dispatchers.Default) {
@@ -15122,7 +15198,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (insertString.isNotBlank()) {
             mainView.apply {
-                when (mainView.keyboardView.currentInputMode.value) {
+                when (currentInputModeForSession) {
                     InputMode.ModeJapanese -> {
                         val insertStringEndWithN = if (isDefaultRomajiHenkanMap) {
                             romajiConverter?.flushZenkaku(insertString)?.first
@@ -15168,7 +15244,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (stringInTail.get().isNotEmpty()) return
-            val romajiMode = mainView.qwertyView.getRomajiMode()
+            val romajiMode = currentQwertyRomajiModeForSession
             Timber.d("handleSpaceKeyClickInQWERTY: $romajiMode")
             if (romajiMode && qwertyEnableZenkakuSpacePreference == true) {
                 handleSpaceKeyClick(false, insertString, suggestions, mainView)
@@ -16167,19 +16243,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         when (nextType) {
             KeyboardType.TENKEY -> {
-                mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
+                setCurrentInputModeForSession(InputMode.ModeJapanese)
             }
 
             KeyboardType.SUMIRE -> {
-                mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
+                setCurrentInputModeForSession(InputMode.ModeJapanese)
             }
 
             KeyboardType.ROMAJI -> {
-                mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeJapanese)
+                setCurrentInputModeForSession(InputMode.ModeJapanese)
             }
 
             KeyboardType.QWERTY -> {
-                mainLayoutBinding?.keyboardView?.setCurrentMode(InputMode.ModeEnglish)
+                setCurrentInputModeForSession(InputMode.ModeEnglish)
             }
 
             KeyboardType.CUSTOM -> {}
