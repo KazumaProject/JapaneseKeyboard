@@ -46,6 +46,12 @@
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
+            android:key="keyboard_floating_preference"
+            android:summary="@string/keyboard_floating_preference_summary"
+            android:title="@string/keyboard_floating_preference_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
             android:key="landscape_force_qwerty_preference"
             android:title="@string/landscape_force_qwerty_preference_title"
             app:summary="@string/landscape_force_qwerty_preference_summary" />

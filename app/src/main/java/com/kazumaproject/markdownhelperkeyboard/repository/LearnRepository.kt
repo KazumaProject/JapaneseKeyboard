@@ -1,11 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
+import android.database.sqlite.SQLiteConstraintException
 import androidx.room.Transaction
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsSymbolNumberOrEmoji
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiragana
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.model.LearnResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import timber.log.Timber
 import javax.inject.Inject
@@ -24,6 +26,9 @@ class LearnRepository @Inject constructor(
 
     suspend fun findLearnDataByInputAndOutput(input: String, output: String): LearnEntity? =
         learnDao.findByInputAndOutput(input, output)
+
+    suspend fun existsDuplicateForUpdate(input: String, output: String, excludeId: Int): Boolean =
+        learnDao.existsDuplicateForUpdate(input, output, excludeId)
 
     /**
      * 学習データをアトミックにupsert（更新または挿入）します。
@@ -88,4 +93,27 @@ class LearnRepository @Inject constructor(
         learnDao.deleteByInputAndOutput(input, output)
 
     suspend fun update(learnData: LearnEntity) = learnDao.updateLearnedData(learnData)
+
+    suspend fun updateSafely(learnData: LearnEntity): LearnUpdateResult {
+        return try {
+            val id = learnData.id ?: return LearnUpdateResult.Error
+            if (existsDuplicateForUpdate(learnData.input, learnData.out, id)) {
+                return LearnUpdateResult.Duplicate
+            }
+            update(learnData)
+            LearnUpdateResult.Updated
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: SQLiteConstraintException) {
+            LearnUpdateResult.Duplicate
+        } catch (_: Exception) {
+            LearnUpdateResult.Error
+        }
+    }
+}
+
+enum class LearnUpdateResult {
+    Updated,
+    Duplicate,
+    Error,
 }
