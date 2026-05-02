@@ -209,6 +209,13 @@
     <string name="remember_last_custom_keyboard_summary_off">カスタムキーボードを開いたとき、最初のカスタムキーボードを表示します</string>
     <string name="custom_keyboard_target_hint">移動先カスタムキーボード</string>
     <string name="deleted_custom_keyboard_target">削除済みのカスタムキーボード</string>
+    <string name="key_margin_settings">キー余白設定</string>
+    <string name="key_margin_left_dp">左余白 dp</string>
+    <string name="key_margin_top_dp">上余白 dp</string>
+    <string name="key_margin_right_dp">右余白 dp</string>
+    <string name="key_margin_bottom_dp">下余白 dp</string>
+    <string name="key_margin_empty_uses_default">空欄の場合はデフォルト余白を使用します。</string>
+    <string name="key_margin_non_negative_error">0以上の数値を入力してください。</string>
 
     <string name="clipboard_history_fragment_title">クリップボードの履歴</string>
     <string name="clipboard_history_fragment_summary">クリップボードの履歴を表示</string>

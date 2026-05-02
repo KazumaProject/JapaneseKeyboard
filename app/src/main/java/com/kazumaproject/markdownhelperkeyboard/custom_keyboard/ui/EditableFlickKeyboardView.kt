@@ -201,19 +201,11 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 setImageResource(keyData.drawableResId!!)
                 contentDescription = keyData.label
 
-                // ▼▼▼ 変更点2: InsetDrawable を使用 ▼▼▼
                 val originalBg = ContextCompat.getDrawable(
                     context,
                     if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
                 )
-                val insetBg = android.graphics.drawable.InsetDrawable(
-                    originalBg,
-                    leftMargin,
-                    topMargin,
-                    rightMargin,
-                    bottomMargin
-                )
-                background = insetBg
+                background = originalBg
             }
         } else {
             AutoSizeButton(context).apply {
@@ -248,7 +240,6 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                     gravity = Gravity.CENTER
                 }
 
-                // ▼▼▼ 変更点3: 背景設定ロジックを InsetDrawable を使うように変更 ▼▼▼
                 val originalBg = when {
                     keyData.isSpecialKey -> {
                         elevation = 2f
@@ -284,14 +275,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                         )
                     }
                 }
-                val insetBg = android.graphics.drawable.InsetDrawable(
-                    originalBg,
-                    leftMargin,
-                    topMargin,
-                    rightMargin,
-                    bottomMargin
-                )
-                background = insetBg
+                background = originalBg
             }
         }
 
@@ -301,9 +285,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             width = 0
             height = 0
             elevation = 2f
-            // ▼▼▼ 変更点4: setMargins の呼び出しを完全に削除 ▼▼▼
-            // if (keyData.isSpecialKey) setMargins(6, 12, 6, 6)
-            // else setMargins(6, 9, 6, 9)
+            setMargins(leftMargin, topMargin, rightMargin, bottomMargin)
         }
         keyView.layoutParams = params
         return keyView

@@ -7,8 +7,8 @@ import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
-import android.widget.ArrayAdapter
 import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -107,6 +107,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var currentRowSpan: Int = 1
     private var maxColSpan: Int = 1
     private var maxRowSpan: Int = 1
+    private var currentMarginLeftDp: Int? = null
+    private var currentMarginTopDp: Int? = null
+    private var currentMarginRightDp: Int? = null
+    private var currentMarginBottomDp: Int? = null
+    private var areMarginInputsValid: Boolean = true
 
     // NEW: allowed directions for special-flick category (5 directions)
     private val allowedSpecialFlickDirections: List<FlickDirection> = listOf(

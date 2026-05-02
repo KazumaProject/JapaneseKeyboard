@@ -207,6 +207,13 @@
     <string name="remember_last_custom_keyboard_summary_off">Shows the first custom keyboard when opening custom keyboards</string>
     <string name="custom_keyboard_target_hint">Target custom keyboard</string>
     <string name="deleted_custom_keyboard_target">Deleted custom keyboard</string>
+    <string name="key_margin_settings">Key margin settings</string>
+    <string name="key_margin_left_dp">Left margin dp</string>
+    <string name="key_margin_top_dp">Top margin dp</string>
+    <string name="key_margin_right_dp">Right margin dp</string>
+    <string name="key_margin_bottom_dp">Bottom margin dp</string>
+    <string name="key_margin_empty_uses_default">Leave blank to use the default margin.</string>
+    <string name="key_margin_non_negative_error">Enter a number greater than or equal to 0.</string>
 
     <string name="clipboard_history_fragment_title">Clipboard History</string>
     <string name="clipboard_history_fragment_summary">Show clipboard history</string>
