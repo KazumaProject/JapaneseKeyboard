@@ -32,6 +32,7 @@ import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.toCircularFlickMap
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickSlotActionMapper
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.CircularFlickMappingAdapter
@@ -451,11 +452,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         val directions = listOf(CircularFlickDirection.TAP) +
             CircularFlickDirection.slots(appPreference.circularFlickDirectionCount)
         return directions.map { direction ->
-            val action = source[direction] as? FlickAction.Input
+            val (actionType, output) = CircularFlickSlotActionMapper.fromFlickAction(
+                direction = direction,
+                action = source[direction]
+            )
             CircularFlickMappingItem(
                 direction = direction,
-                output = action?.char.orEmpty(),
-                isMapSwitch = false
+                actionType = actionType,
+                output = output
             )
         }.toMutableList()
     }
@@ -479,7 +483,6 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             CircularFlickDirection.slots(appPreference.circularFlickDirectionCount)).toSet()
         val normalizedItems = currentItems
             .filter { visibleDirections.contains(it.direction) }
-            .map { it.copy(isMapSwitch = false) }
         circularFlickAdapter.submitList(normalizedItems)
     }
 
@@ -956,10 +959,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     newLabel = binding.keyLabelEdittext.text.toString()
                     newCircularFlickMaps = currentCircularFlickMaps.map { items ->
                         items
-                            .filter {
-                                it.output.isNotEmpty()
+                            .mapNotNull { item ->
+                                val action = CircularFlickSlotActionMapper.toFlickAction(
+                                    actionType = item.actionType,
+                                    output = item.output
+                                ) ?: return@mapNotNull null
+                                item.direction to action
                             }
-                            .associate { it.direction to FlickAction.Input(it.output) }
+                            .toMap()
                     }.ifEmpty {
                         listOf(emptyMap())
                     }
