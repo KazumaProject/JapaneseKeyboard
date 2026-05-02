@@ -132,6 +132,7 @@ import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts.DeleteKeyFlickSettings
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
 import com.kazumaproject.data.emoji.Emoji
@@ -1216,6 +1217,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
+        val deleteKeyFlickPreferencesChanged =
+            isDeleteLeftFlickPreference != preferences.isDeleteLeftFlickPreference ||
+                isDeleteUpFlickPreference != preferences.isDeleteUpFlickPreference ||
+                isDeleteDownFlickPreference != preferences.isDeleteDownFlickPreference
+
         keyboardOrder = preferences.keyboardOrder
         candidateTabOrder = preferences.candidateTabOrder
         mozcUTPersonName = preferences.mozcUTPersonName
@@ -1298,6 +1304,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isDeleteLeftFlickPreference = preferences.isDeleteLeftFlickPreference
         isDeleteUpFlickPreference = preferences.isDeleteUpFlickPreference
         isDeleteDownFlickPreference = preferences.isDeleteDownFlickPreference
+        if (deleteKeyFlickPreferencesChanged) {
+            refreshDeleteKeyFlickPreferenceLayouts()
+        }
         zenzDebounceTimePreference = preferences.zenzDebounceTimePreference
         zenzMaximumLetterSizePreference = preferences.zenzMaximumLetterSizePreference
         zenzMaximumContextSizePreference = preferences.zenzMaximumContextSizePreference
@@ -4553,18 +4562,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 dynamicKeyStates = dynamicStates,
                 inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                 inputStyle = sumireInputStyle ?: "default",
-                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
             ),
             customKeyboardMode
+        ).let(::applyDeleteKeyFlickPreferences)
+    }
+
+    private fun currentDeleteKeyFlickSettings(): DeleteKeyFlickSettings {
+        return DeleteKeyFlickSettings(
+            left = isDeleteLeftFlickPreference ?: true,
+            up = isDeleteUpFlickPreference ?: false,
+            down = isDeleteDownFlickPreference ?: false
         )
     }
 
+    private fun applyDeleteKeyFlickPreferences(layout: KeyboardLayout): KeyboardLayout {
+        return KeyboardDefaultLayouts.applyDeleteKeyFlickSettings(
+            layout = layout,
+            deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
+        )
+    }
+
+    private fun setKeyboardWithDeleteKeyFlickPreferences(
+        flickView: FlickKeyboardView,
+        layout: KeyboardLayout
+    ) {
+        flickView.setKeyboard(applyDeleteKeyFlickPreferences(layout))
+    }
+
     private fun setSumireLayoutTo(flickView: FlickKeyboardView) {
-        flickView.setKeyboard(createSumireKeyboardLayout())
+        setKeyboardWithDeleteKeyFlickPreferences(flickView, createSumireKeyboardLayout())
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
-        flickView.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+        setKeyboardWithDeleteKeyFlickPreferences(
+            flickView,
+            KeyboardDefaultLayouts.createNumberLayout(currentDeleteKeyFlickSettings())
+        )
     }
 
     private fun setCurrentCustomLayoutTo(flickView: FlickKeyboardView) {
@@ -4576,7 +4610,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
             isCustomLayoutRomajiMode = finalLayout.isRomaji
             withContext(Dispatchers.Main) {
-                flickView.setKeyboard(finalLayout)
+                setKeyboardWithDeleteKeyFlickPreferences(flickView, finalLayout)
             }
         }
     }
@@ -4584,7 +4618,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setCustomLayoutOnActiveSurface(layout: KeyboardLayout) {
         getActiveKeyboardSurface()
             ?.customLayout
-            ?.setKeyboard(layout)
+            ?.let { flickView -> setKeyboardWithDeleteKeyFlickPreferences(flickView, layout) }
+    }
+
+    private fun refreshDeleteKeyFlickPreferenceLayouts() {
+        val customLayout = getActiveKeyboardSurface()?.customLayout ?: return
+        when (qwertyMode.value) {
+            TenKeyQWERTYMode.Sumire -> setSumireLayoutTo(customLayout)
+            TenKeyQWERTYMode.Custom -> setCurrentCustomLayoutTo(customLayout)
+            TenKeyQWERTYMode.Number -> setNumberLayoutTo(customLayout)
+            else -> Unit
+        }
+        syncFloatingKeyboardContentForMode(qwertyMode.value)
     }
 
     private fun syncFloatingKeyboardContentForMode(mode: TenKeyQWERTYMode) {
@@ -6907,7 +6952,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
                         setCurrentInputModeForSession(InputMode.ModeNumber)
-                        customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                        setNumberLayoutTo(customLayoutDefault)
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
                     }
@@ -6927,7 +6972,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
                         setCurrentInputModeForSession(InputMode.ModeNumber)
-                        customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                        setNumberLayoutTo(customLayoutDefault)
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
                     }
@@ -6950,7 +6995,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
                         setCurrentInputModeForSession(InputMode.ModeNumber)
-                        customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                        setNumberLayoutTo(customLayoutDefault)
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
                     }
@@ -6970,7 +7015,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             keyboardView.isVisible = false
                         } else {
                             customLayoutDefault.isVisible = true
-                            customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                            setNumberLayoutTo(customLayoutDefault)
                             qwertyView.isVisible = false
                             keyboardView.isVisible = false
 
@@ -7003,14 +7048,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     ),
                                     inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                                     inputStyle = sumireInputStyle ?: "default",
-                                    isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                                    deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
                                 ),
                                 customKeyboardMode
                             )
-                            customLayoutDefault.setKeyboard(hiraganaLayout)
+                            setKeyboardWithDeleteKeyFlickPreferences(
+                                customLayoutDefault,
+                                hiraganaLayout
+                            )
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
                         } else {
-                            customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                            setNumberLayoutTo(customLayoutDefault)
                         }
                         qwertyView.isVisible = false
                         keyboardView.isVisible = false
@@ -7038,7 +7086,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
                     } else {
-                        customLayoutDefault.setKeyboard(KeyboardDefaultLayouts.createNumberLayout())
+                        setNumberLayoutTo(customLayoutDefault)
                         //_tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
                     }
                     customLayoutDefault.isVisible = true
@@ -7121,7 +7169,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
-                        setCustomLayoutOnActiveSurface(KeyboardDefaultLayouts.createNumberLayout())
+                        setCustomLayoutOnActiveSurface(
+                            KeyboardDefaultLayouts.createNumberLayout(currentDeleteKeyFlickSettings())
+                        )
                     }
 
                 }
@@ -7148,7 +7198,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 dynamicKeyStates = dynamicStates,
                                 inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                                 inputStyle = sumireInputStyle ?: "default",
-                                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                                deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
                             ),
                             customKeyboardMode
                         )
@@ -7186,7 +7236,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     dynamicKeyStates = dynamicStates,
                                     inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                                     inputStyle = sumireInputStyle ?: "default",
-                                    isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                                    deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
                                 ),
                                 customKeyboardMode
                             )
@@ -7210,7 +7260,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 dynamicKeyStates = dynamicStates,
                                 inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
                                 inputStyle = sumireInputStyle ?: "default",
-                                isDeleteFlickEnabled = isDeleteLeftFlickPreference ?: true
+                                deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
                             ),
                             customKeyboardMode
                         )
