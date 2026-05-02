@@ -10,6 +10,7 @@ private fun KeyAction.circularLabel(actionValue: String?): String? {
             actionValue ?: CircularFlickSlotActionMapper.SWITCH_MAP_LABEL
         KeyAction.ShowEmojiKeyboard ->
             actionValue ?: CircularFlickSlotActionMapper.EMOJI_KEYBOARD_LABEL
+        is KeyAction.MoveToCustomKeyboard -> null
         else -> actionValue
     }
 }
@@ -46,6 +47,9 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "VoiceInput" -> KeyAction.VoiceInput
         "ShiftKey" -> KeyAction.ShiftKey
         "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
+        "MoveToCustomKeyboard" -> this.actionValue
+            ?.takeIf { it.isNotBlank() }
+            ?.let { KeyAction.MoveToCustomKeyboard(it) }
         else -> null
     }
     return if (action != null) {
@@ -87,6 +91,9 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         "VoiceInput" -> KeyAction.VoiceInput
         "ShiftKey" -> KeyAction.ShiftKey
         "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
+        "MoveToCustomKeyboard" -> this.actionValue
+            ?.takeIf { it.isNotBlank() }
+            ?.let { KeyAction.MoveToCustomKeyboard(it) }
         else -> null
     }
     return if (action != null) {
@@ -133,6 +140,7 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.VoiceInput -> "VoiceInput" to null
             KeyAction.ShiftKey -> "ShiftKey" to null
             KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab" to CircularFlickSlotActionMapper.SWITCH_MAP_LABEL
+            is KeyAction.MoveToCustomKeyboard -> "MoveToCustomKeyboard" to action.stableId
             else -> "UNKNOWN" to null // 未対応のアクション
         }
     }

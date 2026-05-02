@@ -33,6 +33,7 @@ import com.kazumaproject.custom_keyboard.data.toCircularFlickMap
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickSlotActionMapper
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickDirectionMapper
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.CircularFlickMappingAdapter
@@ -54,6 +55,12 @@ private enum class OutputEditMode {
     NORMAL,
     LONG_PRESS
 }
+
+private data class CustomKeyboardTargetOption(
+    val label: String,
+    val stableId: String,
+    val isValid: Boolean
+)
 
 @AndroidEntryPoint
 class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
@@ -85,11 +92,16 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var currentCellMode: CellMode? = null
 
     private lateinit var keyActionAdapter: ArrayAdapter<String>
+    private lateinit var customKeyboardTargetAdapter: ArrayAdapter<String>
     private lateinit var circularFlickAdapter: CircularFlickMappingAdapter
     private lateinit var circularMapAdapter: ArrayAdapter<String>
 
     // NEW: UI-friendly display actions (avoids depending on unknown internal display type)
     private lateinit var displayActions: List<DisplayActionUi>
+    private lateinit var specialFlickDisplayActions: List<DisplayActionUi>
+    private var customKeyboardTargets: List<CustomKeyboardLayout> = emptyList()
+    private var customKeyboardTargetOptions: List<CustomKeyboardTargetOption> = emptyList()
+    private var selectedTargetCustomKeyboardStableId: String? = null
 
     private var currentColSpan: Int = 1
     private var currentRowSpan: Int = 1
@@ -120,6 +132,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         // Convert KeyActionMapper display actions into stable UI list
         val raw = KeyActionMapper.getDisplayActions(requireContext())
         displayActions = raw.map { DisplayActionUi(it.displayName, it.action, it.iconResId) }
+        specialFlickDisplayActions = displayActions
+            .filterNot { it.action is KeyAction.MoveToCustomKeyboard }
 
         val actionDisplayNames = displayActions.map { it.displayName }
         keyActionAdapter = ArrayAdapter(
@@ -130,13 +144,22 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         binding.keyActionSpinner.setAdapter(keyActionAdapter)
 
         // 特殊フリック用アクションスピナー（セル選択後に表示）
-        val specialActionNames = mutableListOf("").apply { addAll(actionDisplayNames) }
+        val specialActionNames = mutableListOf("").apply {
+            addAll(specialFlickDisplayActions.map { it.displayName })
+        }
         val specialActionAdapter = ArrayAdapter(
             requireContext(),
             android.R.layout.simple_spinner_dropdown_item,
             specialActionNames
         )
         binding.specialFlickMappingsRecyclerView.setAdapter(specialActionAdapter)
+
+        customKeyboardTargetAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_dropdown_item,
+            mutableListOf<String>()
+        )
+        binding.customKeyboardTargetSpinner.setAdapter(customKeyboardTargetAdapter)
 
         circularFlickAdapter = CircularFlickMappingAdapter { updated ->
             val currentMap = currentCircularFlickMaps.getOrNull(currentCircularMapIndex)
@@ -195,11 +218,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         // 特殊フリック用アクション選択コールバック
         binding.specialFlickMappingsRecyclerView.setOnItemClickListener { _, _, idx, _ ->
             val mode = currentCellMode as? CellMode.SpecialFlick ?: return@setOnItemClickListener
-            val selectedAction = if (idx == 0) null else displayActions[idx - 1].action
+            val selectedAction = if (idx == 0) null else specialFlickDisplayActions[idx - 1].action
             val itemIdx = currentSpecialFlickItems.indexOfFirst { it.direction == mode.direction }
             if (itemIdx != -1) {
                 currentSpecialFlickItems[itemIdx] = currentSpecialFlickItems[itemIdx].copy(action = selectedAction)
-                val displayAction = selectedAction?.let { act -> displayActions.firstOrNull { it.action == act } }
+                val displayAction = selectedAction?.let { act -> displayActionForAction(act) }
                 binding.flickGridEditorView.updateCellIcon(
                     mode,
                     displayAction?.iconResId,
@@ -245,6 +268,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             } else {
                 // hide special editors
                 binding.keyActionLayout.isVisible = false
+                binding.customKeyboardTargetLayout.isVisible = false
                 binding.specialFlickEditorGroup.isVisible = false
 
                 // normal key: input style controls which editor is visible
@@ -329,6 +353,15 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
 
         binding.keyActionSpinner.doAfterTextChanged {
+            updateCustomKeyboardTargetVisibility()
+            updateDoneButtonState()
+        }
+
+        binding.customKeyboardTargetSpinner.setOnItemClickListener { _, _, position, _ ->
+            val option = customKeyboardTargetOptions.getOrNull(position)
+            selectedTargetCustomKeyboardStableId = option
+                ?.takeIf { it.isValid }
+                ?.stableId
             updateDoneButtonState()
         }
 
@@ -363,6 +396,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
         binding.keyLabelLayout.isVisible = false
         binding.keyActionLayout.isVisible = !isFlick
+        binding.customKeyboardTargetLayout.isVisible = false
         binding.flickGridEditorView.isVisible = isFlick
         binding.specialFlickEditorGroup.isVisible = false
         binding.textSelectedDirection.isVisible = false
@@ -377,9 +411,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
             binding.flickGridEditorView.setSpecialFlickContent(
                 currentSpecialFlickItems.toList(),
-                displayActions
+                specialFlickDisplayActions
             )
             binding.flickGridEditorView.selectInitialCell()
+        } else {
+            updateCustomKeyboardTargetVisibility()
         }
     }
 
@@ -393,6 +429,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
 
         binding.keyLabelLayout.isVisible = true
+        binding.customKeyboardTargetLayout.isVisible = false
         binding.flickGridEditorView.isVisible = true
         binding.circularFlickEditorGroup.isVisible = false
         binding.textSelectedDirection.isVisible = false
@@ -548,7 +585,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 val currentAction = currentSpecialFlickItems
                     .firstOrNull { it.direction == mode.direction }?.action
                 val currentName = currentAction?.let { act ->
-                    displayActions.firstOrNull { it.action == act }?.displayName
+                    specialFlickDisplayActions.firstOrNull { it.action == act }?.displayName
                 }.orEmpty()
                 binding.textCharInputLayout.isVisible = false
                 binding.specialFlickEditorGroup.isVisible = true
@@ -626,13 +663,124 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
+    private fun displayActionForAction(action: KeyAction): DisplayActionUi? {
+        return when (action) {
+            is KeyAction.MoveToCustomKeyboard ->
+                displayActions.firstOrNull { it.action is KeyAction.MoveToCustomKeyboard }
+
+            else -> displayActions.firstOrNull { it.action == action }
+        }
+    }
+
+    private fun selectedSingleDisplayAction(): DisplayActionUi? {
+        val selectedText = binding.keyActionSpinner.text.toString()
+        return displayActions.firstOrNull { it.displayName == selectedText }
+    }
+
+    private fun isMoveToCustomKeyboardSelected(): Boolean {
+        return selectedSingleDisplayAction()?.action is KeyAction.MoveToCustomKeyboard
+    }
+
+    private fun buildTargetOptions(
+        targets: List<CustomKeyboardLayout>,
+        deletedStableId: String? = null
+    ): List<CustomKeyboardTargetOption> {
+        val totalByName = targets.groupingBy { it.name }.eachCount()
+        val seenByName = mutableMapOf<String, Int>()
+        val validOptions = targets.map { layout ->
+            val seenCount = (seenByName[layout.name] ?: 0) + 1
+            seenByName[layout.name] = seenCount
+            val label = if ((totalByName[layout.name] ?: 0) > 1) {
+                "${layout.name} ($seenCount)"
+            } else {
+                layout.name
+            }
+            CustomKeyboardTargetOption(
+                label = label,
+                stableId = layout.stableId,
+                isValid = true
+            )
+        }
+
+        val deletedOption = deletedStableId
+            ?.takeIf { it.isNotBlank() && validOptions.none { option -> option.stableId == it } }
+            ?.let {
+                CustomKeyboardTargetOption(
+                    label = getString(R.string.deleted_custom_keyboard_target),
+                    stableId = it,
+                    isValid = false
+                )
+            }
+
+        return if (deletedOption != null) validOptions + deletedOption else validOptions
+    }
+
+    private suspend fun loadCustomKeyboardTargets() {
+        customKeyboardTargets = keyboardRepository.getLayoutsNotFlowEnsuringStableIds()
+        refreshCustomKeyboardTargetOptions()
+    }
+
+    private fun refreshCustomKeyboardTargetOptions(deletedStableId: String? = null) {
+        customKeyboardTargetOptions = buildTargetOptions(customKeyboardTargets, deletedStableId)
+        customKeyboardTargetAdapter.clear()
+        customKeyboardTargetAdapter.addAll(customKeyboardTargetOptions.map { it.label })
+        customKeyboardTargetAdapter.notifyDataSetChanged()
+    }
+
+    private fun selectTargetCustomKeyboard(stableId: String?) {
+        val id = stableId.orEmpty()
+        if (id.isBlank()) {
+            selectedTargetCustomKeyboardStableId = null
+            binding.customKeyboardTargetSpinner.setText("", false)
+            return
+        }
+
+        var option = customKeyboardTargetOptions.firstOrNull { it.stableId == id }
+        if (option == null) {
+            refreshCustomKeyboardTargetOptions(deletedStableId = id)
+            option = customKeyboardTargetOptions.firstOrNull { it.stableId == id }
+        }
+
+        selectedTargetCustomKeyboardStableId = option
+            ?.takeIf { it.isValid }
+            ?.stableId
+        binding.customKeyboardTargetSpinner.setText(option?.label.orEmpty(), false)
+    }
+
+    private fun updateCustomKeyboardTargetVisibility() {
+        val shouldShow = binding.keyTypeChipGroup.checkedChipId == R.id.chip_special &&
+                binding.specialCategoryChipGroup.checkedChipId == R.id.chip_special_single &&
+                isMoveToCustomKeyboardSelected()
+
+        binding.customKeyboardTargetLayout.isVisible = shouldShow
+        if (!shouldShow) {
+            return
+        }
+
+        if (selectedTargetCustomKeyboardStableId.isNullOrBlank()) {
+            val firstValid = customKeyboardTargetOptions.firstOrNull { it.isValid }
+            if (firstValid != null && binding.customKeyboardTargetSpinner.text.isNullOrEmpty()) {
+                selectedTargetCustomKeyboardStableId = firstValid.stableId
+                binding.customKeyboardTargetSpinner.setText(firstValid.label, false)
+            }
+        }
+    }
+
     private fun updateDoneButtonState() {
         val isEnabled = when (binding.keyTypeChipGroup.checkedChipId) {
             R.id.chip_special -> {
                 val isFlick =
                     binding.specialCategoryChipGroup.checkedChipId == R.id.chip_special_flick
                 if (!isFlick) {
-                    binding.keyActionSpinner.text.isNotEmpty()
+                    if (isMoveToCustomKeyboardSelected()) {
+                        selectedTargetCustomKeyboardStableId
+                            ?.takeIf { stableId ->
+                                customKeyboardTargets.any { it.stableId == stableId }
+                            }
+                            ?.isNotBlank() == true
+                    } else {
+                        binding.keyActionSpinner.text.isNotEmpty()
+                    }
                 } else {
                     // Special flick: TAP must be selected
                     val tapAction = currentSpecialFlickItems
@@ -664,6 +812,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private fun setupInitialState() {
         viewLifecycleOwner.lifecycleScope.launch {
+            loadCustomKeyboardTargets()
             val state = viewModel.uiState.filterNotNull().first()
 
             currentKeyData =
@@ -711,10 +860,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     handleSpecialCategoryUi()
 
                     key.action?.let { currentAction ->
-                        val displayAction = displayActions.find { it.action == currentAction }
+                        val displayAction = displayActionForAction(currentAction)
                         if (displayAction != null) {
                             binding.keyActionSpinner.setText(displayAction.displayName, false)
                         }
+                        if (currentAction is KeyAction.MoveToCustomKeyboard) {
+                            selectTargetCustomKeyboard(currentAction.stableId)
+                        }
+                        updateCustomKeyboardTargetVisibility()
                     }
                 }
 
@@ -866,11 +1019,16 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     // Special: SINGLE (existing behavior)
                     newKeyType = KeyType.NORMAL
 
-                    val selectedText = binding.keyActionSpinner.text.toString()
-                    val selectedDisplayAction =
-                        displayActions.firstOrNull { it.displayName == selectedText }
+                    val selectedDisplayAction = selectedSingleDisplayAction()
 
-                    newAction = selectedDisplayAction?.action
+                    newAction = if (selectedDisplayAction?.action is KeyAction.MoveToCustomKeyboard) {
+                        val stableId = selectedTargetCustomKeyboardStableId
+                            ?.takeIf { id -> customKeyboardTargets.any { it.stableId == id } }
+                            ?: return
+                        KeyAction.MoveToCustomKeyboard(stableId)
+                    } else {
+                        selectedDisplayAction?.action
+                    }
                     newDrawableResId = selectedDisplayAction?.iconResId
                     newLabel =
                         if (newDrawableResId != null) "" else selectedDisplayAction?.displayName

@@ -202,6 +202,11 @@
     <string name="custom_keyboard_suggestion_title">Display when no text is entered</string>
     <string name="custom_keyboard_suggestion_summary_on">Show a list from the custom tab when no text is entered.</string>
     <string name="custom_keyboard_suggestion_summary_off">Keep the standard display (clipboard, etc.) when no text is entered.</string>
+    <string name="remember_last_custom_keyboard_title">Restore last used custom keyboard</string>
+    <string name="remember_last_custom_keyboard_summary_on">Shows the custom keyboard you used last when opening custom keyboards</string>
+    <string name="remember_last_custom_keyboard_summary_off">Shows the first custom keyboard when opening custom keyboards</string>
+    <string name="custom_keyboard_target_hint">Target custom keyboard</string>
+    <string name="deleted_custom_keyboard_target">Deleted custom keyboard</string>
 
     <string name="clipboard_history_fragment_title">Clipboard History</string>
     <string name="clipboard_history_fragment_summary">Show clipboard history</string>
