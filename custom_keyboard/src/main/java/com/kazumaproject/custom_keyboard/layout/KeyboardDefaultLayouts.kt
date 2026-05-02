@@ -4460,6 +4460,175 @@ object KeyboardDefaultLayouts {
         return KeyboardLayout(keys, flickMaps, 4, 4)
     }
 
+    /**
+     * 文字キー1個分の安全な keyId サフィックスを生成する。
+     * 記号類は読みやすい識別子に変換する。
+     */
+    private fun safeKeyIdSuffix(char: String): String = when (char) {
+        "'" -> "quote"
+        "," -> "comma"
+        "." -> "period"
+        ";" -> "semicolon"
+        else -> char
+    }
+
+    /**
+     * QWERTY / AZERTY / Dvorak / Colemak など、英字配列テンプレートの共通ビルダー。
+     *
+     * - columnCount = 10、rowCount = 4 固定
+     * - Row 0..2 は文字キーを column 0 から並べる（rows の中身そのまま）
+     * - Row 3 には特殊キー（IME切替 / Shift / Space / Delete / Enter）を配置
+     * - flickKeyMaps は emptyMap()
+     * - isRomaji / isDirectMode はデフォルト値（false）のまま
+     */
+    private fun createAlphabetKeyboardTemplateLayout(
+        prefix: String,
+        rows: List<List<String>>
+    ): KeyboardLayout {
+        val keys = mutableListOf<KeyData>()
+
+        rows.forEachIndexed { rowIndex, rowChars ->
+            rowChars.forEachIndexed { colIndex, char ->
+                keys += KeyData(
+                    label = char,
+                    row = rowIndex,
+                    column = colIndex,
+                    isFlickable = false,
+                    action = KeyAction.Text(char),
+                    keyType = KeyType.NORMAL,
+                    isSpecialKey = false,
+                    keyId = "${prefix}_key_${safeKeyIdSuffix(char)}"
+                )
+            }
+        }
+
+        // Row 3: 特殊キー
+        keys += KeyData(
+            label = "",
+            row = 3,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.SwitchToNextIme,
+            isSpecialKey = true,
+            drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+            keyType = KeyType.NORMAL,
+            keyId = "${prefix}_switch_next_ime"
+        )
+        keys += KeyData(
+            label = "",
+            row = 3,
+            column = 1,
+            isFlickable = false,
+            action = KeyAction.ShiftKey,
+            isSpecialKey = true,
+            drawableResId = com.kazumaproject.core.R.drawable.shift_24px,
+            keyType = KeyType.NORMAL,
+            keyId = "${prefix}_shift"
+        )
+        keys += KeyData(
+            label = "",
+            row = 3,
+            column = 2,
+            isFlickable = false,
+            action = KeyAction.Space,
+            isSpecialKey = true,
+            drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24,
+            colSpan = 5,
+            keyType = KeyType.NORMAL,
+            keyId = "${prefix}_space"
+        )
+        keys += KeyData(
+            label = "",
+            row = 3,
+            column = 7,
+            isFlickable = false,
+            action = KeyAction.Delete,
+            isSpecialKey = true,
+            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
+            keyType = KeyType.NORMAL,
+            keyId = "${prefix}_delete"
+        )
+        keys += KeyData(
+            label = "",
+            row = 3,
+            column = 8,
+            isFlickable = false,
+            action = KeyAction.Enter,
+            isSpecialKey = true,
+            drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24,
+            colSpan = 2,
+            keyType = KeyType.NORMAL,
+            keyId = "${prefix}_enter"
+        )
+
+        return KeyboardLayout(
+            keys = keys,
+            flickKeyMaps = emptyMap(),
+            columnCount = 10,
+            rowCount = 4
+        )
+    }
+
+    /**
+     * 英字 QWERTY 配列テンプレート。
+     *   Row 0: q w e r t y u i o p
+     *   Row 1: a s d f g h j k l
+     *   Row 2: z x c v b n m
+     */
+    fun createQwertyTemplateLayout(): KeyboardLayout {
+        val rows = listOf(
+            listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
+            listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
+            listOf("z", "x", "c", "v", "b", "n", "m")
+        )
+        return createAlphabetKeyboardTemplateLayout(prefix = "qwerty", rows = rows)
+    }
+
+    /**
+     * 英字 AZERTY 配列テンプレート（簡易）。
+     *   Row 0: a z e r t y u i o p
+     *   Row 1: q s d f g h j k l m
+     *   Row 2: w x c v b n
+     */
+    fun createAzertyTemplateLayout(): KeyboardLayout {
+        val rows = listOf(
+            listOf("a", "z", "e", "r", "t", "y", "u", "i", "o", "p"),
+            listOf("q", "s", "d", "f", "g", "h", "j", "k", "l", "m"),
+            listOf("w", "x", "c", "v", "b", "n")
+        )
+        return createAlphabetKeyboardTemplateLayout(prefix = "azerty", rows = rows)
+    }
+
+    /**
+     * 英字 Dvorak 配列テンプレート（簡易）。
+     *   Row 0: ' , . p y f g c r l
+     *   Row 1: a o e u i d h t n s
+     *   Row 2: ; q j k x b m w v z
+     */
+    fun createDvorakTemplateLayout(): KeyboardLayout {
+        val rows = listOf(
+            listOf("'", ",", ".", "p", "y", "f", "g", "c", "r", "l"),
+            listOf("a", "o", "e", "u", "i", "d", "h", "t", "n", "s"),
+            listOf(";", "q", "j", "k", "x", "b", "m", "w", "v", "z")
+        )
+        return createAlphabetKeyboardTemplateLayout(prefix = "dvorak", rows = rows)
+    }
+
+    /**
+     * 英字 Colemak 配列テンプレート。
+     *   Row 0: q w f p g j l u y
+     *   Row 1: a r s t d h n e i o
+     *   Row 2: z x c v b k m
+     */
+    fun createColemakTemplateLayout(): KeyboardLayout {
+        val rows = listOf(
+            listOf("q", "w", "f", "p", "g", "j", "l", "u", "y"),
+            listOf("a", "r", "s", "t", "d", "h", "n", "e", "i", "o"),
+            listOf("z", "x", "c", "v", "b", "k", "m")
+        )
+        return createAlphabetKeyboardTemplateLayout(prefix = "colemak", rows = rows)
+    }
+
     private fun createHiraganaToggleLayout(
         inputStyle: String, deleteKeyFlickSettings: DeleteKeyFlickSettings
     ): KeyboardLayout {
