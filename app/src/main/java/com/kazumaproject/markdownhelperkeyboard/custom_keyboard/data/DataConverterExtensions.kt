@@ -30,6 +30,8 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
         "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
         "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
+        "DeleteAfterCursorUntilSymbol" -> KeyAction.DeleteAfterCursorUntilSymbol
+        "UndoLastDelete" -> KeyAction.UndoLastDelete
         "SwitchKatakana" -> KeyAction.ToggleKatakana
         "VoiceInput" -> KeyAction.VoiceInput
         "ShiftKey" -> KeyAction.ShiftKey
@@ -69,6 +71,8 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
         "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
         "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
+        "DeleteAfterCursorUntilSymbol" -> KeyAction.DeleteAfterCursorUntilSymbol
+        "UndoLastDelete" -> KeyAction.UndoLastDelete
         "SwitchKatakana" -> KeyAction.ToggleKatakana
         "VoiceInput" -> KeyAction.VoiceInput
         "ShiftKey" -> KeyAction.ShiftKey
@@ -113,6 +117,8 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish" to null
             KeyAction.SwitchToNumberLayout -> "SwitchToNumber" to null
             KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol" to null
+            KeyAction.DeleteAfterCursorUntilSymbol -> "DeleteAfterCursorUntilSymbol" to null
+            KeyAction.UndoLastDelete -> "UndoLastDelete" to null
             KeyAction.ToggleKatakana -> "SwitchKatakana" to null
             KeyAction.VoiceInput -> "VoiceInput" to null
             KeyAction.ShiftKey -> "ShiftKey" to null

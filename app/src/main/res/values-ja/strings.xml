@@ -513,6 +513,10 @@
     <string name="keyboard_theme_dialog_title">ベースカラーの選択</string>
     <string name="delete_key_left_flick_title">削除キーの左フリック</string>
     <string name="delete_key_left_summary">削除キーを左にフリックすると、カーソルの前にある特定の記号までの文字列もしくは全ての文字列をまとめて削除します。</string>
+    <string name="delete_key_up_flick_title">削除キーの上フリック</string>
+    <string name="delete_key_up_summary">削除キーを上にフリックすると、カーソルより右側の文字を削除します。</string>
+    <string name="delete_key_down_flick_title">削除キーの下フリック</string>
+    <string name="delete_key_down_summary">削除キーを下にフリックすると、直前の削除を元に戻します（Undo）。</string>
     <string name="delete_key_flick_targets_title">削除対象の記号</string>
     <string name="delete_key_flick_targets_summary">初期値: 。、！？「」『』ー.</string>
     <string name="delete_key_flick_targets_fragment_title">削除対象の記号</string>
