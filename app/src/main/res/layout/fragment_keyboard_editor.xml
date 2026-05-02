@@ -36,6 +36,13 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/enable_romaji_input" />
 
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_direct_mode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/enable_direct_input_mode" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/button_select_template"
                 style="?attr/materialButtonOutlinedStyle"

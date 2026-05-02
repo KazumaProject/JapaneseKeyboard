@@ -30,6 +30,11 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
             ),
             DisplayAction(
+                KeyAction.DeleteAfterCursorUntilSymbol,
+                context.getString(R.string.action_delete_after_cursor),
+                com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+            ),
+            DisplayAction(
                 KeyAction.Space,
                 context.getString(R.string.action_space),
                 com.kazumaproject.core.R.drawable.baseline_space_bar_24
@@ -44,7 +49,7 @@ object KeyActionMapper {
                 context.getString(R.string.action_enter),
                 com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
             ),
-            DisplayAction(KeyAction.NewLine, context.getString(R.string.action_new_line)),
+            DisplayAction(KeyAction.ForceNewLine, context.getString(R.string.action_new_line)),
             DisplayAction(
                 KeyAction.Paste,
                 context.getString(R.string.action_paste),
@@ -79,6 +84,21 @@ object KeyActionMapper {
                 KeyAction.ShiftKey,
                 context.getString(R.string.action_shift_key),
                 com.kazumaproject.core.R.drawable.shift_24px
+            ),
+            DisplayAction(
+                KeyAction.CapLockKey,
+                context.getString(R.string.action_cap_lock_key),
+                com.kazumaproject.core.R.drawable.caps_lock
+            ),
+            DisplayAction(
+                KeyAction.SwitchDirectMode,
+                context.getString(R.string.action_switch_direct_mode_key),
+                com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+            ),
+            DisplayAction(
+                KeyAction.SwitchRomajiEnglish,
+                context.getString(R.string.action_switch_romaji_english),
+                com.kazumaproject.core.R.drawable.language_japanese_kana_24px
             ),
             DisplayAction(
                 KeyAction.MoveCustomKeyboardTab,
@@ -135,6 +155,7 @@ object KeyActionMapper {
             is KeyAction.Backspace -> "Backspace"
             is KeyAction.Space -> "Space"
             is KeyAction.NewLine -> "NewLine"
+            is KeyAction.ForceNewLine -> "ForceNewLine"
             is KeyAction.Enter -> "Enter"
             is KeyAction.Convert -> "Convert"
             is KeyAction.Confirm -> "Confirm"
@@ -154,13 +175,18 @@ object KeyActionMapper {
             is KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish"
             is KeyAction.SwitchToNumberLayout -> "SwitchToNumber"
             is KeyAction.ShiftKey -> "ShiftKeyPressed"
+            is KeyAction.CapLockKey -> "CapLockKey"
+            is KeyAction.SwitchRomajiEnglish -> "SwitchRomajiEnglish"
             is KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab"
             is KeyAction.MoveToCustomKeyboard -> keyAction.stableId
                 .takeIf { it.isNotBlank() }
                 ?.let { "$MOVE_TO_CUSTOM_KEYBOARD_PREFIX$it" }
+
             is KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol"
+            is KeyAction.DeleteAfterCursorUntilSymbol -> "DeleteAfterCursorUntilSymbol"
             is KeyAction.ToggleKatakana -> "SwitchKatakana"
             is KeyAction.VoiceInput -> "VoiceInput"
+            is KeyAction.SwitchDirectMode -> "SwitchDirectMode"
             else -> null
         }
     }
@@ -195,10 +221,15 @@ object KeyActionMapper {
             "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
             "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
             "ShiftKeyPressed" -> KeyAction.ShiftKey
+            "CapLockKey" -> KeyAction.CapLockKey
             "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
             "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
+            "DeleteAfterCursorUntilSymbol" -> KeyAction.DeleteAfterCursorUntilSymbol
             "SwitchKatakana" -> KeyAction.ToggleKatakana
+            "SwitchRomajiEnglish" -> KeyAction.SwitchRomajiEnglish
             "VoiceInput" -> KeyAction.VoiceInput
+            "ForceNewLine" -> KeyAction.ForceNewLine
+            "SwitchDirectMode" -> KeyAction.SwitchDirectMode
             else -> null
         }
     }
