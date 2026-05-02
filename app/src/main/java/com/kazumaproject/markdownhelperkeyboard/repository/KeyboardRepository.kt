@@ -523,6 +523,7 @@ class KeyboardRepository @Inject constructor(
                         KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
                         KeyAction.SelectRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                         KeyAction.ShiftKey -> com.kazumaproject.core.R.drawable.shift_24px
+                        KeyAction.CapLockKey -> com.kazumaproject.core.R.drawable.caps_lock
                         KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
                         KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
                         KeyAction.Space -> com.kazumaproject.core.R.drawable.baseline_space_bar_24

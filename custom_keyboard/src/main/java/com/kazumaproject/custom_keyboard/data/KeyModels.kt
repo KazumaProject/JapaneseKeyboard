@@ -59,6 +59,7 @@ sealed class KeyAction {
     data object SwitchToEnglishLayout : KeyAction()
     data object SwitchToNumberLayout : KeyAction()
     data object ShiftKey : KeyAction()
+    data object CapLockKey : KeyAction()
     data object SwitchRomajiEnglish : KeyAction()
     data object MoveCustomKeyboardTab : KeyAction()
     data class MoveToCustomKeyboard(val stableId: String) : KeyAction()

@@ -8,8 +8,10 @@ private fun KeyAction.circularLabel(actionValue: String?): String? {
     return when (this) {
         KeyAction.MoveCustomKeyboardTab ->
             actionValue ?: CircularFlickSlotActionMapper.SWITCH_MAP_LABEL
+
         KeyAction.ShowEmojiKeyboard ->
             actionValue ?: CircularFlickSlotActionMapper.EMOJI_KEYBOARD_LABEL
+
         is KeyAction.MoveToCustomKeyboard -> null
         else -> actionValue
     }
@@ -50,6 +52,7 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "MoveToCustomKeyboard" -> this.actionValue
             ?.takeIf { it.isNotBlank() }
             ?.let { KeyAction.MoveToCustomKeyboard(it) }
+
         else -> null
     }
     return if (action != null) {
@@ -90,10 +93,15 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         "SwitchKatakana" -> KeyAction.ToggleKatakana
         "VoiceInput" -> KeyAction.VoiceInput
         "ShiftKey" -> KeyAction.ShiftKey
+        "CapLockKey" -> KeyAction.CapLockKey
+        "ForceNewLine" -> KeyAction.ForceNewLine
+        "SwitchDirectMode" -> KeyAction.SwitchDirectMode
+        "SwitchRomajiEnglish" -> KeyAction.SwitchRomajiEnglish
         "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
         "MoveToCustomKeyboard" -> this.actionValue
             ?.takeIf { it.isNotBlank() }
             ?.let { KeyAction.MoveToCustomKeyboard(it) }
+
         else -> null
     }
     return if (action != null) {
