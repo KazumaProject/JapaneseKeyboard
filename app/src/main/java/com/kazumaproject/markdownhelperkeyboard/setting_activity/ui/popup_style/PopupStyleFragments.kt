@@ -151,10 +151,10 @@ class FlickKeyboardPopupStyleListFragment : Fragment() {
     ): View {
         val root = editorRoot()
         listOf(
-            FlickTarget.DIRECTIONAL to ("Directional popup" to "方向別 popup"),
-            FlickTarget.CROSS to ("Cross / Grid popup" to "cross flick / grid popup"),
-            FlickTarget.STANDARD to ("Standard popup" to "standard flick popup"),
-            FlickTarget.TFBI to ("Two-step popup" to "two-step / sticky / hierarchical popup")
+            FlickTarget.DIRECTIONAL to ("通常入力" to "通常入力の方向別ポップアップ"),
+            FlickTarget.CROSS to ("長押し、特殊キー" to "キーを長押し、特殊なキーをフリックしたときに表示されるポップアップ"),
+            FlickTarget.STANDARD to ("サークル入力" to "サークル入力のポップアップ"),
+            FlickTarget.TFBI to ("２段 / ３段フリック入力" to "２段フリック入力・３段フリック入力のポップアップ"),
         ).forEach { (target, texts) ->
             root.addView(listRow(texts.first, texts.second) {
                 findNavController().navigate(
