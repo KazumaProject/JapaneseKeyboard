@@ -30,6 +30,7 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts.DeleteKeyFlickSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionType
@@ -224,7 +225,11 @@ class CircularSlotActionSettingFragment : Fragment() {
             dynamicKeyStates = emptyMap(),
             inputLayoutType = AppPreference.sumire_input_method,
             inputStyle = AppPreference.sumire_keyboard_style,
-            isDeleteFlickEnabled = AppPreference.delete_key_left_flick_preference
+            deleteKeyFlickSettings = DeleteKeyFlickSettings(
+                left = AppPreference.delete_key_left_flick_preference,
+                up = AppPreference.delete_key_up_flick_preference,
+                down = AppPreference.delete_key_down_flick_preference
+            )
         )
         keyItems = layout.keys
             .filter { key ->
