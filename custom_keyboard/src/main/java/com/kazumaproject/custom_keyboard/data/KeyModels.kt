@@ -95,6 +95,7 @@ data class KeyboardLayout(
     val columnCount: Int,
     val rowCount: Int,
     val isRomaji: Boolean = false,
+    val isDirectMode: Boolean = false,
     val circularFlickKeyMaps: Map<String, List<Map<CircularFlickDirection, FlickAction>>> =
         flickKeyMaps.toCircularFlickKeyMaps(),
     val twoStepFlickKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
