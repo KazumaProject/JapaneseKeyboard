@@ -16,7 +16,8 @@
     <string name="action_show_emoji_keyboard">Emoji Keyboard</string>
     <string name="action_toggle_dakuten">Dakuten / Small Characters</string>
     <string name="action_toggle_case">English / Lowercase</string>
-    <string name="action_shift_key">Romaji / English Switch</string>
+    <string name="action_shift_key">Shift Key</string>
+    <string name="action_switch_direct_mode_key">Switch Direct Mode</string>
     <string name="action_move_custom_keyboard_tab">Change Tab</string>
     <string name="action_move_to_custom_keyboard">Move to specific custom keyboard</string>
     <string name="action_move_cursor_left">Move Cursor Left</string>
@@ -25,5 +26,7 @@
     <string name="switch_qwerty">Switch to QWERTY Keyboard</string>
     <string name="switch_number">Switch to Number Keyboard</string>
     <string name="action_delete_until_symbol">Delete until symbols</string>
+    <string name="action_delete_after_cursor">Delete after cursor</string>
     <string name="voice_input">Voice Input</string>
+    <string name="action_switch_romaji_english">Romaji / English Switch</string>
 </resources>

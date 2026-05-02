@@ -19,6 +19,7 @@ sealed class KeyAction {
 
     // 文字列入力系
     data class InputText(val text: String) : KeyAction()
+
     /** 旧 onKey に対応する通常文字入力 */
     data class Text(val text: String) : KeyAction()
 
@@ -27,12 +28,15 @@ sealed class KeyAction {
     data object Backspace : KeyAction() // 1文字戻す（Deleteと実質同じことが多い）
     data object Space : KeyAction()
     data object NewLine : KeyAction() // 改行
+    data object ForceNewLine : KeyAction() // 改行を強制
     data object Enter : KeyAction()   // 確定（文脈によってNewLineと使い分ける）
     data object Convert : KeyAction() // 変換
     data object Confirm : KeyAction() // 確定
     data object DeleteUntilSymbol : KeyAction()
     data object DeleteAfterCursorUntilSymbol : KeyAction()
     data object UndoLastDelete : KeyAction()
+
+    data object SwitchDirectMode : KeyAction()
 
     // カーソル操作系
     data object MoveCursorLeft : KeyAction()
@@ -55,6 +59,7 @@ sealed class KeyAction {
     data object SwitchToEnglishLayout : KeyAction()
     data object SwitchToNumberLayout : KeyAction()
     data object ShiftKey : KeyAction()
+    data object SwitchRomajiEnglish : KeyAction()
     data object MoveCustomKeyboardTab : KeyAction()
     data class MoveToCustomKeyboard(val stableId: String) : KeyAction()
 

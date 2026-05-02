@@ -7698,6 +7698,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     is KeyAction.Text -> Unit
                     KeyAction.DeleteAfterCursorUntilSymbol -> {}
                     KeyAction.UndoLastDelete -> {}
+                    KeyAction.SwitchRomajiEnglish -> {}
+                    KeyAction.ForceNewLine -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (insertString.isEmpty()) {
+                            forceNewLine(mainView)
+                        } else {
+                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                        }
+                    }
+
+                    KeyAction.SwitchDirectMode -> {}
                 }
             }
 
@@ -7757,6 +7769,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     is KeyAction.Text -> Unit
                     KeyAction.DeleteAfterCursorUntilSymbol -> {}
                     KeyAction.UndoLastDelete -> {}
+                    KeyAction.ForceNewLine -> {}
+                    KeyAction.SwitchDirectMode -> {}
+                    KeyAction.SwitchRomajiEnglish -> {}
                 }
             }
 
@@ -7884,6 +7899,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     is KeyAction.Text -> Unit
                     KeyAction.DeleteAfterCursorUntilSymbol -> {}
                     KeyAction.UndoLastDelete -> {}
+                    KeyAction.ForceNewLine -> {}
+                    KeyAction.SwitchDirectMode -> {}
+                    KeyAction.SwitchRomajiEnglish -> {}
                 }
             }
 
@@ -8037,6 +8055,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.VoiceInput -> {}
                     is KeyAction.Text -> Unit
+                    KeyAction.ForceNewLine -> {}
+                    KeyAction.SwitchDirectMode -> {}
+                    KeyAction.SwitchRomajiEnglish -> {}
                 }
             }
 
@@ -8236,6 +8257,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         stopDeleteLongPress()
                     }
 
+                    KeyAction.ForceNewLine -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (insertString.isEmpty()) {
+                            forceNewLine(mainView)
+                        } else {
+                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                        }
+                    }
+
                     KeyAction.NewLine, KeyAction.Enter, KeyAction.Confirm -> {
                         val insertString = inputString.value
                         val suggestions = suggestionAdapter?.suggestions ?: emptyList()
@@ -8373,12 +8404,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.ShiftKey -> {
+                        //** TODO **//
+                    }
+
+                    KeyAction.SwitchDirectMode -> {
+                        //** TODO **//
+                    }
+
+                    KeyAction.SwitchRomajiEnglish -> {
                         isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
                         Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
-                                KeyAction.ShiftKey,
-                                if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.shift_fill_24px
-                                else com.kazumaproject.core.R.drawable.shift_24px
+                                KeyAction.SwitchRomajiEnglish,
+                                if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
+                                else com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
                             )
                         }
                     }
@@ -16306,6 +16345,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             stringInTail.set("")
         } else {
             setEnterKeyPress()
+            isHenkan.set(false)
+            henkanPressedWithBunsetsuDetect = false
+            suggestionClickNum = 0
+            suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+            isFirstClickHasStringTail = false
+        }
+        if (candidateTabVisibility == true) {
+            mainView.candidateTabLayout.isVisible = false
+            val tab = mainView.candidateTabLayout.getTabAt(0)
+            mainView.candidateTabLayout.selectTab(tab)
+        }
+        mainView.shortcutToolbarRecyclerview.isVisible =
+            shortcutTollbarVisibility == true
+        setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
+    }
+
+    private fun forceNewLine(mainView: MainLayoutBinding) {
+        if (stringInTail.get().isNotEmpty()) {
+            finishComposingText()
+            setComposingText("", 0)
+            stringInTail.set("")
+        } else {
+            commitText("\n", 1)
             isHenkan.set(false)
             henkanPressedWithBunsetsuDetect = false
             suggestionClickNum = 0
