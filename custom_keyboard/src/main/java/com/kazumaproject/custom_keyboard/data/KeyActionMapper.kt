@@ -10,6 +10,7 @@ data class DisplayAction(
 )
 
 object KeyActionMapper {
+    private const val MOVE_TO_CUSTOM_KEYBOARD_PREFIX = "MoveToCustomKeyboard:"
 
     /**
      * Generates a list of DisplayAction objects using localized strings.
@@ -85,6 +86,11 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.keyboard_command_key_24px
             ),
             DisplayAction(
+                KeyAction.MoveToCustomKeyboard(""),
+                context.getString(R.string.action_move_to_custom_keyboard),
+                com.kazumaproject.core.R.drawable.keyboard_command_key_24px
+            ),
+            DisplayAction(
                 KeyAction.MoveCursorLeft,
                 context.getString(R.string.action_move_cursor_left),
                 com.kazumaproject.core.R.drawable.baseline_arrow_left_24
@@ -149,6 +155,9 @@ object KeyActionMapper {
             is KeyAction.SwitchToNumberLayout -> "SwitchToNumber"
             is KeyAction.ShiftKey -> "ShiftKeyPressed"
             is KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab"
+            is KeyAction.MoveToCustomKeyboard -> keyAction.stableId
+                .takeIf { it.isNotBlank() }
+                ?.let { "$MOVE_TO_CUSTOM_KEYBOARD_PREFIX$it" }
             is KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol"
             is KeyAction.ToggleKatakana -> "SwitchKatakana"
             is KeyAction.VoiceInput -> "VoiceInput"
@@ -158,6 +167,10 @@ object KeyActionMapper {
 
     // DBから読み込んだ文字列をKeyActionオブジェクトに変換
     fun toKeyAction(actionString: String?): KeyAction? {
+        if (actionString?.startsWith(MOVE_TO_CUSTOM_KEYBOARD_PREFIX) == true) {
+            val stableId = actionString.removePrefix(MOVE_TO_CUSTOM_KEYBOARD_PREFIX)
+            return stableId.takeIf { it.isNotBlank() }?.let { KeyAction.MoveToCustomKeyboard(it) }
+        }
         return when (actionString) {
             "Delete" -> KeyAction.Delete
             "Backspace" -> KeyAction.Backspace

@@ -18,6 +18,7 @@
     <string name="action_toggle_case">英語、小文字</string>
     <string name="action_shift_key">ローマ字、英語切り替え</string>
     <string name="action_move_custom_keyboard_tab">タブの変更</string>
+    <string name="action_move_to_custom_keyboard">特定のカスタムキーボードへ移動</string>
     <string name="action_move_cursor_left">カーソル左</string>
     <string name="action_move_cursor_right">カーソル右</string>
     <string name="action_select_all">すべて選択</string>

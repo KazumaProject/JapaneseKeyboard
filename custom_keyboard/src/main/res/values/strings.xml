@@ -18,6 +18,7 @@
     <string name="action_toggle_case">English / Lowercase</string>
     <string name="action_shift_key">Romaji / English Switch</string>
     <string name="action_move_custom_keyboard_tab">Change Tab</string>
+    <string name="action_move_to_custom_keyboard">Move to specific custom keyboard</string>
     <string name="action_move_cursor_left">Move Cursor Left</string>
     <string name="action_move_cursor_right">Move Cursor Right</string>
     <string name="action_select_all">Select All</string>
