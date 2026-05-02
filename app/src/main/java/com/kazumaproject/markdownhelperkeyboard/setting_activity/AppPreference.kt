@@ -105,6 +105,19 @@ object AppPreference {
 
     private val QWERTY_SHOW_POPUP_WINDOW = Pair("qwerty_show_popup_window_preference", true)
 
+    private val TENKEY_POPUP_SIZE_SCALE_PERCENT =
+        Pair("tenkey_popup_size_scale_percent_preference", 100)
+    private val TENKEY_POPUP_TEXT_SIZE_SP = Pair("tenkey_popup_text_size_sp_preference", 28.0f)
+
+    private val QWERTY_KEY_PREVIEW_POPUP_SIZE_SCALE_PERCENT =
+        Pair("qwerty_key_preview_popup_size_scale_percent_preference", 100)
+    private val QWERTY_KEY_PREVIEW_POPUP_TEXT_SIZE_SP =
+        Pair("qwerty_key_preview_popup_text_size_sp_preference", 28.0f)
+    private val QWERTY_VARIATION_POPUP_SIZE_SCALE_PERCENT =
+        Pair("qwerty_variation_popup_size_scale_percent_preference", 100)
+    private val QWERTY_VARIATION_POPUP_TEXT_SIZE_SP =
+        Pair("qwerty_variation_popup_text_size_sp_preference", 28.0f)
+
     private val CANDIDATE_IN_PASSWORD = Pair("hide_candidate_password_preference", true)
 
     private val CANDIDATE_IN_PASSWORD_COMPOSE = Pair("password_compose_preference", false)
@@ -260,6 +273,23 @@ object AppPreference {
 
     private val FLICK_SPECIAL_KEY_TEXT_SIZE_SP =
         Pair("flick_special_key_text_size_sp_preference", 12.0f)
+
+    private val FLICK_DIRECTIONAL_POPUP_SIZE_SCALE_PERCENT =
+        Pair("flick_directional_popup_size_scale_percent_preference", 100)
+    private val FLICK_DIRECTIONAL_POPUP_TEXT_SIZE_SP =
+        Pair("flick_directional_popup_text_size_sp_preference", 28.0f)
+    private val FLICK_CROSS_POPUP_SIZE_SCALE_PERCENT =
+        Pair("flick_cross_popup_size_scale_percent_preference", 100)
+    private val FLICK_CROSS_POPUP_TEXT_SIZE_SP =
+        Pair("flick_cross_popup_text_size_sp_preference", 18.0f)
+    private val FLICK_STANDARD_POPUP_SIZE_SCALE_PERCENT =
+        Pair("flick_standard_popup_size_scale_percent_preference", 100)
+    private val FLICK_STANDARD_POPUP_TEXT_SIZE_SP =
+        Pair("flick_standard_popup_text_size_sp_preference", 19.0f)
+    private val FLICK_TFBI_POPUP_SIZE_SCALE_PERCENT =
+        Pair("flick_tfbi_popup_size_scale_percent_preference", 100)
+    private val FLICK_TFBI_POPUP_TEXT_SIZE_SP =
+        Pair("flick_tfbi_popup_text_size_sp_preference", 20.0f)
 
     private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
 
@@ -1446,6 +1476,171 @@ object AppPreference {
             it.putFloat(
                 FLICK_SPECIAL_KEY_TEXT_SIZE_SP.first,
                 value ?: FLICK_SPECIAL_KEY_TEXT_SIZE_SP.second
+            )
+        }
+
+    var tenkey_popup_size_scale_percent: Int?
+        get() = preferences.getInt(
+            TENKEY_POPUP_SIZE_SCALE_PERCENT.first,
+            TENKEY_POPUP_SIZE_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                TENKEY_POPUP_SIZE_SCALE_PERCENT.first,
+                value ?: TENKEY_POPUP_SIZE_SCALE_PERCENT.second
+            )
+        }
+
+    var tenkey_popup_text_size_sp: Float?
+        get() = preferences.getFloat(
+            TENKEY_POPUP_TEXT_SIZE_SP.first,
+            TENKEY_POPUP_TEXT_SIZE_SP.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(TENKEY_POPUP_TEXT_SIZE_SP.first, value ?: TENKEY_POPUP_TEXT_SIZE_SP.second)
+        }
+
+    var qwerty_key_preview_popup_size_scale_percent: Int?
+        get() = preferences.getInt(
+            QWERTY_KEY_PREVIEW_POPUP_SIZE_SCALE_PERCENT.first,
+            QWERTY_KEY_PREVIEW_POPUP_SIZE_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                QWERTY_KEY_PREVIEW_POPUP_SIZE_SCALE_PERCENT.first,
+                value ?: QWERTY_KEY_PREVIEW_POPUP_SIZE_SCALE_PERCENT.second
+            )
+        }
+
+    var qwerty_key_preview_popup_text_size_sp: Float?
+        get() = preferences.getFloat(
+            QWERTY_KEY_PREVIEW_POPUP_TEXT_SIZE_SP.first,
+            QWERTY_KEY_PREVIEW_POPUP_TEXT_SIZE_SP.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(
+                QWERTY_KEY_PREVIEW_POPUP_TEXT_SIZE_SP.first,
+                value ?: QWERTY_KEY_PREVIEW_POPUP_TEXT_SIZE_SP.second
+            )
+        }
+
+    var qwerty_variation_popup_size_scale_percent: Int?
+        get() = preferences.getInt(
+            QWERTY_VARIATION_POPUP_SIZE_SCALE_PERCENT.first,
+            QWERTY_VARIATION_POPUP_SIZE_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                QWERTY_VARIATION_POPUP_SIZE_SCALE_PERCENT.first,
+                value ?: QWERTY_VARIATION_POPUP_SIZE_SCALE_PERCENT.second
+            )
+        }
+
+    var qwerty_variation_popup_text_size_sp: Float?
+        get() = preferences.getFloat(
+            QWERTY_VARIATION_POPUP_TEXT_SIZE_SP.first,
+            QWERTY_VARIATION_POPUP_TEXT_SIZE_SP.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(
+                QWERTY_VARIATION_POPUP_TEXT_SIZE_SP.first,
+                value ?: QWERTY_VARIATION_POPUP_TEXT_SIZE_SP.second
+            )
+        }
+
+    var flick_directional_popup_size_scale_percent: Int?
+        get() = preferences.getInt(
+            FLICK_DIRECTIONAL_POPUP_SIZE_SCALE_PERCENT.first,
+            FLICK_DIRECTIONAL_POPUP_SIZE_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                FLICK_DIRECTIONAL_POPUP_SIZE_SCALE_PERCENT.first,
+                value ?: FLICK_DIRECTIONAL_POPUP_SIZE_SCALE_PERCENT.second
+            )
+        }
+
+    var flick_directional_popup_text_size_sp: Float?
+        get() = preferences.getFloat(
+            FLICK_DIRECTIONAL_POPUP_TEXT_SIZE_SP.first,
+            FLICK_DIRECTIONAL_POPUP_TEXT_SIZE_SP.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(
+                FLICK_DIRECTIONAL_POPUP_TEXT_SIZE_SP.first,
+                value ?: FLICK_DIRECTIONAL_POPUP_TEXT_SIZE_SP.second
+            )
+        }
+
+    var flick_cross_popup_size_scale_percent: Int?
+        get() = preferences.getInt(
+            FLICK_CROSS_POPUP_SIZE_SCALE_PERCENT.first,
+            FLICK_CROSS_POPUP_SIZE_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                FLICK_CROSS_POPUP_SIZE_SCALE_PERCENT.first,
+                value ?: FLICK_CROSS_POPUP_SIZE_SCALE_PERCENT.second
+            )
+        }
+
+    var flick_cross_popup_text_size_sp: Float?
+        get() = preferences.getFloat(
+            FLICK_CROSS_POPUP_TEXT_SIZE_SP.first,
+            FLICK_CROSS_POPUP_TEXT_SIZE_SP.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(
+                FLICK_CROSS_POPUP_TEXT_SIZE_SP.first,
+                value ?: FLICK_CROSS_POPUP_TEXT_SIZE_SP.second
+            )
+        }
+
+    var flick_standard_popup_size_scale_percent: Int?
+        get() = preferences.getInt(
+            FLICK_STANDARD_POPUP_SIZE_SCALE_PERCENT.first,
+            FLICK_STANDARD_POPUP_SIZE_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                FLICK_STANDARD_POPUP_SIZE_SCALE_PERCENT.first,
+                value ?: FLICK_STANDARD_POPUP_SIZE_SCALE_PERCENT.second
+            )
+        }
+
+    var flick_standard_popup_text_size_sp: Float?
+        get() = preferences.getFloat(
+            FLICK_STANDARD_POPUP_TEXT_SIZE_SP.first,
+            FLICK_STANDARD_POPUP_TEXT_SIZE_SP.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(
+                FLICK_STANDARD_POPUP_TEXT_SIZE_SP.first,
+                value ?: FLICK_STANDARD_POPUP_TEXT_SIZE_SP.second
+            )
+        }
+
+    var flick_tfbi_popup_size_scale_percent: Int?
+        get() = preferences.getInt(
+            FLICK_TFBI_POPUP_SIZE_SCALE_PERCENT.first,
+            FLICK_TFBI_POPUP_SIZE_SCALE_PERCENT.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                FLICK_TFBI_POPUP_SIZE_SCALE_PERCENT.first,
+                value ?: FLICK_TFBI_POPUP_SIZE_SCALE_PERCENT.second
+            )
+        }
+
+    var flick_tfbi_popup_text_size_sp: Float?
+        get() = preferences.getFloat(
+            FLICK_TFBI_POPUP_TEXT_SIZE_SP.first,
+            FLICK_TFBI_POPUP_TEXT_SIZE_SP.second
+        )
+        set(value) = preferences.edit {
+            it.putFloat(
+                FLICK_TFBI_POPUP_TEXT_SIZE_SP.first,
+                value ?: FLICK_TFBI_POPUP_TEXT_SIZE_SP.second
             )
         }
 

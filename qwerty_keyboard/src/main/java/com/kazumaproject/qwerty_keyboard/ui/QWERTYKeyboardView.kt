@@ -18,6 +18,7 @@ import android.text.style.StyleSpan
 import android.util.AttributeSet
 import android.util.Log
 import android.util.SparseArray
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -40,6 +41,8 @@ import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.core.data.qwerty.CapsLockState
+import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.core.data.qwerty.QWERTYKeys
 import com.kazumaproject.core.data.qwerty.VariationInfo
 import com.kazumaproject.core.domain.extensions.dpToPx
@@ -138,6 +141,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var variationPopup: PopupWindow? = null
     private var variationPopupView: VariationsPopupView? = null
     private var longPressedPointerId: Int? = null
+    private var keyPreviewPopupStyle = PopupViewStyle(100, 28f)
+    private var variationPopupStyle = PopupViewStyle(100, 28f)
 
     // ★ ポインターをロックするための変数を追加
     private var lockedPointerId: Int? = null
@@ -1793,6 +1798,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
         val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
+        tv.setTextSize(
+            TypedValue.COMPLEX_UNIT_SP,
+            keyPreviewPopupStyle.textSizeSp.coerceIn(8f, 48f)
+        )
         val isLandMode =
             (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
 
@@ -1841,14 +1850,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             else -> tv.text = ""
         }
 
-        val popup = PopupWindow(popupView, view.width * 2, view.height * 2 + 64, false).apply {
+        val scale = keyPreviewPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        val popupWidth = (view.width * 2 * scale).toInt().coerceAtLeast(1)
+        val popupHeight = ((view.height * 2 + 64) * scale).toInt().coerceAtLeast(1)
+
+        val popup = PopupWindow(popupView, popupWidth, popupHeight, false).apply {
             isTouchable = false
             isFocusable = false
             elevation = 6f
         }
 
-        val xOffset = -(view.width / 2)
-        val yOffset = -(view.height * 2 + 64)
+        val xOffset = -((popupWidth - view.width) / 2)
+        val yOffset = -popupHeight
         popup.showAsDropDown(view, xOffset, yOffset)
         keyPreviewPopup = popup
     }
@@ -1973,7 +1986,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun showVariationPopup(anchorView: View, variations: List<Char>) {
         variationPopup?.dismiss()
         val context = this.context
-        variationPopupView = VariationsPopupView(context).apply { setChars(variations) }
+        variationPopupView = VariationsPopupView(context).apply {
+            applyPopupViewStyle(variationPopupStyle)
+            setChars(variations)
+        }
         when (themeMode) {
             "custom" -> {
                 variationPopupView?.setNeumorphicColors(
@@ -1988,11 +2004,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
         }
         val maxColumns = 3
-        val itemSize = 100
+        val scale = variationPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        val itemSize = (100 * scale).toInt().coerceAtLeast(1)
         val cols = if (variations.size < maxColumns) variations.size else maxColumns
         val rows = kotlin.math.ceil(variations.size.toFloat() / maxColumns).toInt()
         val popupWidth = itemSize * cols
-        val popupHeight = 150 * rows
+        val popupHeight = ((150 * rows) * scale).toInt().coerceAtLeast(1)
         val popup = PopupWindow(variationPopupView, popupWidth, popupHeight, false).apply {
             isTouchable = false
         }
@@ -2004,6 +2021,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val yOffset = -anchorView.height - popupHeight
         popup.showAsDropDown(anchorView, xOffset, yOffset)
         this.variationPopup = popup
+    }
+
+    fun applyPopupViewStyleSet(styleSet: QwertyPopupViewStyleSet) {
+        keyPreviewPopupStyle = PopupViewStyle(
+            sizeScalePercent = styleSet.keyPreview.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = styleSet.keyPreview.textSizeSp.coerceIn(8f, 48f)
+        )
+        variationPopupStyle = PopupViewStyle(
+            sizeScalePercent = styleSet.variation.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = styleSet.variation.textSizeSp.coerceIn(8f, 48f)
+        )
+        variationPopupView?.applyPopupViewStyle(variationPopupStyle)
     }
 
     private fun cancelLongPressForPointer(pointerId: Int) {

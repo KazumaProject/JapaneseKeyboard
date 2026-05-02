@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.KeyMode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -78,6 +79,7 @@ class TfbiHierarchicalFlickController(
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
     private lateinit var gestureDetector: GestureDetector
+    private var popupStyle = PopupViewStyle(100, 20f)
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
 
@@ -93,6 +95,14 @@ class TfbiHierarchicalFlickController(
         this.popupBackgroundColor = backgroundColor
         this.popupHighlightedColor = highlightedColor
         this.popupTextColor = textColor
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupStyle = PopupViewStyle(
+            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+        )
+        popupView?.applyPopupViewStyle(popupStyle)
     }
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
@@ -472,12 +482,14 @@ class TfbiHierarchicalFlickController(
             if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
                 setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
             }
+            applyPopupViewStyle(popupStyle)
             setCharacters(tapCharacter, petalChars)
             highlightDirection(TfbiFlickDirection.TAP)
         }
 
-        val popupWidth = anchorView.width * 3
-        val popupHeight = anchorView.height * 3
+        val scale = popupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        val popupWidth = (anchorView.width * 3 * scale).toInt().coerceAtLeast(1)
+        val popupHeight = (anchorView.height * 3 * scale).toInt().coerceAtLeast(1)
         popupWindow = PopupWindow(popupView, popupWidth, popupHeight, false).apply {
             isTouchable = false
             isFocusable = false
@@ -487,8 +499,8 @@ class TfbiHierarchicalFlickController(
         val windowAnchor = popupWindowAnchorProvider?.invoke() ?: anchorView
         if (!isAnchorReady(anchorView, windowAnchor)) return
         val location = getLocationRelativeToWindowAnchor(anchorView, windowAnchor)
-        val offsetX = location[0] - anchorView.width
-        val offsetY = location[1] - anchorView.height
+        val offsetX = location[0] + anchorView.width / 2 - popupWidth / 2
+        val offsetY = location[1] + anchorView.height / 2 - popupHeight / 2
         runCatching {
             popupWindow?.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, offsetX, offsetY)
         }

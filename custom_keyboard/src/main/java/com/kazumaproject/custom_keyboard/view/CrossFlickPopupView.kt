@@ -13,6 +13,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.appcompat.widget.AppCompatTextView
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -117,6 +118,10 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
             backgroundShape.cornerRadius = 24f
             backgroundShape.setColor(color)
         }
+
+        fun applyTextSize(textSizeSp: Float) {
+            textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, textSizeSp.coerceIn(8f, 48f))
+        }
     }
 
     private val gridLayout = GridLayout(context).apply {
@@ -128,6 +133,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
     private val cells = mutableMapOf<FlickDirection, CellView>()
     private var colorTheme: FlickPopupColorTheme? = null
     private var highlightedDirection: FlickDirection? = null
+    private var popupTextSizeSp: Float = 18f
 
     init {
         addView(gridLayout, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
@@ -138,6 +144,12 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
         cells.forEach { (dir, cell) ->
             cell.applyColors(theme, dir == highlightedDirection)
         }
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupTextSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+        updateCellTextSizes()
+        invalidate()
     }
 
     fun setCells(map: Map<FlickDirection, FlickAction>, keyWidth: Int, keyHeight: Int) {
@@ -159,6 +171,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
 
             val cell = CellView(context).apply {
                 setContent(action)
+                applyTextSize(popupTextSizeSp)
                 val theme = colorTheme
                 if (theme != null) {
                     applyColors(theme, direction == highlightedDirection)
@@ -199,6 +212,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
             if (action != null) {
                 val cell = CellView(context).apply {
                     setContent(action)
+                    applyTextSize(popupTextSizeSp)
                     val theme = colorTheme
                     if (theme != null) {
                         applyColors(theme, direction == highlightedDirection)
@@ -227,5 +241,9 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
                 cell.applyFallbackColors(context, dir == direction)
             }
         }
+    }
+
+    private fun updateCellTextSizes() {
+        cells.values.forEach { it.applyTextSize(popupTextSizeSp) }
     }
 }

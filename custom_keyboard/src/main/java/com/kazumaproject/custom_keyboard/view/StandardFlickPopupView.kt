@@ -18,6 +18,7 @@ import android.view.Gravity
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.toColorInt
 import androidx.core.text.inSpans
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import kotlin.math.roundToInt
@@ -28,7 +29,8 @@ import kotlin.math.roundToInt
  */
 class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
 
-    val viewSize = dpToPx(72) // ポップアップの直径
+    var viewSize = dpToPx(72) // ポップアップの直径
+        private set
     private val backgroundDrawable: GradientDrawable = createBackground()
 
     // 追加: テーマ保持（setPopupColors のため）
@@ -41,6 +43,7 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
     private var lastBackgroundColor: Int = "#FFFFFF".toColorInt()
     private var lastTextColor: Int = Color.BLACK
     private var lastStrokeColor: Int = Color.LTGRAY
+    private var popupTextSizeSp: Float = 19f
 
     private class YOffsetSpan(private val yOffset: Int) : ReplacementSpan() {
         override fun getSize(
@@ -130,8 +133,8 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         val right = characters[FlickDirection.UP_RIGHT_FAR] ?: ""
         val down = characters[FlickDirection.DOWN] ?: ""
 
-        val tapSize = 19f
-        val sideSize = 11f
+        val tapSize = popupTextSizeSp.coerceIn(8f, 48f)
+        val sideSize = tapSize * 0.58f
         val verticalOffset = spToPx(-1.5f)
         val transparent = ForegroundColorSpan(Color.TRANSPARENT)
 
@@ -195,30 +198,42 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
 
     private fun createSpannableText(text: String): SpannableString {
         val spannable = SpannableString(text)
+        val primarySize = popupTextSizeSp.coerceIn(8f, 48f)
+        val secondarySize = primarySize * 0.54f
         if (text.contains("\n")) {
             val parts = text.split("\n", limit = 2)
             val primaryText = parts[0]
             spannable.setSpan(
-                AbsoluteSizeSpan(spToPx(26f)),
+                AbsoluteSizeSpan(spToPx(primarySize)),
                 0,
                 primaryText.length,
                 Spannable.SPAN_INCLUSIVE_INCLUSIVE
             )
             spannable.setSpan(
-                AbsoluteSizeSpan(spToPx(14f)),
+                AbsoluteSizeSpan(spToPx(secondarySize)),
                 primaryText.length,
                 text.length,
                 Spannable.SPAN_INCLUSIVE_INCLUSIVE
             )
         } else {
             spannable.setSpan(
-                AbsoluteSizeSpan(spToPx(26f)),
+                AbsoluteSizeSpan(spToPx(primarySize)),
                 0,
                 text.length,
                 Spannable.SPAN_INCLUSIVE_INCLUSIVE
             )
         }
         return spannable
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        val scale = style.sizeScalePercent.coerceIn(50, 200) / 100f
+        viewSize = (dpToPx(72) * scale).toInt().coerceAtLeast(1)
+        popupTextSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+        width = viewSize
+        height = viewSize
+        requestLayout()
+        invalidate()
     }
 
     private fun createBackground(): GradientDrawable {

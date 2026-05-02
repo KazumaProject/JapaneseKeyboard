@@ -11,6 +11,7 @@ import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.toColorInt
 import androidx.core.graphics.withRotation
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 
@@ -71,6 +72,10 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
             else -> 0f
         }
         invalidate()
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        setTextSize(TypedValue.COMPLEX_UNIT_SP, style.textSizeSp.coerceIn(8f, 48f))
     }
 
     /**

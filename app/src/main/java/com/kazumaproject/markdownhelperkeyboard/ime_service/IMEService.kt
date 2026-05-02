@@ -127,6 +127,9 @@ import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.core.domain.window.getScreenHeight
+import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
+import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
@@ -2076,6 +2079,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
                     (longPressTimeoutPreferenceValue ?: 300).toLong()
                 )
+                floatingKeyboardLayoutBinding.keyboardViewFloating.applyPopupViewStyle(
+                    currentTenKeyPopupViewStyle()
+                )
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
@@ -2165,6 +2171,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
+                keyboardView.applyPopupViewStyle(currentTenKeyPopupViewStyle())
                 val defaultLetterSize = when (currentInputModeForSession) {
                     InputMode.ModeJapanese -> 17f
                     InputMode.ModeEnglish -> 12f
@@ -2200,6 +2207,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
                 customLayoutDefault.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
                 qwertyView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
+                qwertyView.applyPopupViewStyleSet(currentQwertyPopupViewStyleSet())
                 qwertyView.setSpecialKeyVisibility(
                     showCursors = qwertyShowCursorButtonsPreference ?: false,
                     showSwitchKey = qwertyShowIMEButtonPreference ?: true,
@@ -4774,6 +4782,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
             (longPressTimeoutPreferenceValue ?: 300).toLong()
+        )
+        floatingKeyboardLayoutBinding.keyboardViewFloating.applyPopupViewStyle(
+            currentTenKeyPopupViewStyle()
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setFlickSensitivityValue(
             flickSensitivityPreferenceValue ?: 100
@@ -7401,6 +7412,47 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         configureFlickKeyboardView(mainView.customLayoutDefault, mainView, isFloatingView = false)
     }
 
+    private fun currentTenKeyPopupViewStyle(): PopupViewStyle {
+        return PopupViewStyle(
+            sizeScalePercent = appPreference.tenkey_popup_size_scale_percent ?: 100,
+            textSizeSp = appPreference.tenkey_popup_text_size_sp ?: 28.0f
+        )
+    }
+
+    private fun currentQwertyPopupViewStyleSet(): QwertyPopupViewStyleSet {
+        return QwertyPopupViewStyleSet(
+            keyPreview = PopupViewStyle(
+                sizeScalePercent = appPreference.qwerty_key_preview_popup_size_scale_percent ?: 100,
+                textSizeSp = appPreference.qwerty_key_preview_popup_text_size_sp ?: 28.0f
+            ),
+            variation = PopupViewStyle(
+                sizeScalePercent = appPreference.qwerty_variation_popup_size_scale_percent ?: 100,
+                textSizeSp = appPreference.qwerty_variation_popup_text_size_sp ?: 28.0f
+            )
+        )
+    }
+
+    private fun currentFlickPopupViewStyleSet(): FlickPopupViewStyleSet {
+        return FlickPopupViewStyleSet(
+            directional = PopupViewStyle(
+                sizeScalePercent = appPreference.flick_directional_popup_size_scale_percent ?: 100,
+                textSizeSp = appPreference.flick_directional_popup_text_size_sp ?: 28.0f
+            ),
+            cross = PopupViewStyle(
+                sizeScalePercent = appPreference.flick_cross_popup_size_scale_percent ?: 100,
+                textSizeSp = appPreference.flick_cross_popup_text_size_sp ?: 18.0f
+            ),
+            standard = PopupViewStyle(
+                sizeScalePercent = appPreference.flick_standard_popup_size_scale_percent ?: 100,
+                textSizeSp = appPreference.flick_standard_popup_text_size_sp ?: 19.0f
+            ),
+            tfbi = PopupViewStyle(
+                sizeScalePercent = appPreference.flick_tfbi_popup_size_scale_percent ?: 100,
+                textSizeSp = appPreference.flick_tfbi_popup_text_size_sp ?: 20.0f
+            )
+        )
+    }
+
     private fun configureFlickKeyboardView(
         flickView: FlickKeyboardView,
         mainView: MainLayoutBinding,
@@ -7455,6 +7507,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             textSizeSp = appPreference.flick_key_text_size_sp ?: 16.0f,
             specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 16.0f
         )
+        flickView.applyPopupViewStyleSet(currentFlickPopupViewStyleSet())
         flickView.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
 
         flickView.setOnKeyboardActionListener(object :
@@ -12742,6 +12795,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 borderWidth = customKeyBorderWidth ?: 1
             )
             setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
+            applyPopupViewStyleSet(currentQwertyPopupViewStyleSet())
             setSpecialKeyVisibility(
                 showCursors = qwertyShowCursorButtonsPreference ?: false,
                 showSwitchKey = qwertyShowIMEButtonPreference ?: true,

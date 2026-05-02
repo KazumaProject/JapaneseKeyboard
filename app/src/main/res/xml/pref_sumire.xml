@@ -12,6 +12,11 @@
             android:title="@string/sumire_keyboard_size_preference_title"
             app:summary="@string/sumire_keyboard_size_preference_summary" />
 
+        <Preference
+            android:key="flick_keyboard_popup_view_style_preference"
+            android:title="ポップアップ表示"
+            android:summary="FlickKeyboardView の各 popup のサイズと文字サイズを設定します" />
+
         <ListPreference
             android:defaultValue="toggle"
             android:dialogTitle="@string/sumire_input_method_dialog_title"
