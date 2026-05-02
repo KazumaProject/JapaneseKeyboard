@@ -602,6 +602,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var clipboardPreviewVisibility: Boolean? = true
     private var clipboardPreviewTapToDelete: Boolean? = false
     private var isDeleteLeftFlickPreference: Boolean? = true
+    private var isDeleteUpFlickPreference: Boolean? = false
+    private var isDeleteDownFlickPreference: Boolean? = false
 
     @Volatile
     private var deleteKeyFlickTargetChars: Set<Char> = DEFAULT_DELETE_KEY_FLICK_TARGETS
@@ -944,11 +946,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         data class External(val ime: ImeItem) : RowItem()
     }
 
+    private enum class DeleteDirection {
+        BeforeCursor,
+        AfterCursor
+    }
+
     private sealed interface EditHistoryEntry {
         val previewText: String
 
         data class DeleteCommittedText(
-            val deletedText: String
+            val deletedText: String,
+            val direction: DeleteDirection = DeleteDirection.BeforeCursor
         ) : EditHistoryEntry {
             override val previewText: String = deletedText
         }
@@ -1288,6 +1296,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         landscapeForceQwertyRomajiPreference = preferences.landscapeForceQwertyRomajiPreference
         shortcutTollbarVisibility = preferences.shortcutTollbarVisibility
         isDeleteLeftFlickPreference = preferences.isDeleteLeftFlickPreference
+        isDeleteUpFlickPreference = preferences.isDeleteUpFlickPreference
+        isDeleteDownFlickPreference = preferences.isDeleteDownFlickPreference
         zenzDebounceTimePreference = preferences.zenzDebounceTimePreference
         zenzMaximumLetterSizePreference = preferences.zenzMaximumLetterSizePreference
         zenzMaximumContextSizePreference = preferences.zenzMaximumContextSizePreference
@@ -1657,9 +1667,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val isBackgroundVideoApplied = applyFloatingKeyboardBackgroundVideoIfNeeded(floatingView)
         if (isBackgroundVideoApplied) {
             clearKeyboardBackgroundImage(floatingView.floatingKeyboardBackgroundImage)
-            applyFloatingKeyboardContainerTransparencyForBackgroundMedia(floatingView, enabled = true)
+            applyFloatingKeyboardContainerTransparencyForBackgroundMedia(
+                floatingView,
+                enabled = true
+            )
         } else {
-            val isBackgroundImageApplied = applyFloatingKeyboardBackgroundImageIfNeeded(floatingView)
+            val isBackgroundImageApplied =
+                applyFloatingKeyboardBackgroundImageIfNeeded(floatingView)
             applyFloatingKeyboardContainerTransparencyForBackgroundMedia(
                 floatingView,
                 enabled = isBackgroundImageApplied
@@ -1678,7 +1692,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         floatingView.root.clipToOutline = false
         floatingView.floatingKeyboardBackgroundContainer.background = clipDrawable
-        floatingView.floatingKeyboardBackgroundContainer.outlineProvider = ViewOutlineProvider.BACKGROUND
+        floatingView.floatingKeyboardBackgroundContainer.outlineProvider =
+            ViewOutlineProvider.BACKGROUND
         floatingView.floatingKeyboardBackgroundContainer.clipToOutline = true
     }
 
@@ -1717,7 +1732,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val chromeHeightPx = (106 * resources.displayMetrics.density).toInt()
             keyboardHeight + chromeHeightPx
         }
-        applyHeight(floatingView.floatingKeyboardContent.height.takeIf { it > 0 } ?: fallbackHeight ?: 0)
+        applyHeight(floatingView.floatingKeyboardContent.height.takeIf { it > 0 } ?: fallbackHeight
+        ?: 0)
         floatingView.root.post {
             applyHeight(floatingView.floatingKeyboardContent.height)
         }
@@ -2194,6 +2210,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
                 qwertyView.setSwitchNumberLayoutKeyVisibility(false)
                 qwertyView.setDeleteLeftFlickEnabled(isDeleteLeftFlickPreference ?: true)
+                qwertyView.setDeleteUpFlickEnabled(isDeleteUpFlickPreference ?: false)
+                qwertyView.setDeleteDownFlickEnabled(isDeleteDownFlickPreference ?: false)
                 qwertyView.setKeyMargins(
                     verticalDp = qwertyKeyVerticalMargin ?: 5.0f,
                     horizontalGapDp = qwertyKeyHorizontalGap ?: 2.0f,
@@ -2348,6 +2366,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clipboardPreviewVisibility = null
         clipboardPreviewTapToDelete = null
         isDeleteLeftFlickPreference = null
+        isDeleteUpFlickPreference = null
+        isDeleteDownFlickPreference = null
         qwertyShowKutoutenButtonsPreference = null
         qwertyShowKeymapSymbolsPreference = null
         showCandidateInPasswordPreference = null
@@ -5102,8 +5122,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         handleDeleteKeyTap(insertString, suggestions)
                     }
                 } else {
-                    if (gestureType == GestureType.FlickLeft && isDeleteLeftFlickPreference == true) {
-                        deleteWordOrSymbolsBeforeCursor(insertString)
+                    when (gestureType) {
+                        GestureType.FlickLeft -> {
+                            if (isDeleteLeftFlickPreference == true) {
+                                deleteWordOrSymbolsBeforeCursor(insertString)
+                            }
+                        }
+
+                        GestureType.FlickTop -> {
+                            if (isDeleteUpFlickPreference == true) {
+                                deleteWordOrSymbolsAfterCursor(insertString)
+                            }
+                        }
+
+                        GestureType.FlickBottom -> {
+                            if (isDeleteDownFlickPreference == true) {
+                                undoLastHistoryEntry()
+                            }
+                        }
+
+                        else -> {}
                     }
                 }
                 stopDeleteLongPress()
@@ -5301,8 +5339,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         handleDeleteKeyTap(insertString, suggestions)
                     }
                 } else {
-                    if (gestureType == GestureType.FlickLeft && isDeleteLeftFlickPreference == true) {
-                        deleteWordOrSymbolsBeforeCursor(insertString)
+                    when (gestureType) {
+                        GestureType.FlickLeft -> {
+                            if (isDeleteLeftFlickPreference == true) {
+                                deleteWordOrSymbolsBeforeCursor(insertString)
+                            }
+                        }
+
+                        GestureType.FlickTop -> {
+                            if (isDeleteUpFlickPreference == true) {
+                                deleteWordOrSymbolsAfterCursor(insertString)
+                            }
+                        }
+
+                        GestureType.FlickBottom -> {
+                            if (isDeleteDownFlickPreference == true) {
+                                undoLastHistoryEntry()
+                            }
+                        }
+
+                        else -> {}
                     }
                 }
                 stopDeleteLongPress()
@@ -7529,6 +7585,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Cancel -> {}
                     KeyAction.VoiceInput -> {}
                     is KeyAction.Text -> Unit
+                    KeyAction.DeleteAfterCursorUntilSymbol -> {}
+                    KeyAction.UndoLastDelete -> {}
                 }
             }
 
@@ -7585,6 +7643,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.VoiceInput -> {}
                     is KeyAction.Text -> Unit
+                    KeyAction.DeleteAfterCursorUntilSymbol -> {}
+                    KeyAction.UndoLastDelete -> {}
                 }
             }
 
@@ -7709,6 +7769,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Cancel -> {}
                     KeyAction.VoiceInput -> {}
                     is KeyAction.Text -> Unit
+                    KeyAction.DeleteAfterCursorUntilSymbol -> {}
+                    KeyAction.UndoLastDelete -> {}
                 }
             }
 
@@ -7828,6 +7890,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         stopDeleteLongPress()
                     }
 
+                    KeyAction.DeleteAfterCursorUntilSymbol -> {
+                        if (isDeleteUpFlickPreference == true) {
+                            val insertString = inputString.value
+                            deleteWordOrSymbolsAfterCursor(insertString)
+                        }
+                        stopDeleteLongPress()
+                    }
+
+                    KeyAction.UndoLastDelete -> {
+                        if (isDeleteDownFlickPreference == true) {
+                            undoLastHistoryEntry()
+                        }
+                        stopDeleteLongPress()
+                    }
+
                     KeyAction.MoveCursorDown -> {
                         cancelLeftLongPress()
                         cancelRightLongPress()
@@ -7853,7 +7930,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 vibrate()
 
                 Timber.d("onAction: $action $isFlick")
-                if (action != KeyAction.Delete) {
+                if (!shouldPreserveDeleteHistoryForAction(action)) {
                     clearDeleteBufferWithView()
                 }
                 when (action) {
@@ -8231,6 +8308,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (isDeleteLeftFlickPreference == true) {
                             val insertString = inputString.value
                             deleteWordOrSymbolsBeforeCursor(insertString)
+                        }
+                    }
+
+                    KeyAction.DeleteAfterCursorUntilSymbol -> {
+                        if (isDeleteUpFlickPreference == true) {
+                            val insertString = inputString.value
+                            deleteWordOrSymbolsAfterCursor(insertString)
+                        }
+                    }
+
+                    KeyAction.UndoLastDelete -> {
+                        if (isDeleteDownFlickPreference == true) {
+                            undoLastHistoryEntry()
                         }
                     }
 
@@ -8960,6 +9050,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         finishComposingText()
         ic.setSelection(collapsePos, collapsePos)
         endBatchEdit()
+    }
+
+    private fun shouldPreserveDeleteHistoryForAction(action: KeyAction): Boolean {
+        return when (action) {
+            KeyAction.Delete,
+            KeyAction.DeleteUntilSymbol,
+            KeyAction.DeleteAfterCursorUntilSymbol,
+            KeyAction.UndoLastDelete -> true
+
+            else -> false
+        }
     }
 
     private fun cancelHenkanByLongPressDeleteKey() {
@@ -12584,6 +12685,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             setSwitchNumberLayoutKeyVisibility(false)
             setDeleteLeftFlickEnabled(isDeleteLeftFlickPreference ?: true)
+            setDeleteUpFlickEnabled(isDeleteUpFlickPreference ?: false)
+            setDeleteDownFlickEnabled(isDeleteDownFlickPreference ?: false)
             setKeyMargins(
                 verticalDp = qwertyKeyVerticalMargin ?: 5.0f,
                 horizontalGapDp = qwertyKeyHorizontalGap ?: 2.0f,
@@ -13103,6 +13206,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("setOnDeleteLeftFlickListener called: [$insertString]")
                 deleteWordOrSymbolsBeforeCursor(insertString)
             }
+
+            setOnDeleteUpFlickListener {
+                if (isDeleteUpFlickPreference != true) return@setOnDeleteUpFlickListener
+                val insertString = inputString.value
+                Timber.d("setOnDeleteUpFlickListener called: [$insertString]")
+                deleteWordOrSymbolsAfterCursor(insertString)
+            }
+
+            setOnDeleteDownFlickListener {
+                if (isDeleteDownFlickPreference != true) return@setOnDeleteDownFlickListener
+                Timber.d("setOnDeleteDownFlickListener called")
+                undoLastHistoryEntry()
+            }
         }
     }
 
@@ -13386,6 +13502,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return appPreference.undo_enable_preference == true
     }
 
+    private fun isDeleteHistoryRecordingEnabled(): Boolean {
+        return appPreference.undo_enable_preference == true ||
+                appPreference.delete_key_down_flick_preference == true
+    }
+
+    private fun isDeleteKeyDownFlickUndoEnabled(): Boolean {
+        return appPreference.delete_key_down_flick_preference == true
+    }
+
     private fun updateSideKeyPreviousDrawableForHistory() {
         val drawableRes = if (deletedBuffer.hasUndoHistory()) {
             com.kazumaproject.core.R.drawable.baseline_delete_24
@@ -13570,20 +13695,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * 削除バッファをまるごとクリアしたいときに呼ぶ
      */
     private fun clearDeletedBuffer() {
-        if (!isEditHistoryEnabled()) return
+        if (!isDeleteHistoryRecordingEnabled()) return
         deletedBuffer.clear()
         activeDeleteHistoryBatch = null
         updateSideKeyPreviousDrawableForHistory()
     }
 
     private fun clearDeletedBufferWithoutResetLayout() {
-        if (!isEditHistoryEnabled()) return
+        if (!isDeleteHistoryRecordingEnabled()) return
         deletedBuffer.clear()
         activeDeleteHistoryBatch = null
     }
 
     private fun pushEditHistoryEntry(entry: EditHistoryEntry) {
-        if (!isEditHistoryEnabled()) return
+        if (!isDeleteHistoryRecordingEnabled()) return
         deletedBuffer.push(entry)
         refreshEditHistoryUi()
     }
@@ -13680,10 +13805,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return inputConnection.deleteSurroundingText(text.length, 0)
     }
 
+    private fun deleteCommittedTextAfterCursor(text: String): Boolean {
+        val inputConnection = currentInputConnection ?: return false
+        if (text.isEmpty()) return false
+        val textAfterCursor = inputConnection.getTextAfterCursor(text.length, 0)?.toString() ?: ""
+        if (!textAfterCursor.startsWith(text)) return false
+        return inputConnection.deleteSurroundingText(0, text.length)
+    }
+
     private fun performUndo(entry: EditHistoryEntry): Boolean {
         return when (entry) {
             is EditHistoryEntry.DeleteCommittedText -> {
-                commitText(entry.deletedText, 1)
+                when (entry.direction) {
+                    DeleteDirection.BeforeCursor -> {
+                        commitText(entry.deletedText, 1)
+                    }
+
+                    DeleteDirection.AfterCursor -> {
+                        val ic = currentInputConnection ?: return false
+                        ic.commitText(entry.deletedText, 0)
+                        true
+                    }
+                }
             }
 
             is EditHistoryEntry.ReplaceCommittedText -> {
@@ -13704,7 +13847,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun performRedo(entry: EditHistoryEntry): Boolean {
         return when (entry) {
             is EditHistoryEntry.DeleteCommittedText -> {
-                deleteCommittedTextBeforeCursor(entry.deletedText)
+                when (entry.direction) {
+                    DeleteDirection.BeforeCursor -> {
+                        deleteCommittedTextBeforeCursor(entry.deletedText)
+                    }
+
+                    DeleteDirection.AfterCursor -> {
+                        deleteCommittedTextAfterCursor(entry.deletedText)
+                    }
+                }
             }
 
             is EditHistoryEntry.ReplaceCommittedText -> {
@@ -15343,6 +15494,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (deletedText.isNotEmpty()) {
                     pushEditHistoryEntry(EditHistoryEntry.DeleteCommittedText(deletedText))
                 }
+            }
+        }
+    }
+
+    /**
+     * カーソル後の文字に応じて、単語または記号1つを削除します。
+     * - カーソル直後の文字が指定記号の場合：その記号を1つだけ削除します。
+     * - カーソル直後の文字がそれ以外の場合：その単語を末尾まで削除します。
+     * - PreEdit / stringInTail がある場合は committed text を消さず、stringInTail を削除します。
+     */
+    private fun deleteWordOrSymbolsAfterCursor(insertString: String) {
+        val inputConnection = currentInputConnection ?: return
+        if (isHenkan.get()) return
+        if (insertString.isNotEmpty()) {
+            return
+        }
+
+        val textAfterCursor = inputConnection.getTextAfterCursor(100, 0)?.toString() ?: ""
+        if (textAfterCursor.isEmpty()) return
+
+        val charsToDelete = deleteKeyFlickTargetChars + ALWAYS_DELETE_KEY_FLICK_BOUNDARIES
+
+        var deleteCount = 0
+        if (textAfterCursor.first() in charsToDelete) {
+            deleteCount = 1
+        } else {
+            for (char in textAfterCursor) {
+                if (char.isWhitespace() || char in charsToDelete) break
+                deleteCount++
+            }
+        }
+
+        if (deleteCount > 0) {
+            val deletedText = textAfterCursor.take(deleteCount)
+            inputConnection.deleteSurroundingText(0, deleteCount)
+            if (deletedText.isNotEmpty()) {
+                pushEditHistoryEntry(
+                    EditHistoryEntry.DeleteCommittedText(
+                        deletedText = deletedText,
+                        direction = DeleteDirection.AfterCursor
+                    )
+                )
             }
         }
     }
@@ -17237,7 +17430,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return when (action) {
             KeyAction.Delete,
             KeyAction.Backspace,
-            KeyAction.DeleteUntilSymbol -> KeySoundType.DELETE
+            KeyAction.DeleteUntilSymbol,
+            KeyAction.DeleteAfterCursorUntilSymbol,
+            KeyAction.UndoLastDelete -> KeySoundType.DELETE
 
             KeyAction.Enter,
             KeyAction.NewLine,

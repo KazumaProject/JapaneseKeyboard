@@ -215,6 +215,8 @@ object AppPreference {
     private val CUSTOM_THEME_BORDER_COLOR = Pair("theme_custom_border_color", Color.BLACK)
 
     private val DELETE_KEY_LEFT_FLICK_PREFERENCE = Pair("delete_key_flick_left_preference", true)
+    private val DELETE_KEY_UP_FLICK_PREFERENCE = Pair("delete_key_flick_up_preference", false)
+    private val DELETE_KEY_DOWN_FLICK_PREFERENCE = Pair("delete_key_flick_down_preference", false)
     private val DEFAULT_CURSOR_MOVE_AFTER_COMMIT_TARGET_PAIRS = listOf(
         "()",
         "[]",
@@ -1281,6 +1283,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(DELETE_KEY_LEFT_FLICK_PREFERENCE.first, value)
+        }
+
+    var delete_key_up_flick_preference: Boolean
+        get() = preferences.getBoolean(
+            DELETE_KEY_UP_FLICK_PREFERENCE.first,
+            DELETE_KEY_UP_FLICK_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(DELETE_KEY_UP_FLICK_PREFERENCE.first, value)
+        }
+
+    var delete_key_down_flick_preference: Boolean
+        get() = preferences.getBoolean(
+            DELETE_KEY_DOWN_FLICK_PREFERENCE.first,
+            DELETE_KEY_DOWN_FLICK_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(DELETE_KEY_DOWN_FLICK_PREFERENCE.first, value)
         }
 
     var cursor_move_after_commit_target_pairs_preference: List<String>

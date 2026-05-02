@@ -483,6 +483,14 @@ object KeyboardDefaultLayouts {
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.DeleteAfterCursorUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.UndoLastDelete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                     )
                 )
                 mutableMapOf(
@@ -774,6 +782,14 @@ object KeyboardDefaultLayouts {
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.DeleteAfterCursorUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.UndoLastDelete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                     )
                 )
@@ -1085,6 +1101,14 @@ object KeyboardDefaultLayouts {
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.DeleteAfterCursorUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.UndoLastDelete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                     )
                 )
@@ -1477,6 +1501,14 @@ object KeyboardDefaultLayouts {
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.DeleteAfterCursorUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.UndoLastDelete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                     )
                 )
                 mapOf(
@@ -1737,6 +1769,14 @@ object KeyboardDefaultLayouts {
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.DeleteAfterCursorUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.UndoLastDelete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                     )
                 )
@@ -2038,6 +2078,14 @@ object KeyboardDefaultLayouts {
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.DeleteAfterCursorUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.UndoLastDelete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                     )
                 )
@@ -2375,6 +2423,14 @@ object KeyboardDefaultLayouts {
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.DeleteAfterCursorUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.UndoLastDelete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                     )
                 )
                 mutableMapOf(
@@ -2515,6 +2571,14 @@ object KeyboardDefaultLayouts {
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.DeleteAfterCursorUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.UndoLastDelete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                     )
                 )
@@ -2783,6 +2847,14 @@ object KeyboardDefaultLayouts {
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.DeleteAfterCursorUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.UndoLastDelete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                     )
                 )
                 mutableMapOf(
@@ -3041,6 +3113,14 @@ object KeyboardDefaultLayouts {
                     ), FlickDirection.UP_LEFT to FlickAction.Action(
                         KeyAction.DeleteUntilSymbol,
                         drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.UP to FlickAction.Action(
+                        KeyAction.DeleteAfterCursorUntilSymbol,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                    ), FlickDirection.DOWN to FlickAction.Action(
+                        KeyAction.UndoLastDelete,
+                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                     )
                 )
@@ -4692,6 +4772,14 @@ object KeyboardDefaultLayouts {
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                             )
                         )
                         mutableMapOf(
@@ -5081,6 +5169,14 @@ object KeyboardDefaultLayouts {
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                             )
                         )
                         mutableMapOf(
@@ -5269,6 +5365,14 @@ object KeyboardDefaultLayouts {
                             ), FlickDirection.UP_LEFT to FlickAction.Action(
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                             )
                         )
@@ -5620,6 +5724,14 @@ object KeyboardDefaultLayouts {
                             KeyAction.DeleteUntilSymbol,
                             drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                        ), FlickDirection.UP to FlickAction.Action(
+                            KeyAction.DeleteAfterCursorUntilSymbol,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                        ), FlickDirection.DOWN to FlickAction.Action(
+                            KeyAction.UndoLastDelete,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                         )
                     )
                     mutableMapOf(
@@ -5901,6 +6013,14 @@ object KeyboardDefaultLayouts {
                         ), FlickDirection.UP_LEFT to FlickAction.Action(
                             KeyAction.DeleteUntilSymbol,
                             drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                        ), FlickDirection.UP to FlickAction.Action(
+                            KeyAction.DeleteAfterCursorUntilSymbol,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                        ), FlickDirection.DOWN to FlickAction.Action(
+                            KeyAction.UndoLastDelete,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                         )
                     )
@@ -6386,6 +6506,14 @@ object KeyboardDefaultLayouts {
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                             )
                         )
                         mutableMapOf(
@@ -6756,6 +6884,14 @@ object KeyboardDefaultLayouts {
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                             )
                         )
                         mutableMapOf(
@@ -6933,6 +7069,14 @@ object KeyboardDefaultLayouts {
                             ), FlickDirection.UP_LEFT to FlickAction.Action(
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                             )
                         )
@@ -7281,6 +7425,14 @@ object KeyboardDefaultLayouts {
                             ), FlickDirection.UP_LEFT to FlickAction.Action(
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                             )
                         )
@@ -7638,6 +7790,14 @@ object KeyboardDefaultLayouts {
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                             )
                         )
                         mutableMapOf(
@@ -7920,6 +8080,14 @@ object KeyboardDefaultLayouts {
                             ), FlickDirection.UP_LEFT to FlickAction.Action(
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                             )
                         )
@@ -8426,6 +8594,14 @@ object KeyboardDefaultLayouts {
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                             )
                         )
                         mutableMapOf(
@@ -8816,6 +8992,14 @@ object KeyboardDefaultLayouts {
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
 
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+
                             )
                         )
                         mutableMapOf(
@@ -9023,6 +9207,14 @@ object KeyboardDefaultLayouts {
                             ), FlickDirection.UP_LEFT to FlickAction.Action(
                                 KeyAction.DeleteUntilSymbol,
                                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.UP to FlickAction.Action(
+                                KeyAction.DeleteAfterCursorUntilSymbol,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                            ), FlickDirection.DOWN to FlickAction.Action(
+                                KeyAction.UndoLastDelete,
+                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                             )
                         )
@@ -9313,6 +9505,14 @@ object KeyboardDefaultLayouts {
                         ), FlickDirection.UP_LEFT to FlickAction.Action(
                             KeyAction.DeleteUntilSymbol,
                             drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                        ), FlickDirection.UP to FlickAction.Action(
+                            KeyAction.DeleteAfterCursorUntilSymbol,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+
+                        ), FlickDirection.DOWN to FlickAction.Action(
+                            KeyAction.UndoLastDelete,
+                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
 
                         )
                     )

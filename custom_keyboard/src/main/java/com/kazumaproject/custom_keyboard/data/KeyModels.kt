@@ -31,6 +31,8 @@ sealed class KeyAction {
     data object Convert : KeyAction() // 変換
     data object Confirm : KeyAction() // 確定
     data object DeleteUntilSymbol : KeyAction()
+    data object DeleteAfterCursorUntilSymbol : KeyAction()
+    data object UndoLastDelete : KeyAction()
 
     // カーソル操作系
     data object MoveCursorLeft : KeyAction()
