@@ -86,6 +86,11 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.shift_24px
             ),
             DisplayAction(
+                KeyAction.CapLockKey,
+                context.getString(R.string.action_cap_lock_key),
+                com.kazumaproject.core.R.drawable.caps_lock
+            ),
+            DisplayAction(
                 KeyAction.SwitchDirectMode,
                 context.getString(R.string.action_switch_direct_mode_key),
                 com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
@@ -170,6 +175,7 @@ object KeyActionMapper {
             is KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish"
             is KeyAction.SwitchToNumberLayout -> "SwitchToNumber"
             is KeyAction.ShiftKey -> "ShiftKeyPressed"
+            is KeyAction.CapLockKey -> "CapLockKey"
             is KeyAction.SwitchRomajiEnglish -> "SwitchRomajiEnglish"
             is KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab"
             is KeyAction.MoveToCustomKeyboard -> keyAction.stableId
@@ -215,6 +221,7 @@ object KeyActionMapper {
             "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
             "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
             "ShiftKeyPressed" -> KeyAction.ShiftKey
+            "CapLockKey" -> KeyAction.CapLockKey
             "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
             "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
             "DeleteAfterCursorUntilSymbol" -> KeyAction.DeleteAfterCursorUntilSymbol

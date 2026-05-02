@@ -7710,6 +7710,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.SwitchDirectMode -> {}
+                    KeyAction.CapLockKey -> {}
                 }
             }
 
@@ -7772,6 +7773,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ForceNewLine -> {}
                     KeyAction.SwitchDirectMode -> {}
                     KeyAction.SwitchRomajiEnglish -> {}
+                    KeyAction.CapLockKey -> {}
                 }
             }
 
@@ -7902,6 +7904,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ForceNewLine -> {}
                     KeyAction.SwitchDirectMode -> {}
                     KeyAction.SwitchRomajiEnglish -> {}
+                    KeyAction.CapLockKey -> {}
                 }
             }
 
@@ -8058,6 +8061,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ForceNewLine -> {}
                     KeyAction.SwitchDirectMode -> {}
                     KeyAction.SwitchRomajiEnglish -> {}
+                    KeyAction.CapLockKey -> {}
                 }
             }
 
@@ -8408,6 +8412,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.SwitchDirectMode -> {
+                        //** TODO **//
+                    }
+
+                    KeyAction.CapLockKey -> {
                         //** TODO **//
                     }
 

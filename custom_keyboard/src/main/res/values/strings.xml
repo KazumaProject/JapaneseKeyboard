@@ -17,6 +17,7 @@
     <string name="action_toggle_dakuten">Dakuten / Small Characters</string>
     <string name="action_toggle_case">English / Lowercase</string>
     <string name="action_shift_key">Shift Key</string>
+    <string name="action_cap_lock_key">CapLock Key</string>
     <string name="action_switch_direct_mode_key">Switch Direct Mode</string>
     <string name="action_move_custom_keyboard_tab">Change Tab</string>
     <string name="action_move_to_custom_keyboard">Move to specific custom keyboard</string>
