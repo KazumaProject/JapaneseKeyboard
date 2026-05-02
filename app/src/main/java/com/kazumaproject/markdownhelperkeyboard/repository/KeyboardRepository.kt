@@ -516,7 +516,7 @@ class KeyboardRepository @Inject constructor(
                         KeyAction.MoveCursorLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
                         KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                         KeyAction.MoveCustomKeyboardTab -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
-                        is KeyAction.MoveToCustomKeyboard -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
+                        is KeyAction.MoveToCustomKeyboard -> com.kazumaproject.core.R.drawable.keyboard_24px
                         KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
                         KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
                         KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
