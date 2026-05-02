@@ -821,4 +821,5 @@
     <string name="keyboard_background_video_saved">Keyboard background video has been set.</string>
     <string name="keyboard_background_video_cleared">Keyboard background video has been cleared.</string>
     <string name="keyboard_background_video_failed">Failed to set keyboard background video: %1$s</string>
+    <string name="donuts_flick">Donuts Flick</string>
 </resources>

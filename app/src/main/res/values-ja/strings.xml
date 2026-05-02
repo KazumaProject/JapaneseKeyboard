@@ -816,4 +816,5 @@
     <string name="keyboard_background_video_saved">キーボード背景動画を設定しました。</string>
     <string name="keyboard_background_video_cleared">キーボード背景動画を解除しました。</string>
     <string name="keyboard_background_video_failed">キーボード背景動画の設定に失敗しました: %1$s</string>
+    <string name="donuts_flick">ドーナツフリック</string>
 </resources>
