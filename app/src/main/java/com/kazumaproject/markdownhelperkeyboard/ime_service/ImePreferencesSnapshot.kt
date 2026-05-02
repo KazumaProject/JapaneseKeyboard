@@ -83,6 +83,8 @@ data class ImePreferencesSnapshot(
     val landscapeForceQwertyRomajiPreference: Boolean,
     val shortcutTollbarVisibility: Boolean,
     val isDeleteLeftFlickPreference: Boolean,
+    val isDeleteUpFlickPreference: Boolean,
+    val isDeleteDownFlickPreference: Boolean,
     val zenzDebounceTimePreference: Int,
     val zenzMaximumLetterSizePreference: Int,
     val zenzMaximumContextSizePreference: Int,
@@ -269,6 +271,8 @@ data class ImePreferencesSnapshot(
                 shortcutTollbarVisibility =
                     appPreference.shortcut_toolbar_visibility_preference,
                 isDeleteLeftFlickPreference = appPreference.delete_key_left_flick_preference,
+                isDeleteUpFlickPreference = appPreference.delete_key_up_flick_preference,
+                isDeleteDownFlickPreference = appPreference.delete_key_down_flick_preference,
                 zenzDebounceTimePreference =
                     appPreference.zenz_debounce_time_preference ?: 300,
                 zenzMaximumLetterSizePreference =
