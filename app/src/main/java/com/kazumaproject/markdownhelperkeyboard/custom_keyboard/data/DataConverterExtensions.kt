@@ -4,6 +4,16 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.KeyAction
 
+private fun KeyAction.circularLabel(actionValue: String?): String? {
+    return when (this) {
+        KeyAction.MoveCustomKeyboardTab ->
+            actionValue ?: CircularFlickSlotActionMapper.SWITCH_MAP_LABEL
+        KeyAction.ShowEmojiKeyboard ->
+            actionValue ?: CircularFlickSlotActionMapper.EMOJI_KEYBOARD_LABEL
+        else -> actionValue
+    }
+}
+
 /**
  * DBから取得したFlickMappingを、UIで扱うFlickActionに変換します。
  */
@@ -39,7 +49,7 @@ fun FlickMapping.toFlickAction(): FlickAction {
         else -> null
     }
     return if (action != null) {
-        FlickAction.Action(action)
+        FlickAction.Action(action, label = action.circularLabel(this.actionValue))
     } else if (this.actionType.startsWith("INPUT_")) {
         // 将来的なINPUT_*アクションのために
         FlickAction.Input(this.actionValue ?: "")
@@ -80,7 +90,7 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         else -> null
     }
     return if (action != null) {
-        FlickAction.Action(action)
+        FlickAction.Action(action, label = action.circularLabel(this.actionValue))
     } else if (this.actionType.startsWith("INPUT_")) {
         FlickAction.Input(this.actionValue ?: "")
     } else {
@@ -113,7 +123,7 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.SwitchToNextIme -> "SWITCH_TO_NEXT_IME" to null
             KeyAction.ToggleDakuten -> "TOGGLE_DAKUTEN" to null
             KeyAction.ToggleCase -> "TOGGLE_CASE" to null
-            KeyAction.ShowEmojiKeyboard -> "ShowEmojiKeyboard" to null
+            KeyAction.ShowEmojiKeyboard -> "ShowEmojiKeyboard" to CircularFlickSlotActionMapper.EMOJI_KEYBOARD_LABEL
             KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish" to null
             KeyAction.SwitchToNumberLayout -> "SwitchToNumber" to null
             KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol" to null
@@ -122,7 +132,7 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.ToggleKatakana -> "SwitchKatakana" to null
             KeyAction.VoiceInput -> "VoiceInput" to null
             KeyAction.ShiftKey -> "ShiftKey" to null
-            KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab" to null
+            KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab" to CircularFlickSlotActionMapper.SWITCH_MAP_LABEL
             else -> "UNKNOWN" to null // 未対応のアクション
         }
     }
