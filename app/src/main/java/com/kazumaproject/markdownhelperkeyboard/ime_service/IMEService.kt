@@ -7081,8 +7081,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 KeyboardType.CUSTOM -> {
                     Timber.d("updateKeyboardLayout CUSTOM: $isFlickOnlyMode $sumireInputKeyType")
-                    setInitialKeyboardTab()
-                    setKeyboardTab(0)
+                    selectInitialCustomKeyboardTab()
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
                     } else {
@@ -7105,9 +7104,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateKeyboardLayout() {
         Timber.d("updateKeyboardLayout: ${qwertyMode.value} $currentEnterKeyIndex")
         when (qwertyMode.value) {
-            TenKeyQWERTYMode.Custom -> {
-                //setInitialKeyboardTab()
-            }
+            TenKeyQWERTYMode.Custom -> {}
 
             TenKeyQWERTYMode.Default -> {}
             TenKeyQWERTYMode.TenKeyQWERTY -> {}
@@ -7144,8 +7141,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (customKeyboardMode) {
                     KeyboardInputMode.HIRAGANA -> {
                         mainLayoutBinding?.let { mainView ->
-                            setInitialKeyboardTab()
-                            setKeyboardTab(0)
+                            selectInitialCustomKeyboardTab()
                             mainView.customLayoutDefault.isVisible = true
                             setCurrentInputModeForSession(InputMode.ModeJapanese)
                             mainView.qwertyView.isVisible = false
@@ -7279,33 +7275,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var isCustomLayoutRomajiMode = false
 
-    private fun setInitialKeyboardTab() {
-        Timber.d("setInitialKeyboardTab")
-        val targetIndex = resolveInitialCustomKeyboardIndex(
+    private fun selectInitialCustomKeyboardTab() {
+        Timber.d("selectInitialCustomKeyboardTab")
+        val initialSelection = resolveInitialCustomKeyboardSelection(
             layouts = customLayouts,
             rememberLast = appPreference.remember_last_custom_keyboard_preference == true,
             savedStableId = appPreference.last_used_custom_keyboard_stable_id
         ) ?: return
-        setKeyboardTab(targetIndex)
+        selectCustomKeyboardTab(
+            index = initialSelection.index,
+            reason = initialSelection.reason
+        )
     }
 
-    private fun setKeyboardTab(pos: Int) {
-        val layout = customLayouts.getOrNull(pos) ?: run {
-            Timber.d("setKeyboardTab: invalid position=$pos, size=${customLayouts.size}")
+    private fun selectCustomKeyboardTab(
+        index: Int,
+        reason: CustomKeyboardSelectionReason
+    ) {
+        val layout = customLayouts.getOrNull(index) ?: run {
+            Timber.d("selectCustomKeyboardTab: invalid index=$index, size=${customLayouts.size}, reason=$reason")
             return
         }
-        currentCustomKeyboardPosition = pos
-        if (appPreference.remember_last_custom_keyboard_preference == true &&
-            layout.stableId.isNotBlank()
+        currentCustomKeyboardPosition = index
+        if (shouldPersistCustomKeyboardSelection(
+                layout = layout,
+                rememberLast = appPreference.remember_last_custom_keyboard_preference == true,
+                reason = reason
+            )
         ) {
             appPreference.last_used_custom_keyboard_stable_id = layout.stableId
         }
+        renderCustomKeyboardLayout(layout)
+    }
+
+    private fun renderCustomKeyboardLayout(layout: CustomKeyboardLayout) {
         scope.launch(Dispatchers.IO) {
             val id = layout.layoutId
             val dbLayout = keyboardRepository.getFullLayout(id).first()
-            Timber.d("setKeyboardTab: $id $dbLayout")
+            Timber.d("renderCustomKeyboardLayout: $id $dbLayout")
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
-            Timber.d("setKeyboardTab: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
+            Timber.d("renderCustomKeyboardLayout: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
             isCustomLayoutRomajiMode = finalLayout.isRomaji
             withContext(Dispatchers.Main) {
                 setCustomLayoutOnActiveSurface(finalLayout)
@@ -7314,8 +7323,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun moveToCustomKeyboardByStableId(stableId: String) {
-        val targetIndex = resolveCustomKeyboardIndexByStableId(customLayouts, stableId) ?: return
-        setKeyboardTab(targetIndex)
+        val targetIndex = resolveCustomKeyboardIndexByStableId(customLayouts, stableId) ?: run {
+            Timber.d("moveToCustomKeyboardByStableId: target not found stableId=$stableId")
+            return
+        }
+        selectCustomKeyboardTab(
+            index = targetIndex,
+            reason = CustomKeyboardSelectionReason.MoveToStableId
+        )
     }
 
     /**
@@ -8320,7 +8335,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (customLayouts.isNotEmpty()) {
                                 val position =
                                     (currentCustomKeyboardPosition + 1) % customLayouts.size
-                                setKeyboardTab(position)
+                                selectCustomKeyboardTab(
+                                    index = position,
+                                    reason = CustomKeyboardSelectionReason.UserNextTab
+                                )
                             }
                         }
                     }
@@ -12289,7 +12307,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             adapter.setOnCustomLayoutItemClickListener { position ->
-                setKeyboardTab(position)
+                selectCustomKeyboardTab(
+                    index = position,
+                    reason = CustomKeyboardSelectionReason.UserTabClick
+                )
             }
         }
         suggestionAdapterFull?.let { adapter ->
