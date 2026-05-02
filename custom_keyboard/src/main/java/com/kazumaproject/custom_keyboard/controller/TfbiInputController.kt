@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.controller.getLocationRelativeToWindowAnchor
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -74,12 +75,21 @@ class TfbiInputController(
     private var popupBackgroundColor: Int? = null
     private var popupHighlightedColor: Int? = null
     private var popupTextColor: Int? = null
+    private var popupStyle = PopupViewStyle(100, 20f)
 
     // ▼▼▼ 追加: 色を設定するメソッド ▼▼▼
     fun setPopupColors(backgroundColor: Int, highlightedColor: Int, textColor: Int) {
         this.popupBackgroundColor = backgroundColor
         this.popupHighlightedColor = highlightedColor
         this.popupTextColor = textColor
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupStyle = PopupViewStyle(
+            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+        )
+        popupView?.applyPopupViewStyle(popupStyle)
     }
 
     fun setLongPressTimeout(timeoutMillis: Long) {
@@ -259,12 +269,14 @@ class TfbiInputController(
             if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
                 setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
             }
+            applyPopupViewStyle(popupStyle)
 
             setCharacters(tapCharacter, petalChars)
             highlightDirection(TfbiFlickDirection.TAP)
         }
-        val popupWidth = anchorView.width * 3
-        val popupHeight = anchorView.height * 3
+        val scale = popupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        val popupWidth = (anchorView.width * 3 * scale).toInt().coerceAtLeast(1)
+        val popupHeight = (anchorView.height * 3 * scale).toInt().coerceAtLeast(1)
         popupWindow = PopupWindow(popupView, popupWidth, popupHeight, false).apply {
             isTouchable = false
             isFocusable = false
@@ -274,8 +286,8 @@ class TfbiInputController(
         val windowAnchor = popupWindowAnchorProvider?.invoke() ?: anchorView
         if (!isAnchorReady(anchorView, windowAnchor)) return
         val location = getLocationRelativeToWindowAnchor(anchorView, windowAnchor)
-        val offsetX = location[0] - anchorView.width
-        val offsetY = location[1] - anchorView.height
+        val offsetX = location[0] + anchorView.width / 2 - popupWidth / 2
+        val offsetY = location[1] + anchorView.height / 2 - popupHeight / 2
         runCatching {
             popupWindow?.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, offsetX, offsetY)
         }

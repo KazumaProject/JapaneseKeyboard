@@ -11,6 +11,7 @@ import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -40,6 +41,7 @@ import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
@@ -159,6 +161,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private lateinit var popTextCenter: MaterialTextView
 
     private var isFlickGuideEnabled: Boolean = false
+    private var popupViewStyle = PopupViewStyle(100, 28f)
 
     private val cachedArrowRightDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
@@ -555,6 +558,32 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             )
             bubbleViewCenter = centerBinding.bubbleLayout
             popTextCenter = centerBinding.popupText
+        }
+        applyPopupTextSize()
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupViewStyle = PopupViewStyle(
+            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+        )
+        applyPopupTextSize()
+    }
+
+    private fun applyPopupTextSize() {
+        if (!::popTextActive.isInitialized) return
+        listOf(
+            popTextActive,
+            popTextLeft,
+            popTextTop,
+            popTextRight,
+            popTextBottom,
+            popTextCenter
+        ).forEach { textView ->
+            textView.setTextSize(
+                TypedValue.COMPLEX_UNIT_SP,
+                popupViewStyle.textSizeSp.coerceIn(8f, 48f)
+            )
         }
     }
 
@@ -1983,15 +2012,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextTapNumber(it.id)
                     }
                 }
-                popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it)
-                popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it)
+                popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
+                popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it, popupViewStyle.sizeScalePercent)
                 if (popTextBottom.text.isNotEmpty()) {
-                    popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it)
+                    popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it, popupViewStyle.sizeScalePercent)
                 }
                 if (popTextRight.text.isNotEmpty()) {
-                    popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it)
+                    popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it, popupViewStyle.sizeScalePercent)
                 }
-                popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
+                popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                 Blur.applyBlurEffect(this, 8f)
             }
 
@@ -2001,11 +2030,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     popTextLeft.setTextFlickLeftNumber(it.id)
                     popTextBottom.setTextFlickBottomNumber(it.id)
                     popTextRight.setTextFlickRightNumber(it.id)
-                    popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it)
-                    popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it)
-                    popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it)
-                    popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it)
-                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
+                    popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
+                    popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it, popupViewStyle.sizeScalePercent)
+                    popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it, popupViewStyle.sizeScalePercent)
+                    popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it, popupViewStyle.sizeScalePercent)
+                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                     Blur.applyBlurEffect(this, 8f)
                 }
             }
@@ -2048,7 +2077,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 if (isLongPressed) {
-                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
+                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                 }
             }
             if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
@@ -2058,7 +2087,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 )
                 if (isLongPressed) popTextActive.setTextTapNumber(it.id)
                 if (isLongPressed) {
-                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
+                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                 }
             }
         }
@@ -2092,10 +2121,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowLeft(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowLeft(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickLeft(context, bubbleViewActive, it)
+                            popupWindowActive.setPopUpWindowFlickLeft(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         }
                     }
 
@@ -2117,10 +2146,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowTop(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowTop(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickTop(context, bubbleViewActive, it)
+                            popupWindowActive.setPopUpWindowFlickTop(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         }
                     }
 
@@ -2143,15 +2172,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         }
                         if (isLongPressed) {
                             if (popTextActive.text.isNotEmpty()) {
-                                popupWindowActive.setPopUpWindowRight(context, bubbleViewActive, it)
+                                popupWindowActive.setPopUpWindowRight(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                                 popupWindowCenter.setPopUpWindowCenter(
-                                    context, bubbleViewCenter, it
+                                    context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent
                                 )
                             }
                         } else {
                             if (popTextActive.text.isNotEmpty()) {
                                 popupWindowActive.setPopUpWindowFlickRight(
-                                    context, bubbleViewActive, it
+                                    context, bubbleViewActive, it, popupViewStyle.sizeScalePercent
                                 )
                             }
                         }
@@ -2177,16 +2206,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (isLongPressed) {
                             if (popTextActive.text.isNotEmpty()) {
                                 popupWindowActive.setPopUpWindowBottom(
-                                    context, bubbleViewActive, it
+                                    context, bubbleViewActive, it, popupViewStyle.sizeScalePercent
                                 )
                                 popupWindowCenter.setPopUpWindowCenter(
-                                    context, bubbleViewCenter, it
+                                    context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent
                                 )
                             }
                         } else {
                             if (popTextActive.text.isNotEmpty()) {
                                 popupWindowActive.setPopUpWindowFlickBottom(
-                                    context, bubbleViewActive, it
+                                    context, bubbleViewActive, it, popupViewStyle.sizeScalePercent
                                 )
                             }
                         }
@@ -2203,10 +2232,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickLeftNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowLeft(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowLeft(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickLeft(context, bubbleViewActive, it)
+                            popupWindowActive.setPopUpWindowFlickLeft(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         }
                     }
 
@@ -2214,10 +2243,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickTopNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowTop(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowTop(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickTop(context, bubbleViewActive, it)
+                            popupWindowActive.setPopUpWindowFlickTop(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         }
                     }
 
@@ -2225,11 +2254,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickRightNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowRight(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowRight(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
                             popupWindowActive.setPopUpWindowFlickRight(
-                                context, bubbleViewActive, it
+                                context, bubbleViewActive, it, popupViewStyle.sizeScalePercent
                             )
                         }
                     }
@@ -2238,11 +2267,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickBottomNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowBottom(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowBottom(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
                             popupWindowActive.setPopUpWindowFlickBottom(
-                                context, bubbleViewActive, it
+                                context, bubbleViewActive, it, popupViewStyle.sizeScalePercent
                             )
                         }
                     }

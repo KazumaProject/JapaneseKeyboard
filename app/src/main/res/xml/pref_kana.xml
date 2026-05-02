@@ -7,6 +7,10 @@
             android:key="kana_keyboard_letter_size_preference"
             android:title="@string/kana_keyboard_letter_size_preference_titile"
             app:summary="@string/kana_keyboard_letter_size_preference_summary" />
+        <Preference
+            android:key="tenkey_popup_view_style_preference"
+            android:title="ポップアップ表示"
+            android:summary="TenKey のフリック時・長押し時のポップアップサイズと文字サイズを設定します" />
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="tenkey_show_switch_ime_button_preference"

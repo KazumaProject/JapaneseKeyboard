@@ -20,5 +20,12 @@ class KanaPreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        findPreference<Preference>("tenkey_popup_view_style_preference")?.apply {
+            setOnPreferenceClickListener {
+                navigateSafely(R.id.action_navigation_setting_to_tenKeyPopupStyleSettingFragment)
+                true
+            }
+        }
     }
 }
