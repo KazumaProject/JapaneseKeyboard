@@ -16,6 +16,16 @@ private fun Int.scaledPopupSize(sizeScalePercent: Int): Int {
     return (this * scale).toInt().coerceAtLeast(1)
 }
 
+private fun calculateCenteredXOffset(popupWidth: Int, anchorWidth: Int): Int {
+    return -((popupWidth - anchorWidth) / 2)
+}
+
+// 上フリックの y-offset は popup の拡大後 height に依存させない。
+// sizeScalePercent によって popup サイズだけが変わり、表示基準位置は anchorView 基準で維持する。
+private fun calculateFlickTopYOffset(anchorHeight: Int): Int {
+    return -(anchorHeight * 2) - 16
+}
+
 fun PopupWindow.setPopUpWindowFlickRight(
     context: Context,
     keyWindowLayout: KeyWindowLayout,
@@ -209,12 +219,16 @@ fun PopupWindow.setPopUpWindowFlickTop(
         bubble.arrowWidth = anchorView.width.toFloat() - 10
         bubble.cornersRadius = 20f
     }
+    // 上フリック popup の y-offset は popup の拡大後 height に依存させない。
+    // sizeScalePercent によって popup サイズだけが変わり、表示基準位置は anchorView 基準で維持する。
+    val xOffset = calculateCenteredXOffset(width, anchorView.width)
+    val yOffset = calculateFlickTopYOffset(anchorView.height)
     when (context.resources.configuration.orientation) {
         Configuration.ORIENTATION_PORTRAIT -> {
             showAsDropDown(
                 anchorView,
-                -((width - anchorView.width) / 2),
-                -height - anchorView.height - 16,
+                xOffset,
+                yOffset,
                 Gravity.CENTER
             )
         }
@@ -222,8 +236,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
         Configuration.ORIENTATION_LANDSCAPE -> {
             showAsDropDown(
                 anchorView,
-                -((width - anchorView.width) / 2),
-                -height - anchorView.height - 16,
+                xOffset,
+                yOffset,
                 Gravity.CENTER
             )
         }
@@ -231,8 +245,8 @@ fun PopupWindow.setPopUpWindowFlickTop(
         Configuration.ORIENTATION_UNDEFINED -> {
             showAsDropDown(
                 anchorView,
-                -((width - anchorView.width) / 2),
-                -height - anchorView.height - 16,
+                xOffset,
+                yOffset,
                 Gravity.CENTER
             )
         }
