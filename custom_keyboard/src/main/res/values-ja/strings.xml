@@ -16,7 +16,8 @@
     <string name="action_show_emoji_keyboard">絵文字キーボード</string>
     <string name="action_toggle_dakuten">濁点、小文字</string>
     <string name="action_toggle_case">英語、小文字</string>
-    <string name="action_shift_key">ローマ字、英語切り替え</string>
+    <string name="action_shift_key">Shift キー</string>
+    <string name="action_cap_lock_key">CapLock キー</string>
     <string name="action_switch_direct_mode_key">ダイレクトモードの切り替え</string>
     <string name="action_move_custom_keyboard_tab">タブの変更</string>
     <string name="action_move_to_custom_keyboard">特定のカスタムキーボードへ移動</string>
