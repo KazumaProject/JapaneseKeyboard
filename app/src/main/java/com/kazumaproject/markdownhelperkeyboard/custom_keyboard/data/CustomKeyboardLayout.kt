@@ -15,6 +15,7 @@ data class CustomKeyboardLayout(
     val columnCount: Int,     // 列数
     val rowCount: Int,        // 行数
     val isRomaji: Boolean = false,
+    val isDirectMode: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(), // 作成日時
     val sortOrder: Int = 0,
     val stableId: String = UUID.randomUUID().toString()

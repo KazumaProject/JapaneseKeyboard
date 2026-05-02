@@ -27,6 +27,7 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "BACKSPACE" -> KeyAction.Backspace
         "SPACE" -> KeyAction.Space
         "NEW_LINE" -> KeyAction.NewLine
+        "ForceNewLine" -> KeyAction.ForceNewLine
         "ENTER" -> KeyAction.Enter
         "CONVERT" -> KeyAction.Convert
         "CONFIRM" -> KeyAction.Confirm
@@ -48,6 +49,9 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "SwitchKatakana" -> KeyAction.ToggleKatakana
         "VoiceInput" -> KeyAction.VoiceInput
         "ShiftKey" -> KeyAction.ShiftKey
+        "CapLockKey" -> KeyAction.CapLockKey
+        "SwitchRomajiEnglish" -> KeyAction.SwitchRomajiEnglish
+        "SwitchDirectMode" -> KeyAction.SwitchDirectMode
         "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
         "MoveToCustomKeyboard" -> this.actionValue
             ?.takeIf { it.isNotBlank() }
@@ -147,6 +151,10 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.ToggleKatakana -> "SwitchKatakana" to null
             KeyAction.VoiceInput -> "VoiceInput" to null
             KeyAction.ShiftKey -> "ShiftKey" to null
+            KeyAction.CapLockKey -> "CapLockKey" to null
+            KeyAction.SwitchDirectMode -> "SwitchDirectMode" to null
+            KeyAction.SwitchRomajiEnglish -> "SwitchRomajiEnglish" to null
+            KeyAction.ForceNewLine -> "ForceNewLine" to null
             KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab" to CircularFlickSlotActionMapper.SWITCH_MAP_LABEL
             is KeyAction.MoveToCustomKeyboard -> "MoveToCustomKeyboard" to action.stableId
             else -> "UNKNOWN" to null // 未対応のアクション

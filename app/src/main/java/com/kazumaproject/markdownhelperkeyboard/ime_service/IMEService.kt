@@ -4617,6 +4617,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val dbLayout = keyboardRepository.getFullLayout(id).first()
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
             isCustomLayoutRomajiMode = finalLayout.isRomaji
+            isCustomLayoutDirectMode = finalLayout.isDirectMode
+            isCustomLayoutShiftPressed = false
+            isCustomLayoutCapLock = false
             withContext(Dispatchers.Main) {
                 setKeyboardWithDeleteKeyFlickPreferences(flickView, finalLayout)
             }
@@ -7285,6 +7288,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private var isCustomLayoutRomajiMode = false
+    private var isCustomLayoutDirectMode = false
+    private var isCustomLayoutShiftPressed = false
+    private var isCustomLayoutCapLock = false
 
     private fun selectInitialCustomKeyboardTab() {
         Timber.d("selectInitialCustomKeyboardTab")
@@ -7327,6 +7333,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
             Timber.d("renderCustomKeyboardLayout: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
             isCustomLayoutRomajiMode = finalLayout.isRomaji
+            isCustomLayoutDirectMode = finalLayout.isDirectMode
+            isCustomLayoutShiftPressed = false
+            isCustomLayoutCapLock = false
             withContext(Dispatchers.Main) {
                 setCustomLayoutOnActiveSurface(finalLayout)
             }
@@ -8013,7 +8022,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
-                    KeyAction.ShiftKey -> {}
+                    KeyAction.ShiftKey -> {
+                        isCustomLayoutShiftPressed = !isCustomLayoutShiftPressed
+
+                        Handler(mainLooper).post {
+                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
+                                KeyAction.ShiftKey,
+                                if (isCustomLayoutShiftPressed) com.kazumaproject.core.R.drawable.shift_fill_24px
+                                else com.kazumaproject.core.R.drawable.shift_24px
+                            )
+                        }
+                    }
+
                     KeyAction.MoveCustomKeyboardTab -> {}
                     is KeyAction.MoveToCustomKeyboard -> {}
                     KeyAction.ToggleKatakana -> {}
@@ -8058,10 +8078,50 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.VoiceInput -> {}
                     is KeyAction.Text -> Unit
-                    KeyAction.ForceNewLine -> {}
-                    KeyAction.SwitchDirectMode -> {}
-                    KeyAction.SwitchRomajiEnglish -> {}
-                    KeyAction.CapLockKey -> {}
+                    KeyAction.ForceNewLine -> {
+                        val insertString = inputString.value
+                        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+                        if (insertString.isEmpty()) {
+                            forceNewLine(mainView)
+                        } else {
+                            handleNonEmptyInputEnterKey(suggestions, mainView, insertString)
+                        }
+                    }
+
+                    KeyAction.SwitchDirectMode -> {
+                        isCustomLayoutDirectMode = !isCustomLayoutDirectMode
+
+                        Handler(mainLooper).post {
+                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
+                                KeyAction.SwitchDirectMode,
+                                if (isCustomLayoutDirectMode) com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
+                                else com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+                            )
+                        }
+                    }
+
+                    KeyAction.SwitchRomajiEnglish -> {
+                        isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
+                        Handler(mainLooper).post {
+                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
+                                KeyAction.SwitchRomajiEnglish,
+                                if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
+                                else com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
+                            )
+                        }
+                    }
+
+                    KeyAction.CapLockKey -> {
+                        isCustomLayoutCapLock = !isCustomLayoutCapLock
+
+                        Handler(mainLooper).post {
+                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
+                                KeyAction.CapLockKey,
+                                if (isCustomLayoutCapLock) com.kazumaproject.core.R.drawable.caps_lock
+                                else com.kazumaproject.core.R.drawable.caps_lock_outline
+                            )
+                        }
+                    }
                 }
             }
 
@@ -8079,6 +8139,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         when (qwertyMode.value) {
                             TenKeyQWERTYMode.Custom -> {
                                 if (text.isEmpty()) return
+                                if (isCustomLayoutDirectMode) {
+                                    val output = applyCustomLayoutShiftAndCapLock(text)
+                                    finishComposingText()
+                                    setComposingText("", 0)
+                                    commitText(output, 1)
+                                    if (isCustomLayoutShiftPressed) {
+                                        isCustomLayoutShiftPressed = false
+                                    }
+                                    return
+                                }
                                 if (text.length == 1) {
                                     if (isCustomLayoutRomajiMode) {
                                         val insertString = inputString.value
@@ -8086,24 +8156,52 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         sb.append(insertString).append(text)
                                         romajiConverter?.let { converter ->
                                             if (isDefaultRomajiHenkanMap) {
-                                                _inputString.update {
-                                                    converter.convertCustomLayout(sb.toString())
-                                                }
-                                            } else {
-                                                if (customRomajiZenkakuConversionEnablePreference == true) {
+                                                if (!isCustomLayoutShiftPressed && !isCustomLayoutCapLock) {
                                                     _inputString.update {
-                                                        converter.convertQWERTYZenkaku(sb.toString())
+                                                        converter.convertCustomLayout(
+                                                            sb.toString()
+                                                        )
                                                     }
                                                 } else {
                                                     _inputString.update {
-                                                        converter.convert(sb.toString())
+                                                        applyCustomLayoutShiftAndCapLock(
+                                                            sb.toString()
+                                                        )
+                                                    }
+                                                }
+
+                                            } else {
+                                                if (customRomajiZenkakuConversionEnablePreference == true) {
+                                                    _inputString.update {
+                                                        applyCustomLayoutShiftAndCapLock(
+                                                            converter.convertQWERTYZenkaku(
+                                                                sb.toString()
+                                                            )
+                                                        )
+                                                    }
+                                                } else {
+                                                    _inputString.update {
+                                                        applyCustomLayoutShiftAndCapLock(
+                                                            converter.convert(
+                                                                sb.toString()
+                                                            )
+                                                        )
                                                     }
                                                 }
                                             }
                                         }
                                     } else {
-                                        handleOnKeyForSumire(text, mainView, isFlick)
+                                        handleOnKeyForSumire(
+                                            applyCustomLayoutShiftAndCapLock(text),
+                                            mainView,
+                                            isFlick
+                                        )
                                     }
+
+                                    if (isCustomLayoutShiftPressed) {
+                                        isCustomLayoutShiftPressed = false
+                                    }
+
                                 } else {
                                     if (isCustomKeyboardTwoWordsOutputEnable == true) {
                                         finishComposingText()
@@ -8408,15 +8506,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.ShiftKey -> {
-                        //** TODO **//
+                        isCustomLayoutShiftPressed = !isCustomLayoutShiftPressed
+
+                        Handler(mainLooper).post {
+                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
+                                KeyAction.ShiftKey,
+                                if (isCustomLayoutShiftPressed) com.kazumaproject.core.R.drawable.shift_fill_24px
+                                else com.kazumaproject.core.R.drawable.shift_24px
+                            )
+                        }
                     }
 
                     KeyAction.SwitchDirectMode -> {
-                        //** TODO **//
+                        isCustomLayoutDirectMode = !isCustomLayoutDirectMode
+
+                        Handler(mainLooper).post {
+                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
+                                KeyAction.SwitchDirectMode,
+                                if (isCustomLayoutDirectMode) com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
+                                else com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+                            )
+                        }
                     }
 
                     KeyAction.CapLockKey -> {
-                        //** TODO **//
+                        isCustomLayoutCapLock = !isCustomLayoutCapLock
+
+                        Handler(mainLooper).post {
+                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
+                                KeyAction.CapLockKey,
+                                if (isCustomLayoutCapLock) com.kazumaproject.core.R.drawable.caps_lock
+                                else com.kazumaproject.core.R.drawable.caps_lock_outline
+                            )
+                        }
                     }
 
                     KeyAction.SwitchRomajiEnglish -> {
@@ -8424,8 +8546,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
                                 KeyAction.SwitchRomajiEnglish,
-                                if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
-                                else com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
+                                if (isCustomLayoutRomajiMode) com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
+                                else com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
                             )
                         }
                     }
@@ -8515,6 +8637,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         })
+    }
+
+    private fun applyCustomLayoutShiftAndCapLock(text: String): String {
+        if (!isCustomLayoutShiftPressed && !isCustomLayoutCapLock) {
+            return text
+        }
+        if (isCustomLayoutShiftPressed) {
+            Handler(mainLooper).post {
+                getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
+                    KeyAction.ShiftKey,
+                    com.kazumaproject.core.R.drawable.shift_24px
+                )
+            }
+        }
+        return text.map { char ->
+            if (char in 'a'..'z' || char in 'A'..'Z') {
+                char.uppercaseChar()
+            } else {
+                char
+            }
+        }.joinToString("")
     }
 
     private fun handleOnKeyForSumire(

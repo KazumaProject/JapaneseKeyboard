@@ -86,6 +86,11 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
                 viewModel.updateIsRomaji(isChecked)
             }
         }
+        binding.switchDirectMode.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked != viewModel.uiState.value.isDirectMode) {
+                viewModel.updateIsDirectMode(isChecked)
+            }
+        }
         binding.buttonAddRow.setOnClickListener { viewModel.addRow() }
         binding.buttonRemoveRow.setOnClickListener { viewModel.removeRow() }
         binding.buttonAddCol.setOnClickListener { viewModel.addColumn() }
@@ -166,6 +171,9 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         }
         if (binding.switchRomaji.isChecked != state.isRomaji) {
             binding.switchRomaji.isChecked = state.isRomaji
+        }
+        if (binding.switchDirectMode.isChecked != state.isDirectMode) {
+            binding.switchDirectMode.isChecked = state.isDirectMode
         }
         binding.flickKeyboardView.setKeyboard(state.layout)
     }
