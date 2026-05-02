@@ -158,6 +158,10 @@ object AppPreference {
     private val DELETE_KEY_HIGH_LIGHT = Pair("henkan_delete_key_action_preference", true)
     private val CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE =
         Pair("custom_keyboard_suggestion_preference", true)
+    private val REMEMBER_LAST_CUSTOM_KEYBOARD_PREFERENCE =
+        Pair("remember_last_custom_keyboard_preference", false)
+    private val LAST_USED_CUSTOM_KEYBOARD_STABLE_ID =
+        Pair("last_used_custom_keyboard_stable_id", "")
 
     private val KEYBOARD_FLOATING_POSITION_X = Pair("keyboard_floating_position_x", -1)
     private val KEYBOARD_FLOATING_POSITION_Y = Pair("keyboard_floating_position_y", -1)
@@ -1123,6 +1127,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE.first, value ?: true)
+        }
+
+    var remember_last_custom_keyboard_preference: Boolean?
+        get() = preferences.getBoolean(
+            REMEMBER_LAST_CUSTOM_KEYBOARD_PREFERENCE.first,
+            REMEMBER_LAST_CUSTOM_KEYBOARD_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(REMEMBER_LAST_CUSTOM_KEYBOARD_PREFERENCE.first, value ?: false)
+        }
+
+    var last_used_custom_keyboard_stable_id: String?
+        get() = preferences.getString(
+            LAST_USED_CUSTOM_KEYBOARD_STABLE_ID.first,
+            LAST_USED_CUSTOM_KEYBOARD_STABLE_ID.second
+        )
+        set(value) = preferences.edit {
+            it.putString(LAST_USED_CUSTOM_KEYBOARD_STABLE_ID.first, value.orEmpty())
         }
 
     var sumire_input_selection_preference: String?

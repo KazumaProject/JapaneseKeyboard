@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import java.util.UUID
 
 /**
  * ユーザーが作成したキーボードレイアウトの全体設定を保存するエンティティ
@@ -15,5 +16,6 @@ data class CustomKeyboardLayout(
     val rowCount: Int,        // 行数
     val isRomaji: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(), // 作成日時
-    val sortOrder: Int = 0
+    val sortOrder: Int = 0,
+    val stableId: String = UUID.randomUUID().toString()
 )

@@ -24,6 +24,13 @@
             android:title="@string/custom_keyboard_suggestion_title" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="remember_last_custom_keyboard_preference"
+            android:summaryOff="@string/remember_last_custom_keyboard_summary_off"
+            android:summaryOn="@string/remember_last_custom_keyboard_summary_on"
+            android:title="@string/remember_last_custom_keyboard_title" />
+
+        <SwitchPreferenceCompat
             android:key="custom_romaji_zenkaku_conversion_enable_preference"
             android:title="@string/custom_romaji_zenkaku_conversion_enable_preference_title"
             app:defaultValue="true"
