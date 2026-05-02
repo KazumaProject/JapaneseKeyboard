@@ -31,7 +31,8 @@ data class EditorUiState(
     val selectedKeyIdentifier: String? = null,
     val navigateBack: Boolean = false,
     val duplicateNameError: Boolean = false,
-    val isRomaji: Boolean = false
+    val isRomaji: Boolean = false,
+    val isDirectMode: Boolean = false
 )
 
 data class LayoutTemplate(val name: String, val layout: KeyboardLayout)
@@ -87,7 +88,8 @@ class KeyboardEditorViewModel @Inject constructor(
                     name = layoutName,
                     layout = loadedLayout,
                     isLoading = false,
-                    isRomaji = loadedLayout.isRomaji
+                    isRomaji = loadedLayout.isRomaji,
+                    isDirectMode = loadedLayout.isDirectMode
                 )
             }
         }
@@ -107,7 +109,8 @@ class KeyboardEditorViewModel @Inject constructor(
                     rowCount = 4,
                 ),
                 isLoading = false,
-                isRomaji = false
+                isRomaji = false,
+                isDirectMode = false
             )
         }
     }
@@ -125,7 +128,10 @@ class KeyboardEditorViewModel @Inject constructor(
                     repository.deleteLayout(idToSave)
                 }
 
-                val layoutToSave = currentState.layout.copy(isRomaji = currentState.isRomaji)
+                val layoutToSave = currentState.layout.copy(
+                    isRomaji = currentState.isRomaji,
+                    isDirectMode = currentState.isDirectMode
+                )
                 repository.saveLayout(
                     layout = layoutToSave,
                     name = currentState.name,
@@ -487,6 +493,10 @@ class KeyboardEditorViewModel @Inject constructor(
         _uiState.update { it.copy(isRomaji = isRomaji) }
     }
 
+    fun updateIsDirectMode(isDirectMode: Boolean) {
+        _uiState.update { it.copy(isDirectMode = isDirectMode) }
+    }
+
     fun onDoneNavigating() {
         _uiState.update { it.copy(navigateBack = false) }
     }
@@ -535,7 +545,10 @@ class KeyboardEditorViewModel @Inject constructor(
         )
 
         _uiState.update { currentState ->
-            currentState.copy(layout = finalLayout)
+            currentState.copy(
+                layout = finalLayout,
+                isDirectMode = finalLayout.isDirectMode
+            )
         }
     }
 
