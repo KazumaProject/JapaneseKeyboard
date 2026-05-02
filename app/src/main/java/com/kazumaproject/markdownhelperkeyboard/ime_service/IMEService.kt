@@ -95,6 +95,9 @@ import com.kazumaproject.android.flexbox.JustifyContent
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.data.clipboard.ClipboardItem
 import com.kazumaproject.core.data.floating_candidate.CandidateItem
+import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
+import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.getThemeColorOrFallback
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
@@ -127,9 +130,6 @@ import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.core.domain.window.getScreenHeight
-import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
-import com.kazumaproject.core.data.popup.PopupViewStyle
-import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
@@ -1222,8 +1222,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
         val deleteKeyFlickPreferencesChanged =
             isDeleteLeftFlickPreference != preferences.isDeleteLeftFlickPreference ||
-                isDeleteUpFlickPreference != preferences.isDeleteUpFlickPreference ||
-                isDeleteDownFlickPreference != preferences.isDeleteDownFlickPreference
+                    isDeleteUpFlickPreference != preferences.isDeleteUpFlickPreference ||
+                    isDeleteDownFlickPreference != preferences.isDeleteDownFlickPreference
 
         keyboardOrder = preferences.keyboardOrder
         candidateTabOrder = preferences.candidateTabOrder
@@ -14560,6 +14560,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (tenkeyQWERTYSwitchNumber == true) {
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                             setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                            setCurrentInputModeForSession(InputMode.ModeEnglish)
                             setCurrentQwertyRomajiModeForSession(false)
                             if (insertString.isEmpty()) {
                                 setKeyboardSizeSwitchKeyboard(mainView)
