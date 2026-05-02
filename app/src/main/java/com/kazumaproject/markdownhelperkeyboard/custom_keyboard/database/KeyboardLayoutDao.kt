@@ -170,6 +170,9 @@ interface KeyboardLayoutDao {
     @Query("SELECT * FROM keyboard_layouts WHERE name = :name LIMIT 1")
     suspend fun findLayoutByName(name: String): CustomKeyboardLayout?
 
+    @Query("SELECT * FROM keyboard_layouts WHERE stableId = :stableId LIMIT 1")
+    suspend fun findLayoutByStableId(stableId: String): CustomKeyboardLayout?
+
     @Transaction
     @Query("SELECT * FROM keyboard_layouts")
     fun getAllFullLayouts(): Flow<List<FullKeyboardLayout>>

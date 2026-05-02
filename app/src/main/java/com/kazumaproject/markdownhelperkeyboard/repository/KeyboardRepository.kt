@@ -1,8 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
-import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
@@ -10,8 +10,8 @@ import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
@@ -36,6 +36,19 @@ private data class DbKeyboardLayoutParts(
     val longPressFlicksMap: Map<String, List<LongPressFlickMapping>>,
     val twoStepLongPressMap: Map<String, List<TwoStepLongPressMappingEntity>>
 )
+
+fun ensureStableIdsForLayouts(
+    layouts: List<CustomKeyboardLayout>,
+    generateStableId: () -> String = { UUID.randomUUID().toString() }
+): List<CustomKeyboardLayout> {
+    return layouts.map { layout ->
+        if (layout.stableId.isBlank()) {
+            layout.copy(stableId = generateStableId())
+        } else {
+            layout
+        }
+    }
+}
 
 @Singleton
 class KeyboardRepository @Inject constructor(
@@ -71,12 +84,21 @@ class KeyboardRepository @Inject constructor(
             }
 
             currentMaxOrder += 1
+            val importedStableId = fullLayout.layout.stableId
+            val stableIdToInsert = if (importedStableId.isNullOrBlank() ||
+                dao.findLayoutByStableId(importedStableId) != null
+            ) {
+                UUID.randomUUID().toString()
+            } else {
+                importedStableId
+            }
 
             val layoutToInsert = fullLayout.layout.copy(
                 layoutId = 0,
                 name = newName,
                 createdAt = System.currentTimeMillis(),
-                sortOrder = currentMaxOrder
+                sortOrder = currentMaxOrder,
+                stableId = stableIdToInsert
             )
 
             val keysToInsert = fullLayout.keysWithFlicks.map { it.key }
@@ -140,6 +162,19 @@ class KeyboardRepository @Inject constructor(
     suspend fun getLayoutsNotFlow(): List<CustomKeyboardLayout> =
         dao.getLayoutsListNotFlow()
 
+    suspend fun ensureStableIds() {
+        val currentLayouts = dao.getLayoutsListNotFlow()
+        val ensuredLayouts = ensureStableIdsForLayouts(currentLayouts)
+        currentLayouts.zip(ensuredLayouts)
+            .filter { (current, ensured) -> current.stableId != ensured.stableId }
+            .forEach { (_, ensured) -> dao.updateLayout(ensured) }
+    }
+
+    suspend fun getLayoutsNotFlowEnsuringStableIds(): List<CustomKeyboardLayout> {
+        ensureStableIds()
+        return dao.getLayoutsListNotFlow()
+    }
+
     suspend fun getLayoutName(id: Long): String? = dao.getLayoutName(id)
 
     fun getFullLayout(id: Long): Flow<KeyboardLayout> {
@@ -193,6 +228,9 @@ class KeyboardRepository @Inject constructor(
 
         val createdAtToKeep = existing?.createdAt ?: System.currentTimeMillis()
         val sortOrderToKeep = existing?.sortOrder ?: nextTopSortOrder()
+        val stableIdToKeep = existing?.stableId
+            ?.takeIf { it.isNotBlank() }
+            ?: UUID.randomUUID().toString()
 
         val dbLayout = CustomKeyboardLayout(
             layoutId = id ?: 0,
@@ -201,7 +239,8 @@ class KeyboardRepository @Inject constructor(
             rowCount = layout.rowCount,
             isRomaji = layout.isRomaji,
             createdAt = createdAtToKeep,
-            sortOrder = sortOrderToKeep
+            sortOrder = sortOrderToKeep,
+            stableId = stableIdToKeep
         )
 
         val parts = convertToDbModel(layout)
@@ -242,7 +281,8 @@ class KeyboardRepository @Inject constructor(
             layoutId = 0,
             name = finalName,
             createdAt = System.currentTimeMillis(),
-            sortOrder = nextTopSortOrder()
+            sortOrder = nextTopSortOrder(),
+            stableId = UUID.randomUUID().toString()
         )
 
         val newKeys = originalLayout.keysWithFlicks.map { keyWithFlicks ->
@@ -476,6 +516,7 @@ class KeyboardRepository @Inject constructor(
                         KeyAction.MoveCursorLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
                         KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                         KeyAction.MoveCustomKeyboardTab -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
+                        is KeyAction.MoveToCustomKeyboard -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
                         KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
                         KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
                         KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
