@@ -6,9 +6,11 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.util.TypedValue
 import android.view.View
 import androidx.annotation.ColorInt
 import androidx.core.content.ContextCompat
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import kotlin.math.ceil
 import kotlin.math.min
 
@@ -67,6 +69,17 @@ class VariationsPopupView(context: Context) : View(context) {
         strokeWidth = 4f
     }
     private val itemCornerRadius = 15f
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        val textSizePx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_SP,
+            style.textSizeSp.coerceIn(8f, 48f),
+            resources.displayMetrics
+        )
+        flatTextPaint.textSize = textSizePx
+        neuTextPaint.textSize = textSizePx
+        invalidate()
+    }
 
     // ニューモーフィズム用メソッド
     fun setNeumorphicColors(

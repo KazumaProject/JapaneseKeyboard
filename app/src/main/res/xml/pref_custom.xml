@@ -9,6 +9,11 @@
             android:title="@string/custom_keyboard_size_preference_title"
             app:summary="@string/custom_keyboard_size_preference_summary" />
 
+        <Preference
+            android:key="flick_keyboard_popup_view_style_preference"
+            android:title="ポップアップ表示"
+            android:summary="FlickKeyboardView の各 popup のサイズと文字サイズを設定します" />
+
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="custom_keyboard_two_words_preference"

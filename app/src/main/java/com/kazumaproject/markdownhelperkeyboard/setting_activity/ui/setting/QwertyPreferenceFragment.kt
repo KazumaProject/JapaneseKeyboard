@@ -25,6 +25,13 @@ class QwertyPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<Preference>("qwerty_popup_view_style_preference")?.apply {
+            setOnPreferenceClickListener {
+                navigateSafely(R.id.action_navigation_setting_to_qwertyPopupStyleSettingFragment)
+                true
+            }
+        }
+
         findPreference<Preference>(QWERTY_NUMBER_KEY_FLICK_SETTING_PREFERENCE)?.apply {
             setOnPreferenceClickListener {
                 navigateSafely(

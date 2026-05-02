@@ -12,6 +12,7 @@ import android.view.WindowManager
 import android.widget.Button
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -88,6 +89,8 @@ class CrossFlickInputController(
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var popupColorTheme: FlickPopupColorTheme? = null
+    private var directionalPopupStyle = PopupViewStyle(100, 28f)
+    private var crossPopupStyle = PopupViewStyle(100, 18f)
     private val displayActionsByClass by lazy {
         KeyActionMapper.getDisplayActions(context).associateBy { it.action::class }
     }
@@ -95,6 +98,22 @@ class CrossFlickInputController(
     // 色設定。FlickPopupColorTheme をまとめて受け取り、全ポップアップに適用する。
     fun setPopupColors(theme: FlickPopupColorTheme) {
         popupColorTheme = theme
+    }
+
+    fun applyPopupViewStyleSet(
+        directional: PopupViewStyle,
+        cross: PopupViewStyle
+    ) {
+        directionalPopupStyle = PopupViewStyle(
+            sizeScalePercent = directional.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = directional.textSizeSp.coerceIn(8f, 48f)
+        )
+        crossPopupStyle = PopupViewStyle(
+            sizeScalePercent = cross.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = cross.textSizeSp.coerceIn(8f, 48f)
+        )
+        actionPopupViews.values.forEach { it.applyPopupViewStyle(crossPopupStyle) }
+        (gridPopup.contentView as? CrossFlickPopupView)?.applyPopupViewStyle(crossPopupStyle)
     }
 
     // 長押し判定までの待機時間を変更する。FlickKeyboardView から端末設定に合わせて呼ばれる。
@@ -414,12 +433,23 @@ class CrossFlickInputController(
         if (!isAnchorReady(anchor, windowAnchor)) return
 
         val popupView = CrossFlickPopupView(context).apply {
-            setCells(mapOf(direction to flickAction), anchor.width, anchor.height)
+            applyPopupViewStyle(crossPopupStyle)
+            val scale = crossPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+            setCells(
+                mapOf(direction to flickAction),
+                (anchor.width * scale).toInt().coerceAtLeast(1),
+                (anchor.height * scale).toInt().coerceAtLeast(1)
+            )
             popupColorTheme?.let { setColors(it) }
             if (highlighted) highlightDirection(direction)
         }
 
-        val popupWindow = PopupWindow(popupView, anchor.width, anchor.height, false).apply {
+        val popupWindow = PopupWindow(
+            popupView,
+            (anchor.width * (crossPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f)).toInt().coerceAtLeast(1),
+            (anchor.height * (crossPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f)).toInt().coerceAtLeast(1),
+            false
+        ).apply {
             isClippingEnabled = false
             elevation = 8f
             animationStyle = 0
@@ -514,9 +544,11 @@ class CrossFlickInputController(
 
             val popupView = DirectionalKeyPopupView(context).apply {
                 this.text = text
+                applyPopupViewStyle(directionalPopupStyle)
                 popupColorTheme?.let { setColors(it) }
                 setFlickDirection(direction)
             }
+            val scale = directionalPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
 
             val popupHeight = when (direction) {
                 FlickDirection.UP, FlickDirection.DOWN -> {
@@ -524,7 +556,7 @@ class CrossFlickInputController(
                 }
 
                 else -> currentAnchor.height
-            }
+            }.let { (it * scale).toInt().coerceAtLeast(1) }
 
             val popupWidth = when (direction) {
                 FlickDirection.UP, FlickDirection.DOWN -> {
@@ -535,7 +567,7 @@ class CrossFlickInputController(
                 else -> {
                     currentAnchor.width + (currentAnchor.width / 2 - currentAnchor.width / 4)
                 }
-            }
+            }.let { (it * scale).toInt().coerceAtLeast(1) }
 
             directionalPopupMap[direction] = PopupWindow(
                 popupView,
@@ -634,12 +666,18 @@ class CrossFlickInputController(
         }
 
         val popupView = gridPopup.contentView as CrossFlickPopupView
+        popupView.applyPopupViewStyle(crossPopupStyle)
         popupColorTheme?.let { popupView.setColors(it) }
+        val scale = crossPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
 
         val actionMap = getLongPressDisplayMap().mapValues { (_, text) ->
             FlickAction.Input(text)
         }
-        popupView.setCells(actionMap, currentAnchor.width, currentAnchor.height)
+        popupView.setCells(
+            actionMap,
+            (currentAnchor.width * scale).toInt().coerceAtLeast(1),
+            (currentAnchor.height * scale).toInt().coerceAtLeast(1)
+        )
         popupView.highlightDirection(currentDirection)
 
         val location = getLocationRelativeToWindowAnchor(currentAnchor, windowAnchor)

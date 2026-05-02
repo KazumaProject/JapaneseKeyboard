@@ -9,6 +9,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
@@ -38,6 +39,7 @@ class StandardFlickInputController(context: Context) {
     private var popupBackgroundColor: Int = Color.WHITE
     private var popupTextColor: Int = Color.BLACK
     private var popupStrokeColor: Int = Color.LTGRAY
+    private var popupStyle = PopupViewStyle(100, 19f)
 
     init {
         popupWindow = PopupWindow(
@@ -59,6 +61,14 @@ class StandardFlickInputController(context: Context) {
         this.popupBackgroundColor = theme.segmentHighlightGradientStartColor
         this.popupTextColor = theme.textColor
         this.popupStrokeColor = theme.separatorColor
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupStyle = PopupViewStyle(
+            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+        )
+        popupView.applyPopupViewStyle(popupStyle)
     }
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
@@ -137,6 +147,7 @@ class StandardFlickInputController(context: Context) {
         }
 
         popupView.setColors(popupBackgroundColor, popupTextColor, popupStrokeColor)
+        popupView.applyPopupViewStyle(popupStyle)
 
         if (direction == FlickDirection.TAP) {
             popupView.updateMultiCharText(characterMap)

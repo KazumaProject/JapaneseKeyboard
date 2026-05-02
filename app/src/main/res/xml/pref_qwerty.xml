@@ -9,6 +9,11 @@
             android:title="キーのサイズ"
             app:summary="キー、文字、特殊キーのアイコンサイズを変更します" />
 
+        <Preference
+            android:key="qwerty_popup_view_style_preference"
+            android:title="ポップアップ表示"
+            android:summary="QWERTY のキー preview と長押し popup のサイズと文字サイズを設定します" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="switch_qwerty_keyboard_password_preference"
