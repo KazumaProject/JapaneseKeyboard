@@ -238,6 +238,7 @@ class KeyboardRepository @Inject constructor(
             columnCount = layout.columnCount,
             rowCount = layout.rowCount,
             isRomaji = layout.isRomaji,
+            isDirectMode = layout.isDirectMode,
             createdAt = createdAtToKeep,
             sortOrder = sortOrderToKeep,
             stableId = stableIdToKeep
@@ -513,6 +514,7 @@ class KeyboardRepository @Inject constructor(
                         KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
                         KeyAction.Delete -> com.kazumaproject.core.R.drawable.backspace_24px
                         KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+                        KeyAction.ForceNewLine -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
                         KeyAction.MoveCursorLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
                         KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                         KeyAction.MoveCustomKeyboardTab -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
@@ -522,6 +524,8 @@ class KeyboardRepository @Inject constructor(
                         KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
                         KeyAction.SelectRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
                         KeyAction.ShiftKey -> com.kazumaproject.core.R.drawable.shift_24px
+                        KeyAction.CapLockKey -> com.kazumaproject.core.R.drawable.caps_lock_outline
+                        KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
                         KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
                         KeyAction.Space -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
                         KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
@@ -532,6 +536,9 @@ class KeyboardRepository @Inject constructor(
                         KeyAction.ToggleDakuten -> com.kazumaproject.core.R.drawable.kana_small_custom
                         KeyAction.ToggleKatakana -> com.kazumaproject.core.R.drawable.katakana
                         KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
+                        KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+                        KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+                        KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
                         else -> null
                     },
                     keyId = dbKey.keyIdentifier,
@@ -546,6 +553,7 @@ class KeyboardRepository @Inject constructor(
             columnCount = dbLayout.layout.columnCount,
             rowCount = dbLayout.layout.rowCount,
             isRomaji = dbLayout.layout.isRomaji,
+            isDirectMode = dbLayout.layout.isDirectMode,
             circularFlickKeyMaps = circularFlickMaps.ifEmpty {
                 flickMaps.mapValues { (_, states) ->
                     states.map { stateMap ->
