@@ -65,6 +65,15 @@
             android:id="@+id/action_navigation_setting_to_tenKeyCandidateLetterSizeFragment"
             app:destination="@id/tenKeyCandidateLetterSizeFragment" />
         <action
+            android:id="@+id/action_navigation_setting_to_tenKeyPopupStyleSettingFragment"
+            app:destination="@id/tenKeyPopupStyleSettingFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_qwertyPopupStyleSettingFragment"
+            app:destination="@id/qwertyPopupStyleSettingFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_flickKeyboardPopupStyleListFragment"
+            app:destination="@id/flickKeyboardPopupStyleListFragment" />
+        <action
             android:id="@+id/action_navigation_setting_to_circularFlickSettingsFragment"
             app:destination="@id/circularFlickSettingsFragment" />
         <action
@@ -251,6 +260,31 @@
         android:id="@+id/tenKeyCandidateLetterSizeFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.tenkey_letter_size_setting.TenKeyCandidateLetterSizeFragment"
         android:label="@string/tenkeycandidatelettersizefragment" />
+    <fragment
+        android:id="@+id/tenKeyPopupStyleSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.TenKeyPopupStyleSettingFragment"
+        android:label="TenKey ポップアップ表示" />
+    <fragment
+        android:id="@+id/qwertyPopupStyleSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.QwertyPopupStyleSettingFragment"
+        android:label="QWERTY ポップアップ表示" />
+    <fragment
+        android:id="@+id/flickKeyboardPopupStyleListFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.FlickKeyboardPopupStyleListFragment"
+        android:label="FlickKeyboardView ポップアップ表示">
+        <action
+            android:id="@+id/action_flickKeyboardPopupStyleListFragment_to_flickKeyboardPopupStyleEditFragment"
+            app:destination="@id/flickKeyboardPopupStyleEditFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/flickKeyboardPopupStyleEditFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.FlickKeyboardPopupStyleEditFragment"
+        android:label="Popup 表示編集">
+        <argument
+            android:name="target"
+            android:defaultValue="DIRECTIONAL"
+            app:argType="string" />
+    </fragment>
     <fragment
         android:id="@+id/circularFlickSettingsFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.sumire_custom_angle.CircularFlickSettingsFragment"

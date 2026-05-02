@@ -27,6 +27,8 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
+import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
@@ -126,6 +128,12 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var circularFlickDirectionCount: Int = 4
     private var borderWidth: Int = 1
     private var flickGuideEnabled: Boolean = false
+    private var popupViewStyleSet = FlickPopupViewStyleSet(
+        directional = PopupViewStyle(100, 28f),
+        cross = PopupViewStyle(100, 18f),
+        standard = PopupViewStyle(100, 19f),
+        tfbi = PopupViewStyle(100, 20f)
+    )
 
     init {
         setPadding(0, 0, 0, 0)
@@ -144,6 +152,28 @@ class FlickKeyboardView @JvmOverloads constructor(
         standardFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
 
 
+    }
+
+    fun applyPopupViewStyleSet(styleSet: FlickPopupViewStyleSet) {
+        popupViewStyleSet = FlickPopupViewStyleSet(
+            directional = clampPopupStyle(styleSet.directional),
+            cross = clampPopupStyle(styleSet.cross),
+            standard = clampPopupStyle(styleSet.standard),
+            tfbi = clampPopupStyle(styleSet.tfbi)
+        )
+        crossFlickControllers.forEach {
+            it.applyPopupViewStyleSet(popupViewStyleSet.directional, popupViewStyleSet.cross)
+        }
+        standardFlickControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.standard) }
+
+
+    }
+
+    private fun clampPopupStyle(style: PopupViewStyle): PopupViewStyle {
+        return PopupViewStyle(
+            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+        )
     }
 
     fun setFlickSensitivityValue(sensitivity: Int) {
@@ -1071,6 +1101,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val controller = CrossFlickInputController(context).apply {
                         setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        applyPopupViewStyleSet(
+                            popupViewStyleSet.directional,
+                            popupViewStyleSet.cross
+                        )
                         this.listener = object : CrossFlickInputController.CrossFlickListener {
                             override fun onPress(action: KeyAction) {
                                 this@FlickKeyboardView.listener?.onPress(action)
@@ -1215,6 +1249,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     val controller = StandardFlickInputController(context).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        applyPopupViewStyle(popupViewStyleSet.standard)
                         this.listener =
                             object : StandardFlickInputController.StandardFlickListener {
                                 override fun onPress(character: String) {
@@ -1315,6 +1350,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val controller = CrossFlickInputController(context, flickSensitivity).apply {
                         setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        applyPopupViewStyleSet(
+                            popupViewStyleSet.directional,
+                            popupViewStyleSet.cross
+                        )
                         val isDarkTheme = context.isDarkThemeOn()
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
