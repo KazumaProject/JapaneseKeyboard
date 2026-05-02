@@ -21,5 +21,12 @@ class CustomKeyboardPreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        findPreference<Preference>("flick_keyboard_popup_view_style_preference")?.apply {
+            setOnPreferenceClickListener {
+                navigateSafely(R.id.action_navigation_setting_to_flickKeyboardPopupStyleListFragment)
+                true
+            }
+        }
     }
 }
