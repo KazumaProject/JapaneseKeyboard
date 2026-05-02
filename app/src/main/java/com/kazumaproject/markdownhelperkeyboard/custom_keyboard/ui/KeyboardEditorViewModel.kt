@@ -59,6 +59,22 @@ class KeyboardEditorViewModel @Inject constructor(
                 isUpperCase = false
             )
         ),
+        LayoutTemplate(
+            "英語 QWERTY",
+            KeyboardDefaultLayouts.createQwertyTemplateLayout()
+        ),
+        LayoutTemplate(
+            "英語 AZERTY",
+            KeyboardDefaultLayouts.createAzertyTemplateLayout()
+        ),
+        LayoutTemplate(
+            "英語 Dvorak",
+            KeyboardDefaultLayouts.createDvorakTemplateLayout()
+        ),
+        LayoutTemplate(
+            "英語 Colemak",
+            KeyboardDefaultLayouts.createColemakTemplateLayout()
+        ),
         LayoutTemplate("数字入力", KeyboardDefaultLayouts.createNumberTemplateLayout())
     )
 
