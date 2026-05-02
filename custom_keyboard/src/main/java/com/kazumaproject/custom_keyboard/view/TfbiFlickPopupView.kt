@@ -7,6 +7,7 @@ import android.graphics.RectF
 import android.util.TypedValue
 import android.view.View
 import androidx.core.content.ContextCompat
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 
@@ -81,6 +82,11 @@ class TfbiFlickPopupView(context: Context) : View(context) {
             this.highlightedDirection = direction
             invalidate()
         }
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        textPaint.textSize = spToPx(style.textSizeSp.coerceIn(8f, 48f))
+        invalidate()
     }
 
     // ===== Viewのライフサイクル =====
