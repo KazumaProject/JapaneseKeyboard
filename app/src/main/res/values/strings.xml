@@ -511,6 +511,10 @@
     <string name="keyboard_theme_dialog_title">Select Base Color</string>
     <string name="delete_key_left_flick_title">Delete Key Left Flick</string>
     <string name="delete_key_left_summary">When you flick the delete key to the left, it deletes the text or symbols before the cursor.</string>
+    <string name="delete_key_up_flick_title">Delete Key Up Flick</string>
+    <string name="delete_key_up_summary">When you flick the delete key upward, it deletes the text or symbols after the cursor.</string>
+    <string name="delete_key_down_flick_title">Delete Key Down Flick</string>
+    <string name="delete_key_down_summary">When you flick the delete key downward, it restores the last deletion (Undo).</string>
     <string name="delete_key_flick_targets_title">Delete target symbols</string>
     <string name="delete_key_flick_targets_summary">Current default: 。、！？「」『』ー.</string>
     <string name="delete_key_flick_targets_fragment_title">Delete Target Symbols</string>

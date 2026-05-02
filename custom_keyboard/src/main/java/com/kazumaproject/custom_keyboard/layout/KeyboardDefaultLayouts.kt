@@ -12,6 +12,127 @@ import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 
 object KeyboardDefaultLayouts {
+    data class DeleteKeyFlickSettings(
+        val left: Boolean = true,
+        val up: Boolean = false,
+        val down: Boolean = false
+    ) {
+        val hasFlickActions: Boolean
+            get() = left || up || down
+    }
+
+    private fun createDeleteActionMap(
+        deleteKeyFlickSettings: DeleteKeyFlickSettings
+    ): Map<FlickDirection, FlickAction> = buildMap {
+        put(
+            FlickDirection.TAP,
+            FlickAction.Action(
+                KeyAction.Delete,
+                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+            )
+        )
+        if (deleteKeyFlickSettings.left) {
+            put(
+                FlickDirection.UP_LEFT,
+                FlickAction.Action(
+                    KeyAction.DeleteUntilSymbol,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+                )
+            )
+        }
+        if (deleteKeyFlickSettings.up) {
+            put(
+                FlickDirection.UP,
+                FlickAction.Action(
+                    KeyAction.DeleteAfterCursorUntilSymbol,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+                )
+            )
+        }
+        if (deleteKeyFlickSettings.down) {
+            put(
+                FlickDirection.DOWN,
+                FlickAction.Action(
+                    KeyAction.UndoLastDelete,
+                    drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
+                )
+            )
+        }
+    }
+
+    fun applyDeleteKeyFlickSettings(
+        layout: KeyboardLayout,
+        deleteKeyFlickSettings: DeleteKeyFlickSettings
+    ): KeyboardLayout {
+        val deleteMapKeys = layout.flickKeyMaps
+            .filterValues { states ->
+                states.any { actionMap ->
+                    (actionMap[FlickDirection.TAP] as? FlickAction.Action)?.action == KeyAction.Delete
+                }
+            }
+            .keys
+
+        val deleteKeyLookupKeys = layout.keys
+            .filter { keyData ->
+                keyData.action == KeyAction.Delete ||
+                    keyData.keyId == "delete_key" ||
+                    keyData.keyId in deleteMapKeys ||
+                    (keyData.label.isNotBlank() && keyData.label in deleteMapKeys)
+            }
+            .flatMap { keyData -> listOfNotNull(keyData.keyId, keyData.label) }
+            .toSet() + deleteMapKeys
+
+        if (deleteKeyLookupKeys.isEmpty()) return layout
+
+        fun shouldKeep(action: FlickAction): Boolean {
+            val keyAction = (action as? FlickAction.Action)?.action ?: return true
+            return when (keyAction) {
+                KeyAction.Delete -> true
+                KeyAction.DeleteUntilSymbol -> deleteKeyFlickSettings.left
+                KeyAction.DeleteAfterCursorUntilSymbol -> deleteKeyFlickSettings.up
+                KeyAction.UndoLastDelete -> deleteKeyFlickSettings.down
+                else -> true
+            }
+        }
+
+        val filteredFlickKeyMaps = layout.flickKeyMaps.mapValues { (key, states) ->
+            if (key !in deleteKeyLookupKeys) {
+                states
+            } else {
+                states.map { actionMap -> actionMap.filterValues(::shouldKeep) }
+            }
+        }
+        val filteredCircularFlickKeyMaps = layout.circularFlickKeyMaps.mapValues { (key, states) ->
+            if (key !in deleteKeyLookupKeys) {
+                states
+            } else {
+                states.map { actionMap -> actionMap.filterValues(::shouldKeep) }
+            }
+        }
+
+        val filteredKeys = if (deleteKeyFlickSettings.hasFlickActions) {
+            layout.keys
+        } else {
+            layout.keys.map { keyData ->
+                val isDeleteKey = keyData.action == KeyAction.Delete ||
+                    keyData.keyId == "delete_key" ||
+                    keyData.keyId in deleteKeyLookupKeys ||
+                    (keyData.label.isNotBlank() && keyData.label in deleteKeyLookupKeys)
+                if (isDeleteKey) {
+                    keyData.copy(action = KeyAction.Delete, keyType = KeyType.NORMAL)
+                } else {
+                    keyData
+                }
+            }
+        }
+
+        return layout.copy(
+            keys = filteredKeys,
+            flickKeyMaps = filteredFlickKeyMaps,
+            circularFlickKeyMaps = filteredCircularFlickKeyMaps
+        )
+    }
+
     /**
      * Creates the final keyboard layout based on the mode and dynamic key states.
      * @param mode The keyboard input mode (HIRAGANA, ENGLISH, etc.).
@@ -23,14 +144,14 @@ object KeyboardDefaultLayouts {
         dynamicKeyStates: Map<String, Int>,
         inputLayoutType: String,
         inputStyle: String,
-        isDeleteFlickEnabled: Boolean
+        deleteKeyFlickSettings: DeleteKeyFlickSettings = DeleteKeyFlickSettings()
     ): KeyboardLayout {
         val baseLayout = when (inputLayoutType) {
             "toggle" -> {
                 when (mode) {
                     KeyboardInputMode.HIRAGANA -> {
                         createHiraganaToggleLayout(
-                            inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                            inputStyle, deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
 
@@ -38,13 +159,13 @@ object KeyboardDefaultLayouts {
                         createEnglishToggleLayout(
                             isUpperCase = false,
                             inputStyle = inputStyle,
-                            isFlickDeleteEnabled = isDeleteFlickEnabled
+                            deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
                         createSymbolToggleLayout(
-                            inputStyle = inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                            inputStyle = inputStyle, deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
                 }
@@ -54,7 +175,7 @@ object KeyboardDefaultLayouts {
                 when (mode) {
                     KeyboardInputMode.HIRAGANA -> {
                         createHiraganaFlickLayout(
-                            inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                            inputStyle, deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
 
@@ -62,13 +183,13 @@ object KeyboardDefaultLayouts {
                         createEnglishFlickLayout(
                             isUpperCase = false,
                             inputStyle = inputStyle,
-                            isFlickDeleteEnabled = isDeleteFlickEnabled
+                            deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
                         createSymbolFlickLayout(
-                            inputStyle = inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                            inputStyle = inputStyle, deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
                 }
@@ -78,7 +199,7 @@ object KeyboardDefaultLayouts {
                 when (mode) {
                     KeyboardInputMode.HIRAGANA -> {
                         createHiraganaEffectiveLayout(
-                            inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                            inputStyle, deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
 
@@ -86,13 +207,13 @@ object KeyboardDefaultLayouts {
                         createEnglishFlickLayoutEffective(
                             isUpperCase = false,
                             inputStyle = inputStyle,
-                            isFlickDeleteEnabled = isDeleteFlickEnabled
+                            deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
                         createNumberEffectiveLayout(
-                            inputStyle = inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                            inputStyle = inputStyle, deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
                 }
@@ -102,7 +223,7 @@ object KeyboardDefaultLayouts {
                 when (mode) {
                     KeyboardInputMode.HIRAGANA -> {
                         createHiraganaToggleLayout(
-                            inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                            inputStyle, deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
 
@@ -110,13 +231,13 @@ object KeyboardDefaultLayouts {
                         createEnglishToggleLayout(
                             isUpperCase = false,
                             inputStyle = inputStyle,
-                            isFlickDeleteEnabled = isDeleteFlickEnabled
+                            deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
                         createSymbolToggleLayout(
-                            inputStyle = inputStyle, isFlickDeleteEnabled = isDeleteFlickEnabled
+                            inputStyle = inputStyle, deleteKeyFlickSettings = deleteKeyFlickSettings
                         )
                     }
                 }
@@ -128,7 +249,7 @@ object KeyboardDefaultLayouts {
             finalLayout = applyKeyState(finalLayout, keyId, stateIndex)
         }
 
-        return finalLayout
+        return applyDeleteKeyFlickSettings(finalLayout, deleteKeyFlickSettings)
     }
 
 
@@ -241,7 +362,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createHiraganaLayoutToggle(
-        isFlickDeleteEnabled: Boolean, keys: List<KeyData>
+        deleteKeyFlickSettings: DeleteKeyFlickSettings, keys: List<KeyData>
     ): KeyboardLayout {
 
         val pasteActionMap = mapOf(
@@ -474,17 +595,8 @@ object KeyboardDefaultLayouts {
             )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            if (isFlickDeleteEnabled) {
-                val deleteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Delete,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.DeleteUntilSymbol,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                    )
-                )
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                 mutableMapOf(
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -539,7 +651,7 @@ object KeyboardDefaultLayouts {
 
 
     private fun createHiraganaLayoutFlick(
-        isFlickDeleteEnabled: Boolean, keys: List<KeyData>
+        deleteKeyFlickSettings: DeleteKeyFlickSettings, keys: List<KeyData>
     ): KeyboardLayout {
 
         val cursorMoveActionMap = mapOf(
@@ -766,17 +878,8 @@ object KeyboardDefaultLayouts {
             )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            if (isFlickDeleteEnabled) {
-                val deleteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Delete,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.DeleteUntilSymbol,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                    )
-                )
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                 mutableMapOf(
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
                     "あ" to listOf(a, small_a, dakuten_a),
@@ -828,7 +931,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createHiraganaLayoutEffective(
-        isFlickDeleteEnabled: Boolean, keys: List<KeyData>
+        deleteKeyFlickSettings: DeleteKeyFlickSettings, keys: List<KeyData>
     ): KeyboardLayout {
 
         val cursorLeftActionMap = mapOf(
@@ -1077,17 +1180,8 @@ object KeyboardDefaultLayouts {
             )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            if (isFlickDeleteEnabled) {
-                val deleteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Delete,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.DeleteUntilSymbol,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                    )
-                )
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                 mutableMapOf(
                     "CursorMoveLeft" to listOf(cursorLeftActionMap),
                     "CursorMoveRight" to listOf(cursorRightActionMap),
@@ -1140,7 +1234,7 @@ object KeyboardDefaultLayouts {
         return KeyboardLayout(keys, flickMaps.toMap(), 5, 4)
     }
 
-    private fun createHiraganaLayoutOld(isFlickDeleteEnabled: Boolean): KeyboardLayout {
+    private fun createHiraganaLayoutOld(deleteKeyFlickSettings: DeleteKeyFlickSettings): KeyboardLayout {
         val keys = listOf(
             KeyData(
                 label = "PasteActionKey",
@@ -1207,7 +1301,7 @@ object KeyboardDefaultLayouts {
                 3,
                 true,
             ),
-            if (isFlickDeleteEnabled) {
+            if (deleteKeyFlickSettings.hasFlickActions) {
                 KeyData(
                     "Del",
                     0,
@@ -1468,17 +1562,8 @@ object KeyboardDefaultLayouts {
         )
 
         val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
-            if (isFlickDeleteEnabled) {
-                val deleteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Delete,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.DeleteUntilSymbol,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                    )
-                )
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                 mapOf(
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -1517,7 +1602,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createEnglishLayoutToggle(
-        isUpperCase: Boolean, isFlickDeleteEnabled: Boolean, keys: List<KeyData>
+        isUpperCase: Boolean, deleteKeyFlickSettings: DeleteKeyFlickSettings, keys: List<KeyData>
     ): KeyboardLayout {
         // KeyDataのリストは変更ありません
 
@@ -1729,17 +1814,8 @@ object KeyboardDefaultLayouts {
 
         // isUpperCaseフラグに基づいてflickMapのリストの順序を決定し、最終的なflickMapsを作成
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            if (isFlickDeleteEnabled) {
-                val deleteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Delete,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.DeleteUntilSymbol,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                    )
-                )
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                 mutableMapOf(
                     "PasteActionKey" to listOf(pasteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -1817,7 +1893,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createEnglishLayoutFlick(
-        isUpperCase: Boolean, isFlickDeleteEnabled: Boolean, keys: List<KeyData>
+        isUpperCase: Boolean, deleteKeyFlickSettings: DeleteKeyFlickSettings, keys: List<KeyData>
     ): KeyboardLayout {
         val cursorMoveActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
@@ -2030,17 +2106,8 @@ object KeyboardDefaultLayouts {
 
         // isUpperCaseフラグに基づいてflickMapのリストの順序を決定し、最終的なflickMapsを作成
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            if (isFlickDeleteEnabled) {
-                val deleteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Delete,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.DeleteUntilSymbol,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                    )
-                )
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                 mutableMapOf(
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
                     "@#/_" to listOf(symbols1, basicMathOperators, advancedMathSymbols),
@@ -2125,7 +2192,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createEnglishLayoutFlickEffective(
-        isUpperCase: Boolean, isFlickDeleteEnabled: Boolean, keys: List<KeyData>
+        isUpperCase: Boolean, deleteKeyFlickSettings: DeleteKeyFlickSettings, keys: List<KeyData>
     ): KeyboardLayout {
         val cursorLeftActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
@@ -2366,17 +2433,8 @@ object KeyboardDefaultLayouts {
 
         // isUpperCaseフラグに基づいてflickMapのリストの順序を決定し、最終的なflickMapsを作成
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            if (isFlickDeleteEnabled) {
-                val deleteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Delete,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.DeleteUntilSymbol,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                    )
-                )
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                 mutableMapOf(
                     "CursorMoveLeft" to listOf(cursorLeftActionMap),
                     "CursorMoveRight" to listOf(cursorRightActionMap),
@@ -2463,7 +2521,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createSymbolLayoutToggle(
-        isFlickDeleteEnabled: Boolean, keys: List<KeyData>
+        deleteKeyFlickSettings: DeleteKeyFlickSettings, keys: List<KeyData>
     ): KeyboardLayout {
         val pasteActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
@@ -2507,17 +2565,8 @@ object KeyboardDefaultLayouts {
 
         // Final map combining all flick definitions
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            if (isFlickDeleteEnabled) {
-                val deleteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Delete,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.DeleteUntilSymbol,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                    )
-                )
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                 mutableMapOf(
                     "Del" to listOf(deleteActionMap),
                     "PasteActionKey" to listOf(pasteActionMap),
@@ -2741,7 +2790,7 @@ object KeyboardDefaultLayouts {
 
 
     private fun createSymbolLayoutFlick(
-        isFlickDeleteEnabled: Boolean, keys: List<KeyData>
+        deleteKeyFlickSettings: DeleteKeyFlickSettings, keys: List<KeyData>
     ): KeyboardLayout {
         val cursorMoveActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
@@ -2774,17 +2823,8 @@ object KeyboardDefaultLayouts {
 
         // Final map combining all flick definitions
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            if (isFlickDeleteEnabled) {
-                val deleteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Delete,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.DeleteUntilSymbol,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                    )
-                )
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                 mutableMapOf(
                     "Del" to listOf(deleteActionMap),
                     "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -2993,7 +3033,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createSymbolLayoutFlickEffective(
-        isFlickDeleteEnabled: Boolean, keys: List<KeyData>
+        deleteKeyFlickSettings: DeleteKeyFlickSettings, keys: List<KeyData>
     ): KeyboardLayout {
         val spaceActionMap = mapOf(
             FlickDirection.TAP to FlickAction.Action(
@@ -3033,17 +3073,8 @@ object KeyboardDefaultLayouts {
         )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-            if (isFlickDeleteEnabled) {
-                val deleteActionMap = mapOf(
-                    FlickDirection.TAP to FlickAction.Action(
-                        KeyAction.Delete,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                    ), FlickDirection.UP_LEFT to FlickAction.Action(
-                        KeyAction.DeleteUntilSymbol,
-                        drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                    )
-                )
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                 mutableMapOf(
                     "1\n☆♪→" to listOf(
                         mapOf(
@@ -3609,7 +3640,9 @@ object KeyboardDefaultLayouts {
         return KeyboardLayout(keys, flickMaps, 5, 4)
     }
 
-    fun createNumberLayout(): KeyboardLayout {
+    fun createNumberLayout(
+        deleteKeyFlickSettings: DeleteKeyFlickSettings = DeleteKeyFlickSettings()
+    ): KeyboardLayout {
         val keys = listOf(
             KeyData(
                 label = "1",
@@ -3680,7 +3713,12 @@ object KeyboardDefaultLayouts {
                 isSpecialKey = true,
                 rowSpan = 1,
                 drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
-                keyType = KeyType.NORMAL
+                keyType = if (deleteKeyFlickSettings.hasFlickActions) {
+                    KeyType.CROSS_FLICK
+                } else {
+                    KeyType.NORMAL
+                },
+                keyId = "delete_key"
             ),
             KeyData("0", 3, 1, false, keyType = KeyType.STANDARD_FLICK),
             KeyData(".", 3, 2, false, keyType = KeyType.STANDARD_FLICK),
@@ -3698,7 +3736,8 @@ object KeyboardDefaultLayouts {
             )
         )
 
-        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = mapOf(
+        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
+            mutableMapOf<String, List<Map<FlickDirection, FlickAction>>>(
             "1" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("1"))),
             "2" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("2"))),
             "3" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("3"))),
@@ -3727,9 +3766,16 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input("="),
                 )
             )
-        )
+        ).toMutableMap().apply {
+            if (deleteKeyFlickSettings.hasFlickActions) {
+                put("", listOf(createDeleteActionMap(deleteKeyFlickSettings)))
+            }
+        }
 
-        return KeyboardLayout(keys, flickMaps, 4, 4)
+        return applyDeleteKeyFlickSettings(
+            KeyboardLayout(keys, flickMaps, 4, 4),
+            deleteKeyFlickSettings
+        )
     }
 
     fun createFlickKanaTemplateLayout(
@@ -4415,7 +4461,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createHiraganaToggleLayout(
-        inputStyle: String, isFlickDeleteEnabled: Boolean
+        inputStyle: String, deleteKeyFlickSettings: DeleteKeyFlickSettings
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -4550,7 +4596,7 @@ object KeyboardDefaultLayouts {
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ), if (isFlickDeleteEnabled) {
+            ), if (deleteKeyFlickSettings.hasFlickActions) {
                 KeyData(
                     "Del",
                     0,
@@ -4672,17 +4718,8 @@ object KeyboardDefaultLayouts {
                     FlickDirection.DOWN to FlickAction.Input("…")
                 )
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    if (isFlickDeleteEnabled) {
-                        val deleteActionMap = mapOf(
-                            FlickDirection.TAP to FlickAction.Action(
-                                KeyAction.Delete,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                            ), FlickDirection.UP_LEFT to FlickAction.Action(
-                                KeyAction.DeleteUntilSymbol,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                            )
-                        )
+                    if (deleteKeyFlickSettings.hasFlickActions) {
+                        val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                         mutableMapOf(
                             "PasteActionKey" to listOf(pasteActionMap),
                             "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -4974,7 +5011,7 @@ object KeyboardDefaultLayouts {
 
             "sumire" -> {
                 return createHiraganaLayoutToggle(
-                    isFlickDeleteEnabled = isFlickDeleteEnabled, keys = keys
+                    deleteKeyFlickSettings = deleteKeyFlickSettings, keys = keys
                 )
             }
 
@@ -5114,17 +5151,8 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    if (isFlickDeleteEnabled) {
-                        val deleteActionMap = mapOf(
-                            FlickDirection.TAP to FlickAction.Action(
-                                KeyAction.Delete,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                            ), FlickDirection.UP_LEFT to FlickAction.Action(
-                                KeyAction.DeleteUntilSymbol,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                            )
-                        )
+                    if (deleteKeyFlickSettings.hasFlickActions) {
+                        val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                         mutableMapOf(
                             "PasteActionKey" to listOf(pasteActionMap),
                             "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -5179,7 +5207,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createEnglishToggleLayout(
-        isUpperCase: Boolean, inputStyle: String, isFlickDeleteEnabled: Boolean
+        isUpperCase: Boolean, inputStyle: String, deleteKeyFlickSettings: DeleteKeyFlickSettings
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -5296,7 +5324,7 @@ object KeyboardDefaultLayouts {
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ), if (isFlickDeleteEnabled) {
+            ), if (deleteKeyFlickSettings.hasFlickActions) {
                 KeyData(
                     "Del",
                     0,
@@ -5346,7 +5374,7 @@ object KeyboardDefaultLayouts {
         )
         if (inputStyle == "sumire") {
             return createEnglishLayoutToggle(
-                isUpperCase, isFlickDeleteEnabled, keys = keys
+                isUpperCase, deleteKeyFlickSettings, keys = keys
             )
         } else {
             val pasteActionMap = mapOf(
@@ -5464,17 +5492,8 @@ object KeyboardDefaultLayouts {
             )
 
             val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                if (isFlickDeleteEnabled) {
-                    val deleteActionMap = mapOf(
-                        FlickDirection.TAP to FlickAction.Action(
-                            KeyAction.Delete,
-                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                        ), FlickDirection.UP_LEFT to FlickAction.Action(
-                            KeyAction.DeleteUntilSymbol,
-                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                        )
-                    )
+                if (deleteKeyFlickSettings.hasFlickActions) {
+                    val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                     mutableMapOf(
                         "PasteActionKey" to listOf(pasteActionMap),
                         "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -5518,7 +5537,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createSymbolToggleLayout(
-        inputStyle: String, isFlickDeleteEnabled: Boolean
+        inputStyle: String, deleteKeyFlickSettings: DeleteKeyFlickSettings
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -5646,7 +5665,7 @@ object KeyboardDefaultLayouts {
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ), if (isFlickDeleteEnabled) {
+            ), if (deleteKeyFlickSettings.hasFlickActions) {
                 KeyData(
                     "Del",
                     0,
@@ -5696,7 +5715,7 @@ object KeyboardDefaultLayouts {
         )
 
         if (inputStyle == "sumire") {
-            return createSymbolLayoutToggle(isFlickDeleteEnabled, keys)
+            return createSymbolLayoutToggle(deleteKeyFlickSettings, keys)
         } else {
             val pasteActionMap = mapOf(
                 FlickDirection.TAP to FlickAction.Action(
@@ -5746,17 +5765,8 @@ object KeyboardDefaultLayouts {
             )
 
             val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                if (isFlickDeleteEnabled) {
-                    val deleteActionMap = mapOf(
-                        FlickDirection.TAP to FlickAction.Action(
-                            KeyAction.Delete,
-                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                        ), FlickDirection.UP_LEFT to FlickAction.Action(
-                            KeyAction.DeleteUntilSymbol,
-                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                        )
-                    )
+                if (deleteKeyFlickSettings.hasFlickActions) {
+                    val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                     mutableMapOf(
                         "Del" to listOf(deleteActionMap),
                         "PasteActionKey" to listOf(pasteActionMap),
@@ -5958,7 +5968,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createHiraganaFlickLayout(
-        inputStyle: String, isFlickDeleteEnabled: Boolean
+        inputStyle: String, deleteKeyFlickSettings: DeleteKeyFlickSettings
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -6092,7 +6102,7 @@ object KeyboardDefaultLayouts {
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ), if (isFlickDeleteEnabled) {
+            ), if (deleteKeyFlickSettings.hasFlickActions) {
                 KeyData(
                     "Del",
                     0,
@@ -6219,17 +6229,8 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    if (isFlickDeleteEnabled) {
-                        val deleteActionMap = mapOf(
-                            FlickDirection.TAP to FlickAction.Action(
-                                KeyAction.Delete,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                            ), FlickDirection.UP_LEFT to FlickAction.Action(
-                                KeyAction.DeleteUntilSymbol,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                            )
-                        )
+                    if (deleteKeyFlickSettings.hasFlickActions) {
+                        val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                         mutableMapOf(
                             "PasteActionKey" to listOf(pasteActionMap),
                             "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -6521,7 +6522,7 @@ object KeyboardDefaultLayouts {
 
             "sumire" -> {
                 return createHiraganaLayoutFlick(
-                    isFlickDeleteEnabled = isFlickDeleteEnabled, keys = keys
+                    deleteKeyFlickSettings = deleteKeyFlickSettings, keys = keys
                 )
             }
 
@@ -6652,17 +6653,8 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    if (isFlickDeleteEnabled) {
-                        val deleteActionMap = mapOf(
-                            FlickDirection.TAP to FlickAction.Action(
-                                KeyAction.Delete,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                            ), FlickDirection.UP_LEFT to FlickAction.Action(
-                                KeyAction.DeleteUntilSymbol,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                            )
-                        )
+                    if (deleteKeyFlickSettings.hasFlickActions) {
+                        val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                         mutableMapOf(
                             "CursorMoveLeft" to listOf(cursorMoveActionMap),
                             "あ" to listOf(a),
@@ -6716,7 +6708,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createEnglishFlickLayout(
-        inputStyle: String, isUpperCase: Boolean, isFlickDeleteEnabled: Boolean
+        inputStyle: String, isUpperCase: Boolean, deleteKeyFlickSettings: DeleteKeyFlickSettings
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -6832,7 +6824,7 @@ object KeyboardDefaultLayouts {
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ), if (isFlickDeleteEnabled) {
+            ), if (deleteKeyFlickSettings.hasFlickActions) {
                 KeyData(
                     "Del",
                     0,
@@ -6892,7 +6884,7 @@ object KeyboardDefaultLayouts {
 
         when (inputStyle) {
             "sumire" -> {
-                return createEnglishLayoutFlick(isUpperCase, isFlickDeleteEnabled, keys)
+                return createEnglishLayoutFlick(isUpperCase, deleteKeyFlickSettings, keys)
             }
 
             else -> {
@@ -7000,17 +6992,8 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    if (isFlickDeleteEnabled) {
-                        val deleteActionMap = mapOf(
-                            FlickDirection.TAP to FlickAction.Action(
-                                KeyAction.Delete,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                            ), FlickDirection.UP_LEFT to FlickAction.Action(
-                                KeyAction.DeleteUntilSymbol,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                            )
-                        )
+                    if (deleteKeyFlickSettings.hasFlickActions) {
+                        val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                         mutableMapOf(
                             "CursorMoveLeft" to listOf(cursorMoveActionMap),
                             "@#/_" to listOf(symbols1),
@@ -7053,7 +7036,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createEnglishFlickLayoutEffective(
-        inputStyle: String, isUpperCase: Boolean, isFlickDeleteEnabled: Boolean
+        inputStyle: String, isUpperCase: Boolean, deleteKeyFlickSettings: DeleteKeyFlickSettings
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -7169,7 +7152,7 @@ object KeyboardDefaultLayouts {
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ), if (isFlickDeleteEnabled) {
+            ), if (deleteKeyFlickSettings.hasFlickActions) {
                 KeyData(
                     "Del",
                     0,
@@ -7229,7 +7212,7 @@ object KeyboardDefaultLayouts {
 
         when (inputStyle) {
             "sumire" -> {
-                return createEnglishLayoutFlickEffective(isUpperCase, isFlickDeleteEnabled, keys)
+                return createEnglishLayoutFlickEffective(isUpperCase, deleteKeyFlickSettings, keys)
             }
 
             else -> {
@@ -7356,17 +7339,8 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    if (isFlickDeleteEnabled) {
-                        val deleteActionMap = mapOf(
-                            FlickDirection.TAP to FlickAction.Action(
-                                KeyAction.Delete,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                            ), FlickDirection.UP_LEFT to FlickAction.Action(
-                                KeyAction.DeleteUntilSymbol,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                            )
-                        )
+                    if (deleteKeyFlickSettings.hasFlickActions) {
+                        val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                         mutableMapOf(
                             "CursorMoveLeft" to listOf(cursorLeftActionMap),
                             "CursorMoveRight" to listOf(cursorRightActionMap),
@@ -7411,7 +7385,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createSymbolFlickLayout(
-        inputStyle: String, isFlickDeleteEnabled: Boolean
+        inputStyle: String, deleteKeyFlickSettings: DeleteKeyFlickSettings
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -7538,7 +7512,7 @@ object KeyboardDefaultLayouts {
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ), if (isFlickDeleteEnabled) {
+            ), if (deleteKeyFlickSettings.hasFlickActions) {
                 KeyData(
                     "Del",
                     0,
@@ -7597,7 +7571,7 @@ object KeyboardDefaultLayouts {
         )
         when (inputStyle) {
             "sumire" -> {
-                return createSymbolLayoutFlick(isFlickDeleteEnabled, keys)
+                return createSymbolLayoutFlick(deleteKeyFlickSettings, keys)
             }
 
             else -> {
@@ -7639,17 +7613,8 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    if (isFlickDeleteEnabled) {
-                        val deleteActionMap = mapOf(
-                            FlickDirection.TAP to FlickAction.Action(
-                                KeyAction.Delete,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                            ), FlickDirection.UP_LEFT to FlickAction.Action(
-                                KeyAction.DeleteUntilSymbol,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                            )
-                        )
+                    if (deleteKeyFlickSettings.hasFlickActions) {
+                        val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                         mutableMapOf(
                             "Del" to listOf(deleteActionMap),
                             "CursorMoveLeft" to listOf(cursorMoveActionMap),
@@ -7850,7 +7815,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createHiraganaEffectiveLayout(
-        inputStyle: String, isFlickDeleteEnabled: Boolean
+        inputStyle: String, deleteKeyFlickSettings: DeleteKeyFlickSettings
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -7985,7 +7950,7 @@ object KeyboardDefaultLayouts {
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ), if (isFlickDeleteEnabled) {
+            ), if (deleteKeyFlickSettings.hasFlickActions) {
                 KeyData(
                     "Del",
                     0,
@@ -8133,17 +8098,8 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    if (isFlickDeleteEnabled) {
-                        val deleteActionMap = mapOf(
-                            FlickDirection.TAP to FlickAction.Action(
-                                KeyAction.Delete,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                            ), FlickDirection.UP_LEFT to FlickAction.Action(
-                                KeyAction.DeleteUntilSymbol,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                            )
-                        )
+                    if (deleteKeyFlickSettings.hasFlickActions) {
+                        val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                         mutableMapOf(
                             "PasteActionKey" to listOf(pasteActionMap),
                             "CursorMoveLeft" to listOf(cursorLeftActionMap),
@@ -8437,7 +8393,7 @@ object KeyboardDefaultLayouts {
 
             "sumire" -> {
                 return createHiraganaLayoutEffective(
-                    isFlickDeleteEnabled = isFlickDeleteEnabled, keys = keys
+                    deleteKeyFlickSettings = deleteKeyFlickSettings, keys = keys
                 )
             }
 
@@ -8596,17 +8552,8 @@ object KeyboardDefaultLayouts {
                 )
 
                 val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                    if (isFlickDeleteEnabled) {
-                        val deleteActionMap = mapOf(
-                            FlickDirection.TAP to FlickAction.Action(
-                                KeyAction.Delete,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                            ), FlickDirection.UP_LEFT to FlickAction.Action(
-                                KeyAction.DeleteUntilSymbol,
-                                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                            )
-                        )
+                    if (deleteKeyFlickSettings.hasFlickActions) {
+                        val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                         mutableMapOf(
                             "CursorMoveLeft" to listOf(cursorLeftActionMap),
                             "CursorMoveRight" to listOf(cursorRightActionMap),
@@ -8662,7 +8609,7 @@ object KeyboardDefaultLayouts {
     }
 
     private fun createNumberEffectiveLayout(
-        inputStyle: String, isFlickDeleteEnabled: Boolean
+        inputStyle: String, deleteKeyFlickSettings: DeleteKeyFlickSettings
     ): KeyboardLayout {
         val keys = listOf(
             KeyData(
@@ -8792,7 +8739,7 @@ object KeyboardDefaultLayouts {
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
-            ), if (isFlickDeleteEnabled) {
+            ), if (deleteKeyFlickSettings.hasFlickActions) {
                 KeyData(
                     "Del",
                     0,
@@ -8845,7 +8792,7 @@ object KeyboardDefaultLayouts {
 
         if (inputStyle == "sumire") {
             return createSymbolLayoutFlickEffective(
-                isFlickDeleteEnabled = isFlickDeleteEnabled, keys = keys
+                deleteKeyFlickSettings = deleteKeyFlickSettings, keys = keys
             )
         } else {
             val spaceActionMap = mapOf(
@@ -8886,17 +8833,8 @@ object KeyboardDefaultLayouts {
             )
 
             val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
-                if (isFlickDeleteEnabled) {
-                    val deleteActionMap = mapOf(
-                        FlickDirection.TAP to FlickAction.Action(
-                            KeyAction.Delete,
-                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px
-                        ), FlickDirection.UP_LEFT to FlickAction.Action(
-                            KeyAction.DeleteUntilSymbol,
-                            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-
-                        )
-                    )
+                if (deleteKeyFlickSettings.hasFlickActions) {
+                    val deleteActionMap = createDeleteActionMap(deleteKeyFlickSettings)
                     mutableMapOf(
                         "1\n☆♪→" to listOf(
                             mapOf(

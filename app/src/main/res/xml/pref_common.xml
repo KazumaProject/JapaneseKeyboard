@@ -295,6 +295,18 @@
             android:summary="@string/delete_key_flick_targets_summary"
             android:title="@string/delete_key_flick_targets_title" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="delete_key_flick_up_preference"
+            android:summary="@string/delete_key_up_summary"
+            android:title="@string/delete_key_up_flick_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="delete_key_flick_down_preference"
+            android:summary="@string/delete_key_down_summary"
+            android:title="@string/delete_key_down_flick_title" />
+
         <Preference
             android:key="cursor_move_after_commit_target_pairs_preference"
             android:summary="@string/cursor_move_target_pairs_summary"
