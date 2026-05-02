@@ -68,7 +68,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         DeleteKeyFlickDeleteTarget::class,
         PhysicalKeyboardShortcutItem::class,
     ],
-    version = 27,
+    version = 28,
     exportSchema = false
 )
 @TypeConverters(
@@ -699,6 +699,22 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_26_27 = object : Migration(26, 27) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `keyboard_layouts` ADD COLUMN `stableId` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /**
+         * バージョン27から28へのマイグレーション。
+         *
+         * key_definitions テーブルに、キー単位の上下左右マージン (dp) 用の nullable カラムを追加する。
+         * 既存行は NULL のまま残るため、描画側ではデフォルト余白にフォールバックされる。
+         * destructive migration を避けて既存ユーザーの DB を保持する。
+         */
+        val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `marginLeftDp` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `marginTopDp` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `marginRightDp` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `marginBottomDp` INTEGER")
             }
         }
 

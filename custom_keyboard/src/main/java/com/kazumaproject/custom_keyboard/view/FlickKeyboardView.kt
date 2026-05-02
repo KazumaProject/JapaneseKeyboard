@@ -45,6 +45,7 @@ import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyVisualStyleResolver
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.custom_keyboard.data.toCircularFlickKeyMaps
@@ -874,17 +875,27 @@ class FlickKeyboardView @JvmOverloads constructor(
             baseVerticalMarginDp = 6
         }
 
+        // KeyData.visualStyle.margin が指定されている軸だけ default を上書きする。
+        // すべて null の場合は default 値のままなので、既存レイアウトの見た目は変わらない。
+        val resolvedMargin = KeyVisualStyleResolver.resolveMarginDp(
+            keyData = keyData,
+            defaultHorizontalDp = baseHorizontalMarginDp,
+            defaultVerticalDp = baseVerticalMarginDp
+        )
+
         val params = LayoutParams().apply {
             rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
             columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
             width = 0
             height = 0
 
+            // 既存のキーボードスケール (keyWidthScalePercent / keyHeightScalePercent) を
+            // 反映するため、軸ごとに dp -> スケール済み px の変換を経由する。
             setMargins(
-                getScaledHorizontalMarginPx(baseHorizontalMarginDp),
-                getScaledVerticalMarginPx(baseVerticalMarginDp),
-                getScaledHorizontalMarginPx(baseHorizontalMarginDp),
-                getScaledVerticalMarginPx(baseVerticalMarginDp)
+                getScaledHorizontalMarginPx(resolvedMargin.left),
+                getScaledVerticalMarginPx(resolvedMargin.top),
+                getScaledHorizontalMarginPx(resolvedMargin.right),
+                getScaledVerticalMarginPx(resolvedMargin.bottom)
             )
         }
 

@@ -66,6 +66,36 @@ sealed class KeyAction {
     data object VoiceInput : KeyAction()
 }
 
+/**
+ * キーの上下左右の余白を表すモデル。
+ *
+ * - `null` のフィールドは「テンプレートのデフォルト余白を使う」という意味になる。
+ * - 値が入っているフィールドだけ、デフォルトを上書きする。
+ *
+ * ここに直接 px を入れたり scale をかけたりはしない。
+ * 描画側で `KeyVisualStyleResolver` を経由して dp を解決し、
+ * 既存の DP→PX 変換ロジック・既存のキースケール処理に渡す。
+ */
+data class KeyMargin(
+    val leftDp: Int? = null,
+    val topDp: Int? = null,
+    val rightDp: Int? = null,
+    val bottomDp: Int? = null
+)
+
+/**
+ * キーの「見た目用」情報をまとめるモデル。
+ *
+ * 入力動作（`KeyAction` / `FlickAction`）や位置情報（`row`/`column`/`rowSpan`/`colSpan`）と分離し、
+ * 将来的に key padding / text size / icon scale / key color / corner radius などを
+ * 追加するときに、この `KeyVisualStyle` を拡張するだけで済むようにしておく。
+ *
+ * 既存キーは `KeyVisualStyle()` のまま使うので、見た目に変化は出ない。
+ */
+data class KeyVisualStyle(
+    val margin: KeyMargin = KeyMargin()
+)
+
 data class KeyData(
     val label: String,
     val row: Int,
@@ -79,7 +109,15 @@ data class KeyData(
     val isSpecialKey: Boolean = false,
     val isHiLighted: Boolean = false,
     val keyId: String? = null,
-    val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL
+    val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL,
+    /**
+     * キー単位の見た目用情報。
+     *
+     * 既存呼び出しを壊さないように、KeyData の末尾にデフォルト値付きで追加している。
+     * default の `KeyVisualStyle()` はすべての margin が null なので、
+     * 描画側のフォールバックで「従来と完全に同じ default margin」が使われる。
+     */
+    val visualStyle: KeyVisualStyle = KeyVisualStyle()
 )
 
 

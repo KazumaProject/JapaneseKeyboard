@@ -58,6 +58,12 @@ class KeyboardEditorViewModel @Inject constructor(
                 isUpperCase = false
             )
         ),
+        // QWERTY 風テンプレートは「英語入力」の隣に置くのが自然なのでここに追加。
+        // 既存の表示順は維持する。
+        LayoutTemplate(
+            "英語 QWERTY",
+            KeyboardDefaultLayouts.createQwertyTemplateLayout()
+        ),
         LayoutTemplate("数字入力", KeyboardDefaultLayouts.createNumberTemplateLayout())
     )
 
@@ -491,47 +497,87 @@ class KeyboardEditorViewModel @Inject constructor(
         _uiState.update { it.copy(navigateBack = false) }
     }
 
+    /**
+     * テンプレートを現在の編集対象レイアウトに適用する。
+     *
+     * このメソッドの責務はキー単位の `flickKeyMaps` 等のキーを、
+     * テンプレート上の識別子（label / templateKeyId）から、
+     * 実行時に保存される keyId（runtimeKeyId）へ変換すること。
+     *
+     * ## 設計
+     *
+     * 1. **keyId ベース変換を主経路にする。**
+     *    QWERTY のように同じ label のキー、空 label のアイコンキー、
+     *    複数の特殊キーが並ぶテンプレートでは、label をキーとする変換は破綻しやすい。
+     *    そのためテンプレートに `KeyData.keyId` がある場合は、
+     *    その keyId を「テンプレートID」として扱い、
+     *    `templateKeyId -> runtimeKeyId` のマップを優先的に引く。
+     *
+     * 2. **runtime keyId は既存方式を踏襲する。**
+     *    既存実装では `keyId == null` のキーに対してのみ UUID を生成し、
+     *    既に keyId が設定されているキーはその keyId をそのまま runtime keyId として使う。
+     *    `"delete_key"` / `"switch_next_ime"` / `"dakuten_toggle_key"` のように
+     *    IMEService 側が文字列で参照している keyId があるため、ここで安易に再生成しない。
+     *
+     * 3. **既存テンプレート互換のため label ベース fallback を残す。**
+     *    既存「かな入力」「英語入力」「数字入力」テンプレートは
+     *    `flickKeyMaps[label]` 形式で書かれているため、
+     *    keyId ベースで解決できない場合のみ label でフォールバック検索する。
+     *    ただし label 重複時は識別子として安全でないので、
+     *    重複している label は label ベース fallback の対象から外す。
+     *    label はあくまで表示用、というスタンス。
+     */
     fun applyTemplate(templateLayout: KeyboardLayout) {
+        // 1) 各キーの runtime keyId を確定する。
+        //    keyId 未設定のキーだけ UUID を割り当て、既存 keyId はそのまま保持する。
         val keysWithEnsuredIds = templateLayout.keys.map { key ->
             if (key.keyId == null) key.copy(keyId = UUID.randomUUID().toString()) else key
         }
 
-        val labelToIdMap = keysWithEnsuredIds
+        // 2) templateKeyId -> runtimeKeyId （主経路）。
+        //    テンプレートで keyId が明示されているキーだけマッピングする。
+        //    現在の方式では runtimeKeyId == templateKeyId だが、
+        //    将来的に runtime 側で別 ID を使うことになっても、
+        //    flickKeyMaps の変換側はこのマップを引くだけで済むようにしている。
+        val templateKeyIdToRuntimeId: Map<String, String> = templateLayout.keys
+            .zip(keysWithEnsuredIds)
+            .mapNotNull { (templateKey, runtimeKey) ->
+                val templateKeyId = templateKey.keyId
+                val runtimeKeyId = runtimeKey.keyId
+                if (templateKeyId != null && runtimeKeyId != null) {
+                    templateKeyId to runtimeKeyId
+                } else {
+                    null
+                }
+            }
+            .toMap()
+
+        // 3) label -> runtimeKeyId （fallback、既存テンプレート互換用）。
+        //    重複 label は識別子として使えないので label ベース fallback から除外する。
+        val labelToRuntimeId: Map<String, String> = keysWithEnsuredIds
             .filter { it.label.isNotEmpty() && it.keyId != null }
-            .associate { it.label to it.keyId!! }
+            .groupBy { it.label }
+            .filterValues { it.size == 1 }
+            .mapValues { (_, group) -> group.single().keyId!! }
 
-        val reKeyedFlickMaps = templateLayout.flickKeyMaps.mapNotNull { (labelKey, flickActions) ->
-            val newKeyId = labelToIdMap[labelKey]
-            if (newKeyId != null) newKeyId to flickActions else null
-        }.toMap()
-
-        val reKeyedCircularFlickMaps = templateLayout.circularFlickKeyMaps.mapNotNull { (labelKey, flickActions) ->
-            val newKeyId = labelToIdMap[labelKey]
-            if (newKeyId != null) newKeyId to flickActions else null
-        }.toMap()
-
-        val reKeyedTwoStepMaps = templateLayout.twoStepFlickKeyMaps.mapNotNull { (labelKey, map) ->
-            val newKeyId = labelToIdMap[labelKey]
-            if (newKeyId != null) newKeyId to map else null
-        }.toMap()
-
-        val reKeyedLongPressFlickMaps = templateLayout.longPressFlickKeyMaps.mapNotNull { (labelKey, map) ->
-            val newKeyId = labelToIdMap[labelKey]
-            if (newKeyId != null) newKeyId to map else null
-        }.toMap()
-
-        val reKeyedTwoStepLongPressMaps = templateLayout.twoStepLongPressKeyMaps.mapNotNull { (labelKey, map) ->
-            val newKeyId = labelToIdMap[labelKey]
-            if (newKeyId != null) newKeyId to map else null
-        }.toMap()
+        // 4) flickKeyMaps 系のキー変換。
+        //    templateKeyId 経路を最優先で引き、ヒットしない場合のみ label fallback を引く。
+        //    どちらにもヒットしない entry は黙ってドロップする（既存実装と同じ挙動）。
+        fun <V> rekey(source: Map<String, V>): Map<String, V> {
+            return source.mapNotNull { (entryKey, value) ->
+                val runtimeId = templateKeyIdToRuntimeId[entryKey]
+                    ?: labelToRuntimeId[entryKey]
+                if (runtimeId != null) runtimeId to value else null
+            }.toMap()
+        }
 
         val finalLayout = templateLayout.copy(
             keys = keysWithEnsuredIds,
-            flickKeyMaps = reKeyedFlickMaps,
-            circularFlickKeyMaps = reKeyedCircularFlickMaps,
-            twoStepFlickKeyMaps = reKeyedTwoStepMaps,
-            longPressFlickKeyMaps = reKeyedLongPressFlickMaps,
-            twoStepLongPressKeyMaps = reKeyedTwoStepLongPressMaps
+            flickKeyMaps = rekey(templateLayout.flickKeyMaps),
+            circularFlickKeyMaps = rekey(templateLayout.circularFlickKeyMaps),
+            twoStepFlickKeyMaps = rekey(templateLayout.twoStepFlickKeyMaps),
+            longPressFlickKeyMaps = rekey(templateLayout.longPressFlickKeyMaps),
+            twoStepLongPressKeyMaps = rekey(templateLayout.twoStepLongPressKeyMaps)
         )
 
         _uiState.update { currentState ->

@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyVisualStyleResolver
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import com.kazumaproject.custom_keyboard.view.AutoSizeButton
@@ -172,14 +173,26 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
     ): View {
         val isDarkTheme = context.isDarkThemeOn()
 
-        // ▼▼▼ 変更点1: マージン値をここで定義 ▼▼▼
-        val (leftMargin, topMargin, rightMargin, bottomMargin) = if (keyData.isSpecialKey) {
-            // isSpecialKey の場合のマージン
-            listOf(dpToPx(2), dpToPx(6), dpToPx(2), dpToPx(6))
+        // エディタ側 default margin (dp)。
+        // 実機側 (FlickKeyboardView) と数値は微妙に違うが、
+        // それは「エディタは選択枠などを見せるための専用余白」という既存の意図的差分なので変えない。
+        val (defaultHorizontalDp, defaultVerticalDp) = if (keyData.isSpecialKey) {
+            2 to 6
         } else {
-            // 通常キーの場合のマージin
-            listOf(dpToPx(2), dpToPx(3), dpToPx(2), dpToPx(3))
+            2 to 3
         }
+
+        // KeyVisualStyle.margin が指定された軸だけ default を上書きする。
+        // すべて null なら従来と同じ default が返るので、既存のエディタ表示は変わらない。
+        val resolvedMargin = KeyVisualStyleResolver.resolveMarginDp(
+            keyData = keyData,
+            defaultHorizontalDp = defaultHorizontalDp,
+            defaultVerticalDp = defaultVerticalDp
+        )
+        val leftMargin = dpToPx(resolvedMargin.left)
+        val topMargin = dpToPx(resolvedMargin.top)
+        val rightMargin = dpToPx(resolvedMargin.right)
+        val bottomMargin = dpToPx(resolvedMargin.bottom)
 
         val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
             AppCompatImageButton(context).apply {

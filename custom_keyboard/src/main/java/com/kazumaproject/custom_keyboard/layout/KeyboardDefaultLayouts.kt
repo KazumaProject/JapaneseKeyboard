@@ -10602,4 +10602,195 @@ object KeyboardDefaultLayouts {
         return hierarchicalFlickMaps
     }
 
+    /**
+     * 編集可能な QWERTY 風テンプレート。
+     *
+     * 既存 `qwerty_keyboard` モジュールの `QWERTYKeyboardView` とは別物で、
+     * `custom_keyboard` のエディタで自由に編集できる QWERTY 風レイアウトを返す。
+     *
+     * ## レイアウト方針
+     *
+     * - 段ズレ（QWERTY の row 1 が 0.5 ズレるやつ）は **column 単位で** 表現する。
+     *   margin に頼らず `column` で表現することで、エディタ上の「列を消す」「列を追加する」
+     *   操作と整合する。スペック上「margin だけで QWERTY の行ズレを無理やり表現しないこと」
+     *   という制約に従う。
+     * - `columnCount = 20` という細かいグリッドにし、文字キーは `colSpan = 2` を基本にする。
+     *   こうすると、row 1 の段ズレは `column = 1` から開始するだけで自然に表現できる。
+     * - 特殊キー（Shift / Delete / 入力モード切替 / Space / Enter）は colSpan を変えて、
+     *   QWERTY の見た目に近い比率で並べる。
+     * - margin は **デフォルトのまま** にして、既存テンプレートの見た目との差分を作らない。
+     *   `KeyVisualStyle.margin` 機能のためにわざとデフォルト値で残している（実機側／エディタ側
+     *   どちらの default fallback でも従来と同じ余白で描画される）。
+     *
+     * ## 識別子
+     *
+     * 各キーには `qwerty_template_*` 形式の安定 `keyId` を持たせる。
+     * `KeyboardEditorViewModel.applyTemplate` 側で keyId ベースの変換が動くため、
+     * 同じラベル（例: 何かの理由で空 label）が複数あっても識別が壊れない。
+     *
+     * ## キー入力動作
+     *
+     * - 文字キー: `KeyType.STANDARD_FLICK` + TAP のみの `FlickAction.Input` を割り当てる。
+     *   `KeyType.NORMAL` + `KeyAction.InputText` は `isSpecialKey = false` のキーでは
+     *   現状の DB <-> UI 変換で action がドロップされるため使わない。
+     *   既存の `createNumberTemplateLayout` も同じ理由で STANDARD_FLICK を使っている。
+     * - 特殊キー: 既存テンプレートと同じ `KeyAction` / 既存 drawable を使う。
+     *   独自 action は新設しない。
+     */
+    fun createQwertyTemplateLayout(): KeyboardLayout {
+        // -------------------------------
+        // 文字キー定義
+        // -------------------------------
+        // 各キーには安定した keyId を持たせる。
+        // applyTemplate の keyId ベース変換でこの ID が runtime keyId として保持される。
+        data class LetterKey(val keyId: String, val label: String, val row: Int, val column: Int)
+
+        val row0Letters = listOf(
+            LetterKey("qwerty_template_q", "q", 0, 0),
+            LetterKey("qwerty_template_w", "w", 0, 2),
+            LetterKey("qwerty_template_e", "e", 0, 4),
+            LetterKey("qwerty_template_r", "r", 0, 6),
+            LetterKey("qwerty_template_t", "t", 0, 8),
+            LetterKey("qwerty_template_y", "y", 0, 10),
+            LetterKey("qwerty_template_u", "u", 0, 12),
+            LetterKey("qwerty_template_i", "i", 0, 14),
+            LetterKey("qwerty_template_o", "o", 0, 16),
+            LetterKey("qwerty_template_p", "p", 0, 18)
+        )
+
+        // row 1 は半文字ぶん右にズラした位置にする。
+        // colSpan = 2 で columnCount = 20 のグリッドなので、column=1 から並べると自然な段ズレになる。
+        val row1Letters = listOf(
+            LetterKey("qwerty_template_a", "a", 1, 1),
+            LetterKey("qwerty_template_s", "s", 1, 3),
+            LetterKey("qwerty_template_d", "d", 1, 5),
+            LetterKey("qwerty_template_f", "f", 1, 7),
+            LetterKey("qwerty_template_g", "g", 1, 9),
+            LetterKey("qwerty_template_h", "h", 1, 11),
+            LetterKey("qwerty_template_j", "j", 1, 13),
+            LetterKey("qwerty_template_k", "k", 1, 15),
+            LetterKey("qwerty_template_l", "l", 1, 17)
+        )
+
+        // row 2 は Shift + zxcvbnm + Delete。
+        // Shift と Delete は colSpan=3 で少し広く取り、文字キーは colSpan=2。
+        // 合計 colSpan: 3 + 7*2 + 3 = 20。
+        val row2Letters = listOf(
+            LetterKey("qwerty_template_z", "z", 2, 3),
+            LetterKey("qwerty_template_x", "x", 2, 5),
+            LetterKey("qwerty_template_c", "c", 2, 7),
+            LetterKey("qwerty_template_v", "v", 2, 9),
+            LetterKey("qwerty_template_b", "b", 2, 11),
+            LetterKey("qwerty_template_n", "n", 2, 13),
+            LetterKey("qwerty_template_m", "m", 2, 15)
+        )
+
+        val letterKeys = (row0Letters + row1Letters + row2Letters).map { letter ->
+            KeyData(
+                label = letter.label,
+                row = letter.row,
+                column = letter.column,
+                isFlickable = false,
+                colSpan = 2,
+                keyType = KeyType.STANDARD_FLICK,
+                keyId = letter.keyId
+            )
+        }
+
+        // -------------------------------
+        // 特殊キー定義
+        // -------------------------------
+        val specialKeys = listOf(
+            // Shift
+            KeyData(
+                label = "",
+                row = 2,
+                column = 0,
+                isFlickable = false,
+                action = KeyAction.ShiftKey,
+                isSpecialKey = true,
+                colSpan = 3,
+                drawableResId = com.kazumaproject.core.R.drawable.shift_24px,
+                keyType = KeyType.NORMAL,
+                keyId = "qwerty_template_shift"
+            ),
+            // Delete
+            KeyData(
+                label = "",
+                row = 2,
+                column = 17,
+                isFlickable = false,
+                action = KeyAction.Delete,
+                isSpecialKey = true,
+                colSpan = 3,
+                drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
+                keyType = KeyType.NORMAL,
+                keyId = "qwerty_template_delete"
+            ),
+            // 入力モード切替（次の IME へ）
+            KeyData(
+                label = "",
+                row = 3,
+                column = 0,
+                isFlickable = false,
+                action = KeyAction.SwitchToNextIme,
+                isSpecialKey = true,
+                colSpan = 4,
+                drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+                keyType = KeyType.NORMAL,
+                keyId = "qwerty_template_input_mode"
+            ),
+            // Space
+            KeyData(
+                label = "",
+                row = 3,
+                column = 4,
+                isFlickable = false,
+                action = KeyAction.Space,
+                isSpecialKey = true,
+                colSpan = 12,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24,
+                keyType = KeyType.NORMAL,
+                keyId = "qwerty_template_space"
+            ),
+            // Enter
+            KeyData(
+                label = "",
+                row = 3,
+                column = 16,
+                isFlickable = false,
+                action = KeyAction.Enter,
+                isSpecialKey = true,
+                colSpan = 4,
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24,
+                keyType = KeyType.NORMAL,
+                keyId = "qwerty_template_enter"
+            )
+        )
+
+        val keys = letterKeys + specialKeys
+
+        // -------------------------------
+        // flickKeyMaps
+        // -------------------------------
+        // 文字キーは TAP のみの FlickAction.Input を割り当てる。
+        // applyTemplate の keyId ベース変換がメイン経路となるよう、
+        // map のキーは label ではなく templateKeyId（= 各キーの keyId）にしておく。
+        val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
+            (row0Letters + row1Letters + row2Letters).associate { letter ->
+                letter.keyId to listOf(
+                    mapOf(
+                        FlickDirection.TAP to FlickAction.Input(letter.label)
+                    )
+                )
+            }
+
+        return KeyboardLayout(
+            keys = keys,
+            flickKeyMaps = flickMaps,
+            columnCount = 20,
+            rowCount = 4
+        )
+    }
+
 }

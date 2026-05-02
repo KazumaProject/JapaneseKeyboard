@@ -6,7 +6,9 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyMargin
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyVisualStyle
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -482,6 +484,17 @@ class KeyboardRepository @Inject constructor(
                 null
             }
 
+            // DB に保存されているキー単位のマージンがあれば、それを KeyVisualStyle として復元する。
+            // 各方向は nullable なので、軸ごとに「指定されていない」状態を保持できる。
+            val visualStyle = KeyVisualStyle(
+                margin = KeyMargin(
+                    leftDp = dbKey.marginLeftDp,
+                    topDp = dbKey.marginTopDp,
+                    rightDp = dbKey.marginRightDp,
+                    bottomDp = dbKey.marginBottomDp
+                )
+            )
+
             if (actionObject == null) {
                 KeyData(
                     label = dbKey.label,
@@ -494,7 +507,8 @@ class KeyboardRepository @Inject constructor(
                     isSpecialKey = dbKey.isSpecialKey,
                     drawableResId = null,
                     keyId = dbKey.keyIdentifier,
-                    action = null
+                    action = null,
+                    visualStyle = visualStyle
                 )
             } else {
                 KeyData(
@@ -535,7 +549,8 @@ class KeyboardRepository @Inject constructor(
                         else -> null
                     },
                     keyId = dbKey.keyIdentifier,
-                    action = actionObject
+                    action = actionObject,
+                    visualStyle = visualStyle
                 )
             }
         }
@@ -581,6 +596,10 @@ class KeyboardRepository @Inject constructor(
                 null
             }
 
+            // KeyVisualStyle.margin を nullable column 4 つに分解して保存する。
+            // 軸ごとに「指定なし(null)」を保てるので、再読み込み時にデフォルト余白へフォールバックできる。
+            val margin = keyData.visualStyle.margin
+
             keys.add(
                 KeyDefinition(
                     keyId = 0,
@@ -594,7 +613,11 @@ class KeyboardRepository @Inject constructor(
                     isSpecialKey = keyData.isSpecialKey,
                     drawableResId = null,
                     keyIdentifier = keyIdentifier,
-                    action = actionString
+                    action = actionString,
+                    marginLeftDp = margin.leftDp,
+                    marginTopDp = margin.topDp,
+                    marginRightDp = margin.rightDp,
+                    marginBottomDp = margin.bottomDp
                 )
             )
 
