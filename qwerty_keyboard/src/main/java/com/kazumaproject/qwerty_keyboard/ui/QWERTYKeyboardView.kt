@@ -196,9 +196,29 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var enableDeleteLeftFlick = false
 
     /**
+     * Delete キーの上フリックを有効にするフラグ
+     */
+    private var enableDeleteUpFlick = false
+
+    /**
+     * Delete キーの下フリックを有効にするフラグ
+     */
+    private var enableDeleteDownFlick = false
+
+    /**
      * Delete キーの左フリック検知時のリスナー
      */
     private var onDeleteLeftFlickListener: (() -> Unit)? = null
+
+    /**
+     * Delete キーの上フリック検知時のリスナー
+     */
+    private var onDeleteUpFlickListener: (() -> Unit)? = null
+
+    /**
+     * Delete キーの下フリック検知時のリスナー
+     */
+    private var onDeleteDownFlickListener: (() -> Unit)? = null
 
     // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
@@ -1001,12 +1021,28 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.enableDeleteLeftFlick = enabled
     }
 
+    fun setDeleteUpFlickEnabled(enabled: Boolean) {
+        this.enableDeleteUpFlick = enabled
+    }
+
+    fun setDeleteDownFlickEnabled(enabled: Boolean) {
+        this.enableDeleteDownFlick = enabled
+    }
+
     fun setLongPressTimeout(timeoutMillis: Long) {
         longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
     fun setOnDeleteLeftFlickListener(listener: () -> Unit) {
         this.onDeleteLeftFlickListener = listener
+    }
+
+    fun setOnDeleteUpFlickListener(listener: () -> Unit) {
+        this.onDeleteUpFlickListener = listener
+    }
+
+    fun setOnDeleteDownFlickListener(listener: () -> Unit) {
+        this.onDeleteDownFlickListener = listener
     }
 
     private fun setMaterialYouTheme(
@@ -1658,6 +1694,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             val flickDirection = detectFlickDirection(x, y, startX, startY, flickThreshold)
             when (flickDirection) {
                 FlickDirection.UP -> {
+                    // Delete キーの上フリックを優先 (左フリックと同じ流儀)
+                    if (enableDeleteUpFlick && previousView != null && previousView.id == binding.keyDelete.id) {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        onDeleteUpFlickListener?.invoke()
+                        return
+                    }
                     if (enableFlickUpDetection && previousView is QWERTYButton) {
                         applyCommonFlickEffects(pointerId, previousView)
                         handleUpFlick(previousView)
@@ -1666,6 +1708,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 }
 
                 FlickDirection.DOWN -> {
+                    // Delete キーの下フリックを優先 (左フリックと同じ流儀)
+                    if (enableDeleteDownFlick && previousView != null && previousView.id == binding.keyDelete.id) {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        onDeleteDownFlickListener?.invoke()
+                        return
+                    }
                     if (enableFlickDownDetection && previousView is QWERTYButton) {
                         applyCommonFlickEffects(pointerId, previousView)
                         handleDownFlick(previousView)
