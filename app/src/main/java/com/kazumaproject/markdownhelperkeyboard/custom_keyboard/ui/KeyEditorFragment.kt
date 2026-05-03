@@ -626,6 +626,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         isUpdatingCharEditText = false
     }
 
+    private fun textOutputFromAction(action: KeyAction?): String {
+        return when (action) {
+            is KeyAction.Text -> action.text
+            is KeyAction.InputText -> action.text
+            else -> ""
+        }
+    }
+
     private fun tfbiToDisplayName(dir: TfbiFlickDirection): String =
         FlickDirectionMapper.toDisplayName(dir, requireContext())
 
@@ -925,7 +933,13 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     val flickMap = state.layout.flickKeyMaps[key.keyId]?.firstOrNull() ?: emptyMap()
                     currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
                         val savedAction = flickMap[direction]
-                        val output = if (savedAction is FlickAction.Input) savedAction.char else ""
+                        val output = if (savedAction is FlickAction.Input) {
+                            savedAction.char
+                        } else if (direction == FlickDirection.TAP) {
+                            textOutputFromAction(key.action)
+                        } else {
+                            ""
+                        }
                         FlickMappingItem(direction = direction, output = output)
                     }.toMutableList()
 
@@ -1000,7 +1014,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         val newLabel: String
         val newKeyType: KeyType
         val isSpecial: Boolean
-        val newAction: KeyAction?
+        var newAction: KeyAction?
         var newFlickMap: Map<FlickDirection, FlickAction> = emptyMap()
         var newCircularFlickMaps: List<Map<CircularFlickDirection, FlickAction>> = emptyList()
         var newTwoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>> = emptyMap()
@@ -1115,6 +1129,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 if (isCircular) {
                     newKeyType = KeyType.CIRCULAR_FLICK
                     newLabel = binding.keyLabelEdittext.text.toString()
+                    val tapOutput = currentCircularFlickMaps
+                        .firstOrNull()
+                        ?.firstOrNull { it.direction == CircularFlickDirection.TAP }
+                        ?.output
+                        .orEmpty()
+                    newAction = tapOutput
+                        .takeIf { it.isNotBlank() }
+                        ?.let { KeyAction.Text(it) }
                     newCircularFlickMaps = currentCircularFlickMaps.map { items ->
                         items
                             .mapNotNull { item ->
@@ -1132,11 +1154,32 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     newLongPressFlickMap = emptyMap()
                     newTwoStepLongPressMap = emptyMap()
                 } else if (!isTwoStep) {
-                    newKeyType = KeyType.PETAL_FLICK
                     newLabel = binding.keyLabelEdittext.text.toString()
-                    newFlickMap = currentFlickItems
+                    val tapOutput = currentFlickItems
+                        .firstOrNull { it.direction == FlickDirection.TAP }
+                        ?.output
+                        .orEmpty()
+                    val nonTapFlickItems = currentFlickItems
+                        .filter { it.direction != FlickDirection.TAP && it.output.isNotEmpty() }
+                    newKeyType = if (
+                        originalKey.keyType == KeyType.NORMAL &&
+                        nonTapFlickItems.isEmpty() &&
+                        currentLongPressFlickItems.none { it.output.isNotEmpty() }
+                    ) {
+                        KeyType.NORMAL
+                    } else {
+                        KeyType.PETAL_FLICK
+                    }
+                    newAction = tapOutput
+                        .takeIf { it.isNotBlank() }
+                        ?.let { KeyAction.Text(it) }
+                    newFlickMap = if (newKeyType == KeyType.NORMAL) {
+                        emptyMap()
+                    } else {
+                        currentFlickItems
                         .filter { it.output.isNotEmpty() }
                         .associate { it.direction to FlickAction.Input(it.output) }
+                    }
                     newLongPressFlickMap = currentLongPressFlickItems
                         .filter { it.output.isNotEmpty() }
                         .associate { it.direction to it.output }
@@ -1150,6 +1193,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                             ?.output.orEmpty()
                     val configuredLabel = binding.keyLabelEdittext.text.toString().trim()
                     newLabel = configuredLabel.ifEmpty { base }
+                    newAction = base
+                        .takeIf { it.isNotBlank() }
+                        ?.let { KeyAction.Text(it) }
 
                     newTwoStepMap = buildTwoStepOutputMap(
                         items = currentTwoStepItems,

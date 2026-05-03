@@ -68,7 +68,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         DeleteKeyFlickDeleteTarget::class,
         PhysicalKeyboardShortcutItem::class,
     ],
-    version = 28,
+    version = 29,
     exportSchema = false
 )
 @TypeConverters(
@@ -705,6 +705,15 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_27_28 = object : Migration(27, 28) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE `keyboard_layouts` ADD COLUMN `isDirectMode` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `rowUnits` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `columnUnits` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `rowSpanUnits` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `columnSpanUnits` INTEGER")
             }
         }
 
