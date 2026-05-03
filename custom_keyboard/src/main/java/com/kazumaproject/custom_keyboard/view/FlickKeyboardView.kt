@@ -21,6 +21,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.Button
 import android.widget.GridLayout
+import android.widget.Space
 import androidx.annotation.AttrRes
 import androidx.annotation.DrawableRes
 import androidx.appcompat.widget.AppCompatImageButton
@@ -42,10 +43,13 @@ import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
+import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.custom_keyboard.data.toCircularFlickKeyMaps
 import com.kazumaproject.custom_keyboard.data.toLegacyFlickDirection
@@ -305,21 +309,41 @@ class FlickKeyboardView @JvmOverloads constructor(
         dynamicKeyMap.clear()
         currentLayout = layout
 
-        columnCount = layout.columnCount
-        rowCount = layout.rowCount
+        columnCount = layout.columnUnitCount
+        rowCount = layout.rowUnitCount
         isFocusable = false
 
-        layout.keys.forEach { keyData ->
-            val index = childCount
-            val keyView = createKeyView(keyData)
-            val controller = attachKeyBehavior(keyView, keyData)
-
-            keyData.keyId?.let { id ->
-                dynamicKeyMap[id] = KeyInfo(keyView, keyData, controller, index)
+        layout.items.forEach { item ->
+            when (item) {
+                is KeyItem -> addKeyItem(item)
+                is SpacerItem -> addSpacerItem(item)
             }
-
-            addView(keyView)
         }
+    }
+
+    private fun addKeyItem(item: KeyItem) {
+        val keyData = item.keyData
+        val index = childCount
+        val keyView = createKeyView(keyData)
+        keyView.layoutParams = createLayoutParams(item.placement, keyData)
+        val controller = attachKeyBehavior(keyView, keyData)
+
+        keyData.keyId?.let { id ->
+            dynamicKeyMap[id] = KeyInfo(keyView, keyData, controller, index)
+        }
+
+        addView(keyView)
+    }
+
+    private fun addSpacerItem(item: SpacerItem) {
+        val spacer = Space(context).apply {
+            isClickable = false
+            isFocusable = false
+            isEnabled = false
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }
+        spacer.layoutParams = createLayoutParams(item.placement)
+        addView(spacer)
     }
 
     fun updateDynamicKey(keyId: String, stateIndex: Int) {
@@ -395,6 +419,41 @@ class FlickKeyboardView @JvmOverloads constructor(
         val marginFactor = ((200f - percent) / 100f).coerceIn(0f, 2f)
         val marginDp = baseMarginDp * marginFactor
         return dpToPx(marginDp.roundToInt())
+    }
+
+    private fun createLayoutParams(
+        placement: GridPlacement,
+        keyData: KeyData? = null
+    ): LayoutParams {
+        return LayoutParams().apply {
+            rowSpec = spec(placement.rowUnits, placement.rowSpanUnits, FILL, 1f)
+            columnSpec = spec(placement.columnUnits, placement.columnSpanUnits, FILL, 1f)
+            width = 0
+            height = 0
+
+            if (keyData != null) {
+                val baseHorizontalMarginDp: Int
+                val baseVerticalMarginDp: Int
+
+                if (keyData.keyType == KeyType.STANDARD_FLICK) {
+                    baseHorizontalMarginDp = 6
+                    baseVerticalMarginDp = 9
+                } else if (keyData.isSpecialKey) {
+                    baseHorizontalMarginDp = 3
+                    baseVerticalMarginDp = 6
+                } else {
+                    baseHorizontalMarginDp = 4
+                    baseVerticalMarginDp = 6
+                }
+
+                setMargins(
+                    getScaledHorizontalMarginPx(baseHorizontalMarginDp),
+                    getScaledVerticalMarginPx(baseVerticalMarginDp),
+                    getScaledHorizontalMarginPx(baseHorizontalMarginDp),
+                    getScaledVerticalMarginPx(baseVerticalMarginDp)
+                )
+            }
+        }
     }
 
     private fun getSpecialKeyTextSizeSp(): Float {
@@ -860,35 +919,6 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
         }
 
-        val baseHorizontalMarginDp: Int
-        val baseVerticalMarginDp: Int
-
-        if (keyData.keyType == KeyType.STANDARD_FLICK) {
-            baseHorizontalMarginDp = 6
-            baseVerticalMarginDp = 9
-        } else if (keyData.isSpecialKey) {
-            baseHorizontalMarginDp = 3
-            baseVerticalMarginDp = 6
-        } else {
-            baseHorizontalMarginDp = 4
-            baseVerticalMarginDp = 6
-        }
-
-        val params = LayoutParams().apply {
-            rowSpec = spec(keyData.row, keyData.rowSpan, FILL, 1f)
-            columnSpec = spec(keyData.column, keyData.colSpan, FILL, 1f)
-            width = 0
-            height = 0
-
-            setMargins(
-                getScaledHorizontalMarginPx(baseHorizontalMarginDp),
-                getScaledVerticalMarginPx(baseVerticalMarginDp),
-                getScaledHorizontalMarginPx(baseHorizontalMarginDp),
-                getScaledVerticalMarginPx(baseVerticalMarginDp)
-            )
-        }
-
-        keyView.layoutParams = params
         return keyView
     }
 

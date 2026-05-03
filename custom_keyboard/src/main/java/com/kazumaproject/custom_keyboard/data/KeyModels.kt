@@ -88,6 +88,125 @@ data class KeyData(
     val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL
 )
 
+data class GridPlacement(
+    val rowUnits: Int,
+    val columnUnits: Int,
+    val rowSpanUnits: Int = 2,
+    val columnSpanUnits: Int = 2
+)
+
+sealed interface KeyboardLayoutItem {
+    val id: String
+    val placement: GridPlacement
+}
+
+data class KeyItem(
+    override val id: String,
+    val keyData: KeyData,
+    override val placement: GridPlacement
+) : KeyboardLayoutItem
+
+data class SpacerItem(
+    override val id: String,
+    override val placement: GridPlacement
+) : KeyboardLayoutItem
+
+private fun KeyData.layoutItemId(): String =
+    keyId?.takeIf { it.isNotBlank() } ?: "key_${row}_${column}_${label}"
+
+fun KeyData.toKeyItem(): KeyItem =
+    KeyItem(
+        id = layoutItemId(),
+        keyData = this,
+        placement = GridPlacement(
+            rowUnits = row * 2,
+            columnUnits = column * 2,
+            rowSpanUnits = rowSpan * 2,
+            columnSpanUnits = colSpan * 2
+        )
+    )
+
+fun halfColumnSpacer(id: String, rowUnits: Int, columnUnits: Int): SpacerItem =
+    SpacerItem(
+        id = id,
+        placement = GridPlacement(rowUnits, columnUnits, rowSpanUnits = 2, columnSpanUnits = 1)
+    )
+
+fun oneColumnSpacer(id: String, rowUnits: Int, columnUnits: Int): SpacerItem =
+    SpacerItem(
+        id = id,
+        placement = GridPlacement(rowUnits, columnUnits, rowSpanUnits = 2, columnSpanUnits = 2)
+    )
+
+fun halfRowSpacer(
+    id: String,
+    rowUnits: Int,
+    columnUnits: Int,
+    columnSpanUnits: Int
+): SpacerItem =
+    SpacerItem(
+        id = id,
+        placement = GridPlacement(rowUnits, columnUnits, rowSpanUnits = 1, columnSpanUnits = columnSpanUnits)
+    )
+
+fun oneRowSpacer(
+    id: String,
+    rowUnits: Int,
+    columnUnits: Int,
+    columnSpanUnits: Int
+): SpacerItem =
+    SpacerItem(
+        id = id,
+        placement = GridPlacement(rowUnits, columnUnits, rowSpanUnits = 2, columnSpanUnits = columnSpanUnits)
+    )
+
+fun KeyboardLayout.itemsForKeys(updatedKeys: List<KeyData>): List<KeyboardLayoutItem> {
+    val keysByItemId = updatedKeys.associateBy { it.layoutItemId() }
+    val usedIds = mutableSetOf<String>()
+
+    val updatedItems = items.mapNotNull { item ->
+        when (item) {
+            is SpacerItem -> item
+            is KeyItem -> {
+                val updatedKeyData = keysByItemId[item.id]
+                if (updatedKeyData != null) {
+                    usedIds += item.id
+                    if (
+                        updatedKeyData.row == item.keyData.row &&
+                        updatedKeyData.column == item.keyData.column &&
+                        updatedKeyData.rowSpan == item.keyData.rowSpan &&
+                        updatedKeyData.colSpan == item.keyData.colSpan
+                    ) {
+                        item.copy(keyData = updatedKeyData)
+                    } else {
+                        updatedKeyData.toKeyItem()
+                    }
+                } else {
+                    null
+                }
+            }
+        }
+    }
+
+    return updatedItems + updatedKeys
+        .filter { it.layoutItemId() !in usedIds }
+        .map { it.toKeyItem() }
+}
+
+fun KeyboardLayout.copyWithKeys(
+    keys: List<KeyData>,
+    columnCount: Int = this.columnCount,
+    rowCount: Int = this.rowCount
+): KeyboardLayout =
+    copy(
+        keys = keys,
+        columnCount = columnCount,
+        rowCount = rowCount,
+        items = itemsForKeys(keys),
+        columnUnitCount = columnCount * 2,
+        rowUnitCount = rowCount * 2
+    )
+
 
 data class KeyboardLayout(
     val keys: List<KeyData>,
@@ -101,7 +220,10 @@ data class KeyboardLayout(
     val twoStepFlickKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
     val longPressFlickKeyMaps: Map<String, Map<FlickDirection, String>> = emptyMap(),
     val twoStepLongPressKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
-    val hierarchicalFlickMaps: Map<String, TfbiFlickNode.StatefulKey> = emptyMap()
+    val hierarchicalFlickMaps: Map<String, TfbiFlickNode.StatefulKey> = emptyMap(),
+    val items: List<KeyboardLayoutItem> = keys.map { it.toKeyItem() },
+    val columnUnitCount: Int = columnCount * 2,
+    val rowUnitCount: Int = rowCount * 2
 )
 
 /**

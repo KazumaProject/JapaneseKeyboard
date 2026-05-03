@@ -15,13 +15,17 @@ import android.view.View
 import android.view.View.OnDragListener
 import android.widget.GridLayout
 import android.widget.ImageButton
+import android.widget.Space
 import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
+import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import com.kazumaproject.custom_keyboard.view.AutoSizeButton
 import com.google.android.material.R as MaterialR
@@ -55,8 +59,8 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         this.removeAllViews()
 
         // ▼▼▼ 削除ボタン用に列と行を1つずつ増やす ▼▼▼
-        this.columnCount = layout.columnCount + 1
-        this.rowCount = layout.rowCount + 1
+        this.columnCount = layout.columnUnitCount + 2
+        this.rowCount = layout.rowUnitCount + 2
         // ▲▲▲ 削除ボタン用に列と行を1つずつ増やす ▲▲▲
 
         this.isFocusable = false
@@ -64,24 +68,42 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         val dragListener = createDragListener()
 
         // キーの描画
-        layout.keys.forEach { keyData ->
-            // ▼▼▼ 削除ボタン用にオフセット(1,1)をかけて描画 ▼▼▼
-            val keyView: View = createKeyView(keyData, 1, 1)
-            keyView.tag = keyData.keyId
-            keyView.setOnDragListener(dragListener)
-            keyView.setOnClickListener { listener?.onKeySelected(keyData.keyId!!) }
-            keyView.setOnLongClickListener { view ->
-                keyData.keyId?.let { keyId ->
-                    val clipText = "keyId:$keyId"
-                    val item = ClipData.Item(clipText)
-                    val mimeTypes = arrayOf("text/plain")
-                    val data = ClipData(clipText, mimeTypes, item)
-                    val dragShadow = DragShadowBuilder(view)
-                    view.startDragAndDrop(data, dragShadow, view, 0)
+        layout.items.forEach { item ->
+            when (item) {
+                is KeyItem -> {
+                    val keyData = item.keyData
+                    val keyView: View = createKeyView(keyData)
+                    keyView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
+                    keyView.tag = keyData.keyId
+                    keyView.setOnDragListener(dragListener)
+                    keyView.setOnClickListener {
+                        keyData.keyId?.let { keyId -> listener?.onKeySelected(keyId) }
+                    }
+                    keyView.setOnLongClickListener { view ->
+                        keyData.keyId?.let { keyId ->
+                            val clipText = "keyId:$keyId"
+                            val clipItem = ClipData.Item(clipText)
+                            val mimeTypes = arrayOf("text/plain")
+                            val data = ClipData(clipText, mimeTypes, clipItem)
+                            val dragShadow = DragShadowBuilder(view)
+                            view.startDragAndDrop(data, dragShadow, view, 0)
+                        }
+                        true
+                    }
+                    this.addView(keyView)
                 }
-                true
+
+                is SpacerItem -> {
+                    val spacer = Space(context).apply {
+                        isClickable = false
+                        isFocusable = false
+                        isEnabled = false
+                        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                    }
+                    spacer.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
+                    this.addView(spacer)
+                }
             }
-            this.addView(keyView)
         }
 
         // ▼▼▼ ここから削除ボタンの描画を追加 ▼▼▼
@@ -89,8 +111,8 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         for (i in 0 until layout.rowCount) {
             val deleteButton = createDeleteButton { listener?.onRowDeleted(i) }
             val params = LayoutParams().apply {
-                rowSpec = spec(i + 1, 1, FILL, 1f) // キーの行に対応 (+1はオフセット)
-                columnSpec = spec(0, 1, FILL, 0.5f)  // 最初の列(インデックス0)に配置
+                rowSpec = spec(i * 2 + 2, 2, FILL, 1f) // キーの行に対応 (+2 units はオフセット)
+                columnSpec = spec(0, 2, FILL, 0.5f)  // 最初の列(インデックス0)に配置
                 width = 0
                 height = 0
                 setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
@@ -103,8 +125,8 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         for (i in 0 until layout.columnCount) {
             val deleteButton = createDeleteButton { listener?.onColumnDeleted(i) }
             val params = LayoutParams().apply {
-                rowSpec = spec(0, 1, FILL, 0.5f) // 最初の行(インデックス0)に配置
-                columnSpec = spec(i + 1, 1, FILL, 1f) // キーの列に対応 (+1はオフセット)
+                rowSpec = spec(0, 2, FILL, 0.5f) // 最初の行(インデックス0)に配置
+                columnSpec = spec(i * 2 + 2, 2, FILL, 1f) // キーの列に対応 (+2 units はオフセット)
                 width = 0
                 height = 0
                 setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
@@ -164,11 +186,32 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         }
     }
 
-    // createKeyViewにオフセット引数を追加
+    private fun createLayoutParams(
+        placement: GridPlacement,
+        rowOffsetUnits: Int,
+        columnOffsetUnits: Int
+    ): LayoutParams {
+        return LayoutParams().apply {
+            rowSpec = spec(
+                placement.rowUnits + rowOffsetUnits,
+                placement.rowSpanUnits,
+                FILL,
+                1f
+            )
+            columnSpec = spec(
+                placement.columnUnits + columnOffsetUnits,
+                placement.columnSpanUnits,
+                FILL,
+                1f
+            )
+            width = 0
+            height = 0
+            elevation = 2f
+        }
+    }
+
     private fun createKeyView(
-        keyData: KeyData,
-        rowOffset: Int,
-        colOffset: Int
+        keyData: KeyData
     ): View {
         val isDarkTheme = context.isDarkThemeOn()
 
@@ -282,17 +325,6 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
         }
 
-        val params = LayoutParams().apply {
-            rowSpec = spec(keyData.row + rowOffset, keyData.rowSpan, FILL, 1f)
-            columnSpec = spec(keyData.column + colOffset, keyData.colSpan, FILL, 1f)
-            width = 0
-            height = 0
-            elevation = 2f
-            // ▼▼▼ 変更点4: setMargins の呼び出しを完全に削除 ▼▼▼
-            // if (keyData.isSpecialKey) setMargins(6, 12, 6, 6)
-            // else setMargins(6, 9, 6, 9)
-        }
-        keyView.layoutParams = params
         return keyView
     }
 
