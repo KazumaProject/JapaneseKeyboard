@@ -30,6 +30,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLong
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.toDbStrings
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.toFlickAction
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.ImportableKeyboardLayout
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
@@ -78,23 +79,28 @@ class KeyboardRepository @Inject constructor(
      * - 名前衝突回避
      * - createdAt は import 時刻
      * - sortOrder は「最上位に積む」(max+1) を順に付与
+     *
+     * 引数は [ImportableKeyboardLayout] (= 既に importer 側で正規化済みで、
+     * 全ての List が non-null になっているモデル)。
+     * 外部 JSON DTO ([com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutExportDto])
+     * は決してここに渡さない。
      */
-    suspend fun importLayouts(layouts: List<FullKeyboardLayout>) {
+    suspend fun importLayouts(layouts: List<ImportableKeyboardLayout>) {
         // まとめて import するときに max を毎回 DB に聞かない
         var currentMaxOrder = dao.getMaxSortOrder()
 
-        for (fullLayout in layouts) {
-            var newName = fullLayout.layout.name
+        for (importable in layouts) {
+            var newName = importable.layout.name
             var nameExists = dao.findLayoutByName(newName) != null
             var counter = 1
             while (nameExists) {
-                newName = "${fullLayout.layout.name} (${counter})"
+                newName = "${importable.layout.name} (${counter})"
                 nameExists = dao.findLayoutByName(newName) != null
                 counter++
             }
 
             currentMaxOrder += 1
-            val importedStableId = fullLayout.layout.stableId
+            val importedStableId = importable.layout.stableId
             val stableIdToInsert = if (importedStableId.isNullOrBlank() ||
                 dao.findLayoutByStableId(importedStableId) != null
             ) {
@@ -103,7 +109,7 @@ class KeyboardRepository @Inject constructor(
                 importedStableId
             }
 
-            val layoutToInsert = fullLayout.layout.copy(
+            val layoutToInsert = importable.layout.copy(
                 layoutId = 0,
                 name = newName,
                 createdAt = System.currentTimeMillis(),
@@ -111,30 +117,30 @@ class KeyboardRepository @Inject constructor(
                 stableId = stableIdToInsert
             )
 
-            val keysToInsert = fullLayout.keysWithFlicks.map { it.key }
+            val keysToInsert = importable.keysWithFlicks.map { it.key }
 
-            val flicksMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
+            val flicksMap = importable.keysWithFlicks.associate { keyWithFlicks ->
                 keyWithFlicks.key.keyIdentifier to keyWithFlicks.flicks
             }
 
-            val circularFlicksMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
+            val circularFlicksMap = importable.keysWithFlicks.associate { keyWithFlicks ->
                 keyWithFlicks.key.keyIdentifier to keyWithFlicks.circularFlicks
             }
 
-            val twoStepMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
+            val twoStepMap = importable.keysWithFlicks.associate { keyWithFlicks ->
                 keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepFlicks
             }
 
-            val longPressFlicksMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
+            val longPressFlicksMap = importable.keysWithFlicks.associate { keyWithFlicks ->
                 keyWithFlicks.key.keyIdentifier to keyWithFlicks.longPressFlicks
             }
 
-            val twoStepLongPressMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
+            val twoStepLongPressMap = importable.keysWithFlicks.associate { keyWithFlicks ->
                 keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepLongPressFlicks
             }
 
             // SpacerItem 復元: 元レイアウトの spacers を新規 layoutId 用に複製
-            val spacersToInsert = fullLayout.spacers.map { spacer ->
+            val spacersToInsert = importable.spacers.map { spacer ->
                 spacer.copy(spacerId = 0, ownerLayoutId = 0)
             }
 
