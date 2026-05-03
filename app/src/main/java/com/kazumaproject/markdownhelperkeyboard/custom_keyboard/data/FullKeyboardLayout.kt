@@ -14,5 +14,15 @@ data class FullKeyboardLayout(
         entity = KeyDefinition::class,
         entityColumn = "ownerLayoutId"
     )
-    val keysWithFlicks: List<KeyWithFlicks>
+    val keysWithFlicks: List<KeyWithFlicks>,
+    /**
+     * Layout-level SpacerItems (visual gaps that occupy grid cells but
+     * don't render content). Stored in `spacer_definitions` and joined by
+     * Room via the [SpacerDefinition.ownerLayoutId] foreign key.
+     */
+    @Relation(
+        parentColumn = "layoutId",
+        entityColumn = "ownerLayoutId"
+    )
+    val spacers: List<SpacerDefinition> = emptyList()
 )
