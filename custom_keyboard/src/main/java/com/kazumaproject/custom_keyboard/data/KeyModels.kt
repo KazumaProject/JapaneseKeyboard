@@ -207,6 +207,17 @@ fun KeyboardLayout.copyWithKeys(
         rowUnitCount = rowCount * 2
     )
 
+fun KeyboardLayout.usesFlexiblePlacement(): Boolean {
+    if (items.any { it is SpacerItem }) return true
+
+    return items.filterIsInstance<KeyItem>().any { item ->
+        item.placement.rowUnits != item.keyData.row * 2 ||
+                item.placement.columnUnits != item.keyData.column * 2 ||
+                item.placement.rowSpanUnits != item.keyData.rowSpan * 2 ||
+                item.placement.columnSpanUnits != item.keyData.colSpan * 2
+    }
+}
+
 // =====================================================================
 // Item-based helpers (long-term source of truth: items + GridPlacement)
 //
@@ -308,7 +319,8 @@ fun KeyboardLayout.swapKeyPlacements(
  * placement, or any item's placement extends outside [rowUnitCount] /
  * [columnUnitCount].
  *
- * Spacer ⇆ Spacer overlaps are tolerated (they are visually transparent).
+ * SpacerItems also participate in overlap detection. Editor-created spacers
+ * are real grid occupants, so they must not overlap keys or other spacers.
  */
 fun hasPlacementIssues(
     items: List<KeyboardLayoutItem>,
@@ -327,7 +339,6 @@ fun hasPlacementIssues(
         for (j in i + 1 until items.size) {
             val a = items[i]
             val b = items[j]
-            if (a is SpacerItem && b is SpacerItem) continue
             if (isPlacementOverlapping(a.placement, b.placement)) return true
         }
     }

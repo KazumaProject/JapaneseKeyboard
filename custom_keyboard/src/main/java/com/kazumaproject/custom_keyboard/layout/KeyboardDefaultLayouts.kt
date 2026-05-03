@@ -4691,38 +4691,34 @@ object KeyboardDefaultLayouts {
             idPrefix = "qwerty",
             name = "QWERTY",
             rowUnitCount = 8,
-            columnUnitCount = 21,
+            columnUnitCount = 20,
             rows = listOf(
                 TemplateRowSpec(
                     rowUnits = 0,
                     items = listOf(
-                        SpacerSpec("row_0_start", columnSpanUnits = 1),
                         *chars("q", "w", "e", "r", "t", "y", "u", "i", "o", "p").toTypedArray()
                     )
                 ),
                 TemplateRowSpec(
                     rowUnits = 2,
                     items = listOf(
-                        SpacerSpec("row_1_start", columnSpanUnits = 2),
+                        SpacerSpec("row1_gap", columnSpanUnits = 1),
                         *chars("a", "s", "d", "f", "g", "h", "j", "k", "l").toTypedArray()
                     )
                 ),
                 TemplateRowSpec(
                     rowUnits = 4,
                     items = listOf(
-                        SpacerSpec("shift_gap_start", columnSpanUnits = 1),
                         shiftSpec,
                         SpacerSpec("shift_gap", columnSpanUnits = 1),
                         *chars("z", "x", "c", "v", "b", "n", "m").toTypedArray(),
                         SpacerSpec("delete_gap", columnSpanUnits = 1),
-                        deleteSpec,
-                        SpacerSpec("delete_gap_end", columnSpanUnits = 1),
+                        deleteSpec
                     )
                 ),
                 TemplateRowSpec(
                     rowUnits = 6,
                     items = listOf(
-                        SpacerSpec("row_3_start", columnSpanUnits = 1),
                         switchImeSpec,
                         spaceSpec(span = 14),
                         enterSpec(span = 4)

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.ClipData
 import android.content.Context
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.AbsoluteSizeSpan
@@ -15,7 +16,7 @@ import android.view.View
 import android.view.View.OnDragListener
 import android.widget.GridLayout
 import android.widget.ImageButton
-import android.widget.Space
+import android.widget.TextView
 import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
@@ -38,6 +39,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
     // ▼▼▼ インターフェースに削除イベントを追加 ▼▼▼
     interface OnKeyEditListener {
         fun onKeySelected(keyId: String)
+        fun onSpacerSelected(spacerId: String)
         fun onKeysSwapped(draggedKeyId: String, targetKeyId: String)
         fun onRowDeleted(rowIndex: Int)
         fun onColumnDeleted(columnIndex: Int)
@@ -74,16 +76,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             layout.items.forEach { item ->
                 when (item) {
                     is KeyItem -> addKeyItem(item, dragListener)
-                    is SpacerItem -> {
-                        val spacer = Space(context).apply {
-                            isClickable = false
-                            isFocusable = false
-                            isEnabled = false
-                            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                        }
-                        spacer.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
-                        this.addView(spacer)
-                    }
+                    is SpacerItem -> addSpacerItem(item)
                 }
             }
         } else {
@@ -156,6 +149,26 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             true
         }
         this.addView(keyView)
+    }
+
+    private fun addSpacerItem(item: SpacerItem) {
+        val spacerView = TextView(context).apply {
+            isClickable = true
+            isFocusable = false
+            text = ""
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dpToPx(4).toFloat()
+                setColor(Color.argb(28, 96, 125, 139))
+                setStroke(dpToPx(1), Color.argb(150, 96, 125, 139), dpToPx(4).toFloat(), dpToPx(3).toFloat())
+            }
+            contentDescription = "Spacer"
+            setOnClickListener {
+                listener?.onSpacerSelected(item.id)
+            }
+        }
+        spacerView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
+        this.addView(spacerView)
     }
 
     // ▼▼▼ 削除ボタンを生成するヘルパー関数を追加 ▼▼▼
