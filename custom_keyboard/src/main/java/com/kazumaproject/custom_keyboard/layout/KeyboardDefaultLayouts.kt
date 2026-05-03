@@ -10,6 +10,8 @@ import com.kazumaproject.custom_keyboard.data.KeyMode
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
+import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -4489,9 +4491,22 @@ object KeyboardDefaultLayouts {
         rowStartColumnUnits: List<Int> = List(rows.size) { 0 }
     ): KeyboardLayout {
         val keys = mutableListOf<KeyData>()
-        val items = mutableListOf<KeyItem>()
+        val items = mutableListOf<KeyboardLayoutItem>()
 
         rows.forEachIndexed { rowIndex, rowChars ->
+            val startColumnUnits = rowStartColumnUnits.getOrElse(rowIndex) { 0 }
+            if (startColumnUnits > 0) {
+                items += SpacerItem(
+                    id = "${prefix}_row_${rowIndex}_start_spacer",
+                    placement = GridPlacement(
+                        rowUnits = rowIndex * 2,
+                        columnUnits = 0,
+                        rowSpanUnits = 2,
+                        columnSpanUnits = startColumnUnits
+                    )
+                )
+            }
+
             rowChars.forEachIndexed { colIndex, char ->
                 val keyData = KeyData(
                     label = char,
@@ -4509,7 +4524,7 @@ object KeyboardDefaultLayouts {
                     keyData = keyData,
                     placement = GridPlacement(
                         rowUnits = rowIndex * 2,
-                        columnUnits = rowStartColumnUnits[rowIndex] + colIndex * 2,
+                        columnUnits = startColumnUnits + colIndex * 2,
                         rowSpanUnits = 2,
                         columnSpanUnits = 2
                     )
@@ -4630,7 +4645,7 @@ object KeyboardDefaultLayouts {
         return createAlphabetKeyboardTemplateLayout(
             prefix = "qwerty",
             rows = rows,
-            rowStartColumnUnits = listOf(0, 1, 2)
+            rowStartColumnUnits = listOf(0, 1, 3)
         )
     }
 

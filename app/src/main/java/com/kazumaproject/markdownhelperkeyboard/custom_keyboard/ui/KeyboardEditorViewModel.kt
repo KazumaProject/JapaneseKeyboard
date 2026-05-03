@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
@@ -519,7 +520,17 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun applyTemplate(templateLayout: KeyboardLayout) {
         val keysWithEnsuredIds = templateLayout.keys.map { key ->
-            if (key.keyId == null) key.copy(keyId = UUID.randomUUID().toString()) else key
+            val keyWithId = if (key.keyId == null) key.copy(keyId = UUID.randomUUID().toString()) else key
+            if (
+                !keyWithId.isSpecialKey &&
+                keyWithId.keyType == KeyType.NORMAL &&
+                keyWithId.label.isNotBlank() &&
+                keyWithId.action == null
+            ) {
+                keyWithId.copy(action = KeyAction.Text(keyWithId.label))
+            } else {
+                keyWithId
+            }
         }
 
         val labelToIdMap = keysWithEnsuredIds

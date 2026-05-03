@@ -11,6 +11,8 @@ data class DisplayAction(
 
 object KeyActionMapper {
     private const val MOVE_TO_CUSTOM_KEYBOARD_PREFIX = "MoveToCustomKeyboard:"
+    private const val TEXT_PREFIX = "Text:"
+    private const val INPUT_TEXT_PREFIX = "InputText:"
 
     /**
      * Generates a list of DisplayAction objects using localized strings.
@@ -176,6 +178,8 @@ object KeyActionMapper {
             is KeyAction.SwitchToNumberLayout -> "SwitchToNumber"
             is KeyAction.ShiftKey -> "ShiftKeyPressed"
             is KeyAction.CapLockKey -> "CapLockKey"
+            is KeyAction.Text -> "$TEXT_PREFIX${keyAction.text}"
+            is KeyAction.InputText -> "$INPUT_TEXT_PREFIX${keyAction.text}"
             is KeyAction.SwitchRomajiEnglish -> "SwitchRomajiEnglish"
             is KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab"
             is KeyAction.MoveToCustomKeyboard -> keyAction.stableId
@@ -196,6 +200,12 @@ object KeyActionMapper {
         if (actionString?.startsWith(MOVE_TO_CUSTOM_KEYBOARD_PREFIX) == true) {
             val stableId = actionString.removePrefix(MOVE_TO_CUSTOM_KEYBOARD_PREFIX)
             return stableId.takeIf { it.isNotBlank() }?.let { KeyAction.MoveToCustomKeyboard(it) }
+        }
+        if (actionString?.startsWith(TEXT_PREFIX) == true) {
+            return KeyAction.Text(actionString.removePrefix(TEXT_PREFIX))
+        }
+        if (actionString?.startsWith(INPUT_TEXT_PREFIX) == true) {
+            return KeyAction.InputText(actionString.removePrefix(INPUT_TEXT_PREFIX))
         }
         return when (actionString) {
             "Delete" -> KeyAction.Delete

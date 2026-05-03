@@ -309,14 +309,31 @@ class FlickKeyboardView @JvmOverloads constructor(
         dynamicKeyMap.clear()
         currentLayout = layout
 
-        columnCount = layout.columnUnitCount
-        rowCount = layout.rowUnitCount
+        columnCount = if (layout.items.isNotEmpty()) layout.columnUnitCount else layout.columnCount
+        rowCount = if (layout.items.isNotEmpty()) layout.rowUnitCount else layout.rowCount
         isFocusable = false
 
-        layout.items.forEach { item ->
-            when (item) {
-                is KeyItem -> addKeyItem(item)
-                is SpacerItem -> addSpacerItem(item)
+        if (layout.items.isNotEmpty()) {
+            layout.items.forEach { item ->
+                when (item) {
+                    is KeyItem -> addKeyItem(item)
+                    is SpacerItem -> addSpacerItem(item)
+                }
+            }
+        } else {
+            layout.keys.forEach { keyData ->
+                addKeyItem(
+                    KeyItem(
+                        id = keyData.keyId ?: "legacy_${keyData.row}_${keyData.column}_${keyData.label}",
+                        keyData = keyData,
+                        placement = GridPlacement(
+                            rowUnits = keyData.row,
+                            columnUnits = keyData.column,
+                            rowSpanUnits = keyData.rowSpan,
+                            columnSpanUnits = keyData.colSpan
+                        )
+                    )
+                )
             }
         }
     }
@@ -426,8 +443,18 @@ class FlickKeyboardView @JvmOverloads constructor(
         keyData: KeyData? = null
     ): LayoutParams {
         return LayoutParams().apply {
-            rowSpec = spec(placement.rowUnits, placement.rowSpanUnits, FILL, 1f)
-            columnSpec = spec(placement.columnUnits, placement.columnSpanUnits, FILL, 1f)
+            rowSpec = spec(
+                placement.rowUnits,
+                placement.rowSpanUnits,
+                FILL,
+                placement.rowSpanUnits.toFloat()
+            )
+            columnSpec = spec(
+                placement.columnUnits,
+                placement.columnSpanUnits,
+                FILL,
+                placement.columnSpanUnits.toFloat()
+            )
             width = 0
             height = 0
 
