@@ -19,7 +19,6 @@ import com.kazumaproject.custom_keyboard.data.toKeyItem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -209,82 +208,6 @@ class AlphabetTemplateLayoutsTest {
         assertEquals(1, layout.keys.size)
         assertTrue(layout.items.any { it is SpacerItem })
         assertFalse(layout.keys.any { it.keyId == spacer.id })
-    }
-
-    @Test
-    fun azertyTemplate_hasExpectedRow0AndStructure() {
-        val layout = KeyboardDefaultLayouts.createAzertyTemplateLayout()
-        assertCommonStructure(layout)
-        assertEquals(
-            listOf("a", "z", "e", "r", "t", "y", "u", "i", "o", "p"),
-            row0Labels(layout)
-        )
-        assertHasSpecialKeys(layout, "AZERTY")
-        assertAllCharacterKeysAreNormalText(layout)
-        assertNotNull(layout.keys.firstOrNull { it.keyId == "azerty_key_a" })
-        assertNotNull(layout.keys.firstOrNull { it.keyId == "azerty_key_m" })
-    }
-
-    @Test
-    fun dvorakTemplate_hasSafeSymbolKeyIds() {
-        val layout = KeyboardDefaultLayouts.createDvorakTemplateLayout()
-        // Dvorak Row 2 has 10 letters; columnUnitCount widens to 24 to fit
-        // Shift + 10 letters + Delete on the same row.
-        assertCommonStructure(layout, expectedColumnUnitCount = 24, expectedColumnCount = 12)
-        assertHasSpecialKeys(layout, "Dvorak")
-        assertAllCharacterKeysAreNormalText(layout)
-
-        // 安全名で keyId が振られていること
-        assertNotNull(
-            "dvorak_key_quote should exist",
-            layout.keys.firstOrNull { it.keyId == "dvorak_key_quote" && it.label == "'" }
-        )
-        assertNotNull(
-            "dvorak_key_comma should exist",
-            layout.keys.firstOrNull { it.keyId == "dvorak_key_comma" && it.label == "," }
-        )
-        assertNotNull(
-            "dvorak_key_period should exist",
-            layout.keys.firstOrNull { it.keyId == "dvorak_key_period" && it.label == "." }
-        )
-        assertNotNull(
-            "dvorak_key_semicolon should exist",
-            layout.keys.firstOrNull { it.keyId == "dvorak_key_semicolon" && it.label == ";" }
-        )
-
-        // 記号そのものが keyId になっていないこと
-        assertNull(
-            "Dvorak should not use raw '\\'' as keyId suffix",
-            layout.keys.firstOrNull { it.keyId == "dvorak_key_'" }
-        )
-    }
-
-    @Test
-    fun colemakTemplate_hasExpectedRow0AndStructure() {
-        val layout = KeyboardDefaultLayouts.createColemakTemplateLayout()
-        assertCommonStructure(layout)
-        assertEquals(
-            listOf("q", "w", "f", "p", "g", "j", "l", "u", "y"),
-            row0Labels(layout)
-        )
-        assertHasSpecialKeys(layout, "Colemak")
-        assertAllCharacterKeysAreNormalText(layout)
-        assertNotNull(layout.keys.firstOrNull { it.keyId == "colemak_key_q" })
-        assertNotNull(layout.keys.firstOrNull { it.keyId == "colemak_key_o" })
-    }
-
-    @Test
-    fun allTemplates_areNotDirectModeAndNotRomaji() {
-        val templates = listOf(
-            KeyboardDefaultLayouts.createQwertyTemplateLayout(),
-            KeyboardDefaultLayouts.createAzertyTemplateLayout(),
-            KeyboardDefaultLayouts.createDvorakTemplateLayout(),
-            KeyboardDefaultLayouts.createColemakTemplateLayout()
-        )
-        templates.forEach {
-            assertFalse(it.isRomaji)
-            assertFalse(it.isDirectMode)
-        }
     }
 
     // ====================================================================
