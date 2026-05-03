@@ -2,8 +2,15 @@ package com.kazumaproject.custom_keyboard.layout
 
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.halfColumnSpacer
+import com.kazumaproject.custom_keyboard.data.halfRowSpacer
+import com.kazumaproject.custom_keyboard.data.oneColumnSpacer
+import com.kazumaproject.custom_keyboard.data.oneRowSpacer
+import com.kazumaproject.custom_keyboard.data.toKeyItem
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -19,6 +26,8 @@ class AlphabetTemplateLayoutsTest {
     private fun assertCommonStructure(layout: KeyboardLayout) {
         assertEquals("columnCount must be 10", 10, layout.columnCount)
         assertEquals("rowCount must be 4", 4, layout.rowCount)
+        assertEquals("columnUnitCount must be 20", 20, layout.columnUnitCount)
+        assertEquals("rowUnitCount must be 8", 8, layout.rowUnitCount)
         assertFalse("isRomaji should default to false", layout.isRomaji)
         assertFalse("isDirectMode should default to false", layout.isDirectMode)
         assertTrue("flickKeyMaps should be empty", layout.flickKeyMaps.isEmpty())
@@ -71,6 +80,9 @@ class AlphabetTemplateLayoutsTest {
         }
     }
 
+    private fun keyItem(layout: KeyboardLayout, keyId: String): KeyItem =
+        layout.items.filterIsInstance<KeyItem>().first { it.keyData.keyId == keyId }
+
     @Test
     fun qwertyTemplate_hasExpectedRow0AndStructure() {
         val layout = KeyboardDefaultLayouts.createQwertyTemplateLayout()
@@ -83,6 +95,88 @@ class AlphabetTemplateLayoutsTest {
         assertAllCharacterKeysAreNormalText(layout)
         assertNotNull(layout.keys.firstOrNull { it.keyId == "qwerty_key_q" })
         assertNotNull(layout.keys.firstOrNull { it.keyId == "qwerty_key_p" })
+    }
+
+    @Test
+    fun qwertyTemplate_usesHalfUnitPlacements() {
+        val layout = KeyboardDefaultLayouts.createQwertyTemplateLayout()
+
+        assertEquals(20, layout.columnUnitCount)
+        assertEquals(8, layout.rowUnitCount)
+
+        val q = keyItem(layout, "qwerty_key_q")
+        assertEquals(0, q.placement.rowUnits)
+        assertEquals(0, q.placement.columnUnits)
+        assertEquals(2, q.placement.rowSpanUnits)
+        assertEquals(2, q.placement.columnSpanUnits)
+
+        val a = keyItem(layout, "qwerty_key_a")
+        assertEquals(2, a.placement.rowUnits)
+        assertEquals(1, a.placement.columnUnits)
+
+        val z = keyItem(layout, "qwerty_key_z")
+        assertEquals(4, z.placement.rowUnits)
+        assertEquals(2, z.placement.columnUnits)
+
+        val space = keyItem(layout, "qwerty_space")
+        assertEquals(6, space.placement.rowUnits)
+        assertEquals(4, space.placement.columnUnits)
+        assertEquals(10, space.placement.columnSpanUnits)
+    }
+
+    @Test
+    fun spacerHelpers_createExpectedUnitSpacers() {
+        val halfColumn = halfColumnSpacer("half_column", rowUnits = 0, columnUnits = 0)
+        assertEquals(2, halfColumn.placement.rowSpanUnits)
+        assertEquals(1, halfColumn.placement.columnSpanUnits)
+
+        val oneColumn = oneColumnSpacer("one_column", rowUnits = 0, columnUnits = 0)
+        assertEquals(2, oneColumn.placement.rowSpanUnits)
+        assertEquals(2, oneColumn.placement.columnSpanUnits)
+
+        val halfRow = halfRowSpacer(
+            id = "half_row",
+            rowUnits = 0,
+            columnUnits = 0,
+            columnSpanUnits = 20
+        )
+        assertEquals(1, halfRow.placement.rowSpanUnits)
+        assertEquals(20, halfRow.placement.columnSpanUnits)
+
+        val oneRow = oneRowSpacer(
+            id = "one_row",
+            rowUnits = 0,
+            columnUnits = 0,
+            columnSpanUnits = 20
+        )
+        assertEquals(2, oneRow.placement.rowSpanUnits)
+        assertEquals(20, oneRow.placement.columnSpanUnits)
+    }
+
+    @Test
+    fun spacerItems_doNotBecomeKeys() {
+        val key = KeyData(
+            label = "a",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.Text("a"),
+            keyId = "key_a"
+        )
+        val spacer = halfColumnSpacer("spacer", rowUnits = 0, columnUnits = 2)
+        val layout = KeyboardLayout(
+            keys = listOf(key),
+            flickKeyMaps = emptyMap(),
+            columnCount = 2,
+            rowCount = 1,
+            items = listOf(KeyItem("key_a", key, key.toKeyItem().placement), spacer),
+            columnUnitCount = 4,
+            rowUnitCount = 2
+        )
+
+        assertEquals(1, layout.keys.size)
+        assertTrue(layout.items.any { it is SpacerItem })
+        assertFalse(layout.keys.any { it.keyId == spacer.id })
     }
 
     @Test

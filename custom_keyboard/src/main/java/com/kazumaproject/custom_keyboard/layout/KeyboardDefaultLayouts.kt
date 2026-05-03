@@ -2,13 +2,16 @@ package com.kazumaproject.custom_keyboard.layout
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyMode
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 
 object KeyboardDefaultLayouts {
@@ -126,8 +129,7 @@ object KeyboardDefaultLayouts {
             }
         }
 
-        return layout.copy(
-            keys = filteredKeys,
+        return layout.copyWithKeys(filteredKeys).copy(
             flickKeyMaps = filteredFlickKeyMaps,
             circularFlickKeyMaps = filteredCircularFlickKeyMaps
         )
@@ -358,7 +360,7 @@ object KeyboardDefaultLayouts {
             this[keyIndex] = newKey
         }
 
-        return baseLayout.copy(keys = newKeys)
+        return baseLayout.copyWithKeys(newKeys)
     }
 
     private fun createHiraganaLayoutToggle(
@@ -4483,13 +4485,15 @@ object KeyboardDefaultLayouts {
      */
     private fun createAlphabetKeyboardTemplateLayout(
         prefix: String,
-        rows: List<List<String>>
+        rows: List<List<String>>,
+        rowStartColumnUnits: List<Int> = List(rows.size) { 0 }
     ): KeyboardLayout {
         val keys = mutableListOf<KeyData>()
+        val items = mutableListOf<KeyItem>()
 
         rows.forEachIndexed { rowIndex, rowChars ->
             rowChars.forEachIndexed { colIndex, char ->
-                keys += KeyData(
+                val keyData = KeyData(
                     label = char,
                     row = rowIndex,
                     column = colIndex,
@@ -4499,11 +4503,22 @@ object KeyboardDefaultLayouts {
                     isSpecialKey = false,
                     keyId = "${prefix}_key_${safeKeyIdSuffix(char)}"
                 )
+                keys += keyData
+                items += KeyItem(
+                    id = keyData.keyId!!,
+                    keyData = keyData,
+                    placement = GridPlacement(
+                        rowUnits = rowIndex * 2,
+                        columnUnits = rowStartColumnUnits[rowIndex] + colIndex * 2,
+                        rowSpanUnits = 2,
+                        columnSpanUnits = 2
+                    )
+                )
             }
         }
 
         // Row 3: 特殊キー
-        keys += KeyData(
+        val switchToNextImeKey = KeyData(
             label = "",
             row = 3,
             column = 0,
@@ -4514,7 +4529,7 @@ object KeyboardDefaultLayouts {
             keyType = KeyType.NORMAL,
             keyId = "${prefix}_switch_next_ime"
         )
-        keys += KeyData(
+        val shiftKey = KeyData(
             label = "",
             row = 3,
             column = 1,
@@ -4525,7 +4540,7 @@ object KeyboardDefaultLayouts {
             keyType = KeyType.NORMAL,
             keyId = "${prefix}_shift"
         )
-        keys += KeyData(
+        val spaceKey = KeyData(
             label = "",
             row = 3,
             column = 2,
@@ -4537,7 +4552,7 @@ object KeyboardDefaultLayouts {
             keyType = KeyType.NORMAL,
             keyId = "${prefix}_space"
         )
-        keys += KeyData(
+        val deleteKey = KeyData(
             label = "",
             row = 3,
             column = 7,
@@ -4548,7 +4563,7 @@ object KeyboardDefaultLayouts {
             keyType = KeyType.NORMAL,
             keyId = "${prefix}_delete"
         )
-        keys += KeyData(
+        val enterKey = KeyData(
             label = "",
             row = 3,
             column = 8,
@@ -4560,12 +4575,43 @@ object KeyboardDefaultLayouts {
             keyType = KeyType.NORMAL,
             keyId = "${prefix}_enter"
         )
+        keys += listOf(switchToNextImeKey, shiftKey, spaceKey, deleteKey, enterKey)
+        items += listOf(
+            KeyItem(
+                id = switchToNextImeKey.keyId!!,
+                keyData = switchToNextImeKey,
+                placement = GridPlacement(rowUnits = 6, columnUnits = 0, columnSpanUnits = 2)
+            ),
+            KeyItem(
+                id = shiftKey.keyId!!,
+                keyData = shiftKey,
+                placement = GridPlacement(rowUnits = 6, columnUnits = 2, columnSpanUnits = 2)
+            ),
+            KeyItem(
+                id = spaceKey.keyId!!,
+                keyData = spaceKey,
+                placement = GridPlacement(rowUnits = 6, columnUnits = 4, columnSpanUnits = 10)
+            ),
+            KeyItem(
+                id = deleteKey.keyId!!,
+                keyData = deleteKey,
+                placement = GridPlacement(rowUnits = 6, columnUnits = 14, columnSpanUnits = 2)
+            ),
+            KeyItem(
+                id = enterKey.keyId!!,
+                keyData = enterKey,
+                placement = GridPlacement(rowUnits = 6, columnUnits = 16, columnSpanUnits = 4)
+            )
+        )
 
         return KeyboardLayout(
             keys = keys,
             flickKeyMaps = emptyMap(),
             columnCount = 10,
-            rowCount = 4
+            rowCount = 4,
+            items = items,
+            columnUnitCount = 20,
+            rowUnitCount = 8
         )
     }
 
@@ -4581,7 +4627,11 @@ object KeyboardDefaultLayouts {
             listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
             listOf("z", "x", "c", "v", "b", "n", "m")
         )
-        return createAlphabetKeyboardTemplateLayout(prefix = "qwerty", rows = rows)
+        return createAlphabetKeyboardTemplateLayout(
+            prefix = "qwerty",
+            rows = rows,
+            rowStartColumnUnits = listOf(0, 1, 2)
+        )
     }
 
     /**
@@ -4596,7 +4646,11 @@ object KeyboardDefaultLayouts {
             listOf("q", "s", "d", "f", "g", "h", "j", "k", "l", "m"),
             listOf("w", "x", "c", "v", "b", "n")
         )
-        return createAlphabetKeyboardTemplateLayout(prefix = "azerty", rows = rows)
+        return createAlphabetKeyboardTemplateLayout(
+            prefix = "azerty",
+            rows = rows,
+            rowStartColumnUnits = listOf(0, 0, 2)
+        )
     }
 
     /**
@@ -4611,7 +4665,11 @@ object KeyboardDefaultLayouts {
             listOf("a", "o", "e", "u", "i", "d", "h", "t", "n", "s"),
             listOf(";", "q", "j", "k", "x", "b", "m", "w", "v", "z")
         )
-        return createAlphabetKeyboardTemplateLayout(prefix = "dvorak", rows = rows)
+        return createAlphabetKeyboardTemplateLayout(
+            prefix = "dvorak",
+            rows = rows,
+            rowStartColumnUnits = listOf(0, 1, 1)
+        )
     }
 
     /**
@@ -4626,7 +4684,11 @@ object KeyboardDefaultLayouts {
             listOf("a", "r", "s", "t", "d", "h", "n", "e", "i", "o"),
             listOf("z", "x", "c", "v", "b", "k", "m")
         )
-        return createAlphabetKeyboardTemplateLayout(prefix = "colemak", rows = rows)
+        return createAlphabetKeyboardTemplateLayout(
+            prefix = "colemak",
+            rows = rows,
+            rowStartColumnUnits = listOf(0, 0, 2)
+        )
     }
 
     private fun createHiraganaToggleLayout(
