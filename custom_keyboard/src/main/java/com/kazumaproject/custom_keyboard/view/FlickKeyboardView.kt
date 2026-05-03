@@ -324,7 +324,8 @@ class FlickKeyboardView @JvmOverloads constructor(
             layout.keys.forEach { keyData ->
                 addKeyItem(
                     KeyItem(
-                        id = keyData.keyId ?: "legacy_${keyData.row}_${keyData.column}_${keyData.label}",
+                        id = keyData.keyId
+                            ?: "legacy_${keyData.row}_${keyData.column}_${keyData.label}",
                         keyData = keyData,
                         placement = GridPlacement(
                             rowUnits = keyData.row,
@@ -643,8 +644,8 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun isCircularMapSwitchAction(action: FlickAction?): Boolean {
         return action is FlickAction.Action &&
-            action.action == KeyAction.MoveCustomKeyboardTab &&
-            action.label == "⇄"
+                action.action == KeyAction.MoveCustomKeyboardTab &&
+                action.label == "⇄"
     }
 
     private fun getGuideLabels(stringMap: Map<FlickDirection, String>): AutoSizeButton.FlickGuideLabels {
@@ -1005,9 +1006,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                     keyData.keyId?.let { layout.circularFlickKeyMaps[it] }
                         ?: layout.circularFlickKeyMaps[keyData.label]
                         ?: (
-                            keyData.keyId?.let { layout.flickKeyMaps[it] }
-                                ?: layout.flickKeyMaps[keyData.label]
-                            )?.let { mapOf(keyData.label to it).toCircularFlickKeyMaps()[keyData.label] }
+                                keyData.keyId?.let { layout.flickKeyMaps[it] }
+                                    ?: layout.flickKeyMaps[keyData.label]
+                                )?.let { mapOf(keyData.label to it).toCircularFlickKeyMaps()[keyData.label] }
                 Log.d("FlickKeyboardView KeyType.CIRCULAR_FLICK", "$circularKeyMapsList")
                 if (!circularKeyMapsList.isNullOrEmpty()) {
                     val controller = CustomAngleFlickController(context, flickSensitivity).apply {
@@ -1078,7 +1079,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                             override fun onPress(action: FlickAction?) {
                                 when (action) {
                                     is FlickAction.Input -> notifyTextPress(action.char)
-                                    is FlickAction.Action -> this@FlickKeyboardView.listener?.onPress(action.action)
+                                    is FlickAction.Action -> this@FlickKeyboardView.listener?.onPress(
+                                        action.action
+                                    )
+
                                     null -> Unit
                                 }
                             }
@@ -1190,7 +1194,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
 
-                            override fun onFlickUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
+                            override fun onFlickUpAfterLongPress(
+                                action: KeyAction,
+                                isFlick: Boolean
+                            ) {
                                 if (action !is KeyAction.Text) {
                                     this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
                                         action, isFlick = isFlick
@@ -1204,17 +1211,31 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     when (themeMode) {
                         "custom" -> {
-                            controller.setPopupColors(FlickPopupColorTheme(
-                                segmentColor = customSpecialKeyColor,
-                                segmentHighlightGradientStartColor = manipulateColor(customSpecialKeyColor, 1.2f),
-                                segmentHighlightGradientEndColor = manipulateColor(customSpecialKeyColor, 1.2f),
-                                centerGradientStartColor = customSpecialKeyColor,
-                                centerGradientEndColor = customSpecialKeyColor,
-                                centerHighlightGradientStartColor = manipulateColor(customSpecialKeyColor, 1.2f),
-                                centerHighlightGradientEndColor = manipulateColor(customSpecialKeyColor, 1.2f),
-                                separatorColor = customSpecialKeyTextColor,
-                                textColor = customSpecialKeyTextColor
-                            ))
+                            controller.setPopupColors(
+                                FlickPopupColorTheme(
+                                    segmentColor = customSpecialKeyColor,
+                                    segmentHighlightGradientStartColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    segmentHighlightGradientEndColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    centerGradientStartColor = customSpecialKeyColor,
+                                    centerGradientEndColor = customSpecialKeyColor,
+                                    centerHighlightGradientStartColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    centerHighlightGradientEndColor = manipulateColor(
+                                        customSpecialKeyColor,
+                                        1.2f
+                                    ),
+                                    separatorColor = customSpecialKeyTextColor,
+                                    textColor = customSpecialKeyTextColor
+                                )
+                            )
                         }
                     }
 
@@ -1507,7 +1528,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
 
-                            override fun onFlickUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
+                            override fun onFlickUpAfterLongPress(
+                                action: KeyAction,
+                                isFlick: Boolean
+                            ) {
                                 if (action !is KeyAction.Text) {
                                     this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
                                         action,
@@ -1929,11 +1953,22 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
 
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    val actionToDispatch =
+                        if (event.actionMasked == MotionEvent.ACTION_UP) {
+                            MotionEvent.ACTION_UP
+                        } else {
+                            MotionEvent.ACTION_CANCEL
+                        }
+
+                    dispatchEndEventToTrackedTargets(event, actionToDispatch)
+
                     setCursorMode(false)
                     crossFlickControllers.forEach { it.dismissAllPopups() }
                     clearSpaceKeyPressedState()
+
                     motionTargets.clear()
                     pointerDownTime.clear()
+
                     return true
                 }
             }
@@ -2194,21 +2229,48 @@ class FlickKeyboardView @JvmOverloads constructor(
         return (dp * resources.displayMetrics.density).toInt()
     }
 
-    private fun clearSpaceKeyPressedState() {
-        for (i in 0 until childCount) {
-            val child = getChildAt(i)
-
-            val isKuhakuKey = when (child) {
-                is AutoSizeButton -> child.text?.toString() == "空白"
-                is AppCompatImageButton -> child.contentDescription?.toString() == "空白"
-                else -> false
+    private fun dispatchEndEventToTrackedTargets(
+        sourceEvent: MotionEvent,
+        actionToDispatch: Int
+    ) {
+        motionTargets.forEach { (trackedPointerId, target) ->
+            val trackedPointerIndex = sourceEvent.findPointerIndex(trackedPointerId)
+            if (trackedPointerIndex == -1) {
+                target.isPressed = false
+                target.isSelected = false
+                target.refreshDrawableState()
+                return@forEach
             }
 
-            if (isKuhakuKey) {
-                child.isPressed = false
-                child.isSelected = false
-                child.refreshDrawableState()
-            }
+            val downTime = pointerDownTime[trackedPointerId] ?: sourceEvent.downTime
+            val x = sourceEvent.getX(trackedPointerIndex)
+            val y = sourceEvent.getY(trackedPointerIndex)
+
+            val endEvent = MotionEvent.obtain(
+                downTime,
+                sourceEvent.eventTime,
+                actionToDispatch,
+                x,
+                y,
+                sourceEvent.metaState
+            )
+
+            endEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
+            target.dispatchTouchEvent(endEvent)
+            endEvent.recycle()
         }
     }
+
+    private fun clearSpaceKeyPressedState() {
+        dynamicKeyMap.values
+            .filter { keyInfo ->
+                keyInfo.keyData.action == KeyAction.Space
+            }
+            .forEach { keyInfo ->
+                keyInfo.view.isPressed = false
+                keyInfo.view.isSelected = false
+                keyInfo.view.refreshDrawableState()
+            }
+    }
+
 }
