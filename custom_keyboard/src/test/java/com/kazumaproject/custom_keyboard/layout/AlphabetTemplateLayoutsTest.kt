@@ -16,6 +16,7 @@ import com.kazumaproject.custom_keyboard.data.oneColumnSpacer
 import com.kazumaproject.custom_keyboard.data.oneRowSpacer
 import com.kazumaproject.custom_keyboard.data.swapKeyPlacements
 import com.kazumaproject.custom_keyboard.data.toKeyItem
+import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -272,6 +273,12 @@ class AlphabetTemplateLayoutsTest {
     }
 
     @Test
+    fun qwertyTemplate_usesFlexiblePlacement() {
+        val layout = KeyboardDefaultLayouts.createQwertyTemplateLayout()
+        assertTrue(layout.usesFlexiblePlacement())
+    }
+
+    @Test
     fun swapKeyPlacements_swapsPlacementsOnly_andKeepsSpacers() {
         val layout = KeyboardDefaultLayouts.createQwertyTemplateLayout()
 
@@ -358,6 +365,21 @@ class AlphabetTemplateLayoutsTest {
             KeyItem("b", keyB, GridPlacement(rowUnits = 0, columnUnits = 2))
         )
         assertFalse(
+            hasPlacementIssues(items, rowUnitCount = 4, columnUnitCount = 8)
+        )
+    }
+
+    @Test
+    fun hasPlacementIssues_detectsSpacerOverlap() {
+        val key = KeyData(
+            label = "a", row = 0, column = 0, isFlickable = false,
+            action = KeyAction.Text("a"), keyId = "a"
+        )
+        val items = listOf(
+            KeyItem("a", key, GridPlacement(rowUnits = 0, columnUnits = 0)),
+            SpacerItem("spacer", GridPlacement(rowUnits = 0, columnUnits = 1))
+        )
+        assertTrue(
             hasPlacementIssues(items, rowUnitCount = 4, columnUnitCount = 8)
         )
     }

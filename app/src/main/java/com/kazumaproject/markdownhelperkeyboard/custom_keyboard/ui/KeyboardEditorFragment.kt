@@ -1,10 +1,14 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import android.os.Bundle
+import android.text.InputType
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
+import android.widget.EditText
+import android.widget.LinearLayout
+import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
@@ -18,6 +22,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view.EditableFlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardEditorBinding
@@ -184,6 +189,10 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         findNavController().navigate(R.id.action_keyboardEditorFragment_to_keyEditorFragment)
     }
 
+    override fun onSpacerSelected(spacerId: String) {
+        Timber.d("onSpacerSelected: spacerId = $spacerId")
+    }
+
     override fun onKeysSwapped(draggedKeyId: String, targetKeyId: String) {
         Timber.d("onKeysSwapped: dragged=$draggedKeyId, target=$targetKeyId")
         viewModel.swapKeys(draggedKeyId, targetKeyId)
@@ -197,6 +206,49 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     override fun onColumnDeleted(columnIndex: Int) {
         Timber.d("onColumnDeleted: columnIndex = $columnIndex")
         viewModel.deleteColumnAt(columnIndex)
+    }
+
+    private fun readSpacerPlacement(
+        rowEdit: EditText,
+        columnEdit: EditText,
+        widthEdit: EditText,
+        heightEdit: EditText
+    ): GridPlacement? {
+        val rowUnits = halfCellUnits(rowEdit.text.toString()) ?: return null
+        val columnUnits = halfCellUnits(columnEdit.text.toString()) ?: return null
+        val columnSpanUnits = halfCellUnits(widthEdit.text.toString()) ?: return null
+        val rowSpanUnits = halfCellUnits(heightEdit.text.toString()) ?: return null
+        return GridPlacement(rowUnits, columnUnits, rowSpanUnits, columnSpanUnits)
+    }
+
+    private fun halfCellUnits(value: String): Int? {
+        val parsed = value.toFloatOrNull() ?: return null
+        val unitsFloat = parsed * 2f
+        val units = kotlin.math.round(unitsFloat).toInt()
+        if (kotlin.math.abs(unitsFloat - units) > 0.001f) return null
+        return units
+    }
+
+    private fun decimalEditText(value: String): EditText {
+        return EditText(requireContext()).apply {
+            inputType = InputType.TYPE_CLASS_NUMBER or
+                    InputType.TYPE_NUMBER_FLAG_DECIMAL or
+                    InputType.TYPE_NUMBER_FLAG_SIGNED
+            setSingleLine(true)
+            setText(value)
+        }
+    }
+
+    private fun labeledView(label: String, child: View): View {
+        return LinearLayout(requireContext()).apply {
+            orientation = LinearLayout.VERTICAL
+            addView(TextView(context).apply { text = label })
+            addView(child)
+        }
+    }
+
+    private fun dpToPx(dp: Int): Int {
+        return (dp * resources.displayMetrics.density).toInt()
     }
 
     override fun onDestroyView() {
