@@ -21,6 +21,7 @@ import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.ImportableKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -850,7 +851,15 @@ class KeyboardEditorViewModel @Inject constructor(
         return repository.getAllFullLayoutsForExport()
     }
 
-    fun importLayouts(layouts: List<FullKeyboardLayout>) {
+    /**
+     * Import 用 entrypoint。
+     *
+     * 受け取るのは外部 JSON から正規化済みの [ImportableKeyboardLayout] であり、
+     * Room の Relation 用 [FullKeyboardLayout] ではない。
+     * これにより spacers などの新フィールドが将来欠損していても、
+     * Repository / DAO 層には null が伝搬しない設計になっている。
+     */
+    fun importLayouts(layouts: List<ImportableKeyboardLayout>) {
         viewModelScope.launch {
             repository.importLayouts(layouts)
         }

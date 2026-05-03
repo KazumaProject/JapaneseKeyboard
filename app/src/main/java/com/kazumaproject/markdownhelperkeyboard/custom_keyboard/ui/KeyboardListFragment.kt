@@ -23,19 +23,15 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.reflect.TypeToken
-import com.google.gson.stream.JsonReader
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutJsonExporter
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutJsonImporter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.KeyboardLayoutAdapter
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardListBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import java.io.OutputStreamWriter
-import java.io.StringReader
 
 @AndroidEntryPoint
 class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
@@ -209,13 +205,6 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
         importLauncher.launch(intent)
     }
 
-    private val exportGson: Gson by lazy {
-        GsonBuilder()
-            .disableHtmlEscaping()
-            .serializeNulls()
-            .create()
-    }
-
     private fun exportLayouts(uri: Uri) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
@@ -229,7 +218,9 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                     return@launch
                 }
 
-                val jsonString = exportGson.toJson(layoutsToExport)
+                // FullKeyboardLayout(Room モデル) を直接 Gson に渡さない。
+                // exporter 側で schemaVersion 付き object 形式の JSON にする。
+                val jsonString = KeyboardLayoutJsonExporter.toJson(layoutsToExport)
 
                 requireContext().contentResolver.openOutputStream(uri, "w")?.use { os ->
                     OutputStreamWriter(os, Charsets.UTF_8).use { writer ->
@@ -266,27 +257,19 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                     .trimStart('\uFEFF')
                     .replace("\u0000", "")
 
-                val type = object : TypeToken<List<FullKeyboardLayout>>() {}.type
+                // 旧 root array 形式 / 新 schemaVersion 付き object 形式 / spacers 欠損 等
+                // すべての互換性を importer 側に閉じ込める。
+                val importableLayouts = KeyboardLayoutJsonImporter.parse(jsonString)
 
-                val gson = GsonBuilder()
-                    .setLenient()
-                    .create()
-
-                val reader = JsonReader(StringReader(jsonString)).apply {
-                    isLenient = true
-                }
-
-                val layouts: List<FullKeyboardLayout> = gson.fromJson(reader, type) ?: emptyList()
-
-                if (layouts.isEmpty()) {
+                if (importableLayouts.isEmpty()) {
                     Toast.makeText(context, "インポート対象が空です", Toast.LENGTH_LONG).show()
                     return@launch
                 }
 
-                keyboardEditorViewMode.importLayouts(layouts)
+                keyboardEditorViewMode.importLayouts(importableLayouts)
                 Toast.makeText(
                     context,
-                    "${layouts.size}件のレイアウトをインポートしました",
+                    "${importableLayouts.size}件のレイアウトをインポートしました",
                     Toast.LENGTH_SHORT
                 ).show()
 
