@@ -10,6 +10,7 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
+import com.kazumaproject.custom_keyboard.data.swapKeyPlacements
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
@@ -423,72 +424,37 @@ class KeyboardEditorViewModel @Inject constructor(
         return cells
     }
 
+    /**
+     * Drag-swap two KeyItems by exchanging their [GridPlacement]s.
+     *
+     * Source of truth is `layout.items` + `GridPlacement` — KeyData.row /
+     * KeyData.column are NOT rewritten here, because they cannot represent
+     * half-cell offsets used by QWERTY-family templates and would corrupt
+     * the visual placement.
+     *
+     * The swap is rejected (no-op) if it would produce overlaps or
+     * out-of-bounds placements.
+     */
     fun swapKeys(draggedKeyId: String, targetKeyId: String) {
         _uiState.update { currentState ->
             val layout = currentState.layout
-            val currentKeys = layout.keys
-
-            val draggedKey =
-                currentKeys.find { it.keyId == draggedKeyId } ?: return@update currentState
-            val targetKey =
-                currentKeys.find { it.keyId == targetKeyId } ?: return@update currentState
-
             if (draggedKeyId == targetKeyId) return@update currentState
 
-            val destRow = targetKey.row
-            val destCol = targetKey.column
-            val movedDraggedKey = draggedKey.copy(row = destRow, column = destCol)
-
-            val victims = currentKeys.filter { key ->
-                key.keyId != draggedKeyId && isRectOverlapping(movedDraggedKey, key)
-            }
-
-            val moveRowDelta = destRow - draggedKey.row
-            val moveColDelta = destCol - draggedKey.column
-
-            val newKeysCandidate = currentKeys.map { key ->
-                when {
-                    key.keyId == draggedKeyId -> movedDraggedKey
-                    victims.any { it.keyId == key.keyId } -> {
-                        key.copy(
-                            row = key.row - moveRowDelta,
-                            column = key.column - moveColDelta
-                        )
-                    }
-
-                    else -> key
-                }
-            }
-
-            if (hasIssues(newKeysCandidate, layout.rowCount, layout.columnCount)) {
-                return@update currentState
-            }
-
-            val newLayout = currentState.layout.copyWithKeys(newKeysCandidate)
-            currentState.copy(layout = newLayout)
+            val swapped = layout.swapKeyPlacements(draggedKeyId, targetKeyId)
+            // swapKeyPlacements returns the original layout if the swap is
+            // invalid (overlap, out of bounds, missing id).
+            if (swapped === layout) return@update currentState
+            currentState.copy(layout = swapped)
         }
     }
 
-    private fun hasIssues(keys: List<KeyData>, rowCount: Int, colCount: Int): Boolean {
-        keys.forEach { key ->
-            if (key.row < 0 || key.column < 0 ||
-                key.row + key.rowSpan > rowCount ||
-                key.column + key.colSpan > colCount
-            ) {
-                return true
-            }
-        }
-
-        for (i in keys.indices) {
-            for (j in i + 1 until keys.size) {
-                if (isRectOverlapping(keys[i], keys[j])) {
-                    return true
-                }
-            }
-        }
-        return false
-    }
-
+    /**
+     * Cell-grid overlap test for [updateKeyAndMappings] (which works on
+     * KeyData.row/column for the simple, single-key edit flow).
+     *
+     * Drag-swap uses [com.kazumaproject.custom_keyboard.data.hasPlacementIssues]
+     * on GridPlacement instead — see [swapKeys].
+     */
     private fun isRectOverlapping(key1: KeyData, key2: KeyData): Boolean {
         val k1Left = key1.column
         val k1Right = key1.column + key1.colSpan

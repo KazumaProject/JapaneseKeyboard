@@ -22,6 +22,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMappin
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.toDbStrings
@@ -40,7 +41,8 @@ private data class DbKeyboardLayoutParts(
     val circularFlicksMap: Map<String, List<CircularFlickMapping>>,
     val twoStepMap: Map<String, List<TwoStepFlickMapping>>,
     val longPressFlicksMap: Map<String, List<LongPressFlickMapping>>,
-    val twoStepLongPressMap: Map<String, List<TwoStepLongPressMappingEntity>>
+    val twoStepLongPressMap: Map<String, List<TwoStepLongPressMappingEntity>>,
+    val spacers: List<SpacerDefinition> = emptyList()
 )
 
 fun ensureStableIdsForLayouts(
@@ -129,6 +131,11 @@ class KeyboardRepository @Inject constructor(
                 keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepLongPressFlicks
             }
 
+            // SpacerItem 復元: 元レイアウトの spacers を新規 layoutId 用に複製
+            val spacersToInsert = fullLayout.spacers.map { spacer ->
+                spacer.copy(spacerId = 0, ownerLayoutId = 0)
+            }
+
             dao.insertFullKeyboardLayout(
                 layoutToInsert,
                 keysToInsert,
@@ -136,7 +143,8 @@ class KeyboardRepository @Inject constructor(
                 circularFlicksMap,
                 twoStepMap,
                 longPressFlicksMap,
-                twoStepLongPressMap
+                twoStepLongPressMap,
+                spacersToInsert
             )
         }
     }
@@ -259,7 +267,8 @@ class KeyboardRepository @Inject constructor(
             parts.circularFlicksMap,
             parts.twoStepMap,
             parts.longPressFlicksMap,
-            parts.twoStepLongPressMap
+            parts.twoStepLongPressMap,
+            parts.spacers
         )
     }
 
@@ -331,6 +340,11 @@ class KeyboardRepository @Inject constructor(
             keyWithFlicks.key.keyIdentifier to newTwoStepLongPress
         }
 
+        // 元レイアウトの SpacerItem も複製
+        val newSpacers = originalLayout.spacers.map { spacer ->
+            spacer.copy(spacerId = 0, ownerLayoutId = 0)
+        }
+
         dao.insertFullKeyboardLayout(
             newLayoutInfo,
             newKeys,
@@ -338,7 +352,8 @@ class KeyboardRepository @Inject constructor(
             newCircularFlicksMap,
             newTwoStepMap,
             newLongPressFlicksMap,
-            newTwoStepLongPressMap
+            newTwoStepLongPressMap,
+            newSpacers
         )
     }
 
@@ -537,7 +552,46 @@ class KeyboardRepository @Inject constructor(
             )
             keyData
         }
-        val items = restoreLeadingSpacers(keyItems) + keyItems
+        // 永続化された SpacerItem を復元 (行内 Spacer 含む完全復元)
+        // 旧データに spacer_definitions が無い場合は restoreLeadingSpacers() に
+        // フォールバックして「行頭 Spacer」だけは推測復元する。
+        val storedSpacers: List<SpacerItem> = dbLayout.spacers
+            .sortedBy { it.sortOrder }
+            .map { spacer ->
+                SpacerItem(
+                    id = spacer.itemIdentifier.ifBlank {
+                        "spacer_${spacer.spacerId}"
+                    },
+                    placement = GridPlacement(
+                        rowUnits = spacer.rowUnits,
+                        columnUnits = spacer.columnUnits,
+                        rowSpanUnits = spacer.rowSpanUnits,
+                        columnSpanUnits = spacer.columnSpanUnits
+                    )
+                )
+            }
+
+        val items: List<KeyboardLayoutItem> = if (storedSpacers.isNotEmpty()) {
+            // 完全復元: items 順は (Spacer, Key) を rowUnits → columnUnits でマージ
+            (storedSpacers + keyItems).sortedWith(
+                compareBy({ it.placement.rowUnits }, { it.placement.columnUnits })
+            )
+        } else {
+            // 旧データ互換: spacer_definitions が無いレイアウトは行頭 Spacer のみ推測
+            restoreLeadingSpacers(keyItems) + keyItems
+        }
+
+        // columnUnitCount / rowUnitCount は KeyDefinition.rowUnits 等の有無に応じて
+        // 厳密値 / フォールバック値を決定する。
+        val derivedColumnUnitCount = items
+            .maxOfOrNull { it.placement.columnUnits + it.placement.columnSpanUnits }
+            ?: (dbLayout.layout.columnCount * 2)
+        val derivedRowUnitCount = items
+            .maxOfOrNull { it.placement.rowUnits + it.placement.rowSpanUnits }
+            ?: (dbLayout.layout.rowCount * 2)
+
+        val columnUnitCount = maxOf(derivedColumnUnitCount, dbLayout.layout.columnCount * 2)
+        val rowUnitCount = maxOf(derivedRowUnitCount, dbLayout.layout.rowCount * 2)
 
         return KeyboardLayout(
             keys = keys,
@@ -559,8 +613,8 @@ class KeyboardRepository @Inject constructor(
             longPressFlickKeyMaps = longPressFlickMaps,
             twoStepLongPressKeyMaps = twoStepLongPressMaps,
             items = items,
-            columnUnitCount = dbLayout.layout.columnCount * 2,
-            rowUnitCount = dbLayout.layout.rowCount * 2
+            columnUnitCount = columnUnitCount,
+            rowUnitCount = rowUnitCount
         )
     }
 
@@ -736,6 +790,22 @@ class KeyboardRepository @Inject constructor(
             }
         }
 
+        // SpacerItem を SpacerDefinition に変換 (順序情報は items の登場順を保持)
+        val spacerDefinitions = uiLayout.items
+            .filterIsInstance<SpacerItem>()
+            .mapIndexed { index, spacer ->
+                SpacerDefinition(
+                    spacerId = 0,
+                    ownerLayoutId = 0,
+                    itemIdentifier = spacer.id,
+                    rowUnits = spacer.placement.rowUnits,
+                    columnUnits = spacer.placement.columnUnits,
+                    rowSpanUnits = spacer.placement.rowSpanUnits,
+                    columnSpanUnits = spacer.placement.columnSpanUnits,
+                    sortOrder = index
+                )
+            }
+
         // Map<String, MutableList<...>> -> Map<String, List<...>> にして返す
         return DbKeyboardLayoutParts(
             keys = keys,
@@ -743,7 +813,8 @@ class KeyboardRepository @Inject constructor(
             circularFlicksMap = circularFlicksMap.mapValues { it.value.toList() },
             twoStepMap = twoStepMap.mapValues { it.value.toList() },
             longPressFlicksMap = longPressFlicksMap.mapValues { it.value.toList() },
-            twoStepLongPressMap = twoStepLongPressMap.mapValues { it.value.toList() }
+            twoStepLongPressMap = twoStepLongPressMap.mapValues { it.value.toList() },
+            spacers = spacerDefinitions
         )
     }
 }

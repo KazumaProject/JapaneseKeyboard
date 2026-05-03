@@ -4476,234 +4476,391 @@ object KeyboardDefaultLayouts {
         else -> char
     }
 
+    // =====================================================================
+    // Declarative templates (QWERTY / AZERTY / Dvorak / Colemak)
+    //
+    // Each alphabet template is defined as a TemplateLayoutSpec that names
+    // every cell — character keys, special keys, and intra-row Spacers —
+    // explicitly. The builder converts the spec into KeyboardLayout.items,
+    // and `keys` is derived from those items so layout.items remains the
+    // single source of truth (no half-cell information is encoded in
+    // KeyData.row/column).
+    //
+    // Per-template freedom:
+    //   - columnUnitCount may differ (Dvorak uses 24 because Row2 has
+    //     10 letters + Shift + Delete).
+    //   - Each row chooses its own startColumnUnits and heightUnits.
+    //   - Special keys and Spacers can be placed at any position; Row3 is
+    //     no longer hard-coded as the only place for them.
+    //
+    // Bug fix:
+    //   - Editor drag-swap now uses placements from these items; KeyData.
+    //     row/column are *not* the source of truth, so half-cell QWERTY
+    //     placements survive a swap.
+    // =====================================================================
+
+    /** Top-level alphabet-template definition. */
+    private data class TemplateLayoutSpec(
+        val idPrefix: String,
+        val name: String,
+        val rowUnitCount: Int,
+        val columnUnitCount: Int,
+        val rows: List<TemplateRowSpec>
+    )
+
     /**
-     * QWERTY / AZERTY / Dvorak / Colemak など、英字配列テンプレートの共通ビルダー。
-     *
-     * - columnCount = 10、rowCount = 4 固定
-     * - Row 0..2 は文字キーを column 0 から並べる（rows の中身そのまま）
-     * - Row 3 には特殊キー（IME切替 / Shift / Space / Delete / Enter）を配置
-     * - flickKeyMaps は emptyMap()
-     * - isRomaji / isDirectMode はデフォルト値（false）のまま
+     * One row of the template. `startColumnUnits` shifts the row right
+     * (typical home-row offset), and `heightUnits` defaults to 2.
      */
-    private fun createAlphabetKeyboardTemplateLayout(
-        prefix: String,
-        rows: List<List<String>>,
-        rowStartColumnUnits: List<Int> = List(rows.size) { 0 }
-    ): KeyboardLayout {
-        val keys = mutableListOf<KeyData>()
+    private data class TemplateRowSpec(
+        val rowUnits: Int,
+        val startColumnUnits: Int = 0,
+        val heightUnits: Int = 2,
+        val items: List<TemplateItemSpec>
+    )
+
+    /** Anything that occupies space in a row. */
+    private sealed interface TemplateItemSpec {
+        val columnSpanUnits: Int
+    }
+
+    /** Plain character key (label is also the typed text). */
+    private data class CharKeySpec(
+        val label: String,
+        override val columnSpanUnits: Int = 2
+    ) : TemplateItemSpec
+
+    /** Special key (Shift, Delete, Enter, Space, ...). */
+    private data class SpecialKeySpec(
+        val idSuffix: String,
+        val label: String = "",
+        val action: KeyAction,
+        val drawableResId: Int? = null,
+        override val columnSpanUnits: Int = 2
+    ) : TemplateItemSpec
+
+    /** Visual gap inside a row; participates in placement but renders empty. */
+    private data class SpacerSpec(
+        val idSuffix: String,
+        override val columnSpanUnits: Int
+    ) : TemplateItemSpec
+
+    /**
+     * Convert a [TemplateLayoutSpec] into a [KeyboardLayout].
+     *
+     * - Each character/special key becomes a [KeyItem] whose
+     *   [GridPlacement] reflects the cumulative column position.
+     * - Each [SpacerSpec] becomes a [SpacerItem].
+     * - `keys` is regenerated from the items so the two stay consistent.
+     * - rowCount/columnCount are derived from rowUnitCount/columnUnitCount
+     *   (rounded up) so legacy code that still reads them keeps working.
+     * - KeyData.row / KeyData.column carry approximate (rowUnits/2,
+     *   columnUnits/2) values for backward compatibility, but they are
+     *   *not* the source of truth — the layout's `items` are.
+     */
+    private fun buildAlphabetTemplate(spec: TemplateLayoutSpec): KeyboardLayout {
         val items = mutableListOf<KeyboardLayoutItem>()
+        val keys = mutableListOf<KeyData>()
 
-        rows.forEachIndexed { rowIndex, rowChars ->
-            val startColumnUnits = rowStartColumnUnits.getOrElse(rowIndex) { 0 }
-            if (startColumnUnits > 0) {
-                items += SpacerItem(
-                    id = "${prefix}_row_${rowIndex}_start_spacer",
-                    placement = GridPlacement(
-                        rowUnits = rowIndex * 2,
-                        columnUnits = 0,
-                        rowSpanUnits = 2,
-                        columnSpanUnits = startColumnUnits
-                    )
-                )
-            }
+        spec.rows.forEach { row ->
+            var cursor = row.startColumnUnits
+            val approxRow = row.rowUnits / 2
 
-            rowChars.forEachIndexed { colIndex, char ->
-                val keyData = KeyData(
-                    label = char,
-                    row = rowIndex,
-                    column = colIndex,
-                    isFlickable = false,
-                    action = KeyAction.Text(char),
-                    keyType = KeyType.NORMAL,
-                    isSpecialKey = false,
-                    keyId = "${prefix}_key_${safeKeyIdSuffix(char)}"
+            row.items.forEachIndexed { itemIndex, itemSpec ->
+                val placement = GridPlacement(
+                    rowUnits = row.rowUnits,
+                    columnUnits = cursor,
+                    rowSpanUnits = row.heightUnits,
+                    columnSpanUnits = itemSpec.columnSpanUnits
                 )
-                keys += keyData
-                items += KeyItem(
-                    id = keyData.keyId!!,
-                    keyData = keyData,
-                    placement = GridPlacement(
-                        rowUnits = rowIndex * 2,
-                        columnUnits = startColumnUnits + colIndex * 2,
-                        rowSpanUnits = 2,
-                        columnSpanUnits = 2
-                    )
-                )
+                val approxCol = cursor / 2
+                val approxColSpan = (itemSpec.columnSpanUnits + 1) / 2
+                val approxRowSpan = (row.heightUnits + 1) / 2
+
+                when (itemSpec) {
+                    is CharKeySpec -> {
+                        val keyId = "${spec.idPrefix}_key_${safeKeyIdSuffix(itemSpec.label)}"
+                        val keyData = KeyData(
+                            label = itemSpec.label,
+                            row = approxRow,
+                            column = approxCol,
+                            isFlickable = false,
+                            action = KeyAction.Text(itemSpec.label),
+                            rowSpan = approxRowSpan,
+                            colSpan = approxColSpan,
+                            keyType = KeyType.NORMAL,
+                            isSpecialKey = false,
+                            keyId = keyId
+                        )
+                        items += KeyItem(id = keyId, keyData = keyData, placement = placement)
+                        keys += keyData
+                    }
+
+                    is SpecialKeySpec -> {
+                        val keyId = "${spec.idPrefix}_${itemSpec.idSuffix}"
+                        val keyData = KeyData(
+                            label = itemSpec.label,
+                            row = approxRow,
+                            column = approxCol,
+                            isFlickable = false,
+                            action = itemSpec.action,
+                            rowSpan = approxRowSpan,
+                            colSpan = approxColSpan,
+                            keyType = KeyType.NORMAL,
+                            isSpecialKey = true,
+                            drawableResId = itemSpec.drawableResId,
+                            keyId = keyId
+                        )
+                        items += KeyItem(id = keyId, keyData = keyData, placement = placement)
+                        keys += keyData
+                    }
+
+                    is SpacerSpec -> {
+                        val spacerId =
+                            "${spec.idPrefix}_row_${row.rowUnits}_${itemSpec.idSuffix}_${itemIndex}"
+                        items += SpacerItem(id = spacerId, placement = placement)
+                    }
+                }
+
+                cursor += itemSpec.columnSpanUnits
             }
         }
 
-        // Row 3: 特殊キー
-        val switchToNextImeKey = KeyData(
-            label = "",
-            row = 3,
-            column = 0,
-            isFlickable = false,
-            action = KeyAction.SwitchToNextIme,
-            isSpecialKey = true,
-            drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
-            keyType = KeyType.NORMAL,
-            keyId = "${prefix}_switch_next_ime"
-        )
-        val shiftKey = KeyData(
-            label = "",
-            row = 3,
-            column = 1,
-            isFlickable = false,
-            action = KeyAction.ShiftKey,
-            isSpecialKey = true,
-            drawableResId = com.kazumaproject.core.R.drawable.shift_24px,
-            keyType = KeyType.NORMAL,
-            keyId = "${prefix}_shift"
-        )
-        val spaceKey = KeyData(
-            label = "",
-            row = 3,
-            column = 2,
-            isFlickable = false,
-            action = KeyAction.Space,
-            isSpecialKey = true,
-            drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24,
-            colSpan = 5,
-            keyType = KeyType.NORMAL,
-            keyId = "${prefix}_space"
-        )
-        val deleteKey = KeyData(
-            label = "",
-            row = 3,
-            column = 7,
-            isFlickable = false,
-            action = KeyAction.Delete,
-            isSpecialKey = true,
-            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
-            keyType = KeyType.NORMAL,
-            keyId = "${prefix}_delete"
-        )
-        val enterKey = KeyData(
-            label = "",
-            row = 3,
-            column = 8,
-            isFlickable = false,
-            action = KeyAction.Enter,
-            isSpecialKey = true,
-            drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24,
-            colSpan = 2,
-            keyType = KeyType.NORMAL,
-            keyId = "${prefix}_enter"
-        )
-        keys += listOf(switchToNextImeKey, shiftKey, spaceKey, deleteKey, enterKey)
-        items += listOf(
-            KeyItem(
-                id = switchToNextImeKey.keyId!!,
-                keyData = switchToNextImeKey,
-                placement = GridPlacement(rowUnits = 6, columnUnits = 0, columnSpanUnits = 2)
-            ),
-            KeyItem(
-                id = shiftKey.keyId!!,
-                keyData = shiftKey,
-                placement = GridPlacement(rowUnits = 6, columnUnits = 2, columnSpanUnits = 2)
-            ),
-            KeyItem(
-                id = spaceKey.keyId!!,
-                keyData = spaceKey,
-                placement = GridPlacement(rowUnits = 6, columnUnits = 4, columnSpanUnits = 10)
-            ),
-            KeyItem(
-                id = deleteKey.keyId!!,
-                keyData = deleteKey,
-                placement = GridPlacement(rowUnits = 6, columnUnits = 14, columnSpanUnits = 2)
-            ),
-            KeyItem(
-                id = enterKey.keyId!!,
-                keyData = enterKey,
-                placement = GridPlacement(rowUnits = 6, columnUnits = 16, columnSpanUnits = 4)
-            )
-        )
-
+        val derivedColumnCount = (spec.columnUnitCount + 1) / 2
+        val derivedRowCount = (spec.rowUnitCount + 1) / 2
         return KeyboardLayout(
             keys = keys,
             flickKeyMaps = emptyMap(),
-            columnCount = 10,
-            rowCount = 4,
+            columnCount = derivedColumnCount,
+            rowCount = derivedRowCount,
             items = items,
-            columnUnitCount = 20,
-            rowUnitCount = 8
+            columnUnitCount = spec.columnUnitCount,
+            rowUnitCount = spec.rowUnitCount
         )
     }
+
+    private fun chars(vararg s: String): List<CharKeySpec> = s.map { CharKeySpec(it) }
+
+    private val shiftSpec
+        get() = SpecialKeySpec(
+            idSuffix = "shift",
+            action = KeyAction.ShiftKey,
+            drawableResId = com.kazumaproject.core.R.drawable.shift_24px,
+            columnSpanUnits = 2
+        )
+
+    private val deleteSpec
+        get() = SpecialKeySpec(
+            idSuffix = "delete",
+            action = KeyAction.Delete,
+            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
+            columnSpanUnits = 2
+        )
+
+    private val switchImeSpec
+        get() = SpecialKeySpec(
+            idSuffix = "switch_next_ime",
+            action = KeyAction.SwitchToNextIme,
+            drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+            columnSpanUnits = 2
+        )
+
+    private fun spaceSpec(span: Int) = SpecialKeySpec(
+        idSuffix = "space",
+        action = KeyAction.Space,
+        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24,
+        columnSpanUnits = span
+    )
+
+    private fun enterSpec(span: Int) = SpecialKeySpec(
+        idSuffix = "enter",
+        action = KeyAction.Enter,
+        drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24,
+        columnSpanUnits = span
+    )
 
     /**
      * 英字 QWERTY 配列テンプレート。
      *   Row 0: q w e r t y u i o p
-     *   Row 1: a s d f g h j k l
-     *   Row 2: z x c v b n m
+     *   Row 1:  a s d f g h j k l
+     *   Row 2: Shift | spacer | z x c v b n m | spacer | Delete
+     *   Row 3: SwitchIme | Space | Enter
      */
     fun createQwertyTemplateLayout(): KeyboardLayout {
-        val rows = listOf(
-            listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
-            listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
-            listOf("z", "x", "c", "v", "b", "n", "m")
+        val spec = TemplateLayoutSpec(
+            idPrefix = "qwerty",
+            name = "QWERTY",
+            rowUnitCount = 8,
+            columnUnitCount = 20,
+            rows = listOf(
+                TemplateRowSpec(
+                    rowUnits = 0,
+                    items = chars("q", "w", "e", "r", "t", "y", "u", "i", "o", "p")
+                ),
+                TemplateRowSpec(
+                    rowUnits = 2,
+                    startColumnUnits = 1,
+                    items = chars("a", "s", "d", "f", "g", "h", "j", "k", "l")
+                ),
+                TemplateRowSpec(
+                    rowUnits = 4,
+                    items = listOf(
+                        shiftSpec,
+                        SpacerSpec("shift_gap", columnSpanUnits = 1),
+                        *chars("z", "x", "c", "v", "b", "n", "m").toTypedArray(),
+                        SpacerSpec("delete_gap", columnSpanUnits = 1),
+                        deleteSpec
+                    )
+                ),
+                TemplateRowSpec(
+                    rowUnits = 6,
+                    items = listOf(
+                        switchImeSpec,
+                        spaceSpec(span = 14),
+                        enterSpec(span = 4)
+                    )
+                )
+            )
         )
-        return createAlphabetKeyboardTemplateLayout(
-            prefix = "qwerty",
-            rows = rows,
-            rowStartColumnUnits = listOf(0, 1, 3)
-        )
+        return buildAlphabetTemplate(spec)
     }
 
     /**
-     * 英字 AZERTY 配列テンプレート（簡易）。
+     * 英字 AZERTY 配列テンプレート。
      *   Row 0: a z e r t y u i o p
      *   Row 1: q s d f g h j k l m
-     *   Row 2: w x c v b n
+     *   Row 2: Shift | spacer(2) | w x c v b n | spacer(2) | Delete
+     *   Row 3: SwitchIme | Space | Enter
      */
     fun createAzertyTemplateLayout(): KeyboardLayout {
-        val rows = listOf(
-            listOf("a", "z", "e", "r", "t", "y", "u", "i", "o", "p"),
-            listOf("q", "s", "d", "f", "g", "h", "j", "k", "l", "m"),
-            listOf("w", "x", "c", "v", "b", "n")
+        val spec = TemplateLayoutSpec(
+            idPrefix = "azerty",
+            name = "AZERTY",
+            rowUnitCount = 8,
+            columnUnitCount = 20,
+            rows = listOf(
+                TemplateRowSpec(
+                    rowUnits = 0,
+                    items = chars("a", "z", "e", "r", "t", "y", "u", "i", "o", "p")
+                ),
+                TemplateRowSpec(
+                    rowUnits = 2,
+                    items = chars("q", "s", "d", "f", "g", "h", "j", "k", "l", "m")
+                ),
+                TemplateRowSpec(
+                    rowUnits = 4,
+                    items = listOf(
+                        shiftSpec,
+                        SpacerSpec("shift_gap", columnSpanUnits = 2),
+                        *chars("w", "x", "c", "v", "b", "n").toTypedArray(),
+                        SpacerSpec("delete_gap", columnSpanUnits = 2),
+                        deleteSpec
+                    )
+                ),
+                TemplateRowSpec(
+                    rowUnits = 6,
+                    items = listOf(
+                        switchImeSpec,
+                        spaceSpec(span = 14),
+                        enterSpec(span = 4)
+                    )
+                )
+            )
         )
-        return createAlphabetKeyboardTemplateLayout(
-            prefix = "azerty",
-            rows = rows,
-            rowStartColumnUnits = listOf(0, 0, 2)
-        )
+        return buildAlphabetTemplate(spec)
     }
 
     /**
-     * 英字 Dvorak 配列テンプレート（簡易）。
-     *   Row 0: ' , . p y f g c r l
-     *   Row 1: a o e u i d h t n s
-     *   Row 2: ; q j k x b m w v z
+     * 英字 Dvorak 配列テンプレート。
+     * Row2 は 10 文字あるので columnUnitCount を 24 に拡張し、
+     * Shift / Delete を Row2 両端に置く。
+     *
+     *   Row 0: ' , . p y f g c r l        (start 2)
+     *   Row 1: a o e u i d h t n s        (start 2)
+     *   Row 2: Shift | ; q j k x b m w v z | Delete
+     *   Row 3: SwitchIme | Space | Enter
      */
     fun createDvorakTemplateLayout(): KeyboardLayout {
-        val rows = listOf(
-            listOf("'", ",", ".", "p", "y", "f", "g", "c", "r", "l"),
-            listOf("a", "o", "e", "u", "i", "d", "h", "t", "n", "s"),
-            listOf(";", "q", "j", "k", "x", "b", "m", "w", "v", "z")
+        val spec = TemplateLayoutSpec(
+            idPrefix = "dvorak",
+            name = "Dvorak",
+            rowUnitCount = 8,
+            columnUnitCount = 24,
+            rows = listOf(
+                TemplateRowSpec(
+                    rowUnits = 0,
+                    startColumnUnits = 2,
+                    items = chars("'", ",", ".", "p", "y", "f", "g", "c", "r", "l")
+                ),
+                TemplateRowSpec(
+                    rowUnits = 2,
+                    startColumnUnits = 2,
+                    items = chars("a", "o", "e", "u", "i", "d", "h", "t", "n", "s")
+                ),
+                TemplateRowSpec(
+                    rowUnits = 4,
+                    items = listOf(
+                        shiftSpec,
+                        *chars(";", "q", "j", "k", "x", "b", "m", "w", "v", "z").toTypedArray(),
+                        deleteSpec
+                    )
+                ),
+                TemplateRowSpec(
+                    rowUnits = 6,
+                    items = listOf(
+                        switchImeSpec,
+                        spaceSpec(span = 18),
+                        enterSpec(span = 4)
+                    )
+                )
+            )
         )
-        return createAlphabetKeyboardTemplateLayout(
-            prefix = "dvorak",
-            rows = rows,
-            rowStartColumnUnits = listOf(0, 1, 1)
-        )
+        return buildAlphabetTemplate(spec)
     }
 
     /**
      * 英字 Colemak 配列テンプレート。
-     *   Row 0: q w f p g j l u y
+     *   Row 0: q w f p g j l u y      (9 keys, end has 2 spare units)
      *   Row 1: a r s t d h n e i o
-     *   Row 2: z x c v b k m
+     *   Row 2: Shift | spacer | z x c v b k m | spacer | Delete
+     *   Row 3: SwitchIme | Space | Enter
      */
     fun createColemakTemplateLayout(): KeyboardLayout {
-        val rows = listOf(
-            listOf("q", "w", "f", "p", "g", "j", "l", "u", "y"),
-            listOf("a", "r", "s", "t", "d", "h", "n", "e", "i", "o"),
-            listOf("z", "x", "c", "v", "b", "k", "m")
+        val spec = TemplateLayoutSpec(
+            idPrefix = "colemak",
+            name = "Colemak",
+            rowUnitCount = 8,
+            columnUnitCount = 20,
+            rows = listOf(
+                TemplateRowSpec(
+                    rowUnits = 0,
+                    items = chars("q", "w", "f", "p", "g", "j", "l", "u", "y")
+                ),
+                TemplateRowSpec(
+                    rowUnits = 2,
+                    items = chars("a", "r", "s", "t", "d", "h", "n", "e", "i", "o")
+                ),
+                TemplateRowSpec(
+                    rowUnits = 4,
+                    items = listOf(
+                        shiftSpec,
+                        SpacerSpec("shift_gap", columnSpanUnits = 1),
+                        *chars("z", "x", "c", "v", "b", "k", "m").toTypedArray(),
+                        SpacerSpec("delete_gap", columnSpanUnits = 1),
+                        deleteSpec
+                    )
+                ),
+                TemplateRowSpec(
+                    rowUnits = 6,
+                    items = listOf(
+                        switchImeSpec,
+                        spaceSpec(span = 14),
+                        enterSpec(span = 4)
+                    )
+                )
+            )
         )
-        return createAlphabetKeyboardTemplateLayout(
-            prefix = "colemak",
-            rows = rows,
-            rowStartColumnUnits = listOf(0, 0, 2)
-        )
+        return buildAlphabetTemplate(spec)
     }
 
     private fun createHiraganaToggleLayout(

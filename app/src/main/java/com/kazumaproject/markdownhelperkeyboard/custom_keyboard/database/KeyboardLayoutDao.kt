@@ -12,6 +12,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMappin
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
 import kotlinx.coroutines.flow.Flow
@@ -43,9 +44,14 @@ interface KeyboardLayoutDao {
         circularFlicksMap: Map<String, List<CircularFlickMapping>>,
         twoStepFlicksMap: Map<String, List<TwoStepFlickMapping>>,
         longPressFlicksMap: Map<String, List<LongPressFlickMapping>>,
-        twoStepLongPressFlicksMap: Map<String, List<TwoStepLongPressMappingEntity>>
+        twoStepLongPressFlicksMap: Map<String, List<TwoStepLongPressMappingEntity>>,
+        spacers: List<SpacerDefinition> = emptyList()
     ) {
         val layoutId = insertLayout(layout)
+
+        if (spacers.isNotEmpty()) {
+            insertSpacers(spacers.map { it.copy(spacerId = 0, ownerLayoutId = layoutId) })
+        }
 
         val keysWithLayoutId = keys.map { it.copy(ownerLayoutId = layoutId) }
         val newKeyIds = insertKeys(keysWithLayoutId)
@@ -125,6 +131,12 @@ interface KeyboardLayoutDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTwoStepLongPressFlickMappings(mappings: List<TwoStepLongPressMappingEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertSpacers(spacers: List<SpacerDefinition>)
+
+    @Query("DELETE FROM spacer_definitions WHERE ownerLayoutId = :layoutId")
+    suspend fun deleteSpacersForLayout(layoutId: Long)
 
     @Query("DELETE FROM keyboard_layouts WHERE layoutId = :layoutId")
     suspend fun deleteLayout(layoutId: Long)
