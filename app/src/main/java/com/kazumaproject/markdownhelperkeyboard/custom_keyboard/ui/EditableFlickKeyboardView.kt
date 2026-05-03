@@ -59,8 +59,10 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         this.removeAllViews()
 
         // ▼▼▼ 削除ボタン用に列と行を1つずつ増やす ▼▼▼
-        this.columnCount = layout.columnUnitCount + 2
-        this.rowCount = layout.rowUnitCount + 2
+        val keyboardColumnUnits = if (layout.items.isNotEmpty()) layout.columnUnitCount else layout.columnCount
+        val keyboardRowUnits = if (layout.items.isNotEmpty()) layout.rowUnitCount else layout.rowCount
+        this.columnCount = keyboardColumnUnits + 2
+        this.rowCount = keyboardRowUnits + 2
         // ▲▲▲ 削除ボタン用に列と行を1つずつ増やす ▲▲▲
 
         this.isFocusable = false
@@ -68,41 +70,37 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         val dragListener = createDragListener()
 
         // キーの描画
-        layout.items.forEach { item ->
-            when (item) {
-                is KeyItem -> {
-                    val keyData = item.keyData
-                    val keyView: View = createKeyView(keyData)
-                    keyView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
-                    keyView.tag = keyData.keyId
-                    keyView.setOnDragListener(dragListener)
-                    keyView.setOnClickListener {
-                        keyData.keyId?.let { keyId -> listener?.onKeySelected(keyId) }
-                    }
-                    keyView.setOnLongClickListener { view ->
-                        keyData.keyId?.let { keyId ->
-                            val clipText = "keyId:$keyId"
-                            val clipItem = ClipData.Item(clipText)
-                            val mimeTypes = arrayOf("text/plain")
-                            val data = ClipData(clipText, mimeTypes, clipItem)
-                            val dragShadow = DragShadowBuilder(view)
-                            view.startDragAndDrop(data, dragShadow, view, 0)
+        if (layout.items.isNotEmpty()) {
+            layout.items.forEach { item ->
+                when (item) {
+                    is KeyItem -> addKeyItem(item, dragListener)
+                    is SpacerItem -> {
+                        val spacer = Space(context).apply {
+                            isClickable = false
+                            isFocusable = false
+                            isEnabled = false
+                            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
                         }
-                        true
+                        spacer.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
+                        this.addView(spacer)
                     }
-                    this.addView(keyView)
                 }
-
-                is SpacerItem -> {
-                    val spacer = Space(context).apply {
-                        isClickable = false
-                        isFocusable = false
-                        isEnabled = false
-                        importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-                    }
-                    spacer.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
-                    this.addView(spacer)
-                }
+            }
+        } else {
+            layout.keys.forEach { keyData ->
+                addKeyItem(
+                    KeyItem(
+                        id = keyData.keyId ?: "legacy_${keyData.row}_${keyData.column}_${keyData.label}",
+                        keyData = keyData,
+                        placement = GridPlacement(
+                            rowUnits = keyData.row,
+                            columnUnits = keyData.column,
+                            rowSpanUnits = keyData.rowSpan,
+                            columnSpanUnits = keyData.colSpan
+                        )
+                    ),
+                    dragListener
+                )
             }
         }
 
@@ -135,6 +133,29 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             this.addView(deleteButton)
         }
         // ▲▲▲ ここまで削除ボタンの描画を追加 ▲▲▲
+    }
+
+    private fun addKeyItem(item: KeyItem, dragListener: OnDragListener) {
+        val keyData = item.keyData
+        val keyView: View = createKeyView(keyData)
+        keyView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
+        keyView.tag = keyData.keyId
+        keyView.setOnDragListener(dragListener)
+        keyView.setOnClickListener {
+            keyData.keyId?.let { keyId -> listener?.onKeySelected(keyId) }
+        }
+        keyView.setOnLongClickListener { view ->
+            keyData.keyId?.let { keyId ->
+                val clipText = "keyId:$keyId"
+                val clipItem = ClipData.Item(clipText)
+                val mimeTypes = arrayOf("text/plain")
+                val data = ClipData(clipText, mimeTypes, clipItem)
+                val dragShadow = DragShadowBuilder(view)
+                view.startDragAndDrop(data, dragShadow, view, 0)
+            }
+            true
+        }
+        this.addView(keyView)
     }
 
     // ▼▼▼ 削除ボタンを生成するヘルパー関数を追加 ▼▼▼
@@ -196,13 +217,13 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 placement.rowUnits + rowOffsetUnits,
                 placement.rowSpanUnits,
                 FILL,
-                1f
+                placement.rowSpanUnits.toFloat()
             )
             columnSpec = spec(
                 placement.columnUnits + columnOffsetUnits,
                 placement.columnSpanUnits,
                 FILL,
-                1f
+                placement.columnSpanUnits.toFloat()
             )
             width = 0
             height = 0

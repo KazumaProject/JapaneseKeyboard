@@ -33,5 +33,9 @@ data class KeyDefinition(
     val isSpecialKey: Boolean = false,
     val drawableResId: Int? = null,
     val keyIdentifier: String,
-    val action: String? = null
+    val action: String? = null,
+    val rowUnits: Int? = null,
+    val columnUnits: Int? = null,
+    val rowSpanUnits: Int? = null,
+    val columnSpanUnits: Int? = null
 )
