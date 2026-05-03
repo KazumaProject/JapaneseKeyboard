@@ -13,8 +13,10 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
+import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.toKeyItem
 import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -411,7 +413,25 @@ class KeyboardRepository @Inject constructor(
             }
         }
 
-        return dbLayout.copyWithKeys(newKeys).copy(
+        val convertedLayout = if (dbLayout.usesFlexiblePlacement()) {
+            val newKeysById = newKeys.mapNotNull { key ->
+                key.keyId?.let { it to key }
+            }.toMap()
+            val newItems = dbLayout.items.map { item ->
+                when (item) {
+                    is SpacerItem -> item
+                    is KeyItem -> {
+                        val updatedKey = newKeysById[item.keyData.keyId] ?: item.keyData
+                        item.copy(keyData = updatedKey)
+                    }
+                }
+            }
+            dbLayout.copyWithItems(newItems)
+        } else {
+            dbLayout.copyWithKeys(newKeys)
+        }
+
+        return convertedLayout.copy(
             flickKeyMaps = newFlickKeyMaps,
             twoStepFlickKeyMaps = newTwoStepFlickKeyMaps,
             longPressFlickKeyMaps = newLongPressFlickKeyMaps,
