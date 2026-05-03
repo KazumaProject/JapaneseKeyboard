@@ -8,6 +8,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
@@ -179,7 +180,7 @@ class KeyboardEditorViewModel @Inject constructor(
             for (col in 0 until layout.columnCount) {
                 newKeys.add(createEmptyKey(newRowCount - 1, col))
             }
-            val newLayout = layout.copy(keys = newKeys, rowCount = newRowCount)
+            val newLayout = layout.copyWithKeys(newKeys, rowCount = newRowCount)
             currentState.copy(layout = newLayout)
         }
     }
@@ -201,7 +202,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 }
             }
 
-            val newLayout = layout.copy(keys = updatedKeys, rowCount = newRowCount)
+            val newLayout = layout.copyWithKeys(updatedKeys, rowCount = newRowCount)
             currentState.copy(layout = newLayout)
         }
     }
@@ -214,7 +215,7 @@ class KeyboardEditorViewModel @Inject constructor(
             for (row in 0 until layout.rowCount) {
                 newKeys.add(createEmptyKey(row, newColumnCount - 1))
             }
-            val newLayout = layout.copy(
+            val newLayout = layout.copyWithKeys(
                 keys = newKeys.sortedWith(compareBy({ it.row }, { it.column })),
                 columnCount = newColumnCount
             )
@@ -239,7 +240,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 }
             }
 
-            val newLayout = layout.copy(keys = updatedKeys, columnCount = newColumnCount)
+            val newLayout = layout.copyWithKeys(updatedKeys, columnCount = newColumnCount)
             currentState.copy(layout = newLayout)
         }
     }
@@ -264,7 +265,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 }
             }
 
-            val newLayout = layout.copy(keys = updatedKeys, rowCount = layout.rowCount - 1)
+            val newLayout = layout.copyWithKeys(updatedKeys, rowCount = layout.rowCount - 1)
             currentState.copy(layout = newLayout)
         }
     }
@@ -289,7 +290,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 }
             }
 
-            val newLayout = layout.copy(keys = updatedKeys, columnCount = layout.columnCount - 1)
+            val newLayout = layout.copyWithKeys(updatedKeys, columnCount = layout.columnCount - 1)
             currentState.copy(layout = newLayout)
         }
     }
@@ -400,8 +401,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 }
             }
 
-            val newLayout = layout.copy(
-                keys = finalKeys,
+            val newLayout = layout.copyWithKeys(finalKeys).copy(
                 flickKeyMaps = finalFlickMaps,
                 circularFlickKeyMaps = finalCircularFlickMaps,
                 twoStepFlickKeyMaps = finalTwoStepMaps,
@@ -463,7 +463,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 return@update currentState
             }
 
-            val newLayout = currentState.layout.copy(keys = newKeysCandidate)
+            val newLayout = currentState.layout.copyWithKeys(newKeysCandidate)
             currentState.copy(layout = newLayout)
         }
     }
@@ -551,8 +551,7 @@ class KeyboardEditorViewModel @Inject constructor(
             if (newKeyId != null) newKeyId to map else null
         }.toMap()
 
-        val finalLayout = templateLayout.copy(
-            keys = keysWithEnsuredIds,
+        val finalLayout = templateLayout.copyWithKeys(keysWithEnsuredIds).copy(
             flickKeyMaps = reKeyedFlickMaps,
             circularFlickKeyMaps = reKeyedCircularFlickMaps,
             twoStepFlickKeyMaps = reKeyedTwoStepMaps,

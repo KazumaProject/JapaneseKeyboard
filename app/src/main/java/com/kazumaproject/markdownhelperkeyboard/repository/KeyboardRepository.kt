@@ -8,6 +8,7 @@ import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
@@ -390,8 +391,7 @@ class KeyboardRepository @Inject constructor(
             }
         }
 
-        return dbLayout.copy(
-            keys = newKeys,
+        return dbLayout.copyWithKeys(newKeys).copy(
             flickKeyMaps = newFlickKeyMaps,
             twoStepFlickKeyMaps = newTwoStepFlickKeyMaps,
             longPressFlickKeyMaps = newLongPressFlickKeyMaps,
