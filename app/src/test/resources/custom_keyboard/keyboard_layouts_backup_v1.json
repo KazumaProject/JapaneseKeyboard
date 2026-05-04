@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "exportedBy": "unit-test",
+  "layouts": [
+    {
+      "layout": {
+        "layoutId": 21,
+        "name": "V1 Keyboard",
+        "columnCount": 3,
+        "rowCount": 2,
+        "isRomaji": false,
+        "isDirectMode": true,
+        "createdAt": 1754191047725,
+        "stableId": "stable-v1",
+        "futureLayoutField": "ignored"
+      },
+      "keysWithFlicks": [
+        {
+          "key": {
+            "keyId": 91,
+            "ownerLayoutId": 21,
+            "keyIdentifier": "v1-key-1",
+            "label": "A",
+            "row": 0,
+            "column": 0,
+            "rowSpan": 1,
+            "colSpan": 1,
+            "keyType": "NORMAL",
+            "isSpecialKey": false,
+            "futureKeyField": "ignored"
+          },
+          "flicks": [
+            {
+              "ownerKeyId": 91,
+              "stateIndex": 0,
+              "flickDirection": "TAP",
+              "actionType": "INPUT_TEXT",
+              "actionValue": "A",
+              "futureFlickField": "ignored"
+            }
+          ]
+        }
+      ],
+      "unknownLayoutItemList": []
+    }
+  ]
+}

@@ -15,6 +15,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFli
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TfbiFlickDirectionConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
@@ -67,8 +68,9 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         GemmaPromptTemplate::class,
         DeleteKeyFlickDeleteTarget::class,
         PhysicalKeyboardShortcutItem::class,
+        SpacerDefinition::class,
     ],
-    version = 28,
+    version = 30,
     exportSchema = false
 )
 @TypeConverters(
@@ -708,5 +710,48 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `rowUnits` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `columnUnits` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `rowSpanUnits` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `columnSpanUnits` INTEGER")
+            }
+        }
+
+        /**
+         * バージョン29から30へのマイグレーション。
+         * KeyboardLayout に行内 Spacer (SpacerItem) を永続化するための
+         * `spacer_definitions` テーブルを追加します。
+         *
+         * これにより QWERTY / AZERTY / Dvorak / Colemak テンプレートの
+         * 「Shift | spacer | 文字キー | spacer | Delete」のような
+         * 行途中の Spacer 配置も DB ↔ アプリ間でラウンドトリップ可能になります。
+         */
+        val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `spacer_definitions` (
+                        `spacerId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `ownerLayoutId` INTEGER NOT NULL,
+                        `itemIdentifier` TEXT NOT NULL,
+                        `rowUnits` INTEGER NOT NULL,
+                        `columnUnits` INTEGER NOT NULL,
+                        `rowSpanUnits` INTEGER NOT NULL,
+                        `columnSpanUnits` INTEGER NOT NULL,
+                        `sortOrder` INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY(`ownerLayoutId`) REFERENCES `keyboard_layouts`(`layoutId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_spacer_definitions_ownerLayoutId`
+                    ON `spacer_definitions`(`ownerLayoutId`)
+                    """.trimIndent()
+                )
+            }
+        }
     }
 }
