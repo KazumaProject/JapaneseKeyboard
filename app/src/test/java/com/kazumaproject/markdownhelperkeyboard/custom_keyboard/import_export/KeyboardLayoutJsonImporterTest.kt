@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export
 
 import com.google.gson.JsonParser
+import com.google.gson.annotations.SerializedName
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -13,7 +14,7 @@ import org.junit.Test
  * 主な観点:
  * - 旧 root array 形式 (spacers なし / null / 完全形)
  * - flick 系 List 欠損
- * - 新 schemaVersion = 2 object 形式
+ * - 新 schemaVersion = 1 object 形式
  * - export round-trip
  */
 class KeyboardLayoutJsonImporterTest {
@@ -163,13 +164,13 @@ class KeyboardLayoutJsonImporterTest {
     }
 
     // -----------------------------
-    // D. 新 schemaVersion = 2 object 形式を import できる
+    // D. 新 schemaVersion = 1 object 形式を import できる
     // -----------------------------
     @Test
-    fun parse_schemaVersion2_objectFormat_isAccepted() {
+    fun parse_schemaVersion1_objectFormat_isAccepted() {
         val json = """
             {
-              "schemaVersion": 2,
+              "schemaVersion": 1,
               "layouts": [
                 $minimalLayoutJson
               ]
@@ -183,7 +184,7 @@ class KeyboardLayoutJsonImporterTest {
     }
 
     // -----------------------------
-    // E. export は schemaVersion = 2 の object 形式になる
+    // E. export は schemaVersion = 1 の object 形式になる
     // -----------------------------
     @Test
     fun exporter_emitsSchemaVersionedObjectRoot() {
@@ -196,7 +197,7 @@ class KeyboardLayoutJsonImporterTest {
         assertTrue("root must be object", root.isJsonObject)
 
         val obj = root.asJsonObject
-        assertEquals(2, obj["schemaVersion"].asInt)
+        assertEquals(1, obj["schemaVersion"].asInt)
         assertNotNull(obj["layouts"])
         assertTrue("layouts must be array", obj["layouts"].isJsonArray)
         assertEquals(0, obj["layouts"].asJsonArray.size())
@@ -215,16 +216,16 @@ class KeyboardLayoutJsonImporterTest {
     fun parse_invalidJson_returnsInvalidJsonFailure() {
         val result = KeyboardLayoutJsonImporter.parse("{")
         assertTrue(result is KeyboardLayoutImportResult.Failure)
-        assertTrue((result as KeyboardLayoutImportResult.Failure).error is KeyboardLayoutImportError.InvalidJson)
+        assertTrue((result as KeyboardLayoutImportResult.Failure).error is KeyboardLayoutImportError.MalformedJson)
     }
 
     @Test
-    fun parse_schemaVersion2_withMissingLayouts_returnsNoImportableLayouts() {
-        val json = """{ "schemaVersion": 2 }"""
+    fun parse_schemaVersion1_withMissingLayouts_returnsUnsupportedFormat() {
+        val json = """{ "schemaVersion": 1 }"""
         val result = KeyboardLayoutJsonImporter.parse(json)
         assertTrue(result is KeyboardLayoutImportResult.Failure)
         assertEquals(
-            KeyboardLayoutImportError.NoImportableLayouts,
+            KeyboardLayoutImportError.UnsupportedFormat,
             (result as KeyboardLayoutImportResult.Failure).error
         )
     }
@@ -416,12 +417,11 @@ class KeyboardLayoutJsonImporterTest {
             ]
         """.trimIndent()
 
-        val success = KeyboardLayoutBackupImporter.importText(json) as KeyboardLayoutImportResult.Success
+        val result = KeyboardLayoutBackupImporter.importText(json) as KeyboardLayoutImportResult.PartialSuccess
 
-        val key = success.layouts.single().keysWithFlicks.single().key
-        assertEquals(1, key.rowSpan)
-        assertEquals(1, key.colSpan)
-        assertTrue(success.warnings.any { it is KeyboardLayoutImportWarning.InvalidSpanCorrected })
+        assertEquals(1, result.layouts.size)
+        assertEquals(emptyList<Any>(), result.layouts.single().keysWithFlicks)
+        assertTrue(result.errors.any { it is KeyboardLayoutImportError.InvalidKeyPlacement })
     }
 
     @Test
@@ -495,6 +495,161 @@ class KeyboardLayoutJsonImporterTest {
         assertEquals("SWITCH_TO_NEXT_IME", layout.keysWithFlicks[0].flicks[2].actionType)
     }
 
+    @Test
+    fun parse_legacyResource_normalizesKeyAndFlicks() {
+        val result = KeyboardLayoutBackupImporter.importText(
+            resourceText("custom_keyboard/legacy_keyboard_layouts_backup_v0.json")
+        )
+
+        val layout = result.layoutsOrThrow().single()
+        assertEquals("メールとか", layout.layout.name)
+        assertEquals(1, layout.keysWithFlicks.size)
+        assertEquals(" メール", layout.keysWithFlicks.single().key.label)
+        assertEquals(1, layout.keysWithFlicks.single().flicks.size)
+        assertEquals("example@example.com", layout.keysWithFlicks.single().flicks.single().actionValue)
+        assertEquals(emptyList<Any>(), layout.spacers)
+    }
+
+    @Test
+    fun parse_v1Resource_withSpacers_importsSpacer() {
+        val result = KeyboardLayoutBackupImporter.importText(
+            resourceText("custom_keyboard/keyboard_layouts_backup_v1_with_spacers.json")
+        )
+
+        val layout = result.layoutsOrThrow().single()
+        assertEquals(1, layout.spacers.size)
+        assertEquals("spacer-1", layout.spacers.single().itemIdentifier)
+    }
+
+    @Test
+    fun parse_unknownFields_areIgnored() {
+        val result = KeyboardLayoutBackupImporter.importText(
+            resourceText("custom_keyboard/keyboard_layouts_backup_v1.json")
+        )
+
+        assertEquals("V1 Keyboard", result.layoutsOrThrow().single().layout.name)
+    }
+
+    @Test
+    fun parse_missingLayout_isSkippedWithStructuredError() {
+        val json = """
+            [
+              { "keysWithFlicks": [] },
+              $minimalLayoutJson
+            ]
+        """.trimIndent()
+
+        val result = KeyboardLayoutBackupImporter.importText(json) as KeyboardLayoutImportResult.PartialSuccess
+
+        assertEquals(1, result.layouts.size)
+        assertTrue(result.errors.any { it is KeyboardLayoutImportError.MissingLayout })
+    }
+
+    @Test
+    fun parse_missingKeyItem_keepsLayoutAndReportsMissingKeys() {
+        val json = """
+            [
+              {
+                "layout": {
+                  "layoutId": 1,
+                  "name": "MissingKey",
+                  "columnCount": 2,
+                  "rowCount": 1
+                },
+                "keysWithFlicks": [ { "flicks": [] } ]
+              }
+            ]
+        """.trimIndent()
+
+        val result = KeyboardLayoutBackupImporter.importText(json) as KeyboardLayoutImportResult.PartialSuccess
+
+        assertEquals(1, result.layouts.size)
+        assertEquals(emptyList<Any>(), result.layouts.single().keysWithFlicks)
+        assertTrue(result.errors.any { it is KeyboardLayoutImportError.MissingKeys })
+    }
+
+    @Test
+    fun parse_brokenOwnerKeyId_skipsOnlyBrokenFlick() {
+        val json = """
+            [
+              {
+                "layout": {
+                  "layoutId": 14,
+                  "name": "BrokenFlickOwner",
+                  "columnCount": 2,
+                  "rowCount": 1
+                },
+                "keysWithFlicks": [
+                  {
+                    "key": {
+                      "keyId": 10,
+                      "ownerLayoutId": 14,
+                      "label": "A",
+                      "row": 0,
+                      "column": 0,
+                      "rowSpan": 1,
+                      "colSpan": 1,
+                      "keyType": "NORMAL",
+                      "keyIdentifier": "key-a"
+                    },
+                    "flicks": [
+                      { "ownerKeyId": 10, "stateIndex": 0, "flickDirection": "TAP", "actionType": "INPUT_TEXT", "actionValue": "ok" },
+                      { "ownerKeyId": 999, "stateIndex": 0, "flickDirection": "UP", "actionType": "INPUT_TEXT", "actionValue": "ng" }
+                    ]
+                  }
+                ]
+              }
+            ]
+        """.trimIndent()
+
+        val result = KeyboardLayoutBackupImporter.importText(json) as KeyboardLayoutImportResult.PartialSuccess
+        val key = result.layouts.single().keysWithFlicks.single()
+
+        assertEquals(1, key.flicks.size)
+        assertEquals("ok", key.flicks.single().actionValue)
+        assertTrue(result.errors.any { it is KeyboardLayoutImportError.BrokenOwnerReference })
+    }
+
+    @Test
+    fun parse_invalidMixedBackup_importsValidLayoutAndReportsErrors() {
+        val result = KeyboardLayoutBackupImporter.importText(
+            resourceText("custom_keyboard/invalid_mixed_backup.json")
+        ) as KeyboardLayoutImportResult.PartialSuccess
+
+        assertEquals(1, result.layouts.size)
+        assertEquals("Valid Mixed", result.layouts.single().layout.name)
+        assertTrue(result.errors.any { it is KeyboardLayoutImportError.MissingLayout })
+        assertTrue(result.errors.any { it is KeyboardLayoutImportError.InvalidKeyPlacement })
+    }
+
+    @Test
+    fun importExportDtos_pinEveryFieldWithSerializedName() {
+        val dtoClasses = listOf(
+            KeyboardLayoutExportFileDto::class.java,
+            KeyboardLayoutExportDto::class.java,
+            KeyboardLayoutDto::class.java,
+            KeyWithFlicksExportDto::class.java,
+            KeyDefinitionDto::class.java,
+            FlickMappingDto::class.java,
+            CircularFlickMappingDto::class.java,
+            TwoStepFlickMappingDto::class.java,
+            LongPressFlickMappingDto::class.java,
+            TwoStepLongPressMappingDto::class.java,
+            SpacerDefinitionDto::class.java
+        )
+
+        dtoClasses.forEach { clazz ->
+            clazz.declaredFields
+                .filterNot { it.name.startsWith("\$") }
+                .forEach { field ->
+                    assertNotNull(
+                        "${clazz.simpleName}.${field.name} must have @SerializedName",
+                        field.getAnnotation(SerializedName::class.java)
+                    )
+                }
+        }
+    }
+
     private fun parseSuccessLayouts(json: String): List<ImportableKeyboardLayout> {
         return KeyboardLayoutJsonImporter.parse(json).layoutsOrThrow()
     }
@@ -513,5 +668,11 @@ class KeyboardLayoutJsonImporterTest {
     ) {
         assertTrue(result is KeyboardLayoutImportResult.Failure)
         assertEquals(expectedError, (result as KeyboardLayoutImportResult.Failure).error)
+    }
+
+    private fun resourceText(path: String): String {
+        return requireNotNull(javaClass.classLoader?.getResource(path)) {
+            "missing test resource: $path"
+        }.readText()
     }
 }

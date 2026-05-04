@@ -13,13 +13,19 @@ sealed class KeyboardLayoutImportResult {
     ) : KeyboardLayoutImportResult()
 
     data class Failure(
-        val error: KeyboardLayoutImportError
+        val error: KeyboardLayoutImportError,
+        val errors: List<KeyboardLayoutImportError> = listOf(error)
     ) : KeyboardLayoutImportResult()
 }
 
 sealed class KeyboardLayoutImportError {
     data object EmptyInput : KeyboardLayoutImportError()
     data object UnsupportedFormat : KeyboardLayoutImportError()
+    data class MalformedJson(
+        val exceptionClass: String? = null,
+        val message: String? = null
+    ) : KeyboardLayoutImportError()
+
     data class InvalidJson(
         val exceptionClass: String? = null,
         val message: String? = null
@@ -33,6 +39,26 @@ sealed class KeyboardLayoutImportError {
     data object NoLayoutPayloadFound : KeyboardLayoutImportError()
     data object SchemaMismatch : KeyboardLayoutImportError()
     data object NoImportableLayouts : KeyboardLayoutImportError()
+    data class MissingLayout(val layoutIndex: Int) : KeyboardLayoutImportError()
+    data class MissingKeys(val layoutIndex: Int, val keyIndex: Int? = null) :
+        KeyboardLayoutImportError()
+
+    data class InvalidLayoutSize(val layoutIndex: Int, val reason: String) :
+        KeyboardLayoutImportError()
+
+    data class InvalidKeyPlacement(
+        val layoutIndex: Int,
+        val keyIndex: Int,
+        val reason: String
+    ) : KeyboardLayoutImportError()
+
+    data class BrokenOwnerReference(
+        val layoutIndex: Int,
+        val keyIndex: Int? = null,
+        val mappingIndex: Int? = null,
+        val reason: String
+    ) : KeyboardLayoutImportError()
+
     data class ValidationFailed(
         val layoutIndex: Int? = null,
         val reason: String
