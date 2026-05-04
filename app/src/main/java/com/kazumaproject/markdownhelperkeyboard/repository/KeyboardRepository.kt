@@ -50,6 +50,41 @@ private data class DbKeyboardLayoutParts(
     val spacers: List<SpacerDefinition> = emptyList()
 )
 
+/**
+ * `saveLayout(id = X)` で渡された X が DB 上に存在しなかった場合の例外。
+ *
+ * 旧実装は黙って新規作成にフォールバックして stableId を再生成していたため、
+ * MoveToCustomKeyboard の参照が壊れる原因になっていた。新実装では明示的に
+ * 例外を投げ、ViewModel 側で握り潰すかリカバリーするかを選択させる。
+ */
+class LayoutNotFoundException(val layoutId: Long) : NoSuchElementException(
+    "CustomKeyboardLayout(layoutId=$layoutId) does not exist; cannot update."
+)
+
+/**
+ * MoveToCustomKeyboard が参照している場所を表す。
+ */
+data class MoveToCustomKeyboardReference(
+    val sourceLayoutId: Long,
+    val sourceLayoutName: String,
+    val sourceKeyIdentifier: String,
+    val sourceKeyLabel: String?,
+    val targetStableId: String
+)
+
+/**
+ * 削除対象レイアウトの参照状況を表す。
+ */
+data class CustomKeyboardDeleteImpact(
+    val layoutId: Long,
+    val layoutName: String,
+    val stableId: String,
+    val references: List<MoveToCustomKeyboardReference>
+) {
+    val hasReferences: Boolean
+        get() = references.isNotEmpty()
+}
+
 fun ensureStableIdsForLayouts(
     layouts: List<CustomKeyboardLayout>,
     generateStableId: () -> String = { UUID.randomUUID().toString() }
@@ -278,49 +313,46 @@ class KeyboardRepository @Inject constructor(
     // -----------------------------
 
     /**
-     * レイアウトの保存処理（TWO_STEP_FLICK 含む）
+     * レイアウトの保存処理（TWO_STEP_FLICK 含む）。
      *
-     * 重要:
-     * - 既存レイアウトの createdAt / sortOrder を維持する（編集で順序が壊れないように）
-     * - 新規作成は sortOrder = max+1 として最上位に追加
+     * 設計:
+     * - id == null / id <= 0 → 新規作成 ([createNewLayoutInternal]):
+     *   stableId を新規 UUID で生成し、createdAt は現在時刻、sortOrder は max+1。
+     * - id > 0 → 既存更新 ([updateExistingLayoutInternal]):
+     *   既存レイアウトを取得し、layoutId / stableId / createdAt / sortOrder を維持。
+     *   name / rowCount / columnCount / isRomaji / isDirectMode のみ更新。
+     *   子要素は DAO のトランザクション内で再構築。
+     *   既存が見つからない場合は [LayoutNotFoundException] を投げる
+     *   (黙って新規作成にフォールバックして stableId を再生成しないため)。
      *
-     * 注意:
-     * - dao.insertLayout() が REPLACE の場合、既存保存時は親(row)が置換されます。
-     *   ただし layoutId を明示しているので ID は維持されます。
-     *   また FK の ON DELETE CASCADE がある場合、子テーブルは置換に伴い一度削除され、
-     *   直後に insertFullKeyboardLayout 内で再挿入される想定です。
+     * @return 保存後の layoutId
      */
-    suspend fun saveLayout(layout: KeyboardLayout, name: String, id: Long?) {
-        Timber.d("saveLayout: $layout")
+    suspend fun saveLayout(layout: KeyboardLayout, name: String, id: Long?): Long {
+        Timber.d("saveLayout: id=%s name=%s", id, name)
 
-        val existing = if (id != null && id > 0) {
-            dao.getFullLayoutOneShot(id)?.layout
+        return if (id == null || id <= 0L) {
+            createNewLayoutInternal(layout, name)
         } else {
-            null
+            updateExistingLayoutInternal(id, layout, name)
         }
+    }
 
-        val createdAtToKeep = existing?.createdAt ?: System.currentTimeMillis()
-        val sortOrderToKeep = existing?.sortOrder ?: nextTopSortOrder()
-        val stableIdToKeep = existing?.stableId
-            ?.takeIf { it.isNotBlank() }
-            ?: UUID.randomUUID().toString()
-
-        val dbLayout = CustomKeyboardLayout(
-            layoutId = id ?: 0,
+    private suspend fun createNewLayoutInternal(layout: KeyboardLayout, name: String): Long {
+        val newStableId = generateUniqueStableId()
+        val newLayout = CustomKeyboardLayout(
+            layoutId = 0,
             name = name,
             columnCount = layout.columnCount,
             rowCount = layout.rowCount,
             isRomaji = layout.isRomaji,
             isDirectMode = layout.isDirectMode,
-            createdAt = createdAtToKeep,
-            sortOrder = sortOrderToKeep,
-            stableId = stableIdToKeep
+            createdAt = System.currentTimeMillis(),
+            sortOrder = nextTopSortOrder(),
+            stableId = newStableId
         )
-
         val parts = convertToDbModel(layout)
-
-        dao.insertFullKeyboardLayout(
-            dbLayout,
+        val newLayoutId = dao.insertFullKeyboardLayout(
+            newLayout,
             parts.keys,
             parts.flicksMap,
             parts.circularFlicksMap,
@@ -329,10 +361,220 @@ class KeyboardRepository @Inject constructor(
             parts.twoStepLongPressMap,
             parts.spacers
         )
+        Timber.d("createNewLayoutInternal: inserted layoutId=%s stableId=%s", newLayoutId, newStableId)
+        return newLayoutId
     }
 
+    private suspend fun updateExistingLayoutInternal(
+        layoutId: Long,
+        layout: KeyboardLayout,
+        name: String
+    ): Long {
+        val existing = dao.getFullLayoutOneShot(layoutId)?.layout
+            ?: throw LayoutNotFoundException(layoutId).also {
+                Timber.e("updateExistingLayoutInternal: layoutId=%s not found", layoutId)
+            }
+
+        // identity (layoutId / stableId / createdAt / sortOrder) は決して書き換えない。
+        // stableId が空の既存 row が来た場合は (旧データ) 新しい UUID を割り当てておく。
+        // これは "blank → 何かしらの stableId" への一方向の修復であり、
+        // 既存の有効な stableId は絶対に変更しない。
+        val repairedStableId = if (existing.stableId.isBlank()) {
+            generateUniqueStableId()
+        } else {
+            existing.stableId
+        }
+
+        val updatedParent = existing.copy(
+            name = name,
+            columnCount = layout.columnCount,
+            rowCount = layout.rowCount,
+            isRomaji = layout.isRomaji,
+            isDirectMode = layout.isDirectMode,
+            stableId = repairedStableId
+        )
+
+        val parts = convertToDbModel(layout)
+        dao.updateFullKeyboardLayoutKeepingIdentity(
+            layout = updatedParent,
+            keys = parts.keys,
+            flicksMap = parts.flicksMap,
+            circularFlicksMap = parts.circularFlicksMap,
+            twoStepFlicksMap = parts.twoStepMap,
+            longPressFlicksMap = parts.longPressFlicksMap,
+            twoStepLongPressFlicksMap = parts.twoStepLongPressMap,
+            spacers = parts.spacers
+        )
+        Timber.d(
+            "updateExistingLayoutInternal: kept identity layoutId=%s stableId=%s",
+            updatedParent.layoutId, updatedParent.stableId
+        )
+        return updatedParent.layoutId
+    }
+
+    /**
+     * 既存の stableId と衝突しない UUID を生成する。
+     * unique index 違反による insert 失敗を防ぐためのガード。
+     */
+    private suspend fun generateUniqueStableId(): String {
+        repeat(10) {
+            val candidate = UUID.randomUUID().toString()
+            if (dao.findLayoutByStableId(candidate) == null) {
+                return candidate
+            }
+        }
+        // ここまで来る確率は事実上ゼロ (UUIDv4 は 2^122 通り)。最後の保険として
+        // タイムスタンプ付きの値を返す。
+        return "fallback-stable-${System.nanoTime()}-${UUID.randomUUID()}"
+    }
+
+    /**
+     * UI からの「とりあえず削除して」を受け付ける従来 API。
+     *
+     * 通常は [deleteLayoutConfirmed] を使うこと。これは参照チェック後に呼び出される
+     * 内部 API としても利用される。
+     */
     suspend fun deleteLayout(id: Long) {
+        Timber.d("deleteLayout: id=%s", id)
         dao.deleteLayout(id)
+    }
+
+    /**
+     * 削除前に必ず参照チェックを行うことを呼び出し側に明示するためのラッパー。
+     * 参照の有無に関わらず削除を実行する。
+     *
+     * UI 層は事前に [getDeleteImpactForLayout] を呼び、
+     * 参照ありなら警告ダイアログでユーザーの了承を取り、
+     * 了承後にこのメソッドを呼ぶ。
+     */
+    suspend fun deleteLayoutConfirmed(id: Long) {
+        Timber.d("deleteLayoutConfirmed: id=%s", id)
+        dao.deleteLayout(id)
+    }
+
+    // -----------------------------
+    // MoveToCustomKeyboard 参照検査
+    // -----------------------------
+
+    /**
+     * 指定 layoutId を削除した場合に「削除済みのカスタムキーボード」になる
+     * MoveToCustomKeyboard の参照一覧を返す。
+     *
+     * - 削除対象が存在しない場合は references=空、layoutName=空文字、stableId=空文字。
+     * - stableId が空の場合は参照が無いとみなす (MoveToCustomKeyboard("") はそもそも
+     *   永続化時点で破棄される設計のため)。
+     */
+    suspend fun getDeleteImpactForLayout(layoutId: Long): CustomKeyboardDeleteImpact {
+        val target = dao.getFullLayoutOneShot(layoutId)?.layout
+        if (target == null) {
+            return CustomKeyboardDeleteImpact(
+                layoutId = layoutId,
+                layoutName = "",
+                stableId = "",
+                references = emptyList()
+            )
+        }
+        val references = if (target.stableId.isBlank()) {
+            emptyList()
+        } else {
+            findMoveToCustomKeyboardReferences(target.stableId)
+        }
+        return CustomKeyboardDeleteImpact(
+            layoutId = target.layoutId,
+            layoutName = target.name,
+            stableId = target.stableId,
+            references = references
+        )
+    }
+
+    /**
+     * 全カスタムキーボードを走査し、`MoveToCustomKeyboard(targetStableId)` に
+     * 該当する参照箇所を集める。tap action / petal flick / circular flick /
+     * two-step flick / long-press flick / two-step long-press flick のすべてを対象。
+     *
+     * 既存設計に合わせ、DB 文字列ではなく
+     * [com.kazumaproject.custom_keyboard.data.KeyActionMapper.toKeyAction]
+     * と [toFlickAction]/[FlickMapping/CircularFlickMapping#toFlickAction] を通して
+     * KeyAction として復元してから判定する。これにより、
+     * 文字列表現の揺れ (`MoveToCustomKeyboard:xxx` / `MoveToCustomKeyboard` の
+     * actionType=stableId) の両形式を取りこぼさない。
+     */
+    suspend fun findMoveToCustomKeyboardReferences(
+        targetStableId: String
+    ): List<MoveToCustomKeyboardReference> {
+        if (targetStableId.isBlank()) return emptyList()
+
+        val references = mutableListOf<MoveToCustomKeyboardReference>()
+        val allLayouts = dao.getAllFullLayoutsOneShot()
+
+        for (full in allLayouts) {
+            val sourceLayoutId = full.layout.layoutId
+            val sourceLayoutName = full.layout.name
+
+            for (keyWithFlicks in full.keysWithFlicks) {
+                val key = keyWithFlicks.key
+                val keyIdentifier = key.keyIdentifier
+                val keyLabel = key.label.takeIf { it.isNotBlank() }
+
+                // 1) tap action
+                val tapAction = KeyActionMapper.toKeyAction(key.action)
+                if (tapAction is KeyAction.MoveToCustomKeyboard &&
+                    tapAction.stableId == targetStableId
+                ) {
+                    references += MoveToCustomKeyboardReference(
+                        sourceLayoutId = sourceLayoutId,
+                        sourceLayoutName = sourceLayoutName,
+                        sourceKeyIdentifier = keyIdentifier,
+                        sourceKeyLabel = keyLabel,
+                        targetStableId = targetStableId
+                    )
+                }
+
+                // 2) flick mapping
+                for (flick in keyWithFlicks.flicks) {
+                    val act = flick.toFlickAction()
+                    if (act is FlickAction.Action) {
+                        val a = act.action
+                        if (a is KeyAction.MoveToCustomKeyboard &&
+                            a.stableId == targetStableId
+                        ) {
+                            references += MoveToCustomKeyboardReference(
+                                sourceLayoutId = sourceLayoutId,
+                                sourceLayoutName = sourceLayoutName,
+                                sourceKeyIdentifier = keyIdentifier,
+                                sourceKeyLabel = keyLabel,
+                                targetStableId = targetStableId
+                            )
+                        }
+                    }
+                }
+
+                // 3) circular flick mapping
+                for (cflick in keyWithFlicks.circularFlicks) {
+                    val act = cflick.toFlickAction()
+                    if (act is FlickAction.Action) {
+                        val a = act.action
+                        if (a is KeyAction.MoveToCustomKeyboard &&
+                            a.stableId == targetStableId
+                        ) {
+                            references += MoveToCustomKeyboardReference(
+                                sourceLayoutId = sourceLayoutId,
+                                sourceLayoutName = sourceLayoutName,
+                                sourceKeyIdentifier = keyIdentifier,
+                                sourceKeyLabel = keyLabel,
+                                targetStableId = targetStableId
+                            )
+                        }
+                    }
+                }
+
+                // two-step / long-press / two-step long-press は
+                // 出力テキスト (String) を保持する設計なので、KeyAction を
+                // 持つことはなく MoveToCustomKeyboard 参照は発生しない。
+                // 将来的に actionType を持つ拡張があった場合はここに追加する。
+            }
+        }
+        return references
     }
 
     /**

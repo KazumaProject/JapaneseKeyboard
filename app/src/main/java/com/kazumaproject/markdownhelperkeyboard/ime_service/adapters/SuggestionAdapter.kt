@@ -209,12 +209,20 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         currentMode = mode
         customLayouts = layouts
         if (needsFullRefresh) {
-            notifyItemChanged(layouts.size)
+            // Custom layout tabs are backed by a different item list from candidate suggestions.
+            // Layout add/remove/reorder can change item count and view types at the same time, so
+            // targeted notifyItemChanged calls are unsafe here. Keep this boundary explicit so the
+            // tab list can be moved to a stableId-based DiffUtil/ListAdapter model later.
+            notifyDataSetChanged()
         }
     }
 
     fun updateCustomTabVisibility(visibility: Boolean) {
+        if (showCustomTab == visibility) return
         showCustomTab = visibility
+        if (currentMode is TenKeyQWERTYMode.Custom) {
+            notifyDataSetChanged()
+        }
     }
 
     private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {

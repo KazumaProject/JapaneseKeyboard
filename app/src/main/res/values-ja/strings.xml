@@ -209,6 +209,8 @@
     <string name="remember_last_custom_keyboard_summary_off">カスタムキーボードを開いたとき、最初のカスタムキーボードを表示します</string>
     <string name="custom_keyboard_target_hint">移動先カスタムキーボード</string>
     <string name="deleted_custom_keyboard_target">削除済みのカスタムキーボード</string>
+    <string name="delete_layout_with_references_title">参照中のレイアウトを削除しますか？</string>
+    <string name="delete_layout_with_references_message">このカスタムキーボードは %1$d 個のキーから参照されています。削除すると、参照しているキーは「削除済みのカスタムキーボード」と表示され、切り替えできなくなります。それでも削除しますか？</string>
 
     <string name="clipboard_history_fragment_title">クリップボードの履歴</string>
     <string name="clipboard_history_fragment_summary">クリップボードの履歴を表示</string>
