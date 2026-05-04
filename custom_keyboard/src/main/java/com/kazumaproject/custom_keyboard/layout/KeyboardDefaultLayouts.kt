@@ -2,13 +2,18 @@ package com.kazumaproject.custom_keyboard.layout
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyMode
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
+import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 
 object KeyboardDefaultLayouts {
@@ -75,9 +80,9 @@ object KeyboardDefaultLayouts {
         val deleteKeyLookupKeys = layout.keys
             .filter { keyData ->
                 keyData.action == KeyAction.Delete ||
-                    keyData.keyId == "delete_key" ||
-                    keyData.keyId in deleteMapKeys ||
-                    (keyData.label.isNotBlank() && keyData.label in deleteMapKeys)
+                        keyData.keyId == "delete_key" ||
+                        keyData.keyId in deleteMapKeys ||
+                        (keyData.label.isNotBlank() && keyData.label in deleteMapKeys)
             }
             .flatMap { keyData -> listOfNotNull(keyData.keyId, keyData.label) }
             .toSet() + deleteMapKeys
@@ -115,9 +120,9 @@ object KeyboardDefaultLayouts {
         } else {
             layout.keys.map { keyData ->
                 val isDeleteKey = keyData.action == KeyAction.Delete ||
-                    keyData.keyId == "delete_key" ||
-                    keyData.keyId in deleteKeyLookupKeys ||
-                    (keyData.label.isNotBlank() && keyData.label in deleteKeyLookupKeys)
+                        keyData.keyId == "delete_key" ||
+                        keyData.keyId in deleteKeyLookupKeys ||
+                        (keyData.label.isNotBlank() && keyData.label in deleteKeyLookupKeys)
                 if (isDeleteKey) {
                     keyData.copy(action = KeyAction.Delete, keyType = KeyType.NORMAL)
                 } else {
@@ -126,8 +131,7 @@ object KeyboardDefaultLayouts {
             }
         }
 
-        return layout.copy(
-            keys = filteredKeys,
+        return layout.copyWithKeys(filteredKeys).copy(
             flickKeyMaps = filteredFlickKeyMaps,
             circularFlickKeyMaps = filteredCircularFlickKeyMaps
         )
@@ -358,7 +362,7 @@ object KeyboardDefaultLayouts {
             this[keyIndex] = newKey
         }
 
-        return baseLayout.copy(keys = newKeys)
+        return baseLayout.copyWithKeys(newKeys)
     }
 
     private fun createHiraganaLayoutToggle(
@@ -1177,7 +1181,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP to FlickAction.Input("？"),
             FlickDirection.UP_RIGHT_FAR to FlickAction.Input("！"),
             FlickDirection.DOWN to FlickAction.Input("…"),
-            )
+        )
 
         val flickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>> =
             if (deleteKeyFlickSettings.hasFlickActions) {
@@ -1714,31 +1718,31 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("B"),
             FlickDirection.UP to FlickAction.Input("C"),
 
-        )
+            )
         val defUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("D"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("E"),
             FlickDirection.UP to FlickAction.Input("F"),
 
-        )
+            )
         val ghiUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("G"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("H"),
             FlickDirection.UP to FlickAction.Input("I"),
 
-        )
+            )
         val jklUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("J"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("K"),
             FlickDirection.UP to FlickAction.Input("L"),
 
-        )
+            )
         val mnoUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("M"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("N"),
             FlickDirection.UP to FlickAction.Input("O"),
 
-        )
+            )
         val pqrsUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("P"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("Q"),
@@ -1751,7 +1755,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("U"),
             FlickDirection.UP to FlickAction.Input("V"),
 
-        )
+            )
         val wxyzUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("W"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("X"),
@@ -2006,31 +2010,31 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("B"),
             FlickDirection.UP to FlickAction.Input("C"),
 
-        )
+            )
         val defUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("D"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("E"),
             FlickDirection.UP to FlickAction.Input("F"),
 
-        )
+            )
         val ghiUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("G"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("H"),
             FlickDirection.UP to FlickAction.Input("I"),
 
-        )
+            )
         val jklUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("J"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("K"),
             FlickDirection.UP to FlickAction.Input("L"),
 
-        )
+            )
         val mnoUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("M"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("N"),
             FlickDirection.UP to FlickAction.Input("O"),
 
-        )
+            )
         val pqrsUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("P"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("Q"),
@@ -2043,7 +2047,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("U"),
             FlickDirection.UP to FlickAction.Input("V"),
 
-        )
+            )
         val wxyzUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("W"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("X"),
@@ -2333,31 +2337,31 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("B"),
             FlickDirection.UP to FlickAction.Input("C"),
 
-        )
+            )
         val defUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("D"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("E"),
             FlickDirection.UP to FlickAction.Input("F"),
 
-        )
+            )
         val ghiUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("G"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("H"),
             FlickDirection.UP to FlickAction.Input("I"),
 
-        )
+            )
         val jklUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("J"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("K"),
             FlickDirection.UP to FlickAction.Input("L"),
 
-        )
+            )
         val mnoUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("M"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("N"),
             FlickDirection.UP to FlickAction.Input("O"),
 
-        )
+            )
         val pqrsUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("P"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("Q"),
@@ -2370,7 +2374,7 @@ object KeyboardDefaultLayouts {
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("U"),
             FlickDirection.UP to FlickAction.Input("V"),
 
-        )
+            )
         val wxyzUpper = mapOf(
             FlickDirection.TAP to FlickAction.Input("W"),
             FlickDirection.UP_LEFT_FAR to FlickAction.Input("X"),
@@ -3738,39 +3742,39 @@ object KeyboardDefaultLayouts {
 
         val flickMaps: Map<String, List<Map<FlickDirection, FlickAction>>> =
             mutableMapOf<String, List<Map<FlickDirection, FlickAction>>>(
-            "1" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("1"))),
-            "2" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("2"))),
-            "3" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("3"))),
-            "4" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("4"))),
-            "5" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("5"))),
-            "6" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("6"))),
-            "7" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("7"))),
-            "8" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("8"))),
-            "9" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("9"))),
-            "0" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("0"))),
-            "," to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input(","),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
-                    FlickDirection.UP to FlickAction.Input("-"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input("*"),
-                    FlickDirection.DOWN to FlickAction.Input("/"),
+                "1" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("1"))),
+                "2" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("2"))),
+                "3" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("3"))),
+                "4" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("4"))),
+                "5" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("5"))),
+                "6" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("6"))),
+                "7" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("7"))),
+                "8" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("8"))),
+                "9" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("9"))),
+                "0" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("0"))),
+                "," to listOf(
+                    mapOf(
+                        FlickDirection.TAP to FlickAction.Input(","),
+                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("+"),
+                        FlickDirection.UP to FlickAction.Input("-"),
+                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input("*"),
+                        FlickDirection.DOWN to FlickAction.Input("/"),
+                    )
+                ),
+                "." to listOf(
+                    mapOf(
+                        FlickDirection.TAP to FlickAction.Input("."),
+                        FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
+                        FlickDirection.UP to FlickAction.Input("%"),
+                        FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
+                        FlickDirection.DOWN to FlickAction.Input("="),
+                    )
                 )
-            ),
-            "." to listOf(
-                mapOf(
-                    FlickDirection.TAP to FlickAction.Input("."),
-                    FlickDirection.UP_LEFT_FAR to FlickAction.Input("("),
-                    FlickDirection.UP to FlickAction.Input("%"),
-                    FlickDirection.UP_RIGHT_FAR to FlickAction.Input(")"),
-                    FlickDirection.DOWN to FlickAction.Input("="),
-                )
-            )
-        ).toMutableMap().apply {
-            if (deleteKeyFlickSettings.hasFlickActions) {
-                put("", listOf(createDeleteActionMap(deleteKeyFlickSettings)))
+            ).toMutableMap().apply {
+                if (deleteKeyFlickSettings.hasFlickActions) {
+                    put("", listOf(createDeleteActionMap(deleteKeyFlickSettings)))
+                }
             }
-        }
 
         return applyDeleteKeyFlickSettings(
             KeyboardLayout(keys, flickMaps, 4, 4),
@@ -4458,6 +4462,271 @@ object KeyboardDefaultLayouts {
         )
 
         return KeyboardLayout(keys, flickMaps, 4, 4)
+    }
+
+    /**
+     * 文字キー1個分の安全な keyId サフィックスを生成する。
+     * 記号類は読みやすい識別子に変換する。
+     */
+    private fun safeKeyIdSuffix(char: String): String = when (char) {
+        "'" -> "quote"
+        "," -> "comma"
+        "." -> "period"
+        ";" -> "semicolon"
+        else -> char
+    }
+
+    // =====================================================================
+    // Declarative templates (QWERTY / AZERTY / Dvorak / Colemak)
+    //
+    // Each alphabet template is defined as a TemplateLayoutSpec that names
+    // every cell — character keys, special keys, and intra-row Spacers —
+    // explicitly. The builder converts the spec into KeyboardLayout.items,
+    // and `keys` is derived from those items so layout.items remains the
+    // single source of truth (no half-cell information is encoded in
+    // KeyData.row/column).
+    //
+    // Per-template freedom:
+    //   - columnUnitCount may differ (Dvorak uses 24 because Row2 has
+    //     10 letters + Shift + Delete).
+    //   - Each row chooses its own startColumnUnits and heightUnits.
+    //   - Special keys and Spacers can be placed at any position; Row3 is
+    //     no longer hard-coded as the only place for them.
+    //
+    // Bug fix:
+    //   - Editor drag-swap now uses placements from these items; KeyData.
+    //     row/column are *not* the source of truth, so half-cell QWERTY
+    //     placements survive a swap.
+    // =====================================================================
+
+    /** Top-level alphabet-template definition. */
+    private data class TemplateLayoutSpec(
+        val idPrefix: String,
+        val name: String,
+        val rowUnitCount: Int,
+        val columnUnitCount: Int,
+        val rows: List<TemplateRowSpec>
+    )
+
+    /**
+     * One row of the template. `startColumnUnits` shifts the row right
+     * (typical home-row offset), and `heightUnits` defaults to 2.
+     */
+    private data class TemplateRowSpec(
+        val rowUnits: Int,
+        val startColumnUnits: Int = 0,
+        val heightUnits: Int = 2,
+        val items: List<TemplateItemSpec>
+    )
+
+    /** Anything that occupies space in a row. */
+    private sealed interface TemplateItemSpec {
+        val columnSpanUnits: Int
+    }
+
+    /** Plain character key (label is also the typed text). */
+    private data class CharKeySpec(
+        val label: String,
+        override val columnSpanUnits: Int = 2
+    ) : TemplateItemSpec
+
+    /** Special key (Shift, Delete, Enter, Space, ...). */
+    private data class SpecialKeySpec(
+        val idSuffix: String,
+        val label: String = "",
+        val action: KeyAction,
+        val drawableResId: Int? = null,
+        override val columnSpanUnits: Int = 2
+    ) : TemplateItemSpec
+
+    /** Visual gap inside a row; participates in placement but renders empty. */
+    private data class SpacerSpec(
+        val idSuffix: String,
+        override val columnSpanUnits: Int
+    ) : TemplateItemSpec
+
+    /**
+     * Convert a [TemplateLayoutSpec] into a [KeyboardLayout].
+     *
+     * - Each character/special key becomes a [KeyItem] whose
+     *   [GridPlacement] reflects the cumulative column position.
+     * - Each [SpacerSpec] becomes a [SpacerItem].
+     * - `keys` is regenerated from the items so the two stay consistent.
+     * - rowCount/columnCount are derived from rowUnitCount/columnUnitCount
+     *   (rounded up) so legacy code that still reads them keeps working.
+     * - KeyData.row / KeyData.column carry approximate (rowUnits/2,
+     *   columnUnits/2) values for backward compatibility, but they are
+     *   *not* the source of truth — the layout's `items` are.
+     */
+    private fun buildAlphabetTemplate(spec: TemplateLayoutSpec): KeyboardLayout {
+        val items = mutableListOf<KeyboardLayoutItem>()
+        val keys = mutableListOf<KeyData>()
+
+        spec.rows.forEach { row ->
+            var cursor = row.startColumnUnits
+            val approxRow = row.rowUnits / 2
+
+            row.items.forEachIndexed { itemIndex, itemSpec ->
+                val placement = GridPlacement(
+                    rowUnits = row.rowUnits,
+                    columnUnits = cursor,
+                    rowSpanUnits = row.heightUnits,
+                    columnSpanUnits = itemSpec.columnSpanUnits
+                )
+                val approxCol = cursor / 2
+                val approxColSpan = (itemSpec.columnSpanUnits + 1) / 2
+                val approxRowSpan = (row.heightUnits + 1) / 2
+
+                when (itemSpec) {
+                    is CharKeySpec -> {
+                        val keyId = "${spec.idPrefix}_key_${safeKeyIdSuffix(itemSpec.label)}"
+                        val keyData = KeyData(
+                            label = itemSpec.label,
+                            row = approxRow,
+                            column = approxCol,
+                            isFlickable = false,
+                            action = KeyAction.Text(itemSpec.label),
+                            rowSpan = approxRowSpan,
+                            colSpan = approxColSpan,
+                            keyType = KeyType.NORMAL,
+                            isSpecialKey = false,
+                            keyId = keyId
+                        )
+                        items += KeyItem(id = keyId, keyData = keyData, placement = placement)
+                        keys += keyData
+                    }
+
+                    is SpecialKeySpec -> {
+                        val keyId = "${spec.idPrefix}_${itemSpec.idSuffix}"
+                        val keyData = KeyData(
+                            label = itemSpec.label,
+                            row = approxRow,
+                            column = approxCol,
+                            isFlickable = false,
+                            action = itemSpec.action,
+                            rowSpan = approxRowSpan,
+                            colSpan = approxColSpan,
+                            keyType = KeyType.NORMAL,
+                            isSpecialKey = true,
+                            drawableResId = itemSpec.drawableResId,
+                            keyId = keyId
+                        )
+                        items += KeyItem(id = keyId, keyData = keyData, placement = placement)
+                        keys += keyData
+                    }
+
+                    is SpacerSpec -> {
+                        val spacerId =
+                            "${spec.idPrefix}_row_${row.rowUnits}_${itemSpec.idSuffix}_${itemIndex}"
+                        items += SpacerItem(id = spacerId, placement = placement)
+                    }
+                }
+
+                cursor += itemSpec.columnSpanUnits
+            }
+        }
+
+        val derivedColumnCount = (spec.columnUnitCount + 1) / 2
+        val derivedRowCount = (spec.rowUnitCount + 1) / 2
+        return KeyboardLayout(
+            keys = keys,
+            flickKeyMaps = emptyMap(),
+            columnCount = derivedColumnCount,
+            rowCount = derivedRowCount,
+            items = items,
+            columnUnitCount = spec.columnUnitCount,
+            rowUnitCount = spec.rowUnitCount
+        )
+    }
+
+    private fun chars(vararg s: String): List<CharKeySpec> = s.map { CharKeySpec(it) }
+
+    private val shiftSpec
+        get() = SpecialKeySpec(
+            idSuffix = "shift",
+            action = KeyAction.ShiftKey,
+            drawableResId = com.kazumaproject.core.R.drawable.shift_24px,
+            columnSpanUnits = 2
+        )
+
+    private val deleteSpec
+        get() = SpecialKeySpec(
+            idSuffix = "delete",
+            action = KeyAction.Delete,
+            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
+            columnSpanUnits = 2
+        )
+
+    private val switchImeSpec
+        get() = SpecialKeySpec(
+            idSuffix = "switch_next_ime",
+            action = KeyAction.SwitchToNextIme,
+            drawableResId = com.kazumaproject.core.R.drawable.language_24dp,
+            columnSpanUnits = 2
+        )
+
+    private fun spaceSpec(span: Int) = SpecialKeySpec(
+        idSuffix = "space",
+        action = KeyAction.Space,
+        drawableResId = com.kazumaproject.core.R.drawable.baseline_space_bar_24,
+        columnSpanUnits = span
+    )
+
+    private fun enterSpec(span: Int) = SpecialKeySpec(
+        idSuffix = "enter",
+        action = KeyAction.Enter,
+        drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24,
+        columnSpanUnits = span
+    )
+
+    /**
+     * 英字 QWERTY 配列テンプレート。
+     *   Row 0: q w e r t y u i o p
+     *   Row 1:  a s d f g h j k l
+     *   Row 2: Shift | spacer | z x c v b n m | spacer | Delete
+     *   Row 3: SwitchIme | Space | Enter
+     */
+    fun createQwertyTemplateLayout(): KeyboardLayout {
+        val spec = TemplateLayoutSpec(
+            idPrefix = "qwerty",
+            name = "QWERTY",
+            rowUnitCount = 8,
+            columnUnitCount = 20,
+            rows = listOf(
+                TemplateRowSpec(
+                    rowUnits = 0,
+                    items = listOf(
+                        *chars("q", "w", "e", "r", "t", "y", "u", "i", "o", "p").toTypedArray()
+                    )
+                ),
+                TemplateRowSpec(
+                    rowUnits = 2,
+                    items = listOf(
+                        SpacerSpec("row1_gap", columnSpanUnits = 1),
+                        *chars("a", "s", "d", "f", "g", "h", "j", "k", "l").toTypedArray()
+                    )
+                ),
+                TemplateRowSpec(
+                    rowUnits = 4,
+                    items = listOf(
+                        shiftSpec,
+                        SpacerSpec("shift_gap", columnSpanUnits = 1),
+                        *chars("z", "x", "c", "v", "b", "n", "m").toTypedArray(),
+                        SpacerSpec("delete_gap", columnSpanUnits = 1),
+                        deleteSpec
+                    )
+                ),
+                TemplateRowSpec(
+                    rowUnits = 6,
+                    items = listOf(
+                        switchImeSpec,
+                        spaceSpec(span = 14),
+                        enterSpec(span = 4)
+                    )
+                )
+            )
+        )
+        return buildAlphabetTemplate(spec)
     }
 
     private fun createHiraganaToggleLayout(

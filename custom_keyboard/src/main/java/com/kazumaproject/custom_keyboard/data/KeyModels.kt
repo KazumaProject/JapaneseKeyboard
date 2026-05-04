@@ -88,6 +88,291 @@ data class KeyData(
     val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL
 )
 
+data class GridPlacement(
+    val rowUnits: Int,
+    val columnUnits: Int,
+    val rowSpanUnits: Int = 2,
+    val columnSpanUnits: Int = 2
+)
+
+sealed interface KeyboardLayoutItem {
+    val id: String
+    val placement: GridPlacement
+}
+
+data class KeyItem(
+    override val id: String,
+    val keyData: KeyData,
+    override val placement: GridPlacement
+) : KeyboardLayoutItem
+
+data class SpacerItem(
+    override val id: String,
+    override val placement: GridPlacement
+) : KeyboardLayoutItem
+
+private fun KeyData.layoutItemId(): String =
+    keyId?.takeIf { it.isNotBlank() } ?: "key_${row}_${column}_${label}"
+
+fun KeyData.toKeyItem(): KeyItem =
+    KeyItem(
+        id = layoutItemId(),
+        keyData = this,
+        placement = GridPlacement(
+            rowUnits = row * 2,
+            columnUnits = column * 2,
+            rowSpanUnits = rowSpan * 2,
+            columnSpanUnits = colSpan * 2
+        )
+    )
+
+fun halfColumnSpacer(id: String, rowUnits: Int, columnUnits: Int): SpacerItem =
+    SpacerItem(
+        id = id,
+        placement = GridPlacement(rowUnits, columnUnits, rowSpanUnits = 2, columnSpanUnits = 1)
+    )
+
+fun oneColumnSpacer(id: String, rowUnits: Int, columnUnits: Int): SpacerItem =
+    SpacerItem(
+        id = id,
+        placement = GridPlacement(rowUnits, columnUnits, rowSpanUnits = 2, columnSpanUnits = 2)
+    )
+
+fun halfRowSpacer(
+    id: String,
+    rowUnits: Int,
+    columnUnits: Int,
+    columnSpanUnits: Int
+): SpacerItem =
+    SpacerItem(
+        id = id,
+        placement = GridPlacement(rowUnits, columnUnits, rowSpanUnits = 1, columnSpanUnits = columnSpanUnits)
+    )
+
+fun oneRowSpacer(
+    id: String,
+    rowUnits: Int,
+    columnUnits: Int,
+    columnSpanUnits: Int
+): SpacerItem =
+    SpacerItem(
+        id = id,
+        placement = GridPlacement(rowUnits, columnUnits, rowSpanUnits = 2, columnSpanUnits = columnSpanUnits)
+    )
+
+fun KeyboardLayout.itemsForKeys(updatedKeys: List<KeyData>): List<KeyboardLayoutItem> {
+    val keysByItemId = updatedKeys.associateBy { it.layoutItemId() }
+    val usedIds = mutableSetOf<String>()
+
+    val updatedItems = items.mapNotNull { item ->
+        when (item) {
+            is SpacerItem -> item
+            is KeyItem -> {
+                val updatedKeyData = keysByItemId[item.id]
+                if (updatedKeyData != null) {
+                    usedIds += item.id
+                    if (
+                        updatedKeyData.row == item.keyData.row &&
+                        updatedKeyData.column == item.keyData.column &&
+                        updatedKeyData.rowSpan == item.keyData.rowSpan &&
+                        updatedKeyData.colSpan == item.keyData.colSpan
+                    ) {
+                        item.copy(keyData = updatedKeyData)
+                    } else {
+                        updatedKeyData.toKeyItem()
+                    }
+                } else {
+                    null
+                }
+            }
+        }
+    }
+
+    return updatedItems + updatedKeys
+        .filter { it.layoutItemId() !in usedIds }
+        .map { it.toKeyItem() }
+}
+
+fun KeyboardLayout.copyWithKeys(
+    keys: List<KeyData>,
+    columnCount: Int = this.columnCount,
+    rowCount: Int = this.rowCount
+): KeyboardLayout =
+    copy(
+        keys = keys,
+        columnCount = columnCount,
+        rowCount = rowCount,
+        items = itemsForKeys(keys),
+        columnUnitCount = columnCount * 2,
+        rowUnitCount = rowCount * 2
+    )
+
+fun KeyboardLayout.usesFlexiblePlacement(): Boolean {
+    if (items.any { it is SpacerItem }) return true
+
+    return items.filterIsInstance<KeyItem>().any { item ->
+        item.placement.rowUnits != item.keyData.row * 2 ||
+                item.placement.columnUnits != item.keyData.column * 2 ||
+                item.placement.rowSpanUnits != item.keyData.rowSpan * 2 ||
+                item.placement.columnSpanUnits != item.keyData.colSpan * 2
+    }
+}
+
+// =====================================================================
+// Item-based helpers (long-term source of truth: items + GridPlacement)
+//
+// Use these helpers whenever the layout uses half-cell offsets or
+// SpacerItems (QWERTY/AZERTY/Dvorak/Colemak templates and any layout
+// where items contain non-(row*2,column*2) placements).
+//
+// Avoid `copyWithKeys()` for those layouts because it routes through
+// KeyData.row/column, which cannot represent half-cell offsets.
+// =====================================================================
+
+/**
+ * Replace the item list of this layout while keeping every other field
+ * intact. `keys` is regenerated from the new items so the two stay in sync,
+ * and column/row unit counts are kept as the current layout's values.
+ *
+ * This is the preferred update primitive when a layout's source of truth is
+ * `items` + `GridPlacement` (e.g. QWERTY-family templates with half-cell
+ * offsets and SpacerItems).
+ */
+fun KeyboardLayout.copyWithItems(
+    newItems: List<KeyboardLayoutItem>
+): KeyboardLayout {
+    val newKeys = newItems.filterIsInstance<KeyItem>().map { it.keyData }
+    return copy(
+        keys = newKeys,
+        items = newItems
+    )
+}
+
+/**
+ * Update the [KeyData] of a single [KeyItem] while leaving its placement
+ * (and every other item) untouched.
+ *
+ * Use this when the user edits a key's label / action / flick map etc.
+ * but the cell it occupies should not change.
+ */
+fun KeyboardLayout.updateKeyDataKeepingPlacement(
+    keyId: String,
+    transform: (KeyData) -> KeyData
+): KeyboardLayout {
+    var changed = false
+    val newItems = items.map { item ->
+        when {
+            item is KeyItem && (item.id == keyId || item.keyData.keyId == keyId) -> {
+                changed = true
+                item.copy(keyData = transform(item.keyData))
+            }
+            else -> item
+        }
+    }
+    if (!changed) return this
+    return copyWithItems(newItems)
+}
+
+/**
+ * Swap the placements of two [KeyItem]s identified by id (KeyItem.id or
+ * KeyData.keyId). Item order in the list is preserved; only their
+ * [GridPlacement]s are exchanged. SpacerItems are left untouched.
+ *
+ * This is the placement-based replacement for the legacy "copy KeyData
+ * with new row/column" swap, which cannot represent half-cell offsets.
+ *
+ * Returns the original layout if either id can't be matched, if both ids
+ * resolve to the same item, or if swapping would produce overlaps /
+ * out-of-bounds placements (caller can detect "no-op" by reference equality).
+ */
+fun KeyboardLayout.swapKeyPlacements(
+    draggedKeyId: String,
+    targetKeyId: String
+): KeyboardLayout {
+    if (draggedKeyId == targetKeyId) return this
+
+    val keyItems = items.filterIsInstance<KeyItem>()
+    val dragged = keyItems.firstOrNull {
+        it.id == draggedKeyId || it.keyData.keyId == draggedKeyId
+    } ?: return this
+    val target = keyItems.firstOrNull {
+        it.id == targetKeyId || it.keyData.keyId == targetKeyId
+    } ?: return this
+    if (dragged.id == target.id) return this
+
+    val newItems = items.map { item ->
+        when {
+            item is KeyItem && item.id == dragged.id -> item.copy(placement = target.placement)
+            item is KeyItem && item.id == target.id -> item.copy(placement = dragged.placement)
+            else -> item
+        }
+    }
+
+    if (hasPlacementIssues(newItems, rowUnitCount, columnUnitCount)) {
+        return this
+    }
+    return copyWithItems(newItems)
+}
+
+/**
+ * Returns true if any KeyItem placement overlaps another KeyItem / SpacerItem
+ * placement, or any item's placement extends outside [rowUnitCount] /
+ * [columnUnitCount].
+ *
+ * SpacerItems also participate in overlap detection. Editor-created spacers
+ * are real grid occupants, so they must not overlap keys or other spacers.
+ */
+fun hasPlacementIssues(
+    items: List<KeyboardLayoutItem>,
+    rowUnitCount: Int,
+    columnUnitCount: Int
+): Boolean {
+    items.forEach { item ->
+        val p = item.placement
+        if (p.rowUnits < 0 || p.columnUnits < 0) return true
+        if (p.rowUnits + p.rowSpanUnits > rowUnitCount) return true
+        if (p.columnUnits + p.columnSpanUnits > columnUnitCount) return true
+        if (p.rowSpanUnits <= 0 || p.columnSpanUnits <= 0) return true
+    }
+
+    for (i in items.indices) {
+        for (j in i + 1 until items.size) {
+            val a = items[i]
+            val b = items[j]
+            if (isPlacementOverlapping(a.placement, b.placement)) return true
+        }
+    }
+    return false
+}
+
+/**
+ * Two GridPlacements overlap if their integer-unit rectangles intersect.
+ *
+ * Rectangle:
+ *   left   = columnUnits
+ *   right  = columnUnits + columnSpanUnits
+ *   top    = rowUnits
+ *   bottom = rowUnits + rowSpanUnits
+ */
+fun isPlacementOverlapping(p1: GridPlacement, p2: GridPlacement): Boolean {
+    val p1Left = p1.columnUnits
+    val p1Right = p1.columnUnits + p1.columnSpanUnits
+    val p1Top = p1.rowUnits
+    val p1Bottom = p1.rowUnits + p1.rowSpanUnits
+
+    val p2Left = p2.columnUnits
+    val p2Right = p2.columnUnits + p2.columnSpanUnits
+    val p2Top = p2.rowUnits
+    val p2Bottom = p2.rowUnits + p2.rowSpanUnits
+
+    return !(
+        p1Right <= p2Left ||
+        p1Left >= p2Right ||
+        p1Bottom <= p2Top ||
+        p1Top >= p2Bottom
+    )
+}
+
 
 data class KeyboardLayout(
     val keys: List<KeyData>,
@@ -101,7 +386,10 @@ data class KeyboardLayout(
     val twoStepFlickKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
     val longPressFlickKeyMaps: Map<String, Map<FlickDirection, String>> = emptyMap(),
     val twoStepLongPressKeyMaps: Map<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>> = emptyMap(),
-    val hierarchicalFlickMaps: Map<String, TfbiFlickNode.StatefulKey> = emptyMap()
+    val hierarchicalFlickMaps: Map<String, TfbiFlickNode.StatefulKey> = emptyMap(),
+    val items: List<KeyboardLayoutItem> = keys.map { it.toKeyItem() },
+    val columnUnitCount: Int = columnCount * 2,
+    val rowUnitCount: Int = rowCount * 2
 )
 
 /**

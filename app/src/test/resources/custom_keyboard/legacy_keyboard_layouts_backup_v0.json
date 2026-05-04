@@ -1,0 +1,37 @@
+[
+  {
+    "layout": {
+      "layoutId": 14,
+      "name": "メールとか",
+      "columnCount": 4,
+      "rowCount": 2,
+      "isRomaji": false,
+      "createdAt": 1754191047725
+    },
+    "keysWithFlicks": [
+      {
+        "key": {
+          "keyId": 556,
+          "ownerLayoutId": 14,
+          "keyIdentifier": "83df0e1a-b097-4b83-8491-8ac07131c5dc",
+          "label": " メール",
+          "row": 0,
+          "column": 1,
+          "rowSpan": 1,
+          "colSpan": 1,
+          "keyType": "PETAL_FLICK",
+          "isSpecialKey": false
+        },
+        "flicks": [
+          {
+            "ownerKeyId": 556,
+            "stateIndex": 0,
+            "flickDirection": "TAP",
+            "actionType": "INPUT_TEXT",
+            "actionValue": "example@example.com"
+          }
+        ]
+      }
+    ]
+  }
+]

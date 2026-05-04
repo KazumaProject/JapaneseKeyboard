@@ -3,12 +3,20 @@ package com.kazumaproject.markdownhelperkeyboard.repository
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
+import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
+import com.kazumaproject.custom_keyboard.data.copyWithItems
+import com.kazumaproject.custom_keyboard.data.toKeyItem
 import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -16,11 +24,15 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMappin
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.toDbStrings
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.toFlickAction
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.ImportableKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportError
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
@@ -34,7 +46,8 @@ private data class DbKeyboardLayoutParts(
     val circularFlicksMap: Map<String, List<CircularFlickMapping>>,
     val twoStepMap: Map<String, List<TwoStepFlickMapping>>,
     val longPressFlicksMap: Map<String, List<LongPressFlickMapping>>,
-    val twoStepLongPressMap: Map<String, List<TwoStepLongPressMappingEntity>>
+    val twoStepLongPressMap: Map<String, List<TwoStepLongPressMappingEntity>>,
+    val spacers: List<SpacerDefinition> = emptyList()
 )
 
 fun ensureStableIdsForLayouts(
@@ -68,69 +81,129 @@ class KeyboardRepository @Inject constructor(
      * - 名前衝突回避
      * - createdAt は import 時刻
      * - sortOrder は「最上位に積む」(max+1) を順に付与
+     *
+     * 引数は [ImportableKeyboardLayout] (= 既に importer 側で正規化済みで、
+     * 全ての List が non-null になっているモデル)。
+     * 外部 JSON DTO ([com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutExportDto])
+     * は決してここに渡さない。
      */
-    suspend fun importLayouts(layouts: List<FullKeyboardLayout>) {
+    suspend fun importLayouts(layouts: List<ImportableKeyboardLayout>): KeyboardLayoutImportResult {
+        if (layouts.isEmpty()) {
+            return KeyboardLayoutImportResult.Failure(KeyboardLayoutImportError.NoImportableLayouts)
+        }
+
         // まとめて import するときに max を毎回 DB に聞かない
         var currentMaxOrder = dao.getMaxSortOrder()
+        val importedLayouts = mutableListOf<ImportableKeyboardLayout>()
+        val errors = mutableListOf<KeyboardLayoutImportError>()
 
-        for (fullLayout in layouts) {
-            var newName = fullLayout.layout.name
-            var nameExists = dao.findLayoutByName(newName) != null
-            var counter = 1
-            while (nameExists) {
-                newName = "${fullLayout.layout.name} (${counter})"
-                nameExists = dao.findLayoutByName(newName) != null
-                counter++
+        layouts.forEachIndexed { layoutIndex, importable ->
+            try {
+                var newName = importable.layout.name
+                var nameExists = dao.findLayoutByName(newName) != null
+                var counter = 1
+                while (nameExists) {
+                    newName = "${importable.layout.name} (${counter})"
+                    nameExists = dao.findLayoutByName(newName) != null
+                    counter++
+                }
+
+                currentMaxOrder += 1
+                val importedStableId = importable.layout.stableId
+                val stableIdToInsert = if (importedStableId.isNullOrBlank() ||
+                    dao.findLayoutByStableId(importedStableId) != null
+                ) {
+                    UUID.randomUUID().toString()
+                } else {
+                    importedStableId
+                }
+
+                val layoutToInsert = importable.layout.copy(
+                    layoutId = 0,
+                    name = newName,
+                    createdAt = System.currentTimeMillis(),
+                    sortOrder = currentMaxOrder,
+                    stableId = stableIdToInsert
+                )
+
+                // Imported numeric ids are never trusted. The DAO inserts with
+                // auto-generated ids and then reattaches child rows by stable
+                // keyIdentifier, so legacy keyId/ownerLayoutId collisions cannot
+                // replace existing rows.
+                val normalizedKeysWithFlicks = importable.keysWithFlicks.map { keyWithFlicks ->
+                    keyWithFlicks.copy(
+                        key = keyWithFlicks.key.copy(keyId = 0, ownerLayoutId = 0),
+                        flicks = keyWithFlicks.flicks.map { it.copy(ownerKeyId = 0) },
+                        circularFlicks = keyWithFlicks.circularFlicks.map { it.copy(ownerKeyId = 0) },
+                        twoStepFlicks = keyWithFlicks.twoStepFlicks.map { it.copy(ownerKeyId = 0) },
+                        longPressFlicks = keyWithFlicks.longPressFlicks.map { it.copy(ownerKeyId = 0) },
+                        twoStepLongPressFlicks = keyWithFlicks.twoStepLongPressFlicks.map {
+                            it.copy(ownerKeyId = 0)
+                        }
+                    )
+                }
+
+                val keysToInsert = normalizedKeysWithFlicks.map { it.key }
+
+                val flicksMap = normalizedKeysWithFlicks.associate { keyWithFlicks ->
+                    keyWithFlicks.key.keyIdentifier to keyWithFlicks.flicks
+                }
+
+                val circularFlicksMap = normalizedKeysWithFlicks.associate { keyWithFlicks ->
+                    keyWithFlicks.key.keyIdentifier to keyWithFlicks.circularFlicks
+                }
+
+                val twoStepMap = normalizedKeysWithFlicks.associate { keyWithFlicks ->
+                    keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepFlicks
+                }
+
+                val longPressFlicksMap = normalizedKeysWithFlicks.associate { keyWithFlicks ->
+                    keyWithFlicks.key.keyIdentifier to keyWithFlicks.longPressFlicks
+                }
+
+                val twoStepLongPressMap = normalizedKeysWithFlicks.associate { keyWithFlicks ->
+                    keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepLongPressFlicks
+                }
+
+                // SpacerItem 復元: 元レイアウトの spacers を新規 layoutId 用に複製
+                val spacersToInsert = importable.spacers.map { spacer ->
+                    spacer.copy(spacerId = 0, ownerLayoutId = 0)
+                }
+
+                dao.insertFullKeyboardLayout(
+                    layoutToInsert,
+                    keysToInsert,
+                    flicksMap,
+                    circularFlicksMap,
+                    twoStepMap,
+                    longPressFlicksMap,
+                    twoStepLongPressMap,
+                    spacersToInsert
+                )
+                importedLayouts += importable.copy(
+                    layout = layoutToInsert,
+                    keysWithFlicks = normalizedKeysWithFlicks,
+                    spacers = spacersToInsert
+                )
+            } catch (e: Exception) {
+                Timber.e(e, "importLayouts storage failed index=%s exception=%s", layoutIndex, e::class.java.simpleName)
+                errors += KeyboardLayoutImportError.StorageFailed(
+                    layoutIndex = layoutIndex,
+                    exceptionClass = e::class.java.simpleName,
+                    message = e.message
+                )
             }
+        }
 
-            currentMaxOrder += 1
-            val importedStableId = fullLayout.layout.stableId
-            val stableIdToInsert = if (importedStableId.isNullOrBlank() ||
-                dao.findLayoutByStableId(importedStableId) != null
-            ) {
-                UUID.randomUUID().toString()
-            } else {
-                importedStableId
-            }
+        return when {
+            importedLayouts.isNotEmpty() && errors.isEmpty() ->
+                KeyboardLayoutImportResult.Success(importedLayouts)
 
-            val layoutToInsert = fullLayout.layout.copy(
-                layoutId = 0,
-                name = newName,
-                createdAt = System.currentTimeMillis(),
-                sortOrder = currentMaxOrder,
-                stableId = stableIdToInsert
-            )
+            importedLayouts.isNotEmpty() ->
+                KeyboardLayoutImportResult.PartialSuccess(importedLayouts, errors)
 
-            val keysToInsert = fullLayout.keysWithFlicks.map { it.key }
-
-            val flicksMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
-                keyWithFlicks.key.keyIdentifier to keyWithFlicks.flicks
-            }
-
-            val circularFlicksMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
-                keyWithFlicks.key.keyIdentifier to keyWithFlicks.circularFlicks
-            }
-
-            val twoStepMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
-                keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepFlicks
-            }
-
-            val longPressFlicksMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
-                keyWithFlicks.key.keyIdentifier to keyWithFlicks.longPressFlicks
-            }
-
-            val twoStepLongPressMap = fullLayout.keysWithFlicks.associate { keyWithFlicks ->
-                keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepLongPressFlicks
-            }
-
-            dao.insertFullKeyboardLayout(
-                layoutToInsert,
-                keysToInsert,
-                flicksMap,
-                circularFlicksMap,
-                twoStepMap,
-                longPressFlicksMap,
-                twoStepLongPressMap
+            else -> KeyboardLayoutImportResult.Failure(
+                errors.firstOrNull() ?: KeyboardLayoutImportError.StorageFailed()
             )
         }
     }
@@ -253,7 +326,8 @@ class KeyboardRepository @Inject constructor(
             parts.circularFlicksMap,
             parts.twoStepMap,
             parts.longPressFlicksMap,
-            parts.twoStepLongPressMap
+            parts.twoStepLongPressMap,
+            parts.spacers
         )
     }
 
@@ -325,6 +399,11 @@ class KeyboardRepository @Inject constructor(
             keyWithFlicks.key.keyIdentifier to newTwoStepLongPress
         }
 
+        // 元レイアウトの SpacerItem も複製
+        val newSpacers = originalLayout.spacers.map { spacer ->
+            spacer.copy(spacerId = 0, ownerLayoutId = 0)
+        }
+
         dao.insertFullKeyboardLayout(
             newLayoutInfo,
             newKeys,
@@ -332,7 +411,8 @@ class KeyboardRepository @Inject constructor(
             newCircularFlicksMap,
             newTwoStepMap,
             newLongPressFlicksMap,
-            newTwoStepLongPressMap
+            newTwoStepLongPressMap,
+            newSpacers
         )
     }
 
@@ -390,8 +470,25 @@ class KeyboardRepository @Inject constructor(
             }
         }
 
-        return dbLayout.copy(
-            keys = newKeys,
+        val convertedLayout = if (dbLayout.usesFlexiblePlacement()) {
+            val newKeysById = newKeys.mapNotNull { key ->
+                key.keyId?.let { it to key }
+            }.toMap()
+            val newItems = dbLayout.items.map { item ->
+                when (item) {
+                    is SpacerItem -> item
+                    is KeyItem -> {
+                        val updatedKey = newKeysById[item.keyData.keyId] ?: item.keyData
+                        item.copy(keyData = updatedKey)
+                    }
+                }
+            }
+            dbLayout.copyWithItems(newItems)
+        } else {
+            dbLayout.copyWithKeys(newKeys)
+        }
+
+        return convertedLayout.copy(
             flickKeyMaps = newFlickKeyMaps,
             twoStepFlickKeyMaps = newTwoStepFlickKeyMaps,
             longPressFlickKeyMaps = newLongPressFlickKeyMaps,
@@ -474,16 +571,23 @@ class KeyboardRepository @Inject constructor(
                 identifier to firstMap
             }.toMap()
 
+        val keyItems = mutableListOf<KeyItem>()
+
         val keys: List<KeyData> = dbLayout.keysWithFlicks.map { keyWithFlicks ->
             val dbKey = keyWithFlicks.key
 
-            val actionObject: KeyAction? = if (dbKey.isSpecialKey) {
-                KeyActionMapper.toKeyAction(dbKey.action)
+            val actionObject: KeyAction? = KeyActionMapper.toKeyAction(dbKey.action)
+            val restoredAction = actionObject ?: if (
+                !dbKey.isSpecialKey &&
+                dbKey.keyType == KeyType.NORMAL &&
+                dbKey.label.isNotBlank()
+            ) {
+                KeyAction.Text(dbKey.label)
             } else {
                 null
             }
 
-            if (actionObject == null) {
+            val keyData = if (restoredAction == null) {
                 KeyData(
                     label = dbKey.label,
                     row = dbKey.row,
@@ -506,46 +610,65 @@ class KeyboardRepository @Inject constructor(
                     keyType = dbKey.keyType,
                     rowSpan = dbKey.rowSpan,
                     colSpan = dbKey.colSpan,
-                    isSpecialKey = true,
-                    drawableResId = when (actionObject) {
-                        KeyAction.Backspace -> com.kazumaproject.core.R.drawable.backspace_24px
-                        KeyAction.ChangeInputMode -> com.kazumaproject.core.R.drawable.backspace_24px
-                        KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
-                        KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
-                        KeyAction.Delete -> com.kazumaproject.core.R.drawable.backspace_24px
-                        KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
-                        KeyAction.ForceNewLine -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
-                        KeyAction.MoveCursorLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                        KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-                        KeyAction.MoveCustomKeyboardTab -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
-                        is KeyAction.MoveToCustomKeyboard -> com.kazumaproject.core.R.drawable.keyboard_24px
-                        KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
-                        KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
-                        KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
-                        KeyAction.SelectRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
-                        KeyAction.ShiftKey -> com.kazumaproject.core.R.drawable.shift_24px
-                        KeyAction.CapLockKey -> com.kazumaproject.core.R.drawable.caps_lock_outline
-                        KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
-                        KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
-                        KeyAction.Space -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
-                        KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
-                        KeyAction.SwitchToKanaLayout -> com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
-                        KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
-                        KeyAction.SwitchToNumberLayout -> com.kazumaproject.core.R.drawable.input_mode_number_select_custom
-                        KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.english_small
-                        KeyAction.ToggleDakuten -> com.kazumaproject.core.R.drawable.kana_small_custom
-                        KeyAction.ToggleKatakana -> com.kazumaproject.core.R.drawable.katakana
-                        KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
-                        KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
-                        KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
-                        KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
-                        else -> null
-                    },
+                    isSpecialKey = dbKey.isSpecialKey,
+                    drawableResId = if (dbKey.isSpecialKey) drawableResIdForAction(restoredAction) else null,
                     keyId = dbKey.keyIdentifier,
-                    action = actionObject
+                    action = restoredAction
                 )
             }
+            val placement = GridPlacement(
+                rowUnits = dbKey.rowUnits ?: dbKey.row * 2,
+                columnUnits = dbKey.columnUnits ?: dbKey.column * 2,
+                rowSpanUnits = dbKey.rowSpanUnits ?: dbKey.rowSpan * 2,
+                columnSpanUnits = dbKey.columnSpanUnits ?: dbKey.colSpan * 2
+            )
+            keyItems += KeyItem(
+                id = keyData.keyId ?: dbKey.keyIdentifier,
+                keyData = keyData,
+                placement = placement
+            )
+            keyData
         }
+        // 永続化された SpacerItem を復元 (行内 Spacer 含む完全復元)
+        // 旧データに spacer_definitions が無い場合は restoreLeadingSpacers() に
+        // フォールバックして「行頭 Spacer」だけは推測復元する。
+        val storedSpacers: List<SpacerItem> = dbLayout.spacers
+            .sortedBy { it.sortOrder }
+            .map { spacer ->
+                SpacerItem(
+                    id = spacer.itemIdentifier.ifBlank {
+                        "spacer_${spacer.spacerId}"
+                    },
+                    placement = GridPlacement(
+                        rowUnits = spacer.rowUnits,
+                        columnUnits = spacer.columnUnits,
+                        rowSpanUnits = spacer.rowSpanUnits,
+                        columnSpanUnits = spacer.columnSpanUnits
+                    )
+                )
+            }
+
+        val items: List<KeyboardLayoutItem> = if (storedSpacers.isNotEmpty()) {
+            // 完全復元: items 順は (Spacer, Key) を rowUnits → columnUnits でマージ
+            (storedSpacers + keyItems).sortedWith(
+                compareBy({ it.placement.rowUnits }, { it.placement.columnUnits })
+            )
+        } else {
+            // 旧データ互換: spacer_definitions が無いレイアウトは行頭 Spacer のみ推測
+            restoreLeadingSpacers(keyItems) + keyItems
+        }
+
+        // columnUnitCount / rowUnitCount は KeyDefinition.rowUnits 等の有無に応じて
+        // 厳密値 / フォールバック値を決定する。
+        val derivedColumnUnitCount = items
+            .maxOfOrNull { it.placement.columnUnits + it.placement.columnSpanUnits }
+            ?: (dbLayout.layout.columnCount * 2)
+        val derivedRowUnitCount = items
+            .maxOfOrNull { it.placement.rowUnits + it.placement.rowSpanUnits }
+            ?: (dbLayout.layout.rowCount * 2)
+
+        val columnUnitCount = maxOf(derivedColumnUnitCount, dbLayout.layout.columnCount * 2)
+        val rowUnitCount = maxOf(derivedRowUnitCount, dbLayout.layout.rowCount * 2)
 
         return KeyboardLayout(
             keys = keys,
@@ -565,8 +688,67 @@ class KeyboardRepository @Inject constructor(
             },
             twoStepFlickKeyMaps = twoStepMaps,
             longPressFlickKeyMaps = longPressFlickMaps,
-            twoStepLongPressKeyMaps = twoStepLongPressMaps
+            twoStepLongPressKeyMaps = twoStepLongPressMaps,
+            items = items,
+            columnUnitCount = columnUnitCount,
+            rowUnitCount = rowUnitCount
         )
+    }
+
+    private fun drawableResIdForAction(action: KeyAction): Int? {
+        return when (action) {
+            KeyAction.Backspace -> com.kazumaproject.core.R.drawable.backspace_24px
+            KeyAction.ChangeInputMode -> com.kazumaproject.core.R.drawable.backspace_24px
+            KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
+            KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
+            KeyAction.Delete -> com.kazumaproject.core.R.drawable.backspace_24px
+            KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            KeyAction.ForceNewLine -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            KeyAction.MoveCursorLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+            KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            KeyAction.MoveCustomKeyboardTab -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
+            is KeyAction.MoveToCustomKeyboard -> com.kazumaproject.core.R.drawable.keyboard_24px
+            KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
+            KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
+            KeyAction.SelectLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+            KeyAction.SelectRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            KeyAction.ShiftKey -> com.kazumaproject.core.R.drawable.shift_24px
+            KeyAction.CapLockKey -> com.kazumaproject.core.R.drawable.caps_lock_outline
+            KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
+            KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
+            KeyAction.Space -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
+            KeyAction.SwitchToKanaLayout -> com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
+            KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
+            KeyAction.SwitchToNumberLayout -> com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+            KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.english_small
+            KeyAction.ToggleDakuten -> com.kazumaproject.core.R.drawable.kana_small_custom
+            KeyAction.ToggleKatakana -> com.kazumaproject.core.R.drawable.katakana
+            KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
+            KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+            KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+            KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
+            else -> null
+        }
+    }
+
+    private fun restoreLeadingSpacers(keyItems: List<KeyItem>): List<KeyboardLayoutItem> {
+        return keyItems
+            .groupBy { it.placement.rowUnits }
+            .mapNotNull { (rowUnits, rowItems) ->
+                val minColumnUnits = rowItems.minOfOrNull { it.placement.columnUnits } ?: return@mapNotNull null
+                if (minColumnUnits <= 0) return@mapNotNull null
+                val rowSpanUnits = rowItems.minOfOrNull { it.placement.rowSpanUnits } ?: 2
+                SpacerItem(
+                    id = "restored_row_${rowUnits}_start_spacer",
+                    placement = GridPlacement(
+                        rowUnits = rowUnits,
+                        columnUnits = 0,
+                        rowSpanUnits = rowSpanUnits,
+                        columnSpanUnits = minColumnUnits
+                    )
+                )
+            }
     }
 
     private fun convertToDbModel(
@@ -579,15 +761,21 @@ class KeyboardRepository @Inject constructor(
         val twoStepMap = mutableMapOf<String, MutableList<TwoStepFlickMapping>>()
         val longPressFlicksMap = mutableMapOf<String, MutableList<LongPressFlickMapping>>()
         val twoStepLongPressMap = mutableMapOf<String, MutableList<TwoStepLongPressMappingEntity>>()
+        val itemByKeyId = uiLayout.items
+            .filterIsInstance<KeyItem>()
+            .flatMap { item ->
+                listOfNotNull(
+                    item.id to item,
+                    item.keyData.keyId?.let { it to item }
+                )
+            }
+            .toMap()
 
         uiLayout.keys.forEach { keyData ->
             val keyIdentifier = keyData.keyId ?: UUID.randomUUID().toString()
 
-            val actionString: String? = if (keyData.isSpecialKey) {
-                KeyActionMapper.fromKeyAction(keyData.action)
-            } else {
-                null
-            }
+            val actionString: String? = KeyActionMapper.fromKeyAction(keyData.action)
+            val placement = itemByKeyId[keyIdentifier]?.placement ?: keyData.toKeyItem().placement
 
             keys.add(
                 KeyDefinition(
@@ -602,7 +790,11 @@ class KeyboardRepository @Inject constructor(
                     isSpecialKey = keyData.isSpecialKey,
                     drawableResId = null,
                     keyIdentifier = keyIdentifier,
-                    action = actionString
+                    action = actionString,
+                    rowUnits = placement.rowUnits,
+                    columnUnits = placement.columnUnits,
+                    rowSpanUnits = placement.rowSpanUnits,
+                    columnSpanUnits = placement.columnSpanUnits
                 )
             )
 
@@ -675,6 +867,22 @@ class KeyboardRepository @Inject constructor(
             }
         }
 
+        // SpacerItem を SpacerDefinition に変換 (順序情報は items の登場順を保持)
+        val spacerDefinitions = uiLayout.items
+            .filterIsInstance<SpacerItem>()
+            .mapIndexed { index, spacer ->
+                SpacerDefinition(
+                    spacerId = 0,
+                    ownerLayoutId = 0,
+                    itemIdentifier = spacer.id,
+                    rowUnits = spacer.placement.rowUnits,
+                    columnUnits = spacer.placement.columnUnits,
+                    rowSpanUnits = spacer.placement.rowSpanUnits,
+                    columnSpanUnits = spacer.placement.columnSpanUnits,
+                    sortOrder = index
+                )
+            }
+
         // Map<String, MutableList<...>> -> Map<String, List<...>> にして返す
         return DbKeyboardLayoutParts(
             keys = keys,
@@ -682,7 +890,8 @@ class KeyboardRepository @Inject constructor(
             circularFlicksMap = circularFlicksMap.mapValues { it.value.toList() },
             twoStepMap = twoStepMap.mapValues { it.value.toList() },
             longPressFlicksMap = longPressFlicksMap.mapValues { it.value.toList() },
-            twoStepLongPressMap = twoStepLongPressMap.mapValues { it.value.toList() }
+            twoStepLongPressMap = twoStepLongPressMap.mapValues { it.value.toList() },
+            spacers = spacerDefinitions
         )
     }
 }

@@ -5,12 +5,24 @@ import androidx.lifecycle.viewModelScope
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.GridPlacement
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
+import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.copyWithItems
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
+import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
+import com.kazumaproject.custom_keyboard.data.swapKeyPlacements
+import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.ImportableKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,6 +70,10 @@ class KeyboardEditorViewModel @Inject constructor(
                 isDefaultKey = true,
                 isUpperCase = false
             )
+        ),
+        LayoutTemplate(
+            "QWERTY",
+            KeyboardDefaultLayouts.createQwertyTemplateLayout()
         ),
         LayoutTemplate("数字入力", KeyboardDefaultLayouts.createNumberTemplateLayout())
     )
@@ -159,11 +175,19 @@ class KeyboardEditorViewModel @Inject constructor(
         _uiState.update { currentState ->
             val layout = currentState.layout
             val newRowCount = layout.rowCount + 1
+            if (layout.usesFlexiblePlacement()) {
+                return@update currentState.copy(
+                    layout = layout.copy(
+                        rowCount = newRowCount,
+                        rowUnitCount = layout.rowUnitCount + 2
+                    )
+                )
+            }
             val newKeys = layout.keys.toMutableList()
             for (col in 0 until layout.columnCount) {
                 newKeys.add(createEmptyKey(newRowCount - 1, col))
             }
-            val newLayout = layout.copy(keys = newKeys, rowCount = newRowCount)
+            val newLayout = layout.copyWithKeys(newKeys, rowCount = newRowCount)
             currentState.copy(layout = newLayout)
         }
     }
@@ -173,6 +197,20 @@ class KeyboardEditorViewModel @Inject constructor(
             val layout = currentState.layout
             if (layout.rowCount <= 1) return@update currentState
             val newRowCount = layout.rowCount - 1
+            if (layout.usesFlexiblePlacement()) {
+                val newRowUnitCount = newRowCount * 2
+                val newItems = trimItemsToBounds(
+                    items = layout.items,
+                    rowUnitCount = newRowUnitCount,
+                    columnUnitCount = layout.columnUnitCount
+                )
+                return@update currentState.copy(
+                    layout = layout.copy(
+                        rowCount = newRowCount,
+                        rowUnitCount = newRowUnitCount
+                    ).copyWithItems(newItems)
+                )
+            }
 
             val updatedKeys = layout.keys.mapNotNull { key ->
                 if (key.row >= newRowCount) {
@@ -185,7 +223,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 }
             }
 
-            val newLayout = layout.copy(keys = updatedKeys, rowCount = newRowCount)
+            val newLayout = layout.copyWithKeys(updatedKeys, rowCount = newRowCount)
             currentState.copy(layout = newLayout)
         }
     }
@@ -194,11 +232,19 @@ class KeyboardEditorViewModel @Inject constructor(
         _uiState.update { currentState ->
             val layout = currentState.layout
             val newColumnCount = layout.columnCount + 1
+            if (layout.usesFlexiblePlacement()) {
+                return@update currentState.copy(
+                    layout = layout.copy(
+                        columnCount = newColumnCount,
+                        columnUnitCount = layout.columnUnitCount + 2
+                    )
+                )
+            }
             val newKeys = layout.keys.toMutableList()
             for (row in 0 until layout.rowCount) {
                 newKeys.add(createEmptyKey(row, newColumnCount - 1))
             }
-            val newLayout = layout.copy(
+            val newLayout = layout.copyWithKeys(
                 keys = newKeys.sortedWith(compareBy({ it.row }, { it.column })),
                 columnCount = newColumnCount
             )
@@ -211,6 +257,20 @@ class KeyboardEditorViewModel @Inject constructor(
             val layout = currentState.layout
             if (layout.columnCount <= 1) return@update currentState
             val newColumnCount = layout.columnCount - 1
+            if (layout.usesFlexiblePlacement()) {
+                val newColumnUnitCount = newColumnCount * 2
+                val newItems = trimItemsToBounds(
+                    items = layout.items,
+                    rowUnitCount = layout.rowUnitCount,
+                    columnUnitCount = newColumnUnitCount
+                )
+                return@update currentState.copy(
+                    layout = layout.copy(
+                        columnCount = newColumnCount,
+                        columnUnitCount = newColumnUnitCount
+                    ).copyWithItems(newItems)
+                )
+            }
 
             val updatedKeys = layout.keys.mapNotNull { key ->
                 if (key.column >= newColumnCount) {
@@ -223,7 +283,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 }
             }
 
-            val newLayout = layout.copy(keys = updatedKeys, columnCount = newColumnCount)
+            val newLayout = layout.copyWithKeys(updatedKeys, columnCount = newColumnCount)
             currentState.copy(layout = newLayout)
         }
     }
@@ -232,6 +292,23 @@ class KeyboardEditorViewModel @Inject constructor(
         _uiState.update { currentState ->
             val layout = currentState.layout
             if (layout.rowCount <= 1) return@update currentState
+            if (layout.usesFlexiblePlacement()) {
+                val deleteStart = rowIndex * 2
+                val deleteEnd = deleteStart + 2
+                val newItems = deleteUnitRange(
+                    items = layout.items,
+                    startUnits = deleteStart,
+                    endUnits = deleteEnd,
+                    isRow = true
+                )
+                val newRowCount = layout.rowCount - 1
+                return@update currentState.copy(
+                    layout = layout.copy(
+                        rowCount = newRowCount,
+                        rowUnitCount = newRowCount * 2
+                    ).copyWithItems(newItems)
+                )
+            }
 
             val updatedKeys = layout.keys.mapNotNull { key ->
                 val keyRowStart = key.row
@@ -248,7 +325,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 }
             }
 
-            val newLayout = layout.copy(keys = updatedKeys, rowCount = layout.rowCount - 1)
+            val newLayout = layout.copyWithKeys(updatedKeys, rowCount = layout.rowCount - 1)
             currentState.copy(layout = newLayout)
         }
     }
@@ -257,6 +334,23 @@ class KeyboardEditorViewModel @Inject constructor(
         _uiState.update { currentState ->
             val layout = currentState.layout
             if (layout.columnCount <= 1) return@update currentState
+            if (layout.usesFlexiblePlacement()) {
+                val deleteStart = columnIndex * 2
+                val deleteEnd = deleteStart + 2
+                val newItems = deleteUnitRange(
+                    items = layout.items,
+                    startUnits = deleteStart,
+                    endUnits = deleteEnd,
+                    isRow = false
+                )
+                val newColumnCount = layout.columnCount - 1
+                return@update currentState.copy(
+                    layout = layout.copy(
+                        columnCount = newColumnCount,
+                        columnUnitCount = newColumnCount * 2
+                    ).copyWithItems(newItems)
+                )
+            }
 
             val updatedKeys = layout.keys.mapNotNull { key ->
                 val keyColStart = key.column
@@ -273,7 +367,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 }
             }
 
-            val newLayout = layout.copy(keys = updatedKeys, columnCount = layout.columnCount - 1)
+            val newLayout = layout.copyWithKeys(updatedKeys, columnCount = layout.columnCount - 1)
             currentState.copy(layout = newLayout)
         }
     }
@@ -317,6 +411,60 @@ class KeyboardEditorViewModel @Inject constructor(
             val layout = currentState.layout
 
             val oldKeyData = layout.keys.find { it.keyId == keyId } ?: return@update currentState
+            val finalFlickMaps = layout.flickKeyMaps.toMutableMap()
+            val finalCircularFlickMaps = layout.circularFlickKeyMaps.toMutableMap()
+            val finalTwoStepMaps = layout.twoStepFlickKeyMaps.toMutableMap()
+            val finalLongPressFlickMaps = layout.longPressFlickKeyMaps.toMutableMap()
+            val finalTwoStepLongPressMaps = layout.twoStepLongPressKeyMaps.toMutableMap()
+
+            applyUpdatedMappings(
+                keyId = keyId,
+                newKeyData = newKeyData,
+                flickMap = flickMap,
+                twoStepMap = twoStepMap,
+                longPressFlickMap = longPressFlickMap,
+                twoStepLongPressMap = twoStepLongPressMap,
+                circularFlickMaps = circularFlickMaps,
+                finalFlickMaps = finalFlickMaps,
+                finalCircularFlickMaps = finalCircularFlickMaps,
+                finalTwoStepMaps = finalTwoStepMaps,
+                finalLongPressFlickMaps = finalLongPressFlickMaps,
+                finalTwoStepLongPressMaps = finalTwoStepLongPressMaps
+            )
+
+            if (layout.usesFlexiblePlacement()) {
+                val oldItem = layout.items.filterIsInstance<KeyItem>().firstOrNull {
+                    it.id == keyId || it.keyData.keyId == keyId
+                } ?: return@update currentState
+
+                val updatedItems = layout.items.map { item ->
+                    if (item is KeyItem && item.id == oldItem.id) {
+                        item.copy(
+                            keyData = newKeyData,
+                            placement = item.placement.copy(
+                                rowSpanUnits = newKeyData.rowSpan * 2,
+                                columnSpanUnits = newKeyData.colSpan * 2
+                            )
+                        )
+                    } else {
+                        item
+                    }
+                }
+
+                if (hasPlacementIssues(updatedItems, layout.rowUnitCount, layout.columnUnitCount)) {
+                    return@update currentState
+                }
+
+                val newLayout = layout.copyWithItems(updatedItems).copy(
+                    flickKeyMaps = finalFlickMaps,
+                    circularFlickKeyMaps = finalCircularFlickMaps,
+                    twoStepFlickKeyMaps = finalTwoStepMaps,
+                    longPressFlickKeyMaps = finalLongPressFlickMaps,
+                    twoStepLongPressKeyMaps = finalTwoStepLongPressMaps
+                )
+                return@update currentState.copy(layout = newLayout)
+            }
+
             val otherKeys = layout.keys.filter { it.keyId != keyId }
 
             val crushedKeys = otherKeys.filter { isRectOverlapping(newKeyData, it) }
@@ -333,12 +481,6 @@ class KeyboardEditorViewModel @Inject constructor(
                 .plus(newKeyData)
                 .plus(newEmptyKeys)
 
-            val finalFlickMaps = layout.flickKeyMaps.toMutableMap()
-            val finalCircularFlickMaps = layout.circularFlickKeyMaps.toMutableMap()
-            val finalTwoStepMaps = layout.twoStepFlickKeyMaps.toMutableMap()
-            val finalLongPressFlickMaps = layout.longPressFlickKeyMaps.toMutableMap()
-            val finalTwoStepLongPressMaps = layout.twoStepLongPressKeyMaps.toMutableMap()
-
             crushedKeyIds.forEach {
                 finalFlickMaps.remove(it)
                 finalCircularFlickMaps.remove(it)
@@ -347,45 +489,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 finalTwoStepLongPressMaps.remove(it)
             }
 
-            when (newKeyData.keyType) {
-                KeyType.TWO_STEP_FLICK -> {
-                    // 2段フリックに切り替えた場合、1段フリック設定を消して2段を保存
-                    finalFlickMaps.remove(keyId)
-                    finalCircularFlickMaps.remove(keyId)
-                    finalLongPressFlickMaps.remove(keyId)
-                    finalTwoStepMaps[keyId] = twoStepMap
-                    if (twoStepLongPressMap.isNotEmpty()) {
-                        finalTwoStepLongPressMaps[keyId] = twoStepLongPressMap
-                    } else {
-                        finalTwoStepLongPressMaps.remove(keyId)
-                    }
-                }
-
-                KeyType.CIRCULAR_FLICK -> {
-                    finalFlickMaps.remove(keyId)
-                    finalTwoStepMaps.remove(keyId)
-                    finalTwoStepLongPressMaps.remove(keyId)
-                    finalLongPressFlickMaps.remove(keyId)
-                    finalCircularFlickMaps[keyId] =
-                        circularFlickMaps.ifEmpty { listOf(emptyMap()) }
-                }
-
-                else -> {
-                    // 1段フリック系の場合、2段フリック設定を消して1段を保存
-                    finalTwoStepMaps.remove(keyId)
-                    finalTwoStepLongPressMaps.remove(keyId)
-                    finalCircularFlickMaps.remove(keyId)
-                    finalFlickMaps[keyId] = listOf(flickMap)
-                    if (longPressFlickMap.isNotEmpty()) {
-                        finalLongPressFlickMaps[keyId] = longPressFlickMap
-                    } else {
-                        finalLongPressFlickMaps.remove(keyId)
-                    }
-                }
-            }
-
-            val newLayout = layout.copy(
-                keys = finalKeys,
+            val newLayout = layout.copyWithKeys(finalKeys).copy(
                 flickKeyMaps = finalFlickMaps,
                 circularFlickKeyMaps = finalCircularFlickMaps,
                 twoStepFlickKeyMaps = finalTwoStepMaps,
@@ -393,6 +497,56 @@ class KeyboardEditorViewModel @Inject constructor(
                 twoStepLongPressKeyMaps = finalTwoStepLongPressMaps
             )
             currentState.copy(layout = newLayout)
+        }
+    }
+
+    private fun applyUpdatedMappings(
+        keyId: String,
+        newKeyData: KeyData,
+        flickMap: Map<FlickDirection, FlickAction>,
+        twoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>,
+        longPressFlickMap: Map<FlickDirection, String>,
+        twoStepLongPressMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>,
+        circularFlickMaps: List<Map<CircularFlickDirection, FlickAction>>,
+        finalFlickMaps: MutableMap<String, List<Map<FlickDirection, FlickAction>>>,
+        finalCircularFlickMaps: MutableMap<String, List<Map<CircularFlickDirection, FlickAction>>>,
+        finalTwoStepMaps: MutableMap<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>>,
+        finalLongPressFlickMaps: MutableMap<String, Map<FlickDirection, String>>,
+        finalTwoStepLongPressMaps: MutableMap<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>>
+    ) {
+        when (newKeyData.keyType) {
+            KeyType.TWO_STEP_FLICK -> {
+                finalFlickMaps.remove(keyId)
+                finalCircularFlickMaps.remove(keyId)
+                finalLongPressFlickMaps.remove(keyId)
+                finalTwoStepMaps[keyId] = twoStepMap
+                if (twoStepLongPressMap.isNotEmpty()) {
+                    finalTwoStepLongPressMaps[keyId] = twoStepLongPressMap
+                } else {
+                    finalTwoStepLongPressMaps.remove(keyId)
+                }
+            }
+
+            KeyType.CIRCULAR_FLICK -> {
+                finalFlickMaps.remove(keyId)
+                finalTwoStepMaps.remove(keyId)
+                finalTwoStepLongPressMaps.remove(keyId)
+                finalLongPressFlickMaps.remove(keyId)
+                finalCircularFlickMaps[keyId] =
+                    circularFlickMaps.ifEmpty { listOf(emptyMap()) }
+            }
+
+            else -> {
+                finalTwoStepMaps.remove(keyId)
+                finalTwoStepLongPressMaps.remove(keyId)
+                finalCircularFlickMaps.remove(keyId)
+                finalFlickMaps[keyId] = listOf(flickMap)
+                if (longPressFlickMap.isNotEmpty()) {
+                    finalLongPressFlickMaps[keyId] = longPressFlickMap
+                } else {
+                    finalLongPressFlickMaps.remove(keyId)
+                }
+            }
         }
     }
 
@@ -406,72 +560,97 @@ class KeyboardEditorViewModel @Inject constructor(
         return cells
     }
 
+    /**
+     * Drag-swap two KeyItems by exchanging their [GridPlacement]s.
+     *
+     * Source of truth is `layout.items` + `GridPlacement` — KeyData.row /
+     * KeyData.column are NOT rewritten here, because they cannot represent
+     * half-cell offsets used by QWERTY-family templates and would corrupt
+     * the visual placement.
+     *
+     * The swap is rejected (no-op) if it would produce overlaps or
+     * out-of-bounds placements.
+     */
     fun swapKeys(draggedKeyId: String, targetKeyId: String) {
         _uiState.update { currentState ->
             val layout = currentState.layout
-            val currentKeys = layout.keys
-
-            val draggedKey =
-                currentKeys.find { it.keyId == draggedKeyId } ?: return@update currentState
-            val targetKey =
-                currentKeys.find { it.keyId == targetKeyId } ?: return@update currentState
-
             if (draggedKeyId == targetKeyId) return@update currentState
 
-            val destRow = targetKey.row
-            val destCol = targetKey.column
-            val movedDraggedKey = draggedKey.copy(row = destRow, column = destCol)
-
-            val victims = currentKeys.filter { key ->
-                key.keyId != draggedKeyId && isRectOverlapping(movedDraggedKey, key)
-            }
-
-            val moveRowDelta = destRow - draggedKey.row
-            val moveColDelta = destCol - draggedKey.column
-
-            val newKeysCandidate = currentKeys.map { key ->
-                when {
-                    key.keyId == draggedKeyId -> movedDraggedKey
-                    victims.any { it.keyId == key.keyId } -> {
-                        key.copy(
-                            row = key.row - moveRowDelta,
-                            column = key.column - moveColDelta
-                        )
-                    }
-
-                    else -> key
-                }
-            }
-
-            if (hasIssues(newKeysCandidate, layout.rowCount, layout.columnCount)) {
-                return@update currentState
-            }
-
-            val newLayout = currentState.layout.copy(keys = newKeysCandidate)
-            currentState.copy(layout = newLayout)
+            val swapped = layout.swapKeyPlacements(draggedKeyId, targetKeyId)
+            // swapKeyPlacements returns the original layout if the swap is
+            // invalid (overlap, out of bounds, missing id).
+            if (swapped === layout) return@update currentState
+            currentState.copy(layout = swapped)
         }
     }
 
-    private fun hasIssues(keys: List<KeyData>, rowCount: Int, colCount: Int): Boolean {
-        keys.forEach { key ->
-            if (key.row < 0 || key.column < 0 ||
-                key.row + key.rowSpan > rowCount ||
-                key.column + key.colSpan > colCount
-            ) {
-                return true
-            }
-        }
-
-        for (i in keys.indices) {
-            for (j in i + 1 until keys.size) {
-                if (isRectOverlapping(keys[i], keys[j])) {
-                    return true
-                }
-            }
-        }
-        return false
+    fun addSpacer(
+        rowUnits: Int,
+        columnUnits: Int,
+        rowSpanUnits: Int,
+        columnSpanUnits: Int
+    ): Boolean {
+        val currentState = _uiState.value
+        val layout = currentState.layout
+        val spacer = SpacerItem(
+            id = "spacer_${UUID.randomUUID()}",
+            placement = GridPlacement(
+                rowUnits = rowUnits,
+                columnUnits = columnUnits,
+                rowSpanUnits = rowSpanUnits,
+                columnSpanUnits = columnSpanUnits
+            )
+        )
+        val updatedItems = layout.items + spacer
+        if (!isValidPlacementUpdate(layout, updatedItems)) return false
+        _uiState.value = currentState.copy(layout = layout.copyWithItems(updatedItems))
+        return true
     }
 
+    fun updateSpacerPlacement(spacerId: String, placement: GridPlacement): Boolean {
+        val currentState = _uiState.value
+        val layout = currentState.layout
+        var found = false
+        val updatedItems = layout.items.map { item ->
+            if (item is SpacerItem && item.id == spacerId) {
+                found = true
+                item.copy(placement = placement)
+            } else {
+                item
+            }
+        }
+        if (!found || !isValidPlacementUpdate(layout, updatedItems)) return false
+        _uiState.value = currentState.copy(layout = layout.copyWithItems(updatedItems))
+        return true
+    }
+
+    fun deleteSpacer(spacerId: String): Boolean {
+        val currentState = _uiState.value
+        val layout = currentState.layout
+        val updatedItems = layout.items.filterNot { it is SpacerItem && it.id == spacerId }
+        if (updatedItems.size == layout.items.size) return false
+        _uiState.value = currentState.copy(layout = layout.copyWithItems(updatedItems))
+        return true
+    }
+
+    private fun isValidPlacementUpdate(
+        layout: KeyboardLayout,
+        items: List<KeyboardLayoutItem>
+    ): Boolean {
+        return !hasPlacementIssues(
+            items = items,
+            rowUnitCount = layout.rowUnitCount,
+            columnUnitCount = layout.columnUnitCount
+        )
+    }
+
+    /**
+     * Cell-grid overlap test for [updateKeyAndMappings] (which works on
+     * KeyData.row/column for the simple, single-key edit flow).
+     *
+     * Drag-swap uses [com.kazumaproject.custom_keyboard.data.hasPlacementIssues]
+     * on GridPlacement instead — see [swapKeys].
+     */
     private fun isRectOverlapping(key1: KeyData, key2: KeyData): Boolean {
         val k1Left = key1.column
         val k1Right = key1.column + key1.colSpan
@@ -489,6 +668,90 @@ class KeyboardEditorViewModel @Inject constructor(
                 k1Top >= k2Bottom)
     }
 
+    private fun trimItemsToBounds(
+        items: List<KeyboardLayoutItem>,
+        rowUnitCount: Int,
+        columnUnitCount: Int
+    ): List<KeyboardLayoutItem> {
+        return items.mapNotNull { item ->
+            val p = item.placement
+            if (p.rowUnits >= rowUnitCount || p.columnUnits >= columnUnitCount) {
+                return@mapNotNull null
+            }
+            val newPlacement = p.copy(
+                rowSpanUnits = minOf(p.rowSpanUnits, rowUnitCount - p.rowUnits),
+                columnSpanUnits = minOf(p.columnSpanUnits, columnUnitCount - p.columnUnits)
+            )
+            if (newPlacement.rowSpanUnits <= 0 || newPlacement.columnSpanUnits <= 0) {
+                null
+            } else {
+                item.withPlacementAndApproximateKeyData(newPlacement)
+            }
+        }
+    }
+
+    private fun deleteUnitRange(
+        items: List<KeyboardLayoutItem>,
+        startUnits: Int,
+        endUnits: Int,
+        isRow: Boolean
+    ): List<KeyboardLayoutItem> {
+        val removedUnits = endUnits - startUnits
+        return items.mapNotNull { item ->
+            val p = item.placement
+            val itemStart = if (isRow) p.rowUnits else p.columnUnits
+            val itemSpan = if (isRow) p.rowSpanUnits else p.columnSpanUnits
+            val itemEnd = itemStart + itemSpan
+
+            val newStart: Int
+            val newSpan: Int
+            when {
+                itemEnd <= startUnits -> {
+                    newStart = itemStart
+                    newSpan = itemSpan
+                }
+                itemStart >= endUnits -> {
+                    newStart = itemStart - removedUnits
+                    newSpan = itemSpan
+                }
+                else -> {
+                    val remainingBefore = maxOf(0, startUnits - itemStart)
+                    val remainingAfter = maxOf(0, itemEnd - endUnits)
+                    newStart = if (itemStart < startUnits) itemStart else startUnits
+                    newSpan = remainingBefore + remainingAfter
+                }
+            }
+
+            if (newSpan <= 0) {
+                null
+            } else {
+                val newPlacement = if (isRow) {
+                    p.copy(rowUnits = newStart, rowSpanUnits = newSpan)
+                } else {
+                    p.copy(columnUnits = newStart, columnSpanUnits = newSpan)
+                }
+                item.withPlacementAndApproximateKeyData(newPlacement)
+            }
+        }
+    }
+
+    private fun KeyboardLayoutItem.withPlacementAndApproximateKeyData(
+        placement: GridPlacement
+    ): KeyboardLayoutItem {
+        return when (this) {
+            is SpacerItem -> copy(placement = placement)
+            is KeyItem -> copy(
+                keyData = keyData.copy(
+                    row = placement.rowUnits / 2,
+                    column = placement.columnUnits / 2,
+                    rowSpan = (placement.rowSpanUnits + 1) / 2,
+                    colSpan = (placement.columnSpanUnits + 1) / 2
+                ),
+                placement = placement
+            )
+        }
+    }
+
     fun updateIsRomaji(isRomaji: Boolean) {
         _uiState.update { it.copy(isRomaji = isRomaji) }
     }
@@ -503,7 +766,17 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun applyTemplate(templateLayout: KeyboardLayout) {
         val keysWithEnsuredIds = templateLayout.keys.map { key ->
-            if (key.keyId == null) key.copy(keyId = UUID.randomUUID().toString()) else key
+            val keyWithId = if (key.keyId == null) key.copy(keyId = UUID.randomUUID().toString()) else key
+            if (
+                !keyWithId.isSpecialKey &&
+                keyWithId.keyType == KeyType.NORMAL &&
+                keyWithId.label.isNotBlank() &&
+                keyWithId.action == null
+            ) {
+                keyWithId.copy(action = KeyAction.Text(keyWithId.label))
+            } else {
+                keyWithId
+            }
         }
 
         val labelToIdMap = keysWithEnsuredIds
@@ -535,8 +808,31 @@ class KeyboardEditorViewModel @Inject constructor(
             if (newKeyId != null) newKeyId to map else null
         }.toMap()
 
-        val finalLayout = templateLayout.copy(
-            keys = keysWithEnsuredIds,
+        val finalLayoutBase = if (templateLayout.usesFlexiblePlacement()) {
+            val keysByOriginalId = templateLayout.keys
+                .zip(keysWithEnsuredIds)
+                .mapNotNull { (original, updated) ->
+                    original.keyId?.let { it to updated }
+                }
+                .toMap()
+            val updatedItems = templateLayout.items.map { item ->
+                when (item) {
+                    is SpacerItem -> item
+                    is KeyItem -> {
+                        val updatedKeyData = keysByOriginalId[item.keyData.keyId] ?: item.keyData
+                        item.copy(
+                            id = updatedKeyData.keyId ?: item.id,
+                            keyData = updatedKeyData
+                        )
+                    }
+                }
+            }
+            templateLayout.copyWithItems(updatedItems)
+        } else {
+            templateLayout.copyWithKeys(keysWithEnsuredIds)
+        }
+
+        val finalLayout = finalLayoutBase.copy(
             flickKeyMaps = reKeyedFlickMaps,
             circularFlickKeyMaps = reKeyedCircularFlickMaps,
             twoStepFlickKeyMaps = reKeyedTwoStepMaps,
@@ -556,9 +852,15 @@ class KeyboardEditorViewModel @Inject constructor(
         return repository.getAllFullLayoutsForExport()
     }
 
-    fun importLayouts(layouts: List<FullKeyboardLayout>) {
-        viewModelScope.launch {
-            repository.importLayouts(layouts)
-        }
+    /**
+     * Import 用 entrypoint。
+     *
+     * 受け取るのは外部 JSON から正規化済みの [ImportableKeyboardLayout] であり、
+     * Room の Relation 用 [FullKeyboardLayout] ではない。
+     * これにより spacers などの新フィールドが将来欠損していても、
+     * Repository / DAO 層には null が伝搬しない設計になっている。
+     */
+    suspend fun importLayouts(layouts: List<ImportableKeyboardLayout>): KeyboardLayoutImportResult {
+        return repository.importLayouts(layouts)
     }
 }

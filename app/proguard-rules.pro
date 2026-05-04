@@ -23,6 +23,7 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.** { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.** { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity { *; }
@@ -37,6 +38,8 @@
 
 # Keep Gson generic type metadata and annotations used by backup import/export parsing.
 -keepattributes Signature
+-keepattributes RuntimeVisibleAnnotations
+-keepattributes RuntimeInvisibleAnnotations
 -keepattributes *Annotation*
 -keep class com.google.gson.reflect.TypeToken { *; }
 -keep class * extends com.google.gson.reflect.TypeToken
