@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutBackupImporter
+import com.kazumaproject.markdownhelperkeyboard.repository.CustomKeyboardDeleteImpact
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportError
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutJsonExporter
@@ -158,6 +159,17 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.layouts.collect { layouts ->
                 adapter.submitList(layouts)
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.deleteEvents.collect { event ->
+                when (event) {
+                    is KeyboardDeleteEvent.ConfirmReferenced ->
+                        showReferencedDeleteWarningDialog(event.impact)
+
+                    is KeyboardDeleteEvent.Deleted -> Unit // RecyclerView は Flow から自動更新
+                }
             }
         }
     }
@@ -364,7 +376,51 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                 dialog.dismiss()
             }
             .setPositiveButton(getString(com.kazumaproject.core.R.string.dialog_delete)) { _, _ ->
-                viewModel.deleteLayout(layoutId)
+                // 参照チェックは ViewModel.requestDeleteLayout 内で行われる。
+                viewModel.requestDeleteLayout(layoutId)
+            }
+            .show()
+    }
+
+    /**
+     * 削除対象が他キーから MoveToCustomKeyboard で参照されている場合に表示する警告ダイアログ。
+     * ユーザーが了承した場合のみ実際の削除を実行する。
+     */
+    private fun showReferencedDeleteWarningDialog(impact: CustomKeyboardDeleteImpact) {
+        val ctx = context ?: return
+        val refCount = impact.references.size
+        val refSummary = impact.references
+            .take(5)
+            .joinToString(separator = "\n") { ref ->
+                val keyDesc = ref.sourceKeyLabel
+                    ?.takeIf { it.isNotBlank() }
+                    ?: ref.sourceKeyIdentifier
+                "・${ref.sourceLayoutName} / $keyDesc"
+            }
+        val omitted = if (refCount > 5) "\n… 他 ${refCount - 5} 件" else ""
+
+        val message = buildString {
+            append(
+                getString(
+                    R.string.delete_layout_with_references_message,
+                    refCount
+                )
+            )
+            if (refSummary.isNotBlank()) {
+                append("\n\n")
+                append(refSummary)
+                append(omitted)
+            }
+        }
+
+        MaterialAlertDialogBuilder(ctx)
+            .setTitle(getString(R.string.delete_layout_with_references_title))
+            .setMessage(message)
+            .setNegativeButton(getString(com.kazumaproject.core.R.string.dialog_cancel)) { dialog, _ ->
+                dialog.dismiss()
+            }
+            .setPositiveButton(getString(com.kazumaproject.core.R.string.dialog_delete)) { _, _ ->
+                viewModel.confirmDeleteWithReferences(impact.layoutId)
             }
             .show()
     }

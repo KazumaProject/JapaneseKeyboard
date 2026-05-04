@@ -139,22 +139,35 @@ class KeyboardEditorViewModel @Inject constructor(
             val nameExists = repository.doesNameExist(currentState.name, idToSave)
             if (nameExists) {
                 _uiState.update { it.copy(duplicateNameError = true) }
-            } else {
-                if (idToSave != null) {
-                    repository.deleteLayout(idToSave)
-                }
+                return@launch
+            }
 
-                val layoutToSave = currentState.layout.copy(
-                    isRomaji = currentState.isRomaji,
-                    isDirectMode = currentState.isDirectMode
-                )
+            // 重要: 既存レイアウトを保存する場合でも、ここで親 (keyboard_layouts 行) を
+            //       一度 delete して作り直してはいけない。
+            //       親 row を delete すると、stableId / sortOrder / createdAt の identity
+            //       が失われ、MoveToCustomKeyboard(stableId) が「削除済みのカスタムキーボード」
+            //       として扱われる原因になる。
+            //       Repository 側で「新規作成」「既存更新」を分けるので、ViewModel は
+            //       現在の UI state を渡すだけでよい。
+            val layoutToSave = currentState.layout.copy(
+                isRomaji = currentState.isRomaji,
+                isDirectMode = currentState.isDirectMode
+            )
+
+            val saveResult = runCatching {
                 repository.saveLayout(
                     layout = layoutToSave,
                     name = currentState.name,
                     id = idToSave
                 )
-                _uiState.update { it.copy(navigateBack = true) }
             }
+            saveResult
+                .onFailure { e ->
+                    Timber.e(e, "saveLayout failed for id=%s", idToSave)
+                }
+                .onSuccess {
+                    _uiState.update { it.copy(navigateBack = true) }
+                }
         }
     }
 
