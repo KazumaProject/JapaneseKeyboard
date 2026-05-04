@@ -1,74 +1,173 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export
 
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
+import com.google.gson.annotations.SerializedName
 
 /**
- * JSON import/export 専用 DTO 群。
+ * External JSON schema for custom keyboard backup files.
  *
- * 重要:
- * - これらは外部 JSON ファイル(ユーザー編集の可能性あり, 旧バージョン由来)を
- *   parse するための「外側の型」であり、Room の Relation 用モデル
- *   ([com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout])
- *   とは明確に分離する。
- * - フィールドはすべて nullable / default null にする。
- *   Gson は Kotlin の constructor default 値を使わないため、欠損フィールドは
- *   null になる前提で扱う必要がある。
- * - 新規追加フィールド(rowOptions / columnOptions / layoutItems / keyMargins 等)を
- *   将来追加する場合も、このファイルに nullable で追加するだけで旧 JSON との
- *   互換性を壊さずに済む。
- */
-
-/**
- * 新しい schemaVersion 付き object 形式の root DTO。
- *
- * 期待形:
- * ```
- * {
- *   "schemaVersion": 2,
- *   "layouts": [ ... ]
- * }
- * ```
+ * These DTOs are intentionally separate from Room entities and runtime models.
+ * Every external JSON key is pinned with @SerializedName so R8 field renaming
+ * cannot change the backup contract.
  */
 data class KeyboardLayoutExportFileDto(
+    @SerializedName("schemaVersion")
     val schemaVersion: Int? = null,
+    @SerializedName("layouts")
     val layouts: List<KeyboardLayoutExportDto>? = null
 )
 
-/**
- * 1 レイアウト分の DTO。
- *
- * 旧 JSON では root array の各要素がこの形をしている。
- *
- * すべて nullable。
- * - layout が null の要素は import 対象から除外する。
- * - keysWithFlicks が null/欠損の場合は空 list として扱う。
- * - spacers が null/欠損の場合は空 list として扱う(古い JSON は spacers 自体が無い)。
- */
 data class KeyboardLayoutExportDto(
-    val layout: CustomKeyboardLayout? = null,
+    @SerializedName("layout")
+    val layout: KeyboardLayoutDto? = null,
+    @SerializedName("keysWithFlicks")
     val keysWithFlicks: List<KeyWithFlicksExportDto>? = null,
-    val spacers: List<SpacerDefinition>? = null
+    @SerializedName("spacers")
+    val spacers: List<SpacerDefinitionDto>? = null
 )
 
-/**
- * 1 キー + そのキーに紐づく flick/circular/twoStep/longPress 系マッピングの DTO。
- *
- * すべて nullable。
- * - key が null の要素は無効扱い(import 時に skip)。
- * - 各 flick 系 List が null/欠損の場合は空 list として扱う。
- */
+data class KeyboardLayoutDto(
+    @SerializedName("layoutId")
+    val layoutId: Long? = null,
+    @SerializedName("name")
+    val name: String? = null,
+    @SerializedName("columnCount")
+    val columnCount: Int? = null,
+    @SerializedName("rowCount")
+    val rowCount: Int? = null,
+    @SerializedName("isRomaji")
+    val isRomaji: Boolean? = null,
+    @SerializedName("isDirectMode")
+    val isDirectMode: Boolean? = null,
+    @SerializedName("createdAt")
+    val createdAt: Long? = null,
+    @SerializedName("sortOrder")
+    val sortOrder: Int? = null,
+    @SerializedName("stableId")
+    val stableId: String? = null
+)
+
 data class KeyWithFlicksExportDto(
-    val key: KeyDefinition? = null,
-    val flicks: List<FlickMapping>? = null,
-    val circularFlicks: List<CircularFlickMapping>? = null,
-    val twoStepFlicks: List<TwoStepFlickMapping>? = null,
-    val longPressFlicks: List<LongPressFlickMapping>? = null,
-    val twoStepLongPressFlicks: List<TwoStepLongPressMappingEntity>? = null
+    @SerializedName("key")
+    val key: KeyDefinitionDto? = null,
+    @SerializedName("flicks")
+    val flicks: List<FlickMappingDto>? = null,
+    @SerializedName("circularFlicks")
+    val circularFlicks: List<CircularFlickMappingDto>? = null,
+    @SerializedName("twoStepFlicks")
+    val twoStepFlicks: List<TwoStepFlickMappingDto>? = null,
+    @SerializedName("longPressFlicks")
+    val longPressFlicks: List<LongPressFlickMappingDto>? = null,
+    @SerializedName("twoStepLongPressFlicks")
+    val twoStepLongPressFlicks: List<TwoStepLongPressMappingDto>? = null
+)
+
+data class KeyDefinitionDto(
+    @SerializedName("keyId")
+    val keyId: Long? = null,
+    @SerializedName("ownerLayoutId")
+    val ownerLayoutId: Long? = null,
+    @SerializedName("keyIdentifier")
+    val keyIdentifier: String? = null,
+    @SerializedName("label")
+    val label: String? = null,
+    @SerializedName("row")
+    val row: Int? = null,
+    @SerializedName("column")
+    val column: Int? = null,
+    @SerializedName("rowSpan")
+    val rowSpan: Int? = null,
+    @SerializedName("colSpan")
+    val colSpan: Int? = null,
+    @SerializedName("keyType")
+    val keyType: String? = null,
+    @SerializedName("isSpecialKey")
+    val isSpecialKey: Boolean? = null,
+    @SerializedName("drawableResId")
+    val drawableResId: Int? = null,
+    @SerializedName("action")
+    val action: String? = null,
+    @SerializedName("rowUnits")
+    val rowUnits: Int? = null,
+    @SerializedName("columnUnits")
+    val columnUnits: Int? = null,
+    @SerializedName("rowSpanUnits")
+    val rowSpanUnits: Int? = null,
+    @SerializedName("columnSpanUnits")
+    val columnSpanUnits: Int? = null
+)
+
+data class FlickMappingDto(
+    @SerializedName("ownerKeyId")
+    val ownerKeyId: Long? = null,
+    @SerializedName("stateIndex")
+    val stateIndex: Int? = null,
+    @SerializedName("flickDirection")
+    val flickDirection: String? = null,
+    @SerializedName("actionType")
+    val actionType: String? = null,
+    @SerializedName("actionValue")
+    val actionValue: String? = null
+)
+
+data class CircularFlickMappingDto(
+    @SerializedName("ownerKeyId")
+    val ownerKeyId: Long? = null,
+    @SerializedName("stateIndex")
+    val stateIndex: Int? = null,
+    @SerializedName("circularDirection")
+    val circularDirection: String? = null,
+    @SerializedName("actionType")
+    val actionType: String? = null,
+    @SerializedName("actionValue")
+    val actionValue: String? = null
+)
+
+data class TwoStepFlickMappingDto(
+    @SerializedName("ownerKeyId")
+    val ownerKeyId: Long? = null,
+    @SerializedName("firstDirection")
+    val firstDirection: String? = null,
+    @SerializedName("secondDirection")
+    val secondDirection: String? = null,
+    @SerializedName("output")
+    val output: String? = null
+)
+
+data class LongPressFlickMappingDto(
+    @SerializedName("ownerKeyId")
+    val ownerKeyId: Long? = null,
+    @SerializedName("flickDirection")
+    val flickDirection: String? = null,
+    @SerializedName("output")
+    val output: String? = null
+)
+
+data class TwoStepLongPressMappingDto(
+    @SerializedName("ownerKeyId")
+    val ownerKeyId: Long? = null,
+    @SerializedName("firstDirection")
+    val firstDirection: String? = null,
+    @SerializedName("secondDirection")
+    val secondDirection: String? = null,
+    @SerializedName("output")
+    val output: String? = null
+)
+
+data class SpacerDefinitionDto(
+    @SerializedName("spacerId")
+    val spacerId: Long? = null,
+    @SerializedName("ownerLayoutId")
+    val ownerLayoutId: Long? = null,
+    @SerializedName("itemIdentifier")
+    val itemIdentifier: String? = null,
+    @SerializedName("rowUnits")
+    val rowUnits: Int? = null,
+    @SerializedName("columnUnits")
+    val columnUnits: Int? = null,
+    @SerializedName("rowSpanUnits")
+    val rowSpanUnits: Int? = null,
+    @SerializedName("columnSpanUnits")
+    val columnSpanUnits: Int? = null,
+    @SerializedName("sortOrder")
+    val sortOrder: Int? = null
 )

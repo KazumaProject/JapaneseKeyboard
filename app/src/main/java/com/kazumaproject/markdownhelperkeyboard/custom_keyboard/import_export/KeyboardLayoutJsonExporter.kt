@@ -45,19 +45,93 @@ object KeyboardLayoutJsonExporter {
  */
 internal fun FullKeyboardLayout.toExportDto(): KeyboardLayoutExportDto {
     return KeyboardLayoutExportDto(
-        layout = this.layout,
+        layout = KeyboardLayoutDto(
+            layoutId = this.layout.layoutId,
+            name = this.layout.name,
+            columnCount = this.layout.columnCount,
+            rowCount = this.layout.rowCount,
+            isRomaji = this.layout.isRomaji,
+            isDirectMode = this.layout.isDirectMode,
+            createdAt = this.layout.createdAt,
+            sortOrder = this.layout.sortOrder,
+            stableId = this.layout.stableId
+        ),
         keysWithFlicks = this.keysWithFlicks.map { it.toExportDto() },
-        spacers = this.spacers
+        spacers = this.spacers.map {
+            SpacerDefinitionDto(
+                spacerId = it.spacerId,
+                ownerLayoutId = it.ownerLayoutId,
+                itemIdentifier = it.itemIdentifier,
+                rowUnits = it.rowUnits,
+                columnUnits = it.columnUnits,
+                rowSpanUnits = it.rowSpanUnits,
+                columnSpanUnits = it.columnSpanUnits,
+                sortOrder = it.sortOrder
+            )
+        }
     )
 }
 
 internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
     return KeyWithFlicksExportDto(
-        key = this.key,
-        flicks = this.flicks,
-        circularFlicks = this.circularFlicks,
-        twoStepFlicks = this.twoStepFlicks,
-        longPressFlicks = this.longPressFlicks,
-        twoStepLongPressFlicks = this.twoStepLongPressFlicks
+        key = KeyDefinitionDto(
+            keyId = this.key.keyId,
+            ownerLayoutId = this.key.ownerLayoutId,
+            keyIdentifier = this.key.keyIdentifier,
+            label = this.key.label,
+            row = this.key.row,
+            column = this.key.column,
+            rowSpan = this.key.rowSpan,
+            colSpan = this.key.colSpan,
+            keyType = this.key.keyType.name,
+            isSpecialKey = this.key.isSpecialKey,
+            drawableResId = this.key.drawableResId,
+            action = this.key.action,
+            rowUnits = this.key.rowUnits,
+            columnUnits = this.key.columnUnits,
+            rowSpanUnits = this.key.rowSpanUnits,
+            columnSpanUnits = this.key.columnSpanUnits
+        ),
+        flicks = this.flicks.map {
+            FlickMappingDto(
+                ownerKeyId = it.ownerKeyId,
+                stateIndex = it.stateIndex,
+                flickDirection = it.flickDirection.name,
+                actionType = it.actionType,
+                actionValue = it.actionValue
+            )
+        },
+        circularFlicks = this.circularFlicks.map {
+            CircularFlickMappingDto(
+                ownerKeyId = it.ownerKeyId,
+                stateIndex = it.stateIndex,
+                circularDirection = it.circularDirection.name,
+                actionType = it.actionType,
+                actionValue = it.actionValue
+            )
+        },
+        twoStepFlicks = this.twoStepFlicks.map {
+            TwoStepFlickMappingDto(
+                ownerKeyId = it.ownerKeyId,
+                firstDirection = it.firstDirection.name,
+                secondDirection = it.secondDirection.name,
+                output = it.output
+            )
+        },
+        longPressFlicks = this.longPressFlicks.map {
+            LongPressFlickMappingDto(
+                ownerKeyId = it.ownerKeyId,
+                flickDirection = it.flickDirection.name,
+                output = it.output
+            )
+        },
+        twoStepLongPressFlicks = this.twoStepLongPressFlicks.map {
+            TwoStepLongPressMappingDto(
+                ownerKeyId = it.ownerKeyId,
+                firstDirection = it.firstDirection.name,
+                secondDirection = it.secondDirection.name,
+                output = it.output
+            )
+        }
     )
 }

@@ -338,6 +338,7 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
         return when (error) {
             KeyboardLayoutImportError.EmptyInput -> "ファイルが空です"
             KeyboardLayoutImportError.UnsupportedFormat -> "対応していないバックアップ形式です"
+            is KeyboardLayoutImportError.MalformedJson -> "JSON の読み込みに失敗しました"
             is KeyboardLayoutImportError.InvalidJson -> "JSON の読み込みに失敗しました"
             is KeyboardLayoutImportError.InvalidXml -> "XML の読み込みに失敗しました"
             KeyboardLayoutImportError.NoLayoutPayloadFound ->
@@ -345,6 +346,11 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
 
             KeyboardLayoutImportError.NoImportableLayouts -> "インポート可能なレイアウトがありません"
             KeyboardLayoutImportError.SchemaMismatch -> "バックアップ形式が想定と異なります"
+            is KeyboardLayoutImportError.MissingLayout -> "インポート可能なレイアウトがありません"
+            is KeyboardLayoutImportError.MissingKeys -> "インポート可能なキーがないレイアウトがありました"
+            is KeyboardLayoutImportError.InvalidLayoutSize -> "レイアウトのサイズが不正です"
+            is KeyboardLayoutImportError.InvalidKeyPlacement -> "キーの配置が不正です"
+            is KeyboardLayoutImportError.BrokenOwnerReference -> "バックアップ内の参照関係が壊れています"
             is KeyboardLayoutImportError.ValidationFailed -> "インポート可能なレイアウトがありません"
             is KeyboardLayoutImportError.StorageFailed -> "保存に失敗しました"
         }
