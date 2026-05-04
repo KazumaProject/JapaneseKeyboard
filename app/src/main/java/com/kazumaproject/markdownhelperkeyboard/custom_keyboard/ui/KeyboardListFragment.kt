@@ -24,8 +24,10 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutBackupImporter
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportError
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutJsonExporter
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutJsonImporter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.KeyboardLayoutAdapter
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardListBinding
 import dagger.hilt.android.AndroidEntryPoint
@@ -198,7 +200,8 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
     private fun launchImportPicker() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(Intent.CATEGORY_OPENABLE)
-            type = "application/json"
+            type = "*/*"
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/json", "text/xml", "application/xml", "text/plain"))
             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
         }
@@ -253,25 +256,10 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                             return@launch
                         }
 
-                val jsonString = bytes.toString(Charsets.UTF_8)
-                    .trimStart('\uFEFF')
-                    .replace("\u0000", "")
-
-                // 旧 root array 形式 / 新 schemaVersion 付き object 形式 / spacers 欠損 等
-                // すべての互換性を importer 側に閉じ込める。
-                val importableLayouts = KeyboardLayoutJsonImporter.parse(jsonString)
-
-                if (importableLayouts.isEmpty()) {
-                    Toast.makeText(context, "インポート対象が空です", Toast.LENGTH_LONG).show()
-                    return@launch
-                }
-
-                keyboardEditorViewMode.importLayouts(importableLayouts)
-                Toast.makeText(
-                    context,
-                    "${importableLayouts.size}件のレイアウトをインポートしました",
-                    Toast.LENGTH_SHORT
-                ).show()
+                val rawText = bytes.toString(Charsets.UTF_8)
+                val parseResult = KeyboardLayoutBackupImporter.importText(rawText)
+                val finalResult = saveParsedLayouts(parseResult)
+                showImportResult(finalResult)
 
             } catch (e: Exception) {
                 Toast.makeText(
@@ -281,6 +269,84 @@ class KeyboardListFragment : Fragment(R.layout.fragment_keyboard_list) {
                 ).show()
                 Timber.e(e, "importLayouts failed")
             }
+        }
+    }
+
+    private suspend fun saveParsedLayouts(
+        parseResult: KeyboardLayoutImportResult
+    ): KeyboardLayoutImportResult {
+        return when (parseResult) {
+            is KeyboardLayoutImportResult.Failure -> parseResult
+            is KeyboardLayoutImportResult.Success -> {
+                val storageResult = keyboardEditorViewMode.importLayouts(parseResult.layouts)
+                mergeImportResults(parseResult, storageResult)
+            }
+
+            is KeyboardLayoutImportResult.PartialSuccess -> {
+                val storageResult = keyboardEditorViewMode.importLayouts(parseResult.layouts)
+                mergeImportResults(parseResult, storageResult)
+            }
+        }
+    }
+
+    private fun mergeImportResults(
+        parseResult: KeyboardLayoutImportResult,
+        storageResult: KeyboardLayoutImportResult
+    ): KeyboardLayoutImportResult {
+        val parseErrors = (parseResult as? KeyboardLayoutImportResult.PartialSuccess)?.errors.orEmpty()
+        val parseWarnings = when (parseResult) {
+            is KeyboardLayoutImportResult.Success -> parseResult.warnings
+            is KeyboardLayoutImportResult.PartialSuccess -> parseResult.warnings
+            is KeyboardLayoutImportResult.Failure -> emptyList()
+        }
+        return when (storageResult) {
+            is KeyboardLayoutImportResult.Success -> {
+                if (parseErrors.isEmpty()) {
+                    storageResult.copy(warnings = parseWarnings + storageResult.warnings)
+                } else {
+                    KeyboardLayoutImportResult.PartialSuccess(
+                        layouts = storageResult.layouts,
+                        errors = parseErrors,
+                        warnings = parseWarnings + storageResult.warnings
+                    )
+                }
+            }
+
+            is KeyboardLayoutImportResult.PartialSuccess -> storageResult.copy(
+                errors = parseErrors + storageResult.errors,
+                warnings = parseWarnings + storageResult.warnings
+            )
+
+            is KeyboardLayoutImportResult.Failure -> storageResult
+        }
+    }
+
+    private fun showImportResult(result: KeyboardLayoutImportResult) {
+        val message = when (result) {
+            is KeyboardLayoutImportResult.Success ->
+                "${result.layouts.size}件のレイアウトをインポートしました"
+
+            is KeyboardLayoutImportResult.PartialSuccess ->
+                "${result.layouts.size}件をインポートしました。一部のレイアウトは読み込めませんでした"
+
+            is KeyboardLayoutImportResult.Failure -> importFailureMessage(result.error)
+        }
+        Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+    }
+
+    private fun importFailureMessage(error: KeyboardLayoutImportError): String {
+        return when (error) {
+            KeyboardLayoutImportError.EmptyInput -> "ファイルが空です"
+            KeyboardLayoutImportError.UnsupportedFormat -> "対応していないバックアップ形式です"
+            is KeyboardLayoutImportError.InvalidJson -> "JSON の読み込みに失敗しました"
+            is KeyboardLayoutImportError.InvalidXml -> "XML の読み込みに失敗しました"
+            KeyboardLayoutImportError.NoLayoutPayloadFound ->
+                "バックアップ内にカスタムキーボードレイアウトが見つかりませんでした"
+
+            KeyboardLayoutImportError.NoImportableLayouts -> "インポート可能なレイアウトがありません"
+            KeyboardLayoutImportError.SchemaMismatch -> "バックアップ形式が想定と異なります"
+            is KeyboardLayoutImportError.ValidationFailed -> "インポート可能なレイアウトがありません"
+            is KeyboardLayoutImportError.StorageFailed -> "保存に失敗しました"
         }
     }
 

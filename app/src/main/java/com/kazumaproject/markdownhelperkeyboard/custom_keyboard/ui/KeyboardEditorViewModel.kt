@@ -22,6 +22,7 @@ import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.ImportableKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -859,9 +860,7 @@ class KeyboardEditorViewModel @Inject constructor(
      * これにより spacers などの新フィールドが将来欠損していても、
      * Repository / DAO 層には null が伝搬しない設計になっている。
      */
-    fun importLayouts(layouts: List<ImportableKeyboardLayout>) {
-        viewModelScope.launch {
-            repository.importLayouts(layouts)
-        }
+    suspend fun importLayouts(layouts: List<ImportableKeyboardLayout>): KeyboardLayoutImportResult {
+        return repository.importLayouts(layouts)
     }
 }
