@@ -7,11 +7,19 @@ enum class CustomKeyboardSelectionReason {
     InitialDefault,
     UserTabClick,
     UserNextTab,
-    MoveToStableId
+    MoveToStableId,
+    LayoutsChangedKeepStableId,
+    LayoutsChangedFallbackIndex
 }
 
 data class InitialCustomKeyboardSelection(
     val index: Int,
+    val reason: CustomKeyboardSelectionReason
+)
+
+data class ResolvedCustomKeyboardSelection(
+    val index: Int,
+    val stableId: String,
     val reason: CustomKeyboardSelectionReason
 )
 
@@ -57,6 +65,34 @@ fun resolveInitialCustomKeyboardSelection(
     )
 }
 
+fun resolveCustomKeyboardSelectionAfterLayoutsChanged(
+    layouts: List<CustomKeyboardLayout>,
+    selectedStableId: String?,
+    previousIndex: Int
+): ResolvedCustomKeyboardSelection? {
+    if (layouts.isEmpty()) return null
+
+    if (!selectedStableId.isNullOrBlank()) {
+        val stableIndex = resolveCustomKeyboardIndexByStableId(layouts, selectedStableId)
+        if (stableIndex != null) {
+            return ResolvedCustomKeyboardSelection(
+                index = stableIndex,
+                stableId = layouts[stableIndex].stableId,
+                reason = CustomKeyboardSelectionReason.LayoutsChangedKeepStableId
+            )
+        }
+    }
+
+    val fallbackIndex = previousIndex
+        .takeIf { it in layouts.indices }
+        ?: 0
+    return ResolvedCustomKeyboardSelection(
+        index = fallbackIndex,
+        stableId = layouts[fallbackIndex].stableId,
+        reason = CustomKeyboardSelectionReason.LayoutsChangedFallbackIndex
+    )
+}
+
 fun shouldPersistCustomKeyboardSelection(
     layout: CustomKeyboardLayout,
     rememberLast: Boolean,
@@ -67,5 +103,6 @@ fun shouldPersistCustomKeyboardSelection(
 
     return reason == CustomKeyboardSelectionReason.UserTabClick ||
         reason == CustomKeyboardSelectionReason.UserNextTab ||
-        reason == CustomKeyboardSelectionReason.MoveToStableId
+        reason == CustomKeyboardSelectionReason.MoveToStableId ||
+        reason == CustomKeyboardSelectionReason.LayoutsChangedFallbackIndex
 }

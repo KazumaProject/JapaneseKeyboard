@@ -754,6 +754,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var candidateTabOrder: List<CandidateTab> = emptyList()
 
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
+    private var currentCustomKeyboardStableId: String? = null
+    private var customKeyboardRenderJob: Job? = null
 
     private var currentNightMode: Int = 0
 
@@ -1108,7 +1110,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             goToNextPageForFloatingCandidate()
         }
         ioScope.launch {
-            customLayouts = keyboardRepository.getLayoutsNotFlowEnsuringStableIds()
+            val initialCustomLayouts = keyboardRepository.getLayoutsNotFlowEnsuringStableIds()
+            withContext(Dispatchers.Main) {
+                customLayouts = initialCustomLayouts
+                currentCustomKeyboardStableId = customLayouts
+                    .getOrNull(currentCustomKeyboardPosition)
+                    ?.stableId
+                    ?.takeIf { it.isNotBlank() }
+            }
             shortCurRepository.initDefaultShortcutsIfNeeded()
             physicalKeyboardShortcutRepository.ensureDefaultShortcuts()
         }
@@ -4610,17 +4619,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setCurrentCustomLayoutTo(flickView: FlickKeyboardView) {
+        val layout = selectedCustomKeyboardLayoutOrNull() ?: return
         scope.launch(Dispatchers.IO) {
-            if (customLayouts.isEmpty()) return@launch
-            val position = currentCustomKeyboardPosition.coerceIn(customLayouts.indices)
-            val id = customLayouts[position].layoutId
-            val dbLayout = keyboardRepository.getFullLayout(id).first()
+            val id = layout.layoutId
+            val expectedStableId = layout.stableId
+            val dbLayout = runCatching { keyboardRepository.getFullLayout(id).first() }
+                .getOrElse {
+                    Timber.w(it, "setCurrentCustomLayoutTo: layout disappeared id=$id stableId=$expectedStableId")
+                    return@launch
+                }
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
             isCustomLayoutRomajiMode = finalLayout.isRomaji
             isCustomLayoutDirectMode = finalLayout.isDirectMode
             isCustomLayoutShiftPressed = false
             isCustomLayoutCapLock = false
             withContext(Dispatchers.Main) {
+                if (!isCurrentCustomKeyboardSelection(layoutId = id, stableId = expectedStableId)) {
+                    return@withContext
+                }
                 setKeyboardWithDeleteKeyFlickPreferences(flickView, finalLayout)
             }
         }
@@ -4628,6 +4644,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setCustomLayoutOnActiveSurface(layout: KeyboardLayout) {
         getActiveKeyboardSurface()
+            ?.customLayout
+            ?.let { flickView -> setKeyboardWithDeleteKeyFlickPreferences(flickView, layout) }
+    }
+
+    private fun setCustomLayoutOnAvailableSurfaces(layout: KeyboardLayout) {
+        getNormalKeyboardSurface()
+            ?.customLayout
+            ?.let { flickView -> setKeyboardWithDeleteKeyFlickPreferences(flickView, layout) }
+        getFloatingKeyboardSurface()
             ?.customLayout
             ?.let { flickView -> setKeyboardWithDeleteKeyFlickPreferences(flickView, layout) }
     }
@@ -7095,7 +7120,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 KeyboardType.CUSTOM -> {
                     Timber.d("updateKeyboardLayout CUSTOM: $isFlickOnlyMode $sumireInputKeyType")
-                    selectInitialCustomKeyboardTab()
+                    if (!selectInitialCustomKeyboardTab()) {
+                        fallbackFromCustomKeyboardIfNeeded()
+                        return@apply
+                    }
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
                     } else {
@@ -7155,7 +7183,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 when (customKeyboardMode) {
                     KeyboardInputMode.HIRAGANA -> {
                         mainLayoutBinding?.let { mainView ->
-                            selectInitialCustomKeyboardTab()
+                            if (!selectInitialCustomKeyboardTab()) {
+                                fallbackFromCustomKeyboardIfNeeded()
+                                return@let
+                            }
                             mainView.customLayoutDefault.isVisible = true
                             setCurrentInputModeForSession(InputMode.ModeJapanese)
                             mainView.qwertyView.isVisible = false
@@ -7292,17 +7323,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomLayoutShiftPressed = false
     private var isCustomLayoutCapLock = false
 
-    private fun selectInitialCustomKeyboardTab() {
+    private fun selectedCustomKeyboardLayoutOrNull(): CustomKeyboardLayout? {
+        currentCustomKeyboardStableId
+            ?.let { stableId -> resolveCustomKeyboardIndexByStableId(customLayouts, stableId) }
+            ?.let { index ->
+                currentCustomKeyboardPosition = index
+                return customLayouts[index]
+            }
+
+        return customLayouts.getOrNull(currentCustomKeyboardPosition)?.also { layout ->
+            currentCustomKeyboardStableId = layout.stableId.takeIf { it.isNotBlank() }
+        }
+    }
+
+    private fun isCurrentCustomKeyboardSelection(layoutId: Long, stableId: String): Boolean {
+        val selected = selectedCustomKeyboardLayoutOrNull() ?: return false
+        if (stableId.isNotBlank()) {
+            return selected.stableId == stableId
+        }
+        return selected.layoutId == layoutId
+    }
+
+    private fun currentCustomKeyboardStableIdCandidate(): String? {
+        currentCustomKeyboardStableId
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return it }
+        customLayouts
+            .getOrNull(currentCustomKeyboardPosition)
+            ?.stableId
+            ?.takeIf { it.isNotBlank() }
+            ?.let { return it }
+        return appPreference.last_used_custom_keyboard_stable_id
+            ?.takeIf { it.isNotBlank() }
+    }
+
+    private fun selectInitialCustomKeyboardTab(): Boolean {
         Timber.d("selectInitialCustomKeyboardTab")
         val initialSelection = resolveInitialCustomKeyboardSelection(
             layouts = customLayouts,
             rememberLast = appPreference.remember_last_custom_keyboard_preference == true,
             savedStableId = appPreference.last_used_custom_keyboard_stable_id
-        ) ?: return
+        ) ?: run {
+            clearCurrentCustomKeyboardSelection()
+            return false
+        }
         selectCustomKeyboardTab(
             index = initialSelection.index,
             reason = initialSelection.reason
         )
+        return true
     }
 
     private fun selectCustomKeyboardTab(
@@ -7314,6 +7383,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         currentCustomKeyboardPosition = index
+        currentCustomKeyboardStableId = layout.stableId.takeIf { it.isNotBlank() }
         if (shouldPersistCustomKeyboardSelection(
                 layout = layout,
                 rememberLast = appPreference.remember_last_custom_keyboard_preference == true,
@@ -7326,9 +7396,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun renderCustomKeyboardLayout(layout: CustomKeyboardLayout) {
-        scope.launch(Dispatchers.IO) {
+        customKeyboardRenderJob?.cancel()
+        customKeyboardRenderJob = scope.launch(Dispatchers.IO) {
             val id = layout.layoutId
-            val dbLayout = keyboardRepository.getFullLayout(id).first()
+            val expectedStableId = layout.stableId
+            val dbLayout = runCatching { keyboardRepository.getFullLayout(id).first() }
+                .getOrElse {
+                    Timber.w(it, "renderCustomKeyboardLayout: layout disappeared id=$id stableId=$expectedStableId")
+                    return@launch
+                }
             Timber.d("renderCustomKeyboardLayout: $id $dbLayout")
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
             Timber.d("renderCustomKeyboardLayout: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
@@ -7337,8 +7413,77 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isCustomLayoutShiftPressed = false
             isCustomLayoutCapLock = false
             withContext(Dispatchers.Main) {
-                setCustomLayoutOnActiveSurface(finalLayout)
+                if (!isCurrentCustomKeyboardSelection(layoutId = id, stableId = expectedStableId)) {
+                    Timber.d("renderCustomKeyboardLayout: skip stale render id=$id stableId=$expectedStableId")
+                    return@withContext
+                }
+                setCustomLayoutOnAvailableSurfaces(finalLayout)
             }
+        }
+    }
+
+    private fun clearCurrentCustomKeyboardSelection() {
+        currentCustomKeyboardPosition = 0
+        currentCustomKeyboardStableId = null
+        customKeyboardRenderJob?.cancel()
+        customKeyboardRenderJob = null
+    }
+
+    private fun fallbackFromCustomKeyboardIfNeeded() {
+        val fallbackType = keyboardOrder.firstOrNull { it != KeyboardType.CUSTOM }
+            ?: KeyboardType.TENKEY
+        Timber.d("fallbackFromCustomKeyboardIfNeeded: fallbackType=$fallbackType")
+        suggestionAdapter?.updateState(TenKeyQWERTYMode.Default, emptyList())
+        showKeyboard(fallbackType)
+    }
+
+    private fun onCustomKeyboardLayoutsChanged(newLayouts: List<CustomKeyboardLayout>) {
+        val selectedStableId = currentCustomKeyboardStableIdCandidate()
+        val previousIndex = currentCustomKeyboardPosition
+        val selection = resolveCustomKeyboardSelectionAfterLayoutsChanged(
+            layouts = newLayouts,
+            selectedStableId = selectedStableId,
+            previousIndex = previousIndex
+        )
+
+        customLayouts = newLayouts
+
+        if (selection == null) {
+            clearCurrentCustomKeyboardSelection()
+            if (appPreference.remember_last_custom_keyboard_preference == true) {
+                appPreference.last_used_custom_keyboard_stable_id = ""
+            }
+            if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
+                suggestionAdapter?.updateState(TenKeyQWERTYMode.Custom, emptyList())
+                fallbackFromCustomKeyboardIfNeeded()
+            }
+            return
+        }
+
+        currentCustomKeyboardPosition = selection.index
+        currentCustomKeyboardStableId = selection.stableId.takeIf { it.isNotBlank() }
+
+        val selectedLayout = customLayouts.getOrNull(selection.index) ?: run {
+            clearCurrentCustomKeyboardSelection()
+            fallbackFromCustomKeyboardIfNeeded()
+            return
+        }
+
+        if (shouldPersistCustomKeyboardSelection(
+                layout = selectedLayout,
+                rememberLast = appPreference.remember_last_custom_keyboard_preference == true,
+                reason = selection.reason
+            )
+        ) {
+            appPreference.last_used_custom_keyboard_stable_id = selectedLayout.stableId
+        }
+
+        if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
+            suggestionAdapter?.updateState(TenKeyQWERTYMode.Custom, customLayouts)
+            renderCustomKeyboardLayout(selectedLayout)
+            syncFloatingKeyboardContentForMode(qwertyMode.value)
+            renderCurrentKeyboardStateOnActiveSurface()
+            updateFloatingKeyboardSizeForMode(qwertyMode.value)
         }
     }
 
@@ -9723,9 +9868,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     TenKeyQWERTYMode.Custom -> {
-                        suggestionAdapter?.updateState(
-                            TenKeyQWERTYMode.Custom, customLayouts
-                        )
+                        if (customLayouts.isEmpty()) {
+                            clearCurrentCustomKeyboardSelection()
+                            fallbackFromCustomKeyboardIfNeeded()
+                            return@collectLatest
+                        } else {
+                            if (selectedCustomKeyboardLayoutOrNull() == null) {
+                                currentCustomKeyboardPosition = 0
+                                currentCustomKeyboardStableId =
+                                    customLayouts.first().stableId.takeIf { stableId -> stableId.isNotBlank() }
+                            }
+                            suggestionAdapter?.updateState(
+                                TenKeyQWERTYMode.Custom, customLayouts
+                            )
+                        }
                     }
 
                     TenKeyQWERTYMode.Sumire -> {
@@ -9809,12 +9965,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             keyboardRepository.getLayouts().distinctUntilChanged().collectLatest { layouts ->
-                customLayouts = if (layouts.any { it.stableId.isBlank() }) {
+                val normalizedLayouts = if (layouts.any { it.stableId.isBlank() }) {
                     keyboardRepository.ensureStableIds()
                     keyboardRepository.getLayoutsNotFlow()
                 } else {
                     layouts
                 }
+                onCustomKeyboardLayoutsChanged(normalizedLayouts)
             }
         }
 
@@ -12346,7 +12503,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setFirstKeyboardType() {
         if (keyboardOrder.isNotEmpty()) {
-            val firstItem = keyboardOrder.first()
+            val firstItem = if (keyboardOrder.first() == KeyboardType.CUSTOM && customLayouts.isEmpty()) {
+                keyboardOrder.firstOrNull { it != KeyboardType.CUSTOM } ?: KeyboardType.TENKEY
+            } else {
+                keyboardOrder.first()
+            }
             when (firstItem) {
                 KeyboardType.TENKEY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                 KeyboardType.SUMIRE -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -14463,6 +14624,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
+        customKeyboardRenderJob?.cancel()
+        customKeyboardRenderJob = null
         clearFunctionKeyConversionSource()
         _inputString.update { "" }
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
@@ -14470,6 +14633,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         stringInTail.set("")
         suggestionClickNum = 0
         currentCustomKeyboardPosition = 0
+        currentCustomKeyboardStableId = null
         filteredCandidateList = emptyList()
         isHenkan.set(false)
         henkanPressedWithBunsetsuDetect = false
