@@ -207,6 +207,8 @@
     <string name="remember_last_custom_keyboard_summary_off">Shows the first custom keyboard when opening custom keyboards</string>
     <string name="custom_keyboard_target_hint">Target custom keyboard</string>
     <string name="deleted_custom_keyboard_target">Deleted custom keyboard</string>
+    <string name="delete_layout_with_references_title">Delete layout in use?</string>
+    <string name="delete_layout_with_references_message">This custom keyboard is referenced by %1$d key(s). If you delete it, those keys will show \"Deleted custom keyboard\" and can no longer switch to it. Delete anyway?</string>
 
     <string name="clipboard_history_fragment_title">Clipboard History</string>
     <string name="clipboard_history_fragment_summary">Show clipboard history</string>
