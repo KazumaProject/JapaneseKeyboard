@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.repository.ensureStableIdsForLayouts
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -218,6 +219,101 @@ class CustomKeyboardIndexResolverTest {
                 layout,
                 rememberLast = true,
                 reason = CustomKeyboardSelectionReason.MoveToStableId
+            )
+        )
+    }
+
+    @Test
+    fun resolveSelectionAfterLayoutsChangedKeepsSelectedStableIdAfterReorder() {
+        val reordered = listOf(
+            layout("B", "stable-b"),
+            layout("A", "stable-a"),
+            layout("C", "stable-c")
+        )
+
+        assertEquals(
+            ResolvedCustomKeyboardSelection(
+                index = 0,
+                stableId = "stable-b",
+                reason = CustomKeyboardSelectionReason.LayoutsChangedKeepStableId
+            ),
+            resolveCustomKeyboardSelectionAfterLayoutsChanged(
+                layouts = reordered,
+                selectedStableId = "stable-b",
+                previousIndex = 1
+            )
+        )
+    }
+
+    @Test
+    fun resolveSelectionAfterLayoutsChangedFallsBackToPreviousIndexWhenSelectedLayoutWasDeleted() {
+        val afterDelete = listOf(
+            layout("A", "stable-a"),
+            layout("C", "stable-c")
+        )
+
+        assertEquals(
+            ResolvedCustomKeyboardSelection(
+                index = 1,
+                stableId = "stable-c",
+                reason = CustomKeyboardSelectionReason.LayoutsChangedFallbackIndex
+            ),
+            resolveCustomKeyboardSelectionAfterLayoutsChanged(
+                layouts = afterDelete,
+                selectedStableId = "stable-b",
+                previousIndex = 1
+            )
+        )
+    }
+
+    @Test
+    fun resolveSelectionAfterLayoutsChangedFallsBackToFirstWhenPreviousIndexIsInvalid() {
+        val afterDelete = listOf(layout("A", "stable-a"))
+
+        assertEquals(
+            ResolvedCustomKeyboardSelection(
+                index = 0,
+                stableId = "stable-a",
+                reason = CustomKeyboardSelectionReason.LayoutsChangedFallbackIndex
+            ),
+            resolveCustomKeyboardSelectionAfterLayoutsChanged(
+                layouts = afterDelete,
+                selectedStableId = "stable-b",
+                previousIndex = 2
+            )
+        )
+    }
+
+    @Test
+    fun resolveSelectionAfterLayoutsChangedReturnsNullWhenLayoutsBecomeEmpty() {
+        assertNull(
+            resolveCustomKeyboardSelectionAfterLayoutsChanged(
+                layouts = emptyList(),
+                selectedStableId = "stable-b",
+                previousIndex = 1
+            )
+        )
+    }
+
+    @Test
+    fun resolveSelectionAfterStableIdEnsureKeepsSelectionWhenBlankIdsAreNormalized() {
+        val ensured = ensureStableIdsForLayouts(
+            listOf(
+                layout("A", ""),
+                layout("B", "stable-b")
+            )
+        ) { "generated-a" }
+
+        assertEquals(
+            ResolvedCustomKeyboardSelection(
+                index = 1,
+                stableId = "stable-b",
+                reason = CustomKeyboardSelectionReason.LayoutsChangedKeepStableId
+            ),
+            resolveCustomKeyboardSelectionAfterLayoutsChanged(
+                layouts = ensured,
+                selectedStableId = "stable-b",
+                previousIndex = 1
             )
         )
     }
