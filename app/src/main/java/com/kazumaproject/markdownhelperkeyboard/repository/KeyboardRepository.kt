@@ -31,6 +31,8 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.toDbStrings
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.toFlickAction
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.ImportableKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportError
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
@@ -85,74 +87,123 @@ class KeyboardRepository @Inject constructor(
      * 外部 JSON DTO ([com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutExportDto])
      * は決してここに渡さない。
      */
-    suspend fun importLayouts(layouts: List<ImportableKeyboardLayout>) {
+    suspend fun importLayouts(layouts: List<ImportableKeyboardLayout>): KeyboardLayoutImportResult {
+        if (layouts.isEmpty()) {
+            return KeyboardLayoutImportResult.Failure(KeyboardLayoutImportError.NoImportableLayouts)
+        }
+
         // まとめて import するときに max を毎回 DB に聞かない
         var currentMaxOrder = dao.getMaxSortOrder()
+        val importedLayouts = mutableListOf<ImportableKeyboardLayout>()
+        val errors = mutableListOf<KeyboardLayoutImportError>()
 
-        for (importable in layouts) {
-            var newName = importable.layout.name
-            var nameExists = dao.findLayoutByName(newName) != null
-            var counter = 1
-            while (nameExists) {
-                newName = "${importable.layout.name} (${counter})"
-                nameExists = dao.findLayoutByName(newName) != null
-                counter++
+        layouts.forEachIndexed { layoutIndex, importable ->
+            try {
+                var newName = importable.layout.name
+                var nameExists = dao.findLayoutByName(newName) != null
+                var counter = 1
+                while (nameExists) {
+                    newName = "${importable.layout.name} (${counter})"
+                    nameExists = dao.findLayoutByName(newName) != null
+                    counter++
+                }
+
+                currentMaxOrder += 1
+                val importedStableId = importable.layout.stableId
+                val stableIdToInsert = if (importedStableId.isNullOrBlank() ||
+                    dao.findLayoutByStableId(importedStableId) != null
+                ) {
+                    UUID.randomUUID().toString()
+                } else {
+                    importedStableId
+                }
+
+                val layoutToInsert = importable.layout.copy(
+                    layoutId = 0,
+                    name = newName,
+                    createdAt = System.currentTimeMillis(),
+                    sortOrder = currentMaxOrder,
+                    stableId = stableIdToInsert
+                )
+
+                // Imported numeric ids are never trusted. The DAO inserts with
+                // auto-generated ids and then reattaches child rows by stable
+                // keyIdentifier, so legacy keyId/ownerLayoutId collisions cannot
+                // replace existing rows.
+                val normalizedKeysWithFlicks = importable.keysWithFlicks.map { keyWithFlicks ->
+                    keyWithFlicks.copy(
+                        key = keyWithFlicks.key.copy(keyId = 0, ownerLayoutId = 0),
+                        flicks = keyWithFlicks.flicks.map { it.copy(ownerKeyId = 0) },
+                        circularFlicks = keyWithFlicks.circularFlicks.map { it.copy(ownerKeyId = 0) },
+                        twoStepFlicks = keyWithFlicks.twoStepFlicks.map { it.copy(ownerKeyId = 0) },
+                        longPressFlicks = keyWithFlicks.longPressFlicks.map { it.copy(ownerKeyId = 0) },
+                        twoStepLongPressFlicks = keyWithFlicks.twoStepLongPressFlicks.map {
+                            it.copy(ownerKeyId = 0)
+                        }
+                    )
+                }
+
+                val keysToInsert = normalizedKeysWithFlicks.map { it.key }
+
+                val flicksMap = normalizedKeysWithFlicks.associate { keyWithFlicks ->
+                    keyWithFlicks.key.keyIdentifier to keyWithFlicks.flicks
+                }
+
+                val circularFlicksMap = normalizedKeysWithFlicks.associate { keyWithFlicks ->
+                    keyWithFlicks.key.keyIdentifier to keyWithFlicks.circularFlicks
+                }
+
+                val twoStepMap = normalizedKeysWithFlicks.associate { keyWithFlicks ->
+                    keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepFlicks
+                }
+
+                val longPressFlicksMap = normalizedKeysWithFlicks.associate { keyWithFlicks ->
+                    keyWithFlicks.key.keyIdentifier to keyWithFlicks.longPressFlicks
+                }
+
+                val twoStepLongPressMap = normalizedKeysWithFlicks.associate { keyWithFlicks ->
+                    keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepLongPressFlicks
+                }
+
+                // SpacerItem 復元: 元レイアウトの spacers を新規 layoutId 用に複製
+                val spacersToInsert = importable.spacers.map { spacer ->
+                    spacer.copy(spacerId = 0, ownerLayoutId = 0)
+                }
+
+                dao.insertFullKeyboardLayout(
+                    layoutToInsert,
+                    keysToInsert,
+                    flicksMap,
+                    circularFlicksMap,
+                    twoStepMap,
+                    longPressFlicksMap,
+                    twoStepLongPressMap,
+                    spacersToInsert
+                )
+                importedLayouts += importable.copy(
+                    layout = layoutToInsert,
+                    keysWithFlicks = normalizedKeysWithFlicks,
+                    spacers = spacersToInsert
+                )
+            } catch (e: Exception) {
+                Timber.e(e, "importLayouts storage failed index=%s exception=%s", layoutIndex, e::class.java.simpleName)
+                errors += KeyboardLayoutImportError.StorageFailed(
+                    layoutIndex = layoutIndex,
+                    exceptionClass = e::class.java.simpleName,
+                    message = e.message
+                )
             }
+        }
 
-            currentMaxOrder += 1
-            val importedStableId = importable.layout.stableId
-            val stableIdToInsert = if (importedStableId.isNullOrBlank() ||
-                dao.findLayoutByStableId(importedStableId) != null
-            ) {
-                UUID.randomUUID().toString()
-            } else {
-                importedStableId
-            }
+        return when {
+            importedLayouts.isNotEmpty() && errors.isEmpty() ->
+                KeyboardLayoutImportResult.Success(importedLayouts)
 
-            val layoutToInsert = importable.layout.copy(
-                layoutId = 0,
-                name = newName,
-                createdAt = System.currentTimeMillis(),
-                sortOrder = currentMaxOrder,
-                stableId = stableIdToInsert
-            )
+            importedLayouts.isNotEmpty() ->
+                KeyboardLayoutImportResult.PartialSuccess(importedLayouts, errors)
 
-            val keysToInsert = importable.keysWithFlicks.map { it.key }
-
-            val flicksMap = importable.keysWithFlicks.associate { keyWithFlicks ->
-                keyWithFlicks.key.keyIdentifier to keyWithFlicks.flicks
-            }
-
-            val circularFlicksMap = importable.keysWithFlicks.associate { keyWithFlicks ->
-                keyWithFlicks.key.keyIdentifier to keyWithFlicks.circularFlicks
-            }
-
-            val twoStepMap = importable.keysWithFlicks.associate { keyWithFlicks ->
-                keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepFlicks
-            }
-
-            val longPressFlicksMap = importable.keysWithFlicks.associate { keyWithFlicks ->
-                keyWithFlicks.key.keyIdentifier to keyWithFlicks.longPressFlicks
-            }
-
-            val twoStepLongPressMap = importable.keysWithFlicks.associate { keyWithFlicks ->
-                keyWithFlicks.key.keyIdentifier to keyWithFlicks.twoStepLongPressFlicks
-            }
-
-            // SpacerItem 復元: 元レイアウトの spacers を新規 layoutId 用に複製
-            val spacersToInsert = importable.spacers.map { spacer ->
-                spacer.copy(spacerId = 0, ownerLayoutId = 0)
-            }
-
-            dao.insertFullKeyboardLayout(
-                layoutToInsert,
-                keysToInsert,
-                flicksMap,
-                circularFlicksMap,
-                twoStepMap,
-                longPressFlicksMap,
-                twoStepLongPressMap,
-                spacersToInsert
+            else -> KeyboardLayoutImportResult.Failure(
+                errors.firstOrNull() ?: KeyboardLayoutImportError.StorageFailed()
             )
         }
     }

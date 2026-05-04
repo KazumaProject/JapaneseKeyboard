@@ -29,11 +29,6 @@ object KeyboardLayoutJsonImporter {
      */
     const val LATEST_SCHEMA_VERSION: Int = 2
 
-    /** UTF-8 BOM (U+FEFF) を表す Char。リテラル化を避けるため数値から生成。 */
-    private val BOM_CHAR: Char = 0xFEFF.toChar()
-    /** NULL byte (U+0000) を表す String。リテラル化を避けるため数値から生成。 */
-    private val NULL_CHAR: String = 0.toChar().toString()
-
     private val gson: Gson by lazy {
         GsonBuilder()
             .setLenient()
@@ -41,35 +36,72 @@ object KeyboardLayoutJsonImporter {
     }
 
     /**
-     * JSON 文字列を parse して [ImportableKeyboardLayout] のリストを返す。
+     * JSON 文字列を parse して [KeyboardLayoutImportResult] を返す。
      *
      * 旧形式 JSON でも、欠損フィールド付き JSON でも、可能な限り読み込みを成功させる。
-     * 全体として読めない場合のみ空リストを返す。
+     * parse 失敗は emptyList に潰さず、失敗理由を型で返す。
      */
-    fun parse(jsonString: String): List<ImportableKeyboardLayout> {
-        // BOM (U+FEFF) と null byte (U+0000) を除去するだけにとどめる。
-        // 通常の空白 / 改行は JSON として有効なので削除しない。
-        val sanitized = jsonString
-            .trimStart(BOM_CHAR)
-            .replace(NULL_CHAR, "")
+    fun parse(jsonString: String): KeyboardLayoutImportResult {
+        return when (val parsed = parseDtos(jsonString)) {
+            is KeyboardLayoutJsonParseResult.Success ->
+                KeyboardLayoutImportNormalizer.normalize(parsed.layouts)
 
-        if (sanitized.isBlank()) return emptyList()
+            is KeyboardLayoutJsonParseResult.Failure ->
+                KeyboardLayoutImportResult.Failure(parsed.error)
+        }
+    }
+
+    internal fun parseDtos(jsonString: String): KeyboardLayoutJsonParseResult {
+        val sanitized = KeyboardLayoutBackupFormatDetector.sanitize(jsonString)
+
+        if (sanitized.isBlank()) {
+            return KeyboardLayoutJsonParseResult.Failure(KeyboardLayoutImportError.EmptyInput)
+        }
 
         val root: JsonElement = try {
             JsonParser.parseReader(
                 JsonReader(StringReader(sanitized)).apply { isLenient = true }
             )
-        } catch (_: Exception) {
-            return emptyList()
+        } catch (e: Exception) {
+            return KeyboardLayoutJsonParseResult.Failure(
+                KeyboardLayoutImportError.InvalidJson(
+                    exceptionClass = e::class.java.simpleName,
+                    message = e.message
+                )
+            )
         }
 
-        val rawDtos: List<KeyboardLayoutExportDto> = when {
-            root.isJsonArray -> parseLegacyArray(root)
-            root.isJsonObject -> parseObjectRoot(root.asJsonObject)
-            else -> emptyList()
+        val rawDtos: List<KeyboardLayoutExportDto>? = try {
+            when {
+                root.isJsonArray -> parseLegacyArray(root)
+                root.isJsonObject -> parseObjectRoot(root.asJsonObject)
+                else -> null
+            }
+        } catch (e: Exception) {
+            return KeyboardLayoutJsonParseResult.Failure(
+                KeyboardLayoutImportError.InvalidJson(
+                    exceptionClass = e::class.java.simpleName,
+                    message = e.message
+                )
+            )
         }
 
-        return rawDtos.mapNotNull { dto -> dto.toImportableOrNull() }
+        return if (rawDtos == null) {
+            KeyboardLayoutJsonParseResult.Failure(KeyboardLayoutImportError.SchemaMismatch)
+        } else {
+            KeyboardLayoutJsonParseResult.Success(rawDtos)
+        }
+    }
+
+    internal fun looksLikeLayoutBackup(jsonString: String): Boolean {
+        val sanitized = KeyboardLayoutBackupFormatDetector.sanitize(jsonString)
+        if (sanitized.isBlank()) return false
+        return runCatching {
+            val root = JsonParser.parseReader(
+                JsonReader(StringReader(sanitized)).apply { isLenient = true }
+            )
+            KeyboardLayoutImportValidator.isLayoutBackupRoot(root)
+        }.getOrDefault(false)
     }
 
     // -----------------------------
@@ -87,12 +119,12 @@ object KeyboardLayoutJsonImporter {
      * ]
      * ```
      */
-    private fun parseLegacyArray(root: JsonElement): List<KeyboardLayoutExportDto> {
+    private fun parseLegacyArray(root: JsonElement): List<KeyboardLayoutExportDto>? {
         return try {
             val type = object : TypeToken<List<KeyboardLayoutExportDto>>() {}.type
             gson.fromJson<List<KeyboardLayoutExportDto>?>(root, type) ?: emptyList()
-        } catch (_: Exception) {
-            emptyList()
+        } catch (e: Exception) {
+            throw e
         }
     }
 
@@ -102,7 +134,7 @@ object KeyboardLayoutJsonImporter {
      * - schemaVersion が無ければ version 1 として扱う
      * - schemaVersion が 2 以降は最新互換 parse を試みる
      */
-    private fun parseObjectRoot(obj: JsonObject): List<KeyboardLayoutExportDto> {
+    private fun parseObjectRoot(obj: JsonObject): List<KeyboardLayoutExportDto>? {
         val version = obj["schemaVersion"]
             ?.takeIf { it.isJsonPrimitive && it.asJsonPrimitive.isNumber }
             ?.asInt
@@ -121,14 +153,14 @@ object KeyboardLayoutJsonImporter {
      * - {"layouts": [...]} の形だけ受け入れる。
      * - 単一 layout を root object 直下に置いた形ももしあれば一応読む。
      */
-    private fun parseVersion1Object(obj: JsonObject): List<KeyboardLayoutExportDto> {
+    private fun parseVersion1Object(obj: JsonObject): List<KeyboardLayoutExportDto>? {
         // {"layouts": [...]} 形式を優先
         val layoutsElement = obj["layouts"]
         if (layoutsElement != null && layoutsElement.isJsonArray) {
             return runCatching {
                 val type = object : TypeToken<List<KeyboardLayoutExportDto>>() {}.type
                 gson.fromJson<List<KeyboardLayoutExportDto>?>(layoutsElement, type) ?: emptyList()
-            }.getOrDefault(emptyList())
+            }.getOrNull()
         }
 
         // 単一 layout root の保険(root object そのものが 1 layout dto)
@@ -136,10 +168,10 @@ object KeyboardLayoutJsonImporter {
             return runCatching {
                 val singleDto = gson.fromJson(obj, KeyboardLayoutExportDto::class.java)
                 if (singleDto != null) listOf(singleDto) else emptyList()
-            }.getOrDefault(emptyList())
+            }.getOrNull()
         }
 
-        return emptyList()
+        return null
     }
 
     /**
@@ -147,12 +179,17 @@ object KeyboardLayoutJsonImporter {
      * 将来 schemaVersion = 3, 4 ... が来ても、未知フィールドは無視して
      * 既知フィールド範囲で互換 parse する。
      */
-    private fun parseVersion2OrLatestCompatibleObject(obj: JsonObject): List<KeyboardLayoutExportDto> {
+    private fun parseVersion2OrLatestCompatibleObject(obj: JsonObject): List<KeyboardLayoutExportDto>? {
         return runCatching {
             val fileDto = gson.fromJson(obj, KeyboardLayoutExportFileDto::class.java)
             fileDto?.layouts ?: emptyList()
-        }.getOrDefault(emptyList())
+        }.getOrNull()
     }
+}
+
+internal sealed class KeyboardLayoutJsonParseResult {
+    data class Success(val layouts: List<KeyboardLayoutExportDto>) : KeyboardLayoutJsonParseResult()
+    data class Failure(val error: KeyboardLayoutImportError) : KeyboardLayoutJsonParseResult()
 }
 
 // -----------------------------

@@ -1,14 +1,18 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
+import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.ImportableKeyWithFlicks
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.ImportableKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.any
 import org.mockito.kotlin.argumentCaptor
@@ -131,6 +135,54 @@ class KeyboardRepositoryImportLayoutsTest {
         val inserted = layoutCaptor.firstValue
         // blank stableId なら自動で UUID が割当てられる
         assert(inserted.stableId.isNotBlank())
+    }
+
+    @Test
+    fun importLayouts_legacyNumericIds_areResetBeforeDaoInsert() = runBlocking {
+        whenever(dao.getMaxSortOrder()).thenReturn(0)
+        whenever(dao.findLayoutByName(any())).thenReturn(null)
+        whenever(dao.findLayoutByStableId(any())).thenReturn(null)
+
+        val importable = ImportableKeyboardLayout(
+            layout = layout(name = "LegacyKeyboard", stableId = "legacy-stable").copy(layoutId = 14),
+            keysWithFlicks = listOf(
+                keyWithFlicks("legacy-key", "あ").copy(
+                    key = keyWithFlicks("legacy-key", "あ").key.copy(
+                        keyId = 99,
+                        ownerLayoutId = 14
+                    ),
+                    flicks = listOf(
+                        FlickMapping(
+                            ownerKeyId = 99,
+                            stateIndex = 0,
+                            flickDirection = FlickDirection.TAP,
+                            actionType = "DELETE",
+                            actionValue = null
+                        )
+                    )
+                )
+            ),
+            spacers = emptyList()
+        )
+
+        val result = repository.importLayouts(listOf(importable))
+
+        assertTrue(result is KeyboardLayoutImportResult.Success)
+        val keysCaptor = argumentCaptor<List<KeyDefinition>>()
+        val flicksMapCaptor = argumentCaptor<Map<String, List<FlickMapping>>>()
+        verify(dao).insertFullKeyboardLayout(
+            any(),
+            keysCaptor.capture(),
+            flicksMapCaptor.capture(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any()
+        )
+        assertEquals(0L, keysCaptor.firstValue.single().keyId)
+        assertEquals(0L, keysCaptor.firstValue.single().ownerLayoutId)
+        assertEquals(0L, flicksMapCaptor.firstValue.getValue("legacy-key").single().ownerKeyId)
     }
 
     // -----------------------------
