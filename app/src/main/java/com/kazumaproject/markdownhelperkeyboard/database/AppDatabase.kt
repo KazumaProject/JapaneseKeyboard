@@ -70,7 +70,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         PhysicalKeyboardShortcutItem::class,
         SpacerDefinition::class,
     ],
-    version = 30,
+    version = 31,
     exportSchema = false
 )
 @TypeConverters(
@@ -749,6 +749,63 @@ abstract class AppDatabase : RoomDatabase() {
                     """
                     CREATE INDEX IF NOT EXISTS `index_spacer_definitions_ownerLayoutId`
                     ON `spacer_definitions`(`ownerLayoutId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /**
+         * バージョン30から31へのマイグレーション。
+         *
+         * KeyAction.MoveToCustomKeyboard が参照する CustomKeyboardLayout.stableId に
+         * unique index を張る。インデックスを張る前に既存データを修復する:
+         *
+         * 1. blank / null 相当の stableId に決定的なユニーク値を割り当てる
+         *    (`auto-stable-{layoutId}` 形式)。既存ユーザーの DB に残った旧データを
+         *    壊さないように、UUID ではなく layoutId 由来の値を使う。
+         * 2. 重複する stableId を持つ row のうち、layoutId が最小の row 以外には
+         *    `auto-stable-dup-{layoutId}` を割り当てて衝突を解消する。
+         *    (旧バージョンに stableId が空のまま保存されていた場合や、
+         *    バックアップのインポートで重複が混入したケースを想定)
+         * 3. unique index を作成する。
+         *
+         * このマイグレーションは破壊的に layoutId / 既存の有効な stableId を上書きしない。
+         * 修復処理によって stableId が変わった場合、その row を参照していた
+         * MoveToCustomKeyboard は「削除済みのカスタムキーボード」と表示されるが、
+         * これは元から不整合な状態だったレイアウトに限られる。正常なレイアウトの
+         * stableId は維持される。
+         */
+        val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1) blank / null stableId を決定的に埋める
+                db.execSQL(
+                    """
+                    UPDATE keyboard_layouts
+                    SET stableId = 'auto-stable-' || layoutId
+                    WHERE stableId IS NULL OR stableId = ''
+                    """.trimIndent()
+                )
+
+                // 2) 重複する stableId を解消する
+                //    layoutId が最小のものを「残す」候補とし、それ以外には
+                //    `auto-stable-dup-<layoutId>` を割り当てる。
+                db.execSQL(
+                    """
+                    UPDATE keyboard_layouts
+                    SET stableId = 'auto-stable-dup-' || layoutId
+                    WHERE layoutId NOT IN (
+                        SELECT MIN(layoutId)
+                        FROM keyboard_layouts
+                        GROUP BY stableId
+                    )
+                    """.trimIndent()
+                )
+
+                // 3) unique index 作成
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_keyboard_layouts_stableId`
+                    ON `keyboard_layouts`(`stableId`)
                     """.trimIndent()
                 )
             }
