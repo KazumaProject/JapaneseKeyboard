@@ -90,6 +90,9 @@ object AppPreference {
     private val QWERTY_SHOW_SWITCH_ROMAJI_ENGLISH =
         Pair("qwerty_show_switch_romaji_english_preference", true)
 
+    private val QWERTY_GLIDE_INPUT_PREFERENCE =
+        Pair("qwerty_glide_input_preference", false)
+
     private val QWERTY_ENABLE_FLICK_UP_WINDOW = Pair("qwerty_enable_flick_up_preference", false)
 
     private val QWERTY_ENABLE_FLICK_DOWN_WINDOW = Pair("qwerty_enable_flick_down_preference", false)
@@ -650,6 +653,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_SWITCH_ROMAJI_ENGLISH.first, value ?: true)
+        }
+
+    var qwerty_glide_input_preference: Boolean
+        get() = preferences.getBoolean(
+            QWERTY_GLIDE_INPUT_PREFERENCE.first,
+            QWERTY_GLIDE_INPUT_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(QWERTY_GLIDE_INPUT_PREFERENCE.first, value)
         }
 
     var switch_qwerty_password: Boolean?

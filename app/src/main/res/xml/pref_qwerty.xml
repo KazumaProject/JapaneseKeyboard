@@ -112,6 +112,12 @@
             app:summary="@string/qwerty_romaji_english_visibility_summary" />
 
         <SwitchPreferenceCompat
+            android:key="qwerty_glide_input_preference"
+            android:title="@string/qwerty_glide_input_preference_title"
+            app:defaultValue="false"
+            app:summary="@string/qwerty_glide_input_preference_summary" />
+
+        <SwitchPreferenceCompat
             android:key="qwerty_romaji_shift_conversion_preference"
             android:title="@string/pref_romaji_shift_title"
             app:defaultValue="false"
