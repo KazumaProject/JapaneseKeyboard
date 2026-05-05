@@ -4,7 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
@@ -57,6 +60,12 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
 import com.kazumaproject.core.domain.state.QWERTYMode
+import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideGesturePolicy
+import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideInputListener
+import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointerPoint
+import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
+import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyProximity
+import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
 import com.kazumaproject.qwerty_keyboard.R
 import com.kazumaproject.qwerty_keyboard.databinding.QwertyLayoutBinding
 import kotlinx.coroutines.CoroutineScope
@@ -72,6 +81,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.hypot
 
 /**
  * A custom keyboard view with dynamic margins.
@@ -159,6 +169,30 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var numberKeyFlickDownChars: Map<String, String> = emptyMap()
 
     private var liquidGlassEnable: Boolean = false
+
+    private var qwertyGlideInputMode: Boolean = false
+    private var qwertyGlideInputListener: QwertyGlideInputListener? = null
+    private var glideCandidatePointerId: Int? = null
+    private var glideStarted = false
+    private var glideDownTime = 0L
+    private var glideLastSampleX = 0f
+    private var glideLastSampleY = 0f
+    private var lastNonGlideKeyUpTime = 0L
+    private val glideRawPoints = mutableListOf<QwertyInputPointerPoint>()
+    private val glideTrailPoints = mutableListOf<Pair<Float, Float>>()
+    private val glideTrailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(170, 66, 133, 244)
+        strokeWidth = context.resources.displayMetrics.density * 5f
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        style = Paint.Style.STROKE
+    }
+    private val glideTrailPath = Path()
+    private val glideMinMoveDistance by lazy { ViewConfiguration.get(context).scaledTouchSlop * 2.4f }
+    private val glideFastMoveDistance by lazy { ViewConfiguration.get(context).scaledTouchSlop * 3.0f }
+    private val glideSamplingMinDistance by lazy { ViewConfiguration.get(context).scaledTouchSlop * 0.45f }
+    private val glideMinElapsedMillis = 45L
+    private val glideFastTypingSuppressMillis = 55L
 
     // ★ ポップアップなしで長押しを有効にするキーのリストを追加
     private val longPressEnabledKeys = setOf(
@@ -1188,6 +1222,27 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         )
     }
 
+    private val qRowLetterViews: List<QWERTYButton> by lazy {
+        listOf(
+            binding.keyQ, binding.keyW, binding.keyE, binding.keyR, binding.keyT,
+            binding.keyY, binding.keyU, binding.keyI, binding.keyO, binding.keyP
+        )
+    }
+
+    private val aRowLetterViews: List<QWERTYButton> by lazy {
+        listOf(
+            binding.keyA, binding.keyS, binding.keyD, binding.keyF, binding.keyG,
+            binding.keyH, binding.keyJ, binding.keyK, binding.keyL
+        )
+    }
+
+    private val zRowLetterViews: List<QWERTYButton> by lazy {
+        listOf(
+            binding.keyZ, binding.keyX, binding.keyC, binding.keyV, binding.keyB,
+            binding.keyN, binding.keyM
+        )
+    }
+
     private val defaultQWERTYButtonsRoman: Array<QWERTYButton> by lazy {
         arrayOf(
             // Top row
@@ -1240,6 +1295,72 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.qwertyKeyListener = listener
     }
 
+    fun setQwertyGlideInputMode(enabled: Boolean) {
+        if (qwertyGlideInputMode == enabled) return
+        qwertyGlideInputMode = enabled
+        if (!enabled) {
+            cancelQwertyGlideCandidate(notify = false)
+        }
+    }
+
+    fun setQwertyGlideInputListener(listener: QwertyGlideInputListener?) {
+        qwertyGlideInputListener = listener
+    }
+
+    fun getQwertyKeyboardProximityInfo(): QwertyKeyboardProximityInfo {
+        val letterViews = getVisibleQwertyLetterViews()
+        val keysWithoutNeighbors = letterViews.mapIndexed { index, view ->
+            val row = when (view) {
+                in qRowLetterViews -> 0
+                in aRowLetterViews -> 1
+                else -> 2
+            }
+            val column = when (row) {
+                0 -> qRowLetterViews.indexOf(view)
+                1 -> aRowLetterViews.indexOf(view)
+                else -> zRowLetterViews.indexOf(view)
+            }
+            val ch = view.text?.firstOrNull()?.lowercaseChar() ?: ('a' + index)
+            QwertyKeyProximity(
+                char = ch,
+                centerX = view.left + view.width / 2f,
+                centerY = view.top + view.height / 2f,
+                width = view.width.toFloat(),
+                height = view.height.toFloat(),
+                rowIndex = row,
+                columnIndex = column,
+                neighborChars = emptyList()
+            )
+        }.filter { it.char in 'a'..'z' }
+
+        val averageKeyWidth = keysWithoutNeighbors.map { it.width }.average().toFloatOrDefault()
+        val averageKeyHeight = keysWithoutNeighbors.map { it.height }.average().toFloatOrDefault()
+        val neighborRadius = hypot(averageKeyWidth, averageKeyHeight) * 1.35f
+        val keys = keysWithoutNeighbors.map { key ->
+            key.copy(
+                neighborChars = keysWithoutNeighbors
+                    .asSequence()
+                    .filter { it.char != key.char }
+                    .map { other ->
+                        other.char to hypot(key.centerX - other.centerX, key.centerY - other.centerY)
+                    }
+                    .filter { (_, distance) -> distance <= neighborRadius }
+                    .sortedBy { (_, distance) -> distance }
+                    .map { (char, _) -> char }
+                    .take(8)
+                    .toList()
+            )
+        }
+
+        return QwertyKeyboardProximityInfo(
+            keys = keys,
+            keyboardWidth = width,
+            keyboardHeight = height,
+            averageKeyWidth = averageKeyWidth,
+            averageKeyHeight = averageKeyHeight
+        )
+    }
+
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
         return event.actionMasked == MotionEvent.ACTION_DOWN
     }
@@ -1277,6 +1398,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     clearAllPressed()
                 }
             }
+            return true
+        }
+
+        if (handleQwertyGlideTouchEvent(event)) {
             return true
         }
 
@@ -1451,6 +1576,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     }
                 }
                 clearAllPressed()
+                lastNonGlideKeyUpTime = SystemClock.uptimeMillis()
             }
 
             MotionEvent.ACTION_CANCEL -> {
@@ -1459,9 +1585,91 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 variationPopupView = null
                 longPressedPointerId = null
                 clearAllPressed()
+                cancelQwertyGlideCandidate(notify = true)
             }
         }
         return true
+    }
+
+    private fun handleQwertyGlideTouchEvent(event: MotionEvent): Boolean {
+        if (!qwertyGlideInputMode || romajiModeState.value) {
+            return false
+        }
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                beginQwertyGlideCandidateIfPossible(event, event.actionIndex)
+                return false
+            }
+
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (glideCandidatePointerId != null) {
+                    cancelQwertyGlideCandidate(notify = glideStarted)
+                }
+                return false
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                val pointerId = glideCandidatePointerId ?: return false
+                val pointerIndex = event.findPointerIndex(pointerId)
+                if (pointerIndex < 0) {
+                    cancelQwertyGlideCandidate(notify = glideStarted)
+                    return false
+                }
+                appendHistoricalQwertyGlidePoints(event, pointerIndex, pointerId)
+                appendQwertyGlidePoint(
+                    x = event.getX(pointerIndex),
+                    y = event.getY(pointerIndex),
+                    eventTime = event.eventTime,
+                    pointerId = pointerId
+                )
+                if (!isInsideQwertyGlideGestureArea(event.getX(pointerIndex), event.getY(pointerIndex))) {
+                    cancelQwertyGlideCandidate(notify = glideStarted)
+                    return true
+                }
+                if (!glideStarted && shouldStartQwertyGlide(event)) {
+                    startQwertyGlide(pointerId)
+                }
+                if (glideStarted) {
+                    qwertyGlideInputListener?.onQwertyGlideUpdated(
+                        inputPointers = QwertyInputPointers(glideRawPoints.toList()),
+                        proximityInfo = getQwertyKeyboardProximityInfo()
+                    )
+                    return true
+                }
+                return false
+            }
+
+            MotionEvent.ACTION_UP -> {
+                val pointerId = glideCandidatePointerId ?: return false
+                val liftedId = event.getPointerId(event.actionIndex)
+                if (liftedId != pointerId) return false
+                appendQwertyGlidePoint(
+                    x = event.getX(event.actionIndex),
+                    y = event.getY(event.actionIndex),
+                    eventTime = event.eventTime,
+                    pointerId = pointerId
+                )
+                return if (glideStarted) {
+                    qwertyGlideInputListener?.onQwertyGlideEnded(
+                        inputPointers = QwertyInputPointers(glideRawPoints.toList()),
+                        proximityInfo = getQwertyKeyboardProximityInfo()
+                    )
+                    clearQwertyGlideState(clearTrail = true)
+                    clearAllPressed()
+                    true
+                } else {
+                    clearQwertyGlideState(clearTrail = true)
+                    false
+                }
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                val consumed = glideStarted
+                cancelQwertyGlideCandidate(notify = glideStarted)
+                return consumed
+            }
+        }
+        return false
     }
 
     private fun setToggleShiftState(view: View) {
@@ -1478,7 +1686,141 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun beginQwertyGlideCandidateIfPossible(event: MotionEvent, pointerIndex: Int) {
+        val pointerId = event.getPointerId(pointerIndex)
+        val x = event.getX(pointerIndex)
+        val y = event.getY(pointerIndex)
+        val downView = findButtonUnder(x.toInt(), y.toInt())
+        if (!isQwertyGlideLetterView(downView)) return
+        if (SystemClock.uptimeMillis() - lastNonGlideKeyUpTime < glideFastTypingSuppressMillis) return
+
+        glideCandidatePointerId = pointerId
+        glideStarted = false
+        glideDownTime = event.eventTime
+        glideRawPoints.clear()
+        glideTrailPoints.clear()
+        glideLastSampleX = x
+        glideLastSampleY = y
+        appendQwertyGlidePoint(x, y, event.eventTime, pointerId, force = true)
+    }
+
+    private fun startQwertyGlide(pointerId: Int) {
+        val pressedView = pointerButtonMap[pointerId]
+        pressedView?.isPressed = false
+        dismissKeyPreview()
+        cancelLongPressForPointer(pointerId)
+        variationPopup?.dismiss()
+        variationPopup = null
+        variationPopupView = null
+        longPressedPointerId = null
+        pointerButtonMap.remove(pointerId)
+        pointerStartCoords.remove(pointerId)
+        flickLockedPointers.add(pointerId)
+        glideStarted = true
+        qwertyGlideInputListener?.onQwertyGlideStarted()
+    }
+
+    private fun appendHistoricalQwertyGlidePoints(
+        event: MotionEvent,
+        pointerIndex: Int,
+        pointerId: Int
+    ) {
+        for (historyIndex in 0 until event.historySize) {
+            appendQwertyGlidePoint(
+                x = event.getHistoricalX(pointerIndex, historyIndex),
+                y = event.getHistoricalY(pointerIndex, historyIndex),
+                eventTime = event.getHistoricalEventTime(historyIndex),
+                pointerId = pointerId
+            )
+        }
+    }
+
+    private fun appendQwertyGlidePoint(
+        x: Float,
+        y: Float,
+        eventTime: Long,
+        pointerId: Int,
+        force: Boolean = false
+    ) {
+        if (!force && hypot(x - glideLastSampleX, y - glideLastSampleY) < glideSamplingMinDistance) {
+            return
+        }
+        glideLastSampleX = x
+        glideLastSampleY = y
+        val relativeTime = (eventTime - glideDownTime).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+        glideRawPoints.add(
+            QwertyInputPointerPoint(
+                x = x.toInt(),
+                y = y.toInt(),
+                time = relativeTime,
+                pointerId = pointerId
+            )
+        )
+        glideTrailPoints.add(x to y)
+        invalidate()
+    }
+
+    private fun shouldStartQwertyGlide(event: MotionEvent): Boolean {
+        if (glideRawPoints.size < 3) return false
+        val first = glideRawPoints.first()
+        val last = glideRawPoints.last()
+        val directDistance = hypot(
+            (last.x - first.x).toFloat(),
+            (last.y - first.y).toFloat()
+        )
+        val elapsed = event.eventTime - glideDownTime
+        return QwertyGlideGesturePolicy.shouldStart(
+            pointCount = glideRawPoints.size,
+            directDistance = directDistance,
+            elapsedMillis = elapsed,
+            distinctLetterKeysNearTrail = countDistinctQwertyLetterKeysNearTrail(),
+            minMoveDistance = glideMinMoveDistance,
+            fastMoveDistance = glideFastMoveDistance,
+            minElapsedMillis = glideMinElapsedMillis
+        )
+    }
+
+    private fun countDistinctQwertyLetterKeysNearTrail(): Int {
+        if (glideRawPoints.isEmpty()) return 0
+        val proximityInfo = getQwertyKeyboardProximityInfo()
+        val radius = (proximityInfo.averageKeyWidth.coerceAtLeast(1f) * 0.75f)
+        return glideRawPoints.mapNotNull { point ->
+            proximityInfo.keys
+                .minByOrNull { key -> hypot(point.x - key.centerX, point.y - key.centerY) }
+                ?.takeIf { key -> hypot(point.x - key.centerX, point.y - key.centerY) <= radius }
+                ?.char
+        }.distinct().size
+    }
+
+    private fun isInsideQwertyGlideGestureArea(x: Float, y: Float): Boolean {
+        val keys = getVisibleQwertyLetterViews()
+        if (keys.isEmpty()) return false
+        val left = keys.minOf { it.left }.toFloat() - keySideMarginDp * resources.displayMetrics.density * 3f
+        val right = keys.maxOf { it.right }.toFloat() + keySideMarginDp * resources.displayMetrics.density * 3f
+        val top = keys.minOf { it.top }.toFloat() - keyVerticalMarginDp * resources.displayMetrics.density * 3f
+        val bottom = keys.maxOf { it.bottom }.toFloat() + keyVerticalMarginDp * resources.displayMetrics.density * 3f
+        return x in left..right && y in top..bottom
+    }
+
+    private fun cancelQwertyGlideCandidate(notify: Boolean) {
+        if (notify) qwertyGlideInputListener?.onQwertyGlideCancelled()
+        clearQwertyGlideState(clearTrail = true)
+        clearAllPressed()
+    }
+
+    private fun clearQwertyGlideState(clearTrail: Boolean) {
+        glideCandidatePointerId = null
+        glideStarted = false
+        glideDownTime = 0L
+        glideRawPoints.clear()
+        if (clearTrail) {
+            glideTrailPoints.clear()
+            invalidate()
+        }
+    }
+
     fun resetQWERTYKeyboard() {
+        cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps()
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { false }
@@ -1489,6 +1831,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     fun resetQWERTYKeyboard(enterKyeText: String) {
+        cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps()
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { false }
@@ -1500,6 +1843,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     fun setRomajiKeyboard(enterKeyText: String) {
+        cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps()
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { true }
@@ -1538,6 +1882,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      * もう一方の QWERTYKeyboardView へ現在状態を伝搬する用途で利用する。
      */
     fun renderUiState(state: QwertyKeyboardUiState) {
+        cancelQwertyGlideCandidate(notify = glideStarted)
         // romaji を先に反映してから qwertyMode を反映することで、
         // applyContentForMode で参照される romajiMode の値が正しい状態で
         // 各キーラベルが描画されるようにする。
@@ -1896,6 +2241,35 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         return nearestView
     }
 
+    private fun getVisibleQwertyLetterViews(): List<QWERTYButton> {
+        if (qwertyMode.value != QWERTYMode.Default) return emptyList()
+        return (qRowLetterViews + aRowLetterViews + zRowLetterViews)
+            .filter { it.isVisible && it.text?.singleOrNull()?.lowercaseChar() in 'a'..'z' }
+    }
+
+    private fun isQwertyGlideLetterView(view: View?): Boolean {
+        if (view !is QWERTYButton) return false
+        return view in getVisibleQwertyLetterViews()
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+        if (glideTrailPoints.size < 2) return
+        glideTrailPath.reset()
+        val first = glideTrailPoints.first()
+        glideTrailPath.moveTo(first.first, first.second)
+        for (i in 1 until glideTrailPoints.size) {
+            val previous = glideTrailPoints[i - 1]
+            val current = glideTrailPoints[i]
+            val midX = (previous.first + current.first) / 2f
+            val midY = (previous.second + current.second) / 2f
+            glideTrailPath.quadTo(previous.first, previous.second, midX, midY)
+        }
+        val last = glideTrailPoints.last()
+        glideTrailPath.lineTo(last.first, last.second)
+        canvas.drawPath(glideTrailPath, glideTrailPaint)
+    }
+
     private fun logVariationIfNeeded(key: QWERTYKey) {
         if (key == QWERTYKey.QWERTYKeySwitchMode) {
             when (qwertyMode.value) {
@@ -2064,6 +2438,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setRomajiMode(state: Boolean) {
         Log.d("QWERTY Keyboard Debug", "romaji: [$state]")
+        if (state) cancelQwertyGlideCandidate(notify = glideStarted)
         _romajiModeState.update { state }
     }
 
@@ -2279,4 +2654,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun setDefaultView() {
         _qwertyMode.update { QWERTYMode.Default }
     }
+}
+
+private fun Double.toFloatOrDefault(defaultValue: Float = 0f): Float {
+    return if (isNaN()) defaultValue else toFloat()
 }

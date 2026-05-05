@@ -155,6 +155,7 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemT
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
@@ -210,6 +211,9 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.C
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
+import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideInputListener
+import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
+import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
 import com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
 import com.kazumaproject.tenkey.TenKey
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
@@ -343,6 +347,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
+
+    @Inject
+    lateinit var englishEngine: EnglishEngine
 
     @Inject
     lateinit var learnRepository: LearnRepository
@@ -582,6 +589,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyRomajiHankakuNumberPreference: Boolean? = false
     private var qwertyRomajiHankakuSymbolPreference: Boolean? = false
     private var qwertyShowPopupWindowPreference: Boolean? = true
+    private var qwertyGlideInputPreference: Boolean = false
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowNumberButtonsPreference: Boolean? = false
     private var qwertyShowSwitchRomajiEnglishPreference: Boolean? = false
@@ -722,6 +730,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var customKeyBorderWidth: Int? = 1
 
     private var qwertySwitchNumberKeyWithoutNumberPreference: Boolean? = false
+    private var qwertyGlideInputCoordinator: QwertyGlideInputCoordinator? = null
+    private var suppressNextQwertyGlideSuggestionRefresh: Boolean = false
 
     private var customRomajiZenkakuConversionEnablePreference: Boolean? = true
 
@@ -1260,6 +1270,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowNumberButtonsPreference = preferences.qwertyShowNumberButtonsPreference
         qwertyShowSwitchRomajiEnglishPreference =
             preferences.qwertyShowSwitchRomajiEnglishPreference
+        qwertyGlideInputPreference = preferences.qwertyGlideInputPreference
         qwertyShowPopupWindowPreference = preferences.qwertyShowPopupWindowPreference
         qwertyEnableFlickUpPreference = preferences.qwertyEnableFlickUpPreference
         qwertyEnableFlickDownPreference = preferences.qwertyEnableFlickDownPreference
@@ -1434,6 +1445,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.enableTypoCorrectionQwertyEnglishKeyboardPreference
 
         enableGemmaTranslationPreference = preferences.enableGemmaTranslationPreference
+        updateQwertyGlideInputModeOnActiveSurface()
         refreshReconversionUi()
     }
 
@@ -2376,6 +2388,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowCursorButtonsPreference = null
         qwertyShowNumberButtonsPreference = null
         qwertyShowSwitchRomajiEnglishPreference = null
+        qwertyGlideInputPreference = false
         qwertyRomajiShiftConversionPreference = null
         qwertyShowPopupWindowPreference = null
         qwertyEnableFlickUpPreference = null
@@ -4450,6 +4463,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mode = qwertyMode.value,
             isFloating = isKeyboardFloatingMode == true
         )
+        updateQwertyGlideInputModeOnActiveSurface()
     }
 
     private fun updateDynamicKeyOnActiveSurface(
@@ -4504,6 +4518,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setCurrentQwertyRomajiModeForSession(enabled: Boolean) {
         currentQwertyRomajiModeForSession = enabled
         setQwertyRomajiModeOnActiveSurface(enabled)
+        updateQwertyGlideInputModeOnActiveSurface()
     }
 
     private fun setQwertyRomajiSwitchTextOnActiveSurface(isJapanese: Boolean) {
@@ -4528,6 +4543,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji &&
                     qwertyShowSwitchRomajiEnglishPreference == true
         )
+        updateQwertyGlideInputModeOnActiveSurface()
+    }
+
+    private fun calculateQwertyGlideInputMode(): Boolean {
+        val surface = getActiveKeyboardSurface()
+        return QwertyGlideInputModeResolver.resolve(
+            qwertyGlideInputPreference = qwertyGlideInputPreference,
+            isQwertySurfaceActive = surface?.qwertyView?.isVisible == true,
+            currentQwertyRomajiModeForSession = currentQwertyRomajiModeForSession
+        )
+    }
+
+    private fun updateQwertyGlideInputModeOnActiveSurface() {
+        getActiveKeyboardSurface()
+            ?.qwertyView
+            ?.setQwertyGlideInputMode(calculateQwertyGlideInputMode())
     }
 
     private fun updateQwertyOnActiveSurface(block: QWERTYKeyboardView.() -> Unit) {
@@ -11308,6 +11339,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 refreshReconversionUi()
                 return
             }
+            if (suppressNextQwertyGlideSuggestionRefresh) {
+                suppressNextQwertyGlideSuggestionRefresh = false
+                setComposingTextAfterEdit(
+                    inputString = string,
+                    spannableString = createSpannableWithTail(string),
+                    backgroundColor = if (customComposingTextPreference == true) {
+                        inputCompositionAfterBackgroundColor
+                            ?: getColor(com.kazumaproject.core.R.color.blue)
+                    } else {
+                        getColor(com.kazumaproject.core.R.color.blue)
+                    },
+                    textColor = if (customComposingTextPreference == true) {
+                        inputCompositionTextColor
+                    } else {
+                        null
+                    }
+                )
+                refreshReconversionUi()
+                return
+            }
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY) {
                 handleTenKeyQwertyInput(string)
             } else {
@@ -13168,6 +13219,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setDeleteLeftFlickEnabled(isDeleteLeftFlickPreference ?: true)
             setDeleteUpFlickEnabled(isDeleteUpFlickPreference ?: false)
             setDeleteDownFlickEnabled(isDeleteDownFlickPreference ?: false)
+            val glideCoordinator = qwertyGlideInputCoordinator
+                ?: QwertyGlideInputCoordinator(
+                    scope = scope,
+                    englishEngine = englishEngine,
+                    previousTextProvider = { getPreviousTextForQwertyGlide() },
+                    onPreviewCandidates = { candidates ->
+                        showQwertyGlideCandidates(candidates, applyFirstCandidate = false)
+                    },
+                    onFinalCandidates = { candidates ->
+                        showQwertyGlideCandidates(candidates, applyFirstCandidate = true)
+                    },
+                    onCancel = {}
+                ).also { qwertyGlideInputCoordinator = it }
+            setQwertyGlideInputListener(glideCoordinator)
+            setQwertyGlideInputMode(calculateQwertyGlideInputMode())
             setKeyMargins(
                 verticalDp = qwertyKeyVerticalMargin ?: 5.0f,
                 horizontalGapDp = qwertyKeyHorizontalGap ?: 2.0f,
@@ -13700,6 +13766,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("setOnDeleteDownFlickListener called")
                 undoLastHistoryEntry()
             }
+        }
+    }
+
+    private fun getPreviousTextForQwertyGlide(): String {
+        return currentInputConnection
+            ?.getTextBeforeCursor(64, 0)
+            ?.toString()
+            .orEmpty()
+    }
+
+    private fun showQwertyGlideCandidates(
+        candidates: List<Candidate>,
+        applyFirstCandidate: Boolean
+    ) {
+        if (candidates.isEmpty()) return
+        if (currentQwertyRomajiModeForSession) return
+        suggestionClickNum = 0
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapter?.suggestions = candidates
+        suggestionAdapterFull?.suggestions = candidates
+        if (physicalKeyboardEnable.replayCache.firstOrNull() == true) {
+            updateSuggestionsForFloatingCandidate(
+                candidates.map { CandidateItem(word = it.string, length = it.length) }
+            )
+        }
+        if (applyFirstCandidate) {
+            clearDeletedBuffer()
+            refreshEditHistoryUi()
+            val first = candidates.first()
+            suppressNextQwertyGlideSuggestionRefresh = true
+            _inputString.update { first.string }
+            val spannable = createSpannableWithTail(first.string)
+            setComposingTextAfterEdit(
+                inputString = first.string,
+                spannableString = spannable,
+                backgroundColor = if (customComposingTextPreference == true) {
+                    inputCompositionAfterBackgroundColor
+                        ?: getColor(com.kazumaproject.core.R.color.blue)
+                } else {
+                    getColor(com.kazumaproject.core.R.color.blue)
+                },
+                textColor = if (customComposingTextPreference == true) {
+                    inputCompositionTextColor
+                } else {
+                    null
+                }
+            )
         }
     }
 
