@@ -5,6 +5,12 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId
 import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray
+import com.kazumaproject.markdownhelperkeyboard.converter.glide.InMemoryQwertyGlideDictionaryProvider
+import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDecodeOptions
+import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDecoder
+import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDictionaryEntry
+import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
+import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
 import timber.log.Timber
 
 class EnglishEngine {
@@ -15,6 +21,8 @@ class EnglishEngine {
     private lateinit var succinctBitVectorReadingIsLeaf: SuccinctBitVector
     private lateinit var succinctBitVectorTokenArray: SuccinctBitVector
     private lateinit var succinctBitVectorLBSWord: SuccinctBitVector
+    @Volatile
+    private var qwertyGlideDecoder: QwertyGlideDecoder? = null
 
     companion object {
         const val LENGTH_MULTIPLY = 2000
@@ -36,6 +44,85 @@ class EnglishEngine {
         this.succinctBitVectorLBSWord = englishSuccinctBitVectorLBSWord
         this.succinctBitVectorReadingIsLeaf = englishSuccinctBitVectorReadingIsLeaf
         this.succinctBitVectorTokenArray = englishSuccinctBitVectorTokenArray
+    }
+
+    fun getGlideCandidates(
+        inputPointers: QwertyInputPointers,
+        proximityInfo: QwertyKeyboardProximityInfo,
+        previousText: String,
+        limit: Int = 12
+    ): List<Candidate> {
+        if (inputPointers.points.size < 2 || proximityInfo.keys.isEmpty()) return emptyList()
+        return getOrCreateQwertyGlideDecoder().decode(
+            inputPointers = inputPointers,
+            proximityInfo = proximityInfo,
+            previousText = previousText,
+            limit = limit
+        )
+    }
+
+    private fun getOrCreateQwertyGlideDecoder(): QwertyGlideDecoder {
+        qwertyGlideDecoder?.let { return it }
+        return synchronized(this) {
+            qwertyGlideDecoder ?: QwertyGlideDecoder(
+                dictionaryProvider = InMemoryQwertyGlideDictionaryProvider(buildGlideDictionaryEntries()),
+                options = QwertyGlideDecodeOptions()
+            ).also { qwertyGlideDecoder = it }
+        }
+    }
+
+    private fun buildGlideDictionaryEntries(): List<QwertyGlideDictionaryEntry> {
+        val entries = linkedMapOf<String, QwertyGlideDictionaryEntry>()
+        val readings = readingLOUDS.predictiveSearch(
+            prefix = "",
+            succinctBitVector = succinctBitVectorLBSReading
+        )
+        for (reading in readings) {
+            if (reading.length !in 2..24 || !reading.all { it in 'a'..'z' }) continue
+            val nodeIndex = readingLOUDS.getNodeIndex(
+                reading,
+                succinctBitVector = succinctBitVectorLBSReading
+            )
+            if (nodeIndex <= 0) continue
+            val termId = readingLOUDS.getTermId(
+                nodeIndex,
+                succinctBitVector = succinctBitVectorReadingIsLeaf
+            )
+            if (termId < 0) continue
+            val tokens = tokenArray.getListDictionaryByYomiTermId(
+                termId,
+                succinctBitVector = succinctBitVectorTokenArray
+            )
+            if (tokens.isEmpty()) {
+                entries.mergeGlideEntry(reading, 9000)
+            } else {
+                for (entry in tokens) {
+                    val word = when (entry.nodeId) {
+                        -1 -> reading
+                        else -> wordLOUDS.getLetter(
+                            entry.nodeId,
+                            succinctBitVector = succinctBitVectorLBSWord
+                        )
+                    }.lowercase()
+                    if (word.length in 2..24 && word.all { it in 'a'..'z' }) {
+                        entries.mergeGlideEntry(word, entry.wordCost.toInt())
+                    }
+                }
+            }
+        }
+        listOf(
+            "hello",
+            "good",
+            "test",
+            "word",
+            "keyboard",
+            "android",
+            "sumire",
+            "coffee",
+            "letter",
+            "people"
+        ).forEach { word -> entries.mergeGlideEntry(word, 6000) }
+        return entries.values.toList()
     }
 
     fun getCandidates(
@@ -291,4 +378,15 @@ class EnglishEngine {
         else -> 3
     }
 
+}
+
+private fun MutableMap<String, QwertyGlideDictionaryEntry>.mergeGlideEntry(
+    word: String,
+    wordCost: Int
+) {
+    val normalizedWord = word.lowercase()
+    val current = this[normalizedWord]
+    if (current == null || wordCost < current.wordCost) {
+        this[normalizedWord] = QwertyGlideDictionaryEntry(normalizedWord, wordCost)
+    }
 }

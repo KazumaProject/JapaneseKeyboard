@@ -515,6 +515,8 @@
     <string name="shortcut_toolbar_summary">絵文字キーボードへの切り替えなどの便利なショートカットアイコンを含むツールバーを表示します</string>
     <string name="qwerty_romaji_english_visibility_title">ローマ字/英語切り替えキー</string>
     <string name="qwerty_romaji_english_visibility_summary">キーボード上にローマ字入力と英語入力を切り替えるキー（あa）を表示します</string>
+    <string name="qwerty_glide_input_preference_title">英語 QWERTY のグライド入力</string>
+    <string name="qwerty_glide_input_preference_summary">英語 QWERTY キーボードで、指を滑らせた軌跡から英単語候補を表示します。</string>
     <string name="keyboard_theme_title">キーボードテーマ</string>
     <string name="keyboard_theme_summary">反映には一度キーボードを再起動する必要があります。</string>
     <string name="keyboard_theme_dialog_title">ベースカラーの選択</string>
