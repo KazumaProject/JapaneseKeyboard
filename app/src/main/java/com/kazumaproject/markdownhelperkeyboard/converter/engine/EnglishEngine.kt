@@ -10,6 +10,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDecod
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDecoder
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDecodeMetrics
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDictionaryEntry
+import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideCandidateCaseExpander
+import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideIndexedDictionaryProvider
 import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
 import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
@@ -21,7 +23,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class EnglishEngine {
+class EnglishEngine : QwertyGlideCandidateProvider {
     private lateinit var readingLOUDS: LOUDSWithTermId
     private lateinit var wordLOUDS: LOUDS
     private lateinit var tokenArray: TokenArray
@@ -37,6 +39,7 @@ class EnglishEngine {
     private var qwertyGlideDictionaryReady: Boolean = false
     @Volatile
     private var qwertyGlideWarmupJob: Job? = null
+    private val qwertyGlideCandidateCaseExpander = QwertyGlideCandidateCaseExpander()
     private val qwertyGlideWarmupScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     companion object {
@@ -67,23 +70,24 @@ class EnglishEngine {
         )
     }
 
-    fun getGlideCandidates(
+    override suspend fun getGlideCandidates(
         inputPointers: QwertyInputPointers,
         proximityInfo: QwertyKeyboardProximityInfo,
         previousText: String,
-        limit: Int = 12
+        limit: Int
     ): List<Candidate> {
-        if (inputPointers.points.size < 2 || proximityInfo.keys.isEmpty()) return emptyList()
+        if (limit <= 0 || inputPointers.points.size < 2 || proximityInfo.keys.isEmpty()) return emptyList()
         val decoder = qwertyGlideDecoder ?: run {
             warmUpQwertyGlideDecoderAsync()
             getOrCreateFallbackQwertyGlideDecoder()
         }
-        return decoder.decode(
+        val baseCandidates = decoder.decode(
             inputPointers = inputPointers,
             proximityInfo = proximityInfo,
             previousText = previousText,
-            limit = limit
+            limit = (limit * 3).coerceAtLeast(limit)
         )
+        return qwertyGlideCandidateCaseExpander.expand(baseCandidates, limit)
     }
 
     fun warmUpQwertyGlideDecoderAsync() {
