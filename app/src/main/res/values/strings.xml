@@ -513,7 +513,7 @@
     <string name="shortcut_toolbar_summary">Show a toolbar with useful shortcuts like switching Emoji keyboard</string>
     <string name="qwerty_romaji_english_visibility_title">Romaji/English Switch Key</string>
     <string name="qwerty_romaji_english_visibility_summary">Show a key (あa) to switch between Romaji input and English input</string>
-    <string name="qwerty_glide_input_preference_title">Glide input for English QWERTY</string>
+    <string name="qwerty_glide_input_preference_title">Glide input for English QWERTY β</string>
     <string name="qwerty_glide_input_preference_summary">Enable word suggestions from sliding gestures on the English QWERTY keyboard.</string>
     <string name="keyboard_theme_title">Keyboard Theme</string>
     <string name="keyboard_theme_summary">Choose the keyboard theme color.\nTo apply changes, please switch the keyboard once.</string>
@@ -831,4 +831,10 @@
     <string name="keyboard_background_video_cleared">Keyboard background video has been cleared.</string>
     <string name="keyboard_background_video_failed">Failed to set keyboard background video: %1$s</string>
     <string name="donuts_flick">Donuts Flick</string>
+    <string name="qwerty_button_size_preference_title">Key size</string>
+    <string name="qwerty_button_size_preference_summary">Change the size of keys, text, and special key icons.</string>
+    <string name="qwerty_popup_view_style_preference_title">Popup display</string>
+    <string name="qwerty_popup_view_style_preference_summary">Configure the size and text size of QWERTY key previews and long-press popups.</string>
+    <string name="qwerty_number_key_flick_setting_preference_summary">Number key flick settings</string>
+    <string name="qwerty_number_key_flick_setting_preference_title">Configure the characters output by upward and downward flicks on QWERTY number keys.</string>
 </resources>
