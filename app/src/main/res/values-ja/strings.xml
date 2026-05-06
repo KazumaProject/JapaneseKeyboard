@@ -826,4 +826,7 @@
     <string name="keyboard_background_video_cleared">キーボード背景動画を解除しました。</string>
     <string name="keyboard_background_video_failed">キーボード背景動画の設定に失敗しました: %1$s</string>
     <string name="donuts_flick">ドーナツフリック</string>
+    <string name="hello_blank_fragment">空のフラグメント</string>
+    <string name="label_key_type">キータイプ</string>
+    <string name="done_text">完了</string>
 </resources>

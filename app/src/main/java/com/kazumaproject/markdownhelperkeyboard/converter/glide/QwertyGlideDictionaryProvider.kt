@@ -17,14 +17,7 @@ interface QwertyGlideDictionaryProvider {
 class InMemoryQwertyGlideDictionaryProvider(
     entries: Iterable<QwertyGlideDictionaryEntry>
 ) : QwertyGlideDictionaryProvider {
-    private val indexedEntries: Map<Pair<Char, Char>, List<QwertyGlideDictionaryEntry>> =
-        entries
-            .asSequence()
-            .filter { it.word.length >= 2 }
-            .map { it.copy(word = it.word.lowercase()) }
-            .filter { it.word.all { ch -> ch in 'a'..'z' } }
-            .distinctBy { it.word }
-            .groupBy { it.word.first() to it.word.last() }
+    private val indexedProvider = QwertyGlideIndexedDictionaryProvider(entries)
 
     override fun entriesFor(
         firstChar: Char,
@@ -32,9 +25,6 @@ class InMemoryQwertyGlideDictionaryProvider(
         minLength: Int,
         maxLength: Int
     ): Sequence<QwertyGlideDictionaryEntry> {
-        return indexedEntries[firstChar to lastChar]
-            .orEmpty()
-            .asSequence()
-            .filter { it.word.length in minLength..maxLength }
+        return indexedProvider.entriesFor(firstChar, lastChar, minLength, maxLength)
     }
 }

@@ -1243,6 +1243,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isDeleteLeftFlickPreference != preferences.isDeleteLeftFlickPreference ||
                     isDeleteUpFlickPreference != preferences.isDeleteUpFlickPreference ||
                     isDeleteDownFlickPreference != preferences.isDeleteDownFlickPreference
+        val qwertyGlidePreferenceChanged =
+            qwertyGlideInputPreference != preferences.qwertyGlideInputPreference
 
         keyboardOrder = preferences.keyboardOrder
         candidateTabOrder = preferences.candidateTabOrder
@@ -1271,6 +1273,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowSwitchRomajiEnglishPreference =
             preferences.qwertyShowSwitchRomajiEnglishPreference
         qwertyGlideInputPreference = preferences.qwertyGlideInputPreference
+        if (qwertyGlidePreferenceChanged) {
+            qwertyGlideInputCoordinator?.cancelPending()
+            englishEngine.invalidateQwertyGlideCache()
+        }
+        if (preferences.qwertyGlideInputPreference) {
+            englishEngine.warmUpQwertyGlideDecoderAsync()
+        } else if (qwertyGlidePreferenceChanged) {
+            englishEngine.cancelQwertyGlideWarmup()
+        }
         qwertyShowPopupWindowPreference = preferences.qwertyShowPopupWindowPreference
         qwertyEnableFlickUpPreference = preferences.qwertyEnableFlickUpPreference
         qwertyEnableFlickDownPreference = preferences.qwertyEnableFlickDownPreference
@@ -2324,6 +2335,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
         isInputViewActive = false
+        qwertyGlideInputCoordinator?.cancelPending()
         releaseKeyboardBackgroundVideoPlayer()
         releaseFloatingKeyboardBackgroundVideoPlayer()
         stopVoiceInput()
@@ -2348,6 +2360,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingSymbolKeyboard.release()
         }
         zenzEngine = null
+        qwertyGlideInputCoordinator?.cancelPending()
+        englishEngine.cancelQwertyGlideWarmup()
         suggestionAdapter?.release()
         suggestionAdapter = null
         shortcutAdapter = null

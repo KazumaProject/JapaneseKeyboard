@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 import androidx.annotation.IdRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination
 import androidx.navigation.fragment.findNavController
 import timber.log.Timber
 
@@ -23,7 +24,7 @@ internal fun NavController.navigateSafely(@IdRes resId: Int): Boolean {
     if (!hasAction && !hasDestination) {
         Timber.w(
             "Ignored navigation because action/destination was not available. current=%s target=%s",
-            destination.displayName,
+            destination.safeLogName(),
             resId
         )
         return false
@@ -40,9 +41,13 @@ internal fun NavController.navigateSafely(@IdRes resId: Int): Boolean {
         Timber.w(
             error,
             "Ignored duplicate or stale navigation. current=%s target=%s",
-            destination.displayName,
+            destination.safeLogName(),
             resId
         )
         false
     }
+}
+
+private fun NavDestination.safeLogName(): String {
+    return label?.toString() ?: id.toString()
 }

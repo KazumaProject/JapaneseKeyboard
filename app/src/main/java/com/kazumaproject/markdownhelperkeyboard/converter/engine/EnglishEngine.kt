@@ -5,12 +5,20 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS
 import com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId
 import com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray
-import com.kazumaproject.markdownhelperkeyboard.converter.glide.InMemoryQwertyGlideDictionaryProvider
+import com.kazumaproject.markdownhelperkeyboard.BuildConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDecodeOptions
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDecoder
+import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDecodeMetrics
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDictionaryEntry
+import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideIndexedDictionaryProvider
 import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
 import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class EnglishEngine {
@@ -23,6 +31,13 @@ class EnglishEngine {
     private lateinit var succinctBitVectorLBSWord: SuccinctBitVector
     @Volatile
     private var qwertyGlideDecoder: QwertyGlideDecoder? = null
+    @Volatile
+    private var qwertyFallbackGlideDecoder: QwertyGlideDecoder? = null
+    @Volatile
+    private var qwertyGlideDictionaryReady: Boolean = false
+    @Volatile
+    private var qwertyGlideWarmupJob: Job? = null
+    private val qwertyGlideWarmupScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     companion object {
         const val LENGTH_MULTIPLY = 2000
@@ -44,6 +59,12 @@ class EnglishEngine {
         this.succinctBitVectorLBSWord = englishSuccinctBitVectorLBSWord
         this.succinctBitVectorReadingIsLeaf = englishSuccinctBitVectorReadingIsLeaf
         this.succinctBitVectorTokenArray = englishSuccinctBitVectorTokenArray
+        qwertyGlideDictionaryReady = false
+        qwertyGlideDecoder = null
+        qwertyFallbackGlideDecoder = createQwertyGlideDecoder(
+            entries = fallbackGlideDictionaryEntries(),
+            dictionaryReady = false
+        )
     }
 
     fun getGlideCandidates(
@@ -53,7 +74,11 @@ class EnglishEngine {
         limit: Int = 12
     ): List<Candidate> {
         if (inputPointers.points.size < 2 || proximityInfo.keys.isEmpty()) return emptyList()
-        return getOrCreateQwertyGlideDecoder().decode(
+        val decoder = qwertyGlideDecoder ?: run {
+            warmUpQwertyGlideDecoderAsync()
+            getOrCreateFallbackQwertyGlideDecoder()
+        }
+        return decoder.decode(
             inputPointers = inputPointers,
             proximityInfo = proximityInfo,
             previousText = previousText,
@@ -61,14 +86,89 @@ class EnglishEngine {
         )
     }
 
-    private fun getOrCreateQwertyGlideDecoder(): QwertyGlideDecoder {
-        qwertyGlideDecoder?.let { return it }
-        return synchronized(this) {
-            qwertyGlideDecoder ?: QwertyGlideDecoder(
-                dictionaryProvider = InMemoryQwertyGlideDictionaryProvider(buildGlideDictionaryEntries()),
-                options = QwertyGlideDecodeOptions()
-            ).also { qwertyGlideDecoder = it }
+    fun warmUpQwertyGlideDecoderAsync() {
+        if (qwertyGlideDictionaryReady && qwertyGlideDecoder != null) return
+        synchronized(this) {
+            val existing = qwertyGlideWarmupJob
+            if (existing?.isActive == true) return
+            qwertyGlideWarmupJob = qwertyGlideWarmupScope.launch {
+                val startedAt = System.nanoTime()
+                val entries = buildGlideDictionaryEntries()
+                val decoder = createQwertyGlideDecoder(
+                    entries = entries,
+                    dictionaryReady = true
+                )
+                qwertyGlideDecoder = decoder
+                qwertyGlideDictionaryReady = true
+                if (BuildConfig.DEBUG) {
+                    Timber.d(
+                        "QWERTY glide dictionary warmup complete: entries=${entries.size} elapsed_ms=${(System.nanoTime() - startedAt) / 1_000_000L}"
+                    )
+                }
+            }
         }
+    }
+
+    fun isQwertyGlideDictionaryReady(): Boolean = qwertyGlideDictionaryReady
+
+    fun cancelQwertyGlideWarmup() {
+        qwertyGlideWarmupJob?.cancel()
+        qwertyGlideWarmupJob = null
+    }
+
+    fun releaseQwertyGlideResources() {
+        cancelQwertyGlideWarmup()
+        qwertyGlideDecoder = null
+        qwertyFallbackGlideDecoder = null
+        qwertyGlideDictionaryReady = false
+    }
+
+    fun invalidateQwertyGlideCache() {
+        qwertyGlideDecoder?.clearCache()
+        qwertyFallbackGlideDecoder?.clearCache()
+    }
+
+    private fun getOrCreateFallbackQwertyGlideDecoder(): QwertyGlideDecoder {
+        qwertyFallbackGlideDecoder?.let { return it }
+        return synchronized(this) {
+            qwertyFallbackGlideDecoder ?: createQwertyGlideDecoder(
+                entries = fallbackGlideDictionaryEntries(),
+                dictionaryReady = false
+            ).also { qwertyFallbackGlideDecoder = it }
+        }
+    }
+
+    private fun createQwertyGlideDecoder(
+        entries: Iterable<QwertyGlideDictionaryEntry>,
+        dictionaryReady: Boolean
+    ): QwertyGlideDecoder {
+        return QwertyGlideDecoder(
+            dictionaryProvider = QwertyGlideIndexedDictionaryProvider(entries),
+            options = QwertyGlideDecodeOptions(),
+            dictionaryReady = dictionaryReady,
+            metricsListener = ::logQwertyGlideMetrics
+        )
+    }
+
+    private fun logQwertyGlideMetrics(metrics: QwertyGlideDecodeMetrics) {
+        if (!BuildConfig.DEBUG) return
+        Timber.d(
+            "QWERTY glide decode: dictionary_ready=${metrics.dictionaryReady} " +
+                    "raw_bucket_candidate_count=${metrics.rawBucketCandidateCount} " +
+                    "prefilter_candidate_count=${metrics.prefilterCandidateCount} " +
+                    "full_score_candidate_count=${metrics.fullScoreCandidateCount} " +
+                    "rerank_candidate_count=${metrics.rerankCandidateCount} " +
+                    "decode_total_ms=${metrics.decodeTotalMs} prefilter_ms=${metrics.prefilterMs} " +
+                    "full_score_ms=${metrics.fullScoreMs} rerank_ms=${metrics.rerankMs} " +
+                    "cache_hit=${metrics.cacheHit}"
+        )
+    }
+
+    private fun fallbackGlideDictionaryEntries(): List<QwertyGlideDictionaryEntry> {
+        return listOf(
+            "hello", "good", "test", "word", "world", "keyboard", "android", "sumire",
+            "coffee", "letter", "people", "glide", "time", "home", "something"
+        ).map { word -> QwertyGlideDictionaryEntry(word, 6000) }
     }
 
     private fun buildGlideDictionaryEntries(): List<QwertyGlideDictionaryEntry> {
@@ -110,18 +210,9 @@ class EnglishEngine {
                 }
             }
         }
-        listOf(
-            "hello",
-            "good",
-            "test",
-            "word",
-            "keyboard",
-            "android",
-            "sumire",
-            "coffee",
-            "letter",
-            "people"
-        ).forEach { word -> entries.mergeGlideEntry(word, 6000) }
+        fallbackGlideDictionaryEntries().forEach { entry ->
+            entries.mergeGlideEntry(entry.word, entry.wordCost)
+        }
         return entries.values.toList()
     }
 
