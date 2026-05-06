@@ -17,6 +17,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import java.io.File
+import java.io.InputStream
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -531,7 +532,7 @@ class GemmaTranslationManager @Inject constructor(
         }
 
         val header = modelFile.inputStream().use { input ->
-            input.readNBytes(MODEL_HEADER_SAMPLE_SIZE)
+            input.readAtMost(MODEL_HEADER_SAMPLE_SIZE)
         }
         require(header.isNotEmpty()) {
             context.getString(R.string.gemma_translation_model_import_invalid_size)
@@ -560,6 +561,17 @@ class GemmaTranslationManager @Inject constructor(
     private fun startsWithAscii(header: ByteArray, prefix: String): Boolean {
         val value = header.toString(Charsets.US_ASCII).trimStart()
         return value.startsWith(prefix)
+    }
+
+    private fun InputStream.readAtMost(maxBytes: Int): ByteArray {
+        val buffer = ByteArray(maxBytes)
+        var offset = 0
+        while (offset < maxBytes) {
+            val read = read(buffer, offset, maxBytes - offset)
+            if (read <= 0) break
+            offset += read
+        }
+        return buffer.copyOf(offset)
     }
 
     private fun modelDirectory(): File {

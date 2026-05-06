@@ -90,6 +90,12 @@ class QwertyGlideInputCoordinator(
         onCancel()
     }
 
+    fun cancelPending() {
+        generation.incrementAndGet()
+        previewJob?.cancel()
+        finalJob?.cancel()
+    }
+
     companion object {
         private const val PREVIEW_DEBOUNCE_MS = 96L
     }
