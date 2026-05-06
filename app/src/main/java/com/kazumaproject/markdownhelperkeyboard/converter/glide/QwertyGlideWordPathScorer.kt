@@ -21,33 +21,64 @@ class QwertyGlideWordPathScorer(
         pointProbabilities: List<List<PointKeyProbability>>,
         proximityInfo: QwertyKeyboardProximityInfo
     ): QwertyGlideScoredWord? {
+        return score(
+            entry = entry,
+            stroke = stroke,
+            pointProbabilities = pointProbabilities,
+            proximityInfo = proximityInfo,
+            keyByChar = proximityInfo.keys.associateBy { it.char },
+            keyScale = proximityInfo.normalizedKeyScale()
+        )
+    }
+
+    fun score(
+        entry: QwertyGlideDictionaryEntry,
+        stroke: NormalizedGlideStroke,
+        pointProbabilities: List<List<PointKeyProbability>>,
+        proximityInfo: QwertyKeyboardProximityInfo,
+        keyByChar: Map<Char, QwertyKeyProximity>,
+        keyScale: Float
+    ): QwertyGlideScoredWord? {
         if (stroke.points.size < 2) return null
-        val keyByChar = proximityInfo.keys.associateBy { it.char }
-        val wordKeys = entry.word.map { keyByChar[it] ?: return null }
+        val wordKeys = ArrayList<QwertyKeyProximity>(entry.word.length)
+        for (ch in entry.word) {
+            wordKeys.add(keyByChar[ch] ?: return null)
+        }
         val normalizedPath = wordKeys.toNormalizedPath(proximityInfo)
-        val rawPath = wordKeys.map { it.centerX to it.centerY }
-        val keyScale = hypot(
-            proximityInfo.averageKeyWidth / proximityInfo.keyboardWidth.coerceAtLeast(1).toFloat(),
-            proximityInfo.averageKeyHeight / proximityInfo.keyboardHeight.coerceAtLeast(1).toFloat()
-        ).coerceAtLeast(0.01f)
+        val rawPath = ArrayList<Pair<Float, Float>>(wordKeys.size)
+        for (key in wordKeys) {
+            rawPath.add(key.centerX to key.centerY)
+        }
 
         val startCost = distance(stroke.points.first(), normalizedPath.first()) / keyScale
         val endCost = distance(stroke.points.last(), normalizedPath.last()) / keyScale
-        if (startCost > 2.6f || endCost > 2.6f) return null
+        if (startCost > options.startEndRejectCost || endCost > options.startEndRejectCost) return null
 
-        val pathShapeCost = stroke.points
-            .map { point -> distanceToPolyline(point.x, point.y, normalizedPath) / keyScale }
-            .average()
-            .toFloat()
-        val keyPassCost = normalizedPath
-            .map { keyPoint -> distanceToStrokePolyline(keyPoint.first, keyPoint.second, stroke.points) / keyScale }
-            .average()
-            .toFloat()
-        val proximityCost = entry.word.map { ch ->
-            pointProbabilities.minOfOrNull { probs ->
-                probs.firstOrNull { it.char == ch }?.cost ?: 5.0f
-            } ?: 5.0f
-        }.average().toFloat()
+        var pathShapeTotal = 0f
+        for (point in stroke.points) {
+            pathShapeTotal += distanceToPolyline(point.x, point.y, normalizedPath) / keyScale
+        }
+        val pathShapeCost = pathShapeTotal / stroke.points.size
+
+        var keyPassTotal = 0f
+        for (keyPoint in normalizedPath) {
+            keyPassTotal += distanceToStrokePolyline(keyPoint.first, keyPoint.second, stroke.points) / keyScale
+        }
+        val keyPassCost = keyPassTotal / normalizedPath.size.coerceAtLeast(1)
+
+        var proximityTotal = 0f
+        for (ch in entry.word) {
+            var best = 5.0f
+            for (probs in pointProbabilities) {
+                for (prob in probs) {
+                    if (prob.char == ch && prob.cost < best) {
+                        best = prob.cost
+                    }
+                }
+            }
+            proximityTotal += best
+        }
+        val proximityCost = proximityTotal / entry.word.length.coerceAtLeast(1)
         val lengthCost = normalizedLengthCost(stroke, rawPath, proximityInfo, entry.word.length)
         val repeatedLetterCost = repeatedLetterCost(entry.word)
         val dictionaryCost = entry.wordCost.coerceAtLeast(0) * options.dictionaryWeight
