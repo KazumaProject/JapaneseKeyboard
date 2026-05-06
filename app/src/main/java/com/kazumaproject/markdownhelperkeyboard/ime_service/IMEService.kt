@@ -286,6 +286,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         object Close : CandidateLongPressAction()
     }
 
+    private enum class SuggestionProgressReason {
+        CandidateTranslation,
+        VoiceInput,
+        QwertyGlideDecode
+    }
+
     private data class BunsetsuSegmentState(
         val reading: String,
         val displayText: String,
@@ -532,6 +538,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var selectedTextGemmaSession: SelectedTextGemmaSession? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
+    private val suggestionProgressReasons = mutableSetOf<SuggestionProgressReason>()
     private var isInputViewActive: Boolean = false
     private val _inputString = MutableStateFlow("")
     private val inputString = _inputString.asStateFlow()
@@ -1136,7 +1143,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
                 setRecognitionListener(object : RecognitionListener {
                     override fun onReadyForSpeech(params: Bundle?) {
-                        mainLayoutBinding?.suggestionProgressbar?.isVisible = true
+                        setSuggestionProgressVisible(
+                            reason = SuggestionProgressReason.VoiceInput,
+                            visible = true
+                        )
                     }
 
                     override fun onBeginningOfSpeech() {
@@ -1146,12 +1156,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     override fun onRmsChanged(rmsdB: Float) {}
                     override fun onBufferReceived(buffer: ByteArray?) {}
                     override fun onEndOfSpeech() {
-                        mainLayoutBinding?.suggestionProgressbar?.isVisible = false
+                        setSuggestionProgressVisible(
+                            reason = SuggestionProgressReason.VoiceInput,
+                            visible = false
+                        )
                     }
 
                     override fun onError(error: Int) {
                         isListening = false
-                        mainLayoutBinding?.suggestionProgressbar?.isVisible = false
+                        setSuggestionProgressVisible(
+                            reason = SuggestionProgressReason.VoiceInput,
+                            visible = false
+                        )
                     }
 
                     override fun onResults(results: Bundle?) {
@@ -1160,7 +1176,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                         val text = matches?.firstOrNull() ?: return
                         _inputString.update { text }
-                        mainLayoutBinding?.suggestionProgressbar?.isVisible = false
+                        setSuggestionProgressVisible(
+                            reason = SuggestionProgressReason.VoiceInput,
+                            visible = false
+                        )
                     }
 
                     override fun onPartialResults(partialResults: Bundle?) {
@@ -2229,7 +2248,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 setTabsToTabLayout(mainView)
 
-                suggestionProgressbar.isVisible = false
+                refreshSuggestionProgressVisibility()
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 tabletView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
@@ -2770,7 +2789,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         Timber.d("startVoiceInput: [$isListening] [$speechRecognizer]")
-        mainView.suggestionProgressbar.isVisible = false
+        setSuggestionProgressVisible(
+            reason = SuggestionProgressReason.VoiceInput,
+            visible = false
+        )
         if (isListening) return
         if (speechRecognizer == null) return
 
@@ -6259,7 +6281,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setCandidateTranslationProgressVisible(isVisible: Boolean) {
-        mainLayoutBinding?.suggestionProgressbar?.isVisible = isVisible
+        setSuggestionProgressVisible(
+            reason = SuggestionProgressReason.CandidateTranslation,
+            visible = isVisible
+        )
+    }
+
+    private fun setSuggestionProgressVisible(
+        reason: SuggestionProgressReason,
+        visible: Boolean
+    ) {
+        if (visible) {
+            suggestionProgressReasons += reason
+        } else {
+            suggestionProgressReasons -= reason
+        }
+        refreshSuggestionProgressVisibility()
+    }
+
+    private fun refreshSuggestionProgressVisibility() {
+        mainLayoutBinding?.suggestionProgressbar?.isVisible =
+            suggestionProgressReasons.isNotEmpty()
     }
 
     private fun finishCandidateTranslation(requestId: Long) {
@@ -13236,7 +13278,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val glideCoordinator = qwertyGlideInputCoordinator
                 ?: QwertyGlideInputCoordinator(
                     scope = scope,
-                    englishEngine = englishEngine,
+                    candidateProvider = englishEngine,
                     previousTextProvider = { getPreviousTextForQwertyGlide() },
                     onPreviewCandidates = { candidates ->
                         showQwertyGlideCandidates(candidates, applyFirstCandidate = false)
@@ -13244,7 +13286,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     onFinalCandidates = { candidates ->
                         showQwertyGlideCandidates(candidates, applyFirstCandidate = true)
                     },
-                    onCancel = {}
+                    onCancel = {},
+                    onProcessingChanged = { isProcessing ->
+                        setSuggestionProgressVisible(
+                            reason = SuggestionProgressReason.QwertyGlideDecode,
+                            visible = isProcessing
+                        )
+                    }
                 ).also { qwertyGlideInputCoordinator = it }
             setQwertyGlideInputListener(glideCoordinator)
             setQwertyGlideInputMode(calculateQwertyGlideInputMode())
