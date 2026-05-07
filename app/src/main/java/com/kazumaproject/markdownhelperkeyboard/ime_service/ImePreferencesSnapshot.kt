@@ -32,6 +32,7 @@ data class ImePreferencesSnapshot(
     val qwertyShowCursorButtonsPreference: Boolean,
     val qwertyShowNumberButtonsPreference: Boolean,
     val qwertyShowSwitchRomajiEnglishPreference: Boolean,
+    val qwertyGlideInputPreference: Boolean,
     val qwertyShowPopupWindowPreference: Boolean,
     val qwertyEnableFlickUpPreference: Boolean,
     val qwertyEnableFlickDownPreference: Boolean,
@@ -201,6 +202,7 @@ data class ImePreferencesSnapshot(
                     ?: false,
                 qwertyShowSwitchRomajiEnglishPreference =
                     appPreference.qwerty_show_switch_romaji_english_button ?: true,
+                qwertyGlideInputPreference = appPreference.qwerty_glide_input_preference,
                 qwertyShowPopupWindowPreference = appPreference.qwerty_show_popup_window ?: true,
                 qwertyEnableFlickUpPreference =
                     appPreference.qwerty_enable_flick_up_preference ?: false,
