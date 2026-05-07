@@ -154,6 +154,7 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.Clipb
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
@@ -211,9 +212,6 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.C
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
-import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideInputListener
-import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
-import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
 import com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
 import com.kazumaproject.tenkey.TenKey
 import com.kazumaproject.tenkey.extensions.getDakutenFlickLeft
@@ -597,6 +595,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyRomajiHankakuSymbolPreference: Boolean? = false
     private var qwertyShowPopupWindowPreference: Boolean? = true
     private var qwertyGlideInputPreference: Boolean = false
+    private var qwertyGlideCommitPreviousCandidateOnNewGlidePreference: Boolean = false
+    private var qwertyGlideInsertSpaceAfterCommittingPreviousCandidatePreference: Boolean = false
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowNumberButtonsPreference: Boolean? = false
     private var qwertyShowSwitchRomajiEnglishPreference: Boolean? = false
@@ -739,6 +739,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertySwitchNumberKeyWithoutNumberPreference: Boolean? = false
     private var qwertyGlideInputCoordinator: QwertyGlideInputCoordinator? = null
     private var suppressNextQwertyGlideSuggestionRefresh: Boolean = false
+    private var currentQwertyGlideCompositionText: String? = null
 
     private var customRomajiZenkakuConversionEnablePreference: Boolean? = true
 
@@ -1292,9 +1293,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowSwitchRomajiEnglishPreference =
             preferences.qwertyShowSwitchRomajiEnglishPreference
         qwertyGlideInputPreference = preferences.qwertyGlideInputPreference
+        qwertyGlideCommitPreviousCandidateOnNewGlidePreference =
+            preferences.qwertyGlideCommitPreviousCandidateOnNewGlidePreference
+        qwertyGlideInsertSpaceAfterCommittingPreviousCandidatePreference =
+            preferences.qwertyGlideInsertSpaceAfterCommittingPreviousCandidatePreference
         if (qwertyGlidePreferenceChanged) {
             qwertyGlideInputCoordinator?.cancelPending()
             englishEngine.invalidateQwertyGlideCache()
+            currentQwertyGlideCompositionText = null
         }
         if (preferences.qwertyGlideInputPreference) {
             englishEngine.warmUpQwertyGlideDecoderAsync()
@@ -13286,6 +13292,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     onFinalCandidates = { candidates ->
                         showQwertyGlideCandidates(candidates, applyFirstCandidate = true)
                     },
+                    onGlideStarted = {
+                        commitPreviousQwertyGlideCandidateOnNewGlideIfNeeded()
+                    },
                     onCancel = {},
                     onProcessingChanged = { isProcessing ->
                         setSuggestionProgressVisible(
@@ -13857,6 +13866,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearDeletedBuffer()
             refreshEditHistoryUi()
             val first = candidates.first()
+            currentQwertyGlideCompositionText = if (
+                first.type == QWERTY_GLIDE_CANDIDATE_TYPE
+            ) {
+                first.string
+            } else {
+                null
+            }
             suppressNextQwertyGlideSuggestionRefresh = true
             _inputString.update { first.string }
             val spannable = createSpannableWithTail(first.string)
@@ -13876,6 +13892,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             )
         }
+    }
+
+    private fun commitPreviousQwertyGlideCandidateOnNewGlideIfNeeded() {
+        val firstCandidate = suggestionAdapter?.suggestions?.firstOrNull()
+        val decision = QwertyGlideCommitPolicy.resolvePreviousGlideCommitDecision(
+            qwertyGlideInputPreference = qwertyGlideInputPreference,
+            qwertyGlideCommitPreviousCandidateOnNewGlidePreference =
+                qwertyGlideCommitPreviousCandidateOnNewGlidePreference,
+            qwertyGlideInsertSpaceAfterCommittingPreviousCandidatePreference =
+                qwertyGlideInsertSpaceAfterCommittingPreviousCandidatePreference,
+            inputString = inputString.value,
+            stringInTail = stringInTail.get(),
+            currentQwertyRomajiModeForSession = currentQwertyRomajiModeForSession,
+            firstCandidate = firstCandidate,
+            currentQwertyGlideCompositionText = currentQwertyGlideCompositionText
+        )
+        if (decision !is QwertyGlidePreviousCandidateCommitDecision.Commit) return
+
+        beginBatchEdit()
+        try {
+            setComposingText("", 0)
+            finishComposingText()
+            commitText(decision.commitText, 1)
+        } finally {
+            endBatchEdit()
+        }
+        stringInTail.set("")
+        currentQwertyGlideCompositionText = null
+        resetFlagsSuggestionClick()
     }
 
     private suspend fun setSymbols(mainView: MainLayoutBinding) {
@@ -13992,6 +14037,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (insertString.isNotEmpty()) {
             isHenkan.set(false)
             henkanPressedWithBunsetsuDetect = false
+            val qwertyGlideDecision = QwertyGlideCommitPolicy.resolveTapCommitDecision(
+                candidate = candidate,
+                insertString = insertString
+            )
+            if (qwertyGlideDecision is QwertyGlideTapCommitDecision.CommitQwertyGlideCandidate) {
+                commitQwertyGlideCandidate(candidate)
+                return
+            }
             processCandidate(
                 candidate = candidate,
                 insertString = insertString,
@@ -14682,10 +14735,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         commitAndClearInput(candidateString)
     }
 
+    private fun commitQwertyGlideCandidate(candidate: Candidate) {
+        beginBatchEdit()
+        try {
+            setComposingText("", 0)
+            finishComposingText()
+            commitText(candidate.string, 1)
+        } finally {
+            endBatchEdit()
+        }
+        stringInTail.set("")
+        currentQwertyGlideCompositionText = null
+        resetFlagsSuggestionClick()
+    }
+
     private fun processCandidate(
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         Timber.d("processCandidate ${candidate.type.toInt()} ${insertString.length == candidate.length.toInt()}")
+        val qwertyGlideDecision = QwertyGlideCommitPolicy.resolveTapCommitDecision(
+            candidate = candidate,
+            insertString = insertString
+        )
+        if (qwertyGlideDecision is QwertyGlideTapCommitDecision.CommitQwertyGlideCandidate) {
+            commitQwertyGlideCandidate(candidate)
+            return
+        }
         when (candidate.type.toInt()) {
             15 -> {
                 val readingCorrection = candidate.string.correctReading()

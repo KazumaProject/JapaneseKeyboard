@@ -94,6 +94,31 @@ class QwertyGlideInputCoordinatorTest {
     }
 
     @Test
+    fun glideStartedCallbackRunsAfterPendingWorkIsCancelledAndProcessingCleared() = runTest {
+        val requests = mutableListOf<CompletableDeferred<List<Candidate>>>()
+        val events = mutableListOf<Boolean>()
+        val callbackEventSnapshots = mutableListOf<List<Boolean>>()
+        val coordinator = coordinator(
+            scope = this,
+            provider = deferredProvider(requests),
+            events = events,
+            onGlideStarted = {
+                callbackEventSnapshots += events.toList()
+            }
+        )
+
+        coordinator.onQwertyGlideEnded(pointers, proximityInfo)
+        runCurrent()
+        assertEquals(listOf(true), events)
+
+        coordinator.onQwertyGlideStarted()
+        runCurrent()
+
+        assertEquals(listOf(true, false), events)
+        assertEquals(listOf(listOf(true, false)), callbackEventSnapshots)
+    }
+
+    @Test
     fun cancelledPreviewDoesNotHideNewFinalProcessing() = runTest {
         val requests = mutableListOf<CompletableDeferred<List<Candidate>>>()
         val events = mutableListOf<Boolean>()
@@ -175,7 +200,8 @@ class QwertyGlideInputCoordinatorTest {
         provider: QwertyGlideCandidateProvider,
         events: MutableList<Boolean>,
         previews: MutableList<List<Candidate>> = mutableListOf(),
-        finals: MutableList<List<Candidate>> = mutableListOf()
+        finals: MutableList<List<Candidate>> = mutableListOf(),
+        onGlideStarted: () -> Unit = {}
     ): QwertyGlideInputCoordinator {
         val dispatcher = StandardTestDispatcher(scope.testScheduler)
         return QwertyGlideInputCoordinator(
@@ -184,6 +210,7 @@ class QwertyGlideInputCoordinatorTest {
             previousTextProvider = { "" },
             onPreviewCandidates = previews::add,
             onFinalCandidates = finals::add,
+            onGlideStarted = onGlideStarted,
             onProcessingChanged = events::add,
             decodeDispatcher = dispatcher
         )
