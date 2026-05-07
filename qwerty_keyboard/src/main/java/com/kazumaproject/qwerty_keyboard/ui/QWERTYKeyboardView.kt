@@ -43,9 +43,9 @@ import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
-import com.kazumaproject.core.data.qwerty.CapsLockState
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
+import com.kazumaproject.core.data.qwerty.CapsLockState
 import com.kazumaproject.core.data.qwerty.QWERTYKeys
 import com.kazumaproject.core.data.qwerty.VariationInfo
 import com.kazumaproject.core.domain.extensions.dpToPx
@@ -60,14 +60,15 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
 import com.kazumaproject.core.domain.state.QWERTYMode
+import com.kazumaproject.qwerty_keyboard.R
+import com.kazumaproject.qwerty_keyboard.databinding.QwertyLayoutBinding
 import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideGesturePolicy
 import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideInputListener
+import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideKeyClassifier
 import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointerPoint
 import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
 import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyProximity
 import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
-import com.kazumaproject.qwerty_keyboard.R
-import com.kazumaproject.qwerty_keyboard.databinding.QwertyLayoutBinding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -1613,43 +1614,37 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 val pointerIndex = event.findPointerIndex(pointerId)
                 if (pointerIndex < 0) {
                     cancelQwertyGlideCandidate(notify = glideStarted)
-                    return false
+                    return true
                 }
                 val x = event.getX(pointerIndex)
                 val y = event.getY(pointerIndex)
+                val keyHit = classifyQwertyGlideKeyHit(x, y)
+                val moveHandling = QwertyGlideKeyClassifier.decideMoveHandling(
+                    glidePointerId = glideCandidatePointerId,
+                    pointerId = pointerId,
+                    keyHit = keyHit
+                )
 
-                // Glide 開始後に限り、数字キー / Space / Return / Cursor / Shift /
-                // Delete / mode switch などの非アルファベットキー上を通過した
-                // ケースは「無視して consume」する。Glide を cancel せず、
-                // 通常キー処理にも流さないことで、誤入力を防ぐ。
-                //
-                // 重要: Glide 開始前 (glideStarted == false) にここで早期 return すると
-                // 既存の Glide 発生条件 (pointCount / directDistance / elapsedMillis /
-                // distinctLetterKeysNearTrail) の計算に影響するため、glideStarted が
-                // true のときだけ適用する。
-                if (glideStarted && isOnNonGlideQwertyKey(x, y)) {
+                if (moveHandling == QwertyGlideKeyClassifier.MoveHandling.ROUTE_TO_NORMAL_KEY_HANDLER) {
+                    return false
+                }
+
+                // Glide candidate / active pointer の MOVE はここで所有する。
+                // 通常 MOVE に落とすと pointerButtonMap が数字・句読点などへ
+                // 書き換わり、UP で通常 tap として commit されてしまう。
+                if (moveHandling == QwertyGlideKeyClassifier.MoveHandling.IGNORE_AND_CONSUME) {
+                    releasePressedKeyForGlideMove(pointerId)
                     return true
                 }
 
-                if (glideStarted) {
-                    // 既存の history 取り込みは「直線補完」のために有用だが、
-                    // history に非アルファベットキー上の座標が含まれていると
-                    // raw points / proximity decoder へ混入してしまう。
-                    // Glide 中は letter key 上の history のみを採用する。
-                    appendHistoricalQwertyGlideLetterPoints(event, pointerIndex, pointerId)
-                } else {
-                    appendHistoricalQwertyGlidePoints(event, pointerIndex, pointerId)
-                }
+                releasePressedKeyForGlideMove(pointerId)
+                appendHistoricalQwertyGlideLetterPoints(event, pointerIndex, pointerId)
                 appendQwertyGlidePoint(
                     x = x,
                     y = y,
                     eventTime = event.eventTime,
                     pointerId = pointerId
                 )
-                if (!isInsideQwertyGlideGestureArea(x, y)) {
-                    cancelQwertyGlideCandidate(notify = glideStarted)
-                    return true
-                }
                 if (!glideStarted && shouldStartQwertyGlide(event)) {
                     startQwertyGlide(pointerId)
                 }
@@ -1663,40 +1658,16 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 return false
             }
 
+            MotionEvent.ACTION_POINTER_UP -> {
+                return handleQwertyGlidePointerUp(event)
+            }
+
             MotionEvent.ACTION_UP -> {
-                val pointerId = glideCandidatePointerId ?: return false
-                val liftedId = event.getPointerId(event.actionIndex)
-                if (liftedId != pointerId) return false
-                val upX = event.getX(event.actionIndex)
-                val upY = event.getY(event.actionIndex)
-                // Glide 開始後に非アルファベットキー上で指を離した場合、その座標を
-                // 末尾に append すると proximity decoder の判定に余計なノイズが
-                // 入るため、letter key 上の場合だけ append する。Glide 開始前 (
-                // 通常 tap シナリオ) では既存挙動どおり常に append する。
-                if (!glideStarted || findExactQwertyGlideLetterViewUnder(upX, upY) != null) {
-                    appendQwertyGlidePoint(
-                        x = upX,
-                        y = upY,
-                        eventTime = event.eventTime,
-                        pointerId = pointerId
-                    )
-                }
-                return if (glideStarted) {
-                    qwertyGlideInputListener?.onQwertyGlideEnded(
-                        inputPointers = QwertyInputPointers(glideRawPoints.toList()),
-                        proximityInfo = getQwertyKeyboardProximityInfo()
-                    )
-                    clearQwertyGlideState(clearTrail = true)
-                    clearAllPressed()
-                    true
-                } else {
-                    clearQwertyGlideState(clearTrail = true)
-                    false
-                }
+                return handleQwertyGlidePointerUp(event)
             }
 
             MotionEvent.ACTION_CANCEL -> {
-                val consumed = glideStarted
+                val consumed = glideCandidatePointerId != null
                 cancelQwertyGlideCandidate(notify = glideStarted)
                 return consumed
             }
@@ -1722,8 +1693,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val pointerId = event.getPointerId(pointerIndex)
         val x = event.getX(pointerIndex)
         val y = event.getY(pointerIndex)
-        val downView = findButtonUnder(x.toInt(), y.toInt())
-        if (!isQwertyGlideLetterView(downView)) return
+        if (findExactQwertyGlideLetterViewUnder(x, y) == null) return
         if (SystemClock.uptimeMillis() - lastNonGlideKeyUpTime < glideFastTypingSuppressMillis) return
 
         glideCandidatePointerId = pointerId
@@ -1752,35 +1722,48 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         qwertyGlideInputListener?.onQwertyGlideStarted()
     }
 
-    private fun appendHistoricalQwertyGlidePoints(
-        event: MotionEvent,
-        pointerIndex: Int,
-        pointerId: Int
-    ) {
-        for (historyIndex in 0 until event.historySize) {
+    private fun handleQwertyGlidePointerUp(event: MotionEvent): Boolean {
+        val pointerId = glideCandidatePointerId ?: return false
+        val liftedId = event.getPointerId(event.actionIndex)
+        if (liftedId != pointerId) return false
+        val upX = event.getX(event.actionIndex)
+        val upY = event.getY(event.actionIndex)
+        if (findExactQwertyGlideLetterViewUnder(upX, upY) != null) {
             appendQwertyGlidePoint(
-                x = event.getHistoricalX(pointerIndex, historyIndex),
-                y = event.getHistoricalY(pointerIndex, historyIndex),
-                eventTime = event.getHistoricalEventTime(historyIndex),
+                x = upX,
+                y = upY,
+                eventTime = event.eventTime,
                 pointerId = pointerId
             )
         }
+        return if (glideStarted) {
+            qwertyGlideInputListener?.onQwertyGlideEnded(
+                inputPointers = QwertyInputPointers(glideRawPoints.toList()),
+                proximityInfo = getQwertyKeyboardProximityInfo()
+            )
+            clearQwertyGlideState(clearTrail = true)
+            clearAllPressed()
+            true
+        } else {
+            clearQwertyGlideState(clearTrail = true)
+            false
+        }
+    }
+
+    private fun releasePressedKeyForGlideMove(pointerId: Int) {
+        pointerButtonMap[pointerId]?.isPressed = false
+        dismissKeyPreview()
+        cancelLongPressForPointer(pointerId)
     }
 
     /**
      * Glide 開始後に history を取り込むための関数。
      *
-     * 通常の [appendHistoricalQwertyGlidePoints] と異なり、history に含まれる
-     * 各座標が「Glide 用 alphabet key 上にある」ものだけを raw points / trail に
-     * 採用する。Space / 数字キー / Return など非アルファベットキー上の座標は、
+     * history に含まれる各座標が「Glide 用 alphabet key 上にある」ものだけを
+     * raw points / trail に採用する。Space / 数字キー / Return など非アルファベットキー上の座標は、
      * 一瞬通過しただけでも history に乗っているケースがあり、それらが
      * `glideRawPoints` や proximity decoder に混入して候補生成を歪める原因に
      * なるため除外する。
-     *
-     * 既存の [appendHistoricalQwertyGlidePoints] は Glide 開始前 (まだ
-     * shouldStart() による gesture 判定中) のフェーズで利用しており、
-     * letter-only filtering を入れると既存の発火条件の計算に影響する。そのため
-     * 関数自体を分けて、Glide 開始後の経路だけ filtering を適用する。
      */
     private fun appendHistoricalQwertyGlideLetterPoints(
         event: MotionEvent,
@@ -2319,6 +2302,34 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         return view in getVisibleQwertyLetterViews()
     }
 
+    private fun View.toQwertyGlideKeyRect(): QwertyGlideKeyClassifier.KeyRect {
+        getHitRect(glideHitRect)
+        return QwertyGlideKeyClassifier.KeyRect(
+            left = glideHitRect.left,
+            top = glideHitRect.top,
+            right = glideHitRect.right,
+            bottom = glideHitRect.bottom
+        )
+    }
+
+    private fun classifyQwertyGlideKeyHit(
+        x: Float,
+        y: Float
+    ): QwertyGlideKeyClassifier.KeyHit {
+        val letterViews = getVisibleQwertyLetterViews()
+        val letterViewSet = letterViews.toSet()
+        val letterRects = letterViews.map { it.toQwertyGlideKeyRect() }
+        val nonLetterRects = qwertyButtonMap.keys
+            .filter { it.isVisible && it !in letterViewSet }
+            .map { it.toQwertyGlideKeyRect() }
+        return QwertyGlideKeyClassifier.classify(
+            letterRects = letterRects,
+            nonLetterRects = nonLetterRects,
+            x = x.toInt(),
+            y = y.toInt()
+        )
+    }
+
     /**
      * 共有 [hitRect] を使い回すと、Glide 中の判定が他のタッチ処理と競合する恐れが
      * あるため、Glide 専用の Rect を別に確保する。
@@ -2342,28 +2353,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             key.getHitRect(glideHitRect)
             glideHitRect.contains(xi, yi)
         }
-    }
-
-    /**
-     * 指定座標が「QWERTYButton としては存在するが、Glide 用の alphabet key では
-     * ない可視キー」の上にあるかを判定する。
-     *
-     * Glide 中の ACTION_MOVE で、数字キー / Space / Return / Cursor / Shift /
-     * Delete / mode switch / Emoji などを通過したケースを「無視して consume」する
-     * ためだけに使うこと。通常キー入力全体のディスパッチには使わない。
-     */
-    private fun isOnNonGlideQwertyKey(x: Float, y: Float): Boolean {
-        val xi = x.toInt()
-        val yi = y.toInt()
-        if (findExactQwertyGlideLetterViewUnder(x, y) != null) return false
-        for (key in qwertyButtonMap.keys) {
-            if (!key.isVisible) continue
-            key.getHitRect(glideHitRect)
-            if (glideHitRect.contains(xi, yi)) {
-                return true
-            }
-        }
-        return false
     }
 
     override fun dispatchDraw(canvas: Canvas) {
