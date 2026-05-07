@@ -54,7 +54,7 @@ class KeyboardRepositorySaveLayoutTest {
     // E. parent identity 維持
     // ---------------------------------------------------------
     @Test
-    fun saveLayout_existingId_keepsStableIdAndIdentity() = runBlocking {
+    fun saveLayout_existingId_keepsStableIdAndIdentity(): Unit = runBlocking {
         val existingStableId = "stable-a"
         val existingCreatedAt = 1_700_000_000_000L
         val existingSortOrder = 7
@@ -106,7 +106,7 @@ class KeyboardRepositorySaveLayoutTest {
     // B. 既存レイアウト保存で sortOrder が変わらない (E と同じケースで保証)
     // ---------------------------------------------------------
     @Test
-    fun saveLayout_existingId_doesNotMoveLayoutToTopOfList() = runBlocking {
+    fun saveLayout_existingId_doesNotMoveLayoutToTopOfList(): Unit = runBlocking {
         whenever(dao.getFullLayoutOneShot(2L)).thenReturn(
             fullLayout(
                 layoutId = 2,
@@ -133,7 +133,7 @@ class KeyboardRepositorySaveLayoutTest {
     // C. MoveToCustomKeyboard が保存後も有効
     // ---------------------------------------------------------
     @Test
-    fun saveLayout_targetLayoutEdit_preservesStableIdSoMoveToCustomKeyboardStaysValid() = runBlocking {
+    fun saveLayout_targetLayoutEdit_preservesStableIdSoMoveToCustomKeyboardStaysValid(): Unit = runBlocking {
         val targetStableId = "target-stable"
         whenever(dao.getFullLayoutOneShot(10L)).thenReturn(
             fullLayout(
@@ -161,7 +161,7 @@ class KeyboardRepositorySaveLayoutTest {
     // I. 既存更新対象が存在しない場合
     // ---------------------------------------------------------
     @Test
-    fun saveLayout_existingIdNotFound_throwsLayoutNotFoundException() = runBlocking {
+    fun saveLayout_existingIdNotFound_throwsLayoutNotFoundException(): Unit = runBlocking {
         whenever(dao.getFullLayoutOneShot(999L)).thenReturn(null)
 
         try {
@@ -184,7 +184,7 @@ class KeyboardRepositorySaveLayoutTest {
     // 新規作成 (id == null) で stableId は新規生成され、insertFullKeyboardLayout が呼ばれる
     // ---------------------------------------------------------
     @Test
-    fun saveLayout_newLayout_generatesUniqueStableIdAndInserts() = runBlocking {
+    fun saveLayout_newLayout_generatesUniqueStableIdAndInserts(): Unit = runBlocking {
         whenever(dao.getMaxSortOrder()).thenReturn(3)
         whenever(dao.findLayoutByStableId(any())).thenReturn(null)
         whenever(
@@ -212,7 +212,7 @@ class KeyboardRepositorySaveLayoutTest {
     }
 
     @Test
-    fun saveLayout_existingIdWithBlankStableId_repairsStableIdButNeverChangesValidOne() = runBlocking {
+    fun saveLayout_existingIdWithBlankStableId_repairsStableIdButNeverChangesValidOne(): Unit = runBlocking {
         // 旧データで stableId が blank だった既存 row。今回の保存で blank → 新 UUID に修復される。
         whenever(dao.getFullLayoutOneShot(5L)).thenReturn(
             fullLayout(
