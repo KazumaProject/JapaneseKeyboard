@@ -1,7 +1,10 @@
 package com.kazumaproject.qwerty_keyboard.glide
 
 import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideKeyClassifier.KeyRect
+import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideKeyClassifier.KeyHit
+import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideKeyClassifier.MoveHandling
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -83,6 +86,15 @@ class QwertyGlideKeyClassifierTest {
         val layout = stdLayout()
         // Center of "1" at (50, -50)
         assertFalse(QwertyGlideKeyClassifier.isOnLetterKey(layout.letterRects, 50, -50))
+        assertEquals(
+            KeyHit.NON_GLIDE_KEY,
+            QwertyGlideKeyClassifier.classify(
+                letterRects = layout.letterRects,
+                nonLetterRects = layout.nonLetterRects,
+                x = 50,
+                y = -50
+            )
+        )
         assertTrue(
             QwertyGlideKeyClassifier.isOnNonGlideKey(
                 letterRects = layout.letterRects,
@@ -172,6 +184,15 @@ class QwertyGlideKeyClassifierTest {
         )
         // (150, 50) is in the gap between the two rects.
         assertFalse(QwertyGlideKeyClassifier.isOnLetterKey(layout.letterRects, 150, 50))
+        assertEquals(
+            KeyHit.NONE,
+            QwertyGlideKeyClassifier.classify(
+                letterRects = layout.letterRects,
+                nonLetterRects = layout.nonLetterRects,
+                x = 150,
+                y = 50
+            )
+        )
         assertFalse(
             QwertyGlideKeyClassifier.isOnNonGlideKey(
                 letterRects = layout.letterRects,
@@ -180,6 +201,198 @@ class QwertyGlideKeyClassifierTest {
                 y = 50
             )
         )
+    }
+
+    @Test
+    fun glideCandidateMoveOnNumberKeyIsConsumedInsteadOfRoutedToNormalKeys() {
+        val handling = QwertyGlideKeyClassifier.decideMoveHandling(
+            glidePointerId = 7,
+            pointerId = 7,
+            keyHit = KeyHit.NON_GLIDE_KEY
+        )
+
+        assertEquals(MoveHandling.IGNORE_AND_CONSUME, handling)
+    }
+
+    @Test
+    fun glideCandidateMoveOnKutenOrToutenIsConsumedByTheSameNonLetterRule() {
+        val layout = Layout(
+            letterRects = listOf(
+                KeyRect(0, 0, 100, 100),
+                KeyRect(200, 0, 300, 100)
+            ),
+            nonLetterRects = listOf(
+                KeyRect(0, 100, 100, 200),   // keyKuten
+                KeyRect(100, 100, 200, 200)  // keyTouten
+            )
+        )
+
+        val keyKutenHit = QwertyGlideKeyClassifier.classify(
+            letterRects = layout.letterRects,
+            nonLetterRects = layout.nonLetterRects,
+            x = 50,
+            y = 150
+        )
+        val keyToutenHit = QwertyGlideKeyClassifier.classify(
+            letterRects = layout.letterRects,
+            nonLetterRects = layout.nonLetterRects,
+            x = 150,
+            y = 150
+        )
+
+        assertEquals(KeyHit.NON_GLIDE_KEY, keyKutenHit)
+        assertEquals(KeyHit.NON_GLIDE_KEY, keyToutenHit)
+        assertEquals(
+            MoveHandling.IGNORE_AND_CONSUME,
+            QwertyGlideKeyClassifier.decideMoveHandling(
+                glidePointerId = 1,
+                pointerId = 1,
+                keyHit = keyKutenHit
+            )
+        )
+        assertEquals(
+            MoveHandling.IGNORE_AND_CONSUME,
+            QwertyGlideKeyClassifier.decideMoveHandling(
+                glidePointerId = 1,
+                pointerId = 1,
+                keyHit = keyToutenHit
+            )
+        )
+    }
+
+    @Test
+    fun glideCandidateMoveOnSpaceReturnOrCursorIsConsumedByTheSameNonLetterRule() {
+        val layout = stdLayout()
+        val nonLetterCoordinates = listOf(
+            500 to 350, // space
+            900 to 350, // return
+            750 to 350  // cursorLeft / cursorRight
+        )
+
+        nonLetterCoordinates.forEach { (x, y) ->
+            val hit = QwertyGlideKeyClassifier.classify(
+                letterRects = layout.letterRects,
+                nonLetterRects = layout.nonLetterRects,
+                x = x,
+                y = y
+            )
+            assertEquals(KeyHit.NON_GLIDE_KEY, hit)
+            assertEquals(
+                MoveHandling.IGNORE_AND_CONSUME,
+                QwertyGlideKeyClassifier.decideMoveHandling(
+                    glidePointerId = 3,
+                    pointerId = 3,
+                    keyHit = hit
+                )
+            )
+        }
+    }
+
+    @Test
+    fun glideCandidateMoveOnLetterIsAppendedToGlidePath() {
+        assertEquals(
+            MoveHandling.APPEND_TO_GLIDE_PATH,
+            QwertyGlideKeyClassifier.decideMoveHandling(
+                glidePointerId = 2,
+                pointerId = 2,
+                keyHit = KeyHit.LETTER
+            )
+        )
+    }
+
+    @Test
+    fun glideCandidateMoveInBackgroundIsConsumedInsteadOfRoutedToNormalKeys() {
+        assertEquals(
+            MoveHandling.IGNORE_AND_CONSUME,
+            QwertyGlideKeyClassifier.decideMoveHandling(
+                glidePointerId = 4,
+                pointerId = 4,
+                keyHit = KeyHit.NONE
+            )
+        )
+    }
+
+    @Test
+    fun nonGlidePointerStillRoutesToNormalKeyHandling() {
+        listOf(KeyHit.LETTER, KeyHit.NON_GLIDE_KEY, KeyHit.NONE).forEach { hit ->
+            assertEquals(
+                MoveHandling.ROUTE_TO_NORMAL_KEY_HANDLER,
+                QwertyGlideKeyClassifier.decideMoveHandling(
+                    glidePointerId = null,
+                    pointerId = 8,
+                    keyHit = hit
+                )
+            )
+            assertEquals(
+                MoveHandling.ROUTE_TO_NORMAL_KEY_HANDLER,
+                QwertyGlideKeyClassifier.decideMoveHandling(
+                    glidePointerId = 9,
+                    pointerId = 8,
+                    keyHit = hit
+                )
+            )
+        }
+    }
+
+    @Test
+    fun glidePathKeepsOnlyLettersWhenSequenceCrossesNumberKey() {
+        val layout = Layout(
+            letterRects = listOf(
+                KeyRect(0, 0, 100, 100),    // Q
+                KeyRect(100, 0, 200, 100),  // W
+                KeyRect(200, 0, 300, 100),  // E
+                KeyRect(300, 0, 400, 100)   // R
+            ),
+            nonLetterRects = listOf(
+                KeyRect(100, -100, 200, 0)  // key1
+            )
+        )
+        val sequence = listOf(
+            Triple("Q", 50, 50),
+            Triple("W", 150, 50),
+            Triple("1", 150, -50),
+            Triple("E", 250, 50),
+            Triple("R", 350, 50)
+        )
+
+        val appended = mutableListOf<String>()
+        val routedToNormal = mutableListOf<String>()
+        sequence.forEach { (label, x, y) ->
+            val hit = QwertyGlideKeyClassifier.classify(
+                letterRects = layout.letterRects,
+                nonLetterRects = layout.nonLetterRects,
+                x = x,
+                y = y
+            )
+            when (
+                QwertyGlideKeyClassifier.decideMoveHandling(
+                    glidePointerId = 11,
+                    pointerId = 11,
+                    keyHit = hit
+                )
+            ) {
+                MoveHandling.APPEND_TO_GLIDE_PATH -> appended += label
+                MoveHandling.ROUTE_TO_NORMAL_KEY_HANDLER -> routedToNormal += label
+                MoveHandling.IGNORE_AND_CONSUME -> Unit
+            }
+        }
+
+        assertEquals(listOf("Q", "W", "E", "R"), appended)
+        assertTrue(routedToNormal.isEmpty())
+    }
+
+    @Test
+    fun qwertyGlidePreferenceOffScenarioKeepsNumberAndPunctuationMovesRoutedNormally() {
+        listOf(KeyHit.NON_GLIDE_KEY, KeyHit.NON_GLIDE_KEY).forEach { hit ->
+            assertEquals(
+                MoveHandling.ROUTE_TO_NORMAL_KEY_HANDLER,
+                QwertyGlideKeyClassifier.decideMoveHandling(
+                    glidePointerId = null,
+                    pointerId = 5,
+                    keyHit = hit
+                )
+            )
+        }
     }
 
     @Test
