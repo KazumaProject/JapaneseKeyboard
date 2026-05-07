@@ -9,17 +9,28 @@ package com.kazumaproject.qwerty_keyboard.glide
  *     gesture uses such points for trail / decoder input.
  *  2. The coordinate falls *exactly* on a visible QWERTY key that is **not** a
  *     Glide-eligible alphabet key (numbers, space, return, cursor, shift,
- *     delete, mode switch keys, emoji, etc.). When this happens *during* an
- *     already-started Glide we want to ignore the point entirely — neither
- *     contributing it to the trail nor letting normal key dispatch fire.
+ *     delete, mode switch keys, emoji, etc.). When this happens for a
+ *     candidate / active Glide pointer we want to ignore the point entirely:
+ *     neither contributing it to the trail nor letting normal key dispatch fire.
  *  3. The coordinate is in the keyboard background (key gaps, padding, etc.).
- *     Existing area-cancel logic should still decide whether to cancel the
- *     gesture in that case.
+ *     Candidate / active Glide MOVE events still consume these points so they
+ *     cannot rewrite normal key pointer state.
  *
  * Keeping this logic in a small, view-free helper makes it cheap to unit test
  * without spinning up a real `QWERTYKeyboardView` instance.
  */
 object QwertyGlideKeyClassifier {
+    enum class KeyHit {
+        LETTER,
+        NON_GLIDE_KEY,
+        NONE
+    }
+
+    enum class MoveHandling {
+        ROUTE_TO_NORMAL_KEY_HANDLER,
+        APPEND_TO_GLIDE_PATH,
+        IGNORE_AND_CONSUME
+    }
 
     /**
      * Lightweight rectangle representation used by the classifier. Mirrors the
@@ -65,5 +76,37 @@ object QwertyGlideKeyClassifier {
     ): Boolean {
         if (isOnLetterKey(letterRects, x, y)) return false
         return nonLetterRects.any { it.contains(x, y) }
+    }
+
+    fun classify(
+        letterRects: List<KeyRect>,
+        nonLetterRects: List<KeyRect>,
+        x: Int,
+        y: Int
+    ): KeyHit {
+        return when {
+            isOnLetterKey(letterRects, x, y) -> KeyHit.LETTER
+            isOnNonGlideKey(letterRects, nonLetterRects, x, y) -> KeyHit.NON_GLIDE_KEY
+            else -> KeyHit.NONE
+        }
+    }
+
+    /**
+     * Decides whether an ACTION_MOVE for [pointerId] is owned by the Glide
+     * pipeline. A candidate / active Glide pointer must never fall through to
+     * normal key MOVE handling, because that path rewrites pointerButtonMap to
+     * whatever non-letter key the finger crosses.
+     */
+    fun decideMoveHandling(
+        glidePointerId: Int?,
+        pointerId: Int,
+        keyHit: KeyHit
+    ): MoveHandling {
+        if (glidePointerId != pointerId) return MoveHandling.ROUTE_TO_NORMAL_KEY_HANDLER
+        return when (keyHit) {
+            KeyHit.LETTER -> MoveHandling.APPEND_TO_GLIDE_PATH
+            KeyHit.NON_GLIDE_KEY,
+            KeyHit.NONE -> MoveHandling.IGNORE_AND_CONSUME
+        }
     }
 }
