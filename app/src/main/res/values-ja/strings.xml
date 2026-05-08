@@ -517,6 +517,10 @@
     <string name="qwerty_romaji_english_visibility_summary">キーボード上にローマ字入力と英語入力を切り替えるキー（あa）を表示します</string>
     <string name="qwerty_glide_input_preference_title">英語 QWERTY のグライド入力 β</string>
     <string name="qwerty_glide_input_preference_summary">英語 QWERTY キーボードで、指を滑らせた軌跡から英単語候補を表示します。</string>
+    <string name="qwerty_glide_commit_previous_candidate_on_new_glide_preference_title">次のグライド開始時に前の候補を確定</string>
+    <string name="qwerty_glide_commit_previous_candidate_on_new_glide_preference_summary">グライド候補が入力中の状態で次のグライドを開始したとき、候補を置換せず現在の一番目候補を確定します。</string>
+    <string name="qwerty_glide_insert_space_after_committing_previous_candidate_preference_title">前のグライド候補の確定後に空白を追加</string>
+    <string name="qwerty_glide_insert_space_after_committing_previous_candidate_preference_summary">次のグライド開始前に前の候補を確定するとき、後ろに半角スペースを追加します。</string>
     <string name="keyboard_theme_title">キーボードテーマ</string>
     <string name="keyboard_theme_summary">反映には一度キーボードを再起動する必要があります。</string>
     <string name="keyboard_theme_dialog_title">ベースカラーの選択</string>

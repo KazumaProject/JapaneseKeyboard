@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.glide
 
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -72,6 +74,25 @@ class QwertyGlideDecoderStagedAccuracyTest {
         val second = decoder.decode(stroke, QwertyGlideTestFixtures.proximityInfo, "", 12)
 
         assertEquals(first.map { it.string }, second.map { it.string })
+    }
+
+    @Test
+    fun decoderEmitsQwertyGlideCandidateType() {
+        val decoder = decoder(QwertyGlideTestFixtures.dictionary(extraNoiseCount = 1000))
+
+        val candidates = decoder.decode(
+            inputPointers = QwertyGlideTestFixtures.strokeFor("hello"),
+            proximityInfo = QwertyGlideTestFixtures.proximityInfo,
+            previousText = "",
+            limit = 6
+        )
+
+        assertTrue(candidates.isNotEmpty())
+        candidates.forEach { candidate ->
+            assertEquals(QWERTY_GLIDE_CANDIDATE_TYPE, candidate.type)
+            assertEquals(45.toByte(), candidate.type)
+            assertNotEquals(36.toByte(), candidate.type)
+        }
     }
 
     private fun decoder(
