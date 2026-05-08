@@ -93,6 +93,12 @@ object AppPreference {
     private val QWERTY_GLIDE_INPUT_PREFERENCE =
         Pair("qwerty_glide_input_preference", false)
 
+    private val QWERTY_GLIDE_COMMIT_PREVIOUS_CANDIDATE_ON_NEW_GLIDE_PREFERENCE =
+        Pair("qwerty_glide_commit_previous_candidate_on_new_glide_preference", false)
+
+    private val QWERTY_GLIDE_INSERT_SPACE_AFTER_COMMITTING_PREVIOUS_CANDIDATE_PREFERENCE =
+        Pair("qwerty_glide_insert_space_after_committing_previous_candidate_preference", false)
+
     private val QWERTY_ENABLE_FLICK_UP_WINDOW = Pair("qwerty_enable_flick_up_preference", false)
 
     private val QWERTY_ENABLE_FLICK_DOWN_WINDOW = Pair("qwerty_enable_flick_down_preference", false)
@@ -662,6 +668,30 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_GLIDE_INPUT_PREFERENCE.first, value)
+        }
+
+    var qwerty_glide_commit_previous_candidate_on_new_glide_preference: Boolean
+        get() = preferences.getBoolean(
+            QWERTY_GLIDE_COMMIT_PREVIOUS_CANDIDATE_ON_NEW_GLIDE_PREFERENCE.first,
+            QWERTY_GLIDE_COMMIT_PREVIOUS_CANDIDATE_ON_NEW_GLIDE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(
+                QWERTY_GLIDE_COMMIT_PREVIOUS_CANDIDATE_ON_NEW_GLIDE_PREFERENCE.first,
+                value
+            )
+        }
+
+    var qwerty_glide_insert_space_after_committing_previous_candidate_preference: Boolean
+        get() = preferences.getBoolean(
+            QWERTY_GLIDE_INSERT_SPACE_AFTER_COMMITTING_PREVIOUS_CANDIDATE_PREFERENCE.first,
+            QWERTY_GLIDE_INSERT_SPACE_AFTER_COMMITTING_PREVIOUS_CANDIDATE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(
+                QWERTY_GLIDE_INSERT_SPACE_AFTER_COMMITTING_PREVIOUS_CANDIDATE_PREFERENCE.first,
+                value
+            )
         }
 
     var switch_qwerty_password: Boolean?

@@ -515,6 +515,10 @@
     <string name="qwerty_romaji_english_visibility_summary">Show a key (あa) to switch between Romaji input and English input</string>
     <string name="qwerty_glide_input_preference_title">Glide input for English QWERTY β</string>
     <string name="qwerty_glide_input_preference_summary">Enable word suggestions from sliding gestures on the English QWERTY keyboard.</string>
+    <string name="qwerty_glide_commit_previous_candidate_on_new_glide_preference_title">Commit previous glide candidate on new glide</string>
+    <string name="qwerty_glide_commit_previous_candidate_on_new_glide_preference_summary">When starting a new glide while a glide candidate is composing, commit the current first candidate instead of replacing it.</string>
+    <string name="qwerty_glide_insert_space_after_committing_previous_candidate_preference_title">Add space after committing previous glide candidate</string>
+    <string name="qwerty_glide_insert_space_after_committing_previous_candidate_preference_summary">When committing the previous glide candidate before a new glide, insert a half-width space after it.</string>
     <string name="keyboard_theme_title">Keyboard Theme</string>
     <string name="keyboard_theme_summary">Choose the keyboard theme color.\nTo apply changes, please switch the keyboard once.</string>
     <string name="keyboard_theme_dialog_title">Select Base Color</string>

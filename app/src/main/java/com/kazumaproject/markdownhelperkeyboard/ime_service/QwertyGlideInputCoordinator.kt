@@ -23,6 +23,7 @@ class QwertyGlideInputCoordinator(
     private val previousTextProvider: () -> String,
     private val onPreviewCandidates: (List<Candidate>) -> Unit,
     private val onFinalCandidates: (List<Candidate>) -> Unit,
+    private val onGlideStarted: () -> Unit = {},
     private val onCancel: () -> Unit = {},
     private val onProcessingChanged: (Boolean) -> Unit = {},
     private val decodeDispatcher: CoroutineDispatcher = Dispatchers.Default
@@ -39,6 +40,7 @@ class QwertyGlideInputCoordinator(
         previewJob?.cancel()
         finalJob?.cancel()
         clearProcessing()
+        onGlideStarted()
     }
 
     override fun onQwertyGlideUpdated(

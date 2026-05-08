@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.glide
 
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
 import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
 import kotlin.math.ceil
@@ -113,7 +114,7 @@ class QwertyGlideDecoder(
             .map { scoredWord ->
                 Candidate(
                     string = scoredWord.entry.word,
-                    type = 36.toByte(),
+                    type = QWERTY_GLIDE_CANDIDATE_TYPE,
                     length = scoredWord.entry.word.length.toUByte(),
                     score = (scoredWord.totalCost * 1000f).toInt().coerceAtLeast(1)
                 )
