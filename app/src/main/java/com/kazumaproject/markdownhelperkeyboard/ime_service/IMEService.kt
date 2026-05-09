@@ -8109,8 +8109,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchDirectMode -> {}
                     KeyAction.SwitchRomajiEnglish -> {}
                     KeyAction.CapLockKey -> {}
-                    KeyAction.ForceHalfWidthSpace -> {}
-                    KeyAction.ForceFullWidthSpace -> {}
+                    KeyAction.ForceHalfWidthSpace -> {
+                        handleForceHalfWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                    }
+                    KeyAction.ForceFullWidthSpace -> {
+                        handleForceFullWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                    }
                 }
             }
 
@@ -8220,13 +8224,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         dakutenSmallActionForSumire()
                     }
 
-                    KeyAction.ToggleDakutenOnly -> {
-                        toggleDakutenOnlyForCustomKeyboard()
-                    }
+                    KeyAction.ToggleDakutenOnly -> {}
 
-                    KeyAction.ToggleHandakutenOnly -> {
-                        toggleHandakutenOnlyForCustomKeyboard()
-                    }
+                    KeyAction.ToggleHandakutenOnly -> {}
 
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
