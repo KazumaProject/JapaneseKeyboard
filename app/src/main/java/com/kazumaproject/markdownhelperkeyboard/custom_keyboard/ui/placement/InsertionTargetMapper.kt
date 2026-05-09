@@ -12,7 +12,8 @@ class InsertionTargetMapper {
         xPx: Float,
         yPx: Float,
         widthPx: Float,
-        heightPx: Float
+        heightPx: Float,
+        policy: InsertionPolicy = InsertionPolicy.PreferHorizontal
     ): InsertionTarget {
         val canonicalLayout = layout.withCanonicalFlexibleBounds()
         if (canonicalLayout.items.isEmpty() || widthPx <= 0f || heightPx <= 0f) {
@@ -43,11 +44,19 @@ class InsertionTargetMapper {
                 val p = item.placement
                 val localY = (yUnits - p.rowUnits) / p.rowSpanUnits
                 val localX = (xUnits - p.columnUnits) / p.columnSpanUnits
-                return when {
-                    localY < 0.2f -> InsertionTarget.AboveRowGroup(p.rowUnits)
-                    localY >= 0.8f -> InsertionTarget.BelowRowGroup(p.rowUnits)
-                    localX < 0.5f -> InsertionTarget.BeforeItem(item.id)
-                    else -> InsertionTarget.AfterItem(item.id)
+                return if (policy == InsertionPolicy.PreferVertical) {
+                    if (localY < 0.5f) {
+                        InsertionTarget.BeforeItem(item.id)
+                    } else {
+                        InsertionTarget.AfterItem(item.id)
+                    }
+                } else {
+                    when {
+                        localY < 0.2f -> InsertionTarget.AboveRowGroup(p.rowUnits)
+                        localY >= 0.8f -> InsertionTarget.BelowRowGroup(p.rowUnits)
+                        localX < 0.5f -> InsertionTarget.BeforeItem(item.id)
+                        else -> InsertionTarget.AfterItem(item.id)
+                    }
                 }
             }
 

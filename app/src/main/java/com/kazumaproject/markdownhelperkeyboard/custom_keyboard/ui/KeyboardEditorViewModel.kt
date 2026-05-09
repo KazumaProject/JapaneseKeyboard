@@ -457,23 +457,6 @@ class KeyboardEditorViewModel @Inject constructor(
         }
     }
 
-    fun enterSpacePlacementMode(
-        span: GridSpan = defaultSpaceSpan(),
-        policy: InsertionPolicy = _uiState.value.insertionPolicy
-    ) {
-        _uiState.update {
-            it.copy(
-                editorMode = KeyboardEditorMode.PlacingSpaceKey(span, policy),
-                placementCursor = null,
-                previewLayout = null,
-                previewMovedItemIds = emptySet(),
-                previewInsertedItemId = null,
-                previewStrategy = null,
-                previewStatus = PlacementPreviewStatus.None
-            )
-        }
-    }
-
     fun enterMoveItemMode(
         itemId: String,
         policy: InsertionPolicy = _uiState.value.insertionPolicy
@@ -577,6 +560,10 @@ class KeyboardEditorViewModel @Inject constructor(
         if (currentState.editorMode != KeyboardEditorMode.Normal) return false
         val selectedId = currentState.selectedItemId ?: return false
         val layout = currentState.layout
+        val removedItem = layout.items.firstOrNull {
+            it.id == selectedId || (it is KeyItem && it.keyData.keyId == selectedId)
+        } ?: return false
+        val removedPlacement = removedItem.placement
         val removedKeyIds = layout.items
             .filterIsInstance<KeyItem>()
             .filter { it.id == selectedId || it.keyData.keyId == selectedId }
@@ -586,12 +573,21 @@ class KeyboardEditorViewModel @Inject constructor(
             it.id == selectedId || (it is KeyItem && it.keyData.keyId == selectedId)
         }
         if (updatedItems.size == layout.items.size) return false
+        val baseAfterDeletion = layout.copyWithItems(updatedItems)
         val layoutAfterDeletion = if (layout.usesFlexiblePlacement()) {
-            layout.copyWithItems(updatedItems).compactFlexibleBoundsAfterDeletion()
+            baseAfterDeletion
+                .compactFlexibleGapAfterDeletion(
+                    removedPlacement = removedPlacement,
+                    preferredPolicy = currentState.insertionPolicy
+                )
+                .compactFlexibleOuterBoundsAfterDeletion()
                 .takeIfValidFlexible()
+                ?: baseAfterDeletion
+                    .compactFlexibleOuterBoundsAfterDeletion()
+                    .takeIfValidFlexible()
                 ?: return false
         } else {
-            layout.copyWithItems(updatedItems).canonicalizeIfFlexible()
+            baseAfterDeletion.canonicalizeIfFlexible()
         }
         val updatedLayout = layoutAfterDeletion.copy(
             flickKeyMaps = layout.flickKeyMaps - removedKeyIds,
@@ -644,7 +640,6 @@ class KeyboardEditorViewModel @Inject constructor(
             KeyboardEditorMode.Normal -> null
             is KeyboardEditorMode.PlacingNewKey -> PlacementOperation.Insert(createPlacementKey(span))
             is KeyboardEditorMode.PlacingSpacer -> PlacementOperation.Insert(createPlacementSpacer(span))
-            is KeyboardEditorMode.PlacingSpaceKey -> PlacementOperation.Insert(createSpaceKey(span))
             is KeyboardEditorMode.MovingExistingItem -> PlacementOperation.MoveExisting(mode.itemId)
         }
     }
@@ -712,39 +707,10 @@ class KeyboardEditorViewModel @Inject constructor(
             placement = GridPlacement(0, 0, span.rowSpanUnits, span.columnSpanUnits)
         )
 
-    private fun createSpaceKey(span: GridSpan): KeyItem {
-        val id = "space_${UUID.randomUUID()}"
-        val templateSpace = _uiState.value.layout.items
-            .filterIsInstance<KeyItem>()
-            .firstOrNull { it.keyData.action == KeyAction.Space }
-            ?: KeyboardDefaultLayouts.createQwertyTemplateLayout().items
-                .filterIsInstance<KeyItem>()
-                .first { it.keyData.action == KeyAction.Space }
-        val keyData = templateSpace.keyData.copy(
-            row = 0,
-            column = 0,
-            rowSpan = (span.rowSpanUnits + 1) / 2,
-            colSpan = (span.columnSpanUnits + 1) / 2,
-            keyId = id
-        )
-        return KeyItem(id, keyData, GridPlacement(0, 0, span.rowSpanUnits, span.columnSpanUnits))
-    }
-
-    private fun defaultSpaceSpan(): GridSpan {
-        val space = _uiState.value.layout.items
-            .filterIsInstance<KeyItem>()
-            .firstOrNull { it.keyData.action == KeyAction.Space }
-            ?: KeyboardDefaultLayouts.createQwertyTemplateLayout().items
-                .filterIsInstance<KeyItem>()
-                .first { it.keyData.action == KeyAction.Space }
-        return GridSpan(space.placement.rowSpanUnits, space.placement.columnSpanUnits)
-    }
-
     private fun KeyboardEditorMode.span(): GridSpan = when (this) {
         KeyboardEditorMode.Normal -> GridSpan(1, 1)
         is KeyboardEditorMode.PlacingNewKey -> span
         is KeyboardEditorMode.PlacingSpacer -> span
-        is KeyboardEditorMode.PlacingSpaceKey -> span
         is KeyboardEditorMode.MovingExistingItem -> {
             val item = _uiState.value.layout.items.first { it.id == itemId }
             GridSpan(item.placement.rowSpanUnits, item.placement.columnSpanUnits)
@@ -755,7 +721,6 @@ class KeyboardEditorViewModel @Inject constructor(
         KeyboardEditorMode.Normal -> InsertionPolicy.Auto2D
         is KeyboardEditorMode.PlacingNewKey -> policy
         is KeyboardEditorMode.PlacingSpacer -> policy
-        is KeyboardEditorMode.PlacingSpaceKey -> policy
         is KeyboardEditorMode.MovingExistingItem -> policy
     }
 
@@ -1005,14 +970,25 @@ class KeyboardEditorViewModel @Inject constructor(
     fun deleteSpacer(spacerId: String): Boolean {
         val currentState = _uiState.value
         val layout = currentState.layout
+        val removedSpacer = layout.items.filterIsInstance<SpacerItem>()
+            .firstOrNull { it.id == spacerId } ?: return false
         val updatedItems = layout.items.filterNot { it is SpacerItem && it.id == spacerId }
         if (updatedItems.size == layout.items.size) return false
+        val baseAfterDeletion = layout.copyWithItems(updatedItems)
         val updatedLayout = if (layout.usesFlexiblePlacement()) {
-            layout.copyWithItems(updatedItems).compactFlexibleBoundsAfterDeletion()
+            baseAfterDeletion
+                .compactFlexibleGapAfterDeletion(
+                    removedPlacement = removedSpacer.placement,
+                    preferredPolicy = currentState.insertionPolicy
+                )
+                .compactFlexibleOuterBoundsAfterDeletion()
                 .takeIfValidFlexible()
+                ?: baseAfterDeletion
+                    .compactFlexibleOuterBoundsAfterDeletion()
+                    .takeIfValidFlexible()
                 ?: return false
         } else {
-            layout.copyWithItems(updatedItems).canonicalizeIfFlexible()
+            baseAfterDeletion.canonicalizeIfFlexible()
         }
         _uiState.value = currentState.copy(layout = updatedLayout)
         return true
@@ -1146,7 +1122,95 @@ class KeyboardEditorViewModel @Inject constructor(
     private fun KeyboardLayout.canonicalizeIfFlexible(): KeyboardLayout =
         if (usesFlexiblePlacement()) withCanonicalFlexibleBounds() else this
 
-    private fun KeyboardLayout.compactFlexibleBoundsAfterDeletion(): KeyboardLayout {
+    private fun KeyboardLayout.compactFlexibleGapAfterDeletion(
+        removedPlacement: GridPlacement,
+        preferredPolicy: InsertionPolicy
+    ): KeyboardLayout {
+        val horizontalCandidate = compactFlexibleGapHorizontally(removedPlacement)
+        val verticalCandidate = compactFlexibleGapVertically(removedPlacement)
+        val canCompactHorizontally = horizontalCandidate !== this && horizontalCandidate.takeIfValidFlexible() != null
+        val canCompactVertically = verticalCandidate !== this && verticalCandidate.takeIfValidFlexible() != null
+
+        return when {
+            canCompactHorizontally && canCompactVertically && preferredPolicy == InsertionPolicy.PreferVertical -> {
+                verticalCandidate
+            }
+            canCompactHorizontally && canCompactVertically -> {
+                horizontalCandidate
+            }
+            canCompactHorizontally -> {
+                horizontalCandidate
+            }
+            canCompactVertically -> {
+                verticalCandidate
+            }
+            else -> {
+                this
+            }
+        }
+    }
+
+    private fun KeyboardLayout.compactFlexibleGapHorizontally(
+        removedPlacement: GridPlacement
+    ): KeyboardLayout {
+        val removedRight = removedPlacement.columnUnits + removedPlacement.columnSpanUnits
+        var moved = false
+        val compactedItems = items.map { item ->
+            val p = item.placement
+            if (
+                rangesOverlap(
+                    p.rowUnits,
+                    p.rowSpanUnits,
+                    removedPlacement.rowUnits,
+                    removedPlacement.rowSpanUnits
+                ) &&
+                p.columnUnits >= removedRight
+            ) {
+                moved = true
+                item.withPlacementAndApproximateKeyData(
+                    p.copy(columnUnits = (p.columnUnits - removedPlacement.columnSpanUnits).coerceAtLeast(0))
+                )
+            } else {
+                item
+            }
+        }
+        return if (moved) copyWithItems(compactedItems) else this
+    }
+
+    private fun KeyboardLayout.compactFlexibleGapVertically(
+        removedPlacement: GridPlacement
+    ): KeyboardLayout {
+        val removedBottom = removedPlacement.rowUnits + removedPlacement.rowSpanUnits
+        var moved = false
+        val compactedItems = items.map { item ->
+            val p = item.placement
+            if (
+                rangesOverlap(
+                    p.columnUnits,
+                    p.columnSpanUnits,
+                    removedPlacement.columnUnits,
+                    removedPlacement.columnSpanUnits
+                ) &&
+                p.rowUnits >= removedBottom
+            ) {
+                moved = true
+                item.withPlacementAndApproximateKeyData(
+                    p.copy(rowUnits = (p.rowUnits - removedPlacement.rowSpanUnits).coerceAtLeast(0))
+                )
+            } else {
+                item
+            }
+        }
+        return if (moved) copyWithItems(compactedItems) else this
+    }
+
+    private fun rangesOverlap(startA: Int, spanA: Int, startB: Int, spanB: Int): Boolean {
+        val endA = startA + spanA
+        val endB = startB + spanB
+        return startA < endB && startB < endA
+    }
+
+    private fun KeyboardLayout.compactFlexibleOuterBoundsAfterDeletion(): KeyboardLayout {
         val maxRight = items.maxOfOrNull { item ->
             item.placement.columnUnits + item.placement.columnSpanUnits
         } ?: 1

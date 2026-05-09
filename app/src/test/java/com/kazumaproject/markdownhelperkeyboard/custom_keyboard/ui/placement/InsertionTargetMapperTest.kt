@@ -37,6 +37,38 @@ class InsertionTargetMapperTest {
     @Test fun mapper_itemMiddleRight_returnsAfterItem(): Unit =
         assertEquals(InsertionTarget.AfterItem("a"), map(1.6f, 1f))
 
+    @Test fun mapper_preferVerticalItemUpperHalf_returnsBeforeItemByLocalY() {
+        assertEquals(
+            InsertionTarget.BeforeItem("a"),
+            map(1.8f, 0.5f, InsertionPolicy.PreferVertical)
+        )
+    }
+
+    @Test fun mapper_preferVerticalItemLowerHalf_returnsAfterItemByLocalY() {
+        assertEquals(
+            InsertionTarget.AfterItem("a"),
+            map(0.2f, 1.5f, InsertionPolicy.PreferVertical)
+        )
+    }
+
+    @Test fun mapper_preferVerticalIgnoresLocalXForItemCenterTarget() {
+        assertEquals(
+            map(0.2f, 1.5f, InsertionPolicy.PreferVertical),
+            map(1.8f, 1.5f, InsertionPolicy.PreferVertical)
+        )
+    }
+
+    @Test fun mapper_preferVerticalItemHitDoesNotReturnRowGroupAndLoseColumn() {
+        assertEquals(
+            InsertionTarget.BeforeItem("a"),
+            map(1f, 0.2f, InsertionPolicy.PreferVertical)
+        )
+        assertEquals(
+            InsertionTarget.AfterItem("a"),
+            map(1f, 1.8f, InsertionPolicy.PreferVertical)
+        )
+    }
+
     @Test fun mapper_betweenItems_returnsDeterministicBeforeOrAfterTarget(): Unit =
         assertEquals(InsertionTarget.BeforeItem("b"), map(3f, 1f))
 
@@ -65,8 +97,19 @@ class InsertionTargetMapperTest {
         repeat(5) { assertEquals(first, map(3f, 1f)) }
     }
 
-    private fun map(xUnits: Float, yUnits: Float): InsertionTarget =
-        mapper.mapPointer(layout, xUnits, yUnits, layout.columnUnitCount.toFloat(), layout.rowUnitCount.toFloat())
+    private fun map(
+        xUnits: Float,
+        yUnits: Float,
+        policy: InsertionPolicy = InsertionPolicy.PreferHorizontal
+    ): InsertionTarget =
+        mapper.mapPointer(
+            layout,
+            xUnits,
+            yUnits,
+            layout.columnUnitCount.toFloat(),
+            layout.rowUnitCount.toFloat(),
+            policy
+        )
 
     private fun key(id: String, placement: GridPlacement): KeyItem {
         val key = KeyData(

@@ -35,6 +35,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.can
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.columnDeleteSpecs
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.displayPlacement
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.editorGridBounds
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionPolicy
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTargetMapper
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.PlacementCursor
@@ -63,6 +64,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
     private val insertionTargetMapper = InsertionTargetMapper()
     private var currentLayout: KeyboardLayout? = null
     private var placementMode: Boolean = false
+    private var currentInsertionPolicy: InsertionPolicy = InsertionPolicy.PreferHorizontal
 
     fun setOnKeyEditListener(listener: OnKeyEditListener?) {
         this.listener = listener
@@ -77,6 +79,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         layout: KeyboardLayout,
         placementMode: Boolean = false,
         placementCursor: PlacementCursor? = null,
+        insertionPolicy: InsertionPolicy = placementCursor?.policy ?: InsertionPolicy.PreferHorizontal,
         selectedItemId: String? = null,
         previewInsertedItemId: String? = null,
         previewMovedItemIds: Set<String> = emptySet()
@@ -85,6 +88,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         val displayLayout = layout.canonicalLayoutForEditor(placementCursor)
         this.currentLayout = displayLayout
         this.placementMode = placementMode
+        this.currentInsertionPolicy = placementCursor?.policy ?: insertionPolicy
 
         val editorBounds = displayLayout.editorGridBounds()
         this.columnCount = editorBounds.gridColumnCount
@@ -353,7 +357,8 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             xPx = editableX,
             yPx = editableY,
             widthPx = unitWidth * editorBounds.keyboardColumnUnitCount,
-            heightPx = unitHeight * editorBounds.keyboardRowUnitCount
+            heightPx = unitHeight * editorBounds.keyboardRowUnitCount,
+            policy = currentInsertionPolicy
         )
     }
 
@@ -366,7 +371,8 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             xPx = x,
             yPx = y,
             widthPx = layout.columnUnitCount.toFloat(),
-            heightPx = layout.rowUnitCount.toFloat()
+            heightPx = layout.rowUnitCount.toFloat(),
+            policy = currentInsertionPolicy
         )
     }
 

@@ -222,15 +222,6 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun viewModel_enterSpacePlacementMode_setsModeAndDoesNotMutateLayout() {
-        val vm = qwertyViewModel()
-        val before = vm.uiState.value.layout
-        vm.enterSpacePlacementMode()
-        assertTrue(vm.uiState.value.editorMode is KeyboardEditorMode.PlacingSpaceKey)
-        assertEquals(before, vm.uiState.value.layout)
-    }
-
-    @Test
     fun viewModel_updatePlacementCursorFromPointer_createsCursorAndPreviewOnly() =
         assertPreviewOnly { it.updatePlacementCursorFromPointer(InsertionTarget.BeforeItem("qwerty_key_q")) }
 
@@ -316,15 +307,6 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         vm.holdPlacementCursorFromTap(InsertionTarget.NewBottomRow(0))
         vm.cancelPlacementPreview()
         assertEquals(8, vm.uiState.value.layout.rowUnitCount)
-    }
-
-    @Test
-    fun viewModel_spaceConfirm_doesNotEmitKeyEditorNavigation() {
-        val vm = qwertyViewModel()
-        vm.enterSpacePlacementMode()
-        vm.holdPlacementCursorFromTap(InsertionTarget.RowEnd(0))
-        vm.confirmPlacementPreview()
-        assertNull(vm.uiState.value.selectedKeyIdentifier)
     }
 
     @Test
@@ -433,6 +415,45 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
+    fun viewModel_deleteSelectedSpacer_compactsHorizontalInternalGap() {
+        val vm = viewModel()
+        vm.applyTemplate(horizontalGapLayout())
+        val before = vm.uiState.value.layout
+
+        vm.updateInsertionPolicy(InsertionPolicy.PreferHorizontal)
+        vm.selectItem("spacer")
+        assertTrue(vm.deleteSelectedItem())
+
+        val after = vm.uiState.value.layout
+        assertTrue(after.items.none { it.id == "spacer" })
+        assertEquals(GridPlacement(0, 0, 2, 2), item(after, "a").placement)
+        assertEquals(GridPlacement(0, 2, 2, 2), item(after, "b").placement)
+        assertEquals(GridPlacement(0, 4, 2, 2), item(after, "c").placement)
+        assertEquals(GridPlacement(0, 6, 2, 2), item(after, "d").placement)
+        assertEquals(before.columnUnitCount - 2, after.columnUnitCount)
+        assertValidFlexibleLayout(after)
+    }
+
+    @Test
+    fun viewModel_deleteSelectedSpacer_compactsVerticalInternalGap() {
+        val vm = viewModel()
+        vm.applyTemplate(verticalGapLayout())
+
+        vm.updateInsertionPolicy(InsertionPolicy.PreferVertical)
+        vm.selectItem("spacer")
+        assertTrue(vm.deleteSelectedItem())
+
+        val after = vm.uiState.value.layout
+        assertTrue(after.items.none { it.id == "spacer" })
+        assertEquals(GridPlacement(0, 0, 2, 2), item(after, "a").placement)
+        assertEquals(GridPlacement(2, 0, 2, 2), item(after, "c").placement)
+        assertEquals(GridPlacement(4, 0, 2, 2), item(after, "d").placement)
+        assertEquals(GridPlacement(2, 4, 2, 2), item(after, "side").placement)
+        assertEquals(6, after.rowUnitCount)
+        assertValidFlexibleLayout(after)
+    }
+
+    @Test
     fun viewModel_deleteSelectedKey_removesKeyAndMappings() {
         val vm = viewModel()
         val key = KeyData("x", 0, 0, false, KeyAction.Text("x"), keyType = KeyType.NORMAL, keyId = "x")
@@ -507,6 +528,40 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
 
         assertTrue(vm.uiState.value.layout.items.none { it.id == spacer.id })
         assertTrue(vm.uiState.value.layout.flickKeyMaps.containsKey("x"))
+    }
+
+    @Test
+    fun viewModel_deleteSelectedItem_matchesKeyItemId() {
+        val vm = viewModel()
+        vm.applyTemplate(singleKeyLayout(itemId = "item_x", keyId = "key_x"))
+        val itemId = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single().id
+
+        vm.selectItem(itemId)
+        assertTrue(vm.deleteSelectedItem())
+
+        assertTrue(vm.uiState.value.layout.items.none { it.id == itemId })
+    }
+
+    @Test
+    fun viewModel_deleteSelectedItem_matchesKeyDataKeyId() {
+        val vm = viewModel()
+        vm.applyTemplate(singleKeyLayout(itemId = "item_x", keyId = "key_x"))
+
+        vm.selectItem("key_x")
+        assertTrue(vm.deleteSelectedItem())
+
+        assertTrue(vm.uiState.value.layout.items.none { it.id == "item_x" })
+    }
+
+    @Test
+    fun viewModel_deleteSelectedItem_matchesSpacerId() {
+        val vm = viewModel()
+        vm.applyTemplate(horizontalGapLayout())
+
+        vm.selectItem("spacer")
+        assertTrue(vm.deleteSelectedItem())
+
+        assertTrue(vm.uiState.value.layout.items.none { it.id == "spacer" })
     }
 
     @Test
@@ -601,6 +656,70 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         assertNotNull(vm.uiState.value.previewLayout)
         assertNotNull(vm.uiState.value.placementCursor)
     }
+
+    private fun horizontalGapLayout(): KeyboardLayout {
+        val items = listOf(
+            keyItem("a", GridPlacement(0, 0, 2, 2)),
+            keyItem("b", GridPlacement(0, 2, 2, 2)),
+            SpacerItem("spacer", GridPlacement(0, 4, 2, 2)),
+            keyItem("c", GridPlacement(0, 6, 2, 2)),
+            keyItem("d", GridPlacement(0, 8, 2, 2))
+        )
+        return layoutFromItems(items, columnUnitCount = 10, rowUnitCount = 2)
+    }
+
+    private fun verticalGapLayout(): KeyboardLayout {
+        val items = listOf(
+            keyItem("a", GridPlacement(0, 0, 2, 2)),
+            SpacerItem("spacer", GridPlacement(2, 0, 2, 2)),
+            keyItem("c", GridPlacement(4, 0, 2, 2)),
+            keyItem("d", GridPlacement(6, 0, 2, 2)),
+            keyItem("side", GridPlacement(2, 4, 2, 2))
+        )
+        return layoutFromItems(items, columnUnitCount = 6, rowUnitCount = 8)
+    }
+
+    private fun singleKeyLayout(itemId: String, keyId: String): KeyboardLayout {
+        val key = keyItem(itemId, GridPlacement(0, 0, 2, 2), keyId = keyId)
+        return layoutFromItems(listOf(key), columnUnitCount = 2, rowUnitCount = 2)
+    }
+
+    private fun layoutFromItems(
+        items: List<com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem>,
+        columnUnitCount: Int,
+        rowUnitCount: Int
+    ): KeyboardLayout =
+        KeyboardLayout(
+            keys = items.filterIsInstance<KeyItem>().map { it.keyData },
+            flickKeyMaps = emptyMap(),
+            columnCount = (columnUnitCount + 1) / 2,
+            rowCount = (rowUnitCount + 1) / 2,
+            items = items,
+            columnUnitCount = columnUnitCount,
+            rowUnitCount = rowUnitCount
+        )
+
+    private fun keyItem(
+        id: String,
+        placement: GridPlacement,
+        keyId: String = id
+    ): KeyItem {
+        val key = KeyData(
+            label = id,
+            row = placement.rowUnits / 2,
+            column = placement.columnUnits / 2,
+            isFlickable = false,
+            action = KeyAction.Text(id),
+            rowSpan = (placement.rowSpanUnits + 1) / 2,
+            colSpan = (placement.columnSpanUnits + 1) / 2,
+            keyType = KeyType.NORMAL,
+            keyId = keyId
+        )
+        return KeyItem(id, key, placement)
+    }
+
+    private fun item(layout: KeyboardLayout, id: String) =
+        layout.items.first { it.id == id }
 
     private fun assertValidFlexibleLayout(layout: KeyboardLayout) {
         assertEquals((layout.rowUnitCount + 1) / 2, layout.rowCount)

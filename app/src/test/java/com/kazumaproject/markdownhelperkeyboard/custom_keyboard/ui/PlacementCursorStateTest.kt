@@ -29,8 +29,6 @@ class PlacementCursorStateTest {
         assertPaletteDoesNotMutate { it.enterSpacerPlacementMode(GridSpan(1, 1)) }
     @Test fun cursor_paletteOneSpacer_entersPlacementModeWithoutMutatingLayout(): Unit =
         assertPaletteDoesNotMutate { it.enterSpacerPlacementMode(GridSpan(2, 2)) }
-    @Test fun cursor_placeSpace_entersSpacePlacementModeWithoutMutatingLayout(): Unit =
-        assertPaletteDoesNotMutate { it.enterSpacePlacementMode() }
 
     @Test fun cursor_tapGrid_updatesPlacementCursorAndPreviewOnly(): Unit = previewOnly { it.holdPlacementCursorFromTap(beforeQ()) }
     @Test fun cursor_dragPointer_updatesPlacementCursorAndPreviewOnly(): Unit = previewOnly { it.updatePlacementCursorFromPointer(beforeQ()) }
@@ -162,14 +160,6 @@ class PlacementCursorStateTest {
         val vm = cursorAt(InsertionTarget.RowEnd(0))
         assertEquals(InsertionTarget.RowEnd(0), vm.uiState.value.placementCursor!!.target)
     }
-    @Test fun regression_spacePlacementDoesNotAutoNavigateToEditor() {
-        val vm = qwertyVm()
-        vm.enterSpacePlacementMode()
-        vm.holdPlacementCursorFromTap(beforeQ())
-        vm.confirmPlacementPreview()
-        assertNull(vm.uiState.value.selectedKeyIdentifier)
-    }
-
     private fun assertPaletteDoesNotMutate(action: (KeyboardEditorViewModel) -> Unit) {
         val vm = qwertyVm()
         val before = vm.uiState.value.layout
