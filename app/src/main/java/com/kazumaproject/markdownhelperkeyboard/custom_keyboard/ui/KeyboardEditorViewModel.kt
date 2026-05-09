@@ -581,11 +581,22 @@ class KeyboardEditorViewModel @Inject constructor(
     }
 
     fun onKeyTapped(keyId: String): Boolean {
+        return onKeyTappedForSelectionOrEdit(keyId)
+    }
+
+    fun onKeyTappedForSelectionOrEdit(keyId: String): Boolean {
         val state = _uiState.value
         if (state.editorMode != KeyboardEditorMode.Normal) return false
-        selectKeyForEditing(keyId)
+        val wasAlreadySelected = state.selectedItemId?.let { selectedId ->
+            state.layout.items.any { item ->
+                item.matchesEditorItemId(selectedId) && item.matchesEditorItemId(keyId)
+            }
+        } == true
+        if (wasAlreadySelected) {
+            selectKeyForEditing(keyId)
+        }
         selectItem(keyId)
-        return true
+        return wasAlreadySelected
     }
 
     fun onSpacerTapped(spacerId: String) {
@@ -649,7 +660,7 @@ class KeyboardEditorViewModel @Inject constructor(
         if (mode == KeyboardEditorMode.Normal) return
         if (!state.layout.usesFlexiblePlacement()) return
         val safeTarget = sanitizeInsertionTarget(state, target)
-        val placementTarget = adjustHalfRowSpacerTarget(state, safeTarget, mode)
+        val placementTarget = adjustHalfRowHalfCellTarget(state, safeTarget, mode)
         val cursor = PlacementCursor(
             target = placementTarget,
             span = mode.span(),
@@ -678,15 +689,20 @@ class KeyboardEditorViewModel @Inject constructor(
         )
     }
 
-    private fun adjustHalfRowSpacerTarget(
+    private fun adjustHalfRowHalfCellTarget(
         state: EditorUiState,
         target: InsertionTarget,
         mode: KeyboardEditorMode
     ): InsertionTarget {
         if (!state.layout.usesFlexiblePlacement()) return target
-        if (mode !is KeyboardEditorMode.PlacingSpacer) return target
-        if (mode.policy != InsertionPolicy.PreferHorizontal) return target
-        if (mode.span != GridSpan(rowSpanUnits = 1, columnSpanUnits = 1)) return target
+        val (span, policy) = when (mode) {
+            is KeyboardEditorMode.PlacingNewKey -> mode.span to mode.policy
+            is KeyboardEditorMode.PlacingSpacer -> mode.span to mode.policy
+            KeyboardEditorMode.Normal,
+            is KeyboardEditorMode.MovingExistingItem -> return target
+        }
+        if (policy != InsertionPolicy.PreferHorizontal) return target
+        if (span != GridSpan(rowSpanUnits = 1, columnSpanUnits = 1)) return target
 
         val rowTop = target.baseRowUnits(state.layout)?.let { (it / 2) * 2 } ?: 0
         val rowUnits = when (state.halfRowPlacement) {
