@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement
 
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.withCanonicalFlexibleBounds
 import kotlin.math.floor
 
 class InsertionTargetMapper {
@@ -13,13 +14,14 @@ class InsertionTargetMapper {
         widthPx: Float,
         heightPx: Float
     ): InsertionTarget {
-        if (layout.items.isEmpty() || widthPx <= 0f || heightPx <= 0f) {
+        val canonicalLayout = layout.withCanonicalFlexibleBounds()
+        if (canonicalLayout.items.isEmpty() || widthPx <= 0f || heightPx <= 0f) {
             return InsertionTarget.EmptyArea(GridPlacement(0, 0, 1, 1))
         }
 
-        val xUnits = (xPx / widthPx) * layout.columnUnitCount
-        val yUnits = (yPx / heightPx) * layout.rowUnitCount
-        val rows = layout.items
+        val xUnits = (xPx / widthPx) * canonicalLayout.columnUnitCount
+        val yUnits = (yPx / heightPx) * canonicalLayout.rowUnitCount
+        val rows = canonicalLayout.items
             .groupBy { it.placement.rowUnits }
             .toSortedMap()
             .map { (top, items) ->
