@@ -84,6 +84,7 @@
                     android:fillViewport="false">
 
                     <LinearLayout
+                        android:id="@+id/placement_size_controls_group"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal">

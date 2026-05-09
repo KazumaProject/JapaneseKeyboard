@@ -12,6 +12,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
+import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
@@ -364,6 +365,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         val vm = qwertyViewModel()
         assertTrue(vm.onKeyTapped("qwerty_key_q"))
         assertEquals("qwerty_key_q", vm.uiState.value.selectedKeyIdentifier)
+        assertNull(vm.uiState.value.selectedItemId)
     }
 
     @Test
@@ -454,7 +456,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun viewModel_deleteSelectedKey_removesKeyAndMappings() {
+    fun viewModel_deleteSelectedKeyItemId_rejectsWithoutChangingLayout() {
         val vm = viewModel()
         val key = KeyData("x", 0, 0, false, KeyAction.Text("x"), keyType = KeyType.NORMAL, keyId = "x")
         vm.applyTemplate(
@@ -466,14 +468,16 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
                 items = listOf(KeyItem("x", key, GridPlacement(0, 0, 2, 2)))
             )
         )
+        val before = vm.uiState.value.layout
         vm.selectItem("x")
-        assertTrue(vm.deleteSelectedItem())
-        assertTrue(vm.uiState.value.layout.items.none { it.id == "x" })
-        assertFalse(vm.uiState.value.layout.flickKeyMaps.containsKey("x"))
+        assertFalse(vm.deleteSelectedItem())
+        assertEquals(before, vm.uiState.value.layout)
+        assertTrue(vm.uiState.value.layout.items.any { it.id == "x" })
+        assertTrue(vm.uiState.value.layout.flickKeyMaps.containsKey("x"))
     }
 
     @Test
-    fun viewModel_deleteSelectedKey_removesEveryMappingType() {
+    fun viewModel_deleteSelectedKey_rejectsEveryMappingTypeWithoutChangingLayout() {
         val vm = viewModel()
         val key = KeyData("x", 0, 0, false, KeyAction.Text("x"), keyType = KeyType.NORMAL, keyId = "x")
         vm.applyTemplate(
@@ -496,16 +500,18 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
             )
         )
 
+        val before = vm.uiState.value.layout
         vm.selectItem("x")
-        assertTrue(vm.deleteSelectedItem())
+        assertFalse(vm.deleteSelectedItem())
 
         val layout = vm.uiState.value.layout
-        assertFalse(layout.flickKeyMaps.containsKey("x"))
-        assertFalse(layout.circularFlickKeyMaps.containsKey("x"))
-        assertFalse(layout.twoStepFlickKeyMaps.containsKey("x"))
-        assertFalse(layout.longPressFlickKeyMaps.containsKey("x"))
-        assertFalse(layout.twoStepLongPressKeyMaps.containsKey("x"))
-        assertFalse(layout.hierarchicalFlickMaps.containsKey("x"))
+        assertEquals(before, layout)
+        assertTrue(layout.flickKeyMaps.containsKey("x"))
+        assertTrue(layout.circularFlickKeyMaps.containsKey("x"))
+        assertTrue(layout.twoStepFlickKeyMaps.containsKey("x"))
+        assertTrue(layout.longPressFlickKeyMaps.containsKey("x"))
+        assertTrue(layout.twoStepLongPressKeyMaps.containsKey("x"))
+        assertTrue(layout.hierarchicalFlickMaps.containsKey("x"))
     }
 
     @Test
@@ -531,26 +537,30 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun viewModel_deleteSelectedItem_matchesKeyItemId() {
+    fun viewModel_deleteSelectedItem_rejectsKeyItemId() {
         val vm = viewModel()
         vm.applyTemplate(singleKeyLayout(itemId = "item_x", keyId = "key_x"))
         val itemId = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single().id
+        val before = vm.uiState.value.layout
 
         vm.selectItem(itemId)
-        assertTrue(vm.deleteSelectedItem())
+        assertFalse(vm.deleteSelectedItem())
 
-        assertTrue(vm.uiState.value.layout.items.none { it.id == itemId })
+        assertEquals(before, vm.uiState.value.layout)
+        assertTrue(vm.uiState.value.layout.items.any { it.id == itemId })
     }
 
     @Test
-    fun viewModel_deleteSelectedItem_matchesKeyDataKeyId() {
+    fun viewModel_deleteSelectedItem_rejectsKeyDataKeyId() {
         val vm = viewModel()
         vm.applyTemplate(singleKeyLayout(itemId = "item_x", keyId = "key_x"))
+        val before = vm.uiState.value.layout
 
         vm.selectItem("key_x")
-        assertTrue(vm.deleteSelectedItem())
+        assertFalse(vm.deleteSelectedItem())
 
-        assertTrue(vm.uiState.value.layout.items.none { it.id == "item_x" })
+        assertEquals(before, vm.uiState.value.layout)
+        assertTrue(vm.uiState.value.layout.items.filterIsInstance<KeyItem>().any { it.keyData.keyId == "key_x" })
     }
 
     @Test
@@ -607,6 +617,54 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
+    fun viewModel_preferVerticalPolicyPropagatesThroughModeCursorAndPreviewForKeyAndSpacer() {
+        val keyVm = qwertyViewModel()
+        keyVm.updateInsertionPolicy(InsertionPolicy.PreferVertical)
+        keyVm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        keyVm.updatePlacementCursorFromPointer(InsertionTarget.BeforeItem("qwerty_key_q"))
+
+        val keyMode = keyVm.uiState.value.editorMode as KeyboardEditorMode.PlacingNewKey
+        val keyCursor = keyVm.uiState.value.placementCursor
+        val keyInserted = keyVm.uiState.value.previewLayout!!.items
+            .first { it.id == keyVm.uiState.value.previewInsertedItemId }
+        assertEquals(InsertionPolicy.PreferVertical, keyMode.policy)
+        assertEquals(InsertionPolicy.PreferVertical, keyCursor!!.policy)
+        assertEquals(0, keyInserted.placement.columnUnits)
+        assertEquals(0, keyInserted.placement.rowUnits)
+        assertEquals(GridPlacement(2, 0, 2, 2), item(keyVm.uiState.value.previewLayout!!, "qwerty_key_q").placement)
+
+        val spacerVm = qwertyViewModel()
+        spacerVm.updateInsertionPolicy(InsertionPolicy.PreferVertical)
+        spacerVm.enterSpacerPlacementMode(GridSpan(1, 1))
+        spacerVm.updatePlacementCursorFromPointer(InsertionTarget.BeforeItem("qwerty_key_q"))
+
+        val spacerMode = spacerVm.uiState.value.editorMode as KeyboardEditorMode.PlacingSpacer
+        val spacerCursor = spacerVm.uiState.value.placementCursor
+        val spacerInserted = spacerVm.uiState.value.previewLayout!!.items
+            .first { it.id == spacerVm.uiState.value.previewInsertedItemId }
+        assertEquals(InsertionPolicy.PreferVertical, spacerMode.policy)
+        assertEquals(InsertionPolicy.PreferVertical, spacerCursor!!.policy)
+        assertEquals(0, spacerInserted.placement.columnUnits)
+        assertEquals(0, spacerInserted.placement.rowUnits)
+        assertEquals(GridPlacement(1, 0, 2, 2), item(spacerVm.uiState.value.previewLayout!!, "qwerty_key_q").placement)
+    }
+
+    @Test
+    fun viewModel_updatingInsertionPolicyWhilePlacingRecomputesPreviewVertically() {
+        val vm = qwertyViewModel()
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2), InsertionPolicy.PreferHorizontal)
+        vm.updatePlacementCursorFromPointer(InsertionTarget.BeforeItem("qwerty_key_q"))
+        assertEquals(GridPlacement(0, 2, 2, 2), item(vm.uiState.value.previewLayout!!, "qwerty_key_q").placement)
+
+        vm.updateInsertionPolicy(InsertionPolicy.PreferVertical)
+
+        val mode = vm.uiState.value.editorMode as KeyboardEditorMode.PlacingNewKey
+        assertEquals(InsertionPolicy.PreferVertical, mode.policy)
+        assertEquals(InsertionPolicy.PreferVertical, vm.uiState.value.placementCursor!!.policy)
+        assertEquals(GridPlacement(2, 0, 2, 2), item(vm.uiState.value.previewLayout!!, "qwerty_key_q").placement)
+    }
+
+    @Test
     fun structuralControls_hiddenForFlexibleLayout_visibleForGridLayout() {
         assertFalse(shouldShowKeyboardEditorStructuralControls(KeyboardDefaultLayouts.createQwertyTemplateLayout()))
         assertTrue(
@@ -621,6 +679,35 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
                 )
             )
         )
+    }
+
+    @Test
+    fun keyboardEditorCapabilities_tenKeyKeepsGridControlsEvenWithSpacer() {
+        val tenKey = KeyboardDefaultLayouts.createNumberTemplateLayout()
+        val tenKeyCapabilities = keyboardEditorCapabilities(tenKey)
+        assertFalse(tenKeyCapabilities.showHalfCellControls)
+        assertFalse(tenKeyCapabilities.showInsertionDirectionControls)
+        assertTrue(tenKeyCapabilities.showGridStructuralControls)
+
+        val tenKeyWithSpacer = tenKey.copy(
+            items = tenKey.items + SpacerItem("number_template_spacer", GridPlacement(8, 0, 2, 2)),
+            rowUnitCount = 10,
+            rowCount = 5
+        )
+        assertTrue(tenKeyWithSpacer.usesFlexiblePlacement())
+
+        val tenKeyWithSpacerCapabilities = keyboardEditorCapabilities(tenKeyWithSpacer)
+        assertFalse(tenKeyWithSpacerCapabilities.showHalfCellControls)
+        assertFalse(tenKeyWithSpacerCapabilities.showInsertionDirectionControls)
+        assertTrue(tenKeyWithSpacerCapabilities.showGridStructuralControls)
+    }
+
+    @Test
+    fun keyboardEditorCapabilities_qwertyShowsFlexibleControls() {
+        val capabilities = keyboardEditorCapabilities(KeyboardDefaultLayouts.createQwertyTemplateLayout())
+        assertTrue(capabilities.showHalfCellControls)
+        assertTrue(capabilities.showInsertionDirectionControls)
+        assertFalse(capabilities.showGridStructuralControls)
     }
 
     @Test
