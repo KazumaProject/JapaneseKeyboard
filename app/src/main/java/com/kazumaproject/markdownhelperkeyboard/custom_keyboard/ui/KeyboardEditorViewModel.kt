@@ -12,6 +12,7 @@ import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
@@ -1366,6 +1367,20 @@ class KeyboardEditorViewModel @Inject constructor(
         _uiState.update { it.copy(isDirectMode = isDirectMode) }
     }
 
+    fun setCurrentLayoutUsageMode(layoutId: Long?, usageMode: KeyboardLayoutUsageMode) {
+        _uiState.update { state ->
+            state.copy(layout = state.layout.copy(usageMode = usageMode))
+        }
+        val existingLayoutId = layoutId ?: return
+        viewModelScope.launch {
+            runCatching {
+                repository.setCurrentLayoutUsageMode(existingLayoutId, usageMode)
+            }.onFailure { e ->
+                Timber.e(e, "setCurrentLayoutUsageMode failed layoutId=%s usageMode=%s", existingLayoutId, usageMode)
+            }
+        }
+    }
+
     fun onDoneNavigating() {
         _uiState.update { it.copy(navigateBack = false) }
     }
@@ -1443,7 +1458,8 @@ class KeyboardEditorViewModel @Inject constructor(
             circularFlickKeyMaps = reKeyedCircularFlickMaps,
             twoStepFlickKeyMaps = reKeyedTwoStepMaps,
             longPressFlickKeyMaps = reKeyedLongPressFlickMaps,
-            twoStepLongPressKeyMaps = reKeyedTwoStepLongPressMaps
+            twoStepLongPressKeyMaps = reKeyedTwoStepLongPressMaps,
+            usageMode = _uiState.value.layout.usageMode
         )
 
         _uiState.update { currentState ->

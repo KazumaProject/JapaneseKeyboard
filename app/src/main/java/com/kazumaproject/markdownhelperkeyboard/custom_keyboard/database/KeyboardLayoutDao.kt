@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
@@ -269,6 +270,23 @@ interface KeyboardLayoutDao {
 
     @Update
     suspend fun updateLayout(layout: CustomKeyboardLayout)
+
+    @Query("UPDATE keyboard_layouts SET usageMode = 'Normal' WHERE usageMode = 'Number' AND layoutId != :layoutId")
+    suspend fun clearNumberUsageModeExcept(layoutId: Long)
+
+    @Query("UPDATE keyboard_layouts SET usageMode = :usageMode WHERE layoutId = :layoutId")
+    suspend fun updateLayoutUsageMode(layoutId: Long, usageMode: String)
+
+    @Transaction
+    suspend fun setLayoutUsageModeExclusive(
+        layoutId: Long,
+        usageMode: KeyboardLayoutUsageMode
+    ) {
+        if (usageMode == KeyboardLayoutUsageMode.Number) {
+            clearNumberUsageModeExcept(layoutId)
+        }
+        updateLayoutUsageMode(layoutId, usageMode.serializedName)
+    }
 
     @Query("DELETE FROM key_definitions WHERE ownerLayoutId = :layoutId")
     suspend fun deleteKeysForLayout(layoutId: Long)
