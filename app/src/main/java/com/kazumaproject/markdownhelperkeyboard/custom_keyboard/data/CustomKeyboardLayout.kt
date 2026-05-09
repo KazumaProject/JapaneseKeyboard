@@ -31,5 +31,6 @@ data class CustomKeyboardLayout(
     val isDirectMode: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(), // 作成日時
     val sortOrder: Int = 0,
-    val stableId: String = UUID.randomUUID().toString()
+    val stableId: String = UUID.randomUUID().toString(),
+    val isFlexiblePlacementLayout: Boolean = false
 )

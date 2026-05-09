@@ -4635,7 +4635,8 @@ object KeyboardDefaultLayouts {
             rowCount = derivedRowCount,
             items = items,
             columnUnitCount = spec.columnUnitCount,
-            rowUnitCount = spec.rowUnitCount
+            rowUnitCount = spec.rowUnitCount,
+            isFlexiblePlacementLayout = true
         )
     }
 
@@ -4727,6 +4728,19 @@ object KeyboardDefaultLayouts {
             )
         )
         return buildAlphabetTemplate(spec)
+    }
+
+    fun createEmpty5x4FlexibleTemplateLayout(): KeyboardLayout {
+        return KeyboardLayout(
+            keys = emptyList(),
+            flickKeyMaps = emptyMap(),
+            columnCount = 5,
+            rowCount = 4,
+            items = emptyList(),
+            columnUnitCount = 10,
+            rowUnitCount = 8,
+            isFlexiblePlacementLayout = true
+        )
     }
 
     private fun createHiraganaToggleLayout(

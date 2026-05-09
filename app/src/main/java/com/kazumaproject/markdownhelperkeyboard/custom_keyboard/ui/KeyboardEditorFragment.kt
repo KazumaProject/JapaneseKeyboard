@@ -26,6 +26,7 @@ import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.HalfRowPlacement
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionPolicy
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.KeyboardEditorMode
@@ -113,6 +114,13 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
                     viewModel.updateInsertionPolicy(InsertionPolicy.PreferHorizontal)
                 R.id.button_insert_direction_column ->
                     viewModel.updateInsertionPolicy(InsertionPolicy.PreferVertical)
+            }
+        }
+        binding.halfRowPlacementGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            when (checkedId) {
+                R.id.button_half_row_upper -> viewModel.setHalfRowPlacement(HalfRowPlacement.Upper)
+                R.id.button_half_row_lower -> viewModel.setHalfRowPlacement(HalfRowPlacement.Lower)
             }
         }
         binding.buttonPlaceHalfKey.setOnClickListener {
@@ -208,14 +216,14 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     // ▼▼▼ ここから追加 ▼▼▼
     private fun showTemplateSelectionDialog() {
         val templates = viewModel.availableTemplates
-        val templateNames = templates.map { it.name }.toTypedArray()
+        val templateNames = templates.map { getString(it.nameResId) }.toTypedArray()
 
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("テンプレートを選択")
             .setItems(templateNames) { dialog, which ->
                 // 選択されたテンプレートを取得
                 val selectedTemplate = templates[which]
-                Timber.d("Template selected: ${selectedTemplate.name}")
+                Timber.d("Template selected: ${getString(selectedTemplate.nameResId)}")
                 // ViewModelにテンプレートの適用を指示
                 viewModel.applyTemplate(selectedTemplate.layout)
                 dialog.dismiss()
@@ -253,6 +261,23 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         }
         if (binding.insertDirectionGroup.checkedButtonId != insertionDirectionButtonId) {
             binding.insertDirectionGroup.check(insertionDirectionButtonId)
+        }
+        val addModeButtonId = placementAddModeButtonId(state.editorMode)
+        if (addModeButtonId == View.NO_ID) {
+            binding.placementSizeControlsGroup.clearChecked()
+        } else if (binding.placementSizeControlsGroup.checkedButtonId != addModeButtonId) {
+            binding.placementSizeControlsGroup.check(addModeButtonId)
+        }
+        binding.halfRowPlacementPanel.isVisible = shouldShowHalfRowPlacementControls(
+            state = state,
+            capabilities = keyboardEditorCapabilities(state.layout)
+        )
+        val halfRowButtonId = when (state.halfRowPlacement) {
+            HalfRowPlacement.Upper -> R.id.button_half_row_upper
+            HalfRowPlacement.Lower -> R.id.button_half_row_lower
+        }
+        if (binding.halfRowPlacementGroup.checkedButtonId != halfRowButtonId) {
+            binding.halfRowPlacementGroup.check(halfRowButtonId)
         }
         val isPlacementMode = state.editorMode != KeyboardEditorMode.Normal
         val displayLayout = state.previewLayout ?: state.layout
@@ -359,6 +384,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
 
     override fun onDestroyView() {
         super.onDestroyView()
+        viewModel.clearSelectedItemForDeletion()
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = null
             setDisplayHomeAsUpEnabled(false)
@@ -376,6 +402,33 @@ internal fun applyKeyboardEditorCapabilityVisibility(
     binding.insertDirectionPanel.isVisible = capabilities.showInsertionDirectionControls
     binding.rowControlsGroup.isVisible = capabilities.showGridStructuralControls
     binding.columnControlsGroup.isVisible = capabilities.showGridStructuralControls
+}
+
+internal fun placementAddModeButtonId(editorMode: KeyboardEditorMode): Int {
+    return when (editorMode) {
+        KeyboardEditorMode.Normal -> View.NO_ID
+        is KeyboardEditorMode.MovingExistingItem -> View.NO_ID
+        is KeyboardEditorMode.PlacingNewKey -> when (editorMode.span) {
+            GridSpan(rowSpanUnits = 1, columnSpanUnits = 1) -> R.id.button_place_half_key
+            GridSpan(rowSpanUnits = 2, columnSpanUnits = 2) -> R.id.button_place_one_key
+            else -> View.NO_ID
+        }
+        is KeyboardEditorMode.PlacingSpacer -> when (editorMode.span) {
+            GridSpan(rowSpanUnits = 1, columnSpanUnits = 1) -> R.id.button_place_half_spacer
+            GridSpan(rowSpanUnits = 2, columnSpanUnits = 2) -> R.id.button_place_one_spacer
+            else -> View.NO_ID
+        }
+    }
+}
+
+internal fun shouldShowHalfRowPlacementControls(
+    state: EditorUiState,
+    capabilities: KeyboardEditorCapabilities
+): Boolean {
+    val mode = state.editorMode as? KeyboardEditorMode.PlacingSpacer ?: return false
+    return capabilities.showHalfCellControls &&
+            mode.span == GridSpan(rowSpanUnits = 1, columnSpanUnits = 1) &&
+            mode.policy == InsertionPolicy.PreferHorizontal
 }
 
 internal fun applyKeyboardEditorDeleteSelectionState(

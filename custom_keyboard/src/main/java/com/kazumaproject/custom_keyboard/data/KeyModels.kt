@@ -216,6 +216,7 @@ fun KeyboardLayout.copyWithKeys(
     )
 
 fun KeyboardLayout.usesFlexiblePlacement(): Boolean {
+    if (isFlexiblePlacementLayout) return true
     if (items.any { it is SpacerItem }) return true
 
     return items.filterIsInstance<KeyItem>().any { item ->
@@ -436,7 +437,8 @@ data class KeyboardLayout(
     val hierarchicalFlickMaps: Map<String, TfbiFlickNode.StatefulKey> = emptyMap(),
     val items: List<KeyboardLayoutItem> = keys.map { it.toKeyItem() },
     val columnUnitCount: Int = columnCount * 2,
-    val rowUnitCount: Int = rowCount * 2
+    val rowUnitCount: Int = rowCount * 2,
+    val isFlexiblePlacementLayout: Boolean = false
 )
 
 /**

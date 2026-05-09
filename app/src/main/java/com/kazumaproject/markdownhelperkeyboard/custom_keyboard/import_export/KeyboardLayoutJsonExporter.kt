@@ -54,7 +54,8 @@ internal fun FullKeyboardLayout.toExportDto(): KeyboardLayoutExportDto {
             isDirectMode = this.layout.isDirectMode,
             createdAt = this.layout.createdAt,
             sortOrder = this.layout.sortOrder,
-            stableId = this.layout.stableId
+            stableId = this.layout.stableId,
+            isFlexiblePlacementLayout = this.layout.isFlexiblePlacementLayout
         ),
         keysWithFlicks = this.keysWithFlicks.map { it.toExportDto() },
         spacers = this.spacers.map {
