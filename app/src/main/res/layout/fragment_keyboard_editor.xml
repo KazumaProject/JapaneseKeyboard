@@ -83,17 +83,19 @@
                     android:layout_height="wrap_content"
                     android:fillViewport="false">
 
-                    <LinearLayout
+                    <com.google.android.material.button.MaterialButtonToggleGroup
                         android:id="@+id/placement_size_controls_group"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal">
+                        app:selectionRequired="false"
+                        app:singleSelection="true">
 
                         <com.google.android.material.button.MaterialButton
                             android:id="@+id/button_place_half_key"
                             style="?attr/materialButtonOutlinedStyle"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:checkable="true"
                             android:text="@string/editor_place_half_key" />
 
                         <com.google.android.material.button.MaterialButton
@@ -102,6 +104,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
+                            android:checkable="true"
                             android:text="@string/editor_place_one_key" />
 
                         <com.google.android.material.button.MaterialButton
@@ -110,6 +113,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
+                            android:checkable="true"
                             android:text="@string/editor_place_half_spacer" />
 
                         <com.google.android.material.button.MaterialButton
@@ -118,9 +122,10 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
+                            android:checkable="true"
                             android:text="@string/editor_place_one_spacer" />
 
-                    </LinearLayout>
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
                 </HorizontalScrollView>
 
                 <LinearLayout
@@ -160,6 +165,46 @@
                             android:layout_height="wrap_content"
                             android:checkable="true"
                             android:text="@string/editor_insert_direction_column" />
+                    </com.google.android.material.button.MaterialButtonToggleGroup>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/half_row_placement_panel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="8dp"
+                        android:text="@string/editor_half_row_placement_label" />
+
+                    <com.google.android.material.button.MaterialButtonToggleGroup
+                        android:id="@+id/half_row_placement_group"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        app:checkedButton="@id/button_half_row_upper"
+                        app:selectionRequired="true"
+                        app:singleSelection="true">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/button_half_row_upper"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checkable="true"
+                            android:text="@string/editor_half_row_placement_upper" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/button_half_row_lower"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checkable="true"
+                            android:text="@string/editor_half_row_placement_lower" />
                     </com.google.android.material.button.MaterialButtonToggleGroup>
                 </LinearLayout>
 

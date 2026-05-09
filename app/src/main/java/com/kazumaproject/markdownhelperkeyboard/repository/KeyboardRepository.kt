@@ -354,7 +354,8 @@ class KeyboardRepository @Inject constructor(
             isDirectMode = layout.isDirectMode,
             createdAt = System.currentTimeMillis(),
             sortOrder = nextTopSortOrder(),
-            stableId = newStableId
+            stableId = newStableId,
+            isFlexiblePlacementLayout = layout.usesFlexiblePlacement()
         )
         val parts = convertToDbModel(layout)
         val newLayoutId = dao.insertFullKeyboardLayout(
@@ -397,7 +398,8 @@ class KeyboardRepository @Inject constructor(
             rowCount = layout.rowCount,
             isRomaji = layout.isRomaji,
             isDirectMode = layout.isDirectMode,
-            stableId = repairedStableId
+            stableId = repairedStableId,
+            isFlexiblePlacementLayout = layout.usesFlexiblePlacement()
         )
 
         val parts = convertToDbModel(layout)
@@ -939,7 +941,8 @@ class KeyboardRepository @Inject constructor(
             twoStepLongPressKeyMaps = twoStepLongPressMaps,
             items = items,
             columnUnitCount = columnUnitCount,
-            rowUnitCount = rowUnitCount
+            rowUnitCount = rowUnitCount,
+            isFlexiblePlacementLayout = dbLayout.layout.isFlexiblePlacementLayout
         )
         return if (restoredLayout.usesFlexiblePlacement()) {
             restoredLayout.withCanonicalFlexibleBounds()

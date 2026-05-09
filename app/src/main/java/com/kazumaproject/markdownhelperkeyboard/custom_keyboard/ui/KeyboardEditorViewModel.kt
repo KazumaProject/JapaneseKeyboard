@@ -21,12 +21,14 @@ import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.data.withCanonicalFlexibleBounds
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
+import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.ImportableKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.CursorSource
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.FlexiblePlacementSolver
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.HalfRowPlacement
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionPolicy
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTargetNavigator
@@ -66,10 +68,11 @@ data class EditorUiState(
     val previewStrategy: PlacementStrategy? = null,
     val previewStatus: PlacementPreviewStatus = PlacementPreviewStatus.None,
     val selectedItemId: String? = null,
-    val insertionPolicy: InsertionPolicy = InsertionPolicy.PreferHorizontal
+    val insertionPolicy: InsertionPolicy = InsertionPolicy.PreferHorizontal,
+    val halfRowPlacement: HalfRowPlacement = HalfRowPlacement.Upper
 )
 
-data class LayoutTemplate(val name: String, val layout: KeyboardLayout)
+data class LayoutTemplate(val nameResId: Int, val layout: KeyboardLayout)
 
 fun shouldShowKeyboardEditorStructuralControls(layout: KeyboardLayout): Boolean =
     keyboardEditorCapabilities(layout).showGridStructuralControls
@@ -88,21 +91,25 @@ class KeyboardEditorViewModel @Inject constructor(
 
     val availableTemplates: List<LayoutTemplate> = listOf(
         LayoutTemplate(
-            "かな入力 (カーソル)",
+            R.string.template_flick_kana_cursor,
             KeyboardDefaultLayouts.createFlickKanaTemplateLayout(true)
         ),
         LayoutTemplate(
-            "英語入力 (カーソル)",
+            R.string.template_flick_english_cursor,
             KeyboardDefaultLayouts.createFlickEnglishTemplateLayout(
                 isDefaultKey = true,
                 isUpperCase = false
             )
         ),
         LayoutTemplate(
-            "QWERTY",
+            R.string.template_qwerty,
             KeyboardDefaultLayouts.createQwertyTemplateLayout()
         ),
-        LayoutTemplate("数字入力", KeyboardDefaultLayouts.createNumberTemplateLayout())
+        LayoutTemplate(
+            R.string.template_empty_5x4_flexible,
+            KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout()
+        ),
+        LayoutTemplate(R.string.template_number, KeyboardDefaultLayouts.createNumberTemplateLayout())
     )
 
     fun start(layoutId: Long) {
@@ -218,6 +225,15 @@ class KeyboardEditorViewModel @Inject constructor(
             editorMode = state.editorMode.withPolicy(policy),
             placementCursor = state.placementCursor?.copy(policy = policy)
         )
+        val cursor = _uiState.value.placementCursor ?: return
+        if (_uiState.value.editorMode != KeyboardEditorMode.Normal) {
+            updatePlacementCursor(cursor.target, cursor.source)
+        }
+    }
+
+    fun setHalfRowPlacement(value: HalfRowPlacement) {
+        val state = _uiState.value
+        _uiState.value = state.copy(halfRowPlacement = value)
         val cursor = _uiState.value.placementCursor ?: return
         if (_uiState.value.editorMode != KeyboardEditorMode.Normal) {
             updatePlacementCursor(cursor.target, cursor.source)
@@ -436,7 +452,8 @@ class KeyboardEditorViewModel @Inject constructor(
                 previewMovedItemIds = emptySet(),
                 previewInsertedItemId = null,
                 previewStrategy = null,
-                previewStatus = PlacementPreviewStatus.None
+                previewStatus = PlacementPreviewStatus.None,
+                selectedItemId = null
             )
         }
     }
@@ -461,7 +478,8 @@ class KeyboardEditorViewModel @Inject constructor(
                 previewMovedItemIds = emptySet(),
                 previewInsertedItemId = null,
                 previewStrategy = null,
-                previewStatus = PlacementPreviewStatus.None
+                previewStatus = PlacementPreviewStatus.None,
+                selectedItemId = null
             )
         }
     }
@@ -527,7 +545,8 @@ class KeyboardEditorViewModel @Inject constructor(
             previewMovedItemIds = emptySet(),
             previewInsertedItemId = null,
             previewStrategy = null,
-            previewStatus = PlacementPreviewStatus.None
+            previewStatus = PlacementPreviewStatus.None,
+            selectedItemId = null
         )
         return true
     }
@@ -541,9 +560,14 @@ class KeyboardEditorViewModel @Inject constructor(
                 previewMovedItemIds = emptySet(),
                 previewInsertedItemId = null,
                 previewStrategy = null,
-                previewStatus = PlacementPreviewStatus.None
+                previewStatus = PlacementPreviewStatus.None,
+                selectedItemId = null
             )
         }
+    }
+
+    fun clearSelectedItemForDeletion() {
+        _uiState.update { it.copy(selectedItemId = null) }
     }
 
     fun selectItem(itemId: String?) {
@@ -624,8 +648,9 @@ class KeyboardEditorViewModel @Inject constructor(
         if (mode == KeyboardEditorMode.Normal) return
         if (!state.layout.usesFlexiblePlacement()) return
         val safeTarget = sanitizeInsertionTarget(state, target)
+        val placementTarget = adjustHalfRowSpacerTarget(state, safeTarget, mode)
         val cursor = PlacementCursor(
-            target = safeTarget,
+            target = placementTarget,
             span = mode.span(),
             policy = mode.policy(),
             source = source
@@ -634,7 +659,7 @@ class KeyboardEditorViewModel @Inject constructor(
         val result = placementSolver.solve(
             committedLayout = state.layout,
             operation = operation,
-            target = safeTarget,
+            target = placementTarget,
             policy = cursor.policy
         )
         val preview = result.layout.canonicalizeIfFlexible().takeIfValidFlexible() ?: return
@@ -650,6 +675,66 @@ class KeyboardEditorViewModel @Inject constructor(
                 movedItemIds = result.movedItemIds
             )
         )
+    }
+
+    private fun adjustHalfRowSpacerTarget(
+        state: EditorUiState,
+        target: InsertionTarget,
+        mode: KeyboardEditorMode
+    ): InsertionTarget {
+        if (!state.layout.usesFlexiblePlacement()) return target
+        if (mode !is KeyboardEditorMode.PlacingSpacer) return target
+        if (mode.policy != InsertionPolicy.PreferHorizontal) return target
+        if (mode.span != GridSpan(rowSpanUnits = 1, columnSpanUnits = 1)) return target
+
+        val rowTop = target.baseRowUnits(state.layout)?.let { (it / 2) * 2 } ?: 0
+        val rowUnits = when (state.halfRowPlacement) {
+            HalfRowPlacement.Upper -> rowTop
+            HalfRowPlacement.Lower -> rowTop + 1
+        }
+        val columnUnits = target.baseColumnUnitsForRow(state.layout, rowUnits)
+        return InsertionTarget.EmptyArea(
+            GridPlacement(
+                rowUnits = rowUnits,
+                columnUnits = columnUnits,
+                rowSpanUnits = 1,
+                columnSpanUnits = 1
+            )
+        )
+    }
+
+    private fun InsertionTarget.baseRowUnits(layout: KeyboardLayout): Int? {
+        return when (this) {
+            is InsertionTarget.BeforeItem -> layout.items.firstOrNull { it.id == itemId }?.placement?.rowUnits
+            is InsertionTarget.AfterItem -> layout.items.firstOrNull { it.id == itemId }?.placement?.rowUnits
+            is InsertionTarget.AboveRowGroup -> topRowUnits
+            is InsertionTarget.BelowRowGroup -> topRowUnits
+            is InsertionTarget.RowEnd -> topRowUnits
+            is InsertionTarget.NewBottomRow -> layout.items.maxOfOrNull {
+                it.placement.rowUnits + it.placement.rowSpanUnits
+            } ?: layout.rowUnitCount
+            is InsertionTarget.EmptyArea -> placement.rowUnits
+        }
+    }
+
+    private fun InsertionTarget.baseColumnUnitsForRow(layout: KeyboardLayout, rowUnits: Int): Int {
+        return when (this) {
+            is InsertionTarget.BeforeItem -> layout.items.firstOrNull { it.id == itemId }?.placement?.columnUnits ?: 0
+            is InsertionTarget.AfterItem -> layout.items.firstOrNull { it.id == itemId }?.placement?.let {
+                it.columnUnits + it.columnSpanUnits
+            } ?: 0
+            is InsertionTarget.RowEnd -> layout.items
+                .filter { item ->
+                    val p = item.placement
+                    p.rowUnits <= rowUnits && rowUnits < p.rowUnits + p.rowSpanUnits
+                }
+                .maxOfOrNull { it.placement.columnUnits + it.placement.columnSpanUnits }
+                ?: 0
+            is InsertionTarget.NewBottomRow -> columnUnits.coerceAtLeast(0)
+            is InsertionTarget.EmptyArea -> placement.columnUnits
+            is InsertionTarget.AboveRowGroup,
+            is InsertionTarget.BelowRowGroup -> 0
+        }
     }
 
     private fun operationForMode(mode: KeyboardEditorMode, span: GridSpan): PlacementOperation? {
@@ -1249,8 +1334,16 @@ class KeyboardEditorViewModel @Inject constructor(
             item.id.startsWith("qwerty_") ||
                     (item is KeyItem && item.keyData.keyId?.startsWith("qwerty_") == true)
         }
-        val minimumColumnUnits = if (isQwertyFamilyLayout) qwertyTemplate.columnUnitCount else 1
-        val minimumRowUnits = if (isQwertyFamilyLayout) qwertyTemplate.rowUnitCount else 1
+        val minimumColumnUnits = when {
+            isQwertyFamilyLayout -> qwertyTemplate.columnUnitCount
+            isFlexiblePlacementLayout -> columnUnitCount
+            else -> 1
+        }
+        val minimumRowUnits = when {
+            isQwertyFamilyLayout -> qwertyTemplate.rowUnitCount
+            isFlexiblePlacementLayout -> rowUnitCount
+            else -> 1
+        }
         val newColumnUnitCount = maxOf(maxRight, minimumColumnUnits, 1)
         val newRowUnitCount = maxOf(maxBottom, minimumRowUnits, 1)
         return copy(

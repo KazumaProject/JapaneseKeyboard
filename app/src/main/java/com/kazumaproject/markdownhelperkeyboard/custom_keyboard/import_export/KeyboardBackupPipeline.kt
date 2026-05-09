@@ -160,6 +160,8 @@ object KeyboardBackupNormalizer {
 
         val rawKeys = dto.keysWithFlicks ?: emptyList()
         val rawSpacers = dto.spacers ?: emptyList()
+        val isFlexiblePlacementLayout = layoutDto.isFlexiblePlacementLayout
+            ?: hasFlexiblePlacementData(rawKeys, rawSpacers)
         val derivedRowCount = deriveRowCount(rawKeys, rawSpacers)
         val derivedColumnCount = deriveColumnCount(rawKeys, rawSpacers)
         val rowCount = normalizeLayoutDimension(
@@ -193,7 +195,8 @@ object KeyboardBackupNormalizer {
             isDirectMode = layoutDto.isDirectMode ?: false,
             createdAt = layoutDto.createdAt?.takeIf { it > 0 } ?: System.currentTimeMillis(),
             sortOrder = 0,
-            stableId = generatedStableId ?: UUID.randomUUID().toString()
+            stableId = generatedStableId ?: UUID.randomUUID().toString(),
+            isFlexiblePlacementLayout = isFlexiblePlacementLayout
         )
 
         val normalizedKeys = normalizeKeys(
@@ -611,6 +614,37 @@ object KeyboardBackupNormalizer {
             if (columnUnits < 0 || columnSpanUnits <= 0) 0 else ceil((columnUnits + columnSpanUnits) / 2.0).toInt()
         } ?: 0
         return maxOf(keyColumns, spacerColumns)
+    }
+
+    private fun hasFlexiblePlacementData(
+        keys: List<KeyWithFlicksExportDto>,
+        spacers: List<SpacerDefinitionDto>
+    ): Boolean {
+        val alphabetPrefixes = listOf("qwerty_", "azerty_", "dvorak_", "colemak_")
+        if (spacers.any { spacer ->
+                alphabetPrefixes.any { prefix -> spacer.itemIdentifier?.startsWith(prefix) == true }
+            }
+        ) {
+            return true
+        }
+        return keys.any { keyWithFlicks ->
+            val key = keyWithFlicks.key ?: return@any false
+            if (alphabetPrefixes.any { prefix -> key.keyIdentifier?.startsWith(prefix) == true }) {
+                return@any true
+            }
+            val row = key.row ?: 0
+            val column = key.column ?: 0
+            val rowSpan = key.rowSpan ?: 1
+            val colSpan = key.colSpan ?: 1
+            val rowUnits = key.rowUnits ?: return@any false
+            val columnUnits = key.columnUnits ?: return@any false
+            val rowSpanUnits = key.rowSpanUnits ?: return@any false
+            val columnSpanUnits = key.columnSpanUnits ?: return@any false
+            rowUnits != row * 2 ||
+                    columnUnits != column * 2 ||
+                    rowSpanUnits != rowSpan * 2 ||
+                    columnSpanUnits != colSpan * 2
+        }
     }
 
     private fun remapKeyAction(
