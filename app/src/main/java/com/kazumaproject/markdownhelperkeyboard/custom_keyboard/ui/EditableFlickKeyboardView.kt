@@ -31,9 +31,14 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import com.kazumaproject.custom_keyboard.view.AutoSizeButton
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.canonicalLayoutForEditor
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.columnDeleteSpecs
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.displayPlacement
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.editorGridBounds
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTargetMapper
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.PlacementCursor
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.rowDeleteSpecs
 import com.google.android.material.R as MaterialR
 
 @SuppressLint("ClickableViewAccessibility")
@@ -77,15 +82,13 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         previewMovedItemIds: Set<String> = emptySet()
     ) {
         this.removeAllViews()
-        this.currentLayout = layout
+        val displayLayout = layout.canonicalLayoutForEditor(placementCursor)
+        this.currentLayout = displayLayout
         this.placementMode = placementMode
 
-        // ▼▼▼ 削除ボタン用に列と行を1つずつ増やす ▼▼▼
-        val keyboardColumnUnits = if (layout.items.isNotEmpty()) layout.columnUnitCount else layout.columnCount
-        val keyboardRowUnits = if (layout.items.isNotEmpty()) layout.rowUnitCount else layout.rowCount
-        this.columnCount = keyboardColumnUnits + 2
-        this.rowCount = keyboardRowUnits + 2
-        // ▲▲▲ 削除ボタン用に列と行を1つずつ増やす ▲▲▲
+        val editorBounds = displayLayout.editorGridBounds()
+        this.columnCount = editorBounds.gridColumnCount
+        this.rowCount = editorBounds.gridRowCount
 
         this.isFocusable = false
 
@@ -93,15 +96,15 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         setPlacementTouchListener()
 
         // キーの描画
-        if (layout.items.isNotEmpty()) {
-            layout.items.forEach { item ->
+        if (displayLayout.items.isNotEmpty()) {
+            displayLayout.items.forEach { item ->
                 when (item) {
                     is KeyItem -> addKeyItem(item, dragListener, selectedItemId, previewInsertedItemId, previewMovedItemIds)
                     is SpacerItem -> addSpacerItem(item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
                 }
             }
         } else {
-            layout.keys.forEach { keyData ->
+            displayLayout.keys.forEach { keyData ->
                 addKeyItem(
                     KeyItem(
                         id = keyData.keyId ?: "legacy_${keyData.row}_${keyData.column}_${keyData.label}",
@@ -121,15 +124,13 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
         }
 
-        addInsertionCursor(layout, placementCursor)
+        addInsertionCursor(displayLayout, placementCursor)
 
-        // ▼▼▼ ここから削除ボタンの描画を追加 ▼▼▼
-        // 行削除ボタンの描画
-        for (i in 0 until layout.rowCount) {
+        editorBounds.rowDeleteSpecs(displayLayout.rowCount).forEachIndexed { i, rowSpecBounds ->
             val deleteButton = createDeleteButton { listener?.onRowDeleted(i) }
             val params = LayoutParams().apply {
-                rowSpec = spec(i * 2 + 2, 2, FILL, 1f) // キーの行に対応 (+2 units はオフセット)
-                columnSpec = spec(0, 2, FILL, 0.5f)  // 最初の列(インデックス0)に配置
+                rowSpec = spec(rowSpecBounds.startUnits, rowSpecBounds.spanUnits, FILL, 1f)
+                columnSpec = spec(0, editorBounds.columnOffsetUnits, FILL, 0.5f)
                 width = 0
                 height = 0
                 setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
@@ -138,12 +139,11 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             this.addView(deleteButton)
         }
 
-        // 列削除ボタンの描画
-        for (i in 0 until layout.columnCount) {
+        editorBounds.columnDeleteSpecs(displayLayout.columnCount).forEachIndexed { i, columnSpecBounds ->
             val deleteButton = createDeleteButton { listener?.onColumnDeleted(i) }
             val params = LayoutParams().apply {
-                rowSpec = spec(0, 2, FILL, 0.5f) // 最初の行(インデックス0)に配置
-                columnSpec = spec(i * 2 + 2, 2, FILL, 1f) // キーの列に対応 (+2 units はオフセット)
+                rowSpec = spec(0, editorBounds.rowOffsetUnits, FILL, 0.5f)
+                columnSpec = spec(columnSpecBounds.startUnits, columnSpecBounds.spanUnits, FILL, 1f)
                 width = 0
                 height = 0
                 setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
@@ -151,7 +151,6 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             deleteButton.layoutParams = params
             this.addView(deleteButton)
         }
-        // ▲▲▲ ここまで削除ボタンの描画を追加 ▲▲▲
     }
 
     private fun addKeyItem(
@@ -341,19 +340,20 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
 
     private fun mapTarget(x: Float, y: Float): InsertionTarget? {
         val layout = currentLayout ?: return null
-        val totalColumnUnits = layout.columnUnitCount + 2
-        val totalRowUnits = layout.rowUnitCount + 2
+        val editorBounds = layout.editorGridBounds()
+        val totalColumnUnits = editorBounds.gridColumnCount
+        val totalRowUnits = editorBounds.gridRowCount
         if (totalColumnUnits <= 0 || totalRowUnits <= 0) return null
         val unitWidth = width.toFloat() / totalColumnUnits
         val unitHeight = height.toFloat() / totalRowUnits
-        val editableX = x - unitWidth * 2
-        val editableY = y - unitHeight * 2
+        val editableX = x - unitWidth * editorBounds.columnOffsetUnits
+        val editableY = y - unitHeight * editorBounds.rowOffsetUnits
         return insertionTargetMapper.mapPointer(
             layout = layout,
             xPx = editableX,
             yPx = editableY,
-            widthPx = unitWidth * layout.columnUnitCount,
-            heightPx = unitHeight * layout.rowUnitCount
+            widthPx = unitWidth * editorBounds.keyboardColumnUnitCount,
+            heightPx = unitHeight * editorBounds.keyboardRowUnitCount
         )
     }
 
@@ -372,72 +372,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
 
     private fun addInsertionCursor(layout: KeyboardLayout, placementCursor: PlacementCursor?) {
         val cursor = placementCursor ?: return
-        val cursorPlacement = when (val target = cursor.target) {
-            is InsertionTarget.BeforeItem -> {
-                val item = layout.items.firstOrNull { it.id == target.itemId } ?: return
-                GridPlacement(
-                    rowUnits = item.placement.rowUnits,
-                    columnUnits = item.placement.columnUnits,
-                    rowSpanUnits = item.placement.rowSpanUnits,
-                    columnSpanUnits = 1
-                )
-            }
-            is InsertionTarget.AfterItem -> {
-                val item = layout.items.firstOrNull { it.id == target.itemId } ?: return
-                GridPlacement(
-                    rowUnits = item.placement.rowUnits,
-                    columnUnits = (item.placement.columnUnits + item.placement.columnSpanUnits)
-                        .coerceAtMost(maxOf(0, layout.columnUnitCount - 1)),
-                    rowSpanUnits = item.placement.rowSpanUnits,
-                    columnSpanUnits = 1
-                )
-            }
-            is InsertionTarget.RowEnd -> {
-                val rowItems = layout.items.filter { it.placement.rowUnits == target.topRowUnits }
-                GridPlacement(
-                    rowUnits = target.topRowUnits,
-                    columnUnits = rowItems.maxOfOrNull { it.placement.columnUnits + it.placement.columnSpanUnits }
-                        ?.coerceAtMost(maxOf(0, layout.columnUnitCount - 1))
-                        ?: 0,
-                    rowSpanUnits = rowItems.maxOfOrNull { it.placement.rowSpanUnits } ?: cursor.span.rowSpanUnits,
-                    columnSpanUnits = 1
-                )
-            }
-            is InsertionTarget.AboveRowGroup -> {
-                GridPlacement(
-                    rowUnits = target.topRowUnits,
-                    columnUnits = 0,
-                    rowSpanUnits = 1,
-                    columnSpanUnits = layout.columnUnitCount
-                )
-            }
-            is InsertionTarget.BelowRowGroup -> {
-                val bottom = layout.items
-                    .filter { it.placement.rowUnits == target.topRowUnits }
-                    .maxOfOrNull { it.placement.rowUnits + it.placement.rowSpanUnits }
-                    ?: target.topRowUnits
-                GridPlacement(
-                    rowUnits = bottom,
-                    columnUnits = 0,
-                    rowSpanUnits = 1,
-                    columnSpanUnits = layout.columnUnitCount
-                )
-            }
-            is InsertionTarget.NewBottomRow -> {
-                GridPlacement(
-                    rowUnits = maxOf(0, layout.rowUnitCount - 1),
-                    columnUnits = 0,
-                    rowSpanUnits = 1,
-                    columnSpanUnits = maxOf(layout.columnUnitCount, target.columnUnits + cursor.span.columnSpanUnits)
-                )
-            }
-            is InsertionTarget.EmptyArea -> {
-                target.placement.copy(
-                    rowSpanUnits = cursor.span.rowSpanUnits,
-                    columnSpanUnits = cursor.span.columnSpanUnits
-                )
-            }
-        }
+        val cursorPlacement = cursor.displayPlacement(layout) ?: return
         val cursorView = TextView(context).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE

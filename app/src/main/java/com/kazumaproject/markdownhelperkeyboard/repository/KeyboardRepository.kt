@@ -17,6 +17,7 @@ import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.toKeyItem
 import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
+import com.kazumaproject.custom_keyboard.data.withCanonicalFlexibleBounds
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -329,11 +330,16 @@ class KeyboardRepository @Inject constructor(
      */
     suspend fun saveLayout(layout: KeyboardLayout, name: String, id: Long?): Long {
         Timber.d("saveLayout: id=%s name=%s", id, name)
+        val layoutToSave = if (layout.usesFlexiblePlacement()) {
+            layout.withCanonicalFlexibleBounds()
+        } else {
+            layout
+        }
 
         return if (id == null || id <= 0L) {
-            createNewLayoutInternal(layout, name)
+            createNewLayoutInternal(layoutToSave, name)
         } else {
-            updateExistingLayoutInternal(id, layout, name)
+            updateExistingLayoutInternal(id, layoutToSave, name)
         }
     }
 
@@ -912,7 +918,7 @@ class KeyboardRepository @Inject constructor(
         val columnUnitCount = maxOf(derivedColumnUnitCount, dbLayout.layout.columnCount * 2)
         val rowUnitCount = maxOf(derivedRowUnitCount, dbLayout.layout.rowCount * 2)
 
-        return KeyboardLayout(
+        val restoredLayout = KeyboardLayout(
             keys = keys,
             flickKeyMaps = flickMaps,
             columnCount = dbLayout.layout.columnCount,
@@ -935,6 +941,11 @@ class KeyboardRepository @Inject constructor(
             columnUnitCount = columnUnitCount,
             rowUnitCount = rowUnitCount
         )
+        return if (restoredLayout.usesFlexiblePlacement()) {
+            restoredLayout.withCanonicalFlexibleBounds()
+        } else {
+            restoredLayout
+        }
     }
 
     private fun drawableResIdForAction(action: KeyAction): Int? {

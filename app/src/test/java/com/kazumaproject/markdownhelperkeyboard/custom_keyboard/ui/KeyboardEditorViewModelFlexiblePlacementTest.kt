@@ -9,6 +9,7 @@ import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
@@ -204,6 +205,16 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         assertPreviewOnly { it.updatePlacementCursorFromPointer(InsertionTarget.BeforeItem("qwerty_key_q")) }
 
     @Test
+    fun viewModel_updatePlacementCursorFromPointer_previewLayoutContainsAllItems() {
+        val vm = qwertyViewModel()
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.updatePlacementCursorFromPointer(InsertionTarget.RowEnd(0))
+        val preview = vm.uiState.value.previewLayout
+        assertNotNull(preview)
+        assertValidFlexibleLayout(preview!!)
+    }
+
+    @Test
     fun viewModel_holdPlacementCursorFromTap_doesNotCommit() =
         assertPreviewOnly { it.holdPlacementCursorFromTap(InsertionTarget.BeforeItem("qwerty_key_q")) }
 
@@ -265,6 +276,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         vm.holdPlacementCursorFromTap(InsertionTarget.NewBottomRow(0))
         vm.confirmPlacementPreview()
         assertTrue(vm.uiState.value.layout.rowUnitCount > 8)
+        assertValidFlexibleLayout(vm.uiState.value.layout)
     }
 
     @Test
@@ -283,6 +295,56 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         vm.holdPlacementCursorFromTap(InsertionTarget.RowEnd(0))
         vm.confirmPlacementPreview()
         assertNull(vm.uiState.value.selectedKeyIdentifier)
+    }
+
+    @Test
+    fun viewModel_canAddKeyWithoutPreAddingRowsOrColumns() {
+        val vm = qwertyViewModel()
+        val beforeRows = vm.uiState.value.layout.rowUnitCount
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(beforeRows, 21, 2, 2)))
+        assertNotNull(vm.uiState.value.previewLayout)
+        assertTrue(vm.confirmPlacementPreview())
+        assertValidFlexibleLayout(vm.uiState.value.layout)
+        assertTrue(vm.uiState.value.layout.items.filterIsInstance<KeyItem>().any { it.id.startsWith("key_") })
+    }
+
+    @Test
+    fun viewModel_canAddSpacerWithoutPreAddingRowsOrColumns() {
+        val vm = qwertyViewModel()
+        vm.enterSpacerPlacementMode(GridSpan(1, 1))
+        vm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(9, 22, 1, 1)))
+        assertNotNull(vm.uiState.value.previewLayout)
+        assertTrue(vm.confirmPlacementPreview())
+        assertValidFlexibleLayout(vm.uiState.value.layout)
+        assertTrue(vm.uiState.value.layout.items.filterIsInstance<SpacerItem>().any { it.id.startsWith("spacer_") })
+    }
+
+    @Test
+    fun viewModel_previewTargetForUncommittedItemFallsBackSafely() {
+        val vm = qwertyViewModel()
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.RowEnd(0))
+        val previewId = vm.uiState.value.previewInsertedItemId
+        assertNotNull(previewId)
+        vm.updatePlacementCursorFromPointer(InsertionTarget.AfterItem(previewId!!))
+        assertNotNull(vm.uiState.value.previewLayout)
+        assertFalse(vm.uiState.value.placementCursor!!.target is InsertionTarget.AfterItem &&
+                (vm.uiState.value.placementCursor!!.target as InsertionTarget.AfterItem).itemId == previewId)
+        assertValidFlexibleLayout(vm.uiState.value.previewLayout!!)
+    }
+
+    @Test
+    fun viewModel_removeAndDeleteRowColumnNeverPublishInvalidFlexibleLayout() {
+        val vm = qwertyViewModel()
+        vm.removeRow()
+        assertValidFlexibleLayout(vm.uiState.value.layout)
+        vm.removeColumn()
+        assertValidFlexibleLayout(vm.uiState.value.layout)
+        vm.deleteRowAt(0)
+        assertValidFlexibleLayout(vm.uiState.value.layout)
+        vm.deleteColumnAt(0)
+        assertValidFlexibleLayout(vm.uiState.value.layout)
     }
 
     @Test
@@ -369,5 +431,11 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         assertEquals(before, vm.uiState.value.layout)
         assertNotNull(vm.uiState.value.previewLayout)
         assertNotNull(vm.uiState.value.placementCursor)
+    }
+
+    private fun assertValidFlexibleLayout(layout: KeyboardLayout) {
+        assertEquals((layout.rowUnitCount + 1) / 2, layout.rowCount)
+        assertEquals((layout.columnUnitCount + 1) / 2, layout.columnCount)
+        assertFalse(hasPlacementIssues(layout.items, layout.rowUnitCount, layout.columnUnitCount))
     }
 }

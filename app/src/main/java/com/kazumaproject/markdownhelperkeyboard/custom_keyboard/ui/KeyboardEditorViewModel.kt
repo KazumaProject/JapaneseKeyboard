@@ -18,6 +18,7 @@ import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
 import com.kazumaproject.custom_keyboard.data.swapKeyPlacements
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
+import com.kazumaproject.custom_keyboard.data.withCanonicalFlexibleBounds
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
@@ -174,7 +175,7 @@ class KeyboardEditorViewModel @Inject constructor(
             val layoutToSave = currentState.layout.copy(
                 isRomaji = currentState.isRomaji,
                 isDirectMode = currentState.isDirectMode
-            )
+            ).canonicalizeIfFlexible()
 
             val saveResult = runCatching {
                 repository.saveLayout(
@@ -211,12 +212,9 @@ class KeyboardEditorViewModel @Inject constructor(
             val layout = currentState.layout
             val newRowCount = layout.rowCount + 1
             if (layout.usesFlexiblePlacement()) {
-                return@update currentState.copy(
-                    layout = layout.copy(
-                        rowCount = newRowCount,
-                        rowUnitCount = layout.rowUnitCount + 2
-                    )
-                )
+                val expanded = layout.copy(rowUnitCount = layout.rowUnitCount + 2)
+                    .withCanonicalFlexibleBounds(minimumRowUnits = layout.rowUnitCount + 2)
+                return@update currentState.copy(layout = expanded)
             }
             val newKeys = layout.keys.toMutableList()
             for (col in 0 until layout.columnCount) {
@@ -239,12 +237,10 @@ class KeyboardEditorViewModel @Inject constructor(
                     rowUnitCount = newRowUnitCount,
                     columnUnitCount = layout.columnUnitCount
                 )
-                return@update currentState.copy(
-                    layout = layout.copy(
-                        rowCount = newRowCount,
-                        rowUnitCount = newRowUnitCount
-                    ).copyWithItems(newItems)
-                )
+                val newLayout = layout.copy(rowUnitCount = newRowUnitCount)
+                    .copyWithItems(newItems)
+                    .withCanonicalFlexibleBounds(minimumRowUnits = newRowUnitCount)
+                return@update currentState.copy(layout = newLayout.takeIfValidFlexible() ?: layout)
             }
 
             val updatedKeys = layout.keys.mapNotNull { key ->
@@ -268,12 +264,9 @@ class KeyboardEditorViewModel @Inject constructor(
             val layout = currentState.layout
             val newColumnCount = layout.columnCount + 1
             if (layout.usesFlexiblePlacement()) {
-                return@update currentState.copy(
-                    layout = layout.copy(
-                        columnCount = newColumnCount,
-                        columnUnitCount = layout.columnUnitCount + 2
-                    )
-                )
+                val expanded = layout.copy(columnUnitCount = layout.columnUnitCount + 2)
+                    .withCanonicalFlexibleBounds(minimumColumnUnits = layout.columnUnitCount + 2)
+                return@update currentState.copy(layout = expanded)
             }
             val newKeys = layout.keys.toMutableList()
             for (row in 0 until layout.rowCount) {
@@ -299,12 +292,10 @@ class KeyboardEditorViewModel @Inject constructor(
                     rowUnitCount = layout.rowUnitCount,
                     columnUnitCount = newColumnUnitCount
                 )
-                return@update currentState.copy(
-                    layout = layout.copy(
-                        columnCount = newColumnCount,
-                        columnUnitCount = newColumnUnitCount
-                    ).copyWithItems(newItems)
-                )
+                val newLayout = layout.copy(columnUnitCount = newColumnUnitCount)
+                    .copyWithItems(newItems)
+                    .withCanonicalFlexibleBounds(minimumColumnUnits = newColumnUnitCount)
+                return@update currentState.copy(layout = newLayout.takeIfValidFlexible() ?: layout)
             }
 
             val updatedKeys = layout.keys.mapNotNull { key ->
@@ -337,12 +328,11 @@ class KeyboardEditorViewModel @Inject constructor(
                     isRow = true
                 )
                 val newRowCount = layout.rowCount - 1
-                return@update currentState.copy(
-                    layout = layout.copy(
-                        rowCount = newRowCount,
-                        rowUnitCount = newRowCount * 2
-                    ).copyWithItems(newItems)
-                )
+                val newRowUnitCount = newRowCount * 2
+                val newLayout = layout.copy(rowUnitCount = newRowUnitCount)
+                    .copyWithItems(newItems)
+                    .withCanonicalFlexibleBounds(minimumRowUnits = newRowUnitCount)
+                return@update currentState.copy(layout = newLayout.takeIfValidFlexible() ?: layout)
             }
 
             val updatedKeys = layout.keys.mapNotNull { key ->
@@ -379,12 +369,11 @@ class KeyboardEditorViewModel @Inject constructor(
                     isRow = false
                 )
                 val newColumnCount = layout.columnCount - 1
-                return@update currentState.copy(
-                    layout = layout.copy(
-                        columnCount = newColumnCount,
-                        columnUnitCount = newColumnCount * 2
-                    ).copyWithItems(newItems)
-                )
+                val newColumnUnitCount = newColumnCount * 2
+                val newLayout = layout.copy(columnUnitCount = newColumnUnitCount)
+                    .copyWithItems(newItems)
+                    .withCanonicalFlexibleBounds(minimumColumnUnits = newColumnUnitCount)
+                return@update currentState.copy(layout = newLayout.takeIfValidFlexible() ?: layout)
             }
 
             val updatedKeys = layout.keys.mapNotNull { key ->
@@ -529,7 +518,7 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun confirmPlacementPreview(): Boolean {
         val state = _uiState.value
-        val preview = state.previewLayout ?: return false
+        val preview = state.previewLayout?.canonicalizeIfFlexible()?.takeIfValidFlexible() ?: return false
         _uiState.value = state.copy(
             layout = preview,
             editorMode = KeyboardEditorMode.Normal,
@@ -589,7 +578,7 @@ class KeyboardEditorViewModel @Inject constructor(
             it.id == selectedId || (it is KeyItem && it.keyData.keyId == selectedId)
         }
         if (updatedItems.size == layout.items.size) return false
-        val updatedLayout = layout.copyWithItems(updatedItems).copy(
+        val updatedLayout = layout.copyWithItems(updatedItems).canonicalizeIfFlexible().copy(
             flickKeyMaps = layout.flickKeyMaps - removedKeyIds,
             circularFlickKeyMaps = layout.circularFlickKeyMaps - removedKeyIds,
             twoStepFlickKeyMaps = layout.twoStepFlickKeyMaps - removedKeyIds,
@@ -606,8 +595,9 @@ class KeyboardEditorViewModel @Inject constructor(
         val mode = state.editorMode
         if (mode == KeyboardEditorMode.Normal) return
         if (!state.layout.usesFlexiblePlacement()) return
+        val safeTarget = sanitizeInsertionTarget(state, target)
         val cursor = PlacementCursor(
-            target = target,
+            target = safeTarget,
             span = mode.span(),
             policy = mode.policy(),
             source = source
@@ -616,12 +606,13 @@ class KeyboardEditorViewModel @Inject constructor(
         val result = placementSolver.solve(
             committedLayout = state.layout,
             operation = operation,
-            target = cursor.target,
+            target = safeTarget,
             policy = cursor.policy
         )
+        val preview = result.layout.canonicalizeIfFlexible().takeIfValidFlexible() ?: return
         _uiState.value = state.copy(
             placementCursor = cursor,
-            previewLayout = result.layout,
+            previewLayout = preview,
             previewMovedItemIds = result.movedItemIds,
             previewInsertedItemId = result.insertedItemId,
             previewStrategy = result.strategy,
@@ -641,6 +632,47 @@ class KeyboardEditorViewModel @Inject constructor(
             is KeyboardEditorMode.PlacingSpaceKey -> PlacementOperation.Insert(createSpaceKey(span))
             is KeyboardEditorMode.MovingExistingItem -> PlacementOperation.MoveExisting(mode.itemId)
         }
+    }
+
+    private fun sanitizeInsertionTarget(
+        state: EditorUiState,
+        target: InsertionTarget
+    ): InsertionTarget {
+        val committedItemIds = state.layout.items.map { it.id }.toSet()
+        return when (target) {
+            is InsertionTarget.BeforeItem -> {
+                if (target.itemId in committedItemIds) {
+                    target
+                } else {
+                    state.previewLayout
+                        ?.items
+                        ?.firstOrNull { it.id == target.itemId }
+                        ?.let { InsertionTarget.EmptyArea(it.placement) }
+                        ?: fallbackInsertionTarget(state.layout)
+                }
+            }
+
+            is InsertionTarget.AfterItem -> {
+                if (target.itemId in committedItemIds) {
+                    target
+                } else {
+                    state.previewLayout
+                        ?.items
+                        ?.firstOrNull { it.id == target.itemId }
+                        ?.let { InsertionTarget.EmptyArea(it.placement) }
+                        ?: fallbackInsertionTarget(state.layout)
+                }
+            }
+
+            else -> target
+        }
+    }
+
+    private fun fallbackInsertionTarget(layout: KeyboardLayout): InsertionTarget {
+        val lastRow = layout.items.maxOfOrNull { it.placement.rowUnits } ?: return InsertionTarget.EmptyArea(
+            GridPlacement(0, 0, 1, 1)
+        )
+        return InsertionTarget.RowEnd(lastRow)
     }
 
     private fun createPlacementKey(span: GridSpan): KeyItem {
@@ -780,11 +812,12 @@ class KeyboardEditorViewModel @Inject constructor(
                     }
                 }
 
-                if (hasPlacementIssues(updatedItems, layout.rowUnitCount, layout.columnUnitCount)) {
+                val canonicalLayout = layout.copyWithItems(updatedItems).withCanonicalFlexibleBounds()
+                if (hasPlacementIssues(updatedItems, canonicalLayout.rowUnitCount, canonicalLayout.columnUnitCount)) {
                     return@update currentState
                 }
 
-                val newLayout = layout.copyWithItems(updatedItems).copy(
+                val newLayout = canonicalLayout.copy(
                     flickKeyMaps = finalFlickMaps,
                     circularFlickKeyMaps = finalCircularFlickMaps,
                     twoStepFlickKeyMaps = finalTwoStepMaps,
@@ -931,8 +964,8 @@ class KeyboardEditorViewModel @Inject constructor(
             )
         )
         val updatedItems = layout.items + spacer
-        if (!isValidPlacementUpdate(layout, updatedItems)) return false
-        _uiState.value = currentState.copy(layout = layout.copyWithItems(updatedItems))
+        val updatedLayout = layout.layoutWithValidFlexibleItems(updatedItems) ?: return false
+        _uiState.value = currentState.copy(layout = updatedLayout)
         return true
     }
 
@@ -948,8 +981,9 @@ class KeyboardEditorViewModel @Inject constructor(
                 item
             }
         }
-        if (!found || !isValidPlacementUpdate(layout, updatedItems)) return false
-        _uiState.value = currentState.copy(layout = layout.copyWithItems(updatedItems))
+        val updatedLayout = if (found) layout.layoutWithValidFlexibleItems(updatedItems) else null
+        if (updatedLayout == null) return false
+        _uiState.value = currentState.copy(layout = updatedLayout)
         return true
     }
 
@@ -958,18 +992,24 @@ class KeyboardEditorViewModel @Inject constructor(
         val layout = currentState.layout
         val updatedItems = layout.items.filterNot { it is SpacerItem && it.id == spacerId }
         if (updatedItems.size == layout.items.size) return false
-        _uiState.value = currentState.copy(layout = layout.copyWithItems(updatedItems))
+        _uiState.value = currentState.copy(layout = layout.copyWithItems(updatedItems).canonicalizeIfFlexible())
         return true
     }
 
-    private fun isValidPlacementUpdate(
-        layout: KeyboardLayout,
+    private fun KeyboardLayout.layoutWithValidFlexibleItems(
+        items: List<KeyboardLayoutItem>
+    ): KeyboardLayout? {
+        val updatedLayout = copyWithItems(items).withCanonicalFlexibleBounds()
+        return if (updatedLayout.isValidPlacementUpdate(items)) updatedLayout else null
+    }
+
+    private fun KeyboardLayout.isValidPlacementUpdate(
         items: List<KeyboardLayoutItem>
     ): Boolean {
         return !hasPlacementIssues(
             items = items,
-            rowUnitCount = layout.rowUnitCount,
-            columnUnitCount = layout.columnUnitCount
+            rowUnitCount = rowUnitCount,
+            columnUnitCount = columnUnitCount
         )
     }
 
@@ -1081,6 +1121,14 @@ class KeyboardEditorViewModel @Inject constructor(
         }
     }
 
+    private fun KeyboardLayout.canonicalizeIfFlexible(): KeyboardLayout =
+        if (usesFlexiblePlacement()) withCanonicalFlexibleBounds() else this
+
+    private fun KeyboardLayout.takeIfValidFlexible(): KeyboardLayout? {
+        if (!usesFlexiblePlacement()) return this
+        return takeUnless { hasPlacementIssues(items, rowUnitCount, columnUnitCount) }
+    }
+
     fun updateIsRomaji(isRomaji: Boolean) {
         _uiState.update { it.copy(isRomaji = isRomaji) }
     }
@@ -1156,7 +1204,7 @@ class KeyboardEditorViewModel @Inject constructor(
                     }
                 }
             }
-            templateLayout.copyWithItems(updatedItems)
+            templateLayout.copyWithItems(updatedItems).withCanonicalFlexibleBounds()
         } else {
             templateLayout.copyWithKeys(keysWithEnsuredIds)
         }

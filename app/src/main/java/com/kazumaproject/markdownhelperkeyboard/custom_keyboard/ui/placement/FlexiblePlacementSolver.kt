@@ -8,6 +8,7 @@ import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
 import com.kazumaproject.custom_keyboard.data.isPlacementOverlapping
+import com.kazumaproject.custom_keyboard.data.withCanonicalFlexibleBounds
 import kotlin.math.ceil
 
 sealed interface PlacementOperation {
@@ -30,18 +31,19 @@ class FlexiblePlacementSolver {
         target: InsertionTarget,
         policy: InsertionPolicy = InsertionPolicy.Auto2D
     ): PlacementSolveResult {
-        require(committedLayout.items.all { it.placement.rowSpanUnits > 0 && it.placement.columnSpanUnits > 0 }) {
+        val canonicalCommittedLayout = committedLayout.withCanonicalFlexibleBounds()
+        require(canonicalCommittedLayout.items.all { it.placement.rowSpanUnits > 0 && it.placement.columnSpanUnits > 0 }) {
             "Broken layout contains non-positive item span."
         }
-        val originalById = committedLayout.items.associateBy { it.id }
+        val originalById = canonicalCommittedLayout.items.associateBy { it.id }
         val movingItem = when (operation) {
             is PlacementOperation.Insert -> operation.candidate
             is PlacementOperation.MoveExisting -> originalById[operation.itemId]
                 ?: error("Cannot move missing item '${operation.itemId}'.")
         }
         val baseItems = when (operation) {
-            is PlacementOperation.Insert -> committedLayout.items
-            is PlacementOperation.MoveExisting -> committedLayout.items.filterNot { it.id == operation.itemId }
+            is PlacementOperation.Insert -> canonicalCommittedLayout.items
+            is PlacementOperation.MoveExisting -> canonicalCommittedLayout.items.filterNot { it.id == operation.itemId }
         }
         val span = GridSpan(
             rowSpanUnits = movingItem.placement.rowSpanUnits,
@@ -52,28 +54,17 @@ class FlexiblePlacementSolver {
         }
 
         val constructed = constructItems(baseItems, movingItem, span, target, policy)
-        val expandedColumnUnitCount = maxOf(
-            committedLayout.columnUnitCount,
-            constructed.items.maxOfOrNull { it.placement.columnUnits + it.placement.columnSpanUnits } ?: 0
-        )
-        val expandedRowUnitCount = maxOf(
-            committedLayout.rowUnitCount,
-            constructed.items.maxOfOrNull { it.placement.rowUnits + it.placement.rowSpanUnits } ?: 0
-        )
         val normalizedItems = constructed.items
             .map { it.withPlacementAndApproximateKeyData(it.placement) }
             .sortedWith(compareBy({ it.placement.rowUnits }, { it.placement.columnUnits }, { it.id }))
 
-        check(!hasPlacementIssues(normalizedItems, expandedRowUnitCount, expandedColumnUnitCount)) {
+        val layout = canonicalCommittedLayout
+            .copyWithItems(normalizedItems)
+            .withCanonicalFlexibleBounds()
+
+        check(!hasPlacementIssues(normalizedItems, layout.rowUnitCount, layout.columnUnitCount)) {
             "Constructed flexible placement failed internal consistency check."
         }
-
-        val layout = committedLayout.copy(
-            columnUnitCount = expandedColumnUnitCount,
-            rowUnitCount = expandedRowUnitCount,
-            columnCount = ceil(expandedColumnUnitCount / 2.0).toInt(),
-            rowCount = ceil(expandedRowUnitCount / 2.0).toInt()
-        ).copyWithItems(normalizedItems)
 
         val moved = normalizedItems
             .filter { item -> originalById[item.id]?.placement != null && originalById[item.id]?.placement != item.placement }
