@@ -65,10 +65,14 @@ data class EditorUiState(
     val previewInsertedItemId: String? = null,
     val previewStrategy: PlacementStrategy? = null,
     val previewStatus: PlacementPreviewStatus = PlacementPreviewStatus.None,
-    val selectedItemId: String? = null
+    val selectedItemId: String? = null,
+    val insertionPolicy: InsertionPolicy = InsertionPolicy.PreferHorizontal
 )
 
 data class LayoutTemplate(val name: String, val layout: KeyboardLayout)
+
+fun shouldShowKeyboardEditorStructuralControls(layout: KeyboardLayout): Boolean =
+    !layout.usesFlexiblePlacement()
 
 @HiltViewModel
 class KeyboardEditorViewModel @Inject constructor(
@@ -205,6 +209,10 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun updateName(name: String) {
         _uiState.update { it.copy(name = name) }
+    }
+
+    fun updateInsertionPolicy(policy: InsertionPolicy) {
+        _uiState.update { it.copy(insertionPolicy = policy) }
     }
 
     fun addRow() {
@@ -409,7 +417,7 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun enterNewKeyPlacementMode(
         span: GridSpan,
-        policy: InsertionPolicy = InsertionPolicy.Auto2D
+        policy: InsertionPolicy = _uiState.value.insertionPolicy
     ) {
         _uiState.update {
             it.copy(
@@ -434,7 +442,7 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun enterSpacerPlacementMode(
         span: GridSpan,
-        policy: InsertionPolicy = InsertionPolicy.Auto2D
+        policy: InsertionPolicy = _uiState.value.insertionPolicy
     ) {
         _uiState.update {
             it.copy(
@@ -451,7 +459,7 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun enterSpacePlacementMode(
         span: GridSpan = defaultSpaceSpan(),
-        policy: InsertionPolicy = InsertionPolicy.Auto2D
+        policy: InsertionPolicy = _uiState.value.insertionPolicy
     ) {
         _uiState.update {
             it.copy(
@@ -468,7 +476,7 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun enterMoveItemMode(
         itemId: String,
-        policy: InsertionPolicy = InsertionPolicy.Auto2D
+        policy: InsertionPolicy = _uiState.value.insertionPolicy
     ) {
         val item = _uiState.value.layout.items.firstOrNull { it.id == itemId } ?: return
         _uiState.update {
@@ -578,7 +586,14 @@ class KeyboardEditorViewModel @Inject constructor(
             it.id == selectedId || (it is KeyItem && it.keyData.keyId == selectedId)
         }
         if (updatedItems.size == layout.items.size) return false
-        val updatedLayout = layout.copyWithItems(updatedItems).canonicalizeIfFlexible().copy(
+        val layoutAfterDeletion = if (layout.usesFlexiblePlacement()) {
+            layout.copyWithItems(updatedItems).compactFlexibleBoundsAfterDeletion()
+                .takeIfValidFlexible()
+                ?: return false
+        } else {
+            layout.copyWithItems(updatedItems).canonicalizeIfFlexible()
+        }
+        val updatedLayout = layoutAfterDeletion.copy(
             flickKeyMaps = layout.flickKeyMaps - removedKeyIds,
             circularFlickKeyMaps = layout.circularFlickKeyMaps - removedKeyIds,
             twoStepFlickKeyMaps = layout.twoStepFlickKeyMaps - removedKeyIds,
@@ -992,7 +1007,14 @@ class KeyboardEditorViewModel @Inject constructor(
         val layout = currentState.layout
         val updatedItems = layout.items.filterNot { it is SpacerItem && it.id == spacerId }
         if (updatedItems.size == layout.items.size) return false
-        _uiState.value = currentState.copy(layout = layout.copyWithItems(updatedItems).canonicalizeIfFlexible())
+        val updatedLayout = if (layout.usesFlexiblePlacement()) {
+            layout.copyWithItems(updatedItems).compactFlexibleBoundsAfterDeletion()
+                .takeIfValidFlexible()
+                ?: return false
+        } else {
+            layout.copyWithItems(updatedItems).canonicalizeIfFlexible()
+        }
+        _uiState.value = currentState.copy(layout = updatedLayout)
         return true
     }
 
@@ -1124,8 +1146,31 @@ class KeyboardEditorViewModel @Inject constructor(
     private fun KeyboardLayout.canonicalizeIfFlexible(): KeyboardLayout =
         if (usesFlexiblePlacement()) withCanonicalFlexibleBounds() else this
 
+    private fun KeyboardLayout.compactFlexibleBoundsAfterDeletion(): KeyboardLayout {
+        val maxRight = items.maxOfOrNull { item ->
+            item.placement.columnUnits + item.placement.columnSpanUnits
+        } ?: 1
+        val maxBottom = items.maxOfOrNull { item ->
+            item.placement.rowUnits + item.placement.rowSpanUnits
+        } ?: 1
+        val qwertyTemplate = KeyboardDefaultLayouts.createQwertyTemplateLayout()
+        val isQwertyFamilyLayout = items.any { item ->
+            item.id.startsWith("qwerty_") ||
+                    (item is KeyItem && item.keyData.keyId?.startsWith("qwerty_") == true)
+        }
+        val minimumColumnUnits = if (isQwertyFamilyLayout) qwertyTemplate.columnUnitCount else 1
+        val minimumRowUnits = if (isQwertyFamilyLayout) qwertyTemplate.rowUnitCount else 1
+        val newColumnUnitCount = maxOf(maxRight, minimumColumnUnits, 1)
+        val newRowUnitCount = maxOf(maxBottom, minimumRowUnits, 1)
+        return copy(
+            columnUnitCount = newColumnUnitCount,
+            rowUnitCount = newRowUnitCount,
+            columnCount = (newColumnUnitCount + 1) / 2,
+            rowCount = (newRowUnitCount + 1) / 2
+        )
+    }
+
     private fun KeyboardLayout.takeIfValidFlexible(): KeyboardLayout? {
-        if (!usesFlexiblePlacement()) return this
         return takeUnless { hasPlacementIssues(items, rowUnitCount, columnUnitCount) }
     }
 

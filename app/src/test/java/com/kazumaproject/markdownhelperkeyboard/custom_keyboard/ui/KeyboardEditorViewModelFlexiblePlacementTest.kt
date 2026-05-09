@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
@@ -9,10 +10,13 @@ import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
+import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionPolicy
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.KeyboardEditorMode
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.NudgeDirection
@@ -189,6 +193,32 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         val vm = qwertyViewModel()
         vm.enterNewKeyPlacementMode(GridSpan(2, 2))
         assertTrue(vm.uiState.value.editorMode is KeyboardEditorMode.PlacingNewKey)
+    }
+
+    @Test
+    fun editorUiState_insertionPolicyDefaultsToPreferHorizontal() {
+        assertEquals(InsertionPolicy.PreferHorizontal, EditorUiState().insertionPolicy)
+    }
+
+    @Test
+    fun viewModel_updateInsertionPolicy_updatesState() {
+        val vm = qwertyViewModel()
+        vm.updateInsertionPolicy(InsertionPolicy.PreferVertical)
+        assertEquals(InsertionPolicy.PreferVertical, vm.uiState.value.insertionPolicy)
+    }
+
+    @Test
+    fun viewModel_enterPlacementMode_usesCurrentInsertionPolicyByDefault() {
+        val vm = qwertyViewModel()
+        vm.updateInsertionPolicy(InsertionPolicy.PreferVertical)
+
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        val keyMode = vm.uiState.value.editorMode as KeyboardEditorMode.PlacingNewKey
+        assertEquals(InsertionPolicy.PreferVertical, keyMode.policy)
+
+        vm.enterSpacerPlacementMode(GridSpan(1, 1))
+        val spacerMode = vm.uiState.value.editorMode as KeyboardEditorMode.PlacingSpacer
+        assertEquals(InsertionPolicy.PreferVertical, spacerMode.policy)
     }
 
     @Test
@@ -381,6 +411,28 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
+    fun viewModel_deleteSelectedSpacer_compactsExpandedFlexibleBounds() {
+        val vm = qwertyViewModel()
+        val baseLayout = vm.uiState.value.layout
+        assertEquals(20, baseLayout.columnUnitCount)
+        assertTrue(vm.addSpacer(rowUnits = 0, columnUnits = 20, rowSpanUnits = 2, columnSpanUnits = 2))
+
+        val expandedLayout = vm.uiState.value.layout
+        val addedSpacer = expandedLayout.items.filterIsInstance<SpacerItem>()
+            .first { it.placement.columnUnits == 20 }
+        assertEquals(22, expandedLayout.columnUnitCount)
+
+        vm.selectItem(addedSpacer.id)
+        assertTrue(vm.deleteSelectedItem())
+
+        val compacted = vm.uiState.value.layout
+        assertTrue(compacted.items.none { it.id == addedSpacer.id })
+        assertEquals(baseLayout.columnUnitCount, compacted.columnUnitCount)
+        assertEquals(baseLayout.rowUnitCount, compacted.rowUnitCount)
+        assertValidFlexibleLayout(compacted)
+    }
+
+    @Test
     fun viewModel_deleteSelectedKey_removesKeyAndMappings() {
         val vm = viewModel()
         val key = KeyData("x", 0, 0, false, KeyAction.Text("x"), keyType = KeyType.NORMAL, keyId = "x")
@@ -397,6 +449,123 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         assertTrue(vm.deleteSelectedItem())
         assertTrue(vm.uiState.value.layout.items.none { it.id == "x" })
         assertFalse(vm.uiState.value.layout.flickKeyMaps.containsKey("x"))
+    }
+
+    @Test
+    fun viewModel_deleteSelectedKey_removesEveryMappingType() {
+        val vm = viewModel()
+        val key = KeyData("x", 0, 0, false, KeyAction.Text("x"), keyType = KeyType.NORMAL, keyId = "x")
+        vm.applyTemplate(
+            KeyboardLayout(
+                keys = listOf(key),
+                flickKeyMaps = mapOf("x" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("x")))),
+                circularFlickKeyMaps = mapOf("x" to listOf(mapOf(CircularFlickDirection.TAP to FlickAction.Input("x")))),
+                twoStepFlickKeyMaps = mapOf("x" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.RIGHT to "x"))),
+                longPressFlickKeyMaps = mapOf("x" to mapOf(FlickDirection.UP to "x")),
+                twoStepLongPressKeyMaps = mapOf("x" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.LEFT to "x"))),
+                hierarchicalFlickMaps = mapOf(
+                    "x" to TfbiFlickNode.StatefulKey(
+                        normalMap = mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input("x")),
+                        label = "x"
+                    )
+                ),
+                columnCount = 1,
+                rowCount = 1,
+                items = listOf(KeyItem("x", key, GridPlacement(0, 0, 2, 2)))
+            )
+        )
+
+        vm.selectItem("x")
+        assertTrue(vm.deleteSelectedItem())
+
+        val layout = vm.uiState.value.layout
+        assertFalse(layout.flickKeyMaps.containsKey("x"))
+        assertFalse(layout.circularFlickKeyMaps.containsKey("x"))
+        assertFalse(layout.twoStepFlickKeyMaps.containsKey("x"))
+        assertFalse(layout.longPressFlickKeyMaps.containsKey("x"))
+        assertFalse(layout.twoStepLongPressKeyMaps.containsKey("x"))
+        assertFalse(layout.hierarchicalFlickMaps.containsKey("x"))
+    }
+
+    @Test
+    fun viewModel_deleteSelectedSpacer_keepsKeyMappings() {
+        val vm = viewModel()
+        val key = KeyData("x", 0, 0, false, KeyAction.Text("x"), keyType = KeyType.NORMAL, keyId = "x")
+        val spacer = SpacerItem("spacer", GridPlacement(0, 2, 2, 2))
+        vm.applyTemplate(
+            KeyboardLayout(
+                keys = listOf(key),
+                flickKeyMaps = mapOf("x" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("x")))),
+                columnCount = 2,
+                rowCount = 1,
+                items = listOf(KeyItem("x", key, GridPlacement(0, 0, 2, 2)), spacer)
+            )
+        )
+
+        vm.selectItem(spacer.id)
+        assertTrue(vm.deleteSelectedItem())
+
+        assertTrue(vm.uiState.value.layout.items.none { it.id == spacer.id })
+        assertTrue(vm.uiState.value.layout.flickKeyMaps.containsKey("x"))
+    }
+
+    @Test
+    fun viewModel_preferHorizontalInsertion_pushesOverlapRightForKeysAndSpacers() {
+        val keyVm = qwertyViewModel()
+        val beforeKey = keyVm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_q" }
+        keyVm.enterNewKeyPlacementMode(GridSpan(2, 2), InsertionPolicy.PreferHorizontal)
+        keyVm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(0, 0, 2, 2)))
+        val afterKey = keyVm.uiState.value.previewLayout!!.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_q" }
+        assertEquals(beforeKey.placement.rowUnits, afterKey.placement.rowUnits)
+        assertTrue(afterKey.placement.columnUnits > beforeKey.placement.columnUnits)
+
+        val spacerVm = qwertyViewModel()
+        spacerVm.enterSpacerPlacementMode(GridSpan(2, 2), InsertionPolicy.PreferHorizontal)
+        spacerVm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(0, 0, 2, 2)))
+        val spacerAfterKey = spacerVm.uiState.value.previewLayout!!.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_q" }
+        assertEquals(beforeKey.placement.rowUnits, spacerAfterKey.placement.rowUnits)
+        assertTrue(spacerAfterKey.placement.columnUnits > beforeKey.placement.columnUnits)
+    }
+
+    @Test
+    fun viewModel_preferVerticalInsertion_pushesOverlapDownForKeysAndSpacers() {
+        val keyVm = qwertyViewModel()
+        val beforeKey = keyVm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_q" }
+        keyVm.enterNewKeyPlacementMode(GridSpan(2, 2), InsertionPolicy.PreferVertical)
+        keyVm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(0, 0, 2, 2)))
+        val afterKey = keyVm.uiState.value.previewLayout!!.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_q" }
+        assertTrue(afterKey.placement.rowUnits > beforeKey.placement.rowUnits)
+        assertEquals(beforeKey.placement.columnUnits, afterKey.placement.columnUnits)
+
+        val spacerVm = qwertyViewModel()
+        spacerVm.enterSpacerPlacementMode(GridSpan(2, 2), InsertionPolicy.PreferVertical)
+        spacerVm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(0, 0, 2, 2)))
+        val spacerAfterKey = spacerVm.uiState.value.previewLayout!!.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_q" }
+        assertTrue(spacerAfterKey.placement.rowUnits > beforeKey.placement.rowUnits)
+        assertEquals(beforeKey.placement.columnUnits, spacerAfterKey.placement.columnUnits)
+    }
+
+    @Test
+    fun structuralControls_hiddenForFlexibleLayout_visibleForGridLayout() {
+        assertFalse(shouldShowKeyboardEditorStructuralControls(KeyboardDefaultLayouts.createQwertyTemplateLayout()))
+        assertTrue(
+            shouldShowKeyboardEditorStructuralControls(
+                KeyboardLayout(
+                    keys = listOf(
+                        KeyData("x", 0, 0, false, KeyAction.Text("x"), keyType = KeyType.NORMAL, keyId = "x")
+                    ),
+                    flickKeyMaps = emptyMap(),
+                    columnCount = 1,
+                    rowCount = 1
+                )
+            )
+        )
     }
 
     @Test
