@@ -548,10 +548,10 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun selectItem(itemId: String?) {
         _uiState.update { state ->
-            val selectedSpacerId = itemId?.takeIf { selectedId ->
-                state.layout.items.any { it is SpacerItem && it.id == selectedId }
+            val selectedItemId = itemId?.takeIf { selectedId ->
+                state.layout.items.any { it.matchesEditorItemId(selectedId) }
             }
-            state.copy(selectedItemId = selectedSpacerId)
+            state.copy(selectedItemId = selectedItemId)
         }
     }
 
@@ -559,6 +559,7 @@ class KeyboardEditorViewModel @Inject constructor(
         val state = _uiState.value
         if (state.editorMode != KeyboardEditorMode.Normal) return false
         selectKeyForEditing(keyId)
+        selectItem(keyId)
         return true
     }
 
@@ -573,15 +574,14 @@ class KeyboardEditorViewModel @Inject constructor(
         if (currentState.editorMode != KeyboardEditorMode.Normal) return false
         val selectedId = currentState.selectedItemId ?: return false
         val layout = currentState.layout
-        val removedSpacer = layout.items.filterIsInstance<SpacerItem>()
-            .firstOrNull { it.id == selectedId } ?: return false
-        val updatedItems = layout.items.filterNot { it is SpacerItem && it.id == selectedId }
+        val removedItem = layout.items.firstOrNull { it.matchesEditorItemId(selectedId) } ?: return false
+        val updatedItems = layout.items.filterNot { it.matchesEditorItemId(selectedId) }
         if (updatedItems.size == layout.items.size) return false
         val baseAfterDeletion = layout.copyWithItems(updatedItems)
         val layoutAfterDeletion = if (layout.usesFlexiblePlacement()) {
             baseAfterDeletion
                 .compactFlexibleGapAfterDeletion(
-                    removedPlacement = removedSpacer.placement,
+                    removedPlacement = removedItem.placement,
                     preferredPolicy = currentState.insertionPolicy
                 )
                 .compactFlexibleOuterBoundsAfterDeletion()
@@ -593,8 +593,29 @@ class KeyboardEditorViewModel @Inject constructor(
         } else {
             baseAfterDeletion.canonicalizeIfFlexible()
         }
-        _uiState.value = currentState.copy(layout = layoutAfterDeletion, selectedItemId = null)
+        val cleanedLayout = layoutAfterDeletion.removeMappingsForDeletedItem(removedItem)
+        _uiState.value = currentState.copy(layout = cleanedLayout, selectedItemId = null)
         return true
+    }
+
+    private fun KeyboardLayoutItem.matchesEditorItemId(selectedId: String): Boolean =
+        id == selectedId || (this is KeyItem && keyData.keyId == selectedId)
+
+    private fun KeyboardLayout.removeMappingsForDeletedItem(item: KeyboardLayoutItem): KeyboardLayout {
+        if (item !is KeyItem) return this
+        val removedKeyIds = buildSet {
+            add(item.id)
+            item.keyData.keyId?.takeIf { it.isNotBlank() }?.let(::add)
+        }
+        if (removedKeyIds.isEmpty()) return this
+        return copy(
+            flickKeyMaps = flickKeyMaps.filterKeys { it !in removedKeyIds },
+            circularFlickKeyMaps = circularFlickKeyMaps.filterKeys { it !in removedKeyIds },
+            twoStepFlickKeyMaps = twoStepFlickKeyMaps.filterKeys { it !in removedKeyIds },
+            longPressFlickKeyMaps = longPressFlickKeyMaps.filterKeys { it !in removedKeyIds },
+            twoStepLongPressKeyMaps = twoStepLongPressKeyMaps.filterKeys { it !in removedKeyIds },
+            hierarchicalFlickMaps = hierarchicalFlickMaps.filterKeys { it !in removedKeyIds }
+        )
     }
 
     private fun updatePlacementCursor(target: InsertionTarget, source: CursorSource) {

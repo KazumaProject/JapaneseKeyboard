@@ -14,7 +14,6 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardEdit
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -72,7 +71,7 @@ class KeyboardEditorFragmentUiRobolectricTest {
     }
 
     @Test
-    fun deleteSelectedButtonState_keyEditDoesNotEnableSpacerDeletionButSpacerSelectionDoes() {
+    fun deleteSelectedButtonState_keyAndSpacerSelectionEnableDeletion() {
         val binding = inflateBinding()
         val viewModel = viewModel()
         viewModel.applyTemplate(KeyboardDefaultLayouts.createQwertyTemplateLayout())
@@ -81,16 +80,16 @@ class KeyboardEditorFragmentUiRobolectricTest {
         val keyState = viewModel.uiState.value
         applyKeyboardEditorDeleteSelectionState(binding, keyState, isPlacementMode = false)
         assertEquals("qwerty_key_q", keyState.selectedKeyIdentifier)
-        assertNull(keyState.selectedItemId)
-        assertFalse(keyState.hasDeletableSpacerSelection())
-        assertFalse(binding.buttonDeleteSelectedItem.isEnabled)
+        assertEquals("qwerty_key_q", keyState.selectedItemId)
+        assertTrue(keyState.hasDeletableSelection())
+        assertTrue(binding.buttonDeleteSelectedItem.isEnabled)
 
         val spacer = keyState.layout.items.filterIsInstance<SpacerItem>().first()
         viewModel.onSpacerTapped(spacer.id)
         val spacerState = viewModel.uiState.value
         applyKeyboardEditorDeleteSelectionState(binding, spacerState, isPlacementMode = false)
         assertEquals(spacer.id, spacerState.selectedItemId)
-        assertTrue(spacerState.hasDeletableSpacerSelection())
+        assertTrue(spacerState.hasDeletableSelection())
         assertTrue(binding.buttonDeleteSelectedItem.isEnabled)
     }
 

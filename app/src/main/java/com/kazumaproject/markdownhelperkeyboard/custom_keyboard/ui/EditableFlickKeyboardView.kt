@@ -246,7 +246,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                     setStroke(dpToPx(2), Color.rgb(255, 152, 0))
                 }
             }
-            item.id == selectedItemId -> {
+            selectedItemId != null && item.matchesSelectedItemId(selectedItemId) -> {
                 view.foreground = GradientDrawable().apply {
                     shape = GradientDrawable.RECTANGLE
                     setColor(Color.TRANSPARENT)
@@ -255,6 +255,9 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
         }
     }
+
+    private fun KeyboardLayoutItem.matchesSelectedItemId(selectedId: String): Boolean =
+        id == selectedId || (this is KeyItem && keyData.keyId == selectedId)
 
     // ▼▼▼ 削除ボタンを生成するヘルパー関数を追加 ▼▼▼
     private fun createDeleteButton(onClick: () -> Unit): ImageButton {

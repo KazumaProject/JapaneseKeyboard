@@ -23,7 +23,7 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.custom_keyboard.data.GridPlacement
-import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionPolicy
@@ -383,10 +383,12 @@ internal fun applyKeyboardEditorDeleteSelectionState(
     state: EditorUiState,
     isPlacementMode: Boolean
 ) {
-    binding.buttonDeleteSelectedItem.isEnabled = !isPlacementMode && state.hasDeletableSpacerSelection()
+    binding.buttonDeleteSelectedItem.isEnabled = !isPlacementMode && state.hasDeletableSelection()
 }
 
-internal fun EditorUiState.hasDeletableSpacerSelection(): Boolean {
+internal fun EditorUiState.hasDeletableSelection(): Boolean {
     val selectedId = selectedItemId ?: return false
-    return layout.items.any { it is SpacerItem && it.id == selectedId }
+    return layout.items.any { item ->
+        item.id == selectedId || (item is KeyItem && item.keyData.keyId == selectedId)
+    }
 }
