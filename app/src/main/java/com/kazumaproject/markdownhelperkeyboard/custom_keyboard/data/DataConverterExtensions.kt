@@ -39,7 +39,11 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "CHANGE_INPUT_MODE" -> KeyAction.ChangeInputMode
         "SWITCH_TO_NEXT_IME" -> KeyAction.SwitchToNextIme
         "TOGGLE_DAKUTEN" -> KeyAction.ToggleDakuten
+        "ToggleDakutenOnly" -> KeyAction.ToggleDakutenOnly
+        "ToggleHandakutenOnly" -> KeyAction.ToggleHandakutenOnly
         "TOGGLE_CASE" -> KeyAction.ToggleCase
+        "ForceHalfWidthSpace" -> KeyAction.ForceHalfWidthSpace
+        "ForceFullWidthSpace" -> KeyAction.ForceFullWidthSpace
         "ShowEmojiKeyboard" -> KeyAction.ShowEmojiKeyboard
         "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
         "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
@@ -87,7 +91,11 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         "CHANGE_INPUT_MODE" -> KeyAction.ChangeInputMode
         "SWITCH_TO_NEXT_IME" -> KeyAction.SwitchToNextIme
         "TOGGLE_DAKUTEN" -> KeyAction.ToggleDakuten
+        "ToggleDakutenOnly" -> KeyAction.ToggleDakutenOnly
+        "ToggleHandakutenOnly" -> KeyAction.ToggleHandakutenOnly
         "TOGGLE_CASE" -> KeyAction.ToggleCase
+        "ForceHalfWidthSpace" -> KeyAction.ForceHalfWidthSpace
+        "ForceFullWidthSpace" -> KeyAction.ForceFullWidthSpace
         "ShowEmojiKeyboard" -> KeyAction.ShowEmojiKeyboard
         "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
         "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
@@ -141,7 +149,11 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.ChangeInputMode -> "CHANGE_INPUT_MODE" to null
             KeyAction.SwitchToNextIme -> "SWITCH_TO_NEXT_IME" to null
             KeyAction.ToggleDakuten -> "TOGGLE_DAKUTEN" to null
+            KeyAction.ToggleDakutenOnly -> "ToggleDakutenOnly" to null
+            KeyAction.ToggleHandakutenOnly -> "ToggleHandakutenOnly" to null
             KeyAction.ToggleCase -> "TOGGLE_CASE" to null
+            KeyAction.ForceHalfWidthSpace -> "ForceHalfWidthSpace" to null
+            KeyAction.ForceFullWidthSpace -> "ForceFullWidthSpace" to null
             KeyAction.ShowEmojiKeyboard -> "ShowEmojiKeyboard" to CircularFlickSlotActionMapper.EMOJI_KEYBOARD_LABEL
             KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish" to null
             KeyAction.SwitchToNumberLayout -> "SwitchToNumber" to null

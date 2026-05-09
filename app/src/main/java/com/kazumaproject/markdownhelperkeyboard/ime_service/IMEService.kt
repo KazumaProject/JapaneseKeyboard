@@ -223,6 +223,8 @@ import com.kazumaproject.tenkey.extensions.getNextInputChar
 import com.kazumaproject.tenkey.extensions.getNextReturnInputChar
 import com.kazumaproject.tenkey.extensions.isHiragana
 import com.kazumaproject.tenkey.extensions.isLatinAlphabet
+import com.kazumaproject.tenkey.extensions.toggleDakutenWithSeion
+import com.kazumaproject.tenkey.extensions.toggleHandakutenWithSeion
 import com.kazumaproject.zenz.ZenzEngine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
@@ -7982,6 +7984,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {}
+                    KeyAction.ToggleDakutenOnly -> {}
+                    KeyAction.ToggleHandakutenOnly -> {}
                     KeyAction.SwitchToEnglishLayout -> {
                         customKeyboardMode = KeyboardInputMode.ENGLISH
                         createNewKeyboardLayoutForSumire()
@@ -8038,6 +8042,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.SwitchDirectMode -> {}
                     KeyAction.CapLockKey -> {}
+                    KeyAction.ForceHalfWidthSpace -> {}
+                    KeyAction.ForceFullWidthSpace -> {}
                 }
             }
 
@@ -8077,6 +8083,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToNextIme -> {}
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {}
+                    KeyAction.ToggleDakutenOnly -> {}
+                    KeyAction.ToggleHandakutenOnly -> {}
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
@@ -8101,6 +8109,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchDirectMode -> {}
                     KeyAction.SwitchRomajiEnglish -> {}
                     KeyAction.CapLockKey -> {}
+                    KeyAction.ForceHalfWidthSpace -> {}
+                    KeyAction.ForceFullWidthSpace -> {}
                 }
             }
 
@@ -8210,6 +8220,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         dakutenSmallActionForSumire()
                     }
 
+                    KeyAction.ToggleDakutenOnly -> {
+                        toggleDakutenOnlyForCustomKeyboard()
+                    }
+
+                    KeyAction.ToggleHandakutenOnly -> {
+                        toggleHandakutenOnlyForCustomKeyboard()
+                    }
+
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
@@ -8232,6 +8250,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchDirectMode -> {}
                     KeyAction.SwitchRomajiEnglish -> {}
                     KeyAction.CapLockKey -> {}
+                    KeyAction.ForceHalfWidthSpace -> {}
+                    KeyAction.ForceFullWidthSpace -> {}
                 }
             }
 
@@ -8335,6 +8355,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.ToggleDakuten -> {
                         dakutenSmallActionForSumire()
+                    }
+
+                    KeyAction.ToggleDakutenOnly -> {
+                        toggleDakutenOnlyForCustomKeyboard()
+                    }
+
+                    KeyAction.ToggleHandakutenOnly -> {
+                        toggleHandakutenOnlyForCustomKeyboard()
                     }
 
                     KeyAction.SwitchToEnglishLayout -> {
@@ -8457,6 +8485,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 else com.kazumaproject.core.R.drawable.caps_lock_outline
                             )
                         }
+                    }
+
+                    KeyAction.ForceHalfWidthSpace -> {
+                        handleForceHalfWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                    }
+
+                    KeyAction.ForceFullWidthSpace -> {
+                        handleForceFullWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
                     }
                 }
             }
@@ -8814,6 +8850,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         dakutenSmallActionForSumire()
                     }
 
+                    KeyAction.ToggleDakutenOnly -> {
+                        toggleDakutenOnlyForCustomKeyboard()
+                    }
+
+                    KeyAction.ToggleHandakutenOnly -> {
+                        toggleHandakutenOnlyForCustomKeyboard()
+                    }
+
                     KeyAction.SwitchToEnglishLayout -> {
                         customKeyboardMode = KeyboardInputMode.ENGLISH
                         createNewKeyboardLayoutForSumire()
@@ -8969,6 +9013,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Cancel -> {}
                     KeyAction.VoiceInput -> {
                         startVoiceInput(mainView)
+                    }
+
+                    KeyAction.ForceHalfWidthSpace -> {
+                        handleForceHalfWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                    }
+
+                    KeyAction.ForceFullWidthSpace -> {
+                        handleForceFullWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
                     }
                 }
             }
@@ -16706,6 +16758,113 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         resetFlagsKeySpace()
     }
 
+    private fun handleForceHalfWidthSpaceOrConvert(
+        mainView: MainLayoutBinding,
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
+    ) {
+        handleForceSpaceOrConvert(
+            space = " ",
+            mainView = mainView,
+            floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding
+        )
+    }
+
+    private fun handleForceFullWidthSpaceOrConvert(
+        mainView: MainLayoutBinding,
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
+    ) {
+        handleForceSpaceOrConvert(
+            space = "　",
+            mainView = mainView,
+            floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding
+        )
+    }
+
+    private fun handleForceSpaceOrConvert(
+        space: String,
+        mainView: MainLayoutBinding,
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding?
+    ) {
+        val insertString = inputString.value
+        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+
+        if (floatingKeyboardLayoutBinding != null) {
+            if (cycleFocusedBunsetsuCandidate(delta = 1, floatingKeyboardLayoutBinding)) {
+                resetFlagsKeySpace()
+                return
+            }
+        } else if (cycleFocusedBunsetsuCandidate(delta = 1)) {
+            resetFlagsKeySpace()
+            return
+        }
+
+        if (insertString.isNotEmpty()) {
+            if (floatingKeyboardLayoutBinding != null) {
+                floatingKeyboardLayoutBinding.keyboardViewFloating.let { tenkey ->
+                    when (tenkey.currentInputMode.value) {
+                        InputMode.ModeJapanese -> {
+                            if (suggestions.isNotEmpty()) {
+                                if (bunsetsuSeparation == true) {
+                                    handleJapaneseModeSpaceKeyWithBunsetsuFloating(
+                                        floatingKeyboardLayoutBinding, suggestions, insertString
+                                    )
+                                } else {
+                                    handleJapaneseModeSpaceKeyFloating(
+                                        floatingKeyboardLayoutBinding, suggestions, insertString
+                                    )
+                                }
+                            }
+                        }
+
+                        else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                    }
+                }
+            } else if (isTablet == true) {
+                mainView.tabletView.let { tabletKey ->
+                    when (tabletKey.currentInputMode.get()) {
+                        InputMode.ModeJapanese -> {
+                            if (suggestions.isNotEmpty()) {
+                                handleJapaneseModeSpaceKey(mainView, suggestions, insertString)
+                            }
+                        }
+
+                        else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                    }
+                }
+            } else {
+                mainView.keyboardView.let { tenkey ->
+                    when (tenkey.currentInputMode.value) {
+                        InputMode.ModeJapanese -> {
+                            if (suggestions.isNotEmpty()) {
+                                if (bunsetsuSeparation == true) {
+                                    handleJapaneseModeSpaceKeyWithBunsetsu(
+                                        mainView, suggestions, insertString
+                                    )
+                                } else {
+                                    handleJapaneseModeSpaceKey(mainView, suggestions, insertString)
+                                }
+                            }
+                        }
+
+                        else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                    }
+                }
+            }
+        } else {
+            if (stringInTail.get().isNotEmpty()) return
+            commitText(space, 1)
+            _inputString.update { "" }
+            if (isHenkan.get()) {
+                suggestionAdapter?.suggestions = emptyList()
+                isHenkan.set(false)
+                henkanPressedWithBunsetsuDetect = false
+                suggestionClickNum = 0
+                suggestionAdapter?.updateHighlightPosition(-1)
+            }
+        }
+        resetFlagsKeySpace()
+    }
+
 
     private fun handleJapaneseModeSpaceKey(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
@@ -17604,6 +17763,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             _inputString.update {
                 sb.toString()
             }
+        }
+    }
+
+    private fun toggleDakutenOnlyForCustomKeyboard() {
+        val insertString = inputString.value
+        if (insertString.isEmpty()) return
+
+        insertString.last().toggleDakutenWithSeion()?.let { toggled ->
+            setStringBuilderForConvertStringInHiragana(
+                toggled,
+                StringBuilder(),
+                insertString
+            )
+        }
+    }
+
+    private fun toggleHandakutenOnlyForCustomKeyboard() {
+        val insertString = inputString.value
+        if (insertString.isEmpty()) return
+
+        insertString.last().toggleHandakutenWithSeion()?.let { toggled ->
+            setStringBuilderForConvertStringInHiragana(
+                toggled,
+                StringBuilder(),
+                insertString
+            )
         }
     }
 
