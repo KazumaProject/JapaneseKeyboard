@@ -184,10 +184,7 @@ object KeyboardBackupNormalizer {
             errors = errors
         ) ?: return null
 
-        val name = layoutDto.name?.takeIf { it.isNotBlank() } ?: run {
-            errors += KeyboardLayoutImportError.InvalidLayoutSize(layoutIndex, "name is blank")
-            return null
-        }
+        val name = normalizeLayoutName(layoutIndex, layoutDto.name, warnings)
 
         val normalizedLayout = CustomKeyboardLayout(
             layoutId = 0,
@@ -238,6 +235,21 @@ object KeyboardBackupNormalizer {
             Timber.w("Unknown keyboard layout usageMode in backup: %s", normalized)
             KeyboardLayoutUsageMode.Normal
         }
+    }
+
+    private fun normalizeLayoutName(
+        layoutIndex: Int,
+        rawName: String?,
+        warnings: MutableList<KeyboardLayoutImportWarning>
+    ): String {
+        rawName?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+
+        val generatedName = "Imported Keyboard ${layoutIndex + 1}"
+        warnings += KeyboardLayoutImportWarning.MissingLayoutNameGenerated(
+            layoutIndex = layoutIndex,
+            generatedName = generatedName
+        )
+        return generatedName
     }
 
     private fun normalizeKeys(
