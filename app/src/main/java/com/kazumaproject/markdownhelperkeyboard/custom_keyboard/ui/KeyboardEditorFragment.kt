@@ -23,11 +23,11 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.custom_keyboard.data.GridPlacement
-import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
+import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
-import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionPolicy
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.KeyboardEditorMode
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.NudgeDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view.EditableFlickKeyboardView
@@ -243,10 +243,10 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         if (binding.switchDirectMode.isChecked != state.isDirectMode) {
             binding.switchDirectMode.isChecked = state.isDirectMode
         }
-        val isFlexibleLayout = state.layout.usesFlexiblePlacement()
-        binding.rowControlsGroup.isVisible = shouldShowKeyboardEditorStructuralControls(state.layout)
-        binding.columnControlsGroup.isVisible = shouldShowKeyboardEditorStructuralControls(state.layout)
-        binding.insertDirectionPanel.isVisible = isFlexibleLayout
+        applyKeyboardEditorCapabilityVisibility(
+            binding = binding,
+            capabilities = keyboardEditorCapabilities(state.layout)
+        )
         val insertionDirectionButtonId = when (state.insertionPolicy) {
             InsertionPolicy.PreferVertical -> R.id.button_insert_direction_column
             else -> R.id.button_insert_direction_row
@@ -267,7 +267,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         )
         binding.buttonConfirmPlacement.isEnabled = state.previewLayout != null
         binding.buttonCancelPlacement.isEnabled = isPlacementMode
-        binding.buttonDeleteSelectedItem.isEnabled = !isPlacementMode && state.selectedItemId != null
+        applyKeyboardEditorDeleteSelectionState(binding, state, isPlacementMode)
         binding.buttonNudgeLeft.isEnabled = isPlacementMode && state.placementCursor != null
         binding.buttonNudgeRight.isEnabled = isPlacementMode && state.placementCursor != null
         binding.buttonNudgeUp.isEnabled = isPlacementMode && state.placementCursor != null
@@ -366,4 +366,27 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         binding.flickKeyboardView.removeOnKeyEditListener()
         _binding = null
     }
+}
+
+internal fun applyKeyboardEditorCapabilityVisibility(
+    binding: FragmentKeyboardEditorBinding,
+    capabilities: KeyboardEditorCapabilities
+) {
+    binding.placementSizeControlsGroup.isVisible = capabilities.showHalfCellControls
+    binding.insertDirectionPanel.isVisible = capabilities.showInsertionDirectionControls
+    binding.rowControlsGroup.isVisible = capabilities.showGridStructuralControls
+    binding.columnControlsGroup.isVisible = capabilities.showGridStructuralControls
+}
+
+internal fun applyKeyboardEditorDeleteSelectionState(
+    binding: FragmentKeyboardEditorBinding,
+    state: EditorUiState,
+    isPlacementMode: Boolean
+) {
+    binding.buttonDeleteSelectedItem.isEnabled = !isPlacementMode && state.hasDeletableSpacerSelection()
+}
+
+internal fun EditorUiState.hasDeletableSpacerSelection(): Boolean {
+    val selectedId = selectedItemId ?: return false
+    return layout.items.any { it is SpacerItem && it.id == selectedId }
 }
