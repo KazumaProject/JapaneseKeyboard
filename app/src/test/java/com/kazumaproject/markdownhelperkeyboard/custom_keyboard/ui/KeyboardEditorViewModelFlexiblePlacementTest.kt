@@ -371,6 +371,20 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
+    fun viewModel_halfRowKeyPlacement_lowerUsesSelectedHalf() {
+        val vm = viewModel()
+        vm.applyTemplate(KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout())
+        vm.enterNewKeyPlacementMode(GridSpan(1, 1), InsertionPolicy.PreferHorizontal)
+        vm.setHalfRowPlacement(HalfRowPlacement.Lower)
+        vm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(2, 0, 1, 1)))
+
+        val previewKey = vm.uiState.value.previewLayout!!.items
+            .filterIsInstance<KeyItem>()
+            .single()
+        assertEquals(3, previewKey.placement.rowUnits)
+    }
+
+    @Test
     fun viewModel_enterPlacementModeClearsDeletionSelection() {
         val vm = qwertyViewModel()
         vm.selectItem("qwerty_key_q")
@@ -427,9 +441,20 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun viewModel_normalModeKeyTap_emitsKeyEditorNavigationAndSelectsItemForDeletion() {
+    fun viewModel_normalModeFirstKeyTap_selectsItemForDeletionWithoutNavigation() {
         val vm = qwertyViewModel()
-        assertTrue(vm.onKeyTapped("qwerty_key_q"))
+        assertFalse(vm.onKeyTappedForSelectionOrEdit("qwerty_key_q"))
+        assertNull(vm.uiState.value.selectedKeyIdentifier)
+        assertEquals("qwerty_key_q", vm.uiState.value.selectedItemId)
+    }
+
+    @Test
+    fun viewModel_normalModeSecondTapOnSelectedKey_requestsKeyEditorNavigation() {
+        val vm = qwertyViewModel()
+        assertFalse(vm.onKeyTappedForSelectionOrEdit("qwerty_key_q"))
+
+        assertTrue(vm.onKeyTappedForSelectionOrEdit("qwerty_key_q"))
+
         assertEquals("qwerty_key_q", vm.uiState.value.selectedKeyIdentifier)
         assertEquals("qwerty_key_q", vm.uiState.value.selectedItemId)
     }
@@ -438,7 +463,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     fun viewModel_placementModeKeyTap_doesNotEmitKeyEditorNavigation() {
         val vm = qwertyViewModel()
         vm.enterNewKeyPlacementMode(GridSpan(2, 2))
-        assertFalse(vm.onKeyTapped("qwerty_key_q"))
+        assertFalse(vm.onKeyTappedForSelectionOrEdit("qwerty_key_q"))
         assertNull(vm.uiState.value.selectedKeyIdentifier)
     }
 
@@ -540,6 +565,17 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         val layout = vm.uiState.value.layout
         assertTrue(layout.items.none { it.id == "x" })
         assertFalse(layout.flickKeyMaps.containsKey("x"))
+        assertNull(vm.uiState.value.selectedItemId)
+    }
+
+    @Test
+    fun viewModel_deleteSelectedKeyAfterTap_removesKeyAndClearsSelection() {
+        val vm = qwertyViewModel()
+        assertFalse(vm.onKeyTappedForSelectionOrEdit("qwerty_key_q"))
+
+        assertTrue(vm.deleteSelectedItem())
+
+        assertTrue(vm.uiState.value.layout.items.none { it.matchesTestItemId("qwerty_key_q") })
         assertNull(vm.uiState.value.selectedItemId)
     }
 
@@ -876,7 +912,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun shouldShowHalfRowPlacementControls_onlyForHalfSpacerRowInsertionOnFlexibleLayout() {
+    fun shouldShowHalfRowPlacementControls_onlyForHalfCellHorizontalPlacementOnFlexibleLayout() {
         val flexibleCapabilities = keyboardEditorCapabilities(KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout())
         val gridCapabilities = keyboardEditorCapabilities(KeyboardDefaultLayouts.createNumberTemplateLayout())
 
@@ -884,7 +920,43 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
             shouldShowHalfRowPlacementControls(
                 EditorUiState(
                     layout = KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout(),
+                    editorMode = KeyboardEditorMode.PlacingNewKey(GridSpan(1, 1), InsertionPolicy.PreferHorizontal)
+                ),
+                flexibleCapabilities
+            )
+        )
+        assertTrue(
+            shouldShowHalfRowPlacementControls(
+                EditorUiState(
+                    layout = KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout(),
                     editorMode = KeyboardEditorMode.PlacingSpacer(GridSpan(1, 1), InsertionPolicy.PreferHorizontal)
+                ),
+                flexibleCapabilities
+            )
+        )
+        assertFalse(
+            shouldShowHalfRowPlacementControls(
+                EditorUiState(
+                    layout = KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout(),
+                    editorMode = KeyboardEditorMode.PlacingNewKey(GridSpan(2, 2), InsertionPolicy.PreferHorizontal)
+                ),
+                flexibleCapabilities
+            )
+        )
+        assertFalse(
+            shouldShowHalfRowPlacementControls(
+                EditorUiState(
+                    layout = KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout(),
+                    editorMode = KeyboardEditorMode.PlacingSpacer(GridSpan(2, 2), InsertionPolicy.PreferHorizontal)
+                ),
+                flexibleCapabilities
+            )
+        )
+        assertFalse(
+            shouldShowHalfRowPlacementControls(
+                EditorUiState(
+                    layout = KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout(),
+                    editorMode = KeyboardEditorMode.PlacingNewKey(GridSpan(1, 1), InsertionPolicy.PreferVertical)
                 ),
                 flexibleCapabilities
             )
@@ -1015,6 +1087,9 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
 
     private fun item(layout: KeyboardLayout, id: String) =
         layout.items.first { it.id == id }
+
+    private fun com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem.matchesTestItemId(selectedId: String): Boolean =
+        id == selectedId || (this is KeyItem && keyData.keyId == selectedId)
 
     private fun assertValidFlexibleLayout(layout: KeyboardLayout) {
         assertEquals((layout.rowUnitCount + 1) / 2, layout.rowCount)
