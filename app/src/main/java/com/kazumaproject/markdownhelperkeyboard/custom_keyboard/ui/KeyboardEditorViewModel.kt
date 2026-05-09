@@ -72,7 +72,7 @@ data class EditorUiState(
 data class LayoutTemplate(val name: String, val layout: KeyboardLayout)
 
 fun shouldShowKeyboardEditorStructuralControls(layout: KeyboardLayout): Boolean =
-    !layout.usesFlexiblePlacement()
+    keyboardEditorCapabilities(layout).showGridStructuralControls
 
 @HiltViewModel
 class KeyboardEditorViewModel @Inject constructor(
@@ -212,7 +212,16 @@ class KeyboardEditorViewModel @Inject constructor(
     }
 
     fun updateInsertionPolicy(policy: InsertionPolicy) {
-        _uiState.update { it.copy(insertionPolicy = policy) }
+        val state = _uiState.value
+        _uiState.value = state.copy(
+            insertionPolicy = policy,
+            editorMode = state.editorMode.withPolicy(policy),
+            placementCursor = state.placementCursor?.copy(policy = policy)
+        )
+        val cursor = _uiState.value.placementCursor ?: return
+        if (_uiState.value.editorMode != KeyboardEditorMode.Normal) {
+            updatePlacementCursor(cursor.target, cursor.source)
+        }
     }
 
     fun addRow() {
@@ -476,7 +485,7 @@ class KeyboardEditorViewModel @Inject constructor(
                 previewInsertedItemId = null,
                 previewStrategy = null,
                 previewStatus = PlacementPreviewStatus.None,
-                selectedItemId = itemId
+                selectedItemId = null
             )
         }
     }
@@ -538,14 +547,18 @@ class KeyboardEditorViewModel @Inject constructor(
     }
 
     fun selectItem(itemId: String?) {
-        _uiState.update { it.copy(selectedItemId = itemId) }
+        _uiState.update { state ->
+            val selectedSpacerId = itemId?.takeIf { selectedId ->
+                state.layout.items.any { it is SpacerItem && it.id == selectedId }
+            }
+            state.copy(selectedItemId = selectedSpacerId)
+        }
     }
 
     fun onKeyTapped(keyId: String): Boolean {
         val state = _uiState.value
         if (state.editorMode != KeyboardEditorMode.Normal) return false
         selectKeyForEditing(keyId)
-        selectItem(keyId)
         return true
     }
 
@@ -560,24 +573,15 @@ class KeyboardEditorViewModel @Inject constructor(
         if (currentState.editorMode != KeyboardEditorMode.Normal) return false
         val selectedId = currentState.selectedItemId ?: return false
         val layout = currentState.layout
-        val removedItem = layout.items.firstOrNull {
-            it.id == selectedId || (it is KeyItem && it.keyData.keyId == selectedId)
-        } ?: return false
-        val removedPlacement = removedItem.placement
-        val removedKeyIds = layout.items
-            .filterIsInstance<KeyItem>()
-            .filter { it.id == selectedId || it.keyData.keyId == selectedId }
-            .flatMap { listOfNotNull(it.id, it.keyData.keyId) }
-            .toSet()
-        val updatedItems = layout.items.filterNot {
-            it.id == selectedId || (it is KeyItem && it.keyData.keyId == selectedId)
-        }
+        val removedSpacer = layout.items.filterIsInstance<SpacerItem>()
+            .firstOrNull { it.id == selectedId } ?: return false
+        val updatedItems = layout.items.filterNot { it is SpacerItem && it.id == selectedId }
         if (updatedItems.size == layout.items.size) return false
         val baseAfterDeletion = layout.copyWithItems(updatedItems)
         val layoutAfterDeletion = if (layout.usesFlexiblePlacement()) {
             baseAfterDeletion
                 .compactFlexibleGapAfterDeletion(
-                    removedPlacement = removedPlacement,
+                    removedPlacement = removedSpacer.placement,
                     preferredPolicy = currentState.insertionPolicy
                 )
                 .compactFlexibleOuterBoundsAfterDeletion()
@@ -589,15 +593,7 @@ class KeyboardEditorViewModel @Inject constructor(
         } else {
             baseAfterDeletion.canonicalizeIfFlexible()
         }
-        val updatedLayout = layoutAfterDeletion.copy(
-            flickKeyMaps = layout.flickKeyMaps - removedKeyIds,
-            circularFlickKeyMaps = layout.circularFlickKeyMaps - removedKeyIds,
-            twoStepFlickKeyMaps = layout.twoStepFlickKeyMaps - removedKeyIds,
-            longPressFlickKeyMaps = layout.longPressFlickKeyMaps - removedKeyIds,
-            twoStepLongPressKeyMaps = layout.twoStepLongPressKeyMaps - removedKeyIds,
-            hierarchicalFlickMaps = layout.hierarchicalFlickMaps - removedKeyIds
-        )
-        _uiState.value = currentState.copy(layout = updatedLayout, selectedItemId = null)
+        _uiState.value = currentState.copy(layout = layoutAfterDeletion, selectedItemId = null)
         return true
     }
 
@@ -722,6 +718,13 @@ class KeyboardEditorViewModel @Inject constructor(
         is KeyboardEditorMode.PlacingNewKey -> policy
         is KeyboardEditorMode.PlacingSpacer -> policy
         is KeyboardEditorMode.MovingExistingItem -> policy
+    }
+
+    private fun KeyboardEditorMode.withPolicy(policy: InsertionPolicy): KeyboardEditorMode = when (this) {
+        KeyboardEditorMode.Normal -> this
+        is KeyboardEditorMode.PlacingNewKey -> copy(policy = policy)
+        is KeyboardEditorMode.PlacingSpacer -> copy(policy = policy)
+        is KeyboardEditorMode.MovingExistingItem -> copy(policy = policy)
     }
 
     fun selectKeyForEditing(keyId: String?) {
@@ -990,7 +993,10 @@ class KeyboardEditorViewModel @Inject constructor(
         } else {
             baseAfterDeletion.canonicalizeIfFlexible()
         }
-        _uiState.value = currentState.copy(layout = updatedLayout)
+        _uiState.value = currentState.copy(
+            layout = updatedLayout,
+            selectedItemId = currentState.selectedItemId.takeUnless { it == spacerId }
+        )
         return true
     }
 
