@@ -260,6 +260,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             layout = displayLayout,
             placementMode = isPlacementMode,
             placementCursor = state.placementCursor,
+            insertionPolicy = state.placementCursor?.policy ?: state.insertionPolicy,
             selectedItemId = state.selectedItemId,
             previewInsertedItemId = state.previewInsertedItemId,
             previewMovedItemIds = state.previewMovedItemIds

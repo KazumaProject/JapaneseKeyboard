@@ -25,11 +25,6 @@ sealed interface KeyboardEditorMode {
         val policy: InsertionPolicy = InsertionPolicy.Auto2D
     ) : KeyboardEditorMode
 
-    data class PlacingSpaceKey(
-        val span: GridSpan,
-        val policy: InsertionPolicy = InsertionPolicy.Auto2D
-    ) : KeyboardEditorMode
-
     data class MovingExistingItem(
         val itemId: String,
         val policy: InsertionPolicy = InsertionPolicy.Auto2D
