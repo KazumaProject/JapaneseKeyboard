@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 
 data class KeyboardEditorCapabilities(
     val showHalfCellControls: Boolean,
@@ -10,15 +11,17 @@ data class KeyboardEditorCapabilities(
 )
 
 fun keyboardEditorCapabilities(layout: KeyboardLayout): KeyboardEditorCapabilities {
-    val isAlphabetFlexibleTemplate = layout.isAlphabetFlexibleTemplate()
+    val isFlexibleEditorLayout = layout.isFlexibleEditorLayout()
     return KeyboardEditorCapabilities(
-        showHalfCellControls = isAlphabetFlexibleTemplate,
-        showInsertionDirectionControls = isAlphabetFlexibleTemplate,
-        showGridStructuralControls = !isAlphabetFlexibleTemplate
+        showHalfCellControls = isFlexibleEditorLayout,
+        showInsertionDirectionControls = isFlexibleEditorLayout,
+        showGridStructuralControls = !isFlexibleEditorLayout
     )
 }
 
-private fun KeyboardLayout.isAlphabetFlexibleTemplate(): Boolean {
+private fun KeyboardLayout.isFlexibleEditorLayout(): Boolean {
+    if (isFlexiblePlacementLayout) return true
+    if (!usesFlexiblePlacement()) return false
     val alphabetPrefixes = listOf("qwerty_", "azerty_", "dvorak_", "colemak_")
     return items.filterIsInstance<KeyItem>().any { item ->
         alphabetPrefixes.any { prefix ->

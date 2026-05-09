@@ -476,6 +476,11 @@
     <string name="enter_word_and_yomi_string">単語と読みを入力してください。</string>
     <string name="deleted_all_words_text">すべての単語を削除しました。</string>
     <string name="read_from_template">テンプレートから読み込む</string>
+    <string name="template_flick_kana_cursor">かな入力 (カーソル)</string>
+    <string name="template_flick_english_cursor">英語入力 (カーソル)</string>
+    <string name="template_qwerty">QWERTY</string>
+    <string name="template_empty_5x4_flexible">空の 5x4 フレキシブルレイアウト</string>
+    <string name="template_number">数字入力</string>
     <string name="editor_place_half_key">半マスキー</string>
     <string name="editor_place_one_key">1マスキー</string>
     <string name="editor_place_half_spacer">半マス余白</string>
@@ -483,6 +488,9 @@
     <string name="editor_insert_direction_label">挿入方向</string>
     <string name="editor_insert_direction_row">行方向</string>
     <string name="editor_insert_direction_column">列方向</string>
+    <string name="editor_half_row_placement_label">半マス余白の位置</string>
+    <string name="editor_half_row_placement_upper">上部</string>
+    <string name="editor_half_row_placement_lower">下部</string>
     <string name="editor_confirm_placement">確定</string>
     <string name="editor_cancel_placement">キャンセル</string>
     <string name="editor_delete_selected_item">選択を削除</string>

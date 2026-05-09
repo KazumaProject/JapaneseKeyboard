@@ -13,6 +13,11 @@ enum class InsertionPolicy {
     PreferVertical
 }
 
+enum class HalfRowPlacement {
+    Upper,
+    Lower
+}
+
 sealed interface KeyboardEditorMode {
     data object Normal : KeyboardEditorMode
     data class PlacingNewKey(

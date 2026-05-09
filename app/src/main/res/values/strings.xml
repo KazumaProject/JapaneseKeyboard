@@ -474,6 +474,11 @@
     <string name="deleted_all_words_text">Deleted all words.</string>
     <string name="confirm_all_words_delete_message">This will delete all registered words. This action cannot be undone. Are you sure?</string>
     <string name="read_from_template">Load from templates</string>
+    <string name="template_flick_kana_cursor">Kana input (cursor)</string>
+    <string name="template_flick_english_cursor">English input (cursor)</string>
+    <string name="template_qwerty">QWERTY</string>
+    <string name="template_empty_5x4_flexible">Empty 5x4 Flexible Layout</string>
+    <string name="template_number">Number input</string>
     <string name="editor_place_half_key">Half key</string>
     <string name="editor_place_one_key">1-cell key</string>
     <string name="editor_place_half_spacer">Half spacer</string>
@@ -481,6 +486,9 @@
     <string name="editor_insert_direction_label">Insert direction</string>
     <string name="editor_insert_direction_row">Row</string>
     <string name="editor_insert_direction_column">Column</string>
+    <string name="editor_half_row_placement_label">Half spacer row</string>
+    <string name="editor_half_row_placement_upper">Upper</string>
+    <string name="editor_half_row_placement_lower">Lower</string>
     <string name="editor_confirm_placement">Confirm</string>
     <string name="editor_cancel_placement">Cancel</string>
     <string name="editor_delete_selected_item">Delete selected</string>

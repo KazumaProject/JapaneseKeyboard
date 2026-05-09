@@ -16,12 +16,23 @@ class InsertionTargetMapper {
         policy: InsertionPolicy = InsertionPolicy.PreferHorizontal
     ): InsertionTarget {
         val canonicalLayout = layout.withCanonicalFlexibleBounds()
-        if (canonicalLayout.items.isEmpty() || widthPx <= 0f || heightPx <= 0f) {
+        if (widthPx <= 0f || heightPx <= 0f) {
             return InsertionTarget.EmptyArea(GridPlacement(0, 0, 1, 1))
         }
 
         val xUnits = (xPx / widthPx) * canonicalLayout.columnUnitCount
         val yUnits = (yPx / heightPx) * canonicalLayout.rowUnitCount
+        if (canonicalLayout.items.isEmpty()) {
+            return InsertionTarget.EmptyArea(
+                GridPlacement(
+                    rowUnits = floor(yUnits).toInt().coerceIn(0, (canonicalLayout.rowUnitCount - 1).coerceAtLeast(0)),
+                    columnUnits = snapHalfCellColumn(xUnits)
+                        .coerceIn(0, (canonicalLayout.columnUnitCount - 1).coerceAtLeast(0)),
+                    rowSpanUnits = 1,
+                    columnSpanUnits = 1
+                )
+            )
+        }
         val rows = canonicalLayout.items
             .groupBy { it.placement.rowUnits }
             .toSortedMap()
