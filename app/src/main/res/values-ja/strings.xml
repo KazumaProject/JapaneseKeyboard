@@ -480,7 +480,9 @@
     <string name="editor_place_one_key">1マスキー</string>
     <string name="editor_place_half_spacer">半マス余白</string>
     <string name="editor_place_one_spacer">1マス余白</string>
-    <string name="editor_place_space">Spaceキー</string>
+    <string name="editor_insert_direction_label">挿入方向</string>
+    <string name="editor_insert_direction_row">行方向</string>
+    <string name="editor_insert_direction_column">列方向</string>
     <string name="editor_confirm_placement">確定</string>
     <string name="editor_cancel_placement">キャンセル</string>
     <string name="editor_delete_selected_item">選択を削除</string>

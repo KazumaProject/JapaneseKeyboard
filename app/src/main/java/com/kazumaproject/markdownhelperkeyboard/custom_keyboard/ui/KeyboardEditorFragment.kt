@@ -23,9 +23,11 @@ import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.custom_keyboard.data.GridPlacement
+import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionPolicy
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.KeyboardEditorMode
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.NudgeDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view.EditableFlickKeyboardView
@@ -104,20 +106,38 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         binding.buttonRemoveRow.setOnClickListener { viewModel.removeRow() }
         binding.buttonAddCol.setOnClickListener { viewModel.addColumn() }
         binding.buttonRemoveCol.setOnClickListener { viewModel.removeColumn() }
+        binding.insertDirectionGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            when (checkedId) {
+                R.id.button_insert_direction_row ->
+                    viewModel.updateInsertionPolicy(InsertionPolicy.PreferHorizontal)
+                R.id.button_insert_direction_column ->
+                    viewModel.updateInsertionPolicy(InsertionPolicy.PreferVertical)
+            }
+        }
         binding.buttonPlaceHalfKey.setOnClickListener {
-            viewModel.enterNewKeyPlacementMode(GridSpan(rowSpanUnits = 1, columnSpanUnits = 1))
+            viewModel.enterNewKeyPlacementMode(
+                GridSpan(rowSpanUnits = 1, columnSpanUnits = 1),
+                policy = viewModel.uiState.value.insertionPolicy
+            )
         }
         binding.buttonPlaceOneKey.setOnClickListener {
-            viewModel.enterNewKeyPlacementMode(GridSpan(rowSpanUnits = 2, columnSpanUnits = 2))
+            viewModel.enterNewKeyPlacementMode(
+                GridSpan(rowSpanUnits = 2, columnSpanUnits = 2),
+                policy = viewModel.uiState.value.insertionPolicy
+            )
         }
         binding.buttonPlaceHalfSpacer.setOnClickListener {
-            viewModel.enterSpacerPlacementMode(GridSpan(rowSpanUnits = 1, columnSpanUnits = 1))
+            viewModel.enterSpacerPlacementMode(
+                GridSpan(rowSpanUnits = 1, columnSpanUnits = 1),
+                policy = viewModel.uiState.value.insertionPolicy
+            )
         }
         binding.buttonPlaceOneSpacer.setOnClickListener {
-            viewModel.enterSpacerPlacementMode(GridSpan(rowSpanUnits = 2, columnSpanUnits = 2))
-        }
-        binding.buttonPlaceSpace.setOnClickListener {
-            viewModel.enterSpacePlacementMode()
+            viewModel.enterSpacerPlacementMode(
+                GridSpan(rowSpanUnits = 2, columnSpanUnits = 2),
+                policy = viewModel.uiState.value.insertionPolicy
+            )
         }
         binding.buttonConfirmPlacement.setOnClickListener {
             viewModel.confirmPlacementPreview()
@@ -222,6 +242,17 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         }
         if (binding.switchDirectMode.isChecked != state.isDirectMode) {
             binding.switchDirectMode.isChecked = state.isDirectMode
+        }
+        val isFlexibleLayout = state.layout.usesFlexiblePlacement()
+        binding.rowControlsGroup.isVisible = shouldShowKeyboardEditorStructuralControls(state.layout)
+        binding.columnControlsGroup.isVisible = shouldShowKeyboardEditorStructuralControls(state.layout)
+        binding.insertDirectionPanel.isVisible = isFlexibleLayout
+        val insertionDirectionButtonId = when (state.insertionPolicy) {
+            InsertionPolicy.PreferVertical -> R.id.button_insert_direction_column
+            else -> R.id.button_insert_direction_row
+        }
+        if (binding.insertDirectionGroup.checkedButtonId != insertionDirectionButtonId) {
+            binding.insertDirectionGroup.check(insertionDirectionButtonId)
         }
         val isPlacementMode = state.editorMode != KeyboardEditorMode.Normal
         val displayLayout = state.previewLayout ?: state.layout
