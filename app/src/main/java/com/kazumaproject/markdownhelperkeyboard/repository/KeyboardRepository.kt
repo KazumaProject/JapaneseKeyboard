@@ -13,10 +13,10 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.data.SpacerItem
-import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.copyWithItems
-import com.kazumaproject.custom_keyboard.data.toKeyItem
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.toKeyItem
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.data.withCanonicalFlexibleBounds
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -241,7 +241,12 @@ class KeyboardRepository @Inject constructor(
                     spacers = spacersToInsert
                 )
             } catch (e: Exception) {
-                Timber.e(e, "importLayouts storage failed index=%s exception=%s", layoutIndex, e::class.java.simpleName)
+                Timber.e(
+                    e,
+                    "importLayouts storage failed index=%s exception=%s",
+                    layoutIndex,
+                    e::class.java.simpleName
+                )
                 errors += KeyboardLayoutImportError.StorageFailed(
                     layoutIndex = layoutIndex,
                     exceptionClass = e::class.java.simpleName,
@@ -404,7 +409,11 @@ class KeyboardRepository @Inject constructor(
             parts.twoStepLongPressMap,
             parts.spacers
         )
-        Timber.d("createNewLayoutInternal: inserted layoutId=%s stableId=%s", newLayoutId, newStableId)
+        Timber.d(
+            "createNewLayoutInternal: inserted layoutId=%s stableId=%s",
+            newLayoutId,
+            newStableId
+        )
         return newLayoutId
     }
 
@@ -1012,6 +1021,8 @@ class KeyboardRepository @Inject constructor(
             KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
             KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
             KeyAction.Space -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            KeyAction.ForceFullWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            KeyAction.ForceHalfWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
             KeyAction.SwitchToKanaLayout -> com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
             KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
@@ -1031,7 +1042,8 @@ class KeyboardRepository @Inject constructor(
         return keyItems
             .groupBy { it.placement.rowUnits }
             .mapNotNull { (rowUnits, rowItems) ->
-                val minColumnUnits = rowItems.minOfOrNull { it.placement.columnUnits } ?: return@mapNotNull null
+                val minColumnUnits =
+                    rowItems.minOfOrNull { it.placement.columnUnits } ?: return@mapNotNull null
                 if (minColumnUnits <= 0) return@mapNotNull null
                 val rowSpanUnits = rowItems.minOfOrNull { it.placement.rowSpanUnits } ?: 2
                 SpacerItem(
