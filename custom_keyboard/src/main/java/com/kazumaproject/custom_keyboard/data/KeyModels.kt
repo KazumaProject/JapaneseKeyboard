@@ -76,8 +76,12 @@ sealed class KeyAction {
 
     // ひらがな・英語用
     data object ToggleDakuten : KeyAction() // 濁点・半濁点・小文字化
+    data object ToggleDakutenOnly : KeyAction() // 濁点・清音
+    data object ToggleHandakutenOnly : KeyAction() // 半濁点・清音
     data object ToggleCase : KeyAction()    // 英語の大文字・小文字切り替え
     data object ToggleKatakana : KeyAction()    // カタカナ切り替え
+    data object ForceHalfWidthSpace : KeyAction()
+    data object ForceFullWidthSpace : KeyAction()
 
     data object VoiceInput : KeyAction()
 }

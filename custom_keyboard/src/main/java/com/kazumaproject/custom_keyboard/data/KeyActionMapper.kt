@@ -42,6 +42,16 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.baseline_space_bar_24
             ),
             DisplayAction(
+                KeyAction.ForceHalfWidthSpace,
+                context.getString(R.string.action_force_half_width_space),
+                com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            ),
+            DisplayAction(
+                KeyAction.ForceFullWidthSpace,
+                context.getString(R.string.action_force_full_width_space),
+                com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            ),
+            DisplayAction(
                 KeyAction.Convert,
                 context.getString(R.string.action_convert),
                 com.kazumaproject.core.R.drawable.henkan
@@ -75,6 +85,16 @@ object KeyActionMapper {
             DisplayAction(
                 KeyAction.ToggleDakuten,
                 context.getString(R.string.action_toggle_dakuten),
+                com.kazumaproject.core.R.drawable.kana_small
+            ),
+            DisplayAction(
+                KeyAction.ToggleDakutenOnly,
+                context.getString(R.string.action_toggle_dakuten_only),
+                com.kazumaproject.core.R.drawable.kana_small
+            ),
+            DisplayAction(
+                KeyAction.ToggleHandakutenOnly,
+                context.getString(R.string.action_toggle_handakuten_only),
                 com.kazumaproject.core.R.drawable.kana_small
             ),
             DisplayAction(
@@ -172,6 +192,8 @@ object KeyActionMapper {
             is KeyAction.ShowEmojiKeyboard -> "^_^"
             is KeyAction.SwitchToNextIme -> "SwitchToNextIme"
             is KeyAction.ToggleDakuten -> "小゛゜"
+            is KeyAction.ToggleDakutenOnly -> "ToggleDakutenOnly"
+            is KeyAction.ToggleHandakutenOnly -> "ToggleHandakutenOnly"
             is KeyAction.ToggleCase -> "a/A"
             is KeyAction.SwitchToKanaLayout -> "SwitchToKana"
             is KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish"
@@ -191,6 +213,8 @@ object KeyActionMapper {
             is KeyAction.ToggleKatakana -> "SwitchKatakana"
             is KeyAction.VoiceInput -> "VoiceInput"
             is KeyAction.SwitchDirectMode -> "SwitchDirectMode"
+            is KeyAction.ForceHalfWidthSpace -> "ForceHalfWidthSpace"
+            is KeyAction.ForceFullWidthSpace -> "ForceFullWidthSpace"
             else -> null
         }
     }
@@ -226,6 +250,8 @@ object KeyActionMapper {
             "^_^" -> KeyAction.ShowEmojiKeyboard
             "SwitchToNextIme" -> KeyAction.SwitchToNextIme
             "小゛゜" -> KeyAction.ToggleDakuten
+            "ToggleDakutenOnly" -> KeyAction.ToggleDakutenOnly
+            "ToggleHandakutenOnly" -> KeyAction.ToggleHandakutenOnly
             "a/A" -> KeyAction.ToggleCase
             "SwitchToKana" -> KeyAction.SwitchToKanaLayout
             "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
@@ -240,6 +266,8 @@ object KeyActionMapper {
             "VoiceInput" -> KeyAction.VoiceInput
             "ForceNewLine" -> KeyAction.ForceNewLine
             "SwitchDirectMode" -> KeyAction.SwitchDirectMode
+            "ForceHalfWidthSpace" -> KeyAction.ForceHalfWidthSpace
+            "ForceFullWidthSpace" -> KeyAction.ForceFullWidthSpace
             else -> null
         }
     }

@@ -7,6 +7,8 @@
     <string name="flick_bottom">Flick Down</string>
     <string name="action_delete">Delete</string>
     <string name="action_space">Space</string>
+    <string name="action_force_half_width_space">Half-width space</string>
+    <string name="action_force_full_width_space">Full-width space</string>
     <string name="action_convert">Convert</string>
     <string name="action_enter">Enter</string>
     <string name="action_new_line">New Line</string>
@@ -15,6 +17,8 @@
     <string name="action_switch_to_next_ime">Switch IME</string>
     <string name="action_show_emoji_keyboard">Emoji Keyboard</string>
     <string name="action_toggle_dakuten">Dakuten / Small Characters</string>
+    <string name="action_toggle_dakuten_only">Dakuten / Clear</string>
+    <string name="action_toggle_handakuten_only">Handakuten / Clear</string>
     <string name="action_toggle_case">English / Lowercase</string>
     <string name="action_shift_key">Shift Key</string>
     <string name="action_cap_lock_key">CapLock Key</string>

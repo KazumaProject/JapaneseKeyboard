@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="action_toggle_dakuten_only">濁点 / 清音</string>
+    <string name="action_toggle_handakuten_only">半濁点 / 清音</string>
+    <string name="action_force_half_width_space">半角スペース</string>
+    <string name="action_force_full_width_space">全角スペース</string>
     <string name="hardware_keyboard_category_title">物理キーボード</string>
     <string name="physical_keyboard_layout_title">物理キーボード配列</string>
     <string name="physical_keyboard_layout_summary">使用している物理キーボードの配列を選択します。</string>
@@ -479,7 +483,7 @@
     <string name="template_flick_kana_cursor">かな入力 (カーソル)</string>
     <string name="template_flick_english_cursor">英語入力 (カーソル)</string>
     <string name="template_qwerty">QWERTY</string>
-    <string name="template_empty_5x4_flexible">空の 5x4 フレキシブルレイアウト</string>
+    <string name="template_empty_5x4_flexible">空のフレキシブルレイアウト</string>
     <string name="template_number">数字入力</string>
     <string name="editor_place_half_key">半マスキー</string>
     <string name="editor_place_one_key">1マスキー</string>

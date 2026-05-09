@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="action_toggle_dakuten_only">Dakuten / Clear</string>
+    <string name="action_toggle_handakuten_only">Handakuten / Clear</string>
+    <string name="action_force_half_width_space">Half-width space</string>
+    <string name="action_force_full_width_space">Full-width space</string>
     <string name="hardware_keyboard_category_title">物理キーボード</string>
     <string name="physical_keyboard_layout_title">物理キーボード配列</string>
     <string name="physical_keyboard_layout_summary">使用している物理キーボードの配列を選択します。</string>
