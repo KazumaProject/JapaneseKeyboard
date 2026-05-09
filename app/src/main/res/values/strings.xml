@@ -478,7 +478,9 @@
     <string name="editor_place_one_key">1-cell key</string>
     <string name="editor_place_half_spacer">Half spacer</string>
     <string name="editor_place_one_spacer">1-cell spacer</string>
-    <string name="editor_place_space">Space key</string>
+    <string name="editor_insert_direction_label">Insert direction</string>
+    <string name="editor_insert_direction_row">Row</string>
+    <string name="editor_insert_direction_column">Column</string>
     <string name="editor_confirm_placement">Confirm</string>
     <string name="editor_cancel_placement">Cancel</string>
     <string name="editor_delete_selected_item">Delete selected</string>
