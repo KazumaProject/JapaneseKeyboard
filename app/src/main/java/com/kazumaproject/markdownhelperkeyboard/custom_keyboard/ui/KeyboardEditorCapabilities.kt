@@ -14,7 +14,7 @@ fun keyboardEditorCapabilities(layout: KeyboardLayout): KeyboardEditorCapabiliti
     return KeyboardEditorCapabilities(
         showHalfCellControls = isAlphabetFlexibleTemplate,
         showInsertionDirectionControls = isAlphabetFlexibleTemplate,
-        showGridStructuralControls = true
+        showGridStructuralControls = !isAlphabetFlexibleTemplate
     )
 }
 
