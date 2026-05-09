@@ -138,6 +138,37 @@ class KeyboardRepositoryImportLayoutsTest {
     }
 
     @Test
+    fun importLayouts_blankName_isReplacedBeforeInsert() = runBlocking {
+        whenever(dao.getMaxSortOrder()).thenReturn(0)
+        whenever(dao.findLayoutByName(any())).thenReturn(null)
+        whenever(dao.findLayoutByStableId(any())).thenReturn(null)
+
+        val importable = ImportableKeyboardLayout(
+            layout = layout(name = "   ", stableId = "stable-id-blank-name"),
+            keysWithFlicks = emptyList(),
+            spacers = emptyList()
+        )
+
+        val result = repository.importLayouts(listOf(importable))
+
+        assertTrue(result is KeyboardLayoutImportResult.Success)
+        val layoutCaptor = argumentCaptor<CustomKeyboardLayout>()
+        verify(dao).insertFullKeyboardLayout(
+            layoutCaptor.capture(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any()
+        )
+
+        assertEquals("Imported Keyboard 1", layoutCaptor.firstValue.name)
+        assertTrue(layoutCaptor.firstValue.name.isNotBlank())
+    }
+
+    @Test
     fun importLayouts_legacyNumericIds_areResetBeforeDaoInsert() = runBlocking {
         whenever(dao.getMaxSortOrder()).thenReturn(0)
         whenever(dao.findLayoutByName(any())).thenReturn(null)
