@@ -136,11 +136,15 @@ class KeyboardRepository @Inject constructor(
 
         layouts.forEachIndexed { layoutIndex, importable ->
             try {
-                var newName = importable.layout.name
+                val importName = normalizeImportedLayoutName(
+                    layoutIndex = layoutIndex,
+                    rawName = importable.layout.name
+                )
+                var newName = importName
                 var nameExists = dao.findLayoutByName(newName) != null
                 var counter = 1
                 while (nameExists) {
-                    newName = "${importable.layout.name} (${counter})"
+                    newName = "$importName (${counter})"
                     nameExists = dao.findLayoutByName(newName) != null
                     counter++
                 }
@@ -257,6 +261,11 @@ class KeyboardRepository @Inject constructor(
                 errors.firstOrNull() ?: KeyboardLayoutImportError.StorageFailed()
             )
         }
+    }
+
+    private fun normalizeImportedLayoutName(layoutIndex: Int, rawName: String): String {
+        return rawName.trim().takeIf { it.isNotEmpty() }
+            ?: "Imported Keyboard ${layoutIndex + 1}"
     }
 
     // -----------------------------

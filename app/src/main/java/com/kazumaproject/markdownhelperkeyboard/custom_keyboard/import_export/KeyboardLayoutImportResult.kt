@@ -72,6 +72,9 @@ sealed class KeyboardLayoutImportError {
 }
 
 sealed class KeyboardLayoutImportWarning {
+    data class MissingLayoutNameGenerated(val layoutIndex: Int, val generatedName: String) :
+        KeyboardLayoutImportWarning()
+
     data class MissingKeyIdentifierGenerated(val layoutIndex: Int, val keyIndex: Int) :
         KeyboardLayoutImportWarning()
 
