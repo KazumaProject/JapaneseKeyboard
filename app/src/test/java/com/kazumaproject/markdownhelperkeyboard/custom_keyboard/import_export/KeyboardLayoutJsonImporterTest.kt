@@ -2,6 +2,9 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export
 
 import com.google.gson.JsonParser
 import com.google.gson.annotations.SerializedName
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -14,7 +17,7 @@ import org.junit.Test
  * 主な観点:
  * - 旧 root array 形式 (spacers なし / null / 完全形)
  * - flick 系 List 欠損
- * - 新 schemaVersion = 1 object 形式
+ * - 新 schemaVersion object 形式
  * - export round-trip
  */
 class KeyboardLayoutJsonImporterTest {
@@ -164,7 +167,7 @@ class KeyboardLayoutJsonImporterTest {
     }
 
     // -----------------------------
-    // D. 新 schemaVersion = 1 object 形式を import できる
+    // D. schemaVersion = 1 object 形式を import できる
     // -----------------------------
     @Test
     fun parse_schemaVersion1_objectFormat_isAccepted() {
@@ -184,7 +187,7 @@ class KeyboardLayoutJsonImporterTest {
     }
 
     // -----------------------------
-    // E. export は schemaVersion = 1 の object 形式になる
+    // E. export は最新 schemaVersion の object 形式になる
     // -----------------------------
     @Test
     fun exporter_emitsSchemaVersionedObjectRoot() {
@@ -197,7 +200,7 @@ class KeyboardLayoutJsonImporterTest {
         assertTrue("root must be object", root.isJsonObject)
 
         val obj = root.asJsonObject
-        assertEquals(1, obj["schemaVersion"].asInt)
+        assertEquals(2, obj["schemaVersion"].asInt)
         assertNotNull(obj["layouts"])
         assertTrue("layouts must be array", obj["layouts"].isJsonArray)
         assertEquals(0, obj["layouts"].asJsonArray.size())
@@ -228,6 +231,81 @@ class KeyboardLayoutJsonImporterTest {
             KeyboardLayoutImportError.UnsupportedFormat,
             (result as KeyboardLayoutImportResult.Failure).error
         )
+    }
+
+    @Test
+    fun parse_missingUsageMode_defaultsToNormal() {
+        val result = parseSuccessLayouts("[$minimalLayoutJson]")
+
+        assertEquals(KeyboardLayoutUsageMode.Normal, result.single().layout.usageMode)
+    }
+
+    @Test
+    fun parse_numberUsageMode_isPreserved() {
+        val json = """
+            [
+              {
+                "layout": {
+                  "layoutId": 1,
+                  "name": "NumberKeyboard",
+                  "columnCount": 5,
+                  "rowCount": 4,
+                  "usageMode": "Number"
+                },
+                "keysWithFlicks": []
+              }
+            ]
+        """.trimIndent()
+
+        val result = parseSuccessLayouts(json)
+
+        assertEquals(KeyboardLayoutUsageMode.Number, result.single().layout.usageMode)
+    }
+
+    @Test
+    fun exportImport_numberUsageMode_roundTrips() {
+        val exported = KeyboardLayoutJsonExporter.toJson(
+            listOf(
+                FullKeyboardLayout(
+                    layout = CustomKeyboardLayout(
+                        layoutId = 10,
+                        name = "Number Export",
+                        columnCount = 5,
+                        rowCount = 4,
+                        stableId = "stable-number",
+                        usageMode = KeyboardLayoutUsageMode.Number
+                    ),
+                    keysWithFlicks = emptyList(),
+                    spacers = emptyList()
+                )
+            )
+        )
+
+        val result = parseSuccessLayouts(exported)
+
+        assertEquals(KeyboardLayoutUsageMode.Number, result.single().layout.usageMode)
+    }
+
+    @Test
+    fun parse_unknownUsageMode_fallsBackToNormal() {
+        val json = """
+            [
+              {
+                "layout": {
+                  "layoutId": 1,
+                  "name": "UnknownUsage",
+                  "columnCount": 5,
+                  "rowCount": 4,
+                  "usageMode": "Calculator"
+                },
+                "keysWithFlicks": []
+              }
+            ]
+        """.trimIndent()
+
+        val result = parseSuccessLayouts(json)
+
+        assertEquals(KeyboardLayoutUsageMode.Normal, result.single().layout.usageMode)
     }
 
     // -----------------------------

@@ -70,7 +70,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         PhysicalKeyboardShortcutItem::class,
         SpacerDefinition::class,
     ],
-    version = 32,
+    version = 33,
     exportSchema = false
 )
 @TypeConverters(
@@ -815,6 +815,14 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE `keyboard_layouts` ADD COLUMN `isFlexiblePlacementLayout` INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `keyboard_layouts` ADD COLUMN `usageMode` TEXT NOT NULL DEFAULT 'Normal'"
                 )
             }
         }

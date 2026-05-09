@@ -7,6 +7,7 @@ import com.google.gson.reflect.TypeToken
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -16,6 +17,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFl
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
+import timber.log.Timber
 import java.util.UUID
 import kotlin.math.ceil
 
@@ -38,7 +40,8 @@ object KeyboardBackupFormatDetector {
     private fun detectObject(obj: JsonObject): KeyboardBackupFormat {
         val version = obj["schemaVersion"]?.takeIf { it.isJsonPrimitive }?.asIntOrNull()
         return when {
-            version == KeyboardLayoutJsonImporter.LATEST_SCHEMA_VERSION &&
+            version != null &&
+                version in 1..KeyboardLayoutJsonImporter.LATEST_SCHEMA_VERSION &&
                 obj["layouts"]?.isJsonArray == true -> KeyboardBackupFormat.VersionedV1
 
             version != null -> KeyboardBackupFormat.Unsupported
@@ -196,7 +199,8 @@ object KeyboardBackupNormalizer {
             createdAt = layoutDto.createdAt?.takeIf { it > 0 } ?: System.currentTimeMillis(),
             sortOrder = 0,
             stableId = generatedStableId ?: UUID.randomUUID().toString(),
-            isFlexiblePlacementLayout = isFlexiblePlacementLayout
+            isFlexiblePlacementLayout = isFlexiblePlacementLayout,
+            usageMode = parseUsageMode(layoutDto.usageMode)
         )
 
         val normalizedKeys = normalizeKeys(
@@ -223,6 +227,17 @@ object KeyboardBackupNormalizer {
             keysWithFlicks = normalizedKeys,
             spacers = normalizedSpacers
         )
+    }
+
+    private fun parseUsageMode(rawValue: String?): KeyboardLayoutUsageMode {
+        val normalized = rawValue?.trim()?.takeIf { it.isNotEmpty() }
+            ?: return KeyboardLayoutUsageMode.Normal
+        return KeyboardLayoutUsageMode.entries.firstOrNull { mode ->
+            mode.serializedName == normalized || mode.name == normalized
+        } ?: run {
+            Timber.w("Unknown keyboard layout usageMode in backup: %s", normalized)
+            KeyboardLayoutUsageMode.Normal
+        }
     }
 
     private fun normalizeKeys(

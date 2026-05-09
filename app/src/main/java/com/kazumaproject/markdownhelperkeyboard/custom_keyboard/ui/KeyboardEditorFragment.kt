@@ -24,6 +24,7 @@ import androidx.navigation.fragment.navArgs
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyItem
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.HalfRowPlacement
@@ -101,6 +102,16 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         binding.switchDirectMode.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked != viewModel.uiState.value.isDirectMode) {
                 viewModel.updateIsDirectMode(isChecked)
+            }
+        }
+        binding.switchUsageModeNumber.setOnCheckedChangeListener { _, isChecked ->
+            val usageMode = if (isChecked) {
+                KeyboardLayoutUsageMode.Number
+            } else {
+                KeyboardLayoutUsageMode.Normal
+            }
+            if (usageMode != viewModel.uiState.value.layout.usageMode) {
+                viewModel.setCurrentLayoutUsageMode(viewModel.uiState.value.layoutId, usageMode)
             }
         }
         binding.buttonAddRow.setOnClickListener { viewModel.addRow() }
@@ -250,6 +261,10 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         }
         if (binding.switchDirectMode.isChecked != state.isDirectMode) {
             binding.switchDirectMode.isChecked = state.isDirectMode
+        }
+        val isNumberUsageMode = state.layout.usageMode == KeyboardLayoutUsageMode.Number
+        if (binding.switchUsageModeNumber.isChecked != isNumberUsageMode) {
+            binding.switchUsageModeNumber.isChecked = isNumberUsageMode
         }
         applyKeyboardEditorCapabilityVisibility(
             binding = binding,
