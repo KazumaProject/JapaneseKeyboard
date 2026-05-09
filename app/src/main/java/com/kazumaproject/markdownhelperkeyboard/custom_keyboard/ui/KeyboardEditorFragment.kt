@@ -24,6 +24,10 @@ import androidx.navigation.fragment.navArgs
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.KeyboardEditorMode
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.NudgeDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view.EditableFlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardEditorBinding
 import dagger.hilt.android.AndroidEntryPoint
@@ -100,6 +104,45 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         binding.buttonRemoveRow.setOnClickListener { viewModel.removeRow() }
         binding.buttonAddCol.setOnClickListener { viewModel.addColumn() }
         binding.buttonRemoveCol.setOnClickListener { viewModel.removeColumn() }
+        binding.buttonPlaceHalfKey.setOnClickListener {
+            viewModel.enterNewKeyPlacementMode(GridSpan(rowSpanUnits = 1, columnSpanUnits = 1))
+        }
+        binding.buttonPlaceOneKey.setOnClickListener {
+            viewModel.enterNewKeyPlacementMode(GridSpan(rowSpanUnits = 2, columnSpanUnits = 2))
+        }
+        binding.buttonPlaceHalfSpacer.setOnClickListener {
+            viewModel.enterSpacerPlacementMode(GridSpan(rowSpanUnits = 1, columnSpanUnits = 1))
+        }
+        binding.buttonPlaceOneSpacer.setOnClickListener {
+            viewModel.enterSpacerPlacementMode(GridSpan(rowSpanUnits = 2, columnSpanUnits = 2))
+        }
+        binding.buttonPlaceSpace.setOnClickListener {
+            viewModel.enterSpacePlacementMode()
+        }
+        binding.buttonConfirmPlacement.setOnClickListener {
+            viewModel.confirmPlacementPreview()
+        }
+        binding.buttonCancelPlacement.setOnClickListener {
+            viewModel.cancelPlacementPreview()
+        }
+        binding.buttonDeleteSelectedItem.setOnClickListener {
+            viewModel.deleteSelectedItem()
+        }
+        binding.buttonNudgeLeft.setOnClickListener {
+            viewModel.nudgePlacementCursor(NudgeDirection.Left)
+        }
+        binding.buttonNudgeRight.setOnClickListener {
+            viewModel.nudgePlacementCursor(NudgeDirection.Right)
+        }
+        binding.buttonNudgeUp.setOnClickListener {
+            viewModel.nudgePlacementCursor(NudgeDirection.Up)
+        }
+        binding.buttonNudgeDown.setOnClickListener {
+            viewModel.nudgePlacementCursor(NudgeDirection.Down)
+        }
+        binding.buttonCycleTarget.setOnClickListener {
+            viewModel.cyclePlacementCursorTarget()
+        }
 
         // ▼▼▼ ここから追加 ▼▼▼
         binding.buttonSelectTemplate.setOnClickListener {
@@ -180,17 +223,36 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         if (binding.switchDirectMode.isChecked != state.isDirectMode) {
             binding.switchDirectMode.isChecked = state.isDirectMode
         }
-        binding.flickKeyboardView.setKeyboard(state.layout)
+        val isPlacementMode = state.editorMode != KeyboardEditorMode.Normal
+        val displayLayout = state.previewLayout ?: state.layout
+        binding.flickKeyboardView.setKeyboard(
+            layout = displayLayout,
+            placementMode = isPlacementMode,
+            placementCursor = state.placementCursor,
+            selectedItemId = state.selectedItemId,
+            previewInsertedItemId = state.previewInsertedItemId,
+            previewMovedItemIds = state.previewMovedItemIds
+        )
+        binding.buttonConfirmPlacement.isEnabled = state.previewLayout != null
+        binding.buttonCancelPlacement.isEnabled = isPlacementMode
+        binding.buttonDeleteSelectedItem.isEnabled = !isPlacementMode && state.selectedItemId != null
+        binding.buttonNudgeLeft.isEnabled = isPlacementMode && state.placementCursor != null
+        binding.buttonNudgeRight.isEnabled = isPlacementMode && state.placementCursor != null
+        binding.buttonNudgeUp.isEnabled = isPlacementMode && state.placementCursor != null
+        binding.buttonNudgeDown.isEnabled = isPlacementMode && state.placementCursor != null
+        binding.buttonCycleTarget.isEnabled = isPlacementMode && state.placementCursor != null
     }
 
     override fun onKeySelected(keyId: String) {
         Timber.d("onKeySelected: keyId = $keyId")
-        viewModel.selectKeyForEditing(keyId)
-        findNavController().navigate(R.id.action_keyboardEditorFragment_to_keyEditorFragment)
+        if (viewModel.onKeyTapped(keyId)) {
+            findNavController().navigate(R.id.action_keyboardEditorFragment_to_keyEditorFragment)
+        }
     }
 
     override fun onSpacerSelected(spacerId: String) {
         Timber.d("onSpacerSelected: spacerId = $spacerId")
+        viewModel.onSpacerTapped(spacerId)
     }
 
     override fun onKeysSwapped(draggedKeyId: String, targetKeyId: String) {
@@ -206,6 +268,18 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
     override fun onColumnDeleted(columnIndex: Int) {
         Timber.d("onColumnDeleted: columnIndex = $columnIndex")
         viewModel.deleteColumnAt(columnIndex)
+    }
+
+    override fun onPlacementPointerTarget(target: InsertionTarget) {
+        viewModel.updatePlacementCursorFromPointer(target)
+    }
+
+    override fun onPlacementTapTarget(target: InsertionTarget) {
+        viewModel.holdPlacementCursorFromTap(target)
+    }
+
+    override fun onPlacementDropTarget(target: InsertionTarget) {
+        viewModel.holdPlacementCursorFromDrop(target)
     }
 
     private fun readSpacerPlacement(

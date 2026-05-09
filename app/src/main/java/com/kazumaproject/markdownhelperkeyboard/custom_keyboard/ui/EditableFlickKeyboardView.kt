@@ -12,6 +12,7 @@ import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.DragEvent
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.View.OnDragListener
 import android.widget.GridLayout
@@ -26,9 +27,13 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import com.kazumaproject.custom_keyboard.view.AutoSizeButton
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTargetMapper
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.PlacementCursor
 import com.google.android.material.R as MaterialR
 
 @SuppressLint("ClickableViewAccessibility")
@@ -43,10 +48,16 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         fun onKeysSwapped(draggedKeyId: String, targetKeyId: String)
         fun onRowDeleted(rowIndex: Int)
         fun onColumnDeleted(columnIndex: Int)
+        fun onPlacementPointerTarget(target: InsertionTarget)
+        fun onPlacementTapTarget(target: InsertionTarget)
+        fun onPlacementDropTarget(target: InsertionTarget)
     }
     // ▲▲▲ インターフェースに削除イベントを追加 ▲▲▲
 
     private var listener: OnKeyEditListener? = null
+    private val insertionTargetMapper = InsertionTargetMapper()
+    private var currentLayout: KeyboardLayout? = null
+    private var placementMode: Boolean = false
 
     fun setOnKeyEditListener(listener: OnKeyEditListener?) {
         this.listener = listener
@@ -57,8 +68,17 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    fun setKeyboard(layout: KeyboardLayout) {
+    fun setKeyboard(
+        layout: KeyboardLayout,
+        placementMode: Boolean = false,
+        placementCursor: PlacementCursor? = null,
+        selectedItemId: String? = null,
+        previewInsertedItemId: String? = null,
+        previewMovedItemIds: Set<String> = emptySet()
+    ) {
         this.removeAllViews()
+        this.currentLayout = layout
+        this.placementMode = placementMode
 
         // ▼▼▼ 削除ボタン用に列と行を1つずつ増やす ▼▼▼
         val keyboardColumnUnits = if (layout.items.isNotEmpty()) layout.columnUnitCount else layout.columnCount
@@ -70,13 +90,14 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         this.isFocusable = false
 
         val dragListener = createDragListener()
+        setPlacementTouchListener()
 
         // キーの描画
         if (layout.items.isNotEmpty()) {
             layout.items.forEach { item ->
                 when (item) {
-                    is KeyItem -> addKeyItem(item, dragListener)
-                    is SpacerItem -> addSpacerItem(item)
+                    is KeyItem -> addKeyItem(item, dragListener, selectedItemId, previewInsertedItemId, previewMovedItemIds)
+                    is SpacerItem -> addSpacerItem(item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
                 }
             }
         } else {
@@ -92,10 +113,15 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                             columnSpanUnits = keyData.colSpan
                         )
                     ),
-                    dragListener
+                    dragListener,
+                    selectedItemId,
+                    previewInsertedItemId,
+                    previewMovedItemIds
                 )
             }
         }
+
+        addInsertionCursor(layout, placementCursor)
 
         // ▼▼▼ ここから削除ボタンの描画を追加 ▼▼▼
         // 行削除ボタンの描画
@@ -128,16 +154,27 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         // ▲▲▲ ここまで削除ボタンの描画を追加 ▲▲▲
     }
 
-    private fun addKeyItem(item: KeyItem, dragListener: OnDragListener) {
+    private fun addKeyItem(
+        item: KeyItem,
+        dragListener: OnDragListener,
+        selectedItemId: String?,
+        previewInsertedItemId: String?,
+        previewMovedItemIds: Set<String>
+    ) {
         val keyData = item.keyData
         val keyView: View = createKeyView(keyData)
         keyView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
         keyView.tag = keyData.keyId
         keyView.setOnDragListener(dragListener)
         keyView.setOnClickListener {
-            keyData.keyId?.let { keyId -> listener?.onKeySelected(keyId) }
+            if (placementMode) {
+                mapTargetFromCenter(item)?.let { target -> listener?.onPlacementTapTarget(target) }
+            } else {
+                keyData.keyId?.let { keyId -> listener?.onKeySelected(keyId) }
+            }
         }
         keyView.setOnLongClickListener { view ->
+            if (placementMode) return@setOnLongClickListener true
             keyData.keyId?.let { keyId ->
                 val clipText = "keyId:$keyId"
                 val clipItem = ClipData.Item(clipText)
@@ -148,10 +185,16 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
             true
         }
+        decoratePreviewItem(keyView, item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
         this.addView(keyView)
     }
 
-    private fun addSpacerItem(item: SpacerItem) {
+    private fun addSpacerItem(
+        item: SpacerItem,
+        selectedItemId: String?,
+        previewInsertedItemId: String?,
+        previewMovedItemIds: Set<String>
+    ) {
         val spacerView = TextView(context).apply {
             isClickable = true
             isFocusable = false
@@ -164,11 +207,50 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
             contentDescription = "Spacer"
             setOnClickListener {
-                listener?.onSpacerSelected(item.id)
+                if (placementMode) {
+                    mapTargetFromCenter(item)?.let { target -> listener?.onPlacementTapTarget(target) }
+                } else {
+                    listener?.onSpacerSelected(item.id)
+                }
             }
         }
         spacerView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
+        decoratePreviewItem(spacerView, item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
         this.addView(spacerView)
+    }
+
+    private fun decoratePreviewItem(
+        view: View,
+        item: KeyboardLayoutItem,
+        selectedItemId: String?,
+        previewInsertedItemId: String?,
+        previewMovedItemIds: Set<String>
+    ) {
+        when {
+            item.id == previewInsertedItemId -> {
+                view.alpha = 0.76f
+                view.foreground = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    setColor(Color.TRANSPARENT)
+                    setStroke(dpToPx(2), Color.rgb(0, 150, 136))
+                }
+            }
+            item.id in previewMovedItemIds -> {
+                view.alpha = 0.86f
+                view.foreground = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    setColor(Color.TRANSPARENT)
+                    setStroke(dpToPx(2), Color.rgb(255, 152, 0))
+                }
+            }
+            item.id == selectedItemId -> {
+                view.foreground = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    setColor(Color.TRANSPARENT)
+                    setStroke(dpToPx(2), Color.rgb(33, 150, 243))
+                }
+            }
+        }
     }
 
     // ▼▼▼ 削除ボタンを生成するヘルパー関数を追加 ▼▼▼
@@ -188,7 +270,6 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
 
     private fun createDragListener(): OnDragListener {
         return OnDragListener { view, event ->
-            val targetKeyId = view.tag as? String ?: return@OnDragListener false
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> true
                 DragEvent.ACTION_DRAG_ENTERED -> {
@@ -202,6 +283,11 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 }
 
                 DragEvent.ACTION_DROP -> {
+                    if (placementMode) {
+                        mapTarget(event.x, event.y)?.let { listener?.onPlacementDropTarget(it) }
+                        return@OnDragListener true
+                    }
+                    val targetKeyId = view.tag as? String ?: return@OnDragListener false
                     val item = event.clipData.getItemAt(0)
                     val draggedKeyId = item.text.toString().removePrefix("keyId:")
                     if (draggedKeyId != targetKeyId) {
@@ -218,6 +304,150 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 else -> false
             }
         }
+    }
+
+    private fun setPlacementTouchListener() {
+        setOnTouchListener { _, event ->
+            if (!placementMode) return@setOnTouchListener false
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN,
+                MotionEvent.ACTION_MOVE -> {
+                    mapTarget(event.x, event.y)?.let { listener?.onPlacementPointerTarget(it) }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    mapTarget(event.x, event.y)?.let { listener?.onPlacementTapTarget(it) }
+                    true
+                }
+                else -> false
+            }
+        }
+        setOnDragListener { _, event ->
+            if (!placementMode) return@setOnDragListener false
+            when (event.action) {
+                DragEvent.ACTION_DRAG_STARTED -> true
+                DragEvent.ACTION_DRAG_LOCATION -> {
+                    mapTarget(event.x, event.y)?.let { listener?.onPlacementPointerTarget(it) }
+                    true
+                }
+                DragEvent.ACTION_DROP -> {
+                    mapTarget(event.x, event.y)?.let { listener?.onPlacementDropTarget(it) }
+                    true
+                }
+                else -> true
+            }
+        }
+    }
+
+    private fun mapTarget(x: Float, y: Float): InsertionTarget? {
+        val layout = currentLayout ?: return null
+        val totalColumnUnits = layout.columnUnitCount + 2
+        val totalRowUnits = layout.rowUnitCount + 2
+        if (totalColumnUnits <= 0 || totalRowUnits <= 0) return null
+        val unitWidth = width.toFloat() / totalColumnUnits
+        val unitHeight = height.toFloat() / totalRowUnits
+        val editableX = x - unitWidth * 2
+        val editableY = y - unitHeight * 2
+        return insertionTargetMapper.mapPointer(
+            layout = layout,
+            xPx = editableX,
+            yPx = editableY,
+            widthPx = unitWidth * layout.columnUnitCount,
+            heightPx = unitHeight * layout.rowUnitCount
+        )
+    }
+
+    private fun mapTargetFromCenter(item: KeyboardLayoutItem): InsertionTarget? {
+        val layout = currentLayout ?: return null
+        val x = item.placement.columnUnits + item.placement.columnSpanUnits / 2f
+        val y = item.placement.rowUnits + item.placement.rowSpanUnits / 2f
+        return insertionTargetMapper.mapPointer(
+            layout = layout,
+            xPx = x,
+            yPx = y,
+            widthPx = layout.columnUnitCount.toFloat(),
+            heightPx = layout.rowUnitCount.toFloat()
+        )
+    }
+
+    private fun addInsertionCursor(layout: KeyboardLayout, placementCursor: PlacementCursor?) {
+        val cursor = placementCursor ?: return
+        val cursorPlacement = when (val target = cursor.target) {
+            is InsertionTarget.BeforeItem -> {
+                val item = layout.items.firstOrNull { it.id == target.itemId } ?: return
+                GridPlacement(
+                    rowUnits = item.placement.rowUnits,
+                    columnUnits = item.placement.columnUnits,
+                    rowSpanUnits = item.placement.rowSpanUnits,
+                    columnSpanUnits = 1
+                )
+            }
+            is InsertionTarget.AfterItem -> {
+                val item = layout.items.firstOrNull { it.id == target.itemId } ?: return
+                GridPlacement(
+                    rowUnits = item.placement.rowUnits,
+                    columnUnits = (item.placement.columnUnits + item.placement.columnSpanUnits)
+                        .coerceAtMost(maxOf(0, layout.columnUnitCount - 1)),
+                    rowSpanUnits = item.placement.rowSpanUnits,
+                    columnSpanUnits = 1
+                )
+            }
+            is InsertionTarget.RowEnd -> {
+                val rowItems = layout.items.filter { it.placement.rowUnits == target.topRowUnits }
+                GridPlacement(
+                    rowUnits = target.topRowUnits,
+                    columnUnits = rowItems.maxOfOrNull { it.placement.columnUnits + it.placement.columnSpanUnits }
+                        ?.coerceAtMost(maxOf(0, layout.columnUnitCount - 1))
+                        ?: 0,
+                    rowSpanUnits = rowItems.maxOfOrNull { it.placement.rowSpanUnits } ?: cursor.span.rowSpanUnits,
+                    columnSpanUnits = 1
+                )
+            }
+            is InsertionTarget.AboveRowGroup -> {
+                GridPlacement(
+                    rowUnits = target.topRowUnits,
+                    columnUnits = 0,
+                    rowSpanUnits = 1,
+                    columnSpanUnits = layout.columnUnitCount
+                )
+            }
+            is InsertionTarget.BelowRowGroup -> {
+                val bottom = layout.items
+                    .filter { it.placement.rowUnits == target.topRowUnits }
+                    .maxOfOrNull { it.placement.rowUnits + it.placement.rowSpanUnits }
+                    ?: target.topRowUnits
+                GridPlacement(
+                    rowUnits = bottom,
+                    columnUnits = 0,
+                    rowSpanUnits = 1,
+                    columnSpanUnits = layout.columnUnitCount
+                )
+            }
+            is InsertionTarget.NewBottomRow -> {
+                GridPlacement(
+                    rowUnits = maxOf(0, layout.rowUnitCount - 1),
+                    columnUnits = 0,
+                    rowSpanUnits = 1,
+                    columnSpanUnits = maxOf(layout.columnUnitCount, target.columnUnits + cursor.span.columnSpanUnits)
+                )
+            }
+            is InsertionTarget.EmptyArea -> {
+                target.placement.copy(
+                    rowSpanUnits = cursor.span.rowSpanUnits,
+                    columnSpanUnits = cursor.span.columnSpanUnits
+                )
+            }
+        }
+        val cursorView = TextView(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.argb(180, 0, 150, 136))
+                setStroke(dpToPx(1), Color.rgb(0, 121, 107))
+            }
+            elevation = 8f
+        }
+        cursorView.layoutParams = createLayoutParams(cursorPlacement, rowOffsetUnits = 2, columnOffsetUnits = 2)
+        this.addView(cursorView)
     }
 
     private fun createLayoutParams(
