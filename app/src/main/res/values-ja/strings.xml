@@ -862,4 +862,6 @@
     <string name="qwerty_popup_view_style_preference_summary">QWERTY のキー preview と長押し popup のサイズと文字サイズを設定します</string>
     <string name="qwerty_number_key_flick_setting_preference_summary">QWERTY 数字キーの上・下フリックで出力する文字を設定します</string>
     <string name="qwerty_number_key_flick_setting_preference_title">数字キーのフリック設定</string>
+    <string name="custom_keyboard_usage_number_title">数字入力欄で使用する</string>
+    <string name="custom_keyboard_usage_number_summary">日付、PIN、電話番号などの数字入力欄で、このカスタムキーボードを使用します。</string>
 </resources>

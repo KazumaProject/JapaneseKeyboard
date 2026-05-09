@@ -864,4 +864,6 @@
     <string name="qwerty_popup_view_style_preference_summary">Configure the size and text size of QWERTY key previews and long-press popups.</string>
     <string name="qwerty_number_key_flick_setting_preference_summary">Number key flick settings</string>
     <string name="qwerty_number_key_flick_setting_preference_title">Configure the characters output by upward and downward flicks on QWERTY number keys.</string>
+    <string name="custom_keyboard_usage_number_title">Use for number input fields</string>
+    <string name="custom_keyboard_usage_number_summary">Use this custom keyboard layout for number-only fields such as dates, PINs, and phone numbers.</string>
 </resources>

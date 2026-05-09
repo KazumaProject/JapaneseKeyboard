@@ -1,6 +1,7 @@
 package com.kazumaproject.custom_keyboard.data
 
 import androidx.annotation.DrawableRes
+import com.google.gson.annotations.SerializedName
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import kotlin.math.ceil
 
@@ -9,6 +10,14 @@ enum class KeyboardInputMode {
     HIRAGANA,
     ENGLISH,
     SYMBOLS
+}
+
+enum class KeyboardLayoutUsageMode(val serializedName: String) {
+    @SerializedName("Normal")
+    Normal("Normal"),
+
+    @SerializedName("Number")
+    Number("Number")
 }
 
 /**
@@ -438,7 +447,8 @@ data class KeyboardLayout(
     val items: List<KeyboardLayoutItem> = keys.map { it.toKeyItem() },
     val columnUnitCount: Int = columnCount * 2,
     val rowUnitCount: Int = rowCount * 2,
-    val isFlexiblePlacementLayout: Boolean = false
+    val isFlexiblePlacementLayout: Boolean = false,
+    val usageMode: KeyboardLayoutUsageMode = KeyboardLayoutUsageMode.Normal
 )
 
 /**

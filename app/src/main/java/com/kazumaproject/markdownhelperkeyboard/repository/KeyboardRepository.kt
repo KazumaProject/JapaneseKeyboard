@@ -11,6 +11,7 @@ import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.copyWithItems
@@ -206,16 +207,30 @@ class KeyboardRepository @Inject constructor(
                     spacer.copy(spacerId = 0, ownerLayoutId = 0)
                 }
 
-                dao.insertFullKeyboardLayout(
-                    layoutToInsert,
-                    keysToInsert,
-                    flicksMap,
-                    circularFlicksMap,
-                    twoStepMap,
-                    longPressFlicksMap,
-                    twoStepLongPressMap,
-                    spacersToInsert
-                )
+                if (layoutToInsert.usageMode == KeyboardLayoutUsageMode.Number) {
+                    val insertedLayoutId = dao.insertFullKeyboardLayout(
+                        layoutToInsert,
+                        keysToInsert,
+                        flicksMap,
+                        circularFlicksMap,
+                        twoStepMap,
+                        longPressFlicksMap,
+                        twoStepLongPressMap,
+                        spacersToInsert
+                    )
+                    dao.clearNumberUsageModeExcept(insertedLayoutId)
+                } else {
+                    dao.insertFullKeyboardLayout(
+                        layoutToInsert,
+                        keysToInsert,
+                        flicksMap,
+                        circularFlicksMap,
+                        twoStepMap,
+                        longPressFlicksMap,
+                        twoStepLongPressMap,
+                        spacersToInsert
+                    )
+                }
                 importedLayouts += importable.copy(
                     layout = layoutToInsert,
                     keysWithFlicks = normalizedKeysWithFlicks,
@@ -284,6 +299,13 @@ class KeyboardRepository @Inject constructor(
         return dao.getLayoutsListNotFlow()
     }
 
+    suspend fun setCurrentLayoutUsageMode(
+        layoutId: Long,
+        usageMode: KeyboardLayoutUsageMode
+    ) {
+        dao.setLayoutUsageModeExclusive(layoutId, usageMode)
+    }
+
     suspend fun getLayoutName(id: Long): String? = dao.getLayoutName(id)
 
     fun getFullLayout(id: Long): Flow<KeyboardLayout> {
@@ -336,11 +358,15 @@ class KeyboardRepository @Inject constructor(
             layout
         }
 
-        return if (id == null || id <= 0L) {
+        val savedLayoutId = if (id == null || id <= 0L) {
             createNewLayoutInternal(layoutToSave, name)
         } else {
             updateExistingLayoutInternal(id, layoutToSave, name)
         }
+        if (layoutToSave.usageMode == KeyboardLayoutUsageMode.Number) {
+            dao.clearNumberUsageModeExcept(savedLayoutId)
+        }
+        return savedLayoutId
     }
 
     private suspend fun createNewLayoutInternal(layout: KeyboardLayout, name: String): Long {
@@ -355,7 +381,8 @@ class KeyboardRepository @Inject constructor(
             createdAt = System.currentTimeMillis(),
             sortOrder = nextTopSortOrder(),
             stableId = newStableId,
-            isFlexiblePlacementLayout = layout.usesFlexiblePlacement()
+            isFlexiblePlacementLayout = layout.usesFlexiblePlacement(),
+            usageMode = layout.usageMode
         )
         val parts = convertToDbModel(layout)
         val newLayoutId = dao.insertFullKeyboardLayout(
@@ -399,7 +426,8 @@ class KeyboardRepository @Inject constructor(
             isRomaji = layout.isRomaji,
             isDirectMode = layout.isDirectMode,
             stableId = repairedStableId,
-            isFlexiblePlacementLayout = layout.usesFlexiblePlacement()
+            isFlexiblePlacementLayout = layout.usesFlexiblePlacement(),
+            usageMode = layout.usageMode
         )
 
         val parts = convertToDbModel(layout)
@@ -607,7 +635,8 @@ class KeyboardRepository @Inject constructor(
             name = finalName,
             createdAt = System.currentTimeMillis(),
             sortOrder = nextTopSortOrder(),
-            stableId = UUID.randomUUID().toString()
+            stableId = UUID.randomUUID().toString(),
+            usageMode = KeyboardLayoutUsageMode.Normal
         )
 
         val newKeys = originalLayout.keysWithFlicks.map { keyWithFlicks ->
@@ -942,7 +971,8 @@ class KeyboardRepository @Inject constructor(
             items = items,
             columnUnitCount = columnUnitCount,
             rowUnitCount = rowUnitCount,
-            isFlexiblePlacementLayout = dbLayout.layout.isFlexiblePlacementLayout
+            isFlexiblePlacementLayout = dbLayout.layout.isFlexiblePlacementLayout,
+            usageMode = dbLayout.layout.usageMode
         )
         return if (restoredLayout.usesFlexiblePlacement()) {
             restoredLayout.withCanonicalFlexibleBounds()
