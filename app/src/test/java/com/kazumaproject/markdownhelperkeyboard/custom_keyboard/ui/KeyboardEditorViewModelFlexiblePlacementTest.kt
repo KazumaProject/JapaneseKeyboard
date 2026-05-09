@@ -11,9 +11,16 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.KeyboardEditorMode
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.NudgeDirection
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.Mockito.mock
@@ -22,6 +29,9 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
 
     private fun viewModel(): KeyboardEditorViewModel =
         KeyboardEditorViewModel(KeyboardRepository(mock(KeyboardLayoutDao::class.java)))
+
+    private fun qwertyViewModel(): KeyboardEditorViewModel =
+        viewModel().apply { applyTemplate(KeyboardDefaultLayouts.createQwertyTemplateLayout()) }
 
     @Test
     fun qwertyKeyEdit_keepsHalfUnitPlacementAndDoesNotAddEmptyKeys() {
@@ -171,5 +181,193 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         assertEquals("x", afterKey.label)
         assertEquals(beforeLayout.columnCount * 2, afterLayout.columnUnitCount)
         assertEquals(beforeLayout.rowCount * 2, afterLayout.rowUnitCount)
+    }
+
+    @Test
+    fun viewModel_enterNewKeyPlacementMode_setsMode() {
+        val vm = qwertyViewModel()
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        assertTrue(vm.uiState.value.editorMode is KeyboardEditorMode.PlacingNewKey)
+    }
+
+    @Test
+    fun viewModel_enterSpacePlacementMode_setsModeAndDoesNotMutateLayout() {
+        val vm = qwertyViewModel()
+        val before = vm.uiState.value.layout
+        vm.enterSpacePlacementMode()
+        assertTrue(vm.uiState.value.editorMode is KeyboardEditorMode.PlacingSpaceKey)
+        assertEquals(before, vm.uiState.value.layout)
+    }
+
+    @Test
+    fun viewModel_updatePlacementCursorFromPointer_createsCursorAndPreviewOnly() =
+        assertPreviewOnly { it.updatePlacementCursorFromPointer(InsertionTarget.BeforeItem("qwerty_key_q")) }
+
+    @Test
+    fun viewModel_holdPlacementCursorFromTap_doesNotCommit() =
+        assertPreviewOnly { it.holdPlacementCursorFromTap(InsertionTarget.BeforeItem("qwerty_key_q")) }
+
+    @Test
+    fun viewModel_holdPlacementCursorFromDrop_doesNotCommit() =
+        assertPreviewOnly { it.holdPlacementCursorFromDrop(InsertionTarget.BeforeItem("qwerty_key_q")) }
+
+    @Test
+    fun viewModel_nudgePlacementCursor_updatesCursorAndPreviewOnly() =
+        assertPreviewOnly { it.nudgePlacementCursor(NudgeDirection.Right) }
+
+    @Test
+    fun viewModel_cyclePlacementCursorTarget_updatesCursorAndPreviewOnly() =
+        assertPreviewOnly { it.cyclePlacementCursorTarget() }
+
+    @Test
+    fun viewModel_confirmPlacementPreview_commitsPreviewLayout() {
+        val vm = qwertyViewModel()
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.RowEnd(0))
+        val preview = vm.uiState.value.previewLayout
+        assertTrue(vm.confirmPlacementPreview())
+        assertEquals(preview, vm.uiState.value.layout)
+    }
+
+    @Test
+    fun viewModel_cancelPlacementPreview_discardsPreviewAndKeepsCommittedLayout() {
+        val vm = qwertyViewModel()
+        val before = vm.uiState.value.layout
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.RowEnd(0))
+        vm.cancelPlacementPreview()
+        assertEquals(before, vm.uiState.value.layout)
+        assertNull(vm.uiState.value.previewLayout)
+    }
+
+    @Test
+    fun viewModel_confirmAfterHorizontalInsertion_commitsExpandedColumnUnitCount() {
+        val vm = qwertyViewModel()
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.RowEnd(0))
+        vm.confirmPlacementPreview()
+        assertTrue(vm.uiState.value.layout.columnUnitCount > 20)
+    }
+
+    @Test
+    fun viewModel_cancelAfterHorizontalInsertion_discardsExpandedColumnUnitCount() {
+        val vm = qwertyViewModel()
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.RowEnd(0))
+        vm.cancelPlacementPreview()
+        assertEquals(20, vm.uiState.value.layout.columnUnitCount)
+    }
+
+    @Test
+    fun viewModel_confirmAfterVerticalInsertion_commitsExpandedRowUnitCount() {
+        val vm = qwertyViewModel()
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.NewBottomRow(0))
+        vm.confirmPlacementPreview()
+        assertTrue(vm.uiState.value.layout.rowUnitCount > 8)
+    }
+
+    @Test
+    fun viewModel_cancelAfterVerticalInsertion_discardsExpandedRowUnitCount() {
+        val vm = qwertyViewModel()
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.NewBottomRow(0))
+        vm.cancelPlacementPreview()
+        assertEquals(8, vm.uiState.value.layout.rowUnitCount)
+    }
+
+    @Test
+    fun viewModel_spaceConfirm_doesNotEmitKeyEditorNavigation() {
+        val vm = qwertyViewModel()
+        vm.enterSpacePlacementMode()
+        vm.holdPlacementCursorFromTap(InsertionTarget.RowEnd(0))
+        vm.confirmPlacementPreview()
+        assertNull(vm.uiState.value.selectedKeyIdentifier)
+    }
+
+    @Test
+    fun viewModel_normalModeKeyTap_emitsKeyEditorNavigation() {
+        val vm = qwertyViewModel()
+        assertTrue(vm.onKeyTapped("qwerty_key_q"))
+        assertEquals("qwerty_key_q", vm.uiState.value.selectedKeyIdentifier)
+    }
+
+    @Test
+    fun viewModel_placementModeKeyTap_doesNotEmitKeyEditorNavigation() {
+        val vm = qwertyViewModel()
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        assertFalse(vm.onKeyTapped("qwerty_key_q"))
+        assertNull(vm.uiState.value.selectedKeyIdentifier)
+    }
+
+    @Test
+    fun viewModel_spacerTap_selectsSpacerAndDoesNotNavigate() {
+        val vm = qwertyViewModel()
+        val spacer = vm.uiState.value.layout.items.filterIsInstance<SpacerItem>().first()
+        vm.onSpacerTapped(spacer.id)
+        assertEquals(spacer.id, vm.uiState.value.selectedItemId)
+        assertNull(vm.uiState.value.selectedKeyIdentifier)
+    }
+
+    @Test
+    fun viewModel_deleteSelectedSpacer_removesSpacer() {
+        val vm = qwertyViewModel()
+        val spacer = vm.uiState.value.layout.items.filterIsInstance<SpacerItem>().first()
+        vm.selectItem(spacer.id)
+        assertTrue(vm.deleteSelectedItem())
+        assertTrue(vm.uiState.value.layout.items.none { it.id == spacer.id })
+    }
+
+    @Test
+    fun viewModel_deleteSelectedKey_removesKeyAndMappings() {
+        val vm = viewModel()
+        val key = KeyData("x", 0, 0, false, KeyAction.Text("x"), keyType = KeyType.NORMAL, keyId = "x")
+        vm.applyTemplate(
+            KeyboardLayout(
+                keys = listOf(key),
+                flickKeyMaps = mapOf("x" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("x")))),
+                columnCount = 1,
+                rowCount = 1,
+                items = listOf(KeyItem("x", key, GridPlacement(0, 0, 2, 2)))
+            )
+        )
+        vm.selectItem("x")
+        assertTrue(vm.deleteSelectedItem())
+        assertTrue(vm.uiState.value.layout.items.none { it.id == "x" })
+        assertFalse(vm.uiState.value.layout.flickKeyMaps.containsKey("x"))
+    }
+
+    @Test
+    fun viewModel_editKeyAfterMove_keepsExactGridPlacement() {
+        val vm = qwertyViewModel()
+        val before = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_p" }
+        vm.enterMoveItemMode("qwerty_key_p")
+        vm.holdPlacementCursorFromTap(InsertionTarget.BeforeItem("qwerty_key_q"))
+        vm.confirmPlacementPreview()
+        val moved = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_p" }
+        assertNotEquals(before.placement, moved.placement)
+        vm.updateKeyAndMappings(
+            newKeyData = moved.keyData.copy(label = "P"),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap()
+        )
+        val edited = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_p" }
+        assertEquals(moved.placement, edited.placement)
+    }
+
+    private fun assertPreviewOnly(action: (KeyboardEditorViewModel) -> Unit) {
+        val vm = qwertyViewModel()
+        val before = vm.uiState.value.layout
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.BeforeItem("qwerty_key_q"))
+        action(vm)
+        assertEquals(before, vm.uiState.value.layout)
+        assertNotNull(vm.uiState.value.previewLayout)
+        assertNotNull(vm.uiState.value.placementCursor)
     }
 }
