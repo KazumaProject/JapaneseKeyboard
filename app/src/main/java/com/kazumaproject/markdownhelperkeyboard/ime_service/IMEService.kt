@@ -4723,7 +4723,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val expectedStableId = layout.stableId
             val dbLayout = runCatching { keyboardRepository.getFullLayout(id).first() }
                 .getOrElse {
-                    Timber.w(it, "setNumberCustomLayoutTo: layout disappeared id=$id stableId=$expectedStableId")
+                    Timber.w(
+                        it,
+                        "setNumberCustomLayoutTo: layout disappeared id=$id stableId=$expectedStableId"
+                    )
                     return@launch
                 }
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
@@ -4765,7 +4768,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val expectedStableId = layout.stableId
             val dbLayout = runCatching { keyboardRepository.getFullLayout(id).first() }
                 .getOrElse {
-                    Timber.w(it, "setCurrentCustomLayoutTo: layout disappeared id=$id stableId=$expectedStableId")
+                    Timber.w(
+                        it,
+                        "setCurrentCustomLayoutTo: layout disappeared id=$id stableId=$expectedStableId"
+                    )
                     return@launch
                 }
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
@@ -7562,7 +7568,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val expectedStableId = layout.stableId
             val dbLayout = runCatching { keyboardRepository.getFullLayout(id).first() }
                 .getOrElse {
-                    Timber.w(it, "renderCustomKeyboardLayout: layout disappeared id=$id stableId=$expectedStableId")
+                    Timber.w(
+                        it,
+                        "renderCustomKeyboardLayout: layout disappeared id=$id stableId=$expectedStableId"
+                    )
                     return@launch
                 }
             Timber.d("renderCustomKeyboardLayout: $id $dbLayout")
@@ -8328,9 +8337,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         dakutenSmallActionForSumire()
                     }
 
-                    KeyAction.SwitchToEnglishLayout -> {}
-                    KeyAction.SwitchToKanaLayout -> {}
-                    KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.SwitchToEnglishLayout -> {
+                        customKeyboardMode = KeyboardInputMode.ENGLISH
+                        createNewKeyboardLayoutForSumire()
+                        val inputMode = InputMode.ModeEnglish
+                        setCurrentInputModeForSession(inputMode)
+                    }
+
+                    KeyAction.SwitchToKanaLayout -> {
+                        customKeyboardMode = KeyboardInputMode.HIRAGANA
+                        createNewKeyboardLayoutForSumire()
+                        val inputMode = InputMode.ModeJapanese
+                        setCurrentInputModeForSession(inputMode)
+                    }
+
+                    KeyAction.SwitchToNumberLayout -> {
+                        customKeyboardMode = KeyboardInputMode.SYMBOLS
+                        createNewKeyboardLayoutForSumire()
+                        val inputMode = InputMode.ModeNumber
+                        setCurrentInputModeForSession(inputMode)
+                    }
+
                     KeyAction.ShiftKey -> {
                         isCustomLayoutShiftPressed = !isCustomLayoutShiftPressed
 
@@ -12687,11 +12714,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setFirstKeyboardType() {
         if (keyboardOrder.isNotEmpty()) {
-            val firstItem = if (keyboardOrder.first() == KeyboardType.CUSTOM && customLayouts.isEmpty()) {
-                keyboardOrder.firstOrNull { it != KeyboardType.CUSTOM } ?: KeyboardType.TENKEY
-            } else {
-                keyboardOrder.first()
-            }
+            val firstItem =
+                if (keyboardOrder.first() == KeyboardType.CUSTOM && customLayouts.isEmpty()) {
+                    keyboardOrder.firstOrNull { it != KeyboardType.CUSTOM } ?: KeyboardType.TENKEY
+                } else {
+                    keyboardOrder.first()
+                }
             when (firstItem) {
                 KeyboardType.TENKEY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                 KeyboardType.SUMIRE -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
