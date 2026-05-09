@@ -53,6 +53,74 @@ class FlexiblePlacementSolverTest {
         assertNoOverlaps(result.layout)
     }
 
+    @Test fun solver_preferVerticalBeforeItem_insertsInSameColumnLaneAndShiftsLaneDownOnly() {
+        val layout = laneLayout()
+        val result = solve(
+            layout,
+            candidate("new"),
+            InsertionTarget.BeforeItem("target"),
+            InsertionPolicy.PreferVertical
+        )
+
+        assertEquals(PlacementStrategy.VerticalInsertion, result.strategy)
+        assertEquals(GridPlacement(2, 0, 2, 2), item(result.layout, result.insertedItemId!!).placement)
+        assertEquals(GridPlacement(4, 0, 2, 2), item(result.layout, "target").placement)
+        assertEquals(GridPlacement(6, 0, 2, 2), item(result.layout, "below").placement)
+        assertEquals(GridPlacement(2, 4, 2, 2), item(result.layout, "side").placement)
+        assertNoOverlaps(result.layout)
+    }
+
+    @Test fun solver_preferVerticalAfterItem_insertsBelowTargetAndShiftsLaneDownOnly() {
+        val layout = laneLayout()
+        val result = solve(
+            layout,
+            candidate("new"),
+            InsertionTarget.AfterItem("target"),
+            InsertionPolicy.PreferVertical
+        )
+
+        assertEquals(PlacementStrategy.VerticalInsertion, result.strategy)
+        assertEquals(GridPlacement(4, 0, 2, 2), item(result.layout, result.insertedItemId!!).placement)
+        assertEquals(GridPlacement(2, 0, 2, 2), item(result.layout, "target").placement)
+        assertEquals(GridPlacement(6, 0, 2, 2), item(result.layout, "below").placement)
+        assertEquals(GridPlacement(2, 4, 2, 2), item(result.layout, "side").placement)
+        assertNoOverlaps(result.layout)
+    }
+
+    @Test fun solver_preferHorizontalBeforeItem_keepsRowInsertionBehavior() {
+        val layout = horizontalLaneLayout()
+        val result = solve(
+            layout,
+            candidate("new"),
+            InsertionTarget.BeforeItem("target"),
+            InsertionPolicy.PreferHorizontal
+        )
+
+        assertEquals(PlacementStrategy.BeforeItemInsertion, result.strategy)
+        assertEquals(GridPlacement(0, 2, 2, 2), item(result.layout, result.insertedItemId!!).placement)
+        assertEquals(GridPlacement(0, 4, 2, 2), item(result.layout, "target").placement)
+        assertEquals(GridPlacement(0, 6, 2, 2), item(result.layout, "right").placement)
+        assertEquals(GridPlacement(2, 2, 2, 2), item(result.layout, "below").placement)
+        assertNoOverlaps(result.layout)
+    }
+
+    @Test fun solver_preferHorizontalAfterItem_keepsRowInsertionBehavior() {
+        val layout = horizontalLaneLayout()
+        val result = solve(
+            layout,
+            candidate("new"),
+            InsertionTarget.AfterItem("target"),
+            InsertionPolicy.PreferHorizontal
+        )
+
+        assertEquals(PlacementStrategy.AfterItemInsertion, result.strategy)
+        assertEquals(GridPlacement(0, 4, 2, 2), item(result.layout, result.insertedItemId!!).placement)
+        assertEquals(GridPlacement(0, 2, 2, 2), item(result.layout, "target").placement)
+        assertEquals(GridPlacement(0, 6, 2, 2), item(result.layout, "right").placement)
+        assertEquals(GridPlacement(2, 2, 2, 2), item(result.layout, "below").placement)
+        assertNoOverlaps(result.layout)
+    }
+
     @Test fun solver_aboveRowGroup_insertsRowAboveAndShiftsRowsDown() {
         val layout = KeyboardDefaultLayouts.createQwertyTemplateLayout()
         val result = solve(layout, candidate("new"), InsertionTarget.AboveRowGroup(2))
@@ -243,8 +311,45 @@ class FlexiblePlacementSolverTest {
         return layout
     }
 
-    private fun solve(layout: KeyboardLayout, candidate: com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem, target: InsertionTarget): PlacementSolveResult =
-        solver.solve(layout, PlacementOperation.Insert(candidate), target, InsertionPolicy.Auto2D)
+    private fun solve(
+        layout: KeyboardLayout,
+        candidate: com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem,
+        target: InsertionTarget,
+        policy: InsertionPolicy = InsertionPolicy.Auto2D
+    ): PlacementSolveResult =
+        solver.solve(layout, PlacementOperation.Insert(candidate), target, policy)
+
+    private fun laneLayout(): KeyboardLayout =
+        KeyboardLayout(
+            keys = emptyList(),
+            flickKeyMaps = emptyMap(),
+            columnCount = 3,
+            rowCount = 4,
+            items = listOf(
+                candidate("top").copy(placement = GridPlacement(0, 0, 2, 2)),
+                candidate("target").copy(placement = GridPlacement(2, 0, 2, 2)),
+                candidate("below").copy(placement = GridPlacement(4, 0, 2, 2)),
+                candidate("side").copy(placement = GridPlacement(2, 4, 2, 2))
+            ),
+            columnUnitCount = 6,
+            rowUnitCount = 8
+        )
+
+    private fun horizontalLaneLayout(): KeyboardLayout =
+        KeyboardLayout(
+            keys = emptyList(),
+            flickKeyMaps = emptyMap(),
+            columnCount = 4,
+            rowCount = 2,
+            items = listOf(
+                candidate("left").copy(placement = GridPlacement(0, 0, 2, 2)),
+                candidate("target").copy(placement = GridPlacement(0, 2, 2, 2)),
+                candidate("right").copy(placement = GridPlacement(0, 4, 2, 2)),
+                candidate("below").copy(placement = GridPlacement(2, 2, 2, 2))
+            ),
+            columnUnitCount = 8,
+            rowUnitCount = 4
+        )
 
     private fun candidate(id: String, rowSpan: Int = 2, columnSpan: Int = 2): KeyItem {
         val key = KeyData(

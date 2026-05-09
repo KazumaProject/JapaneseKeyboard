@@ -97,21 +97,49 @@ class FlexiblePlacementSolver {
             is InsertionTarget.BeforeItem -> {
                 val targetItem = shifted.firstOrNull { it.id == target.itemId }
                     ?: error("Missing target item '${target.itemId}'.")
-                val row = targetItem.placement.rowUnits
-                val column = targetItem.placement.columnUnits
-                shiftRight(shifted, row, column, span.columnSpanUnits)
-                candidatePlacement = GridPlacement(row, column, span.rowSpanUnits, span.columnSpanUnits)
-                strategy = PlacementStrategy.BeforeItemInsertion
+                if (policy == InsertionPolicy.PreferVertical) {
+                    val row = targetItem.placement.rowUnits
+                    val column = targetItem.placement.columnUnits
+                    shiftDownOverlappingColumnLane(
+                        items = shifted,
+                        fromRowUnits = row,
+                        columnUnits = column,
+                        columnSpanUnits = span.columnSpanUnits,
+                        deltaUnits = span.rowSpanUnits
+                    )
+                    candidatePlacement = GridPlacement(row, column, span.rowSpanUnits, span.columnSpanUnits)
+                    strategy = PlacementStrategy.VerticalInsertion
+                } else {
+                    val row = targetItem.placement.rowUnits
+                    val column = targetItem.placement.columnUnits
+                    shiftRight(shifted, row, column, span.columnSpanUnits)
+                    candidatePlacement = GridPlacement(row, column, span.rowSpanUnits, span.columnSpanUnits)
+                    strategy = PlacementStrategy.BeforeItemInsertion
+                }
             }
 
             is InsertionTarget.AfterItem -> {
                 val targetItem = shifted.firstOrNull { it.id == target.itemId }
                     ?: error("Missing target item '${target.itemId}'.")
-                val row = targetItem.placement.rowUnits
-                val column = targetItem.placement.columnUnits + targetItem.placement.columnSpanUnits
-                shiftRight(shifted, row, column, span.columnSpanUnits)
-                candidatePlacement = GridPlacement(row, column, span.rowSpanUnits, span.columnSpanUnits)
-                strategy = PlacementStrategy.AfterItemInsertion
+                if (policy == InsertionPolicy.PreferVertical) {
+                    val row = targetItem.placement.rowUnits + targetItem.placement.rowSpanUnits
+                    val column = targetItem.placement.columnUnits
+                    shiftDownOverlappingColumnLane(
+                        items = shifted,
+                        fromRowUnits = row,
+                        columnUnits = column,
+                        columnSpanUnits = span.columnSpanUnits,
+                        deltaUnits = span.rowSpanUnits
+                    )
+                    candidatePlacement = GridPlacement(row, column, span.rowSpanUnits, span.columnSpanUnits)
+                    strategy = PlacementStrategy.VerticalInsertion
+                } else {
+                    val row = targetItem.placement.rowUnits
+                    val column = targetItem.placement.columnUnits + targetItem.placement.columnSpanUnits
+                    shiftRight(shifted, row, column, span.columnSpanUnits)
+                    candidatePlacement = GridPlacement(row, column, span.rowSpanUnits, span.columnSpanUnits)
+                    strategy = PlacementStrategy.AfterItemInsertion
+                }
             }
 
             is InsertionTarget.AboveRowGroup -> {
@@ -199,6 +227,32 @@ class FlexiblePlacementSolver {
                 item
             }
         }
+    }
+
+    private fun shiftDownOverlappingColumnLane(
+        items: MutableList<KeyboardLayoutItem>,
+        fromRowUnits: Int,
+        columnUnits: Int,
+        columnSpanUnits: Int,
+        deltaUnits: Int
+    ) {
+        replaceAll(items) { item ->
+            val p = item.placement
+            if (
+                p.rowUnits >= fromRowUnits &&
+                rangesOverlap(p.columnUnits, p.columnSpanUnits, columnUnits, columnSpanUnits)
+            ) {
+                item.withPlacementAndApproximateKeyData(p.copy(rowUnits = p.rowUnits + deltaUnits))
+            } else {
+                item
+            }
+        }
+    }
+
+    private fun rangesOverlap(startA: Int, spanA: Int, startB: Int, spanB: Int): Boolean {
+        val endA = startA + spanA
+        val endB = startB + spanB
+        return startA < endB && startB < endA
     }
 
     private fun resolveOverlaps(
