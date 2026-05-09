@@ -74,6 +74,7 @@ class FlexiblePlacementSolverTest {
         val result = solve(layout, candidate("new"), InsertionTarget.RowEnd(0))
         assertEquals(20, item(result.layout, result.insertedItemId!!).placement.columnUnits)
         assertTrue(result.layout.columnUnitCount > layout.columnUnitCount)
+        assertEquals((result.layout.columnUnitCount + 1) / 2, result.layout.columnCount)
         assertNoOverlaps(result.layout)
     }
 
@@ -82,12 +83,41 @@ class FlexiblePlacementSolverTest {
         val result = solve(layout, candidate("new"), InsertionTarget.NewBottomRow(3))
         assertEquals(8, item(result.layout, result.insertedItemId!!).placement.rowUnits)
         assertEquals(10, result.layout.rowUnitCount)
+        assertEquals(5, result.layout.rowCount)
         assertNoOverlaps(result.layout)
     }
 
     @Test fun solver_emptyArea_placesCandidateAndConstructsPreview() {
         val result = solve(KeyboardDefaultLayouts.createQwertyTemplateLayout(), candidate("new"), InsertionTarget.EmptyArea(GridPlacement(9, 4, 1, 1)))
         assertEquals(9, item(result.layout, result.insertedItemId!!).placement.rowUnits)
+        assertNoOverlaps(result.layout)
+    }
+
+    @Test fun solver_emptyAreaSpacer_expandsWithoutManualRowOrColumn() {
+        val layout = KeyboardDefaultLayouts.createQwertyTemplateLayout()
+        val result = solve(
+            layout,
+            spacer("spacer_far", rowSpan = 1, columnSpan = 1),
+            InsertionTarget.EmptyArea(GridPlacement(10, 23, 1, 1))
+        )
+        val inserted = item(result.layout, result.insertedItemId!!)
+        assertEquals(GridPlacement(10, 23, 1, 1), inserted.placement)
+        assertTrue(result.layout.rowUnitCount >= 11)
+        assertTrue(result.layout.columnUnitCount >= 24)
+        assertNoOverlaps(result.layout)
+    }
+
+    @Test fun solver_halfCellPlacement_expandsBoundsWithoutRoundingPlacement() {
+        val layout = KeyboardDefaultLayouts.createQwertyTemplateLayout()
+        val result = solve(
+            layout,
+            candidate("half", rowSpan = 1, columnSpan = 1),
+            InsertionTarget.EmptyArea(GridPlacement(9, 21, 1, 1))
+        )
+        val inserted = item(result.layout, result.insertedItemId!!)
+        assertEquals(GridPlacement(9, 21, 1, 1), inserted.placement)
+        assertEquals(10, result.layout.rowUnitCount)
+        assertEquals(22, result.layout.columnUnitCount)
         assertNoOverlaps(result.layout)
     }
 
@@ -154,6 +184,17 @@ class FlexiblePlacementSolverTest {
     @Test fun solver_moveExistingItem_toOccupiedPosition_createsPreviewLayout() {
         val layout = KeyboardDefaultLayouts.createQwertyTemplateLayout()
         val result = solver.solve(layout, PlacementOperation.MoveExisting("qwerty_key_p"), InsertionTarget.BeforeItem("qwerty_key_q"))
+        assertNoOverlaps(result.layout)
+    }
+    @Test fun solver_moveExistingItem_toNewBottomRow_staysWithinCanonicalBounds() {
+        val layout = KeyboardDefaultLayouts.createQwertyTemplateLayout()
+        val result = solver.solve(
+            layout,
+            PlacementOperation.MoveExisting("qwerty_key_p"),
+            InsertionTarget.NewBottomRow(0)
+        )
+        val moved = keyItem(result.layout, "qwerty_key_p")
+        assertTrue(moved.placement.rowUnits + moved.placement.rowSpanUnits <= result.layout.rowUnitCount)
         assertNoOverlaps(result.layout)
     }
     @Test fun solver_moveExistingItem_preservesIdentityAndSpan() {
@@ -242,6 +283,12 @@ class FlexiblePlacementSolverTest {
         layout.items.first { it.id == id }
 
     private fun assertNoOverlaps(layout: KeyboardLayout) {
+        assertEquals((layout.rowUnitCount + 1) / 2, layout.rowCount)
+        assertEquals((layout.columnUnitCount + 1) / 2, layout.columnCount)
+        layout.items.forEach { layoutItem ->
+            assertTrue(layoutItem.placement.rowUnits + layoutItem.placement.rowSpanUnits <= layout.rowUnitCount)
+            assertTrue(layoutItem.placement.columnUnits + layoutItem.placement.columnSpanUnits <= layout.columnUnitCount)
+        }
         assertFalse(hasPlacementIssues(layout.items, layout.rowUnitCount, layout.columnUnitCount))
     }
 }

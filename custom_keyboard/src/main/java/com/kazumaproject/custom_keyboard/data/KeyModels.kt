@@ -2,6 +2,7 @@ package com.kazumaproject.custom_keyboard.data
 
 import androidx.annotation.DrawableRes
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
+import kotlin.math.ceil
 
 // キーボードの見た目ではなく、入力の「モード」を定義する
 enum class KeyboardInputMode {
@@ -111,6 +112,13 @@ data class SpacerItem(
     override val placement: GridPlacement
 ) : KeyboardLayoutItem
 
+data class FlexibleBounds(
+    val rowUnitCount: Int,
+    val columnUnitCount: Int,
+    val rowCount: Int,
+    val columnCount: Int
+)
+
 private fun KeyData.layoutItemId(): String =
     keyId?.takeIf { it.isNotBlank() } ?: "key_${row}_${column}_${label}"
 
@@ -216,6 +224,45 @@ fun KeyboardLayout.usesFlexiblePlacement(): Boolean {
                 item.placement.rowSpanUnits != item.keyData.rowSpan * 2 ||
                 item.placement.columnSpanUnits != item.keyData.colSpan * 2
     }
+}
+
+fun KeyboardLayout.flexibleBounds(
+    minimumRowUnits: Int = 1,
+    minimumColumnUnits: Int = 1,
+    items: List<KeyboardLayoutItem> = this.items
+): FlexibleBounds {
+    val maxRight = items.maxOfOrNull { item ->
+        item.placement.columnUnits + item.placement.columnSpanUnits
+    } ?: 0
+    val maxBottom = items.maxOfOrNull { item ->
+        item.placement.rowUnits + item.placement.rowSpanUnits
+    } ?: 0
+    val canonicalColumnUnitCount = maxOf(columnUnitCount, maxRight, minimumColumnUnits, 1)
+    val canonicalRowUnitCount = maxOf(rowUnitCount, maxBottom, minimumRowUnits, 1)
+    return FlexibleBounds(
+        rowUnitCount = canonicalRowUnitCount,
+        columnUnitCount = canonicalColumnUnitCount,
+        rowCount = ceil(canonicalRowUnitCount / 2.0).toInt(),
+        columnCount = ceil(canonicalColumnUnitCount / 2.0).toInt()
+    )
+}
+
+fun KeyboardLayout.withCanonicalFlexibleBounds(
+    minimumRowUnits: Int = 1,
+    minimumColumnUnits: Int = 1,
+    items: List<KeyboardLayoutItem> = this.items
+): KeyboardLayout {
+    val bounds = flexibleBounds(
+        minimumRowUnits = minimumRowUnits,
+        minimumColumnUnits = minimumColumnUnits,
+        items = items
+    )
+    return copy(
+        rowUnitCount = bounds.rowUnitCount,
+        columnUnitCount = bounds.columnUnitCount,
+        rowCount = bounds.rowCount,
+        columnCount = bounds.columnCount
+    )
 }
 
 // =====================================================================
