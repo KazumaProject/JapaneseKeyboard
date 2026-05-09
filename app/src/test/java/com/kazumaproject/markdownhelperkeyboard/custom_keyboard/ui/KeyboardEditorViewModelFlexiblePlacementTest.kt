@@ -361,11 +361,11 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun viewModel_normalModeKeyTap_emitsKeyEditorNavigation() {
+    fun viewModel_normalModeKeyTap_emitsKeyEditorNavigationAndSelectsItemForDeletion() {
         val vm = qwertyViewModel()
         assertTrue(vm.onKeyTapped("qwerty_key_q"))
         assertEquals("qwerty_key_q", vm.uiState.value.selectedKeyIdentifier)
-        assertNull(vm.uiState.value.selectedItemId)
+        assertEquals("qwerty_key_q", vm.uiState.value.selectedItemId)
     }
 
     @Test
@@ -456,7 +456,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun viewModel_deleteSelectedKeyItemId_rejectsWithoutChangingLayout() {
+    fun viewModel_deleteSelectedKeyItemId_removesKeyAndMapping() {
         val vm = viewModel()
         val key = KeyData("x", 0, 0, false, KeyAction.Text("x"), keyType = KeyType.NORMAL, keyId = "x")
         vm.applyTemplate(
@@ -468,50 +468,79 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
                 items = listOf(KeyItem("x", key, GridPlacement(0, 0, 2, 2)))
             )
         )
-        val before = vm.uiState.value.layout
         vm.selectItem("x")
-        assertFalse(vm.deleteSelectedItem())
-        assertEquals(before, vm.uiState.value.layout)
-        assertTrue(vm.uiState.value.layout.items.any { it.id == "x" })
-        assertTrue(vm.uiState.value.layout.flickKeyMaps.containsKey("x"))
+        assertTrue(vm.deleteSelectedItem())
+
+        val layout = vm.uiState.value.layout
+        assertTrue(layout.items.none { it.id == "x" })
+        assertFalse(layout.flickKeyMaps.containsKey("x"))
+        assertNull(vm.uiState.value.selectedItemId)
     }
 
     @Test
-    fun viewModel_deleteSelectedKey_rejectsEveryMappingTypeWithoutChangingLayout() {
+    fun viewModel_deleteSelectedKey_removesEveryMappingTypeAndKeepsUnrelatedMappings() {
         val vm = viewModel()
         val key = KeyData("x", 0, 0, false, KeyAction.Text("x"), keyType = KeyType.NORMAL, keyId = "x")
+        val unrelatedKey = KeyData("y", 0, 1, false, KeyAction.Text("y"), keyType = KeyType.NORMAL, keyId = "y")
         vm.applyTemplate(
             KeyboardLayout(
-                keys = listOf(key),
-                flickKeyMaps = mapOf("x" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("x")))),
-                circularFlickKeyMaps = mapOf("x" to listOf(mapOf(CircularFlickDirection.TAP to FlickAction.Input("x")))),
-                twoStepFlickKeyMaps = mapOf("x" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.RIGHT to "x"))),
-                longPressFlickKeyMaps = mapOf("x" to mapOf(FlickDirection.UP to "x")),
-                twoStepLongPressKeyMaps = mapOf("x" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.LEFT to "x"))),
+                keys = listOf(key, unrelatedKey),
+                flickKeyMaps = mapOf(
+                    "x" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("x"))),
+                    "y" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("y")))
+                ),
+                circularFlickKeyMaps = mapOf(
+                    "x" to listOf(mapOf(CircularFlickDirection.TAP to FlickAction.Input("x"))),
+                    "y" to listOf(mapOf(CircularFlickDirection.TAP to FlickAction.Input("y")))
+                ),
+                twoStepFlickKeyMaps = mapOf(
+                    "x" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.RIGHT to "x")),
+                    "y" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.RIGHT to "y"))
+                ),
+                longPressFlickKeyMaps = mapOf(
+                    "x" to mapOf(FlickDirection.UP to "x"),
+                    "y" to mapOf(FlickDirection.UP to "y")
+                ),
+                twoStepLongPressKeyMaps = mapOf(
+                    "x" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.LEFT to "x")),
+                    "y" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.LEFT to "y"))
+                ),
                 hierarchicalFlickMaps = mapOf(
                     "x" to TfbiFlickNode.StatefulKey(
                         normalMap = mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input("x")),
                         label = "x"
+                    ),
+                    "y" to TfbiFlickNode.StatefulKey(
+                        normalMap = mapOf(TfbiFlickDirection.TAP to TfbiFlickNode.Input("y")),
+                        label = "y"
                     )
                 ),
-                columnCount = 1,
+                columnCount = 2,
                 rowCount = 1,
-                items = listOf(KeyItem("x", key, GridPlacement(0, 0, 2, 2)))
+                items = listOf(
+                    KeyItem("x", key, GridPlacement(0, 0, 2, 2)),
+                    KeyItem("y", unrelatedKey, GridPlacement(0, 2, 2, 2))
+                )
             )
         )
 
-        val before = vm.uiState.value.layout
         vm.selectItem("x")
-        assertFalse(vm.deleteSelectedItem())
+        assertTrue(vm.deleteSelectedItem())
 
         val layout = vm.uiState.value.layout
-        assertEquals(before, layout)
-        assertTrue(layout.flickKeyMaps.containsKey("x"))
-        assertTrue(layout.circularFlickKeyMaps.containsKey("x"))
-        assertTrue(layout.twoStepFlickKeyMaps.containsKey("x"))
-        assertTrue(layout.longPressFlickKeyMaps.containsKey("x"))
-        assertTrue(layout.twoStepLongPressKeyMaps.containsKey("x"))
-        assertTrue(layout.hierarchicalFlickMaps.containsKey("x"))
+        assertFalse(layout.flickKeyMaps.containsKey("x"))
+        assertFalse(layout.circularFlickKeyMaps.containsKey("x"))
+        assertFalse(layout.twoStepFlickKeyMaps.containsKey("x"))
+        assertFalse(layout.longPressFlickKeyMaps.containsKey("x"))
+        assertFalse(layout.twoStepLongPressKeyMaps.containsKey("x"))
+        assertFalse(layout.hierarchicalFlickMaps.containsKey("x"))
+        assertTrue(layout.flickKeyMaps.containsKey("y"))
+        assertTrue(layout.circularFlickKeyMaps.containsKey("y"))
+        assertTrue(layout.twoStepFlickKeyMaps.containsKey("y"))
+        assertTrue(layout.longPressFlickKeyMaps.containsKey("y"))
+        assertTrue(layout.twoStepLongPressKeyMaps.containsKey("y"))
+        assertTrue(layout.hierarchicalFlickMaps.containsKey("y"))
+        assertNull(vm.uiState.value.selectedItemId)
     }
 
     @Test
@@ -537,30 +566,28 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun viewModel_deleteSelectedItem_rejectsKeyItemId() {
+    fun viewModel_deleteSelectedItem_matchesKeyItemId() {
         val vm = viewModel()
         vm.applyTemplate(singleKeyLayout(itemId = "item_x", keyId = "key_x"))
         val itemId = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single().id
-        val before = vm.uiState.value.layout
 
         vm.selectItem(itemId)
-        assertFalse(vm.deleteSelectedItem())
+        assertTrue(vm.deleteSelectedItem())
 
-        assertEquals(before, vm.uiState.value.layout)
-        assertTrue(vm.uiState.value.layout.items.any { it.id == itemId })
+        assertTrue(vm.uiState.value.layout.items.none { it.id == itemId })
+        assertNull(vm.uiState.value.selectedItemId)
     }
 
     @Test
-    fun viewModel_deleteSelectedItem_rejectsKeyDataKeyId() {
+    fun viewModel_deleteSelectedItem_matchesKeyDataKeyId() {
         val vm = viewModel()
         vm.applyTemplate(singleKeyLayout(itemId = "item_x", keyId = "key_x"))
-        val before = vm.uiState.value.layout
 
         vm.selectItem("key_x")
-        assertFalse(vm.deleteSelectedItem())
+        assertTrue(vm.deleteSelectedItem())
 
-        assertEquals(before, vm.uiState.value.layout)
-        assertTrue(vm.uiState.value.layout.items.filterIsInstance<KeyItem>().any { it.keyData.keyId == "key_x" })
+        assertTrue(vm.uiState.value.layout.items.filterIsInstance<KeyItem>().none { it.keyData.keyId == "key_x" })
+        assertNull(vm.uiState.value.selectedItemId)
     }
 
     @Test
@@ -572,6 +599,33 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         assertTrue(vm.deleteSelectedItem())
 
         assertTrue(vm.uiState.value.layout.items.none { it.id == "spacer" })
+        assertNull(vm.uiState.value.selectedItemId)
+    }
+
+    @Test
+    fun viewModel_deleteSelectedItem_withoutSelectionReturnsFalseAndKeepsLayout() {
+        val vm = viewModel()
+        vm.applyTemplate(horizontalGapLayout())
+        val before = vm.uiState.value.layout
+
+        vm.selectItem(null)
+        assertFalse(vm.deleteSelectedItem())
+
+        assertEquals(before, vm.uiState.value.layout)
+        assertNull(vm.uiState.value.selectedItemId)
+    }
+
+    @Test
+    fun viewModel_deleteSelectedItem_withUnknownSelectionReturnsFalseAndKeepsLayout() {
+        val vm = viewModel()
+        vm.applyTemplate(horizontalGapLayout())
+        val before = vm.uiState.value.layout
+
+        vm.selectItem("missing")
+        assertFalse(vm.deleteSelectedItem())
+
+        assertEquals(before, vm.uiState.value.layout)
+        assertNull(vm.uiState.value.selectedItemId)
     }
 
     @Test
