@@ -317,7 +317,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
 
     override fun onKeySelected(keyId: String) {
         Timber.d("onKeySelected: keyId = $keyId")
-        if (viewModel.onKeyTapped(keyId)) {
+        if (viewModel.onKeyTappedForSelectionOrEdit(keyId)) {
             findNavController().navigate(R.id.action_keyboardEditorFragment_to_keyEditorFragment)
         }
     }
@@ -440,10 +440,16 @@ internal fun shouldShowHalfRowPlacementControls(
     state: EditorUiState,
     capabilities: KeyboardEditorCapabilities
 ): Boolean {
-    val mode = state.editorMode as? KeyboardEditorMode.PlacingSpacer ?: return false
-    return capabilities.showHalfCellControls &&
-            mode.span == GridSpan(rowSpanUnits = 1, columnSpanUnits = 1) &&
-            mode.policy == InsertionPolicy.PreferHorizontal
+    if (!capabilities.showHalfCellControls) return false
+    val halfCellSpan = GridSpan(rowSpanUnits = 1, columnSpanUnits = 1)
+    return when (val mode = state.editorMode) {
+        is KeyboardEditorMode.PlacingNewKey ->
+            mode.span == halfCellSpan && mode.policy == InsertionPolicy.PreferHorizontal
+        is KeyboardEditorMode.PlacingSpacer ->
+            mode.span == halfCellSpan && mode.policy == InsertionPolicy.PreferHorizontal
+        KeyboardEditorMode.Normal,
+        is KeyboardEditorMode.MovingExistingItem -> false
+    }
 }
 
 internal fun applyKeyboardEditorDeleteSelectionState(

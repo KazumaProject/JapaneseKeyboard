@@ -76,10 +76,9 @@ class KeyboardEditorFragmentUiRobolectricTest {
         val viewModel = viewModel()
         viewModel.applyTemplate(KeyboardDefaultLayouts.createQwertyTemplateLayout())
 
-        assertTrue(viewModel.onKeyTapped("qwerty_key_q"))
+        assertFalse(viewModel.onKeyTappedForSelectionOrEdit("qwerty_key_q"))
         val keyState = viewModel.uiState.value
         applyKeyboardEditorDeleteSelectionState(binding, keyState, isPlacementMode = false)
-        assertEquals("qwerty_key_q", keyState.selectedKeyIdentifier)
         assertEquals("qwerty_key_q", keyState.selectedItemId)
         assertTrue(keyState.hasDeletableSelection())
         assertTrue(binding.buttonDeleteSelectedItem.isEnabled)
