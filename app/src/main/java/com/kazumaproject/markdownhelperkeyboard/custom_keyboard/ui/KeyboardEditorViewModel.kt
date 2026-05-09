@@ -23,6 +23,18 @@ import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.ImportableKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.KeyboardLayoutImportResult
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.CursorSource
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.FlexiblePlacementSolver
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionPolicy
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTargetNavigator
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.KeyboardEditorMode
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.NudgeDirection
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.PlacementCursor
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.PlacementOperation
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.PlacementPreviewStatus
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.PlacementStrategy
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,7 +56,15 @@ data class EditorUiState(
     val navigateBack: Boolean = false,
     val duplicateNameError: Boolean = false,
     val isRomaji: Boolean = false,
-    val isDirectMode: Boolean = false
+    val isDirectMode: Boolean = false,
+    val editorMode: KeyboardEditorMode = KeyboardEditorMode.Normal,
+    val placementCursor: PlacementCursor? = null,
+    val previewLayout: KeyboardLayout? = null,
+    val previewMovedItemIds: Set<String> = emptySet(),
+    val previewInsertedItemId: String? = null,
+    val previewStrategy: PlacementStrategy? = null,
+    val previewStatus: PlacementPreviewStatus = PlacementPreviewStatus.None,
+    val selectedItemId: String? = null
 )
 
 data class LayoutTemplate(val name: String, val layout: KeyboardLayout)
@@ -58,6 +78,8 @@ class KeyboardEditorViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     private var currentEditingId: Long? = null
+    private val placementSolver = FlexiblePlacementSolver()
+    private val placementNavigator = InsertionTargetNavigator()
 
     val availableTemplates: List<LayoutTemplate> = listOf(
         LayoutTemplate(
@@ -394,6 +416,300 @@ class KeyboardEditorViewModel @Inject constructor(
             keyId = UUID.randomUUID().toString(),
             keyType = KeyType.PETAL_FLICK
         )
+    }
+
+    fun enterNewKeyPlacementMode(
+        span: GridSpan,
+        policy: InsertionPolicy = InsertionPolicy.Auto2D
+    ) {
+        _uiState.update {
+            it.copy(
+                editorMode = KeyboardEditorMode.PlacingNewKey(span, policy),
+                placementCursor = null,
+                previewLayout = null,
+                previewMovedItemIds = emptySet(),
+                previewInsertedItemId = null,
+                previewStrategy = null,
+                previewStatus = PlacementPreviewStatus.None
+            )
+        }
+    }
+
+    fun enterHalfKeyPlacementMode() {
+        enterNewKeyPlacementMode(GridSpan(rowSpanUnits = 1, columnSpanUnits = 1))
+    }
+
+    fun enterOneKeyPlacementMode() {
+        enterNewKeyPlacementMode(GridSpan(rowSpanUnits = 2, columnSpanUnits = 2))
+    }
+
+    fun enterSpacerPlacementMode(
+        span: GridSpan,
+        policy: InsertionPolicy = InsertionPolicy.Auto2D
+    ) {
+        _uiState.update {
+            it.copy(
+                editorMode = KeyboardEditorMode.PlacingSpacer(span, policy),
+                placementCursor = null,
+                previewLayout = null,
+                previewMovedItemIds = emptySet(),
+                previewInsertedItemId = null,
+                previewStrategy = null,
+                previewStatus = PlacementPreviewStatus.None
+            )
+        }
+    }
+
+    fun enterSpacePlacementMode(
+        span: GridSpan = defaultSpaceSpan(),
+        policy: InsertionPolicy = InsertionPolicy.Auto2D
+    ) {
+        _uiState.update {
+            it.copy(
+                editorMode = KeyboardEditorMode.PlacingSpaceKey(span, policy),
+                placementCursor = null,
+                previewLayout = null,
+                previewMovedItemIds = emptySet(),
+                previewInsertedItemId = null,
+                previewStrategy = null,
+                previewStatus = PlacementPreviewStatus.None
+            )
+        }
+    }
+
+    fun enterMoveItemMode(
+        itemId: String,
+        policy: InsertionPolicy = InsertionPolicy.Auto2D
+    ) {
+        val item = _uiState.value.layout.items.firstOrNull { it.id == itemId } ?: return
+        _uiState.update {
+            it.copy(
+                editorMode = KeyboardEditorMode.MovingExistingItem(itemId, policy),
+                placementCursor = PlacementCursor(
+                    target = InsertionTarget.EmptyArea(item.placement),
+                    span = GridSpan(item.placement.rowSpanUnits, item.placement.columnSpanUnits),
+                    policy = policy,
+                    source = CursorSource.Tap
+                ),
+                previewLayout = null,
+                previewMovedItemIds = emptySet(),
+                previewInsertedItemId = null,
+                previewStrategy = null,
+                previewStatus = PlacementPreviewStatus.None,
+                selectedItemId = itemId
+            )
+        }
+    }
+
+    fun updatePlacementCursorFromPointer(target: InsertionTarget) {
+        updatePlacementCursor(target, CursorSource.PointerMove)
+    }
+
+    fun holdPlacementCursorFromTap(target: InsertionTarget) {
+        updatePlacementCursor(target, CursorSource.Tap)
+    }
+
+    fun holdPlacementCursorFromDrop(target: InsertionTarget) {
+        updatePlacementCursor(target, CursorSource.Drop)
+    }
+
+    fun nudgePlacementCursor(direction: NudgeDirection) {
+        val state = _uiState.value
+        val cursor = state.placementCursor ?: return
+        val nextTarget = placementNavigator.nudge(state.layout, cursor.target, direction)
+        updatePlacementCursor(nextTarget, CursorSource.Nudge)
+    }
+
+    fun cyclePlacementCursorTarget() {
+        val state = _uiState.value
+        val cursor = state.placementCursor ?: return
+        val nextTarget = placementNavigator.cycle(state.layout, cursor.target)
+        updatePlacementCursor(nextTarget, CursorSource.CycleTarget)
+    }
+
+    fun confirmPlacementPreview(): Boolean {
+        val state = _uiState.value
+        val preview = state.previewLayout ?: return false
+        _uiState.value = state.copy(
+            layout = preview,
+            editorMode = KeyboardEditorMode.Normal,
+            placementCursor = null,
+            previewLayout = null,
+            previewMovedItemIds = emptySet(),
+            previewInsertedItemId = null,
+            previewStrategy = null,
+            previewStatus = PlacementPreviewStatus.None
+        )
+        return true
+    }
+
+    fun cancelPlacementPreview() {
+        _uiState.update {
+            it.copy(
+                editorMode = KeyboardEditorMode.Normal,
+                placementCursor = null,
+                previewLayout = null,
+                previewMovedItemIds = emptySet(),
+                previewInsertedItemId = null,
+                previewStrategy = null,
+                previewStatus = PlacementPreviewStatus.None
+            )
+        }
+    }
+
+    fun selectItem(itemId: String?) {
+        _uiState.update { it.copy(selectedItemId = itemId) }
+    }
+
+    fun onKeyTapped(keyId: String): Boolean {
+        val state = _uiState.value
+        if (state.editorMode != KeyboardEditorMode.Normal) return false
+        selectKeyForEditing(keyId)
+        selectItem(keyId)
+        return true
+    }
+
+    fun onSpacerTapped(spacerId: String) {
+        if (_uiState.value.editorMode == KeyboardEditorMode.Normal) {
+            selectItem(spacerId)
+        }
+    }
+
+    fun deleteSelectedItem(): Boolean {
+        val currentState = _uiState.value
+        if (currentState.editorMode != KeyboardEditorMode.Normal) return false
+        val selectedId = currentState.selectedItemId ?: return false
+        val layout = currentState.layout
+        val removedKeyIds = layout.items
+            .filterIsInstance<KeyItem>()
+            .filter { it.id == selectedId || it.keyData.keyId == selectedId }
+            .flatMap { listOfNotNull(it.id, it.keyData.keyId) }
+            .toSet()
+        val updatedItems = layout.items.filterNot {
+            it.id == selectedId || (it is KeyItem && it.keyData.keyId == selectedId)
+        }
+        if (updatedItems.size == layout.items.size) return false
+        val updatedLayout = layout.copyWithItems(updatedItems).copy(
+            flickKeyMaps = layout.flickKeyMaps - removedKeyIds,
+            circularFlickKeyMaps = layout.circularFlickKeyMaps - removedKeyIds,
+            twoStepFlickKeyMaps = layout.twoStepFlickKeyMaps - removedKeyIds,
+            longPressFlickKeyMaps = layout.longPressFlickKeyMaps - removedKeyIds,
+            twoStepLongPressKeyMaps = layout.twoStepLongPressKeyMaps - removedKeyIds,
+            hierarchicalFlickMaps = layout.hierarchicalFlickMaps - removedKeyIds
+        )
+        _uiState.value = currentState.copy(layout = updatedLayout, selectedItemId = null)
+        return true
+    }
+
+    private fun updatePlacementCursor(target: InsertionTarget, source: CursorSource) {
+        val state = _uiState.value
+        val mode = state.editorMode
+        if (mode == KeyboardEditorMode.Normal) return
+        if (!state.layout.usesFlexiblePlacement()) return
+        val cursor = PlacementCursor(
+            target = target,
+            span = mode.span(),
+            policy = mode.policy(),
+            source = source
+        )
+        val operation = operationForMode(mode, cursor.span) ?: return
+        val result = placementSolver.solve(
+            committedLayout = state.layout,
+            operation = operation,
+            target = cursor.target,
+            policy = cursor.policy
+        )
+        _uiState.value = state.copy(
+            placementCursor = cursor,
+            previewLayout = result.layout,
+            previewMovedItemIds = result.movedItemIds,
+            previewInsertedItemId = result.insertedItemId,
+            previewStrategy = result.strategy,
+            previewStatus = PlacementPreviewStatus.Previewing(
+                strategy = result.strategy,
+                insertedItemId = result.insertedItemId,
+                movedItemIds = result.movedItemIds
+            )
+        )
+    }
+
+    private fun operationForMode(mode: KeyboardEditorMode, span: GridSpan): PlacementOperation? {
+        return when (mode) {
+            KeyboardEditorMode.Normal -> null
+            is KeyboardEditorMode.PlacingNewKey -> PlacementOperation.Insert(createPlacementKey(span))
+            is KeyboardEditorMode.PlacingSpacer -> PlacementOperation.Insert(createPlacementSpacer(span))
+            is KeyboardEditorMode.PlacingSpaceKey -> PlacementOperation.Insert(createSpaceKey(span))
+            is KeyboardEditorMode.MovingExistingItem -> PlacementOperation.MoveExisting(mode.itemId)
+        }
+    }
+
+    private fun createPlacementKey(span: GridSpan): KeyItem {
+        val id = "key_${UUID.randomUUID()}"
+        val keyData = KeyData(
+            label = "",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = null,
+            rowSpan = (span.rowSpanUnits + 1) / 2,
+            colSpan = (span.columnSpanUnits + 1) / 2,
+            keyType = KeyType.NORMAL,
+            keyId = id
+        )
+        return KeyItem(id, keyData, GridPlacement(0, 0, span.rowSpanUnits, span.columnSpanUnits))
+    }
+
+    private fun createPlacementSpacer(span: GridSpan): SpacerItem =
+        SpacerItem(
+            id = "spacer_${UUID.randomUUID()}",
+            placement = GridPlacement(0, 0, span.rowSpanUnits, span.columnSpanUnits)
+        )
+
+    private fun createSpaceKey(span: GridSpan): KeyItem {
+        val id = "space_${UUID.randomUUID()}"
+        val templateSpace = _uiState.value.layout.items
+            .filterIsInstance<KeyItem>()
+            .firstOrNull { it.keyData.action == KeyAction.Space }
+            ?: KeyboardDefaultLayouts.createQwertyTemplateLayout().items
+                .filterIsInstance<KeyItem>()
+                .first { it.keyData.action == KeyAction.Space }
+        val keyData = templateSpace.keyData.copy(
+            row = 0,
+            column = 0,
+            rowSpan = (span.rowSpanUnits + 1) / 2,
+            colSpan = (span.columnSpanUnits + 1) / 2,
+            keyId = id
+        )
+        return KeyItem(id, keyData, GridPlacement(0, 0, span.rowSpanUnits, span.columnSpanUnits))
+    }
+
+    private fun defaultSpaceSpan(): GridSpan {
+        val space = _uiState.value.layout.items
+            .filterIsInstance<KeyItem>()
+            .firstOrNull { it.keyData.action == KeyAction.Space }
+            ?: KeyboardDefaultLayouts.createQwertyTemplateLayout().items
+                .filterIsInstance<KeyItem>()
+                .first { it.keyData.action == KeyAction.Space }
+        return GridSpan(space.placement.rowSpanUnits, space.placement.columnSpanUnits)
+    }
+
+    private fun KeyboardEditorMode.span(): GridSpan = when (this) {
+        KeyboardEditorMode.Normal -> GridSpan(1, 1)
+        is KeyboardEditorMode.PlacingNewKey -> span
+        is KeyboardEditorMode.PlacingSpacer -> span
+        is KeyboardEditorMode.PlacingSpaceKey -> span
+        is KeyboardEditorMode.MovingExistingItem -> {
+            val item = _uiState.value.layout.items.first { it.id == itemId }
+            GridSpan(item.placement.rowSpanUnits, item.placement.columnSpanUnits)
+        }
+    }
+
+    private fun KeyboardEditorMode.policy(): InsertionPolicy = when (this) {
+        KeyboardEditorMode.Normal -> InsertionPolicy.Auto2D
+        is KeyboardEditorMode.PlacingNewKey -> policy
+        is KeyboardEditorMode.PlacingSpacer -> policy
+        is KeyboardEditorMode.PlacingSpaceKey -> policy
+        is KeyboardEditorMode.MovingExistingItem -> policy
     }
 
     fun selectKeyForEditing(keyId: String?) {
@@ -856,7 +1172,15 @@ class KeyboardEditorViewModel @Inject constructor(
         _uiState.update { currentState ->
             currentState.copy(
                 layout = finalLayout,
-                isDirectMode = finalLayout.isDirectMode
+                isDirectMode = finalLayout.isDirectMode,
+                editorMode = KeyboardEditorMode.Normal,
+                placementCursor = null,
+                previewLayout = null,
+                previewMovedItemIds = emptySet(),
+                previewInsertedItemId = null,
+                previewStrategy = null,
+                previewStatus = PlacementPreviewStatus.None,
+                selectedItemId = null
             )
         }
     }
