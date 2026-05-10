@@ -167,25 +167,26 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         val keyData = item.keyData
         val keyView: View = createKeyView(keyData)
         keyView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
-        keyView.tag = keyData.keyId
+        // Source of truth for flexible-layout selection / drag-swap is
+        // KeyboardLayoutItem.id. KeyData.keyId is intentionally NOT used here
+        // because half-cell keys / spacers may have a different (or null) keyId.
+        keyView.tag = item.id
         keyView.setOnDragListener(dragListener)
         keyView.setOnClickListener {
             if (placementMode) {
                 mapTargetFromCenter(item)?.let { target -> listener?.onPlacementTapTarget(target) }
             } else {
-                keyData.keyId?.let { keyId -> listener?.onKeySelected(keyId) }
+                listener?.onKeySelected(item.id)
             }
         }
         keyView.setOnLongClickListener { view ->
             if (placementMode) return@setOnLongClickListener true
-            keyData.keyId?.let { keyId ->
-                val clipText = "keyId:$keyId"
-                val clipItem = ClipData.Item(clipText)
-                val mimeTypes = arrayOf("text/plain")
-                val data = ClipData(clipText, mimeTypes, clipItem)
-                val dragShadow = DragShadowBuilder(view)
-                view.startDragAndDrop(data, dragShadow, view, 0)
-            }
+            val clipText = "keyId:${item.id}"
+            val clipItem = ClipData.Item(clipText)
+            val mimeTypes = arrayOf("text/plain")
+            val data = ClipData(clipText, mimeTypes, clipItem)
+            val dragShadow = DragShadowBuilder(view)
+            view.startDragAndDrop(data, dragShadow, view, 0)
             true
         }
         decoratePreviewItem(keyView, item, selectedItemId, previewInsertedItemId, previewMovedItemIds)

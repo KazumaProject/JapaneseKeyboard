@@ -75,7 +75,13 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun qwertyKeyResize_rejectsSpacerOverlap() {
+    fun qwertyKeyEdit_doesNotResizePlacementFromKeyDataSpan() {
+        // Flexible-layout edits go through GridPlacement as the source of
+        // truth. Editing KeyData.rowSpan / colSpan via the key editor
+        // (e.g. label/action edits that happen to also pass span values)
+        // must NOT mutate the item's GridPlacement, otherwise half-cell
+        // keys (rowSpanUnits = 1) would silently collapse to full-cell
+        // keys (rowSpanUnits = 2).
         val viewModel = viewModel()
         viewModel.applyTemplate(KeyboardDefaultLayouts.createQwertyTemplateLayout())
 
@@ -96,7 +102,11 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
             .first { it.keyData.keyId == "qwerty_shift" }
 
         assertEquals(shift.placement, afterShift.placement)
-        assertEquals(beforeLayout.items, afterLayout.items)
+        // Placement of every other item is preserved as well.
+        beforeLayout.items.zip(afterLayout.items).forEach { (before, after) ->
+            assertEquals(before.id, after.id)
+            assertEquals(before.placement, after.placement)
+        }
     }
 
     @Test
@@ -1011,6 +1021,222 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         val edited = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
             .first { it.id == "qwerty_key_p" }
         assertEquals(moved.placement, edited.placement)
+    }
+
+    @Test
+    fun viewModel_firstTapOnUnselectedKey_selectsWithoutNavigation() {
+        val vm = qwertyViewModel()
+        val first = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_q" }
+
+        val result = vm.onKeyTappedForSelectionOrEdit(first.id)
+
+        assertFalse(result)
+        assertEquals(first.id, vm.uiState.value.selectedItemId)
+        assertNull(vm.uiState.value.selectedKeyIdentifier)
+    }
+
+    @Test
+    fun viewModel_secondTapOnSelectedKey_returnsTrueAndSetsEditingTarget() {
+        val vm = qwertyViewModel()
+        val target = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_a" }
+
+        assertFalse(vm.onKeyTappedForSelectionOrEdit(target.id))
+        val second = vm.onKeyTappedForSelectionOrEdit(target.id)
+
+        assertTrue(second)
+        assertEquals(target.id, vm.uiState.value.selectedItemId)
+        assertEquals(target.id, vm.uiState.value.selectedKeyIdentifier)
+    }
+
+    @Test
+    fun viewModel_tapOnDifferentKey_switchesSelectionWithoutNavigation() {
+        val vm = qwertyViewModel()
+        val a = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_a" }
+        val s = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_s" }
+
+        assertFalse(vm.onKeyTappedForSelectionOrEdit(a.id))
+        val secondToOther = vm.onKeyTappedForSelectionOrEdit(s.id)
+
+        assertFalse(secondToOther)
+        assertEquals(s.id, vm.uiState.value.selectedItemId)
+        assertNull(vm.uiState.value.selectedKeyIdentifier)
+    }
+
+    @Test
+    fun viewModel_spacerTap_neverNavigatesEvenWhenAlreadySelected() {
+        val vm = qwertyViewModel()
+        val spacer = vm.uiState.value.layout.items.filterIsInstance<SpacerItem>().first()
+
+        vm.onSpacerTapped(spacer.id)
+        // Even routing the spacer id through the key-tap function must not
+        // navigate or set the editing target.
+        val result = vm.onKeyTappedForSelectionOrEdit(spacer.id)
+
+        assertFalse(result)
+        assertEquals(spacer.id, vm.uiState.value.selectedItemId)
+        assertNull(vm.uiState.value.selectedKeyIdentifier)
+    }
+
+    @Test
+    fun viewModel_deleteSelectedSpacerAfterTap_removesSpacerAndKeepsLayoutValid() {
+        val vm = qwertyViewModel()
+        val spacer = vm.uiState.value.layout.items.filterIsInstance<SpacerItem>().first()
+
+        vm.onSpacerTapped(spacer.id)
+        assertTrue(vm.deleteSelectedItem())
+
+        assertTrue(vm.uiState.value.layout.items.none { it.id == spacer.id })
+        assertNull(vm.uiState.value.selectedItemId)
+        assertValidFlexibleLayout(vm.uiState.value.layout)
+    }
+
+    @Test
+    fun viewModel_halfKeyPlacement_keepsRowSpanUnits1AfterLabelEdit() {
+        // Place a lower-half key at row 0, then edit only its label/action
+        // and confirm the GridPlacement (especially rowSpanUnits) is
+        // preserved. Without the fix this collapses to rowSpanUnits = 2.
+        val vm = viewModel()
+        vm.applyTemplate(KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout())
+        vm.enterNewKeyPlacementMode(GridSpan(1, 1), InsertionPolicy.PreferHorizontal)
+        vm.setHalfRowPlacement(HalfRowPlacement.Lower)
+        vm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(0, 0, 1, 1)))
+        assertTrue(vm.confirmPlacementPreview())
+
+        val placedKey = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+        assertEquals(1, placedKey.placement.rowUnits) // lower half of row 0
+        assertEquals(1, placedKey.placement.rowSpanUnits)
+        assertEquals(1, placedKey.placement.columnSpanUnits)
+
+        // Edit only label / action — must NOT change placement.
+        vm.updateKeyAndMappings(
+            newKeyData = placedKey.keyData.copy(label = "X", action = KeyAction.Text("X")),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap()
+        )
+
+        val edited = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+        assertEquals("X", edited.keyData.label)
+        assertEquals(placedKey.placement, edited.placement)
+        assertEquals(1, edited.placement.rowUnits)
+        assertEquals(1, edited.placement.rowSpanUnits)
+    }
+
+    @Test
+    fun viewModel_halfKeyPlacement_upperKeepsRowSpanUnits1AfterLabelEdit() {
+        val vm = viewModel()
+        vm.applyTemplate(KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout())
+        vm.enterNewKeyPlacementMode(GridSpan(1, 1), InsertionPolicy.PreferHorizontal)
+        vm.setHalfRowPlacement(HalfRowPlacement.Upper)
+        vm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(2, 0, 1, 1)))
+        assertTrue(vm.confirmPlacementPreview())
+
+        val placedKey = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+        assertEquals(2, placedKey.placement.rowUnits) // upper half of row 1
+        assertEquals(1, placedKey.placement.rowSpanUnits)
+
+        vm.updateKeyAndMappings(
+            newKeyData = placedKey.keyData.copy(label = "Y"),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap()
+        )
+
+        val edited = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+        assertEquals(2, edited.placement.rowUnits)
+        assertEquals(1, edited.placement.rowSpanUnits)
+    }
+
+    @Test
+    fun viewModel_oneCellKeyPlacement_keepsRowSpanUnits2AfterLabelEdit() {
+        val vm = viewModel()
+        vm.applyTemplate(KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout())
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(0, 0, 2, 2)))
+        assertTrue(vm.confirmPlacementPreview())
+
+        val placedKey = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+        assertEquals(GridPlacement(0, 0, 2, 2), placedKey.placement)
+
+        vm.updateKeyAndMappings(
+            newKeyData = placedKey.keyData.copy(label = "Z"),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap()
+        )
+
+        val edited = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+        assertEquals(GridPlacement(0, 0, 2, 2), edited.placement)
+    }
+
+    @Test
+    fun viewModel_halfKeyAndOneKey_remainDistinguishableAfterEdit() {
+        val vm = viewModel()
+        vm.applyTemplate(KeyboardDefaultLayouts.createEmpty5x4FlexibleTemplateLayout())
+
+        vm.enterNewKeyPlacementMode(GridSpan(2, 2))
+        vm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(0, 0, 2, 2)))
+        assertTrue(vm.confirmPlacementPreview())
+
+        vm.enterNewKeyPlacementMode(GridSpan(1, 1), InsertionPolicy.PreferHorizontal)
+        vm.setHalfRowPlacement(HalfRowPlacement.Upper)
+        vm.holdPlacementCursorFromTap(InsertionTarget.EmptyArea(GridPlacement(0, 4, 1, 1)))
+        assertTrue(vm.confirmPlacementPreview())
+
+        val keys = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+        assertEquals(2, keys.size)
+        val full = keys.first { it.placement.rowSpanUnits == 2 }
+        val half = keys.first { it.placement.rowSpanUnits == 1 }
+
+        vm.updateKeyAndMappings(
+            newKeyData = full.keyData.copy(label = "F"),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap()
+        )
+        vm.updateKeyAndMappings(
+            newKeyData = half.keyData.copy(label = "H"),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap()
+        )
+
+        val after = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+        val afterFull = after.first { it.id == full.id }
+        val afterHalf = after.first { it.id == half.id }
+        assertEquals(2, afterFull.placement.rowSpanUnits)
+        assertEquals(1, afterHalf.placement.rowSpanUnits)
+        assertNotEquals(afterFull.placement.rowSpanUnits, afterHalf.placement.rowSpanUnits)
+    }
+
+    @Test
+    fun viewModel_keyItemSelectionUsesItemIdFirst() {
+        // The flexible-layout selection path matches against item.id first
+        // (and falls back to keyData.keyId for backwards compat). Confirm
+        // that tapping with item.id selects the right key and that a second
+        // tap (still with item.id) navigates with item.id as the editing
+        // target.
+        val vm = qwertyViewModel()
+        val target = vm.uiState.value.layout.items.filterIsInstance<KeyItem>()
+            .first { it.id == "qwerty_key_a" }
+        // The QWERTY template uses item.id == keyData.keyId; this test is
+        // primarily about ensuring the public API accepts item.id.
+        assertEquals(target.id, target.keyData.keyId)
+
+        assertFalse(vm.onKeyTappedForSelectionOrEdit(target.id))
+        assertEquals(target.id, vm.uiState.value.selectedItemId)
+
+        assertTrue(vm.onKeyTappedForSelectionOrEdit(target.id))
+        assertEquals(target.id, vm.uiState.value.selectedKeyIdentifier)
     }
 
     private fun assertPreviewOnly(action: (KeyboardEditorViewModel) -> Unit) {
