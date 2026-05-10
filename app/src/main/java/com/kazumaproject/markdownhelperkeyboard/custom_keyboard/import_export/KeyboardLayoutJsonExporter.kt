@@ -47,14 +47,16 @@ internal fun FullKeyboardLayout.toExportDto(): KeyboardLayoutExportDto {
     return KeyboardLayoutExportDto(
         layout = KeyboardLayoutDto(
             layoutId = this.layout.layoutId,
-            name = this.layout.name,
+            name = exportLayoutName(this.layout.name, this.layout.layoutId),
             columnCount = this.layout.columnCount,
             rowCount = this.layout.rowCount,
             isRomaji = this.layout.isRomaji,
             isDirectMode = this.layout.isDirectMode,
             createdAt = this.layout.createdAt,
             sortOrder = this.layout.sortOrder,
-            stableId = this.layout.stableId
+            stableId = this.layout.stableId,
+            isFlexiblePlacementLayout = this.layout.isFlexiblePlacementLayout,
+            usageMode = this.layout.usageMode.serializedName
         ),
         keysWithFlicks = this.keysWithFlicks.map { it.toExportDto() },
         spacers = this.spacers.map {
@@ -70,6 +72,15 @@ internal fun FullKeyboardLayout.toExportDto(): KeyboardLayoutExportDto {
             )
         }
     )
+}
+
+private fun exportLayoutName(rawName: String?, layoutId: Long): String {
+    return rawName?.trim()?.takeIf { it.isNotEmpty() }
+        ?: if (layoutId > 0) {
+            "Keyboard $layoutId"
+        } else {
+            "Keyboard"
+        }
 }
 
 internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {

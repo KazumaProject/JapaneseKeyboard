@@ -40,6 +40,8 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_28_29
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_29_30
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_30_31
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_31_32
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_32_33
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
@@ -122,6 +124,8 @@ object AppModule {
             MIGRATION_28_29,
             MIGRATION_29_30,
             MIGRATION_30_31,
+            MIGRATION_31_32,
+            MIGRATION_32_33,
         )
         .build()
 

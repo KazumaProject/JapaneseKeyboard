@@ -7,6 +7,7 @@ import com.google.gson.reflect.TypeToken
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -16,6 +17,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFl
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
+import timber.log.Timber
 import java.util.UUID
 import kotlin.math.ceil
 
@@ -38,7 +40,8 @@ object KeyboardBackupFormatDetector {
     private fun detectObject(obj: JsonObject): KeyboardBackupFormat {
         val version = obj["schemaVersion"]?.takeIf { it.isJsonPrimitive }?.asIntOrNull()
         return when {
-            version == KeyboardLayoutJsonImporter.LATEST_SCHEMA_VERSION &&
+            version != null &&
+                version in 1..KeyboardLayoutJsonImporter.LATEST_SCHEMA_VERSION &&
                 obj["layouts"]?.isJsonArray == true -> KeyboardBackupFormat.VersionedV1
 
             version != null -> KeyboardBackupFormat.Unsupported
@@ -160,6 +163,8 @@ object KeyboardBackupNormalizer {
 
         val rawKeys = dto.keysWithFlicks ?: emptyList()
         val rawSpacers = dto.spacers ?: emptyList()
+        val isFlexiblePlacementLayout = layoutDto.isFlexiblePlacementLayout
+            ?: hasFlexiblePlacementData(rawKeys, rawSpacers)
         val derivedRowCount = deriveRowCount(rawKeys, rawSpacers)
         val derivedColumnCount = deriveColumnCount(rawKeys, rawSpacers)
         val rowCount = normalizeLayoutDimension(
@@ -179,10 +184,7 @@ object KeyboardBackupNormalizer {
             errors = errors
         ) ?: return null
 
-        val name = layoutDto.name?.takeIf { it.isNotBlank() } ?: run {
-            errors += KeyboardLayoutImportError.InvalidLayoutSize(layoutIndex, "name is blank")
-            return null
-        }
+        val name = normalizeLayoutName(layoutIndex, layoutDto.name, warnings)
 
         val normalizedLayout = CustomKeyboardLayout(
             layoutId = 0,
@@ -193,7 +195,9 @@ object KeyboardBackupNormalizer {
             isDirectMode = layoutDto.isDirectMode ?: false,
             createdAt = layoutDto.createdAt?.takeIf { it > 0 } ?: System.currentTimeMillis(),
             sortOrder = 0,
-            stableId = generatedStableId ?: UUID.randomUUID().toString()
+            stableId = generatedStableId ?: UUID.randomUUID().toString(),
+            isFlexiblePlacementLayout = isFlexiblePlacementLayout,
+            usageMode = parseUsageMode(layoutDto.usageMode)
         )
 
         val normalizedKeys = normalizeKeys(
@@ -220,6 +224,32 @@ object KeyboardBackupNormalizer {
             keysWithFlicks = normalizedKeys,
             spacers = normalizedSpacers
         )
+    }
+
+    private fun parseUsageMode(rawValue: String?): KeyboardLayoutUsageMode {
+        val normalized = rawValue?.trim()?.takeIf { it.isNotEmpty() }
+            ?: return KeyboardLayoutUsageMode.Normal
+        return KeyboardLayoutUsageMode.entries.firstOrNull { mode ->
+            mode.serializedName == normalized || mode.name == normalized
+        } ?: run {
+            Timber.w("Unknown keyboard layout usageMode in backup: %s", normalized)
+            KeyboardLayoutUsageMode.Normal
+        }
+    }
+
+    private fun normalizeLayoutName(
+        layoutIndex: Int,
+        rawName: String?,
+        warnings: MutableList<KeyboardLayoutImportWarning>
+    ): String {
+        rawName?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+
+        val generatedName = "Imported Keyboard ${layoutIndex + 1}"
+        warnings += KeyboardLayoutImportWarning.MissingLayoutNameGenerated(
+            layoutIndex = layoutIndex,
+            generatedName = generatedName
+        )
+        return generatedName
     }
 
     private fun normalizeKeys(
@@ -611,6 +641,37 @@ object KeyboardBackupNormalizer {
             if (columnUnits < 0 || columnSpanUnits <= 0) 0 else ceil((columnUnits + columnSpanUnits) / 2.0).toInt()
         } ?: 0
         return maxOf(keyColumns, spacerColumns)
+    }
+
+    private fun hasFlexiblePlacementData(
+        keys: List<KeyWithFlicksExportDto>,
+        spacers: List<SpacerDefinitionDto>
+    ): Boolean {
+        val alphabetPrefixes = listOf("qwerty_", "azerty_", "dvorak_", "colemak_")
+        if (spacers.any { spacer ->
+                alphabetPrefixes.any { prefix -> spacer.itemIdentifier?.startsWith(prefix) == true }
+            }
+        ) {
+            return true
+        }
+        return keys.any { keyWithFlicks ->
+            val key = keyWithFlicks.key ?: return@any false
+            if (alphabetPrefixes.any { prefix -> key.keyIdentifier?.startsWith(prefix) == true }) {
+                return@any true
+            }
+            val row = key.row ?: 0
+            val column = key.column ?: 0
+            val rowSpan = key.rowSpan ?: 1
+            val colSpan = key.colSpan ?: 1
+            val rowUnits = key.rowUnits ?: return@any false
+            val columnUnits = key.columnUnits ?: return@any false
+            val rowSpanUnits = key.rowSpanUnits ?: return@any false
+            val columnSpanUnits = key.columnSpanUnits ?: return@any false
+            rowUnits != row * 2 ||
+                    columnUnits != column * 2 ||
+                    rowSpanUnits != rowSpan * 2 ||
+                    columnSpanUnits != colSpan * 2
+        }
     }
 
     private fun remapKeyAction(

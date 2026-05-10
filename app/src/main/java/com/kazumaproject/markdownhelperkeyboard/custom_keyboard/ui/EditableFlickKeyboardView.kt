@@ -12,10 +12,12 @@ import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.DragEvent
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.view.View.OnDragListener
 import android.widget.GridLayout
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
@@ -26,9 +28,20 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import com.kazumaproject.custom_keyboard.view.AutoSizeButton
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.canonicalLayoutForEditor
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.columnDeleteSpecs
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.displayPlacement
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.EditorGridBounds
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.editorGridBounds
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionPolicy
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTargetMapper
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.PlacementCursor
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.rowDeleteSpecs
 import com.google.android.material.R as MaterialR
 
 @SuppressLint("ClickableViewAccessibility")
@@ -43,10 +56,17 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         fun onKeysSwapped(draggedKeyId: String, targetKeyId: String)
         fun onRowDeleted(rowIndex: Int)
         fun onColumnDeleted(columnIndex: Int)
+        fun onPlacementPointerTarget(target: InsertionTarget)
+        fun onPlacementTapTarget(target: InsertionTarget)
+        fun onPlacementDropTarget(target: InsertionTarget)
     }
     // ▲▲▲ インターフェースに削除イベントを追加 ▲▲▲
 
     private var listener: OnKeyEditListener? = null
+    private val insertionTargetMapper = InsertionTargetMapper()
+    private var currentLayout: KeyboardLayout? = null
+    private var placementMode: Boolean = false
+    private var currentInsertionPolicy: InsertionPolicy = InsertionPolicy.PreferHorizontal
 
     fun setOnKeyEditListener(listener: OnKeyEditListener?) {
         this.listener = listener
@@ -57,30 +77,43 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    fun setKeyboard(layout: KeyboardLayout) {
+    fun setKeyboard(
+        layout: KeyboardLayout,
+        placementMode: Boolean = false,
+        placementCursor: PlacementCursor? = null,
+        insertionPolicy: InsertionPolicy = placementCursor?.policy ?: InsertionPolicy.PreferHorizontal,
+        selectedItemId: String? = null,
+        previewInsertedItemId: String? = null,
+        previewMovedItemIds: Set<String> = emptySet()
+    ) {
         this.removeAllViews()
+        val displayLayout = layout.canonicalLayoutForEditor(placementCursor)
+        this.currentLayout = displayLayout
+        this.placementMode = placementMode
+        this.currentInsertionPolicy = placementCursor?.policy ?: insertionPolicy
 
-        // ▼▼▼ 削除ボタン用に列と行を1つずつ増やす ▼▼▼
-        val keyboardColumnUnits = if (layout.items.isNotEmpty()) layout.columnUnitCount else layout.columnCount
-        val keyboardRowUnits = if (layout.items.isNotEmpty()) layout.rowUnitCount else layout.rowCount
-        this.columnCount = keyboardColumnUnits + 2
-        this.rowCount = keyboardRowUnits + 2
-        // ▲▲▲ 削除ボタン用に列と行を1つずつ増やす ▲▲▲
+        val editorBounds = displayLayout.editorGridBounds()
+        this.columnCount = editorBounds.gridColumnCount
+        this.rowCount = editorBounds.gridRowCount
 
         this.isFocusable = false
 
         val dragListener = createDragListener()
+        setPlacementTouchListener()
+        if (!editorBounds.showRowColumnDeleteChrome) {
+            addFlexibleRowUnitAnchors(editorBounds)
+        }
 
         // キーの描画
-        if (layout.items.isNotEmpty()) {
-            layout.items.forEach { item ->
+        if (displayLayout.items.isNotEmpty()) {
+            displayLayout.items.forEach { item ->
                 when (item) {
-                    is KeyItem -> addKeyItem(item, dragListener)
-                    is SpacerItem -> addSpacerItem(item)
+                    is KeyItem -> addKeyItem(item, dragListener, selectedItemId, previewInsertedItemId, previewMovedItemIds)
+                    is SpacerItem -> addSpacerItem(item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
                 }
             }
         } else {
-            layout.keys.forEach { keyData ->
+            displayLayout.keys.forEach { keyData ->
                 addKeyItem(
                     KeyItem(
                         id = keyData.keyId ?: "legacy_${keyData.row}_${keyData.column}_${keyData.label}",
@@ -92,18 +125,21 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                             columnSpanUnits = keyData.colSpan
                         )
                     ),
-                    dragListener
+                    dragListener,
+                    selectedItemId,
+                    previewInsertedItemId,
+                    previewMovedItemIds
                 )
             }
         }
 
-        // ▼▼▼ ここから削除ボタンの描画を追加 ▼▼▼
-        // 行削除ボタンの描画
-        for (i in 0 until layout.rowCount) {
+        addInsertionCursor(displayLayout, placementCursor)
+
+        editorBounds.rowDeleteSpecs(displayLayout.rowCount).forEachIndexed { i, rowSpecBounds ->
             val deleteButton = createDeleteButton { listener?.onRowDeleted(i) }
             val params = LayoutParams().apply {
-                rowSpec = spec(i * 2 + 2, 2, FILL, 1f) // キーの行に対応 (+2 units はオフセット)
-                columnSpec = spec(0, 2, FILL, 0.5f)  // 最初の列(インデックス0)に配置
+                rowSpec = spec(rowSpecBounds.startUnits, rowSpecBounds.spanUnits, FILL, 1f)
+                columnSpec = spec(0, editorBounds.columnOffsetUnits, FILL, 0.5f)
                 width = 0
                 height = 0
                 setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
@@ -112,12 +148,11 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             this.addView(deleteButton)
         }
 
-        // 列削除ボタンの描画
-        for (i in 0 until layout.columnCount) {
+        editorBounds.columnDeleteSpecs(displayLayout.columnCount).forEachIndexed { i, columnSpecBounds ->
             val deleteButton = createDeleteButton { listener?.onColumnDeleted(i) }
             val params = LayoutParams().apply {
-                rowSpec = spec(0, 2, FILL, 0.5f) // 最初の行(インデックス0)に配置
-                columnSpec = spec(i * 2 + 2, 2, FILL, 1f) // キーの列に対応 (+2 units はオフセット)
+                rowSpec = spec(0, editorBounds.rowOffsetUnits, FILL, 0.5f)
+                columnSpec = spec(columnSpecBounds.startUnits, columnSpecBounds.spanUnits, FILL, 1f)
                 width = 0
                 height = 0
                 setMargins(dpToPx(4), dpToPx(4), dpToPx(4), dpToPx(4))
@@ -125,33 +160,50 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             deleteButton.layoutParams = params
             this.addView(deleteButton)
         }
-        // ▲▲▲ ここまで削除ボタンの描画を追加 ▲▲▲
     }
 
-    private fun addKeyItem(item: KeyItem, dragListener: OnDragListener) {
+    private fun addKeyItem(
+        item: KeyItem,
+        dragListener: OnDragListener,
+        selectedItemId: String?,
+        previewInsertedItemId: String?,
+        previewMovedItemIds: Set<String>
+    ) {
         val keyData = item.keyData
-        val keyView: View = createKeyView(keyData)
+        val keyView: View = createKeyView(keyData, item.placement)
         keyView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
-        keyView.tag = keyData.keyId
+        // Source of truth for flexible-layout selection / drag-swap is
+        // KeyboardLayoutItem.id. KeyData.keyId is intentionally NOT used here
+        // because half-cell keys / spacers may have a different (or null) keyId.
+        keyView.tag = item.id
         keyView.setOnDragListener(dragListener)
         keyView.setOnClickListener {
-            keyData.keyId?.let { keyId -> listener?.onKeySelected(keyId) }
+            if (placementMode) {
+                mapTargetFromCenter(item)?.let { target -> listener?.onPlacementTapTarget(target) }
+            } else {
+                listener?.onKeySelected(item.id)
+            }
         }
         keyView.setOnLongClickListener { view ->
-            keyData.keyId?.let { keyId ->
-                val clipText = "keyId:$keyId"
-                val clipItem = ClipData.Item(clipText)
-                val mimeTypes = arrayOf("text/plain")
-                val data = ClipData(clipText, mimeTypes, clipItem)
-                val dragShadow = DragShadowBuilder(view)
-                view.startDragAndDrop(data, dragShadow, view, 0)
-            }
+            if (placementMode) return@setOnLongClickListener true
+            val clipText = "keyId:${item.id}"
+            val clipItem = ClipData.Item(clipText)
+            val mimeTypes = arrayOf("text/plain")
+            val data = ClipData(clipText, mimeTypes, clipItem)
+            val dragShadow = DragShadowBuilder(view)
+            view.startDragAndDrop(data, dragShadow, view, 0)
             true
         }
+        decoratePreviewItem(keyView, item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
         this.addView(keyView)
     }
 
-    private fun addSpacerItem(item: SpacerItem) {
+    private fun addSpacerItem(
+        item: SpacerItem,
+        selectedItemId: String?,
+        previewInsertedItemId: String?,
+        previewMovedItemIds: Set<String>
+    ) {
         val spacerView = TextView(context).apply {
             isClickable = true
             isFocusable = false
@@ -164,12 +216,54 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
             contentDescription = "Spacer"
             setOnClickListener {
-                listener?.onSpacerSelected(item.id)
+                if (placementMode) {
+                    mapTargetFromCenter(item)?.let { target -> listener?.onPlacementTapTarget(target) }
+                } else {
+                    listener?.onSpacerSelected(item.id)
+                }
             }
         }
         spacerView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
+        decoratePreviewItem(spacerView, item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
         this.addView(spacerView)
     }
+
+    private fun decoratePreviewItem(
+        view: View,
+        item: KeyboardLayoutItem,
+        selectedItemId: String?,
+        previewInsertedItemId: String?,
+        previewMovedItemIds: Set<String>
+    ) {
+        when {
+            item.id == previewInsertedItemId -> {
+                view.alpha = 0.76f
+                view.foreground = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    setColor(Color.TRANSPARENT)
+                    setStroke(dpToPx(2), Color.rgb(0, 150, 136))
+                }
+            }
+            item.id in previewMovedItemIds -> {
+                view.alpha = 0.86f
+                view.foreground = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    setColor(Color.TRANSPARENT)
+                    setStroke(dpToPx(2), Color.rgb(255, 152, 0))
+                }
+            }
+            selectedItemId != null && item.matchesSelectedItemId(selectedItemId) -> {
+                view.foreground = GradientDrawable().apply {
+                    shape = GradientDrawable.RECTANGLE
+                    setColor(Color.TRANSPARENT)
+                    setStroke(dpToPx(2), Color.rgb(33, 150, 243))
+                }
+            }
+        }
+    }
+
+    private fun KeyboardLayoutItem.matchesSelectedItemId(selectedId: String): Boolean =
+        id == selectedId || (this is KeyItem && keyData.keyId == selectedId)
 
     // ▼▼▼ 削除ボタンを生成するヘルパー関数を追加 ▼▼▼
     private fun createDeleteButton(onClick: () -> Unit): ImageButton {
@@ -188,7 +282,6 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
 
     private fun createDragListener(): OnDragListener {
         return OnDragListener { view, event ->
-            val targetKeyId = view.tag as? String ?: return@OnDragListener false
             when (event.action) {
                 DragEvent.ACTION_DRAG_STARTED -> true
                 DragEvent.ACTION_DRAG_ENTERED -> {
@@ -202,6 +295,11 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 }
 
                 DragEvent.ACTION_DROP -> {
+                    if (placementMode) {
+                        mapTarget(event.x, event.y)?.let { listener?.onPlacementDropTarget(it) }
+                        return@OnDragListener true
+                    }
+                    val targetKeyId = view.tag as? String ?: return@OnDragListener false
                     val item = event.clipData.getItemAt(0)
                     val draggedKeyId = item.text.toString().removePrefix("keyId:")
                     if (draggedKeyId != targetKeyId) {
@@ -218,6 +316,88 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 else -> false
             }
         }
+    }
+
+    private fun setPlacementTouchListener() {
+        setOnTouchListener { _, event ->
+            if (!placementMode) return@setOnTouchListener false
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN,
+                MotionEvent.ACTION_MOVE -> {
+                    mapTarget(event.x, event.y)?.let { listener?.onPlacementPointerTarget(it) }
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    mapTarget(event.x, event.y)?.let { listener?.onPlacementTapTarget(it) }
+                    true
+                }
+                else -> false
+            }
+        }
+        setOnDragListener { _, event ->
+            if (!placementMode) return@setOnDragListener false
+            when (event.action) {
+                DragEvent.ACTION_DRAG_STARTED -> true
+                DragEvent.ACTION_DRAG_LOCATION -> {
+                    mapTarget(event.x, event.y)?.let { listener?.onPlacementPointerTarget(it) }
+                    true
+                }
+                DragEvent.ACTION_DROP -> {
+                    mapTarget(event.x, event.y)?.let { listener?.onPlacementDropTarget(it) }
+                    true
+                }
+                else -> true
+            }
+        }
+    }
+
+    private fun mapTarget(x: Float, y: Float): InsertionTarget? {
+        val layout = currentLayout ?: return null
+        val editorBounds = layout.editorGridBounds()
+        val totalColumnUnits = editorBounds.gridColumnCount
+        val totalRowUnits = editorBounds.gridRowCount
+        if (totalColumnUnits <= 0 || totalRowUnits <= 0) return null
+        val unitWidth = width.toFloat() / totalColumnUnits
+        val unitHeight = height.toFloat() / totalRowUnits
+        val editableX = x - unitWidth * editorBounds.columnOffsetUnits
+        val editableY = y - unitHeight * editorBounds.rowOffsetUnits
+        return insertionTargetMapper.mapPointer(
+            layout = layout,
+            xPx = editableX,
+            yPx = editableY,
+            widthPx = unitWidth * editorBounds.keyboardColumnUnitCount,
+            heightPx = unitHeight * editorBounds.keyboardRowUnitCount,
+            policy = currentInsertionPolicy
+        )
+    }
+
+    private fun mapTargetFromCenter(item: KeyboardLayoutItem): InsertionTarget? {
+        val layout = currentLayout ?: return null
+        val x = item.placement.columnUnits + item.placement.columnSpanUnits / 2f
+        val y = item.placement.rowUnits + item.placement.rowSpanUnits / 2f
+        return insertionTargetMapper.mapPointer(
+            layout = layout,
+            xPx = x,
+            yPx = y,
+            widthPx = layout.columnUnitCount.toFloat(),
+            heightPx = layout.rowUnitCount.toFloat(),
+            policy = currentInsertionPolicy
+        )
+    }
+
+    private fun addInsertionCursor(layout: KeyboardLayout, placementCursor: PlacementCursor?) {
+        val cursor = placementCursor ?: return
+        val cursorPlacement = cursor.displayPlacement(layout) ?: return
+        val cursorView = TextView(context).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                setColor(Color.argb(180, 0, 150, 136))
+                setStroke(dpToPx(1), Color.rgb(0, 121, 107))
+            }
+            elevation = 8f
+        }
+        cursorView.layoutParams = createLayoutParams(cursorPlacement, rowOffsetUnits = 2, columnOffsetUnits = 2)
+        this.addView(cursorView)
     }
 
     private fun createLayoutParams(
@@ -244,23 +424,54 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun addFlexibleRowUnitAnchors(editorBounds: EditorGridBounds) {
+        repeat(editorBounds.keyboardRowUnitCount) { rowUnit ->
+            val anchor = View(context).apply {
+                visibility = INVISIBLE
+                isFocusable = false
+                isClickable = false
+                importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+            }
+            anchor.layoutParams = LayoutParams().apply {
+                rowSpec = spec(
+                    editorBounds.rowOffsetUnits + rowUnit,
+                    1,
+                    FILL,
+                    1f
+                )
+                columnSpec = spec(0, 1, FILL, 0f)
+                width = 0
+                height = 0
+            }
+            addView(anchor)
+        }
+    }
+
     private fun createKeyView(
-        keyData: KeyData
+        keyData: KeyData,
+        placement: GridPlacement
     ): View {
         val isDarkTheme = context.isDarkThemeOn()
+        val isHalfHeight = placement.rowSpanUnits == 1
 
-        // ▼▼▼ 変更点1: マージン値をここで定義 ▼▼▼
-        val (leftMargin, topMargin, rightMargin, bottomMargin) = if (keyData.isSpecialKey) {
-            // isSpecialKey の場合のマージン
-            listOf(dpToPx(2), dpToPx(6), dpToPx(2), dpToPx(6))
-        } else {
-            // 通常キーの場合のマージin
-            listOf(dpToPx(2), dpToPx(3), dpToPx(2), dpToPx(3))
+        val leftMargin = dpToPx(2)
+        val rightMargin = dpToPx(2)
+        val verticalMargin = when {
+            isHalfHeight -> dpToPx(1)
+            keyData.isSpecialKey -> dpToPx(6)
+            else -> dpToPx(3)
         }
 
         val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
             AppCompatImageButton(context).apply {
                 isFocusable = false; isClickable = true
+                minimumHeight = 0
+                minimumWidth = 0
+                setMinimumHeight(0)
+                setMinimumWidth(0)
+                setPadding(0, 0, 0, 0)
+                adjustViewBounds = false
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
                 elevation = 2f
                 setImageResource(keyData.drawableResId!!)
                 contentDescription = keyData.label
@@ -273,9 +484,9 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 val insetBg = android.graphics.drawable.InsetDrawable(
                     originalBg,
                     leftMargin,
-                    topMargin,
+                    verticalMargin,
                     rightMargin,
-                    bottomMargin
+                    verticalMargin
                 )
                 background = insetBg
             }
@@ -283,6 +494,14 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             AutoSizeButton(context).apply {
                 isFocusable = false; isClickable = true
                 isAllCaps = false
+                minimumHeight = 0
+                minimumWidth = 0
+                minHeight = 0
+                minWidth = 0
+                setMinHeight(0)
+                setMinWidth(0)
+                includeFontPadding = false
+                setPadding(0, 0, 0, 0)
                 if (keyData.label.contains("\n")) {
                     val parts = keyData.label.split("\n", limit = 2)
                     val primaryText = parts[0]
@@ -304,7 +523,6 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                     }
                     this.maxLines = 2
                     this.setLineSpacing(0f, 0.9f)
-                    this.setPadding(0, dpToPx(4), 0, dpToPx(4))
                     this.gravity = Gravity.CENTER
                     this.text = spannable
                 } else {
@@ -351,9 +569,9 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 val insetBg = android.graphics.drawable.InsetDrawable(
                     originalBg,
                     leftMargin,
-                    topMargin,
+                    verticalMargin,
                     rightMargin,
-                    bottomMargin
+                    verticalMargin
                 )
                 background = insetBg
             }

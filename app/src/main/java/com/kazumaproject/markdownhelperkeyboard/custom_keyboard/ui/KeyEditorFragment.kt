@@ -823,8 +823,20 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             loadCustomKeyboardTargets()
             val state = viewModel.uiState.filterNotNull().first()
 
-            currentKeyData =
-                state.layout.keys.firstOrNull { it.keyId == state.selectedKeyIdentifier }
+            // Resolve the editing target by both KeyboardLayoutItem.id and the
+            // legacy KeyData.keyId. selectedKeyIdentifier carries item.id for
+            // flexible layouts (so half-cell keys and editor-created keys
+            // resolve correctly even when keyData.keyId is null/blank).
+            val selectedId = state.selectedKeyIdentifier
+            currentKeyData = if (selectedId == null) {
+                null
+            } else {
+                state.layout.items
+                    .filterIsInstance<com.kazumaproject.custom_keyboard.data.KeyItem>()
+                    .firstOrNull { it.id == selectedId || it.keyData.keyId == selectedId }
+                    ?.keyData
+                    ?: state.layout.keys.firstOrNull { it.keyId == selectedId }
+            }
 
             if (currentKeyData == null) {
                 findNavController().popBackStack()

@@ -2,6 +2,15 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export
 
 import com.google.gson.JsonParser
 import com.google.gson.annotations.SerializedName
+import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyWithFlicks
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -14,7 +23,7 @@ import org.junit.Test
  * 主な観点:
  * - 旧 root array 形式 (spacers なし / null / 完全形)
  * - flick 系 List 欠損
- * - 新 schemaVersion = 1 object 形式
+ * - 新 schemaVersion object 形式
  * - export round-trip
  */
 class KeyboardLayoutJsonImporterTest {
@@ -164,7 +173,7 @@ class KeyboardLayoutJsonImporterTest {
     }
 
     // -----------------------------
-    // D. 新 schemaVersion = 1 object 形式を import できる
+    // D. schemaVersion = 1 object 形式を import できる
     // -----------------------------
     @Test
     fun parse_schemaVersion1_objectFormat_isAccepted() {
@@ -183,8 +192,56 @@ class KeyboardLayoutJsonImporterTest {
         assertEquals("TestKeyboard", result.single().layout.name)
     }
 
+    @Test
+    fun parse_versionedObject_withBlankLayoutName_generatesNameAndWarning() {
+        val json = versionedBackupWithLayoutName("\"name\": \"\"")
+
+        val result = KeyboardLayoutJsonImporter.parse(json)
+        val success = result as KeyboardLayoutImportResult.Success
+
+        assertEquals(1, success.layouts.size)
+        assertEquals("Imported Keyboard 1", success.layouts.single().layout.name)
+        assertTrue(
+            success.warnings.any {
+                it == KeyboardLayoutImportWarning.MissingLayoutNameGenerated(
+                    layoutIndex = 0,
+                    generatedName = "Imported Keyboard 1"
+                )
+            }
+        )
+    }
+
+    @Test
+    fun parse_versionedObject_withWhitespaceLayoutName_generatesNameAndWarning() {
+        val json = versionedBackupWithLayoutName("\"name\": \"   \"")
+
+        val result = KeyboardLayoutJsonImporter.parse(json)
+        val success = result as KeyboardLayoutImportResult.Success
+
+        assertEquals("Imported Keyboard 1", success.layouts.single().layout.name)
+        assertTrue(success.warnings.any { it is KeyboardLayoutImportWarning.MissingLayoutNameGenerated })
+    }
+
+    @Test
+    fun parse_legacyArrayAndObject_withMissingLayoutName_generatesNameAndWarning() {
+        val layoutWithoutName = legacyLayoutWithoutNameJson()
+        val cases = listOf(
+            "[$layoutWithoutName]",
+            """{ "layouts": [ $layoutWithoutName ] }""",
+            layoutWithoutName
+        )
+
+        cases.forEach { json ->
+            val result = KeyboardLayoutJsonImporter.parse(json)
+            val success = result as KeyboardLayoutImportResult.Success
+
+            assertEquals("Imported Keyboard 1", success.layouts.single().layout.name)
+            assertTrue(success.warnings.any { it is KeyboardLayoutImportWarning.MissingLayoutNameGenerated })
+        }
+    }
+
     // -----------------------------
-    // E. export は schemaVersion = 1 の object 形式になる
+    // E. export は最新 schemaVersion の object 形式になる
     // -----------------------------
     @Test
     fun exporter_emitsSchemaVersionedObjectRoot() {
@@ -197,10 +254,118 @@ class KeyboardLayoutJsonImporterTest {
         assertTrue("root must be object", root.isJsonObject)
 
         val obj = root.asJsonObject
-        assertEquals(1, obj["schemaVersion"].asInt)
+        assertEquals(2, obj["schemaVersion"].asInt)
         assertNotNull(obj["layouts"])
         assertTrue("layouts must be array", obj["layouts"].isJsonArray)
         assertEquals(0, obj["layouts"].asJsonArray.size())
+    }
+
+    @Test
+    fun exporter_withBlankLayoutName_writesFallbackName() {
+        val exported = KeyboardLayoutJsonExporter.toJson(
+            listOf(
+                FullKeyboardLayout(
+                    layout = CustomKeyboardLayout(
+                        layoutId = 42,
+                        name = "",
+                        columnCount = 5,
+                        rowCount = 4,
+                        stableId = "stable-blank-export"
+                    ),
+                    keysWithFlicks = emptyList(),
+                    spacers = emptyList()
+                )
+            )
+        )
+
+        assertFalse(exported.contains("\"name\":\"\""))
+
+        val root = JsonParser.parseString(exported).asJsonObject
+        val exportedName = root["layouts"].asJsonArray[0]
+            .asJsonObject["layout"].asJsonObject["name"].asString
+        assertEquals("Keyboard 42", exportedName)
+
+        val importedLayout = parseSuccessLayouts(exported).single()
+        assertTrue(importedLayout.layout.name.isNotBlank())
+        assertEquals("Keyboard 42", importedLayout.layout.name)
+    }
+
+    @Test
+    fun import_versionedBackupShapeWithBlankName_preservesKeysFlicksAndSpacers() {
+        val result = KeyboardLayoutJsonImporter.parse(versionedBackupWithLayoutName("\"name\": \"\""))
+        val success = result as KeyboardLayoutImportResult.Success
+        val layout = success.layouts.single()
+
+        assertEquals("Imported Keyboard 1", layout.layout.name)
+        assertEquals(1, layout.keysWithFlicks.size)
+        assertEquals("key-a", layout.keysWithFlicks.single().key.keyIdentifier)
+        assertEquals("A", layout.keysWithFlicks.single().key.label)
+        assertEquals(1, layout.keysWithFlicks.single().flicks.size)
+        assertEquals("ok", layout.keysWithFlicks.single().flicks.single().actionValue)
+        assertEquals(1, layout.spacers.size)
+        assertEquals("spacer-a", layout.spacers.single().itemIdentifier)
+        assertTrue(success.warnings.any { it is KeyboardLayoutImportWarning.MissingLayoutNameGenerated })
+    }
+
+    @Test
+    fun exportImport_blankLayoutName_roundTripsWithNonBlankName() {
+        val exported = KeyboardLayoutJsonExporter.toJson(
+            listOf(
+                FullKeyboardLayout(
+                    layout = CustomKeyboardLayout(
+                        layoutId = 7,
+                        name = "   ",
+                        columnCount = 1,
+                        rowCount = 1,
+                        stableId = "stable-round-trip"
+                    ),
+                    keysWithFlicks = listOf(
+                        KeyWithFlicks(
+                            key = KeyDefinition(
+                                keyId = 70,
+                                ownerLayoutId = 7,
+                                label = "A",
+                                row = 0,
+                                column = 0,
+                                keyType = KeyType.NORMAL,
+                                keyIdentifier = "key-round-trip"
+                            ),
+                            flicks = listOf(
+                                FlickMapping(
+                                    ownerKeyId = 70,
+                                    stateIndex = 0,
+                                    flickDirection = FlickDirection.TAP,
+                                    actionType = "INPUT_TEXT",
+                                    actionValue = "A"
+                                )
+                            ),
+                            circularFlicks = emptyList(),
+                            twoStepFlicks = emptyList(),
+                            longPressFlicks = emptyList(),
+                            twoStepLongPressFlicks = emptyList()
+                        )
+                    ),
+                    spacers = listOf(
+                        SpacerDefinition(
+                            spacerId = 8,
+                            ownerLayoutId = 7,
+                            itemIdentifier = "spacer-round-trip",
+                            rowUnits = 0,
+                            columnUnits = 0,
+                            rowSpanUnits = 1,
+                            columnSpanUnits = 1
+                        )
+                    )
+                )
+            )
+        )
+
+        val imported = parseSuccessLayouts(exported).single()
+
+        assertEquals("Keyboard 7", imported.layout.name)
+        assertEquals("key-round-trip", imported.keysWithFlicks.single().key.keyIdentifier)
+        assertEquals("A", imported.keysWithFlicks.single().flicks.single().actionValue)
+        assertEquals("spacer-round-trip", imported.spacers.single().itemIdentifier)
     }
 
     // -----------------------------
@@ -228,6 +393,81 @@ class KeyboardLayoutJsonImporterTest {
             KeyboardLayoutImportError.UnsupportedFormat,
             (result as KeyboardLayoutImportResult.Failure).error
         )
+    }
+
+    @Test
+    fun parse_missingUsageMode_defaultsToNormal() {
+        val result = parseSuccessLayouts("[$minimalLayoutJson]")
+
+        assertEquals(KeyboardLayoutUsageMode.Normal, result.single().layout.usageMode)
+    }
+
+    @Test
+    fun parse_numberUsageMode_isPreserved() {
+        val json = """
+            [
+              {
+                "layout": {
+                  "layoutId": 1,
+                  "name": "NumberKeyboard",
+                  "columnCount": 5,
+                  "rowCount": 4,
+                  "usageMode": "Number"
+                },
+                "keysWithFlicks": []
+              }
+            ]
+        """.trimIndent()
+
+        val result = parseSuccessLayouts(json)
+
+        assertEquals(KeyboardLayoutUsageMode.Number, result.single().layout.usageMode)
+    }
+
+    @Test
+    fun exportImport_numberUsageMode_roundTrips() {
+        val exported = KeyboardLayoutJsonExporter.toJson(
+            listOf(
+                FullKeyboardLayout(
+                    layout = CustomKeyboardLayout(
+                        layoutId = 10,
+                        name = "Number Export",
+                        columnCount = 5,
+                        rowCount = 4,
+                        stableId = "stable-number",
+                        usageMode = KeyboardLayoutUsageMode.Number
+                    ),
+                    keysWithFlicks = emptyList(),
+                    spacers = emptyList()
+                )
+            )
+        )
+
+        val result = parseSuccessLayouts(exported)
+
+        assertEquals(KeyboardLayoutUsageMode.Number, result.single().layout.usageMode)
+    }
+
+    @Test
+    fun parse_unknownUsageMode_fallsBackToNormal() {
+        val json = """
+            [
+              {
+                "layout": {
+                  "layoutId": 1,
+                  "name": "UnknownUsage",
+                  "columnCount": 5,
+                  "rowCount": 4,
+                  "usageMode": "Calculator"
+                },
+                "keysWithFlicks": []
+              }
+            ]
+        """.trimIndent()
+
+        val result = parseSuccessLayouts(json)
+
+        assertEquals(KeyboardLayoutUsageMode.Normal, result.single().layout.usageMode)
     }
 
     // -----------------------------
@@ -652,6 +892,102 @@ class KeyboardLayoutJsonImporterTest {
 
     private fun parseSuccessLayouts(json: String): List<ImportableKeyboardLayout> {
         return KeyboardLayoutJsonImporter.parse(json).layoutsOrThrow()
+    }
+
+    private fun versionedBackupWithLayoutName(layoutNameProperty: String): String {
+        return """
+            {
+              "schemaVersion": ${KeyboardLayoutJsonImporter.LATEST_SCHEMA_VERSION},
+              "layouts": [
+                {
+                  "layout": {
+                    "layoutId": 14,
+                    $layoutNameProperty,
+                    "columnCount": 1,
+                    "rowCount": 1,
+                    "isRomaji": false,
+                    "isDirectMode": false,
+                    "createdAt": 123,
+                    "sortOrder": 0,
+                    "stableId": "stable-blank-name"
+                  },
+                  "keysWithFlicks": [
+                    {
+                      "key": {
+                        "keyId": 90,
+                        "ownerLayoutId": 14,
+                        "label": "A",
+                        "row": 0,
+                        "column": 0,
+                        "rowSpan": 1,
+                        "colSpan": 1,
+                        "keyType": "NORMAL",
+                        "isSpecialKey": false,
+                        "drawableResId": null,
+                        "keyIdentifier": "key-a",
+                        "action": null
+                      },
+                      "flicks": [
+                        {
+                          "ownerKeyId": 90,
+                          "stateIndex": 0,
+                          "flickDirection": "TAP",
+                          "actionType": "INPUT_TEXT",
+                          "actionValue": "ok"
+                        }
+                      ],
+                      "circularFlicks": [],
+                      "twoStepFlicks": [],
+                      "longPressFlicks": [],
+                      "twoStepLongPressFlicks": []
+                    }
+                  ],
+                  "spacers": [
+                    {
+                      "spacerId": 3,
+                      "ownerLayoutId": 14,
+                      "itemIdentifier": "spacer-a",
+                      "rowUnits": 0,
+                      "columnUnits": 0,
+                      "rowSpanUnits": 1,
+                      "columnSpanUnits": 1,
+                      "sortOrder": 0
+                    }
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+    }
+
+    private fun legacyLayoutWithoutNameJson(): String {
+        return """
+            {
+              "layout": {
+                "layoutId": 1,
+                "columnCount": 1,
+                "rowCount": 1,
+                "stableId": "stable-legacy-missing-name"
+              },
+              "keysWithFlicks": [
+                {
+                  "key": {
+                    "keyId": 1,
+                    "ownerLayoutId": 1,
+                    "label": "A",
+                    "row": 0,
+                    "column": 0,
+                    "rowSpan": 1,
+                    "colSpan": 1,
+                    "keyType": "NORMAL",
+                    "keyIdentifier": "legacy-key"
+                  },
+                  "flicks": []
+                }
+              ],
+              "spacers": []
+            }
+        """.trimIndent()
     }
 
     private fun KeyboardLayoutImportResult.layoutsOrThrow(): List<ImportableKeyboardLayout> {

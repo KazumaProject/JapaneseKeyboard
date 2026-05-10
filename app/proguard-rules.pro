@@ -24,6 +24,8 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.** { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.** { *; }
+-keep class com.kazumaproject.custom_keyboard.data.** { *; }
+-keep enum com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity { *; }

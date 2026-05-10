@@ -134,6 +134,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts.DeleteKeyFlickSettings
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
@@ -222,6 +223,8 @@ import com.kazumaproject.tenkey.extensions.getNextInputChar
 import com.kazumaproject.tenkey.extensions.getNextReturnInputChar
 import com.kazumaproject.tenkey.extensions.isHiragana
 import com.kazumaproject.tenkey.extensions.isLatinAlphabet
+import com.kazumaproject.tenkey.extensions.toggleDakutenWithSeion
+import com.kazumaproject.tenkey.extensions.toggleHandakutenWithSeion
 import com.kazumaproject.zenz.ZenzEngine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
@@ -774,6 +777,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
     private var currentCustomKeyboardStableId: String? = null
     private var customKeyboardRenderJob: Job? = null
+    private var numberKeyboardRenderJob: Job? = null
 
     private var currentNightMode: Int = 0
 
@@ -879,6 +883,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         private val numberTypes = setOf(
             InputTypeForIME.Number,
             InputTypeForIME.NumberDecimal,
+            InputTypeForIME.NumberPassword,
             InputTypeForIME.NumberSigned,
             InputTypeForIME.Phone,
             InputTypeForIME.Date,
@@ -2019,7 +2024,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.setClipboardDescriptionTextVisibility(
             !(clipboardPreviewTapToDelete ?: false)
         )
-        if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
+        val isNumberInputType = currentInputType in numberTypes
+        if (!isNumberInputType && qwertyMode.value == TenKeyQWERTYMode.Sumire) {
             mainLayoutBinding?.let { mainView ->
                 Timber.d("TenKeyQWERTYMode.Sumire: ${currentInputModeForSession} ${switchQWERTYPassword}")
                 when (currentInputModeForSession) {
@@ -2088,6 +2094,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setCurrentInputModeForSession(InputMode.ModeEnglish)
                 }
             }
+        } else if (isNumberInputType) {
+            Timber.d("current input type in OnStartView number: [$currentInputType] [$restarting]")
+            showNumberKeyboardForCurrentInputType()
         } else {
             Timber.d("current input type in OnStartView not password: [$currentInputType] [$restarting]")
             resetKeyboard()
@@ -4685,10 +4694,73 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
+        val numberCustomLayout = numberUsageCustomKeyboardLayoutOrNull()
+        if (numberCustomLayout != null) {
+            setKeyboardWithDeleteKeyFlickPreferences(
+                flickView,
+                KeyboardDefaultLayouts.createNumberLayout(currentDeleteKeyFlickSettings())
+            )
+            setNumberCustomLayoutTo(flickView, numberCustomLayout)
+            return
+        }
+        numberKeyboardRenderJob?.cancel()
         setKeyboardWithDeleteKeyFlickPreferences(
             flickView,
             KeyboardDefaultLayouts.createNumberLayout(currentDeleteKeyFlickSettings())
         )
+    }
+
+    private fun numberUsageCustomKeyboardLayoutOrNull(): CustomKeyboardLayout? {
+        return customLayouts.firstOrNull { layout ->
+            layout.usageMode == KeyboardLayoutUsageMode.Number
+        }
+    }
+
+    private fun setNumberCustomLayoutTo(
+        flickView: FlickKeyboardView,
+        layout: CustomKeyboardLayout
+    ) {
+        numberKeyboardRenderJob = scope.launch(Dispatchers.IO) {
+            val id = layout.layoutId
+            val expectedStableId = layout.stableId
+            val dbLayout = runCatching { keyboardRepository.getFullLayout(id).first() }
+                .getOrElse {
+                    Timber.w(
+                        it,
+                        "setNumberCustomLayoutTo: layout disappeared id=$id stableId=$expectedStableId"
+                    )
+                    return@launch
+                }
+            val finalLayout = keyboardRepository.convertLayout(dbLayout)
+            withContext(Dispatchers.Main) {
+                val currentNumberLayout = numberUsageCustomKeyboardLayoutOrNull()
+                val stillNumberLayout = qwertyMode.value == TenKeyQWERTYMode.Number &&
+                        currentNumberLayout?.layoutId == id &&
+                        (expectedStableId.isBlank() || currentNumberLayout.stableId == expectedStableId)
+                if (!stillNumberLayout) {
+                    Timber.d("setNumberCustomLayoutTo: skip stale render id=$id stableId=$expectedStableId")
+                    return@withContext
+                }
+                setKeyboardWithDeleteKeyFlickPreferences(flickView, finalLayout)
+            }
+        }
+    }
+
+    private fun showNumberKeyboardForCurrentInputType() {
+        customKeyboardMode = KeyboardInputMode.SYMBOLS
+        setCurrentInputModeForSession(InputMode.ModeNumber)
+        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Number }
+        suggestionAdapter?.updateState(TenKeyQWERTYMode.Number, emptyList())
+        mainLayoutBinding?.apply {
+            hideAllKeyboards()
+            customLayoutDefault.isVisible = true
+            qwertyView.setRomajiEnglishSwitchKeyVisibility(false)
+            setNumberLayoutTo(customLayoutDefault)
+            suggestionRecyclerView.isVisible = true
+        }
+        syncFloatingKeyboardContentForMode(TenKeyQWERTYMode.Number)
+        renderCurrentKeyboardStateOnActiveSurface()
+        updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.Number)
     }
 
     private fun setCurrentCustomLayoutTo(flickView: FlickKeyboardView) {
@@ -4698,7 +4770,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val expectedStableId = layout.stableId
             val dbLayout = runCatching { keyboardRepository.getFullLayout(id).first() }
                 .getOrElse {
-                    Timber.w(it, "setCurrentCustomLayoutTo: layout disappeared id=$id stableId=$expectedStableId")
+                    Timber.w(
+                        it,
+                        "setCurrentCustomLayoutTo: layout disappeared id=$id stableId=$expectedStableId"
+                    )
                     return@launch
                 }
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
@@ -7495,7 +7570,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val expectedStableId = layout.stableId
             val dbLayout = runCatching { keyboardRepository.getFullLayout(id).first() }
                 .getOrElse {
-                    Timber.w(it, "renderCustomKeyboardLayout: layout disappeared id=$id stableId=$expectedStableId")
+                    Timber.w(
+                        it,
+                        "renderCustomKeyboardLayout: layout disappeared id=$id stableId=$expectedStableId"
+                    )
                     return@launch
                 }
             Timber.d("renderCustomKeyboardLayout: $id $dbLayout")
@@ -7549,6 +7627,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
                 suggestionAdapter?.updateState(TenKeyQWERTYMode.Custom, emptyList())
                 fallbackFromCustomKeyboardIfNeeded()
+            } else if (qwertyMode.value == TenKeyQWERTYMode.Number && currentInputType in numberTypes) {
+                showNumberKeyboardForCurrentInputType()
             }
             return
         }
@@ -7577,6 +7657,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             syncFloatingKeyboardContentForMode(qwertyMode.value)
             renderCurrentKeyboardStateOnActiveSurface()
             updateFloatingKeyboardSizeForMode(qwertyMode.value)
+        } else if (qwertyMode.value == TenKeyQWERTYMode.Number && currentInputType in numberTypes) {
+            showNumberKeyboardForCurrentInputType()
         }
     }
 
@@ -7902,6 +7984,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {}
+                    KeyAction.ToggleDakutenOnly -> {}
+                    KeyAction.ToggleHandakutenOnly -> {}
                     KeyAction.SwitchToEnglishLayout -> {
                         customKeyboardMode = KeyboardInputMode.ENGLISH
                         createNewKeyboardLayoutForSumire()
@@ -7958,6 +8042,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.SwitchDirectMode -> {}
                     KeyAction.CapLockKey -> {}
+                    KeyAction.ForceHalfWidthSpace -> {}
+                    KeyAction.ForceFullWidthSpace -> {}
                 }
             }
 
@@ -7997,6 +8083,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchToNextIme -> {}
                     KeyAction.ToggleCase -> {}
                     KeyAction.ToggleDakuten -> {}
+                    KeyAction.ToggleDakutenOnly -> {}
+                    KeyAction.ToggleHandakutenOnly -> {}
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
@@ -8021,6 +8109,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchDirectMode -> {}
                     KeyAction.SwitchRomajiEnglish -> {}
                     KeyAction.CapLockKey -> {}
+                    KeyAction.ForceHalfWidthSpace -> {
+                        handleForceHalfWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                    }
+                    KeyAction.ForceFullWidthSpace -> {
+                        handleForceFullWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                    }
                 }
             }
 
@@ -8130,6 +8224,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         dakutenSmallActionForSumire()
                     }
 
+                    KeyAction.ToggleDakutenOnly -> {}
+
+                    KeyAction.ToggleHandakutenOnly -> {}
+
                     KeyAction.SwitchToEnglishLayout -> {}
                     KeyAction.SwitchToKanaLayout -> {}
                     KeyAction.SwitchToNumberLayout -> {}
@@ -8152,6 +8250,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchDirectMode -> {}
                     KeyAction.SwitchRomajiEnglish -> {}
                     KeyAction.CapLockKey -> {}
+                    KeyAction.ForceHalfWidthSpace -> {}
+                    KeyAction.ForceFullWidthSpace -> {}
                 }
             }
 
@@ -8257,9 +8357,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         dakutenSmallActionForSumire()
                     }
 
-                    KeyAction.SwitchToEnglishLayout -> {}
-                    KeyAction.SwitchToKanaLayout -> {}
-                    KeyAction.SwitchToNumberLayout -> {}
+                    KeyAction.ToggleDakutenOnly -> {
+                        toggleDakutenOnlyForCustomKeyboard()
+                    }
+
+                    KeyAction.ToggleHandakutenOnly -> {
+                        toggleHandakutenOnlyForCustomKeyboard()
+                    }
+
+                    KeyAction.SwitchToEnglishLayout -> {
+                        customKeyboardMode = KeyboardInputMode.ENGLISH
+                        createNewKeyboardLayoutForSumire()
+                        val inputMode = InputMode.ModeEnglish
+                        setCurrentInputModeForSession(inputMode)
+                    }
+
+                    KeyAction.SwitchToKanaLayout -> {
+                        customKeyboardMode = KeyboardInputMode.HIRAGANA
+                        createNewKeyboardLayoutForSumire()
+                        val inputMode = InputMode.ModeJapanese
+                        setCurrentInputModeForSession(inputMode)
+                    }
+
+                    KeyAction.SwitchToNumberLayout -> {
+                        customKeyboardMode = KeyboardInputMode.SYMBOLS
+                        createNewKeyboardLayoutForSumire()
+                        val inputMode = InputMode.ModeNumber
+                        setCurrentInputModeForSession(inputMode)
+                    }
+
                     KeyAction.ShiftKey -> {
                         isCustomLayoutShiftPressed = !isCustomLayoutShiftPressed
 
@@ -8359,6 +8485,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 else com.kazumaproject.core.R.drawable.caps_lock_outline
                             )
                         }
+                    }
+
+                    KeyAction.ForceHalfWidthSpace -> {
+                        handleForceHalfWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                    }
+
+                    KeyAction.ForceFullWidthSpace -> {
+                        handleForceFullWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
                     }
                 }
             }
@@ -8716,6 +8850,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         dakutenSmallActionForSumire()
                     }
 
+                    KeyAction.ToggleDakutenOnly -> {
+                        toggleDakutenOnlyForCustomKeyboard()
+                    }
+
+                    KeyAction.ToggleHandakutenOnly -> {
+                        toggleHandakutenOnlyForCustomKeyboard()
+                    }
+
                     KeyAction.SwitchToEnglishLayout -> {
                         customKeyboardMode = KeyboardInputMode.ENGLISH
                         createNewKeyboardLayoutForSumire()
@@ -8871,6 +9013,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Cancel -> {}
                     KeyAction.VoiceInput -> {
                         startVoiceInput(mainView)
+                    }
+
+                    KeyAction.ForceHalfWidthSpace -> {
+                        handleForceHalfWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                    }
+
+                    KeyAction.ForceFullWidthSpace -> {
+                        handleForceFullWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
                     }
                 }
             }
@@ -9985,7 +10135,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     TenKeyQWERTYMode.Number -> {
                         suggestionAdapter?.updateState(
-                            TenKeyQWERTYMode.Sumire, emptyList()
+                            TenKeyQWERTYMode.Number, emptyList()
                         )
                     }
                 }
@@ -12616,11 +12766,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setFirstKeyboardType() {
         if (keyboardOrder.isNotEmpty()) {
-            val firstItem = if (keyboardOrder.first() == KeyboardType.CUSTOM && customLayouts.isEmpty()) {
-                keyboardOrder.firstOrNull { it != KeyboardType.CUSTOM } ?: KeyboardType.TENKEY
-            } else {
-                keyboardOrder.first()
-            }
+            val firstItem =
+                if (keyboardOrder.first() == KeyboardType.CUSTOM && customLayouts.isEmpty()) {
+                    keyboardOrder.firstOrNull { it != KeyboardType.CUSTOM } ?: KeyboardType.TENKEY
+                } else {
+                    keyboardOrder.first()
+                }
             when (firstItem) {
                 KeyboardType.TENKEY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
                 KeyboardType.SUMIRE -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
@@ -16607,6 +16758,113 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         resetFlagsKeySpace()
     }
 
+    private fun handleForceHalfWidthSpaceOrConvert(
+        mainView: MainLayoutBinding,
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
+    ) {
+        handleForceSpaceOrConvert(
+            space = " ",
+            mainView = mainView,
+            floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding
+        )
+    }
+
+    private fun handleForceFullWidthSpaceOrConvert(
+        mainView: MainLayoutBinding,
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding? = null
+    ) {
+        handleForceSpaceOrConvert(
+            space = "　",
+            mainView = mainView,
+            floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding
+        )
+    }
+
+    private fun handleForceSpaceOrConvert(
+        space: String,
+        mainView: MainLayoutBinding,
+        floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding?
+    ) {
+        val insertString = inputString.value
+        val suggestions = suggestionAdapter?.suggestions ?: emptyList()
+
+        if (floatingKeyboardLayoutBinding != null) {
+            if (cycleFocusedBunsetsuCandidate(delta = 1, floatingKeyboardLayoutBinding)) {
+                resetFlagsKeySpace()
+                return
+            }
+        } else if (cycleFocusedBunsetsuCandidate(delta = 1)) {
+            resetFlagsKeySpace()
+            return
+        }
+
+        if (insertString.isNotEmpty()) {
+            if (floatingKeyboardLayoutBinding != null) {
+                floatingKeyboardLayoutBinding.keyboardViewFloating.let { tenkey ->
+                    when (tenkey.currentInputMode.value) {
+                        InputMode.ModeJapanese -> {
+                            if (suggestions.isNotEmpty()) {
+                                if (bunsetsuSeparation == true) {
+                                    handleJapaneseModeSpaceKeyWithBunsetsuFloating(
+                                        floatingKeyboardLayoutBinding, suggestions, insertString
+                                    )
+                                } else {
+                                    handleJapaneseModeSpaceKeyFloating(
+                                        floatingKeyboardLayoutBinding, suggestions, insertString
+                                    )
+                                }
+                            }
+                        }
+
+                        else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                    }
+                }
+            } else if (isTablet == true) {
+                mainView.tabletView.let { tabletKey ->
+                    when (tabletKey.currentInputMode.get()) {
+                        InputMode.ModeJapanese -> {
+                            if (suggestions.isNotEmpty()) {
+                                handleJapaneseModeSpaceKey(mainView, suggestions, insertString)
+                            }
+                        }
+
+                        else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                    }
+                }
+            } else {
+                mainView.keyboardView.let { tenkey ->
+                    when (tenkey.currentInputMode.value) {
+                        InputMode.ModeJapanese -> {
+                            if (suggestions.isNotEmpty()) {
+                                if (bunsetsuSeparation == true) {
+                                    handleJapaneseModeSpaceKeyWithBunsetsu(
+                                        mainView, suggestions, insertString
+                                    )
+                                } else {
+                                    handleJapaneseModeSpaceKey(mainView, suggestions, insertString)
+                                }
+                            }
+                        }
+
+                        else -> setSpaceKeyActionEnglishAndNumberNotEmpty(insertString)
+                    }
+                }
+            }
+        } else {
+            if (stringInTail.get().isNotEmpty()) return
+            commitText(space, 1)
+            _inputString.update { "" }
+            if (isHenkan.get()) {
+                suggestionAdapter?.suggestions = emptyList()
+                isHenkan.set(false)
+                henkanPressedWithBunsetsuDetect = false
+                suggestionClickNum = 0
+                suggestionAdapter?.updateHighlightPosition(-1)
+            }
+        }
+        resetFlagsKeySpace()
+    }
+
 
     private fun handleJapaneseModeSpaceKey(
         mainView: MainLayoutBinding, suggestions: List<Candidate>, insertString: String
@@ -16856,8 +17114,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setSelection(start - 1, start - 1)
                 }
             } else {
-                sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_LEFT))
-                sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DPAD_LEFT))
+                sendDpadLeftIfPossible()
             }
         } catch (e: Exception) {
             Timber.e(e)
@@ -16868,11 +17125,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleLeftCursorMoveAction() {
         Timber.d("handleLeftCursorMoveAction: called")
-        sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+        sendDpadLeftIfPossible()
     }
 
     private fun handleRightCursorMoveAction() {
-        sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+        sendDpadRightIfPossible()
     }
 
     private fun handleDeleteKeyInHenkan(suggestions: List<Candidate>, insertString: String) {
@@ -17047,7 +17304,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
             when (gestureType) {
                 GestureType.FlickRight -> {
-                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+                    sendDpadRightIfPossible()
                 }
 
                 GestureType.FlickTop -> {
@@ -17055,7 +17312,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 GestureType.FlickLeft -> {
-                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+                    sendDpadLeftIfPossible()
                 }
 
                 GestureType.FlickBottom -> {
@@ -17065,7 +17322,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 GestureType.Null -> {}
                 GestureType.Down -> {}
                 GestureType.Tap -> {
-                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+                    sendDpadLeftIfPossible()
                 }
             }
         } else if (!isHenkan.get()) {
@@ -17234,7 +17491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             when (gestureType) {
                 GestureType.FlickRight -> {
-                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+                    sendDpadRightIfPossible()
                 }
 
                 GestureType.FlickTop -> {
@@ -17242,7 +17499,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 GestureType.FlickLeft -> {
-                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+                    sendDpadRightIfPossible()
                 }
 
                 GestureType.FlickBottom -> {
@@ -17252,7 +17509,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 GestureType.Null -> {}
                 GestureType.Down -> {}
                 GestureType.Tap -> {
-                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+                    sendDpadRightIfPossible()
                 }
             }
         } else {
@@ -17263,20 +17520,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun isCursorAtBeginning(): Boolean {
-        val extractedText = currentInputConnection.getExtractedText(ExtractedTextRequest(), 0)
-        return extractedText?.selectionStart == 0
+        val extractedText = runCatching {
+            currentInputConnection?.getExtractedText(ExtractedTextRequest(), 0)
+        }.getOrNull()
+        extractedText?.selectionStart?.let { return it <= 0 }
+        val textBeforeCursor = runCatching {
+            currentInputConnection?.getTextBeforeCursor(1, 0)
+        }.getOrNull()
+        return textBeforeCursor.isNullOrEmpty()
     }
 
     private fun isCursorAtEnd(): Boolean {
-        if (currentInputConnection != null) {
-            val extractedText = currentInputConnection.getExtractedText(ExtractedTextRequest(), 0)
-            extractedText?.let {
-                val textLength = it.text.length
-                val cursorPosition = it.selectionEnd
-                return cursorPosition == textLength
-            }
+        val extractedText = runCatching {
+            currentInputConnection?.getExtractedText(ExtractedTextRequest(), 0)
+        }.getOrNull()
+        extractedText?.let {
+            val textLength = it.text?.length ?: 0
+            val cursorPosition = it.selectionEnd
+            return cursorPosition >= textLength
         }
-        return false
+        val textAfterCursor = runCatching {
+            currentInputConnection?.getTextAfterCursor(1, 0)
+        }.getOrNull()
+        return textAfterCursor.isNullOrEmpty()
+    }
+
+    private fun sendDpadLeftIfPossible() {
+        if (!isCursorAtBeginning()) {
+            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+        }
+    }
+
+    private fun sendDpadRightIfPossible() {
+        if (!isCursorAtEnd()) {
+            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+        }
     }
 
     private fun handleEmptyInputString() {
@@ -17485,6 +17763,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             _inputString.update {
                 sb.toString()
             }
+        }
+    }
+
+    private fun toggleDakutenOnlyForCustomKeyboard() {
+        val insertString = inputString.value
+        if (insertString.isEmpty()) return
+
+        insertString.last().toggleDakutenWithSeion()?.let { toggled ->
+            setStringBuilderForConvertStringInHiragana(
+                toggled,
+                StringBuilder(),
+                insertString
+            )
+        }
+    }
+
+    private fun toggleHandakutenOnlyForCustomKeyboard() {
+        val insertString = inputString.value
+        if (insertString.isEmpty()) return
+
+        insertString.last().toggleHandakutenWithSeion()?.let { toggled ->
+            setStringBuilderForConvertStringInHiragana(
+                toggled,
+                StringBuilder(),
+                insertString
+            )
         }
     }
 
