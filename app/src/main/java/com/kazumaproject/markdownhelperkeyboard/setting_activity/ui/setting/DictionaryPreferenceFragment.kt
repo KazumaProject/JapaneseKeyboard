@@ -65,6 +65,11 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("candidate_order_override_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.action_navigation_setting_to_candidateOrderOverrideFragment)
+            true
+        }
+
         val learnDictionaryPrefixSeekBar =
             findPreference<SeekBarPreference>("learn_prediction_preference")
         learnDictionaryPrefixSeekBar?.apply {
