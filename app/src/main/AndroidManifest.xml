@@ -51,6 +51,19 @@
             </intent-filter>
         </activity-alias>
 
+        <receiver
+            android:name=".physical_keyboard.layout.SumireKeyboardLayoutReceiver"
+            android:exported="true"
+            android:label="@string/keyboard_layouts_label">
+            <intent-filter>
+                <action android:name="android.hardware.input.action.QUERY_KEYBOARD_LAYOUTS" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.hardware.input.metadata.KEYBOARD_LAYOUTS"
+                android:resource="@xml/keyboard_layouts" />
+        </receiver>
+
         <service
             android:name=".ime_service.IMEService"
             android:exported="true"

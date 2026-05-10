@@ -5,11 +5,14 @@
     <string name="action_force_half_width_space">Half-width space</string>
     <string name="action_force_full_width_space">Full-width space</string>
     <string name="hardware_keyboard_category_title">物理キーボード</string>
-    <string name="physical_keyboard_layout_title">物理キーボード配列</string>
-    <string name="physical_keyboard_layout_summary">使用している物理キーボードの配列を選択します。</string>
+    <string name="keyboard_layouts_label">Sumire keyboard layouts</string>
+    <string name="physical_keyboard_layout_title">Internal fallback layout</string>
+    <string name="physical_keyboard_layout_summary">Used by Sumire when Android does not already translate the physical keyboard layout. Android\'s physical keyboard layout setting is separate.</string>
     <string name="physical_keyboard_layout_japanese_109a">日本語109A</string>
     <string name="physical_keyboard_layout_jis">JIS</string>
     <string name="physical_keyboard_layout_us">US</string>
+    <string name="physical_keyboard_layout_japanese_109a_os">Sumire Japanese 109A</string>
+    <string name="physical_keyboard_layout_japanese_106_os">Sumire Japanese 106</string>
     <string name="physical_keyboard_input_mode_title">日本語入力方式</string>
     <string name="physical_keyboard_input_mode_romaji">ローマ字入力</string>
     <string name="physical_keyboard_input_mode_kana">かな入力</string>
@@ -67,6 +70,8 @@
     <string name="physical_keyboard_shortcut_key_henkan">Henkan</string>
     <string name="physical_keyboard_shortcut_key_muhenkan">Muhenkan</string>
     <string name="physical_keyboard_shortcut_key_zenkaku_hankaku">Zenkaku/Hankaku</string>
+    <string name="physical_keyboard_shortcut_key_eisu">Eisu</string>
+    <string name="physical_keyboard_shortcut_key_katakana_hiragana">Katakana/Hiragana</string>
     <string name="physical_keyboard_shortcut_key_kana">Kana</string>
     <string name="physical_keyboard_shortcut_key_minus">Minus</string>
     <string name="physical_keyboard_shortcut_key_equals">Equals</string>
@@ -79,6 +84,8 @@
     <string name="physical_keyboard_shortcut_key_period">Period</string>
     <string name="physical_keyboard_shortcut_key_slash">Slash</string>
     <string name="physical_keyboard_shortcut_key_grave">Grave</string>
+    <string name="physical_keyboard_shortcut_key_yen">Yen</string>
+    <string name="physical_keyboard_shortcut_key_ro">Ro</string>
     <string name="physical_keyboard_shortcut_unknown_key_code">KeyCode %1$d</string>
     <string name="edit_text">Edit</string>
     <string name="user_dictionary_title">User Dictionary</string>

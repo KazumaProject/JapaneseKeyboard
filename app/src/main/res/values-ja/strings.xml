@@ -5,11 +5,14 @@
     <string name="action_force_half_width_space">半角スペース</string>
     <string name="action_force_full_width_space">全角スペース</string>
     <string name="hardware_keyboard_category_title">物理キーボード</string>
-    <string name="physical_keyboard_layout_title">物理キーボード配列</string>
-    <string name="physical_keyboard_layout_summary">使用している物理キーボードの配列を選択します。</string>
+    <string name="keyboard_layouts_label">Sumire キーボード配列</string>
+    <string name="physical_keyboard_layout_title">内部フォールバック配列</string>
+    <string name="physical_keyboard_layout_summary">Android 側で物理キーボード配列が変換されない場合に Sumire 内部で使う配列です。Android の物理キーボード配列設定とは別です。</string>
     <string name="physical_keyboard_layout_japanese_109a">日本語109A</string>
     <string name="physical_keyboard_layout_jis">JIS</string>
     <string name="physical_keyboard_layout_us">US</string>
+    <string name="physical_keyboard_layout_japanese_109a_os">Sumire 日本語109A</string>
+    <string name="physical_keyboard_layout_japanese_106_os">Sumire 日本語106</string>
     <string name="physical_keyboard_input_mode_title">日本語入力方式</string>
     <string name="physical_keyboard_input_mode_romaji">ローマ字入力</string>
     <string name="physical_keyboard_input_mode_kana">かな入力</string>
@@ -67,6 +70,8 @@
     <string name="physical_keyboard_shortcut_key_henkan">変換</string>
     <string name="physical_keyboard_shortcut_key_muhenkan">無変換</string>
     <string name="physical_keyboard_shortcut_key_zenkaku_hankaku">全角/半角</string>
+    <string name="physical_keyboard_shortcut_key_eisu">英数</string>
+    <string name="physical_keyboard_shortcut_key_katakana_hiragana">カタカナ/ひらがな</string>
     <string name="physical_keyboard_shortcut_key_kana">かな</string>
     <string name="physical_keyboard_shortcut_key_minus">マイナス</string>
     <string name="physical_keyboard_shortcut_key_equals">イコール</string>
@@ -79,6 +84,8 @@
     <string name="physical_keyboard_shortcut_key_period">ピリオド</string>
     <string name="physical_keyboard_shortcut_key_slash">スラッシュ</string>
     <string name="physical_keyboard_shortcut_key_grave">グレイヴ</string>
+    <string name="physical_keyboard_shortcut_key_yen">円記号</string>
+    <string name="physical_keyboard_shortcut_key_ro">ろ</string>
     <string name="physical_keyboard_shortcut_unknown_key_code">キーコード %1$d</string>
     <string name="edit_text">編集</string>
     <string name="user_dictionary_title">ユーザー辞書</string>
