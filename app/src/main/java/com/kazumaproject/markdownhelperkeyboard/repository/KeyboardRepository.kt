@@ -11,12 +11,14 @@ import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.data.SpacerItem
-import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.copyWithItems
-import com.kazumaproject.custom_keyboard.data.toKeyItem
+import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.toKeyItem
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
+import com.kazumaproject.custom_keyboard.data.withCanonicalFlexibleBounds
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -134,11 +136,15 @@ class KeyboardRepository @Inject constructor(
 
         layouts.forEachIndexed { layoutIndex, importable ->
             try {
-                var newName = importable.layout.name
+                val importName = normalizeImportedLayoutName(
+                    layoutIndex = layoutIndex,
+                    rawName = importable.layout.name
+                )
+                var newName = importName
                 var nameExists = dao.findLayoutByName(newName) != null
                 var counter = 1
                 while (nameExists) {
-                    newName = "${importable.layout.name} (${counter})"
+                    newName = "$importName (${counter})"
                     nameExists = dao.findLayoutByName(newName) != null
                     counter++
                 }
@@ -205,23 +211,42 @@ class KeyboardRepository @Inject constructor(
                     spacer.copy(spacerId = 0, ownerLayoutId = 0)
                 }
 
-                dao.insertFullKeyboardLayout(
-                    layoutToInsert,
-                    keysToInsert,
-                    flicksMap,
-                    circularFlicksMap,
-                    twoStepMap,
-                    longPressFlicksMap,
-                    twoStepLongPressMap,
-                    spacersToInsert
-                )
+                if (layoutToInsert.usageMode == KeyboardLayoutUsageMode.Number) {
+                    val insertedLayoutId = dao.insertFullKeyboardLayout(
+                        layoutToInsert,
+                        keysToInsert,
+                        flicksMap,
+                        circularFlicksMap,
+                        twoStepMap,
+                        longPressFlicksMap,
+                        twoStepLongPressMap,
+                        spacersToInsert
+                    )
+                    dao.clearNumberUsageModeExcept(insertedLayoutId)
+                } else {
+                    dao.insertFullKeyboardLayout(
+                        layoutToInsert,
+                        keysToInsert,
+                        flicksMap,
+                        circularFlicksMap,
+                        twoStepMap,
+                        longPressFlicksMap,
+                        twoStepLongPressMap,
+                        spacersToInsert
+                    )
+                }
                 importedLayouts += importable.copy(
                     layout = layoutToInsert,
                     keysWithFlicks = normalizedKeysWithFlicks,
                     spacers = spacersToInsert
                 )
             } catch (e: Exception) {
-                Timber.e(e, "importLayouts storage failed index=%s exception=%s", layoutIndex, e::class.java.simpleName)
+                Timber.e(
+                    e,
+                    "importLayouts storage failed index=%s exception=%s",
+                    layoutIndex,
+                    e::class.java.simpleName
+                )
                 errors += KeyboardLayoutImportError.StorageFailed(
                     layoutIndex = layoutIndex,
                     exceptionClass = e::class.java.simpleName,
@@ -241,6 +266,11 @@ class KeyboardRepository @Inject constructor(
                 errors.firstOrNull() ?: KeyboardLayoutImportError.StorageFailed()
             )
         }
+    }
+
+    private fun normalizeImportedLayoutName(layoutIndex: Int, rawName: String): String {
+        return rawName.trim().takeIf { it.isNotEmpty() }
+            ?: "Imported Keyboard ${layoutIndex + 1}"
     }
 
     // -----------------------------
@@ -281,6 +311,13 @@ class KeyboardRepository @Inject constructor(
     suspend fun getLayoutsNotFlowEnsuringStableIds(): List<CustomKeyboardLayout> {
         ensureStableIds()
         return dao.getLayoutsListNotFlow()
+    }
+
+    suspend fun setCurrentLayoutUsageMode(
+        layoutId: Long,
+        usageMode: KeyboardLayoutUsageMode
+    ) {
+        dao.setLayoutUsageModeExclusive(layoutId, usageMode)
     }
 
     suspend fun getLayoutName(id: Long): String? = dao.getLayoutName(id)
@@ -329,12 +366,21 @@ class KeyboardRepository @Inject constructor(
      */
     suspend fun saveLayout(layout: KeyboardLayout, name: String, id: Long?): Long {
         Timber.d("saveLayout: id=%s name=%s", id, name)
-
-        return if (id == null || id <= 0L) {
-            createNewLayoutInternal(layout, name)
+        val layoutToSave = if (layout.usesFlexiblePlacement()) {
+            layout.withCanonicalFlexibleBounds()
         } else {
-            updateExistingLayoutInternal(id, layout, name)
+            layout
         }
+
+        val savedLayoutId = if (id == null || id <= 0L) {
+            createNewLayoutInternal(layoutToSave, name)
+        } else {
+            updateExistingLayoutInternal(id, layoutToSave, name)
+        }
+        if (layoutToSave.usageMode == KeyboardLayoutUsageMode.Number) {
+            dao.clearNumberUsageModeExcept(savedLayoutId)
+        }
+        return savedLayoutId
     }
 
     private suspend fun createNewLayoutInternal(layout: KeyboardLayout, name: String): Long {
@@ -348,7 +394,9 @@ class KeyboardRepository @Inject constructor(
             isDirectMode = layout.isDirectMode,
             createdAt = System.currentTimeMillis(),
             sortOrder = nextTopSortOrder(),
-            stableId = newStableId
+            stableId = newStableId,
+            isFlexiblePlacementLayout = layout.usesFlexiblePlacement(),
+            usageMode = layout.usageMode
         )
         val parts = convertToDbModel(layout)
         val newLayoutId = dao.insertFullKeyboardLayout(
@@ -361,7 +409,11 @@ class KeyboardRepository @Inject constructor(
             parts.twoStepLongPressMap,
             parts.spacers
         )
-        Timber.d("createNewLayoutInternal: inserted layoutId=%s stableId=%s", newLayoutId, newStableId)
+        Timber.d(
+            "createNewLayoutInternal: inserted layoutId=%s stableId=%s",
+            newLayoutId,
+            newStableId
+        )
         return newLayoutId
     }
 
@@ -391,7 +443,9 @@ class KeyboardRepository @Inject constructor(
             rowCount = layout.rowCount,
             isRomaji = layout.isRomaji,
             isDirectMode = layout.isDirectMode,
-            stableId = repairedStableId
+            stableId = repairedStableId,
+            isFlexiblePlacementLayout = layout.usesFlexiblePlacement(),
+            usageMode = layout.usageMode
         )
 
         val parts = convertToDbModel(layout)
@@ -599,7 +653,8 @@ class KeyboardRepository @Inject constructor(
             name = finalName,
             createdAt = System.currentTimeMillis(),
             sortOrder = nextTopSortOrder(),
-            stableId = UUID.randomUUID().toString()
+            stableId = UUID.randomUUID().toString(),
+            usageMode = KeyboardLayoutUsageMode.Normal
         )
 
         val newKeys = originalLayout.keysWithFlicks.map { keyWithFlicks ->
@@ -912,7 +967,7 @@ class KeyboardRepository @Inject constructor(
         val columnUnitCount = maxOf(derivedColumnUnitCount, dbLayout.layout.columnCount * 2)
         val rowUnitCount = maxOf(derivedRowUnitCount, dbLayout.layout.rowCount * 2)
 
-        return KeyboardLayout(
+        val restoredLayout = KeyboardLayout(
             keys = keys,
             flickKeyMaps = flickMaps,
             columnCount = dbLayout.layout.columnCount,
@@ -933,8 +988,15 @@ class KeyboardRepository @Inject constructor(
             twoStepLongPressKeyMaps = twoStepLongPressMaps,
             items = items,
             columnUnitCount = columnUnitCount,
-            rowUnitCount = rowUnitCount
+            rowUnitCount = rowUnitCount,
+            isFlexiblePlacementLayout = dbLayout.layout.isFlexiblePlacementLayout,
+            usageMode = dbLayout.layout.usageMode
         )
+        return if (restoredLayout.usesFlexiblePlacement()) {
+            restoredLayout.withCanonicalFlexibleBounds()
+        } else {
+            restoredLayout
+        }
     }
 
     private fun drawableResIdForAction(action: KeyAction): Int? {
@@ -959,6 +1021,8 @@ class KeyboardRepository @Inject constructor(
             KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
             KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
             KeyAction.Space -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            KeyAction.ForceFullWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            KeyAction.ForceHalfWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
             KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
             KeyAction.SwitchToKanaLayout -> com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
             KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
@@ -978,7 +1042,8 @@ class KeyboardRepository @Inject constructor(
         return keyItems
             .groupBy { it.placement.rowUnits }
             .mapNotNull { (rowUnits, rowItems) ->
-                val minColumnUnits = rowItems.minOfOrNull { it.placement.columnUnits } ?: return@mapNotNull null
+                val minColumnUnits =
+                    rowItems.minOfOrNull { it.placement.columnUnits } ?: return@mapNotNull null
                 if (minColumnUnits <= 0) return@mapNotNull null
                 val rowSpanUnits = rowItems.minOfOrNull { it.placement.rowSpanUnits } ?: 2
                 SpacerItem(

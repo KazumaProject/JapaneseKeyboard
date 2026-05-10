@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="action_toggle_dakuten_only">Dakuten / Clear</string>
+    <string name="action_toggle_handakuten_only">Handakuten / Clear</string>
+    <string name="action_force_half_width_space">Half-width space</string>
+    <string name="action_force_full_width_space">Full-width space</string>
     <string name="hardware_keyboard_category_title">物理キーボード</string>
     <string name="physical_keyboard_layout_title">物理キーボード配列</string>
     <string name="physical_keyboard_layout_summary">使用している物理キーボードの配列を選択します。</string>
@@ -474,6 +478,29 @@
     <string name="deleted_all_words_text">Deleted all words.</string>
     <string name="confirm_all_words_delete_message">This will delete all registered words. This action cannot be undone. Are you sure?</string>
     <string name="read_from_template">Load from templates</string>
+    <string name="template_flick_kana_cursor">Kana input (cursor)</string>
+    <string name="template_flick_english_cursor">English input (cursor)</string>
+    <string name="template_qwerty">QWERTY</string>
+    <string name="template_empty_5x4_flexible">Empty 5x4 Flexible Layout</string>
+    <string name="template_number">Number input</string>
+    <string name="editor_place_half_key">Half key</string>
+    <string name="editor_place_one_key">1-cell key</string>
+    <string name="editor_place_half_spacer">Half spacer</string>
+    <string name="editor_place_one_spacer">1-cell spacer</string>
+    <string name="editor_insert_direction_label">Insert direction</string>
+    <string name="editor_insert_direction_row">Row</string>
+    <string name="editor_insert_direction_column">Column</string>
+    <string name="editor_half_row_placement_label">Half spacer row</string>
+    <string name="editor_half_row_placement_upper">Upper</string>
+    <string name="editor_half_row_placement_lower">Lower</string>
+    <string name="editor_confirm_placement">Confirm</string>
+    <string name="editor_cancel_placement">Cancel</string>
+    <string name="editor_delete_selected_item">Delete selected</string>
+    <string name="editor_nudge_left">Left</string>
+    <string name="editor_nudge_right">Right</string>
+    <string name="editor_nudge_up">Up</string>
+    <string name="editor_nudge_down">Down</string>
+    <string name="editor_cycle_target">Cycle target</string>
     <string name="normal_key">Normal Key</string>
     <string name="special_key">Special Key</string>
     <string name="key_label">Label for Key Display</string>
@@ -841,4 +868,6 @@
     <string name="qwerty_popup_view_style_preference_summary">Configure the size and text size of QWERTY key previews and long-press popups.</string>
     <string name="qwerty_number_key_flick_setting_preference_summary">Number key flick settings</string>
     <string name="qwerty_number_key_flick_setting_preference_title">Configure the characters output by upward and downward flicks on QWERTY number keys.</string>
+    <string name="custom_keyboard_usage_number_title">Use for number input fields</string>
+    <string name="custom_keyboard_usage_number_summary">Use this custom keyboard layout for number-only fields such as dates, PINs, and phone numbers.</string>
 </resources>
