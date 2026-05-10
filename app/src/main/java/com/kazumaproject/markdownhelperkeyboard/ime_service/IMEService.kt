@@ -150,6 +150,7 @@ import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
+import com.kazumaproject.markdownhelperkeyboard.BuildConfig
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
@@ -3299,6 +3300,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
             event?.let { e ->
+                logPhysicalKeyEventForDebug(keyCode, e)
                 val insertString = inputString.value
                 val suggestions = listAdapter.currentList
                 if (handlePhysicalKeyboardShortcut(
@@ -3362,8 +3364,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 insertString
             )
 
-            KeyEvent.KEYCODE_HENKAN -> switchToHiraganaMode(mainView)
+            KeyEvent.KEYCODE_ZENKAKU_HANKAKU -> toggleJapaneseEnglishMode(mainView)
+            KeyEvent.KEYCODE_HENKAN -> switchToJapaneseFromPhysicalKey(
+                mainView,
+                insertString,
+                suggestions
+            )
             KeyEvent.KEYCODE_MUHENKAN -> switchToEnglishModeFloating(mainView)
+            KeyEvent.KEYCODE_KATAKANA_HIRAGANA,
+            KeyEvent.KEYCODE_KANA -> switchToHiraganaMode(mainView)
+            KeyEvent.KEYCODE_EISU -> switchToEnglishModeFloating(mainView)
 
             KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL -> handleJapaneseDeleteFloating(
                 keyCode,
@@ -3388,7 +3398,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> super.onKeyDown(keyCode, e)
 
-            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> {
+            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_YEN, KeyEvent.KEYCODE_RO, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> {
                 handleJapaneseCharacterKeyFloating(
                     keyCode, e, insertString
                 )
@@ -3427,10 +3437,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             when (keyCode) {
+                KeyEvent.KEYCODE_ZENKAKU_HANKAKU -> return toggleJapaneseEnglishMode(mainView)
                 KeyEvent.KEYCODE_HENKAN -> {
                     // 変換キーで日本語モードへ
                     return switchToHiraganaMode(mainView)
                 }
+
+                KeyEvent.KEYCODE_KATAKANA_HIRAGANA,
+                KeyEvent.KEYCODE_KANA -> return switchToHiraganaMode(mainView)
+
+                KeyEvent.KEYCODE_MUHENKAN,
+                KeyEvent.KEYCODE_EISU -> return switchToEnglishModeFloating(mainView)
 
                 else -> return super.onKeyDown(keyCode, event)
             }
@@ -3452,10 +3469,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             when (keyCode) {
+                KeyEvent.KEYCODE_ZENKAKU_HANKAKU -> return toggleJapaneseEnglishMode(mainView)
                 KeyEvent.KEYCODE_HENKAN -> {
                     // 変換キーで日本語モードへ
                     return switchToHiraganaMode(mainView)
                 }
+
+                KeyEvent.KEYCODE_KATAKANA_HIRAGANA,
+                KeyEvent.KEYCODE_KANA -> return switchToHiraganaMode(mainView)
+
+                KeyEvent.KEYCODE_MUHENKAN,
+                KeyEvent.KEYCODE_EISU -> return switchToEnglishModeFloating(mainView)
 
                 else -> return super.onKeyDown(keyCode, event)
             }
@@ -3578,7 +3602,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 true
             }
 
-            PhysicalKeyboardShortcutAction.SWITCH_TO_JAPANESE -> switchToHiraganaMode(mainView)
+            PhysicalKeyboardShortcutAction.SWITCH_TO_JAPANESE -> switchToJapaneseFromPhysicalKey(
+                mainView,
+                insertString,
+                suggestions
+            )
             PhysicalKeyboardShortcutAction.SWITCH_TO_ENGLISH -> switchToEnglishModeFloating(mainView)
             PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE -> toggleJapaneseEnglishMode(mainView)
             PhysicalKeyboardShortcutAction.CONVERT -> handleJapaneseSpaceFloating(
@@ -4080,6 +4108,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 // ---------------------------------------------------------------------------------
 // 3. 共通ヘルパー関数（モード切替など）
 // ---------------------------------------------------------------------------------
+
+    private fun logPhysicalKeyEventForDebug(keyCode: Int, event: KeyEvent) {
+        if (!BuildConfig.DEBUG) return
+        Timber.d(
+            "PhysicalKeyEvent keyCode=%d keyName=%s scanCode=%d unicodeChar=%d metaState=%d shift=%b alt=%b ctrl=%b meta=%b layout=%s inputMode=%s",
+            keyCode,
+            KeyEvent.keyCodeToString(keyCode),
+            event.scanCode,
+            event.unicodeChar,
+            event.metaState,
+            event.isShiftPressed,
+            event.isAltPressed,
+            event.isCtrlPressed,
+            event.isMetaPressed,
+            physicalKeyboardLayout,
+            physicalKeyboardInputMode
+        )
+    }
+
+    private fun switchToJapaneseFromPhysicalKey(
+        mainView: MainLayoutBinding,
+        insertString: String,
+        suggestions: List<CandidateItem>
+    ): Boolean {
+        if (currentInputModeForSession == InputMode.ModeJapanese && insertString.isNotEmpty()) {
+            return handleJapaneseSpaceFloating(mainView, insertString, suggestions)
+        }
+        return switchToHiraganaMode(mainView)
+    }
 
     /**
      * Ctrl+Space押下時の入力モードサイクル（日→英→数→日）

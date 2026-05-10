@@ -19,6 +19,23 @@ class PhysicalKanaMapperTest {
     }
 
     @Test
+    fun resolve_japaneseDedicatedKanaKeys() {
+        assertEquals("ー", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_YEN, false, PhysicalKeyboardLayout.JAPANESE_109A))
+        assertEquals("ー", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_YEN, true, PhysicalKeyboardLayout.JAPANESE_109A))
+        assertEquals("ろ", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_RO, false, PhysicalKeyboardLayout.JAPANESE_109A))
+        assertEquals("ろ", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_RO, true, PhysicalKeyboardLayout.JAPANESE_109A))
+        assertEquals("ー", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_YEN, false, PhysicalKeyboardLayout.JIS))
+        assertEquals("ろ", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_RO, true, PhysicalKeyboardLayout.JIS))
+    }
+
+    @Test
+    fun resolve_usKeepsJisKanaFallback() {
+        assertEquals("ぬ", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_1, false, PhysicalKeyboardLayout.US))
+        assertEquals("ー", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_YEN, false, PhysicalKeyboardLayout.US))
+        assertEquals("ろ", PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_RO, true, PhysicalKeyboardLayout.US))
+    }
+
+    @Test
     fun resolve_returnsNullForUnsupportedKey() {
         assertNull(PhysicalKanaMapper.resolve(KeyEvent.KEYCODE_DPAD_LEFT, false, PhysicalKeyboardLayout.JAPANESE_109A))
     }
