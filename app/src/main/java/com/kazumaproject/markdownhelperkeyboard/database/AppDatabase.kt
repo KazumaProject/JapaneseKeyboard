@@ -6,6 +6,8 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideDao
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.clicked_symbol.database.ClickedSymbolDao
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryDao
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
@@ -69,8 +71,9 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         DeleteKeyFlickDeleteTarget::class,
         PhysicalKeyboardShortcutItem::class,
         SpacerDefinition::class,
+        CandidateOrderOverrideEntity::class,
     ],
-    version = 33,
+    version = 34,
     exportSchema = false
 )
 @TypeConverters(
@@ -94,6 +97,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun gemmaPromptTemplateDao(): GemmaPromptTemplateDao
     abstract fun deleteKeyFlickDeleteTargetDao(): DeleteKeyFlickDeleteTargetDao
     abstract fun physicalKeyboardShortcutDao(): PhysicalKeyboardShortcutDao
+    abstract fun candidateOrderOverrideDao(): CandidateOrderOverrideDao
 
     companion object {
 
@@ -823,6 +827,35 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE `keyboard_layouts` ADD COLUMN `usageMode` TEXT NOT NULL DEFAULT 'Normal'"
+                )
+            }
+        }
+
+        val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `candidate_order_override` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `input` TEXT NOT NULL,
+                        `candidate` TEXT NOT NULL,
+                        `rank` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_candidate_order_override_input`
+                    ON `candidate_order_override`(`input`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_candidate_order_override_input_candidate`
+                    ON `candidate_order_override`(`input`, `candidate`)
+                    """.trimIndent()
                 )
             }
         }

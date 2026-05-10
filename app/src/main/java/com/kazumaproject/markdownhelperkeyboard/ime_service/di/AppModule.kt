@@ -8,6 +8,7 @@ import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.clicked_symbol.database.ClickedSymbolDao
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryDao
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
@@ -42,6 +43,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_30_31
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_31_32
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_32_33
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_33_34
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
@@ -126,6 +128,7 @@ object AppModule {
             MIGRATION_30_31,
             MIGRATION_31_32,
             MIGRATION_32_33,
+            MIGRATION_33_34,
         )
         .build()
 
@@ -188,6 +191,11 @@ object AppModule {
     @Provides
     fun providesPhysicalKeyboardShortcutDao(db: AppDatabase): PhysicalKeyboardShortcutDao =
         db.physicalKeyboardShortcutDao()
+
+    @Singleton
+    @Provides
+    fun providesCandidateOrderOverrideDao(db: AppDatabase): CandidateOrderOverrideDao =
+        db.candidateOrderOverrideDao()
 
     @Singleton
     @Provides
