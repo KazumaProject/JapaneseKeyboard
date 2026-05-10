@@ -32,6 +32,8 @@ enum class PhysicalKeyboardShortcutKey(val keyCode: Int, private val defaultLabe
     UP(KeyEvent.KEYCODE_DPAD_UP, "Up"), DOWN(KeyEvent.KEYCODE_DPAD_DOWN, "Down"),
     HENKAN(KeyEvent.KEYCODE_HENKAN, "変換"), MUHENKAN(KeyEvent.KEYCODE_MUHENKAN, "無変換"),
     ZENKAKU_HANKAKU(KeyEvent.KEYCODE_ZENKAKU_HANKAKU, "全角/半角"),
+    EISU(KeyEvent.KEYCODE_EISU, "英数"),
+    KATAKANA_HIRAGANA(KeyEvent.KEYCODE_KATAKANA_HIRAGANA, "カタカナ/ひらがな"),
     KANA(KeyEvent.KEYCODE_KANA, "かな"),
     MINUS(KeyEvent.KEYCODE_MINUS, "Minus"), EQUALS(KeyEvent.KEYCODE_EQUALS, "Equals"),
     LEFT_BRACKET(KeyEvent.KEYCODE_LEFT_BRACKET, "LeftBracket"),
@@ -40,7 +42,8 @@ enum class PhysicalKeyboardShortcutKey(val keyCode: Int, private val defaultLabe
     SEMICOLON(KeyEvent.KEYCODE_SEMICOLON, "Semicolon"),
     APOSTROPHE(KeyEvent.KEYCODE_APOSTROPHE, "Apostrophe"),
     COMMA(KeyEvent.KEYCODE_COMMA, "Comma"), PERIOD(KeyEvent.KEYCODE_PERIOD, "Period"),
-    SLASH(KeyEvent.KEYCODE_SLASH, "Slash"), GRAVE(KeyEvent.KEYCODE_GRAVE, "Grave");
+    SLASH(KeyEvent.KEYCODE_SLASH, "Slash"), GRAVE(KeyEvent.KEYCODE_GRAVE, "Grave"),
+    YEN(KeyEvent.KEYCODE_YEN, "Yen"), RO(KeyEvent.KEYCODE_RO, "Ro");
 
     fun displayLabel(context: Context): String {
         val resId = when (this) {
@@ -57,6 +60,8 @@ enum class PhysicalKeyboardShortcutKey(val keyCode: Int, private val defaultLabe
             HENKAN -> AppR.string.physical_keyboard_shortcut_key_henkan
             MUHENKAN -> AppR.string.physical_keyboard_shortcut_key_muhenkan
             ZENKAKU_HANKAKU -> AppR.string.physical_keyboard_shortcut_key_zenkaku_hankaku
+            EISU -> AppR.string.physical_keyboard_shortcut_key_eisu
+            KATAKANA_HIRAGANA -> AppR.string.physical_keyboard_shortcut_key_katakana_hiragana
             KANA -> AppR.string.physical_keyboard_shortcut_key_kana
             MINUS -> AppR.string.physical_keyboard_shortcut_key_minus
             EQUALS -> AppR.string.physical_keyboard_shortcut_key_equals
@@ -69,6 +74,8 @@ enum class PhysicalKeyboardShortcutKey(val keyCode: Int, private val defaultLabe
             PERIOD -> AppR.string.physical_keyboard_shortcut_key_period
             SLASH -> AppR.string.physical_keyboard_shortcut_key_slash
             GRAVE -> AppR.string.physical_keyboard_shortcut_key_grave
+            YEN -> AppR.string.physical_keyboard_shortcut_key_yen
+            RO -> AppR.string.physical_keyboard_shortcut_key_ro
             else -> null
         }
         return resId?.let(context::getString) ?: defaultLabel

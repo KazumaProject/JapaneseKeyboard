@@ -25,4 +25,12 @@ class PhysicalKeyboardShortcutActionTest {
     fun actionList_doesNotContainSwitchKanaType() {
         assertFalse(PhysicalKeyboardShortcutAction.entries.any { it.id == "switch_kana_type" })
     }
+
+    @Test
+    fun fromId_cycleInputModeIsDispatchable() {
+        assertTrue(
+            PhysicalKeyboardShortcutAction.fromId("cycle_input_mode") ==
+                PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE
+        )
+    }
 }
