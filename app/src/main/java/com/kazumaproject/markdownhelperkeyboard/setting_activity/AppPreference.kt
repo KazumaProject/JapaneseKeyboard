@@ -348,9 +348,6 @@ object AppPreference {
     private val CONVERSION_KEY_SWIPE_CURSOR_MOVE_PREFERENCE =
         Pair("conversion_key_swipe_cursor_move_preference", false)
 
-    private val PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE =
-        Pair("physical_keyboard_layout_preference", "us")
-
     private val PHYSICAL_KEYBOARD_INPUT_MODE_PREFERENCE =
         Pair("physical_keyboard_input_mode_preference", "romaji")
 
@@ -1813,15 +1810,6 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CONVERSION_KEY_SWIPE_CURSOR_MOVE_PREFERENCE.first, value)
-        }
-
-    var physical_keyboard_layout_preference: String
-        get() = preferences.getString(
-            PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE.first,
-            PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE.second
-        ) ?: PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE.second
-        set(value) = preferences.edit {
-            it.putString(PHYSICAL_KEYBOARD_LAYOUT_PREFERENCE.first, value)
         }
 
     var physical_keyboard_input_mode_preference: String
