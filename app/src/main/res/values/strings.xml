@@ -871,4 +871,15 @@
     <string name="qwerty_number_key_flick_setting_preference_title">Configure the characters output by upward and downward flicks on QWERTY number keys.</string>
     <string name="custom_keyboard_usage_number_title">Use for number input fields</string>
     <string name="custom_keyboard_usage_number_summary">Use this custom keyboard layout for number-only fields such as dates, PINs, and phone numbers.</string>
+    <string name="candidate_order_override_preference_title">変換候補の表示順</string>
+    <string name="candidate_order_override_preference_summary">読みごとに変換候補の順番を設定します</string>
+    <string name="candidate_order_override_fragment_title">変換候補の表示順</string>
+    <string name="candidate_order_override_reading_hint">読みを入力</string>
+    <string name="candidate_order_override_fetch_candidates">候補を取得</string>
+    <string name="candidate_order_override_save">保存</string>
+    <string name="candidate_order_override_empty">読みを入力して候補を取得してください</string>
+    <string name="candidate_order_override_no_candidates">候補が見つかりません</string>
+    <string name="candidate_order_override_saved">保存しました</string>
+    <string name="candidate_order_override_deleted">削除しました</string>
+    <string name="candidate_order_override_drag_handle_description">並び替え</string>
 </resources>
