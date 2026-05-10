@@ -17,6 +17,7 @@ import android.view.View
 import android.view.View.OnDragListener
 import android.widget.GridLayout
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatImageButton
@@ -34,6 +35,7 @@ import com.kazumaproject.custom_keyboard.view.AutoSizeButton
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.canonicalLayoutForEditor
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.columnDeleteSpecs
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.displayPlacement
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.EditorGridBounds
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.editorGridBounds
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionPolicy
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
@@ -98,6 +100,9 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
 
         val dragListener = createDragListener()
         setPlacementTouchListener()
+        if (!editorBounds.showRowColumnDeleteChrome) {
+            addFlexibleRowUnitAnchors(editorBounds)
+        }
 
         // キーの描画
         if (displayLayout.items.isNotEmpty()) {
@@ -165,7 +170,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         previewMovedItemIds: Set<String>
     ) {
         val keyData = item.keyData
-        val keyView: View = createKeyView(keyData)
+        val keyView: View = createKeyView(keyData, item.placement)
         keyView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
         // Source of truth for flexible-layout selection / drag-swap is
         // KeyboardLayoutItem.id. KeyData.keyId is intentionally NOT used here
@@ -419,23 +424,54 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun addFlexibleRowUnitAnchors(editorBounds: EditorGridBounds) {
+        repeat(editorBounds.keyboardRowUnitCount) { rowUnit ->
+            val anchor = View(context).apply {
+                visibility = INVISIBLE
+                isFocusable = false
+                isClickable = false
+                importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_NO
+            }
+            anchor.layoutParams = LayoutParams().apply {
+                rowSpec = spec(
+                    editorBounds.rowOffsetUnits + rowUnit,
+                    1,
+                    FILL,
+                    1f
+                )
+                columnSpec = spec(0, 1, FILL, 0f)
+                width = 0
+                height = 0
+            }
+            addView(anchor)
+        }
+    }
+
     private fun createKeyView(
-        keyData: KeyData
+        keyData: KeyData,
+        placement: GridPlacement
     ): View {
         val isDarkTheme = context.isDarkThemeOn()
+        val isHalfHeight = placement.rowSpanUnits == 1
 
-        // ▼▼▼ 変更点1: マージン値をここで定義 ▼▼▼
-        val (leftMargin, topMargin, rightMargin, bottomMargin) = if (keyData.isSpecialKey) {
-            // isSpecialKey の場合のマージン
-            listOf(dpToPx(2), dpToPx(6), dpToPx(2), dpToPx(6))
-        } else {
-            // 通常キーの場合のマージin
-            listOf(dpToPx(2), dpToPx(3), dpToPx(2), dpToPx(3))
+        val leftMargin = dpToPx(2)
+        val rightMargin = dpToPx(2)
+        val verticalMargin = when {
+            isHalfHeight -> dpToPx(1)
+            keyData.isSpecialKey -> dpToPx(6)
+            else -> dpToPx(3)
         }
 
         val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
             AppCompatImageButton(context).apply {
                 isFocusable = false; isClickable = true
+                minimumHeight = 0
+                minimumWidth = 0
+                setMinimumHeight(0)
+                setMinimumWidth(0)
+                setPadding(0, 0, 0, 0)
+                adjustViewBounds = false
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
                 elevation = 2f
                 setImageResource(keyData.drawableResId!!)
                 contentDescription = keyData.label
@@ -448,9 +484,9 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 val insetBg = android.graphics.drawable.InsetDrawable(
                     originalBg,
                     leftMargin,
-                    topMargin,
+                    verticalMargin,
                     rightMargin,
-                    bottomMargin
+                    verticalMargin
                 )
                 background = insetBg
             }
@@ -458,6 +494,14 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             AutoSizeButton(context).apply {
                 isFocusable = false; isClickable = true
                 isAllCaps = false
+                minimumHeight = 0
+                minimumWidth = 0
+                minHeight = 0
+                minWidth = 0
+                setMinHeight(0)
+                setMinWidth(0)
+                includeFontPadding = false
+                setPadding(0, 0, 0, 0)
                 if (keyData.label.contains("\n")) {
                     val parts = keyData.label.split("\n", limit = 2)
                     val primaryText = parts[0]
@@ -479,7 +523,6 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                     }
                     this.maxLines = 2
                     this.setLineSpacing(0f, 0.9f)
-                    this.setPadding(0, dpToPx(4), 0, dpToPx(4))
                     this.gravity = Gravity.CENTER
                     this.text = spannable
                 } else {
@@ -526,9 +569,9 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 val insetBg = android.graphics.drawable.InsetDrawable(
                     originalBg,
                     leftMargin,
-                    topMargin,
+                    verticalMargin,
                     rightMargin,
-                    bottomMargin
+                    verticalMargin
                 )
                 background = insetBg
             }
