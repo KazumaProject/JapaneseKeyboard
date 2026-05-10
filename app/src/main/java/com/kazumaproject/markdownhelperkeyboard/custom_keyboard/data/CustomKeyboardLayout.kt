@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import java.util.UUID
 
 /**
@@ -31,5 +32,7 @@ data class CustomKeyboardLayout(
     val isDirectMode: Boolean = false,
     val createdAt: Long = System.currentTimeMillis(), // 作成日時
     val sortOrder: Int = 0,
-    val stableId: String = UUID.randomUUID().toString()
+    val stableId: String = UUID.randomUUID().toString(),
+    val isFlexiblePlacementLayout: Boolean = false,
+    val usageMode: KeyboardLayoutUsageMode = KeyboardLayoutUsageMode.Normal
 )

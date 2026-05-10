@@ -1,13 +1,23 @@
 package com.kazumaproject.custom_keyboard.data
 
 import androidx.annotation.DrawableRes
+import com.google.gson.annotations.SerializedName
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
+import kotlin.math.ceil
 
 // キーボードの見た目ではなく、入力の「モード」を定義する
 enum class KeyboardInputMode {
     HIRAGANA,
     ENGLISH,
     SYMBOLS
+}
+
+enum class KeyboardLayoutUsageMode(val serializedName: String) {
+    @SerializedName("Normal")
+    Normal("Normal"),
+
+    @SerializedName("Number")
+    Number("Number")
 }
 
 /**
@@ -66,8 +76,12 @@ sealed class KeyAction {
 
     // ひらがな・英語用
     data object ToggleDakuten : KeyAction() // 濁点・半濁点・小文字化
+    data object ToggleDakutenOnly : KeyAction() // 濁点・清音
+    data object ToggleHandakutenOnly : KeyAction() // 半濁点・清音
     data object ToggleCase : KeyAction()    // 英語の大文字・小文字切り替え
     data object ToggleKatakana : KeyAction()    // カタカナ切り替え
+    data object ForceHalfWidthSpace : KeyAction()
+    data object ForceFullWidthSpace : KeyAction()
 
     data object VoiceInput : KeyAction()
 }
@@ -110,6 +124,13 @@ data class SpacerItem(
     override val id: String,
     override val placement: GridPlacement
 ) : KeyboardLayoutItem
+
+data class FlexibleBounds(
+    val rowUnitCount: Int,
+    val columnUnitCount: Int,
+    val rowCount: Int,
+    val columnCount: Int
+)
 
 private fun KeyData.layoutItemId(): String =
     keyId?.takeIf { it.isNotBlank() } ?: "key_${row}_${column}_${label}"
@@ -208,6 +229,7 @@ fun KeyboardLayout.copyWithKeys(
     )
 
 fun KeyboardLayout.usesFlexiblePlacement(): Boolean {
+    if (isFlexiblePlacementLayout) return true
     if (items.any { it is SpacerItem }) return true
 
     return items.filterIsInstance<KeyItem>().any { item ->
@@ -216,6 +238,45 @@ fun KeyboardLayout.usesFlexiblePlacement(): Boolean {
                 item.placement.rowSpanUnits != item.keyData.rowSpan * 2 ||
                 item.placement.columnSpanUnits != item.keyData.colSpan * 2
     }
+}
+
+fun KeyboardLayout.flexibleBounds(
+    minimumRowUnits: Int = 1,
+    minimumColumnUnits: Int = 1,
+    items: List<KeyboardLayoutItem> = this.items
+): FlexibleBounds {
+    val maxRight = items.maxOfOrNull { item ->
+        item.placement.columnUnits + item.placement.columnSpanUnits
+    } ?: 0
+    val maxBottom = items.maxOfOrNull { item ->
+        item.placement.rowUnits + item.placement.rowSpanUnits
+    } ?: 0
+    val canonicalColumnUnitCount = maxOf(columnUnitCount, maxRight, minimumColumnUnits, 1)
+    val canonicalRowUnitCount = maxOf(rowUnitCount, maxBottom, minimumRowUnits, 1)
+    return FlexibleBounds(
+        rowUnitCount = canonicalRowUnitCount,
+        columnUnitCount = canonicalColumnUnitCount,
+        rowCount = ceil(canonicalRowUnitCount / 2.0).toInt(),
+        columnCount = ceil(canonicalColumnUnitCount / 2.0).toInt()
+    )
+}
+
+fun KeyboardLayout.withCanonicalFlexibleBounds(
+    minimumRowUnits: Int = 1,
+    minimumColumnUnits: Int = 1,
+    items: List<KeyboardLayoutItem> = this.items
+): KeyboardLayout {
+    val bounds = flexibleBounds(
+        minimumRowUnits = minimumRowUnits,
+        minimumColumnUnits = minimumColumnUnits,
+        items = items
+    )
+    return copy(
+        rowUnitCount = bounds.rowUnitCount,
+        columnUnitCount = bounds.columnUnitCount,
+        rowCount = bounds.rowCount,
+        columnCount = bounds.columnCount
+    )
 }
 
 // =====================================================================
@@ -389,7 +450,9 @@ data class KeyboardLayout(
     val hierarchicalFlickMaps: Map<String, TfbiFlickNode.StatefulKey> = emptyMap(),
     val items: List<KeyboardLayoutItem> = keys.map { it.toKeyItem() },
     val columnUnitCount: Int = columnCount * 2,
-    val rowUnitCount: Int = rowCount * 2
+    val rowUnitCount: Int = rowCount * 2,
+    val isFlexiblePlacementLayout: Boolean = false,
+    val usageMode: KeyboardLayoutUsageMode = KeyboardLayoutUsageMode.Normal
 )
 
 /**

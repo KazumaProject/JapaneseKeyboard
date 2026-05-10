@@ -6,6 +6,7 @@ import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
@@ -209,6 +210,32 @@ class KeyboardRepositorySaveLayoutTest {
         verify(dao, never()).updateFullKeyboardLayoutKeepingIdentity(
             any(), any(), any(), any(), any(), any(), any(), any()
         )
+    }
+
+    @Test
+    fun saveLayout_numberUsageMode_clearsOtherNumberLayouts(): Unit = runBlocking {
+        whenever(dao.getMaxSortOrder()).thenReturn(3)
+        whenever(dao.findLayoutByStableId(any())).thenReturn(null)
+        whenever(
+            dao.insertFullKeyboardLayout(
+                any(), any(), any(), any(), any(), any(), any(), any()
+            )
+        ).thenReturn(42L)
+
+        repository.saveLayout(
+            simpleLayout().copy(usageMode = KeyboardLayoutUsageMode.Number),
+            name = "number",
+            id = null
+        )
+
+        verify(dao).clearNumberUsageModeExcept(42L)
+    }
+
+    @Test
+    fun setCurrentLayoutUsageMode_number_isExclusive(): Unit = runBlocking {
+        repository.setCurrentLayoutUsageMode(8L, KeyboardLayoutUsageMode.Number)
+
+        verify(dao).setLayoutUsageModeExclusive(8L, KeyboardLayoutUsageMode.Number)
     }
 
     @Test

@@ -43,7 +43,11 @@ data class KeyboardLayoutDto(
     @SerializedName("sortOrder")
     val sortOrder: Int? = null,
     @SerializedName("stableId")
-    val stableId: String? = null
+    val stableId: String? = null,
+    @SerializedName("isFlexiblePlacementLayout")
+    val isFlexiblePlacementLayout: Boolean? = null,
+    @SerializedName("usageMode")
+    val usageMode: String? = null
 )
 
 data class KeyWithFlicksExportDto(
