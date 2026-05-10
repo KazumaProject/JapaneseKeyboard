@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<keyboard-layouts xmlns:android="http://schemas.android.com/apk/res/android">
+    <keyboard-layout
+        android:name="sumire_japanese_109a"
+        android:label="@string/physical_keyboard_layout_japanese_109a_os"
+        android:keyboardLayout="@raw/keyboard_layout_japanese_109a"
+        android:keyboardLocale="ja"
+        android:keyboardLayoutType="qwerty" />
+</keyboard-layouts>

@@ -10,16 +10,10 @@ object PhysicalKanaMapper {
 
     fun resolve(
         keyCode: Int,
-        isShift: Boolean,
-        layout: PhysicalKeyboardLayout
+        isShift: Boolean
     ): String? {
-        val layoutMap = when (layout) {
-            PhysicalKeyboardLayout.JAPANESE_109A,
-            PhysicalKeyboardLayout.JIS -> jisKanaMap
-
-            // Preserve the existing behavior: kana input on US uses Sumire's JIS kana fallback map.
-            PhysicalKeyboardLayout.US -> jisKanaMap
-        }
+        // Kana input is an IME-level JIS/109A kana arrangement. Normal symbols stay with Android KCM.
+        val layoutMap = jisKanaMap
         return if (isShift) {
             layoutMap.shifted[keyCode] ?: layoutMap.base[keyCode]
         } else {
