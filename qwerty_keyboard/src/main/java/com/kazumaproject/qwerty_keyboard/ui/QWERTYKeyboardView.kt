@@ -2082,6 +2082,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         )
     }
 
+    private fun isQwertyUpFlickEnabledForCurrentGesture(): Boolean {
+        return !qwertyGlideInputMode && enableFlickUpDetection
+    }
+
+    private fun isQwertyDownFlickEnabledForCurrentGesture(): Boolean {
+        return !qwertyGlideInputMode && enableFlickDownDetection
+    }
+
     private fun handlePointerMove(event: MotionEvent, pointerIndex: Int, pointerId: Int) {
         if (pointerId == suppressedPointerId || pointerId == lockedPointerId) return
         if (flickLockedPointers.contains(pointerId)) return
@@ -2100,7 +2108,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         onDeleteUpFlickListener?.invoke()
                         return
                     }
-                    if (enableFlickUpDetection && previousView is QWERTYButton) {
+                    if (isQwertyUpFlickEnabledForCurrentGesture() && previousView is QWERTYButton) {
                         applyCommonFlickEffects(pointerId, previousView)
                         handleUpFlick(previousView)
                         return
@@ -2114,7 +2122,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         onDeleteDownFlickListener?.invoke()
                         return
                     }
-                    if (enableFlickDownDetection && previousView is QWERTYButton) {
+                    if (isQwertyDownFlickEnabledForCurrentGesture() && previousView is QWERTYButton) {
                         applyCommonFlickEffects(pointerId, previousView)
                         handleDownFlick(previousView)
                         return
