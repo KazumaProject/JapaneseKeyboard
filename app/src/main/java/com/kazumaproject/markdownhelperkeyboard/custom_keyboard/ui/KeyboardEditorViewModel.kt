@@ -584,21 +584,56 @@ class KeyboardEditorViewModel @Inject constructor(
         return onKeyTappedForSelectionOrEdit(keyId)
     }
 
+    /**
+     * Handle a tap on a [KeyItem] in normal editor mode.
+     *
+     * Selection model:
+     * - First tap on an unselected key: store the key's id in
+     *   [EditorUiState.selectedItemId], do NOT navigate, do NOT touch
+     *   [EditorUiState.selectedKeyIdentifier]. Returns false.
+     * - Second tap on an already-selected key: returns true so the caller
+     *   can navigate to KeyEditorFragment, and writes the key's id into
+     *   [EditorUiState.selectedKeyIdentifier].
+     * - Tap on a different key while another is selected: switches the
+     *   selection without navigating. Returns false.
+     *
+     * The id is matched against [KeyboardLayoutItem.id] first, falling back
+     * to the legacy [KeyData.keyId] only if it does not collide with an
+     * item id. SpacerItems must never produce a `true` here — only a
+     * KeyItem second-tap navigates to KeyEditorFragment.
+     */
     fun onKeyTappedForSelectionOrEdit(keyId: String): Boolean {
         val state = _uiState.value
         if (state.editorMode != KeyboardEditorMode.Normal) return false
-        val wasAlreadySelected = state.selectedItemId?.let { selectedId ->
-            state.layout.items.any { item ->
-                item.matchesEditorItemId(selectedId) && item.matchesEditorItemId(keyId)
-            }
-        } == true
-        if (wasAlreadySelected) {
-            selectKeyForEditing(keyId)
+
+        val tappedItem = state.layout.items.firstOrNull { it.matchesEditorItemId(keyId) }
+        // SpacerItems may never trigger KeyEditorFragment navigation — even
+        // a "second tap" on a selected spacer just keeps it selected.
+        // Routing the request through onSpacerTapped() instead.
+        if (tappedItem !is KeyItem) {
+            selectItem(keyId)
+            return false
         }
+
+        val wasAlreadySelected = state.selectedItemId?.let { selectedId ->
+            tappedItem.matchesEditorItemId(selectedId)
+        } == true
+
         selectItem(keyId)
-        return wasAlreadySelected
+        return if (wasAlreadySelected) {
+            // Use the canonical KeyboardLayoutItem.id so KeyEditorFragment
+            // resolves the same item even when keyData.keyId is null/blank.
+            selectKeyForEditing(tappedItem.id)
+            true
+        } else {
+            false
+        }
     }
 
+    /**
+     * Handle a tap on a [SpacerItem]. Selecting only — never navigates.
+     * A second tap keeps the selection unchanged.
+     */
     fun onSpacerTapped(spacerId: String) {
         if (_uiState.value.editorMode == KeyboardEditorMode.Normal) {
             selectItem(spacerId)
@@ -904,15 +939,26 @@ class KeyboardEditorViewModel @Inject constructor(
                     it.id == keyId || it.keyData.keyId == keyId
                 } ?: return@update currentState
 
+                // IMPORTANT: For flexible layouts the source of truth is
+                // `KeyboardLayout.items + KeyboardLayoutItem.id + GridPlacement`.
+                // KeyData.row/column/rowSpan/colSpan are legacy compatibility
+                // fields that cannot represent half-cell units (rowSpanUnits=1).
+                //
+                // The legacy edit flow for grid layouts allows resizing via
+                // KeyData.rowSpan/colSpan. For flexible layouts we must NOT
+                // round-trip through KeyData.rowSpan * 2 here, otherwise a
+                // half-cell key (rowSpanUnits = 1) is silently promoted to
+                // a full key (rowSpanUnits = 2) the next time the user opens
+                // the key editor.
+                //
+                // Resize/move of a flexible item happens through dedicated
+                // placement-mode flows (PlacingNewKey / MovingExistingItem)
+                // which write GridPlacement directly. Plain label/action/
+                // flick edits via KeyEditorFragment must keep
+                // `item.placement` untouched.
                 val updatedItems = layout.items.map { item ->
                     if (item is KeyItem && item.id == oldItem.id) {
-                        item.copy(
-                            keyData = newKeyData,
-                            placement = item.placement.copy(
-                                rowSpanUnits = newKeyData.rowSpan * 2,
-                                columnSpanUnits = newKeyData.colSpan * 2
-                            )
-                        )
+                        item.copy(keyData = newKeyData)
                     } else {
                         item
                     }
