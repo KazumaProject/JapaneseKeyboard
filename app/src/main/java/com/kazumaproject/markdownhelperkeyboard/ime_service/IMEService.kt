@@ -123,8 +123,6 @@ import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateTailReso
 import com.kazumaproject.core.domain.physical_keyboard.KanaDakutenComposer
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKanaMapper
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardInputMode
-import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardLayout
-import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardSymbolMapper
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
@@ -150,6 +148,7 @@ import com.kazumaproject.listeners.DeleteButtonSymbolViewLongClickListener
 import com.kazumaproject.listeners.ReturnToTenKeyButtonClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemClickListener
 import com.kazumaproject.listeners.SymbolRecyclerViewItemLongClickListener
+import com.kazumaproject.markdownhelperkeyboard.BuildConfig
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
@@ -926,8 +925,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var countToggleKatakana = 0
 
     private var hardKeyboardShiftPressd = false
-    private var physicalKeyboardLayout: PhysicalKeyboardLayout =
-        PhysicalKeyboardLayout.JAPANESE_109A
     private var physicalKeyboardInputMode: PhysicalKeyboardInputMode =
         PhysicalKeyboardInputMode.ROMAJI
     private var physicalKeyboardShortcuts: List<PhysicalKeyboardShortcutItem> = emptyList()
@@ -1356,8 +1353,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         bunsetsuCursorMove = preferences.bunsetsuCursorMove
         reconversionEnabledPreference = preferences.reconversionEnabled
         conversionKeySwipePreference = preferences.conversionKeySwipePreference
-        physicalKeyboardLayout =
-            PhysicalKeyboardLayout.fromPreferenceValue(preferences.physicalKeyboardLayout)
         physicalKeyboardInputMode =
             PhysicalKeyboardInputMode.fromPreferenceValue(preferences.physicalKeyboardInputMode)
         _keyboardFloatingMode.update { preferences.isKeyboardFloatingMode }
@@ -3299,6 +3294,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mainLayoutBinding?.let { mainView ->
             event?.let { e ->
+                logPhysicalKeyEventForDebug(keyCode, e)
                 val insertString = inputString.value
                 val suggestions = listAdapter.currentList
                 if (handlePhysicalKeyboardShortcut(
@@ -3362,8 +3358,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 insertString
             )
 
-            KeyEvent.KEYCODE_HENKAN -> switchToHiraganaMode(mainView)
+            KeyEvent.KEYCODE_ZENKAKU_HANKAKU -> toggleJapaneseEnglishMode(mainView)
+            KeyEvent.KEYCODE_HENKAN -> switchToJapaneseFromPhysicalKey(
+                mainView,
+                insertString,
+                suggestions
+            )
             KeyEvent.KEYCODE_MUHENKAN -> switchToEnglishModeFloating(mainView)
+            KeyEvent.KEYCODE_KATAKANA_HIRAGANA,
+            KeyEvent.KEYCODE_KANA -> switchToHiraganaMode(mainView)
+            KeyEvent.KEYCODE_EISU -> switchToEnglishModeFloating(mainView)
 
             KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL -> handleJapaneseDeleteFloating(
                 keyCode,
@@ -3388,7 +3392,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> super.onKeyDown(keyCode, e)
 
-            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> {
+            in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z, in KeyEvent.KEYCODE_0..KeyEvent.KEYCODE_9, KeyEvent.KEYCODE_MINUS, KeyEvent.KEYCODE_EQUALS, KeyEvent.KEYCODE_LEFT_BRACKET, KeyEvent.KEYCODE_RIGHT_BRACKET, KeyEvent.KEYCODE_BACKSLASH, KeyEvent.KEYCODE_SEMICOLON, KeyEvent.KEYCODE_APOSTROPHE, KeyEvent.KEYCODE_COMMA, KeyEvent.KEYCODE_PERIOD, KeyEvent.KEYCODE_SLASH, KeyEvent.KEYCODE_GRAVE, KeyEvent.KEYCODE_AT, KeyEvent.KEYCODE_YEN, KeyEvent.KEYCODE_RO, KeyEvent.KEYCODE_NUMPAD_DIVIDE, KeyEvent.KEYCODE_NUMPAD_MULTIPLY, KeyEvent.KEYCODE_NUMPAD_SUBTRACT, KeyEvent.KEYCODE_NUMPAD_ADD, KeyEvent.KEYCODE_NUMPAD_DOT -> {
                 handleJapaneseCharacterKeyFloating(
                     keyCode, e, insertString
                 )
@@ -3427,10 +3431,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             when (keyCode) {
+                KeyEvent.KEYCODE_ZENKAKU_HANKAKU -> return toggleJapaneseEnglishMode(mainView)
                 KeyEvent.KEYCODE_HENKAN -> {
                     // 変換キーで日本語モードへ
                     return switchToHiraganaMode(mainView)
                 }
+
+                KeyEvent.KEYCODE_KATAKANA_HIRAGANA,
+                KeyEvent.KEYCODE_KANA -> return switchToHiraganaMode(mainView)
+
+                KeyEvent.KEYCODE_MUHENKAN,
+                KeyEvent.KEYCODE_EISU -> return switchToEnglishModeFloating(mainView)
 
                 else -> return super.onKeyDown(keyCode, event)
             }
@@ -3452,10 +3463,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             when (keyCode) {
+                KeyEvent.KEYCODE_ZENKAKU_HANKAKU -> return toggleJapaneseEnglishMode(mainView)
                 KeyEvent.KEYCODE_HENKAN -> {
                     // 変換キーで日本語モードへ
                     return switchToHiraganaMode(mainView)
                 }
+
+                KeyEvent.KEYCODE_KATAKANA_HIRAGANA,
+                KeyEvent.KEYCODE_KANA -> return switchToHiraganaMode(mainView)
+
+                KeyEvent.KEYCODE_MUHENKAN,
+                KeyEvent.KEYCODE_EISU -> return switchToEnglishModeFloating(mainView)
 
                 else -> return super.onKeyDown(keyCode, event)
             }
@@ -3578,7 +3596,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 true
             }
 
-            PhysicalKeyboardShortcutAction.SWITCH_TO_JAPANESE -> switchToHiraganaMode(mainView)
+            PhysicalKeyboardShortcutAction.SWITCH_TO_JAPANESE -> switchToJapaneseFromPhysicalKey(
+                mainView,
+                insertString,
+                suggestions
+            )
             PhysicalKeyboardShortcutAction.SWITCH_TO_ENGLISH -> switchToEnglishModeFloating(mainView)
             PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE -> toggleJapaneseEnglishMode(mainView)
             PhysicalKeyboardShortcutAction.CONVERT -> handleJapaneseSpaceFloating(
@@ -3653,7 +3675,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleJapaneseShiftPressed(
         keyCode: Int, event: KeyEvent, insertString: String
     ): Boolean {
-        if (event.isCtrlPressed) return super.onKeyDown(keyCode, event)
+        if (hasPhysicalTextShortcutModifier(event)) return super.onKeyDown(keyCode, event)
         if (event.isShiftPressed && isBunsetsuCursorMoveSessionActive()) {
             when (keyCode) {
                 KeyEvent.KEYCODE_DPAD_LEFT -> return switchBunsetsuSplitPattern(delta = -1)
@@ -3661,18 +3683,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         hardKeyboardShiftPressd = true
-        val char = PhysicalKeyboardSymbolMapper.resolve(
-            keyCode = keyCode,
-            isShift = event.isShiftPressed,
-            layout = physicalKeyboardLayout
-        )
-        char?.let { c ->
+        val unicode = event.getUnicodeChar(event.metaState)
+        if (unicode != 0) {
+            val text = unicode.toChar().toString()
             val sb = StringBuilder()
             if (insertString.isNotEmpty()) {
-                sb.append(insertString).append(c)
+                sb.append(insertString).append(text)
                 _inputString.update { sb.toString() }
             } else {
-                _inputString.update { c.toString() }
+                _inputString.update { text }
             }
             return true
         }
@@ -3986,27 +4005,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
+            if (hasPhysicalTextShortcutModifier(e)) {
+                return super.onKeyDown(keyCode, e)
+            }
+
             if (isHenkan.get()) {
                 listAdapter.selectHighlightedItem()
                 scope.launch {
                     delay(32)
-                    if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA &&
-                        !e.isCtrlPressed && !e.isAltPressed && !e.isMetaPressed
-                    ) {
+                    if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA) {
                         PhysicalKanaMapper.resolve(
                             keyCode = keyCode,
-                            isShift = e.isShiftPressed,
-                            layout = physicalKeyboardLayout
+                            isShift = e.isShiftPressed
                         )?.let { kana ->
                             _inputString.update { KanaDakutenComposer.append("", kana) }
                         }
                     } else {
-                        val letterConverted = if (isDefaultRomajiHenkanMap) {
-                            romajiConverter?.handleKeyEventZenkaku(e)
-                        } else {
-                            romajiConverter?.handleKeyEvent(e)
-                        }
-                        letterConverted?.let { romajiResult ->
+                        handlePhysicalRomajiOrUnicodeKey(keyCode, e)?.let { romajiResult ->
                             Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
                             _inputString.update {
                                 romajiResult.first
@@ -4016,14 +4031,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 return true
             }
-            if (e.isAltPressed || e.isMetaPressed) {
-                return super.onKeyDown(keyCode, e)
-            }
-            if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA && !e.isCtrlPressed) {
+            if (physicalKeyboardInputMode == PhysicalKeyboardInputMode.KANA) {
                 val kana = PhysicalKanaMapper.resolve(
                     keyCode = keyCode,
-                    isShift = e.isShiftPressed,
-                    layout = physicalKeyboardLayout
+                    isShift = e.isShiftPressed
                 )
                 kana?.let {
                     _inputString.update { current ->
@@ -4031,44 +4042,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                     return true
                 }
+                return super.onKeyDown(keyCode, e)
             }
-            val shiftSymbol = PhysicalKeyboardSymbolMapper.resolve(
-                keyCode = keyCode,
-                isShift = e.isShiftPressed,
-                layout = physicalKeyboardLayout
-            )
-            if (shiftSymbol != null) {
-                if (insertString.isNotEmpty()) {
-                    sb.append(insertString).append(shiftSymbol)
-                    _inputString.update {
-                        sb.toString()
-                    }
-                } else {
-                    _inputString.update {
-                        shiftSymbol
-                    }
+
+            val letterConverted = handlePhysicalRomajiOrUnicodeKey(keyCode, e)
+                ?: return super.onKeyDown(keyCode, e)
+            Timber.d("onKeyDown: $letterConverted")
+            if (insertString.isNotEmpty()) {
+                sb.append(
+                    insertString.dropLast((letterConverted.second))
+                ).append(letterConverted.first)
+                _inputString.update {
+                    sb.toString()
                 }
-                return true
             } else {
-                val letterConverted = if (isDefaultRomajiHenkanMap) {
-                    romajiConverter?.handleKeyEventZenkaku(e)
-                } else {
-                    romajiConverter?.handleKeyEvent(e)
-                }
-                letterConverted?.let { romajiResult ->
-                    Timber.d("onKeyDown: $romajiResult")
-                    if (insertString.isNotEmpty()) {
-                        sb.append(
-                            insertString.dropLast((romajiResult.second))
-                        ).append(romajiResult.first)
-                        _inputString.update {
-                            sb.toString()
-                        }
-                    } else {
-                        _inputString.update {
-                            romajiResult.first
-                        }
-                    }
+                _inputString.update {
+                    letterConverted.first
                 }
             }
             return true
@@ -4076,10 +4065,64 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return super.onKeyDown(keyCode, null)
     }
 
+    private fun hasPhysicalTextShortcutModifier(event: KeyEvent): Boolean {
+        return event.isCtrlPressed || event.isAltPressed || event.isMetaPressed
+    }
+
+    private fun handlePhysicalRomajiOrUnicodeKey(
+        keyCode: Int,
+        event: KeyEvent
+    ): Pair<String, Int>? {
+        val unicode = event.getUnicodeChar(event.metaState)
+        if (unicode == 0) return null
+
+        return if (keyCode in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z) {
+            if (isDefaultRomajiHenkanMap) {
+                romajiConverter?.handleKeyEventZenkaku(event)
+            } else {
+                romajiConverter?.handleKeyEvent(event)
+            }
+        } else {
+            if (isDefaultRomajiHenkanMap) {
+                romajiConverter?.handleUnicodeCharZenkaku(unicode)
+            } else {
+                romajiConverter?.handleUnicodeChar(unicode)
+            }
+        }
+    }
+
 
 // ---------------------------------------------------------------------------------
 // 3. 共通ヘルパー関数（モード切替など）
 // ---------------------------------------------------------------------------------
+
+    private fun logPhysicalKeyEventForDebug(keyCode: Int, event: KeyEvent) {
+        if (!BuildConfig.DEBUG) return
+        Timber.d(
+            "PhysicalKeyEvent keyCode=%d keyName=%s scanCode=%d unicodeChar=%d metaState=%d shift=%b alt=%b ctrl=%b meta=%b inputMode=%s",
+            keyCode,
+            KeyEvent.keyCodeToString(keyCode),
+            event.scanCode,
+            event.unicodeChar,
+            event.metaState,
+            event.isShiftPressed,
+            event.isAltPressed,
+            event.isCtrlPressed,
+            event.isMetaPressed,
+            physicalKeyboardInputMode
+        )
+    }
+
+    private fun switchToJapaneseFromPhysicalKey(
+        mainView: MainLayoutBinding,
+        insertString: String,
+        suggestions: List<CandidateItem>
+    ): Boolean {
+        if (currentInputModeForSession == InputMode.ModeJapanese && insertString.isNotEmpty()) {
+            return handleJapaneseSpaceFloating(mainView, insertString, suggestions)
+        }
+        return switchToHiraganaMode(mainView)
+    }
 
     /**
      * Ctrl+Space押下時の入力モードサイクル（日→英→数→日）
