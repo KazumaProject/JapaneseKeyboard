@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kazumaproject.markdownhelperkeyboard.R
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -27,26 +28,30 @@ class SumireKeyboardLayoutProviderTest {
     }
 
     @Test
-    fun keyboardLayoutResources_exist() {
+    fun keyboardLayoutResources_registerOnlyJapanese109A() {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
 
         context.resources.getXml(R.xml.keyboard_layouts).use { parser ->
             var layoutCount = 0
+            val layoutNames = mutableListOf<String>()
             while (parser.next() != org.xmlpull.v1.XmlPullParser.END_DOCUMENT) {
                 if (
                     parser.eventType == org.xmlpull.v1.XmlPullParser.START_TAG &&
                     parser.name == "keyboard-layout"
                 ) {
                     layoutCount += 1
+                    layoutNames += parser.getAttributeValue(
+                        "http://schemas.android.com/apk/res/android",
+                        "name"
+                    )
                 }
             }
-            assertTrue(layoutCount >= 2)
+            assertEquals(1, layoutCount)
+            assertEquals(listOf("sumire_japanese_109a"), layoutNames)
+            assertFalse(layoutNames.contains("sumire_japanese_" + "106"))
         }
 
         context.resources.openRawResource(R.raw.keyboard_layout_japanese_109a).use {
-            assertTrue(it.available() > 0)
-        }
-        context.resources.openRawResource(R.raw.keyboard_layout_japanese_106).use {
             assertTrue(it.available() > 0)
         }
     }

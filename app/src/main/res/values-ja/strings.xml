@@ -6,13 +6,7 @@
     <string name="action_force_full_width_space">全角スペース</string>
     <string name="hardware_keyboard_category_title">物理キーボード</string>
     <string name="keyboard_layouts_label">Sumire キーボード配列</string>
-    <string name="physical_keyboard_layout_title">内部フォールバック配列</string>
-    <string name="physical_keyboard_layout_summary">Android 側で物理キーボード配列が変換されない場合に Sumire 内部で使う配列です。Android の物理キーボード配列設定とは別です。</string>
-    <string name="physical_keyboard_layout_japanese_109a">日本語109A</string>
-    <string name="physical_keyboard_layout_jis">JIS</string>
-    <string name="physical_keyboard_layout_us">US</string>
     <string name="physical_keyboard_layout_japanese_109a_os">Sumire 日本語109A</string>
-    <string name="physical_keyboard_layout_japanese_106_os">Sumire 日本語106</string>
     <string name="physical_keyboard_input_mode_title">日本語入力方式</string>
     <string name="physical_keyboard_input_mode_romaji">ローマ字入力</string>
     <string name="physical_keyboard_input_mode_kana">かな入力</string>

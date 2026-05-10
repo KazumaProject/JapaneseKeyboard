@@ -6,13 +6,7 @@
     <string name="action_force_full_width_space">Full-width space</string>
     <string name="hardware_keyboard_category_title">物理キーボード</string>
     <string name="keyboard_layouts_label">Sumire keyboard layouts</string>
-    <string name="physical_keyboard_layout_title">Internal fallback layout</string>
-    <string name="physical_keyboard_layout_summary">Used by Sumire when Android does not already translate the physical keyboard layout. Android\'s physical keyboard layout setting is separate.</string>
-    <string name="physical_keyboard_layout_japanese_109a">日本語109A</string>
-    <string name="physical_keyboard_layout_jis">JIS</string>
-    <string name="physical_keyboard_layout_us">US</string>
     <string name="physical_keyboard_layout_japanese_109a_os">Sumire Japanese 109A</string>
-    <string name="physical_keyboard_layout_japanese_106_os">Sumire Japanese 106</string>
     <string name="physical_keyboard_input_mode_title">日本語入力方式</string>
     <string name="physical_keyboard_input_mode_romaji">ローマ字入力</string>
     <string name="physical_keyboard_input_mode_kana">かな入力</string>

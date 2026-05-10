@@ -3,5 +3,7 @@
     <keyboard-layout
         android:name="sumire_japanese_109a"
         android:label="@string/physical_keyboard_layout_japanese_109a_os"
-        android:keyboardLayout="@raw/keyboard_layout_japanese_109a"/>
+        android:keyboardLayout="@raw/keyboard_layout_japanese_109a"
+        android:keyboardLocale="ja"
+        android:keyboardLayoutType="qwerty" />
 </keyboard-layouts>
