@@ -196,6 +196,7 @@ import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.Physi
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.DeleteKeyFlickDeleteTargetRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.GemmaPromptTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
@@ -365,6 +366,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var userTemplateRepository: UserTemplateRepository
+
+    @Inject
+    lateinit var candidateOrderOverrideRepository: CandidateOrderOverrideRepository
 
     @Inject
     lateinit var clickedSymbolRepository: ClickedSymbolRepository
@@ -16018,13 +16022,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.distinctBy { it.string }
 
+        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
+            withContext(Dispatchers.IO) {
+                candidateOrderOverrideRepository.applyOrder(
+                    input = insertString,
+                    candidates = filteredCandidates
+                )
+            }
+        } else {
+            filteredCandidates
+        }
+
         updateBunsetsuStateAfterCandidateMerge(
             input = insertString,
-            mergedCandidates = filteredCandidates,
+            mergedCandidates = orderedCandidates,
             engineResult = engineResult
         )
 
-        return filteredCandidates
+        return orderedCandidates
     }
 
     private suspend fun getSuggestionList(
@@ -16160,13 +16175,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.distinctBy { it.string }
 
+        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
+            withContext(Dispatchers.IO) {
+                candidateOrderOverrideRepository.applyOrder(
+                    input = insertString,
+                    candidates = filteredCandidates
+                )
+            }
+        } else {
+            filteredCandidates
+        }
+
         updateBunsetsuStateAfterCandidateMerge(
             input = insertString,
-            mergedCandidates = filteredCandidates,
+            mergedCandidates = orderedCandidates,
             engineResult = engineResult
         )
 
-        return filteredCandidates
+        return orderedCandidates
     }
 
     private fun getLeftContext(inputLength: Int): String {
@@ -16311,13 +16337,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.distinctBy { it.string }
 
+        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
+            withContext(Dispatchers.IO) {
+                candidateOrderOverrideRepository.applyOrder(
+                    input = insertString,
+                    candidates = filteredCandidates
+                )
+            }
+        } else {
+            filteredCandidates
+        }
+
         updateBunsetsuStateAfterCandidateMerge(
             input = insertString,
-            mergedCandidates = filteredCandidates,
+            mergedCandidates = orderedCandidates,
             engineResult = engineResult
         )
 
-        return filteredCandidates
+        return orderedCandidates
     }
 
     private fun getSuggestionListEnglishKana(
