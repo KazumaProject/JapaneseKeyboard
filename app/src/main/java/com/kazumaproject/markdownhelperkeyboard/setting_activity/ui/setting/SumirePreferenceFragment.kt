@@ -96,5 +96,12 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        findPreference<Preference>("sumire_special_key_editor_preference")?.apply {
+            setOnPreferenceClickListener {
+                navigateSafely(R.id.action_navigation_setting_to_sumireSpecialKeyEditorFragment)
+                true
+            }
+        }
     }
 }

@@ -36,9 +36,28 @@ class CrossFlickInputController(
 
     interface CrossFlickListener {
         fun onPress(action: KeyAction)
+        fun onPress(action: KeyAction, direction: FlickDirection) {
+            onPress(action)
+        }
+
         fun onFlick(action: KeyAction, isFlick: Boolean)
+        fun onFlick(action: KeyAction, isFlick: Boolean, direction: FlickDirection) {
+            onFlick(action, isFlick)
+        }
+
         fun onFlickLongPress(action: KeyAction)
+        fun onFlickLongPress(action: KeyAction, direction: FlickDirection) {
+            onFlickLongPress(action)
+        }
+
         fun onFlickUpAfterLongPress(action: KeyAction, isFlick: Boolean)
+        fun onFlickUpAfterLongPress(
+            action: KeyAction,
+            isFlick: Boolean,
+            direction: FlickDirection
+        ) {
+            onFlickUpAfterLongPress(action, isFlick)
+        }
     }
 
     private enum class InputMode {
@@ -261,14 +280,14 @@ class CrossFlickInputController(
         when (inputMode) {
             InputMode.ACTION -> {
                 resolveAction(FlickDirection.TAP)?.let {
-                    listener?.onPress(it.toKeyAction())
+                    listener?.onPress(it.toKeyAction(), FlickDirection.TAP)
                 }
             }
 
             InputMode.TEXT -> {
                 val text = resolveText(FlickDirection.TAP, preferLongPress = false)
                 if (!text.isNullOrEmpty()) {
-                    listener?.onPress(KeyAction.Text(text))
+                    listener?.onPress(KeyAction.Text(text), FlickDirection.TAP)
                 }
             }
         }
@@ -283,17 +302,20 @@ class CrossFlickInputController(
                 if (isLongPressTriggered) {
                     listener?.onFlickUpAfterLongPress(
                         flickActionToCommit?.toKeyAction() ?: KeyAction.Cancel,
-                        isFlick
+                        isFlick,
+                        currentDirection
                     )
                 } else {
-                    flickActionToCommit?.let { listener?.onFlick(it.toKeyAction(), isFlick) }
+                    flickActionToCommit?.let {
+                        listener?.onFlick(it.toKeyAction(), isFlick, currentDirection)
+                    }
                 }
             }
 
             InputMode.TEXT -> {
                 val output = resolveText(currentDirection, preferLongPress = isLongPressMode)
                 if (!output.isNullOrEmpty()) {
-                    listener?.onFlick(KeyAction.Text(output), isFlick)
+                    listener?.onFlick(KeyAction.Text(output), isFlick, currentDirection)
                 }
             }
         }
@@ -331,7 +353,9 @@ class CrossFlickInputController(
 
     // ACTION モードの長押し中、現在ハイライトされている方向のアクションを listener へプレビュー通知する。
     private fun notifyLongPressActionPreview() {
-        resolveAction(currentDirection)?.let { listener?.onFlickLongPress(it.toKeyAction()) }
+        resolveAction(currentDirection)?.let {
+            listener?.onFlickLongPress(it.toKeyAction(), currentDirection)
+        }
     }
 
     // 初期タッチ位置からの差分を FlickDirection に変換する。両軸が閾値未満なら TAP とみなす。

@@ -44,6 +44,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_31_32
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_32_33
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_33_34
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_34_35
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
@@ -65,6 +66,8 @@ import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.datab
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideDao
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryDao
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
@@ -129,6 +132,7 @@ object AppModule {
             MIGRATION_31_32,
             MIGRATION_32_33,
             MIGRATION_33_34,
+            MIGRATION_34_35,
         )
         .build()
 
@@ -196,6 +200,18 @@ object AppModule {
     @Provides
     fun providesCandidateOrderOverrideDao(db: AppDatabase): CandidateOrderOverrideDao =
         db.candidateOrderOverrideDao()
+
+    @Singleton
+    @Provides
+    fun providesSumireSpecialKeyActionOverrideDao(
+        db: AppDatabase
+    ): SumireSpecialKeyActionOverrideDao = db.sumireSpecialKeyActionOverrideDao()
+
+    @Singleton
+    @Provides
+    fun providesSumireSpecialKeyPlacementOverrideDao(
+        db: AppDatabase
+    ): SumireSpecialKeyPlacementOverrideDao = db.sumireSpecialKeyPlacementOverrideDao()
 
     @Singleton
     @Provides
