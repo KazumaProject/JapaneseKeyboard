@@ -32,6 +32,11 @@ data class CandidateOrderOverrideUiState(
     val message: String? = null
 )
 
+internal data class CandidateOrderEditingState(
+    val reading: String,
+    val candidates: List<CandidateOrderItem>
+)
+
 internal fun filterCandidateOrderEditableCandidates(
     reading: String,
     candidates: List<Candidate>
@@ -39,7 +44,7 @@ internal fun filterCandidateOrderEditableCandidates(
     return candidates
         .filter { candidate ->
             candidate.string.isNotBlank() &&
-                candidate.length.toInt() == reading.length
+                    candidate.length.toInt() == reading.length
         }
         .distinctBy { it.string }
 }
@@ -58,6 +63,21 @@ internal fun List<CandidateOrderOverrideEntity>.toSavedCandidateOrderGroups(): L
             compareByDescending<SavedCandidateOrderGroup> { it.updatedAt }
                 .thenBy { it.input }
         )
+}
+
+internal fun SavedCandidateOrderGroup.toCandidateOrderEditingState(): CandidateOrderEditingState? {
+    val normalizedInput = input.trim()
+    if (normalizedInput.isEmpty() || candidates.isEmpty()) return null
+
+    return CandidateOrderEditingState(
+        reading = normalizedInput,
+        candidates = candidates.mapIndexed { index, candidate ->
+            CandidateOrderItem(
+                candidate = candidate,
+                originalIndex = index
+            )
+        }
+    )
 }
 
 @HiltViewModel
@@ -85,7 +105,20 @@ class CandidateOrderOverrideViewModel @Inject constructor(
     }
 
     fun updateReading(reading: String) {
+        if (uiState.value.reading == reading) return
         _uiState.update { it.copy(reading = reading) }
+    }
+
+    fun editSavedOrder(savedOrder: SavedCandidateOrderGroup) {
+        val editingState = savedOrder.toCandidateOrderEditingState() ?: return
+
+        _uiState.update {
+            it.copy(
+                reading = editingState.reading,
+                candidates = editingState.candidates,
+                message = null
+            )
+        }
     }
 
     fun fetchCandidates() {
@@ -100,7 +133,7 @@ class CandidateOrderOverrideViewModel @Inject constructor(
             val candidates = withContext(Dispatchers.Default) {
                 kanaKanjiEngine.getCandidates(
                     input = reading,
-                    n = 50,
+                    n = appPreference.n_best_preference ?: 8,
                     mozcUtPersonName = appPreference.mozc_ut_person_names_preference,
                     mozcUTPlaces = appPreference.mozc_ut_places_preference,
                     mozcUTWiki = appPreference.mozc_ut_wiki_preference,
@@ -157,7 +190,7 @@ class CandidateOrderOverrideViewModel @Inject constructor(
                 input = reading,
                 candidates = candidates.map { it.candidate }
             )
-            _uiState.update { it.copy(message = context.getString(R.string.candidate_order_override_saved)) }
+            _uiState.update { it.copy(candidates = emptyList(), message = context.getString(R.string.candidate_order_override_saved)) }
         }
     }
 
