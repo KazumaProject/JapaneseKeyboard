@@ -49,10 +49,13 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.ResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.custom_keyboard.data.toCircularFlickKeyMaps
 import com.kazumaproject.custom_keyboard.data.toLegacyFlickDirection
+import com.kazumaproject.custom_keyboard.data.toSumireSpecialKeyDirectionOrNull
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import kotlin.math.abs
 import kotlin.math.pow
@@ -112,6 +115,11 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private val dynamicKeyMap = mutableMapOf<String, KeyInfo>()
     private var currentLayout: KeyboardLayout? = null
+    private var sumireSpecialKeyActionResolver:
+            ((String, String, KeyData, SumireSpecialKeyDirection) -> ResolvedSumireSpecialKeyAction)? =
+        null
+    private var sumireSpecialKeyLayoutType: String? = null
+    private var sumireSpecialKeyInputMode: String? = null
 
     private data class KeyInfo(
         var view: View,
@@ -152,6 +160,22 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     fun setOnKeyboardActionListener(listener: OnKeyboardActionListener) {
         this.listener = listener
+    }
+
+    fun setSumireSpecialKeyActionResolver(
+        resolver: ((String, String, KeyData, SumireSpecialKeyDirection) -> ResolvedSumireSpecialKeyAction)?,
+        layoutType: String?,
+        inputMode: String?
+    ) {
+        sumireSpecialKeyActionResolver = resolver
+        sumireSpecialKeyLayoutType = layoutType
+        sumireSpecialKeyInputMode = inputMode
+    }
+
+    fun clearSumireSpecialKeyActionResolver() {
+        sumireSpecialKeyActionResolver = null
+        sumireSpecialKeyLayoutType = null
+        sumireSpecialKeyInputMode = null
     }
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
@@ -1169,7 +1193,8 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.CROSS_FLICK -> {
-                val flickActionMap = layout.flickKeyMaps[keyData.label]?.firstOrNull()
+                val flickActionMap = keyData.keyId?.let { layout.flickKeyMaps[it] }?.firstOrNull()
+                    ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 Log.d("FlickKeyboardView KeyType.CROSS_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
                     val controller = CrossFlickInputController(context).apply {
@@ -1181,11 +1206,52 @@ class FlickKeyboardView @JvmOverloads constructor(
                         )
                         this.listener = object : CrossFlickInputController.CrossFlickListener {
                             override fun onPress(action: KeyAction) {
-                                this@FlickKeyboardView.listener?.onPress(action)
+                                onPress(action, FlickDirection.TAP)
+                            }
+
+                            override fun onPress(action: KeyAction, direction: FlickDirection) {
+                                when (
+                                    val resolved = resolveSumireSpecialKeyOverride(
+                                        keyData,
+                                        SumireSpecialKeyDirection.TAP
+                                    )
+                                ) {
+                                    ResolvedSumireSpecialKeyAction.Default ->
+                                        this@FlickKeyboardView.listener?.onPress(action)
+
+                                    ResolvedSumireSpecialKeyAction.None -> Unit
+                                    is ResolvedSumireSpecialKeyAction.Action ->
+                                        this@FlickKeyboardView.listener?.onPress(resolved.action)
+
+                                    is ResolvedSumireSpecialKeyAction.InputText ->
+                                        this@FlickKeyboardView.listener?.onPress(
+                                            KeyAction.Text(resolved.text)
+                                        )
+                                }
                             }
 
                             override fun onFlick(action: KeyAction, isFlick: Boolean) {
-                                this@FlickKeyboardView.listener?.onAction(action, isFlick)
+                                onFlick(action, isFlick, if (isFlick) FlickDirection.UP else FlickDirection.TAP)
+                            }
+
+                            override fun onFlick(
+                                action: KeyAction,
+                                isFlick: Boolean,
+                                direction: FlickDirection
+                            ) {
+                                val sumireDirection =
+                                    direction.toSumireSpecialKeyDirectionOrNull()
+                                val handled = sumireDirection != null &&
+                                        dispatchResolvedSumireSpecialKeyAction(
+                                            resolveSumireSpecialKeyOverride(
+                                                keyData,
+                                                sumireDirection
+                                            ),
+                                            isFlick
+                                        )
+                                if (!handled) {
+                                    this@FlickKeyboardView.listener?.onAction(action, isFlick)
+                                }
                             }
 
                             override fun onFlickLongPress(action: KeyAction) {
@@ -1567,6 +1633,17 @@ class FlickKeyboardView @JvmOverloads constructor(
                     keyView.setOnClickListener {
                         val currentAction =
                             dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
+                        if (
+                            dispatchResolvedSumireSpecialKeyAction(
+                                resolveSumireSpecialKeyOverride(
+                                    keyData,
+                                    SumireSpecialKeyDirection.TAP
+                                ),
+                                isFlick = false
+                            )
+                        ) {
+                            return@setOnClickListener
+                        }
                         Log.d("FlickKeyboardView KeyType.NORMAL", "currentAction: $currentAction")
                         this@FlickKeyboardView.listener?.onAction(
                             currentAction,
@@ -1586,7 +1663,24 @@ class FlickKeyboardView @JvmOverloads constructor(
                         if (event.action == MotionEvent.ACTION_DOWN) {
                             val currentAction =
                                 dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
-                            this@FlickKeyboardView.listener?.onPress(currentAction)
+                            when (
+                                val resolved = resolveSumireSpecialKeyOverride(
+                                    keyData,
+                                    SumireSpecialKeyDirection.TAP
+                                )
+                            ) {
+                                ResolvedSumireSpecialKeyAction.Default ->
+                                    this@FlickKeyboardView.listener?.onPress(currentAction)
+
+                                ResolvedSumireSpecialKeyAction.None -> Unit
+                                is ResolvedSumireSpecialKeyAction.Action ->
+                                    this@FlickKeyboardView.listener?.onPress(resolved.action)
+
+                                is ResolvedSumireSpecialKeyAction.InputText ->
+                                    this@FlickKeyboardView.listener?.onPress(
+                                        KeyAction.Text(resolved.text)
+                                    )
+                            }
                         }
                         if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
                             if (isLongPressTriggered) {
@@ -1808,6 +1902,42 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         return null
+    }
+
+    private fun resolveSumireSpecialKeyOverride(
+        keyData: KeyData,
+        direction: SumireSpecialKeyDirection
+    ): ResolvedSumireSpecialKeyAction {
+        if (!keyData.isSpecialKey) return ResolvedSumireSpecialKeyAction.Default
+        if (keyData.keyId.isNullOrBlank()) return ResolvedSumireSpecialKeyAction.Default
+
+        val resolver = sumireSpecialKeyActionResolver
+            ?: return ResolvedSumireSpecialKeyAction.Default
+        val layoutType = sumireSpecialKeyLayoutType
+            ?: return ResolvedSumireSpecialKeyAction.Default
+        val inputMode = sumireSpecialKeyInputMode
+            ?: return ResolvedSumireSpecialKeyAction.Default
+
+        return resolver(layoutType, inputMode, keyData, direction)
+    }
+
+    private fun dispatchResolvedSumireSpecialKeyAction(
+        resolved: ResolvedSumireSpecialKeyAction,
+        isFlick: Boolean
+    ): Boolean {
+        return when (resolved) {
+            ResolvedSumireSpecialKeyAction.Default -> false
+            ResolvedSumireSpecialKeyAction.None -> true
+            is ResolvedSumireSpecialKeyAction.Action -> {
+                listener?.onAction(resolved.action, isFlick)
+                true
+            }
+
+            is ResolvedSumireSpecialKeyAction.InputText -> {
+                listener?.onAction(KeyAction.Text(resolved.text), isFlick)
+                true
+            }
+        }
     }
 
     private fun notifyTextPress(character: String) {

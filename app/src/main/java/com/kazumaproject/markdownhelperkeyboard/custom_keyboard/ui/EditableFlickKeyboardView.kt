@@ -49,6 +49,11 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : GridLayout(context, attrs, defStyleAttr) {
 
+    enum class EditTargetMode {
+        CUSTOM_KEYBOARD,
+        SUMIRE_SPECIAL_KEYS
+    }
+
     // ▼▼▼ インターフェースに削除イベントを追加 ▼▼▼
     interface OnKeyEditListener {
         fun onKeySelected(keyId: String)
@@ -67,6 +72,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
     private var currentLayout: KeyboardLayout? = null
     private var placementMode: Boolean = false
     private var currentInsertionPolicy: InsertionPolicy = InsertionPolicy.PreferHorizontal
+    private var editTargetMode: EditTargetMode = EditTargetMode.CUSTOM_KEYBOARD
 
     fun setOnKeyEditListener(listener: OnKeyEditListener?) {
         this.listener = listener
@@ -84,23 +90,39 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         insertionPolicy: InsertionPolicy = placementCursor?.policy ?: InsertionPolicy.PreferHorizontal,
         selectedItemId: String? = null,
         previewInsertedItemId: String? = null,
-        previewMovedItemIds: Set<String> = emptySet()
+        previewMovedItemIds: Set<String> = emptySet(),
+        editTargetMode: EditTargetMode = EditTargetMode.CUSTOM_KEYBOARD
     ) {
         this.removeAllViews()
-        val displayLayout = layout.canonicalLayoutForEditor(placementCursor)
+        this.editTargetMode = editTargetMode
+        val displayLayout = when (editTargetMode) {
+            EditTargetMode.CUSTOM_KEYBOARD -> layout.canonicalLayoutForEditor(placementCursor)
+            EditTargetMode.SUMIRE_SPECIAL_KEYS -> layout
+        }
         this.currentLayout = displayLayout
-        this.placementMode = placementMode
+        this.placementMode = placementMode && editTargetMode == EditTargetMode.CUSTOM_KEYBOARD
         this.currentInsertionPolicy = placementCursor?.policy ?: insertionPolicy
 
         val editorBounds = displayLayout.editorGridBounds()
-        this.columnCount = editorBounds.gridColumnCount
-        this.rowCount = editorBounds.gridRowCount
+        this.columnCount = if (editTargetMode == EditTargetMode.SUMIRE_SPECIAL_KEYS) {
+            displayLayout.columnUnitCount
+        } else {
+            editorBounds.gridColumnCount
+        }
+        this.rowCount = if (editTargetMode == EditTargetMode.SUMIRE_SPECIAL_KEYS) {
+            displayLayout.rowUnitCount
+        } else {
+            editorBounds.gridRowCount
+        }
 
         this.isFocusable = false
 
         val dragListener = createDragListener()
         setPlacementTouchListener()
-        if (!editorBounds.showRowColumnDeleteChrome) {
+        if (
+            editTargetMode == EditTargetMode.CUSTOM_KEYBOARD &&
+            !editorBounds.showRowColumnDeleteChrome
+        ) {
             addFlexibleRowUnitAnchors(editorBounds)
         }
 
@@ -133,7 +155,11 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
         }
 
-        addInsertionCursor(displayLayout, placementCursor)
+        if (editTargetMode == EditTargetMode.CUSTOM_KEYBOARD) {
+            addInsertionCursor(displayLayout, placementCursor)
+        }
+
+        if (editTargetMode != EditTargetMode.CUSTOM_KEYBOARD) return
 
         editorBounds.rowDeleteSpecs(displayLayout.rowCount).forEachIndexed { i, rowSpecBounds ->
             val deleteButton = createDeleteButton { listener?.onRowDeleted(i) }
@@ -171,28 +197,56 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
     ) {
         val keyData = item.keyData
         val keyView: View = createKeyView(keyData, item.placement)
-        keyView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
-        // Source of truth for flexible-layout selection / drag-swap is
-        // KeyboardLayoutItem.id. KeyData.keyId is intentionally NOT used here
-        // because half-cell keys / spacers may have a different (or null) keyId.
-        keyView.tag = item.id
-        keyView.setOnDragListener(dragListener)
-        keyView.setOnClickListener {
-            if (placementMode) {
-                mapTargetFromCenter(item)?.let { target -> listener?.onPlacementTapTarget(target) }
+        val offsetUnits = if (editTargetMode == EditTargetMode.CUSTOM_KEYBOARD) 2 else 0
+        keyView.layoutParams = createLayoutParams(
+            item.placement,
+            rowOffsetUnits = offsetUnits,
+            columnOffsetUnits = offsetUnits
+        )
+        val editableSumireKeyId = keyData.keyId
+            ?.takeIf { keyData.isSpecialKey && it.isNotBlank() }
+        if (editTargetMode == EditTargetMode.SUMIRE_SPECIAL_KEYS) {
+            if (editableSumireKeyId != null) {
+                keyView.tag = editableSumireKeyId
+                keyView.setOnDragListener(dragListener)
+                keyView.setOnClickListener { listener?.onKeySelected(editableSumireKeyId) }
+                keyView.setOnLongClickListener { view ->
+                    val clipText = "keyId:$editableSumireKeyId"
+                    val data = ClipData(
+                        clipText,
+                        arrayOf("text/plain"),
+                        ClipData.Item(clipText)
+                    )
+                    view.startDragAndDrop(data, DragShadowBuilder(view), view, 0)
+                    true
+                }
             } else {
-                listener?.onKeySelected(item.id)
+                keyView.isClickable = false
+                keyView.isLongClickable = false
             }
-        }
-        keyView.setOnLongClickListener { view ->
-            if (placementMode) return@setOnLongClickListener true
-            val clipText = "keyId:${item.id}"
-            val clipItem = ClipData.Item(clipText)
-            val mimeTypes = arrayOf("text/plain")
-            val data = ClipData(clipText, mimeTypes, clipItem)
-            val dragShadow = DragShadowBuilder(view)
-            view.startDragAndDrop(data, dragShadow, view, 0)
-            true
+        } else {
+            // Source of truth for flexible-layout selection / drag-swap is
+            // KeyboardLayoutItem.id. KeyData.keyId is intentionally NOT used here
+            // because half-cell keys / spacers may have a different (or null) keyId.
+            keyView.tag = item.id
+            keyView.setOnDragListener(dragListener)
+            keyView.setOnClickListener {
+                if (placementMode) {
+                    mapTargetFromCenter(item)?.let { target -> listener?.onPlacementTapTarget(target) }
+                } else {
+                    listener?.onKeySelected(item.id)
+                }
+            }
+            keyView.setOnLongClickListener { view ->
+                if (placementMode) return@setOnLongClickListener true
+                val clipText = "keyId:${item.id}"
+                val clipItem = ClipData.Item(clipText)
+                val mimeTypes = arrayOf("text/plain")
+                val data = ClipData(clipText, mimeTypes, clipItem)
+                val dragShadow = DragShadowBuilder(view)
+                view.startDragAndDrop(data, dragShadow, view, 0)
+                true
+            }
         }
         decoratePreviewItem(keyView, item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
         this.addView(keyView)
@@ -215,15 +269,24 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 setStroke(dpToPx(1), Color.argb(150, 96, 125, 139), dpToPx(4).toFloat(), dpToPx(3).toFloat())
             }
             contentDescription = "Spacer"
-            setOnClickListener {
-                if (placementMode) {
-                    mapTargetFromCenter(item)?.let { target -> listener?.onPlacementTapTarget(target) }
-                } else {
-                    listener?.onSpacerSelected(item.id)
+            if (editTargetMode == EditTargetMode.CUSTOM_KEYBOARD) {
+                setOnClickListener {
+                    if (placementMode) {
+                        mapTargetFromCenter(item)?.let { target -> listener?.onPlacementTapTarget(target) }
+                    } else {
+                        listener?.onSpacerSelected(item.id)
+                    }
                 }
+            } else {
+                isClickable = false
             }
         }
-        spacerView.layoutParams = createLayoutParams(item.placement, rowOffsetUnits = 2, columnOffsetUnits = 2)
+        val offsetUnits = if (editTargetMode == EditTargetMode.CUSTOM_KEYBOARD) 2 else 0
+        spacerView.layoutParams = createLayoutParams(
+            item.placement,
+            rowOffsetUnits = offsetUnits,
+            columnOffsetUnits = offsetUnits
+        )
         decoratePreviewItem(spacerView, item, selectedItemId, previewInsertedItemId, previewMovedItemIds)
         this.addView(spacerView)
     }
@@ -300,6 +363,15 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                         return@OnDragListener true
                     }
                     val targetKeyId = view.tag as? String ?: return@OnDragListener false
+                    if (editTargetMode == EditTargetMode.SUMIRE_SPECIAL_KEYS) {
+                        currentLayout
+                            ?.items
+                            ?.filterIsInstance<KeyItem>()
+                            ?.firstOrNull {
+                                it.keyData.isSpecialKey &&
+                                        it.keyData.keyId?.takeIf { id -> id.isNotBlank() } == targetKeyId
+                            } ?: return@OnDragListener false
+                    }
                     val item = event.clipData.getItemAt(0)
                     val draggedKeyId = item.text.toString().removePrefix("keyId:")
                     if (draggedKeyId != targetKeyId) {
