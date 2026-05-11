@@ -99,6 +99,9 @@ class CandidateOrderOverrideFragment : Fragment() {
         }
 
         savedOrderAdapter = SavedCandidateOrderAdapter(
+            onEdit = { savedOrder ->
+                viewModel.editSavedOrder(savedOrder)
+            },
             onDeleteInput = { input ->
                 showDeleteSavedOrderConfirmDialog(input)
             }
@@ -154,6 +157,10 @@ class CandidateOrderOverrideFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
+                    if (binding.editTextCandidateOrderReading.text?.toString() != state.reading) {
+                        binding.editTextCandidateOrderReading.setText(state.reading)
+                        binding.editTextCandidateOrderReading.setSelection(state.reading.length)
+                    }
                     adapter.submitList(state.candidates)
                     savedOrderAdapter.submitList(state.savedOrders)
                     binding.progressCandidateOrder.visibility =
