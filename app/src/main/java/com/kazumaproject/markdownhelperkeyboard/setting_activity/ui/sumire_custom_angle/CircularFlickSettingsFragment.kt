@@ -167,8 +167,8 @@ class CircularFlickSettingsFragment : Fragment() {
             saveData(CircularFlickDirection.SLOT_0, 234f, 72f)
             saveData(CircularFlickDirection.SLOT_1, 306f, 72f)
             saveData(CircularFlickDirection.SLOT_2, 18f, 72f)
-            saveData(CircularFlickDirection.SLOT_4, 90f, 72f)
-            saveData(CircularFlickDirection.SLOT_3, 162f, 72f)
+            saveData(CircularFlickDirection.SLOT_3, 90f, 72f)
+            saveData(CircularFlickDirection.SLOT_4, 162f, 72f)
         } else {
             saveData(CircularFlickDirection.SLOT_0, 225f, 90f)
             saveData(CircularFlickDirection.SLOT_1, 315f, 90f)
@@ -286,7 +286,8 @@ class CircularFlickSettingsFragment : Fragment() {
             val totalArc = normalizeAngle(nextEnd - currentStart)
             if (totalArc <= minSweepAngle * 2f) return@addOnChangeListener
 
-            val clampedCurrentSweep = newSweepValue.coerceIn(minSweepAngle, totalArc - minSweepAngle)
+            val clampedCurrentSweep =
+                newSweepValue.coerceIn(minSweepAngle, totalArc - minSweepAngle)
             val clampedNextStart = normalizeAngle(currentStart + clampedCurrentSweep)
             val newNextSweep = totalArc - clampedCurrentSweep
 
