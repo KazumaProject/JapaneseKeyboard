@@ -893,4 +893,17 @@
     <string name="candidate_order_override_saved_order_deleted">保存済み候補順を削除しました</string>
     <string name="candidate_order_override_saved_order_candidates_description">保存済み候補</string>
     <string name="candidate_order_override_drag_handle_description">並び替え</string>
+    <string name="sumire_special_key_editor_preference_title">特殊キー編集</string>
+    <string name="sumire_special_key_editor_preference_summary">Sumire の特殊キーの動作と配置を編集します</string>
+    <string name="sumire_special_key_editor_title">Sumire 特殊キー編集</string>
+    <string name="sumire_special_key_action_editor_title">特殊キー動作編集</string>
+    <string name="sumire_special_key_reset_placement">配置をリセット</string>
+    <string name="sumire_special_key_reset_all">すべてリセット</string>
+    <string name="sumire_special_key_save">保存</string>
+    <string name="sumire_special_key_reset_this_key">このキーをリセット</string>
+    <string name="sumire_special_key_default">既定の動作を使う</string>
+    <string name="sumire_special_key_none">何もしない</string>
+    <string name="sumire_special_key_input_text">文字を入力</string>
+    <string name="sumire_special_key_key_action">特殊アクション</string>
+    <string name="sumire_special_key_input_text_hint">入力する文字</string>
 </resources>
