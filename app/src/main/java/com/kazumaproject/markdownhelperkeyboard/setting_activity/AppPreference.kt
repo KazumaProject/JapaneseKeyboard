@@ -7,9 +7,9 @@ import androidx.core.graphics.toColorInt
 import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
-import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
@@ -2548,8 +2548,8 @@ object AppPreference {
                 CircularFlickDirection.SLOT_0 to (234f to 72f),
                 CircularFlickDirection.SLOT_1 to (306f to 72f),
                 CircularFlickDirection.SLOT_2 to (18f to 72f),
-                CircularFlickDirection.SLOT_4 to (90f to 72f),
-                CircularFlickDirection.SLOT_3 to (162f to 72f)
+                CircularFlickDirection.SLOT_3 to (90f to 72f),
+                CircularFlickDirection.SLOT_4 to (162f to 72f)
             )
 
             else -> buildEvenCircularRanges(count)
@@ -2572,7 +2572,7 @@ object AppPreference {
         }
 
         return preferences.getFloat(startPreference.first, defaultRange.first) to
-            preferences.getFloat(sweepPreference.first, defaultRange.second)
+                preferences.getFloat(sweepPreference.first, defaultRange.second)
     }
 
     fun getCircularFlickRanges(): Map<CircularFlickDirection, Pair<Float, Float>> {
@@ -2601,7 +2601,7 @@ object AppPreference {
                 CIRCULAR_SLOT_ACTION_SETTINGS.first,
                 gson.toJson(settings.filter { setting ->
                     setting.slot in circularSlotActionEditableSlots &&
-                        setting.keyIdentifier.isNotBlank()
+                            setting.keyIdentifier.isNotBlank()
                 })
             )
         }
@@ -2622,8 +2622,8 @@ object AppPreference {
         val nextSettings = getCircularSlotActionSettings()
             .filterNot {
                 it.mode == setting.mode &&
-                    it.keyIdentifier == setting.keyIdentifier &&
-                    it.slot == setting.slot
+                        it.keyIdentifier == setting.keyIdentifier &&
+                        it.slot == setting.slot
             }
             .plus(setting)
         saveCircularSlotActionSettings(nextSettings)
