@@ -24,6 +24,14 @@
 
     <PreferenceCategory android:title="@string/candidate_order_override_fragment_title">
 
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="candidate_order_override_enable_preference"
+            android:summaryOff="@string/candidate_order_override_enable_summary_off"
+            android:summaryOn="@string/candidate_order_override_enable_summary_on"
+            android:title="@string/candidate_order_override_enable_title"
+            app:iconSpaceReserved="false" />
+
         <Preference
             android:key="candidate_order_override_preference"
             android:title="@string/candidate_order_override_preference_title"

@@ -8,6 +8,7 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
@@ -24,6 +25,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.adapter.CandidateOrderOverrideAdapter
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.adapter.SavedCandidateOrderAdapter
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentCandidateOrderOverrideBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -37,6 +39,7 @@ class CandidateOrderOverrideFragment : Fragment() {
     private val viewModel: CandidateOrderOverrideViewModel by viewModels()
 
     private lateinit var adapter: CandidateOrderOverrideAdapter
+    private lateinit var savedOrderAdapter: SavedCandidateOrderAdapter
     private lateinit var itemTouchHelper: ItemTouchHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -95,6 +98,17 @@ class CandidateOrderOverrideFragment : Fragment() {
             addItemDecoration(DividerItemDecoration(context, DividerItemDecoration.VERTICAL))
         }
 
+        savedOrderAdapter = SavedCandidateOrderAdapter(
+            onDeleteInput = { input ->
+                showDeleteSavedOrderConfirmDialog(input)
+            }
+        )
+        binding.recyclerViewSavedCandidateOrder.apply {
+            layoutManager = LinearLayoutManager(requireContext())
+            adapter = savedOrderAdapter
+            addItemDecoration(DividerItemDecoration(context, DividerItemDecoration.VERTICAL))
+        }
+
         val callback = object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN,
             0
@@ -131,8 +145,8 @@ class CandidateOrderOverrideFragment : Fragment() {
         binding.buttonSaveCandidateOrder.setOnClickListener {
             viewModel.save()
         }
-        binding.buttonDeleteCandidateOrder.setOnClickListener {
-            viewModel.deleteCurrentReadingOrder()
+        binding.buttonDeleteAllSavedCandidateOrder.setOnClickListener {
+            showDeleteAllSavedOrdersConfirmDialog()
         }
     }
 
@@ -141,6 +155,7 @@ class CandidateOrderOverrideFragment : Fragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 viewModel.uiState.collect { state ->
                     adapter.submitList(state.candidates)
+                    savedOrderAdapter.submitList(state.savedOrders)
                     binding.progressCandidateOrder.visibility =
                         if (state.isLoading) View.VISIBLE else View.GONE
                     binding.textCandidateOrderEmpty.visibility =
@@ -153,9 +168,13 @@ class CandidateOrderOverrideFragment : Fragment() {
                         }
                     binding.buttonSaveCandidateOrder.isEnabled =
                         !state.isLoading && state.candidates.isNotEmpty()
-                    binding.buttonDeleteCandidateOrder.isEnabled =
-                        !state.isLoading && state.reading.isNotBlank()
                     binding.buttonFetchCandidateOrderCandidates.isEnabled = !state.isLoading
+                    binding.recyclerViewSavedCandidateOrder.visibility =
+                        if (state.savedOrders.isEmpty()) View.GONE else View.VISIBLE
+                    binding.textSavedCandidateOrderEmpty.visibility =
+                        if (state.savedOrders.isEmpty()) View.VISIBLE else View.GONE
+                    binding.buttonDeleteAllSavedCandidateOrder.isEnabled =
+                        state.savedOrders.isNotEmpty()
                     state.message?.let { message ->
                         Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show()
                         viewModel.clearMessage()
@@ -163,6 +182,33 @@ class CandidateOrderOverrideFragment : Fragment() {
                 }
             }
         }
+    }
+
+    private fun showDeleteSavedOrderConfirmDialog(input: String) {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.candidate_order_override_delete_saved_order_confirm_title)
+            .setMessage(
+                getString(
+                    R.string.candidate_order_override_delete_saved_order_confirm_message,
+                    input
+                )
+            )
+            .setPositiveButton(R.string.candidate_order_override_saved_order_delete) { _, _ ->
+                viewModel.deleteSavedOrder(input)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
+    private fun showDeleteAllSavedOrdersConfirmDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.candidate_order_override_delete_all_confirm_title)
+            .setMessage(R.string.candidate_order_override_delete_all_confirm_message)
+            .setPositiveButton(R.string.candidate_order_override_delete_all) { _, _ ->
+                viewModel.deleteAllSavedOrders()
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
     }
 
     override fun onDestroyView() {
