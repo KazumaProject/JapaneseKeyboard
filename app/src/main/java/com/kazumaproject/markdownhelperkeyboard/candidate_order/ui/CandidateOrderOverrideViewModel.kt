@@ -39,7 +39,7 @@ internal fun filterCandidateOrderEditableCandidates(
     return candidates
         .filter { candidate ->
             candidate.string.isNotBlank() &&
-                candidate.length.toInt() == reading.length
+                    candidate.length.toInt() == reading.length
         }
         .distinctBy { it.string }
 }
@@ -100,7 +100,7 @@ class CandidateOrderOverrideViewModel @Inject constructor(
             val candidates = withContext(Dispatchers.Default) {
                 kanaKanjiEngine.getCandidates(
                     input = reading,
-                    n = 50,
+                    n = appPreference.n_best_preference ?: 8,
                     mozcUtPersonName = appPreference.mozc_ut_person_names_preference,
                     mozcUTPlaces = appPreference.mozc_ut_places_preference,
                     mozcUTWiki = appPreference.mozc_ut_wiki_preference,
@@ -157,7 +157,7 @@ class CandidateOrderOverrideViewModel @Inject constructor(
                 input = reading,
                 candidates = candidates.map { it.candidate }
             )
-            _uiState.update { it.copy(message = context.getString(R.string.candidate_order_override_saved)) }
+            _uiState.update { it.copy(candidates = emptyList(), message = context.getString(R.string.candidate_order_override_saved)) }
         }
     }
 

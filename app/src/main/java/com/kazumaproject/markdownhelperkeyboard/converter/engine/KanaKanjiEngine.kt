@@ -364,7 +364,8 @@ class KanaKanjiEngine {
 
         this.systemUserSuccinctBitVectorLBSYomi = SuccinctBitVector(systemUserYomiTrie!!.LBS)
         this.systemUserSuccinctBitVectorIsLeaf = SuccinctBitVector(systemUserYomiTrie!!.isLeaf)
-        this.systemUserSuccinctBitVectorTokenArray = SuccinctBitVector(systemUserTokenArray!!.bitvector)
+        this.systemUserSuccinctBitVectorTokenArray =
+            SuccinctBitVector(systemUserTokenArray!!.bitvector)
         this.systemUserSuccinctBitVectorLBSTango = SuccinctBitVector(systemUserTangoTrie!!.LBS)
 
         graphBuilder.updateSystemUserDictionary(
@@ -3491,7 +3492,20 @@ class KanaKanjiEngine {
         val calendar = Calendar.getInstance().apply { add(Calendar.YEAR, yearOffset) }
         val year = calendar.get(Calendar.YEAR)
         val reiwaYear = year - 2018
-        val zodiac = listOf("子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥")[Math.floorMod(year - 4, 12)]
+        val zodiac = listOf(
+            "子",
+            "丑",
+            "寅",
+            "卯",
+            "辰",
+            "巳",
+            "午",
+            "未",
+            "申",
+            "酉",
+            "戌",
+            "亥"
+        )[Math.floorMod(year - 4, 12)]
         val length = input.length.toUByte()
 
         val baseCandidates = mutableListOf(
@@ -4006,16 +4020,23 @@ class KanaKanjiEngine {
     private fun deferredFromMozcUTDictionary(
         input: String,
         commonPrefixListString: List<String>,
-        yomiTrie: LOUDSWithTermId,
-        tokenArray: TokenArray,
-        tangoTrie: LOUDS,
-        succinctBitVectorLBSYomi: SuccinctBitVector,
-        succinctBitVectorIsLeafYomi: SuccinctBitVector,
-        succinctBitVectorTokenArray: SuccinctBitVector,
-        succinctBitVectorTangoLBS: SuccinctBitVector,
+        yomiTrie: LOUDSWithTermId?,
+        tokenArray: TokenArray?,
+        tangoTrie: LOUDS?,
+        succinctBitVectorLBSYomi: SuccinctBitVector?,
+        succinctBitVectorIsLeafYomi: SuccinctBitVector?,
+        succinctBitVectorTokenArray: SuccinctBitVector?,
+        succinctBitVectorTangoLBS: SuccinctBitVector?,
         type: Byte,
         n: Int
     ): List<Candidate> = commonPrefixListString.flatMap { yomi ->
+        if (yomiTrie == null) return emptyList()
+        if (tokenArray == null) return emptyList()
+        if (tangoTrie == null) return emptyList()
+        if (succinctBitVectorLBSYomi == null) return emptyList()
+        if (succinctBitVectorIsLeafYomi == null) return emptyList()
+        if (succinctBitVectorTokenArray == null) return emptyList()
+        if (succinctBitVectorTangoLBS == null) return emptyList()
         if (input.length > yomi.length) return emptyList()
         val termId = yomiTrie.getTermId(
             yomiTrie.getNodeIndex(
@@ -4198,7 +4219,8 @@ class KanaKanjiEngine {
             .asSequence()
             .filter { it.length != input.length }
             .flatMap { yomi ->
-                val nodeIndex = yomiTrie.getNodeIndex(yomi, succinctBitVector = succinctBitVectorLBSYomi)
+                val nodeIndex =
+                    yomiTrie.getNodeIndex(yomi, succinctBitVector = succinctBitVectorLBSYomi)
                 if (nodeIndex <= 0) {
                     return@flatMap emptySequence()
                 }
@@ -4248,8 +4270,10 @@ class KanaKanjiEngine {
     }
 
     private fun commonPrefixMozcUT(
-        input: String, yomiTrie: LOUDSWithTermId, succinctBitVector: SuccinctBitVector
+        input: String, yomiTrie: LOUDSWithTermId?, succinctBitVector: SuccinctBitVector?
     ): List<String> {
+        if (yomiTrie == null) return emptyList()
+        if (succinctBitVector == null) return emptyList()
         if (input.length > 16) return emptyList()
         if (input.length in 0..3) return emptyList()
         return yomiTrie.predictiveSearch(
@@ -4264,10 +4288,12 @@ class KanaKanjiEngine {
     }
 
     private fun commonPrefixMozcUTWeb(
-        input: String, yomiTrie: LOUDSWithTermId, succinctBitVector: SuccinctBitVector
+        input: String, yomiTrie: LOUDSWithTermId?, succinctBitVector: SuccinctBitVector?
     ): List<String> {
         if (input.length > 16) return emptyList()
         if (input.length in 0..2) return emptyList()
+        if (yomiTrie == null) return emptyList()
+        if (succinctBitVector == null) return emptyList()
         return yomiTrie.predictiveSearch(
             prefix = input, succinctBitVector = succinctBitVector
         ).filter {
@@ -4284,19 +4310,19 @@ class KanaKanjiEngine {
     ): List<Candidate> {
         val commonPrefix = commonPrefixMozcUT(
             input = input,
-            yomiTrie = personYomiTrie!!,
-            succinctBitVector = personSuccinctBitVectorLBSYomi!!
+            yomiTrie = personYomiTrie,
+            succinctBitVector = personSuccinctBitVectorLBSYomi
         )
         return deferredFromMozcUTDictionary(
             input = input,
             commonPrefixListString = commonPrefix,
-            yomiTrie = personYomiTrie!!,
-            tokenArray = personTokenArray!!,
-            tangoTrie = personTangoTrie!!,
-            succinctBitVectorLBSYomi = personSuccinctBitVectorLBSYomi!!,
-            succinctBitVectorIsLeafYomi = personSuccinctBitVectorIsLeaf!!,
-            succinctBitVectorTokenArray = personSuccinctBitVectorTokenArray!!,
-            succinctBitVectorTangoLBS = personSuccinctBitVectorLBSTango!!,
+            yomiTrie = personYomiTrie,
+            tokenArray = personTokenArray,
+            tangoTrie = personTangoTrie,
+            succinctBitVectorLBSYomi = personSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = personSuccinctBitVectorIsLeaf,
+            succinctBitVectorTokenArray = personSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = personSuccinctBitVectorLBSTango,
             type = 23,
             4
         )
@@ -4307,19 +4333,19 @@ class KanaKanjiEngine {
     ): List<Candidate> {
         val commonPrefix = commonPrefixMozcUT(
             input = input,
-            yomiTrie = placesYomiTrie!!,
-            succinctBitVector = placesSuccinctBitVectorLBSYomi!!
+            yomiTrie = placesYomiTrie,
+            succinctBitVector = placesSuccinctBitVectorLBSYomi
         )
         return deferredFromMozcUTDictionary(
             input = input,
             commonPrefixListString = commonPrefix,
-            yomiTrie = placesYomiTrie!!,
-            tokenArray = placesTokenArray!!,
-            tangoTrie = placesTangoTrie!!,
-            succinctBitVectorLBSYomi = placesSuccinctBitVectorLBSYomi!!,
-            succinctBitVectorIsLeafYomi = placesSuccinctBitVectorIsLeaf!!,
-            succinctBitVectorTokenArray = placesSuccinctBitVectorTokenArray!!,
-            succinctBitVectorTangoLBS = placesSuccinctBitVectorLBSTango!!,
+            yomiTrie = placesYomiTrie,
+            tokenArray = placesTokenArray,
+            tangoTrie = placesTangoTrie,
+            succinctBitVectorLBSYomi = placesSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = placesSuccinctBitVectorIsLeaf,
+            succinctBitVectorTokenArray = placesSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = placesSuccinctBitVectorLBSTango,
             type = 24,
             4
         )
@@ -4330,19 +4356,19 @@ class KanaKanjiEngine {
     ): List<Candidate> {
         val commonPrefix = commonPrefixMozcUTWeb(
             input = input,
-            yomiTrie = wikiYomiTrie!!,
-            succinctBitVector = wikiSuccinctBitVectorLBSYomi!!
+            yomiTrie = wikiYomiTrie,
+            succinctBitVector = wikiSuccinctBitVectorLBSYomi
         )
         return deferredFromMozcUTDictionary(
             input = input,
             commonPrefixListString = commonPrefix,
-            yomiTrie = wikiYomiTrie!!,
-            tokenArray = wikiTokenArray!!,
-            tangoTrie = wikiTangoTrie!!,
-            succinctBitVectorLBSYomi = wikiSuccinctBitVectorLBSYomi!!,
-            succinctBitVectorIsLeafYomi = wikiSuccinctBitVectorIsLeaf!!,
-            succinctBitVectorTokenArray = wikiSuccinctBitVectorTokenArray!!,
-            succinctBitVectorTangoLBS = wikiSuccinctBitVectorLBSTango!!,
+            yomiTrie = wikiYomiTrie,
+            tokenArray = wikiTokenArray,
+            tangoTrie = wikiTangoTrie,
+            succinctBitVectorLBSYomi = wikiSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = wikiSuccinctBitVectorIsLeaf,
+            succinctBitVectorTokenArray = wikiSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = wikiSuccinctBitVectorLBSTango,
             type = 25,
             4
         )
@@ -4353,19 +4379,19 @@ class KanaKanjiEngine {
     ): List<Candidate> {
         val commonPrefix = commonPrefixMozcUTWeb(
             input = input,
-            yomiTrie = neologdYomiTrie!!,
-            succinctBitVector = neologdSuccinctBitVectorLBSYomi!!,
+            yomiTrie = neologdYomiTrie,
+            succinctBitVector = neologdSuccinctBitVectorLBSYomi,
         )
         return deferredFromMozcUTDictionary(
             input = input,
             commonPrefixListString = commonPrefix,
-            yomiTrie = neologdYomiTrie!!,
-            tokenArray = neologdTokenArray!!,
-            tangoTrie = neologdTangoTrie!!,
-            succinctBitVectorLBSYomi = neologdSuccinctBitVectorLBSYomi!!,
-            succinctBitVectorIsLeafYomi = neologdSuccinctBitVectorIsLeaf!!,
-            succinctBitVectorTokenArray = neologdSuccinctBitVectorTokenArray!!,
-            succinctBitVectorTangoLBS = neologdSuccinctBitVectorLBSTango!!,
+            yomiTrie = neologdYomiTrie,
+            tokenArray = neologdTokenArray,
+            tangoTrie = neologdTangoTrie,
+            succinctBitVectorLBSYomi = neologdSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = neologdSuccinctBitVectorIsLeaf,
+            succinctBitVectorTokenArray = neologdSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = neologdSuccinctBitVectorLBSTango,
             type = 26,
             4
         )
@@ -4376,19 +4402,19 @@ class KanaKanjiEngine {
     ): List<Candidate> {
         val commonPrefix = commonPrefixMozcUTWeb(
             input = input,
-            yomiTrie = webYomiTrie!!,
-            succinctBitVector = webSuccinctBitVectorLBSYomi!!,
+            yomiTrie = webYomiTrie,
+            succinctBitVector = webSuccinctBitVectorLBSYomi,
         )
         return deferredFromMozcUTDictionary(
             input = input,
             commonPrefixListString = commonPrefix,
-            yomiTrie = webYomiTrie!!,
-            tokenArray = webTokenArray!!,
-            tangoTrie = webTangoTrie!!,
-            succinctBitVectorLBSYomi = webSuccinctBitVectorLBSYomi!!,
-            succinctBitVectorIsLeafYomi = webSuccinctBitVectorIsLeaf!!,
-            succinctBitVectorTokenArray = webSuccinctBitVectorTokenArray!!,
-            succinctBitVectorTangoLBS = webSuccinctBitVectorLBSTango!!,
+            yomiTrie = webYomiTrie,
+            tokenArray = webTokenArray,
+            tangoTrie = webTangoTrie,
+            succinctBitVectorLBSYomi = webSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = webSuccinctBitVectorIsLeaf,
+            succinctBitVectorTokenArray = webSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = webSuccinctBitVectorLBSTango,
             type = 27,
             4
         )
