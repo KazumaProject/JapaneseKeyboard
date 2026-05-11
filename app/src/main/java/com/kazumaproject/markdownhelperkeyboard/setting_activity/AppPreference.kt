@@ -43,6 +43,8 @@ object AppPreference {
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
     private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 4)
+    private val CANDIDATE_ORDER_OVERRIDE_ENABLE =
+        Pair("candidate_order_override_enable_preference", false)
     private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
     private val MOZCUT_PLACES = Pair("mozc_ut_places_preference", false)
     private val MOZCUT_WIKI = Pair("mozc_ut_wiki_preference", false)
@@ -915,6 +917,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(N_BEST_PREFERENCE.first, value ?: 4)
+        }
+
+    var candidate_order_override_enable_preference: Boolean?
+        get() = preferences.getBoolean(
+            CANDIDATE_ORDER_OVERRIDE_ENABLE.first,
+            CANDIDATE_ORDER_OVERRIDE_ENABLE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CANDIDATE_ORDER_OVERRIDE_ENABLE.first, value ?: false)
         }
 
     var learn_dictionary_preference: Boolean?
