@@ -16022,11 +16022,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.distinctBy { it.string }
 
-        val orderedCandidates = withContext(Dispatchers.IO) {
-            candidateOrderOverrideRepository.applyOrder(
-                input = insertString,
-                candidates = filteredCandidates
-            )
+        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
+            withContext(Dispatchers.IO) {
+                candidateOrderOverrideRepository.applyOrder(
+                    input = insertString,
+                    candidates = filteredCandidates
+                )
+            }
+        } else {
+            filteredCandidates
         }
 
         updateBunsetsuStateAfterCandidateMerge(
@@ -16171,11 +16175,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.distinctBy { it.string }
 
-        val orderedCandidates = withContext(Dispatchers.IO) {
-            candidateOrderOverrideRepository.applyOrder(
-                input = insertString,
-                candidates = filteredCandidates
-            )
+        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
+            withContext(Dispatchers.IO) {
+                candidateOrderOverrideRepository.applyOrder(
+                    input = insertString,
+                    candidates = filteredCandidates
+                )
+            }
+        } else {
+            filteredCandidates
         }
 
         updateBunsetsuStateAfterCandidateMerge(
@@ -16329,11 +16337,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.distinctBy { it.string }
 
-        val orderedCandidates = withContext(Dispatchers.IO) {
-            candidateOrderOverrideRepository.applyOrder(
-                input = insertString,
-                candidates = filteredCandidates
-            )
+        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
+            withContext(Dispatchers.IO) {
+                candidateOrderOverrideRepository.applyOrder(
+                    input = insertString,
+                    candidates = filteredCandidates
+                )
+            }
+        } else {
+            filteredCandidates
         }
 
         updateBunsetsuStateAfterCandidateMerge(

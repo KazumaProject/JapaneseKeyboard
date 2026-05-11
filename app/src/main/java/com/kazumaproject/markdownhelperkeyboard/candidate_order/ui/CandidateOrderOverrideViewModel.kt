@@ -1,14 +1,20 @@
 package com.kazumaproject.markdownhelperkeyboard.candidate_order.ui
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderItem
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.SavedCandidateOrderGroup
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,12 +27,42 @@ import javax.inject.Inject
 data class CandidateOrderOverrideUiState(
     val reading: String = "",
     val candidates: List<CandidateOrderItem> = emptyList(),
+    val savedOrders: List<SavedCandidateOrderGroup> = emptyList(),
     val isLoading: Boolean = false,
     val message: String? = null
 )
 
+internal fun filterCandidateOrderEditableCandidates(
+    reading: String,
+    candidates: List<Candidate>
+): List<Candidate> {
+    return candidates
+        .filter { candidate ->
+            candidate.string.isNotBlank() &&
+                candidate.length.toInt() == reading.length
+        }
+        .distinctBy { it.string }
+}
+
+internal fun List<CandidateOrderOverrideEntity>.toSavedCandidateOrderGroups(): List<SavedCandidateOrderGroup> {
+    return groupBy { it.input }
+        .map { (input, rows) ->
+            val sortedRows = rows.sortedBy { it.rank }
+            SavedCandidateOrderGroup(
+                input = input,
+                candidates = sortedRows.map { it.candidate },
+                updatedAt = sortedRows.maxOfOrNull { it.updatedAt } ?: 0L
+            )
+        }
+        .sortedWith(
+            compareByDescending<SavedCandidateOrderGroup> { it.updatedAt }
+                .thenBy { it.input }
+        )
+}
+
 @HiltViewModel
 class CandidateOrderOverrideViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val kanaKanjiEngine: KanaKanjiEngine,
     private val appPreference: AppPreference,
     private val userDictionaryRepository: UserDictionaryRepository,
@@ -36,6 +72,17 @@ class CandidateOrderOverrideViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CandidateOrderOverrideUiState())
     val uiState: StateFlow<CandidateOrderOverrideUiState> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            candidateOrderOverrideRepository.observeAll()
+                .collect { entities ->
+                    _uiState.update {
+                        it.copy(savedOrders = entities.toSavedCandidateOrderGroups())
+                    }
+                }
+        }
+    }
 
     fun updateReading(reading: String) {
         _uiState.update { it.copy(reading = reading) }
@@ -69,8 +116,7 @@ class CandidateOrderOverrideViewModel @Inject constructor(
                     omissionSearchOffsetScore = appPreference.omission_search_offset_score_preference
                 )
             }
-                .filter { it.string.isNotBlank() }
-                .distinctBy { it.string }
+                .let { filterCandidateOrderEditableCandidates(reading, it) }
 
             val orderedCandidates = withContext(Dispatchers.IO) {
                 candidateOrderOverrideRepository.applyOrder(reading, candidates)
@@ -111,17 +157,32 @@ class CandidateOrderOverrideViewModel @Inject constructor(
                 input = reading,
                 candidates = candidates.map { it.candidate }
             )
-            _uiState.update { it.copy(message = "保存しました") }
+            _uiState.update { it.copy(message = context.getString(R.string.candidate_order_override_saved)) }
         }
     }
 
-    fun deleteCurrentReadingOrder() {
-        val reading = uiState.value.reading.trim()
-        if (reading.isEmpty()) return
+    fun deleteSavedOrder(input: String) {
+        val normalizedInput = input.trim()
+        if (normalizedInput.isEmpty()) return
 
         viewModelScope.launch(Dispatchers.IO) {
-            candidateOrderOverrideRepository.deleteByInput(reading)
-            _uiState.update { it.copy(message = "削除しました") }
+            candidateOrderOverrideRepository.deleteByInput(normalizedInput)
+            _uiState.update {
+                it.copy(
+                    message = context.getString(
+                        R.string.candidate_order_override_saved_order_deleted
+                    )
+                )
+            }
+        }
+    }
+
+    fun deleteAllSavedOrders() {
+        viewModelScope.launch(Dispatchers.IO) {
+            candidateOrderOverrideRepository.deleteAll()
+            _uiState.update {
+                it.copy(message = context.getString(R.string.candidate_order_override_delete_all_done))
+            }
         }
     }
 
