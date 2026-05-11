@@ -32,6 +32,11 @@ data class CandidateOrderOverrideUiState(
     val message: String? = null
 )
 
+internal data class CandidateOrderEditingState(
+    val reading: String,
+    val candidates: List<CandidateOrderItem>
+)
+
 internal fun filterCandidateOrderEditableCandidates(
     reading: String,
     candidates: List<Candidate>
@@ -60,6 +65,21 @@ internal fun List<CandidateOrderOverrideEntity>.toSavedCandidateOrderGroups(): L
         )
 }
 
+internal fun SavedCandidateOrderGroup.toCandidateOrderEditingState(): CandidateOrderEditingState? {
+    val normalizedInput = input.trim()
+    if (normalizedInput.isEmpty() || candidates.isEmpty()) return null
+
+    return CandidateOrderEditingState(
+        reading = normalizedInput,
+        candidates = candidates.mapIndexed { index, candidate ->
+            CandidateOrderItem(
+                candidate = candidate,
+                originalIndex = index
+            )
+        }
+    )
+}
+
 @HiltViewModel
 class CandidateOrderOverrideViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -85,7 +105,20 @@ class CandidateOrderOverrideViewModel @Inject constructor(
     }
 
     fun updateReading(reading: String) {
+        if (uiState.value.reading == reading) return
         _uiState.update { it.copy(reading = reading) }
+    }
+
+    fun editSavedOrder(savedOrder: SavedCandidateOrderGroup) {
+        val editingState = savedOrder.toCandidateOrderEditingState() ?: return
+
+        _uiState.update {
+            it.copy(
+                reading = editingState.reading,
+                candidates = editingState.candidates,
+                message = null
+            )
+        }
     }
 
     fun fetchCandidates() {

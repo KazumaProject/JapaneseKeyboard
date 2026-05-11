@@ -9,6 +9,7 @@ import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.SavedCandi
 import com.kazumaproject.markdownhelperkeyboard.databinding.ListItemSavedCandidateOrderBinding
 
 class SavedCandidateOrderAdapter(
+    private val onEdit: (SavedCandidateOrderGroup) -> Unit,
     private val onDeleteInput: (String) -> Unit
 ) : ListAdapter<SavedCandidateOrderGroup, SavedCandidateOrderAdapter.ViewHolder>(DiffCallback()) {
 
@@ -34,6 +35,9 @@ class SavedCandidateOrderAdapter(
             binding.textSavedCandidateOrderCandidates.text = item.candidates
                 .mapIndexed { index, candidate -> "${index + 1}. $candidate" }
                 .joinToString(separator = "\n")
+            binding.root.setOnClickListener {
+                onEdit(item)
+            }
             binding.buttonDeleteSavedCandidateOrder.setOnClickListener {
                 onDeleteInput(item.input)
             }
