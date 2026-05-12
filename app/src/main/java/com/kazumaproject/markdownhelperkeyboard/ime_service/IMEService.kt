@@ -130,6 +130,7 @@ import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.core.domain.window.getScreenHeight
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
@@ -194,9 +195,9 @@ import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.Physi
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutContext
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalShortcutMatcher
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutItem
+import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
-import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.DeleteKeyFlickDeleteTargetRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.GemmaPromptTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
@@ -211,6 +212,13 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionApplier
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyActionDisplayMetadata
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyActionDisplayOverrideApplier
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyActionResolver
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyPlacementOverrideApplier
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyRepository
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideEntity
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
 import com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
@@ -247,6 +255,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -403,6 +412,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     @Inject
     lateinit var gemmaPromptTemplateRepository: GemmaPromptTemplateRepository
 
+    @Inject
+    lateinit var sumireSpecialKeyRepository: SumireSpecialKeyRepository
+
     private var zenzEngine: ZenzEngine? = null
 
     private var shortcutAdapter: ShortcutAdapter? = null
@@ -528,6 +540,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var cachedSymbols: List<Symbol>? = null
     private var cachedClickedSymbolHistory: List<ClickedSymbol>? = null
     private var currentClipboardItems: List<ClipboardItem> = emptyList()
+    private var sumireSpecialKeyActionOverrides: List<SumireSpecialKeyActionOverrideEntity> =
+        emptyList()
+    private var sumireSpecialKeyPlacementOverrides: List<SumireSpecialKeyPlacementOverrideEntity> =
+        emptyList()
 
     private var deleteLongPressJob: Job? = null
     private var rightLongPressJob: Job? = null
@@ -1100,6 +1116,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         observeDeleteKeyFlickTargets()
+        observeSumireSpecialKeyOverrides()
 
         suggestionAdapter = SuggestionAdapter().apply {
             onListUpdated = {
@@ -1209,6 +1226,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 deleteKeyFlickTargetChars = targets.mapNotNull { target ->
                     target.symbol.singleOrNull()
                 }.toSet()
+            }
+        }
+    }
+
+    private fun observeSumireSpecialKeyOverrides() {
+        ioScope.launch {
+            combine(
+                sumireSpecialKeyRepository.observeAllPlacementOverrides(),
+                sumireSpecialKeyRepository.observeAllActionOverrides()
+            ) { placementOverrides, actionOverrides ->
+                placementOverrides to actionOverrides
+            }.collect { (placementOverrides, actionOverrides) ->
+                sumireSpecialKeyPlacementOverrides = placementOverrides
+                sumireSpecialKeyActionOverrides = actionOverrides
+                withContext(Dispatchers.Main.immediate) {
+                    if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
+                        refreshActiveSumireLayoutIfNeeded()
+                    } else {
+                        renderCurrentKeyboardStateOnActiveSurface()
+                    }
+                }
             }
         }
     }
@@ -4672,6 +4710,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         renderQwertyStateOnActiveSurface()
     }
 
+    private fun refreshActiveSumireLayoutIfNeeded() {
+        if (qwertyMode.value != TenKeyQWERTYMode.Sumire) return
+        val surface = getActiveKeyboardSurface() ?: return
+        val customLayout = surface.customLayout ?: return
+        setSumireLayoutTo(customLayout)
+        renderDynamicKeysOnActiveSurface()
+    }
+
     private fun defaultInputModeFor(inputType: InputTypeForIME): InputMode {
         return when (inputType) {
             InputTypeForIME.TextEmailAddress,
@@ -4702,16 +4748,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             "katakana_toggle_key" to currentKatakanaKeyIndex,
             "space_convert_key" to currentSpaceKeyIndex,
         )
+        val layoutType = sumireInputKeyLayoutType ?: "toggle"
         return applyCircularSlotActionSettings(
             KeyboardDefaultLayouts.createFinalLayout(
                 mode = customKeyboardMode,
                 dynamicKeyStates = dynamicStates,
-                inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
+                inputLayoutType = layoutType,
                 inputStyle = sumireInputStyle ?: "default",
                 deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
             ),
             customKeyboardMode
-        ).let(::applyDeleteKeyFlickPreferences)
+        ).let { baseLayout ->
+            SumireSpecialKeyActionDisplayOverrideApplier.apply(
+                layout = baseLayout,
+                layoutType = layoutType,
+                inputMode = customKeyboardMode.name,
+                overrides = sumireSpecialKeyActionOverrides,
+                displayMetadata = sumireSpecialKeyActionDisplayMetadata()
+            )
+        }.let { layout ->
+            SumireSpecialKeyPlacementOverrideApplier.apply(
+                layout = layout,
+                layoutType = layoutType,
+                inputMode = customKeyboardMode.name,
+                overrides = sumireSpecialKeyPlacementOverrides
+            )
+        }
+    }
+
+    private fun sumireSpecialKeyActionDisplayMetadata(): List<SumireSpecialKeyActionDisplayMetadata> {
+        return KeyActionMapper.getDisplayActions(this).map {
+            SumireSpecialKeyActionDisplayMetadata(
+                action = it.action,
+                displayName = it.displayName,
+                iconResId = it.iconResId
+            )
+        }
     }
 
     private fun currentDeleteKeyFlickSettings(): DeleteKeyFlickSettings {
@@ -4733,11 +4805,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickView: FlickKeyboardView,
         layout: KeyboardLayout
     ) {
+        flickView.clearSumireSpecialKeyActionResolver()
         flickView.setKeyboard(applyDeleteKeyFlickPreferences(layout))
     }
 
     private fun setSumireLayoutTo(flickView: FlickKeyboardView) {
-        setKeyboardWithDeleteKeyFlickPreferences(flickView, createSumireKeyboardLayout())
+        val layoutType = sumireInputKeyLayoutType ?: "toggle"
+        flickView.setSumireSpecialKeyActionResolver(
+            resolver = SumireSpecialKeyActionResolver(sumireSpecialKeyActionOverrides)::resolve,
+            layoutType = layoutType,
+            inputMode = customKeyboardMode.name
+        )
+        flickView.setKeyboard(createSumireKeyboardLayout())
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
@@ -7291,26 +7370,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         customLayoutDefault.isVisible = true
                         if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                             currentEnterKeyIndex = currentInputType.getEnterKeyIndexSumire()
-                            val hiraganaLayout = applyCircularSlotActionSettings(
-                                KeyboardDefaultLayouts.createFinalLayout(
-                                    mode = customKeyboardMode,
-                                    dynamicKeyStates = mapOf(
-                                        "enter_key" to currentEnterKeyIndex,
-                                        "dakuten_toggle_key" to currentDakutenKeyIndex,
-                                        "katakana_toggle_key" to currentKatakanaKeyIndex,
-                                        "space_convert_key" to currentSpaceKeyIndex,
-                                    ),
-                                    inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
-                                    inputStyle = sumireInputStyle ?: "default",
-                                    deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
-                                ),
-                                customKeyboardMode
-                            )
-                            setKeyboardWithDeleteKeyFlickPreferences(
-                                customLayoutDefault,
-                                hiraganaLayout
-                            )
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+                            setSumireLayoutTo(customLayoutDefault)
                         } else {
                             setNumberLayoutTo(customLayoutDefault)
                         }
@@ -7439,26 +7500,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             TenKeyQWERTYMode.Sumire -> {
                 when (customKeyboardMode) {
                     KeyboardInputMode.HIRAGANA -> {
-                        val dynamicStates = mapOf(
-                            "enter_key" to currentEnterKeyIndex,
-                            "dakuten_toggle_key" to currentDakutenKeyIndex,
-                            "space_convert_key" to currentSpaceKeyIndex,
-                            "katakana_toggle_key" to currentKatakanaKeyIndex
-                        )
-
                         Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
-
-                        val finalLayout = applyCircularSlotActionSettings(
-                            KeyboardDefaultLayouts.createFinalLayout(
-                                mode = customKeyboardMode,
-                                dynamicKeyStates = dynamicStates,
-                                inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
-                                inputStyle = sumireInputStyle ?: "default",
-                                deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
-                            ),
-                            customKeyboardMode
-                        )
-                        setCustomLayoutOnActiveSurface(finalLayout)
+                        getActiveKeyboardSurface()?.customLayout?.let(::setSumireLayoutTo)
                     }
 
                     KeyboardInputMode.ENGLISH -> {
@@ -7477,50 +7520,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 previousTenKeyQWERTYMode = TenKeyQWERTYMode.Sumire
                             }
                         } else {
-                            val dynamicStates = mapOf(
-                                "enter_key" to currentEnterKeyIndex,
-                                "dakuten_toggle_key" to currentDakutenKeyIndex,
-                                "space_convert_key" to currentSpaceKeyIndex,
-                                "katakana_toggle_key" to currentKatakanaKeyIndex
-                            )
-
                             Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
-
-                            val finalLayout = applyCircularSlotActionSettings(
-                                KeyboardDefaultLayouts.createFinalLayout(
-                                    mode = customKeyboardMode,
-                                    dynamicKeyStates = dynamicStates,
-                                    inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
-                                    inputStyle = sumireInputStyle ?: "default",
-                                    deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
-                                ),
-                                customKeyboardMode
-                            )
-                            setCustomLayoutOnActiveSurface(finalLayout)
+                            getActiveKeyboardSurface()?.customLayout?.let(::setSumireLayoutTo)
                         }
                     }
 
                     KeyboardInputMode.SYMBOLS -> {
-                        val dynamicStates = mapOf(
-                            "enter_key" to currentEnterKeyIndex,
-                            "dakuten_toggle_key" to currentDakutenKeyIndex,
-                            "space_convert_key" to currentSpaceKeyIndex,
-                            "katakana_toggle_key" to currentKatakanaKeyIndex
-                        )
-
                         Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
-
-                        val finalLayout = applyCircularSlotActionSettings(
-                            KeyboardDefaultLayouts.createFinalLayout(
-                                mode = customKeyboardMode,
-                                dynamicKeyStates = dynamicStates,
-                                inputLayoutType = sumireInputKeyLayoutType ?: "toggle",
-                                inputStyle = sumireInputStyle ?: "default",
-                                deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
-                            ),
-                            customKeyboardMode
-                        )
-                        setCustomLayoutOnActiveSurface(finalLayout)
+                        getActiveKeyboardSurface()?.customLayout?.let(::setSumireLayoutTo)
                     }
                 }
             }

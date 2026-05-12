@@ -63,6 +63,11 @@ class MainActivity : AppCompatActivity() {
         handleIntent(intent)
     }
 
+    override fun onSupportNavigateUp(): Boolean {
+        val navController = findNavController(R.id.nav_host_fragment_activity_main)
+        return navController.navigateUp() || super.onSupportNavigateUp()
+    }
+
     /**
      * Intentを処理して適切な画面に遷移する
      */
