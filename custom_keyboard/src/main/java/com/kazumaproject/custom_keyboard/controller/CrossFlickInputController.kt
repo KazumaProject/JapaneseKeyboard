@@ -44,6 +44,13 @@ class CrossFlickInputController(
         fun onFlick(action: KeyAction, isFlick: Boolean, direction: FlickDirection) {
             onFlick(action, isFlick)
         }
+        fun onFlickCommitted(
+            fallbackAction: KeyAction?,
+            isFlick: Boolean,
+            direction: FlickDirection
+        ) {
+            fallbackAction?.let { onFlick(it, isFlick, direction) }
+        }
 
         fun onFlickLongPress(action: KeyAction)
         fun onFlickLongPress(action: KeyAction, direction: FlickDirection) {
@@ -295,24 +302,18 @@ class CrossFlickInputController(
 
     // ACTION_UP 時に確定処理を行う。長押し済みかどうかで呼ぶコールバックを切り替える。
     private fun commitAction() {
-        val isFlick = currentDirection != FlickDirection.TAP
         when (inputMode) {
             InputMode.ACTION -> {
-                val flickActionToCommit = resolveAction(currentDirection)
-                if (isLongPressTriggered) {
-                    listener?.onFlickUpAfterLongPress(
-                        flickActionToCommit?.toKeyAction() ?: KeyAction.Cancel,
-                        isFlick,
-                        currentDirection
-                    )
-                } else {
-                    flickActionToCommit?.let {
-                        listener?.onFlick(it.toKeyAction(), isFlick, currentDirection)
-                    }
-                }
+                commitCrossFlickAction(
+                    currentDirection = currentDirection,
+                    flickActionMap = flickActionMap,
+                    isLongPressTriggered = isLongPressTriggered,
+                    listener = listener
+                )
             }
 
             InputMode.TEXT -> {
+                val isFlick = currentDirection != FlickDirection.TAP
                 val output = resolveText(currentDirection, preferLongPress = isLongPressMode)
                 if (!output.isNullOrEmpty()) {
                     listener?.onFlick(KeyAction.Text(output), isFlick, currentDirection)
@@ -377,7 +378,7 @@ class CrossFlickInputController(
 
     // FlickDirection を候補リストに展開して flickActionMap を引く。near/far 両方に対応する。
     private fun resolveAction(direction: FlickDirection): FlickAction? {
-        for (candidate in getDirectionCandidates(direction)) {
+        for (candidate in direction.directionCandidates()) {
             val action = flickActionMap[candidate]
             if (action != null) {
                 return action
@@ -405,7 +406,7 @@ class CrossFlickInputController(
         direction: FlickDirection,
         source: Map<FlickDirection, String>
     ): String? {
-        for (candidate in getDirectionCandidates(direction)) {
+        for (candidate in direction.directionCandidates()) {
             val value = source[candidate]
             if (!value.isNullOrEmpty()) {
                 return value
@@ -435,18 +436,6 @@ class CrossFlickInputController(
 
     // FlickDirection を優先候補リストへ展開する。UP_LEFT_FAR/UP_RIGHT_FAR は near 方向へフォールバックする。
     // UP_LEFT/UP_RIGHT は far→near の逆順でフォールバックし、どちらの表記で渡されても解決できる。
-    private fun getDirectionCandidates(direction: FlickDirection): List<FlickDirection> {
-        return when (direction) {
-            FlickDirection.TAP -> listOf(FlickDirection.TAP)
-            FlickDirection.UP -> listOf(FlickDirection.UP)
-            FlickDirection.DOWN -> listOf(FlickDirection.DOWN)
-            FlickDirection.UP_LEFT_FAR -> listOf(FlickDirection.UP_LEFT_FAR, FlickDirection.UP_LEFT)
-            FlickDirection.UP_LEFT -> listOf(FlickDirection.UP_LEFT, FlickDirection.UP_LEFT_FAR)
-            FlickDirection.UP_RIGHT_FAR -> listOf(FlickDirection.UP_RIGHT_FAR, FlickDirection.UP_RIGHT)
-            FlickDirection.UP_RIGHT -> listOf(FlickDirection.UP_RIGHT, FlickDirection.UP_RIGHT_FAR)
-        }
-    }
-
     // 指定方向に CrossFlickPopupView を生成して表示する。通常フリック中は highlighted=true で単体表示する。
     private fun showActionPopup(direction: FlickDirection, highlighted: Boolean) {
         if (direction == FlickDirection.TAP) return
@@ -772,11 +761,6 @@ class CrossFlickInputController(
         dismissDirectionalPopups()
     }
 
-    private fun FlickAction.toKeyAction(): KeyAction = when (this) {
-        is FlickAction.Input -> KeyAction.Text(char)
-        is FlickAction.Action -> action
-    }
-
     private fun resolveWindowAnchor(keyAnchor: View): View? {
         return popupWindowAnchorProvider?.invoke() ?: keyAnchor
     }
@@ -787,4 +771,55 @@ class CrossFlickInputController(
         if (!windowAnchor.isAttachedToWindow) return false
         return windowAnchor.windowToken != null
     }
+}
+
+internal fun commitCrossFlickAction(
+    currentDirection: FlickDirection,
+    flickActionMap: Map<FlickDirection, FlickAction>,
+    isLongPressTriggered: Boolean,
+    listener: CrossFlickInputController.CrossFlickListener?
+) {
+    val isFlick = currentDirection != FlickDirection.TAP
+    val flickActionToCommit = resolveCrossFlickAction(currentDirection, flickActionMap)
+    if (isLongPressTriggered) {
+        listener?.onFlickUpAfterLongPress(
+            flickActionToCommit?.toKeyAction() ?: KeyAction.Cancel,
+            isFlick,
+            currentDirection
+        )
+    } else {
+        listener?.onFlickCommitted(
+            flickActionToCommit?.toKeyAction(),
+            isFlick,
+            currentDirection
+        )
+    }
+}
+
+internal fun resolveCrossFlickAction(
+    direction: FlickDirection,
+    flickActionMap: Map<FlickDirection, FlickAction>
+): FlickAction? {
+    for (candidate in direction.directionCandidates()) {
+        val action = flickActionMap[candidate]
+        if (action != null) return action
+    }
+    return null
+}
+
+internal fun FlickDirection.directionCandidates(): List<FlickDirection> {
+    return when (this) {
+        FlickDirection.TAP -> listOf(FlickDirection.TAP)
+        FlickDirection.UP -> listOf(FlickDirection.UP)
+        FlickDirection.DOWN -> listOf(FlickDirection.DOWN)
+        FlickDirection.UP_LEFT_FAR -> listOf(FlickDirection.UP_LEFT_FAR, FlickDirection.UP_LEFT)
+        FlickDirection.UP_LEFT -> listOf(FlickDirection.UP_LEFT, FlickDirection.UP_LEFT_FAR)
+        FlickDirection.UP_RIGHT_FAR -> listOf(FlickDirection.UP_RIGHT_FAR, FlickDirection.UP_RIGHT)
+        FlickDirection.UP_RIGHT -> listOf(FlickDirection.UP_RIGHT, FlickDirection.UP_RIGHT_FAR)
+    }
+}
+
+internal fun FlickAction.toKeyAction(): KeyAction = when (this) {
+    is FlickAction.Input -> KeyAction.Text(char)
+    is FlickAction.Action -> action
 }
