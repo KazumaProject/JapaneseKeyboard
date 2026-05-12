@@ -40,6 +40,10 @@ import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.datab
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.data.ShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideDao
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideEntity
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideDao
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryDao
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryEntry
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
@@ -72,8 +76,10 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         PhysicalKeyboardShortcutItem::class,
         SpacerDefinition::class,
         CandidateOrderOverrideEntity::class,
+        SumireSpecialKeyActionOverrideEntity::class,
+        SumireSpecialKeyPlacementOverrideEntity::class,
     ],
-    version = 34,
+    version = 35,
     exportSchema = false
 )
 @TypeConverters(
@@ -98,6 +104,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun deleteKeyFlickDeleteTargetDao(): DeleteKeyFlickDeleteTargetDao
     abstract fun physicalKeyboardShortcutDao(): PhysicalKeyboardShortcutDao
     abstract fun candidateOrderOverrideDao(): CandidateOrderOverrideDao
+    abstract fun sumireSpecialKeyActionOverrideDao(): SumireSpecialKeyActionOverrideDao
+    abstract fun sumireSpecialKeyPlacementOverrideDao(): SumireSpecialKeyPlacementOverrideDao
 
     companion object {
 
@@ -855,6 +863,41 @@ abstract class AppDatabase : RoomDatabase() {
                     """
                     CREATE UNIQUE INDEX IF NOT EXISTS `index_candidate_order_override_input_candidate`
                     ON `candidate_order_override`(`input`, `candidate`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_34_35 = object : Migration(34, 35) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `sumire_special_key_action_overrides` (
+                        `layout_type` TEXT NOT NULL,
+                        `input_mode` TEXT NOT NULL,
+                        `key_id` TEXT NOT NULL,
+                        `direction` TEXT NOT NULL,
+                        `override_type` TEXT NOT NULL,
+                        `action_string` TEXT,
+                        `input_text` TEXT,
+                        `updated_at` INTEGER NOT NULL,
+                        PRIMARY KEY(`layout_type`, `input_mode`, `key_id`, `direction`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `sumire_special_key_placement_overrides` (
+                        `layout_type` TEXT NOT NULL,
+                        `input_mode` TEXT NOT NULL,
+                        `key_id` TEXT NOT NULL,
+                        `row_units` INTEGER NOT NULL,
+                        `column_units` INTEGER NOT NULL,
+                        `row_span_units` INTEGER NOT NULL,
+                        `column_span_units` INTEGER NOT NULL,
+                        `updated_at` INTEGER NOT NULL,
+                        PRIMARY KEY(`layout_type`, `input_mode`, `key_id`)
+                    )
                     """.trimIndent()
                 )
             }

@@ -895,4 +895,26 @@
     <string name="candidate_order_override_saved_order_deleted">保存済み候補順を削除しました</string>
     <string name="candidate_order_override_saved_order_candidates_description">保存済み候補</string>
     <string name="candidate_order_override_drag_handle_description">並び替え</string>
+    <string name="sumire_special_key_editor_preference_title">Special key editor</string>
+    <string name="sumire_special_key_editor_preference_summary">Edit Sumire special key actions and placement</string>
+    <string name="sumire_special_key_editor_title">Sumire special keys</string>
+    <string name="sumire_special_key_action_editor_title">Special key action</string>
+    <string name="sumire_special_key_reset_placement">Reset placement</string>
+    <string name="sumire_special_key_reset_all">Reset all</string>
+    <string name="sumire_special_key_save">Save</string>
+    <string name="sumire_special_key_reset_this_key">Reset this key</string>
+    <string name="sumire_special_key_default">Default</string>
+    <string name="sumire_special_key_use_default">Use default</string>
+    <string name="sumire_special_key_default_status">Default</string>
+    <string name="sumire_special_key_override_status">Override</string>
+    <string name="sumire_special_key_no_default_action">No default action</string>
+    <string name="sumire_special_key_dialog_title_tap">Tap のアクションを選択</string>
+    <string name="sumire_special_key_dialog_title_up">上フリックのアクションを選択</string>
+    <string name="sumire_special_key_dialog_title_right">右フリックのアクションを選択</string>
+    <string name="sumire_special_key_dialog_title_down">下フリックのアクションを選択</string>
+    <string name="sumire_special_key_dialog_title_left">左フリックのアクションを選択</string>
+    <string name="sumire_special_key_none">Do nothing</string>
+    <string name="sumire_special_key_input_text">Input text</string>
+    <string name="sumire_special_key_key_action">Special action</string>
+    <string name="sumire_special_key_input_text_hint">Text to input</string>
 </resources>
