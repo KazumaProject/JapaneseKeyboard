@@ -14,6 +14,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.custom_keyboard.data.DisplayAction
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
@@ -32,10 +33,13 @@ class SumireSpecialKeyActionEditorFragment :
     private val binding get() = _binding!!
 
     private val rows = mutableMapOf<SumireSpecialKeyDirection, DirectionRowViews>()
-    private var selectedDirection: SumireSpecialKeyDirection = SumireSpecialKeyDirection.TAP
     private val displayActions: List<DisplayAction> by lazy {
         KeyActionMapper.getDisplayActions(requireContext())
-            .filter { KeyActionMapper.fromKeyAction(it.action) != null }
+            .filter { displayAction ->
+                displayAction.action !is KeyAction.Text &&
+                        displayAction.action !is KeyAction.InputText &&
+                        KeyActionMapper.fromKeyAction(displayAction.action) != null
+            }
     }
     private val displayActionsByString: Map<String, DisplayAction> by lazy {
         displayActions.mapNotNull { action ->
@@ -70,9 +74,7 @@ class SumireSpecialKeyActionEditorFragment :
                 isClickable = true
                 isFocusable = true
                 setOnClickListener {
-                    selectedDirection = direction
-                    renderActionList()
-                    renderRows(viewModel.uiState.value)
+                    showActionSelectionDialog(direction)
                 }
             }
             val icon = ImageView(requireContext()).apply {
@@ -102,7 +104,6 @@ class SumireSpecialKeyActionEditorFragment :
             rows[direction] = DirectionRowViews(row, icon, title, action, status)
             binding.actionRowsContainer.addView(row)
         }
-        renderActionList()
     }
 
     private fun observeViewModel() {
@@ -123,10 +124,10 @@ class SumireSpecialKeyActionEditorFragment :
     private fun SumireSpecialKeyDirection.displayLabel(): String {
         return when (this) {
             SumireSpecialKeyDirection.TAP -> "Tap"
-            SumireSpecialKeyDirection.UP -> "上"
-            SumireSpecialKeyDirection.RIGHT -> "右"
-            SumireSpecialKeyDirection.DOWN -> "下"
-            SumireSpecialKeyDirection.LEFT -> "左"
+            SumireSpecialKeyDirection.UP -> "上フリック"
+            SumireSpecialKeyDirection.RIGHT -> "右フリック"
+            SumireSpecialKeyDirection.DOWN -> "下フリック"
+            SumireSpecialKeyDirection.LEFT -> "左フリック"
         }
     }
 
@@ -136,7 +137,6 @@ class SumireSpecialKeyActionEditorFragment :
             val action = draft.actionForDisplay() ?: state.defaultActions[direction]
             val display = action?.displayAction()
             val actionName = display?.displayName ?: action?.fallbackDisplayName().orEmpty()
-            views.root.isSelected = direction == selectedDirection
             views.title.text = direction.displayLabel()
             views.action.text = actionName.ifBlank { getString(R.string.sumire_special_key_no_default_action) }
             views.status.text = if (draft.overrideType == SumireSpecialKeyOverrideType.KEY_ACTION) {
@@ -152,52 +152,29 @@ class SumireSpecialKeyActionEditorFragment :
         }
     }
 
-    private fun renderActionList() {
-        binding.actionListTitle.text = getString(
-            R.string.sumire_special_key_action_list_title,
-            selectedDirection.displayLabel()
-        )
-        binding.actionListContainer.removeAllViews()
-        binding.actionListContainer.addView(actionListRow(
-            title = getString(R.string.sumire_special_key_use_default),
-            iconResId = null,
-            onClick = { viewModel.setDefault(selectedDirection) }
-        ))
-        displayActions.forEach { displayAction ->
-            binding.actionListContainer.addView(actionListRow(
-                title = displayAction.displayName,
-                iconResId = displayAction.iconResId,
-                onClick = { viewModel.setKeyAction(selectedDirection, displayAction.action) }
-            ))
-        }
+    private fun showActionSelectionDialog(direction: SumireSpecialKeyDirection) {
+        val items = listOf(getString(R.string.sumire_special_key_use_default)) +
+                displayActions.map { it.displayName }
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(direction.dialogTitle())
+            .setItems(items.toTypedArray()) { _, which ->
+                if (which == 0) {
+                    viewModel.setDefault(direction)
+                } else {
+                    viewModel.setKeyAction(direction, displayActions[which - 1].action)
+                }
+                renderRows(viewModel.uiState.value)
+            }
+            .show()
     }
 
-    private fun actionListRow(
-        title: String,
-        iconResId: Int?,
-        onClick: () -> Unit
-    ): View {
-        return LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(16, 18, 16, 18)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener { onClick() }
-
-            val icon = ImageView(requireContext()).apply {
-                layoutParams = LinearLayout.LayoutParams(48, 48).apply {
-                    marginEnd = 16
-                }
-                isVisible = iconResId != null
-                iconResId?.let { setImageResource(it) }
-            }
-            val text = TextView(requireContext()).apply {
-                this.text = title
-                textSize = 16f
-            }
-            addView(icon)
-            addView(text)
+    private fun SumireSpecialKeyDirection.dialogTitle(): String {
+        return when (this) {
+            SumireSpecialKeyDirection.TAP -> getString(R.string.sumire_special_key_dialog_title_tap)
+            SumireSpecialKeyDirection.UP -> getString(R.string.sumire_special_key_dialog_title_up)
+            SumireSpecialKeyDirection.RIGHT -> getString(R.string.sumire_special_key_dialog_title_right)
+            SumireSpecialKeyDirection.DOWN -> getString(R.string.sumire_special_key_dialog_title_down)
+            SumireSpecialKeyDirection.LEFT -> getString(R.string.sumire_special_key_dialog_title_left)
         }
     }
 

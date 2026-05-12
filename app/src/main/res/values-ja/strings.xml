@@ -906,7 +906,11 @@
     <string name="sumire_special_key_default_status">既定</string>
     <string name="sumire_special_key_override_status">上書き中</string>
     <string name="sumire_special_key_no_default_action">既定の動作なし</string>
-    <string name="sumire_special_key_action_list_title">%1$s の動作</string>
+    <string name="sumire_special_key_dialog_title_tap">Tap のアクションを選択</string>
+    <string name="sumire_special_key_dialog_title_up">上フリックのアクションを選択</string>
+    <string name="sumire_special_key_dialog_title_right">右フリックのアクションを選択</string>
+    <string name="sumire_special_key_dialog_title_down">下フリックのアクションを選択</string>
+    <string name="sumire_special_key_dialog_title_left">左フリックのアクションを選択</string>
     <string name="sumire_special_key_none">何もしない</string>
     <string name="sumire_special_key_input_text">文字を入力</string>
     <string name="sumire_special_key_key_action">特殊アクション</string>
