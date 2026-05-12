@@ -196,6 +196,65 @@ class SumireSpecialKeyActionResolverTest {
         assertEquals(ResolvedSumireSpecialKeyAction.Default, result)
     }
 
+    @Test
+    fun keyIdMismatchFallsBackAndMatchingKeyIdOverrides() {
+        val resolver = SumireSpecialKeyActionResolver(
+            listOf(
+                entity(
+                    SumireSpecialKeyOverrideType.KEY_ACTION,
+                    keyId = "another_key",
+                    actionString = "Delete"
+                ),
+                entity(
+                    SumireSpecialKeyOverrideType.KEY_ACTION,
+                    keyId = "delete_key",
+                    actionString = "Paste"
+                )
+            )
+        )
+
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Action(KeyAction.Paste),
+            resolver.resolve("toggle", "HIRAGANA", specialKey, SumireSpecialKeyDirection.TAP)
+        )
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Default,
+            resolver.resolve(
+                "toggle",
+                "HIRAGANA",
+                specialKey.copy(keyId = "another_runtime_key"),
+                SumireSpecialKeyDirection.TAP
+            )
+        )
+    }
+
+    @Test
+    fun layoutTypeAndInputModeMustMatchRuntimeValues() {
+        val resolver = SumireSpecialKeyActionResolver(
+            listOf(
+                entity(
+                    SumireSpecialKeyOverrideType.KEY_ACTION,
+                    layoutType = "toggle",
+                    inputMode = "HIRAGANA",
+                    actionString = "Paste"
+                )
+            )
+        )
+
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Default,
+            resolver.resolve("flick", "HIRAGANA", specialKey, SumireSpecialKeyDirection.TAP)
+        )
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Default,
+            resolver.resolve("toggle", "ENGLISH", specialKey, SumireSpecialKeyDirection.TAP)
+        )
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Action(KeyAction.Paste),
+            resolver.resolve("toggle", "HIRAGANA", specialKey, SumireSpecialKeyDirection.TAP)
+        )
+    }
+
     private fun entity(
         overrideType: SumireSpecialKeyOverrideType,
         layoutType: String = "toggle",
