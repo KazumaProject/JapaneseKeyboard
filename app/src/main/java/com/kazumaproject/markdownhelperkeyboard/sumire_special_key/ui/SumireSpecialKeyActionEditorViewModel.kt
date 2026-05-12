@@ -5,7 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
+import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyDefaultActionResolver
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyOverrideType
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyRepository
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideEntity
@@ -27,6 +31,8 @@ data class SumireSpecialKeyActionEditorUiState(
     val layoutType: String = "",
     val inputMode: String = "",
     val keyId: String = "",
+    val defaultActions: Map<SumireSpecialKeyDirection, KeyAction?> =
+        SumireSpecialKeyDirection.entries.associateWith { null },
     val drafts: Map<SumireSpecialKeyDirection, SumireSpecialKeyActionDraft> =
         SumireSpecialKeyDirection.entries.associateWith { SumireSpecialKeyActionDraft() },
     val navigateBack: Boolean = false
@@ -35,6 +41,7 @@ data class SumireSpecialKeyActionEditorUiState(
 @HiltViewModel
 class SumireSpecialKeyActionEditorViewModel @Inject constructor(
     private val repository: SumireSpecialKeyRepository,
+    private val appPreference: AppPreference,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private val layoutType: String = savedStateHandle["layoutType"] ?: ""
@@ -45,7 +52,8 @@ class SumireSpecialKeyActionEditorViewModel @Inject constructor(
         SumireSpecialKeyActionEditorUiState(
             layoutType = layoutType,
             inputMode = inputMode,
-            keyId = keyId
+            keyId = keyId,
+            defaultActions = buildDefaultActions(layoutType, inputMode, keyId)
         )
     )
     val uiState: StateFlow<SumireSpecialKeyActionEditorUiState> = _uiState.asStateFlow()
@@ -55,7 +63,7 @@ class SumireSpecialKeyActionEditorViewModel @Inject constructor(
             repository.observeActionOverridesForKey(layoutType, inputMode, keyId)
                 .collect { overrides ->
                     val drafts = SumireSpecialKeyDirection.entries.associateWith { direction ->
-                        overrides.firstOrNull { it.direction == direction.name }?.toDraft()
+                        overrides.firstOrNull { it.direction == direction.name }?.toDraftForUi()
                             ?: SumireSpecialKeyActionDraft()
                     }
                     _uiState.update { it.copy(drafts = drafts) }
@@ -65,23 +73,6 @@ class SumireSpecialKeyActionEditorViewModel @Inject constructor(
 
     fun setDefault(direction: SumireSpecialKeyDirection) {
         updateDraft(direction, SumireSpecialKeyActionDraft())
-    }
-
-    fun setNone(direction: SumireSpecialKeyDirection) {
-        updateDraft(
-            direction,
-            SumireSpecialKeyActionDraft(SumireSpecialKeyOverrideType.NONE)
-        )
-    }
-
-    fun setInputText(direction: SumireSpecialKeyDirection, text: String) {
-        updateDraft(
-            direction,
-            SumireSpecialKeyActionDraft(
-                overrideType = SumireSpecialKeyOverrideType.INPUT_TEXT,
-                inputText = text
-            )
-        )
     }
 
     fun setKeyAction(direction: SumireSpecialKeyDirection, action: KeyAction) {
@@ -100,7 +91,7 @@ class SumireSpecialKeyActionEditorViewModel @Inject constructor(
         viewModelScope.launch {
             SumireSpecialKeyDirection.entries.forEach { direction ->
                 val draft = state.drafts[direction] ?: SumireSpecialKeyActionDraft()
-                if (draft.overrideType == SumireSpecialKeyOverrideType.DEFAULT) {
+                if (draft.overrideType != SumireSpecialKeyOverrideType.KEY_ACTION) {
                     repository.deleteActionDirection(
                         state.layoutType,
                         state.inputMode,
@@ -145,14 +136,49 @@ class SumireSpecialKeyActionEditorViewModel @Inject constructor(
         }
     }
 
-    private fun SumireSpecialKeyActionOverrideEntity.toDraft(): SumireSpecialKeyActionDraft {
+    private fun buildDefaultActions(
+        layoutType: String,
+        inputMode: String,
+        keyId: String
+    ): Map<SumireSpecialKeyDirection, KeyAction?> {
+        val mode = runCatching { KeyboardInputMode.valueOf(inputMode) }
+            .getOrDefault(KeyboardInputMode.HIRAGANA)
+        val layout = KeyboardDefaultLayouts.createFinalLayout(
+            mode = mode,
+            dynamicKeyStates = previewDynamicStates,
+            inputLayoutType = layoutType.ifBlank { "toggle" },
+            inputStyle = appPreference.sumire_keyboard_style,
+            deleteKeyFlickSettings = KeyboardDefaultLayouts.DeleteKeyFlickSettings(
+                left = appPreference.delete_key_left_flick_preference,
+                up = appPreference.delete_key_up_flick_preference,
+                down = appPreference.delete_key_down_flick_preference
+            )
+        )
+        return SumireSpecialKeyDirection.entries.associateWith { direction ->
+            SumireSpecialKeyDefaultActionResolver.resolve(layout, keyId, direction)
+        }
+    }
+
+    private fun SumireSpecialKeyActionOverrideEntity.toDraftForUi(): SumireSpecialKeyActionDraft {
+        val type = runCatching {
+            SumireSpecialKeyOverrideType.valueOf(overrideType)
+        }.getOrDefault(SumireSpecialKeyOverrideType.DEFAULT)
+        if (type != SumireSpecialKeyOverrideType.KEY_ACTION) {
+            return SumireSpecialKeyActionDraft()
+        }
         return SumireSpecialKeyActionDraft(
-            overrideType = runCatching {
-                SumireSpecialKeyOverrideType.valueOf(overrideType)
-            }.getOrDefault(SumireSpecialKeyOverrideType.DEFAULT),
+            overrideType = type,
             actionString = actionString,
-            inputText = inputText
+            inputText = null
+        )
+    }
+
+    private companion object {
+        val previewDynamicStates = mapOf(
+            "enter_key" to 0,
+            "dakuten_toggle_key" to 0,
+            "katakana_toggle_key" to 0,
+            "space_convert_key" to 0
         )
     }
 }
-

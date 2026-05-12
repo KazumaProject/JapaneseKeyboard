@@ -51,6 +51,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.ResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
+import com.kazumaproject.custom_keyboard.data.buildSumireSpecialKeyDisplayActionMap
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.custom_keyboard.data.toCircularFlickKeyMaps
 import com.kazumaproject.custom_keyboard.data.toLegacyFlickDirection
@@ -1193,6 +1194,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                     ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 Log.d("FlickKeyboardView KeyType.CROSS_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
+                    val displayFlickActionMap =
+                        buildSumireSpecialKeyDisplayActionMap(keyData, flickActionMap) { data, direction ->
+                            resolveSumireSpecialKeyOverride(data, direction)
+                        }
                     val controller = CrossFlickInputController(context).apply {
                         setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
@@ -1209,7 +1214,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 when (
                                     val resolved = resolveSumireSpecialKeyOverride(
                                         keyData,
-                                        SumireSpecialKeyDirection.TAP
+                                        direction.toSumireSpecialKeyDirectionOrNull()
+                                            ?: SumireSpecialKeyDirection.TAP
                                     )
                                 ) {
                                     ResolvedSumireSpecialKeyAction.Default ->
@@ -1268,7 +1274,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
                         }
 
-                        attach(keyView, flickActionMap)
+                        attach(keyView, displayFlickActionMap)
                     }
 
                     when (themeMode) {
