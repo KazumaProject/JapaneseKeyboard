@@ -901,7 +901,12 @@
     <string name="sumire_special_key_reset_all">すべてリセット</string>
     <string name="sumire_special_key_save">保存</string>
     <string name="sumire_special_key_reset_this_key">このキーをリセット</string>
-    <string name="sumire_special_key_default">既定の動作を使う</string>
+    <string name="sumire_special_key_default">既定</string>
+    <string name="sumire_special_key_use_default">既定に戻す</string>
+    <string name="sumire_special_key_default_status">既定</string>
+    <string name="sumire_special_key_override_status">上書き中</string>
+    <string name="sumire_special_key_no_default_action">既定の動作なし</string>
+    <string name="sumire_special_key_action_list_title">%1$s の動作</string>
     <string name="sumire_special_key_none">何もしない</string>
     <string name="sumire_special_key_input_text">文字を入力</string>
     <string name="sumire_special_key_key_action">特殊アクション</string>

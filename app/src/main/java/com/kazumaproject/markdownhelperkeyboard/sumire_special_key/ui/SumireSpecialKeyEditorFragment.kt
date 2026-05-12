@@ -12,11 +12,14 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.InsertionTarget
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.view.EditableFlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSumireSpecialKeyEditorBinding
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyActionDisplayMetadata
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyActionDisplayOverrideApplier
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -88,8 +91,15 @@ class SumireSpecialKeyEditorFragment : Fragment(R.layout.fragment_sumire_special
                         binding.inputModeSpinner.setSelection(inputIndex)
                     }
                     state.previewLayout?.let { layout ->
-                        binding.sumireSpecialKeyKeyboard.setKeyboard(
+                        val displayLayout = SumireSpecialKeyActionDisplayOverrideApplier.apply(
                             layout = layout,
+                            layoutType = state.layoutType,
+                            inputMode = state.inputMode.name,
+                            overrides = state.actionOverrides,
+                            displayMetadata = sumireSpecialKeyActionDisplayMetadata()
+                        )
+                        binding.sumireSpecialKeyKeyboard.setKeyboard(
+                            layout = displayLayout,
                             editTargetMode = EditableFlickKeyboardView.EditTargetMode.SUMIRE_SPECIAL_KEYS
                         )
                     }
@@ -120,5 +130,14 @@ class SumireSpecialKeyEditorFragment : Fragment(R.layout.fragment_sumire_special
     override fun onPlacementPointerTarget(target: InsertionTarget) = Unit
     override fun onPlacementTapTarget(target: InsertionTarget) = Unit
     override fun onPlacementDropTarget(target: InsertionTarget) = Unit
-}
 
+    private fun sumireSpecialKeyActionDisplayMetadata(): List<SumireSpecialKeyActionDisplayMetadata> {
+        return KeyActionMapper.getDisplayActions(requireContext()).map {
+            SumireSpecialKeyActionDisplayMetadata(
+                action = it.action,
+                displayName = it.displayName,
+                iconResId = it.iconResId
+            )
+        }
+    }
+}

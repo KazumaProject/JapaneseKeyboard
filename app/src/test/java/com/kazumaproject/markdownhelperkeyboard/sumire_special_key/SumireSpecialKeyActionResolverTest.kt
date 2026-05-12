@@ -97,6 +97,72 @@ class SumireSpecialKeyActionResolverTest {
     }
 
     @Test
+    fun keyActionOverrideResolvesTapAndFlickDirectionsIndependently() {
+        val resolver = SumireSpecialKeyActionResolver(
+            listOf(
+                entity(
+                    SumireSpecialKeyOverrideType.KEY_ACTION,
+                    direction = "TAP",
+                    actionString = "Enter"
+                ),
+                entity(
+                    SumireSpecialKeyOverrideType.KEY_ACTION,
+                    direction = "UP",
+                    actionString = "Delete"
+                ),
+                entity(
+                    SumireSpecialKeyOverrideType.KEY_ACTION,
+                    direction = "RIGHT",
+                    actionString = "Space"
+                )
+            )
+        )
+
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Action(KeyAction.Enter),
+            resolver.resolve("toggle", "HIRAGANA", specialKey, SumireSpecialKeyDirection.TAP)
+        )
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Action(KeyAction.Delete),
+            resolver.resolve("toggle", "HIRAGANA", specialKey, SumireSpecialKeyDirection.UP)
+        )
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Action(KeyAction.Space),
+            resolver.resolve("toggle", "HIRAGANA", specialKey, SumireSpecialKeyDirection.RIGHT)
+        )
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Default,
+            resolver.resolve("toggle", "HIRAGANA", specialKey, SumireSpecialKeyDirection.LEFT)
+        )
+    }
+
+    @Test
+    fun directionMismatchDoesNotLeakIntoTapOrOtherFlicks() {
+        val resolver = SumireSpecialKeyActionResolver(
+            listOf(
+                entity(
+                    SumireSpecialKeyOverrideType.KEY_ACTION,
+                    direction = "UP",
+                    actionString = "Delete"
+                )
+            )
+        )
+
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Default,
+            resolver.resolve("toggle", "HIRAGANA", specialKey, SumireSpecialKeyDirection.TAP)
+        )
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Default,
+            resolver.resolve("toggle", "HIRAGANA", specialKey, SumireSpecialKeyDirection.RIGHT)
+        )
+        assertEquals(
+            ResolvedSumireSpecialKeyAction.Action(KeyAction.Delete),
+            resolver.resolve("toggle", "HIRAGANA", specialKey, SumireSpecialKeyDirection.UP)
+        )
+    }
+
+    @Test
     fun inputTextReturnsTextOnlyWhenNonEmpty() {
         val textResult = SumireSpecialKeyActionResolver(
             listOf(entity(SumireSpecialKeyOverrideType.INPUT_TEXT, inputText = "abc"))
@@ -141,4 +207,3 @@ class SumireSpecialKeyActionResolverTest {
         updatedAt = 1L
     )
 }
-

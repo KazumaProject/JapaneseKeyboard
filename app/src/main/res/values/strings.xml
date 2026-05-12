@@ -903,7 +903,12 @@
     <string name="sumire_special_key_reset_all">Reset all</string>
     <string name="sumire_special_key_save">Save</string>
     <string name="sumire_special_key_reset_this_key">Reset this key</string>
-    <string name="sumire_special_key_default">Use default action</string>
+    <string name="sumire_special_key_default">Default</string>
+    <string name="sumire_special_key_use_default">Use default</string>
+    <string name="sumire_special_key_default_status">Default</string>
+    <string name="sumire_special_key_override_status">Override</string>
+    <string name="sumire_special_key_no_default_action">No default action</string>
+    <string name="sumire_special_key_action_list_title">%1$s action</string>
     <string name="sumire_special_key_none">Do nothing</string>
     <string name="sumire_special_key_input_text">Input text</string>
     <string name="sumire_special_key_key_action">Special action</string>

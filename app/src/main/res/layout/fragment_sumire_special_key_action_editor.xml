@@ -19,6 +19,25 @@
         android:layout_weight="1"
         android:orientation="vertical" />
 
+    <TextView
+        android:id="@+id/action_list_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <LinearLayout
+            android:id="@+id/action_list_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
     <Button
         android:id="@+id/save_button"
         android:layout_width="match_parent"
@@ -32,4 +51,3 @@
         android:layout_marginTop="8dp"
         android:text="@string/sumire_special_key_reset_this_key" />
 </LinearLayout>
-
