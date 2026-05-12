@@ -103,6 +103,9 @@
         <action
             android:id="@+id/action_navigation_setting_to_physicalKeyboardShortcutListFragment"
             app:destination="@id/physicalKeyboardShortcutListFragment" />
+        <action
+            android:id="@+id/action_navigation_setting_to_sumireSpecialKeyEditorFragment"
+            app:destination="@id/sumireSpecialKeyEditorFragment" />
     </fragment>
 
     <fragment
@@ -301,6 +304,30 @@
         android:id="@+id/circularSlotActionSettingFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.circular_slot.CircularSlotActionSettingFragment"
         android:label="Circular Flick SLOT4〜6 設定" />
+    <fragment
+        android:id="@+id/sumireSpecialKeyEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.sumire_special_key.ui.SumireSpecialKeyEditorFragment"
+        android:label="@string/sumire_special_key_editor_title"
+        tools:layout="@layout/fragment_sumire_special_key_editor">
+        <action
+            android:id="@+id/action_sumireSpecialKeyEditorFragment_to_sumireSpecialKeyActionEditorFragment"
+            app:destination="@id/sumireSpecialKeyActionEditorFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/sumireSpecialKeyActionEditorFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.sumire_special_key.ui.SumireSpecialKeyActionEditorFragment"
+        android:label="@string/sumire_special_key_action_editor_title"
+        tools:layout="@layout/fragment_sumire_special_key_action_editor">
+        <argument
+            android:name="layoutType"
+            app:argType="string" />
+        <argument
+            android:name="inputMode"
+            app:argType="string" />
+        <argument
+            android:name="keyId"
+            app:argType="string" />
+    </fragment>
     <fragment
         android:id="@+id/flickKeyboardSizeSettingsFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.sumire_custom_key_setting.FlickKeyboardSizeSettingsFragment"

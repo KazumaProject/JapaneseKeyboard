@@ -13,6 +13,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
+import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 
@@ -253,7 +254,184 @@ object KeyboardDefaultLayouts {
             finalLayout = applyKeyState(finalLayout, keyId, stateIndex)
         }
 
-        return applyDeleteKeyFlickSettings(finalLayout, deleteKeyFlickSettings)
+        return ensureSumireSpecialKeyCrossFlickAttach(
+            ensureStableSumireSpecialKeyIds(
+                applyDeleteKeyFlickSettings(finalLayout, deleteKeyFlickSettings)
+            )
+        )
+    }
+
+    /**
+     * keyId をもつ Sumire 特殊キーのうち、
+     * UP / RIGHT / DOWN / LEFT への action override を実行可能にする必要があるキーを
+     * [KeyType.CROSS_FLICK] に強制し、[KeyboardLayout.flickKeyMaps] に keyId ベースの
+     * base flick map alias を追加する。
+     *
+     * dynamicStates / keyId / isSpecialKey / drawableResId / rowSpan / colSpan は維持する。
+     * label に依存しない keyId 主軸の lookup を確立することで、Tap 表示 override で
+     * label が変わっても CrossFlickInputController が attach できるようにする。
+     *
+     * `dakuten_toggle_key` は対象外。
+     */
+    internal fun ensureSumireSpecialKeyCrossFlickAttach(layout: KeyboardLayout): KeyboardLayout {
+        val targetKeyDataByKeyId = layout.items
+            .filterIsInstance<KeyItem>()
+            .mapNotNull { item ->
+                val keyData = item.keyData
+                val keyId = keyData.keyId?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                if (!keyData.isSpecialKey) return@mapNotNull null
+                if (keyId !in SUMIRE_SPECIAL_KEY_CROSS_FLICK_KEY_IDS) return@mapNotNull null
+                keyId to keyData
+            }
+            .toMap()
+        if (targetKeyDataByKeyId.isEmpty()) return layout
+
+        val newItems = layout.items.map { item ->
+            if (item !is KeyItem) return@map item
+            val keyData = item.keyData
+            val keyId = keyData.keyId?.takeIf { it.isNotBlank() }
+            if (!keyData.isSpecialKey || keyId == null) return@map item
+            if (keyId !in SUMIRE_SPECIAL_KEY_CROSS_FLICK_KEY_IDS) return@map item
+            if (keyData.keyType == KeyType.CROSS_FLICK) item
+            else item.copy(keyData = keyData.copy(keyType = KeyType.CROSS_FLICK))
+        }
+        val newKeys = layout.keys.map { keyData ->
+            val keyId = keyData.keyId?.takeIf { it.isNotBlank() } ?: return@map keyData
+            if (!keyData.isSpecialKey) return@map keyData
+            if (keyId !in SUMIRE_SPECIAL_KEY_CROSS_FLICK_KEY_IDS) return@map keyData
+            if (keyData.keyType == KeyType.CROSS_FLICK) keyData
+            else keyData.copy(keyType = KeyType.CROSS_FLICK)
+        }
+
+        val flickMapAliases = mutableMapOf<String, List<Map<FlickDirection, FlickAction>>>()
+        targetKeyDataByKeyId.forEach { (keyId, keyData) ->
+            if (keyId in layout.flickKeyMaps) return@forEach
+            val labelKey = keyData.label.takeIf { it.isNotBlank() }
+            val existingByLabel = labelKey?.let { layout.flickKeyMaps[it] }
+            val baseList = existingByLabel ?: listOf(buildSumireSpecialKeyBaseFlickMap(keyData))
+            flickMapAliases[keyId] = baseList
+        }
+
+        val newFlickKeyMaps = if (flickMapAliases.isEmpty()) {
+            layout.flickKeyMaps
+        } else {
+            layout.flickKeyMaps + flickMapAliases
+        }
+
+        return layout.copy(
+            keys = newKeys,
+            items = newItems,
+            flickKeyMaps = newFlickKeyMaps
+        )
+    }
+
+    private fun buildSumireSpecialKeyBaseFlickMap(keyData: KeyData): Map<FlickDirection, FlickAction> {
+        val tapAction = keyData.action ?: return emptyMap()
+        return mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                action = tapAction,
+                label = keyData.label.takeIf { it.isNotBlank() },
+                drawableResId = keyData.drawableResId
+            )
+        )
+    }
+
+    /**
+     * UP / RIGHT / DOWN / LEFT への Sumire 特殊キー action override を実行できるように、
+     * createFinalLayout の最後で強制的に [KeyType.CROSS_FLICK] に変換する対象 keyId。
+     * `dakuten_toggle_key` は対象外。
+     */
+    internal val SUMIRE_SPECIAL_KEY_CROSS_FLICK_KEY_IDS: Set<String> = setOf(
+        "enter_key",
+        "switch_next_ime",
+        "katakana_toggle_key",
+        "space_convert_key",
+        "delete_key"
+    )
+
+    private fun ensureStableSumireSpecialKeyIds(layout: KeyboardLayout): KeyboardLayout {
+        val specialItemsWithoutIds = layout.items
+            .filterIsInstance<KeyItem>()
+            .filter { it.keyData.isSpecialKey && it.keyData.keyId.isNullOrBlank() }
+        if (specialItemsWithoutIds.isEmpty()) return layout
+
+        val baseIds = layout.items
+            .filterIsInstance<KeyItem>()
+            .filter { it.keyData.isSpecialKey && it.keyData.keyId.isNullOrBlank() }
+            .associate { item -> item.id to stableSpecialKeyBaseId(item.keyData) }
+        val baseCounts = baseIds.values.groupingBy { it }.eachCount()
+        val usedIds = layout.items
+            .filterIsInstance<KeyItem>()
+            .mapNotNull { it.keyData.keyId?.takeIf(String::isNotBlank) }
+            .toMutableSet()
+
+        fun uniqueId(item: KeyItem): String {
+            val base = baseIds.getValue(item.id)
+            val candidate = if (baseCounts.getValue(base) == 1 && base !in usedIds) {
+                base
+            } else {
+                "${base}_r${item.placement.rowUnits}_c${item.placement.columnUnits}"
+            }
+            var resolved = candidate
+            var index = 2
+            while (resolved in usedIds) {
+                resolved = "${candidate}_$index"
+                index += 1
+            }
+            usedIds += resolved
+            return resolved
+        }
+
+        val newItems = layout.items.map { item ->
+            if (item is KeyItem && item.keyData.isSpecialKey && item.keyData.keyId.isNullOrBlank()) {
+                val keyId = uniqueId(item)
+                item.copy(id = keyId, keyData = item.keyData.copy(keyId = keyId))
+            } else {
+                item
+            }
+        }
+
+        return layout.copyWithItems(newItems)
+    }
+
+    private fun stableSpecialKeyBaseId(keyData: KeyData): String {
+        return when (keyData.action) {
+            KeyAction.Paste -> "paste_key"
+            KeyAction.MoveCursorLeft -> "cursor_left_key"
+            KeyAction.MoveCursorRight -> "cursor_right_key"
+            KeyAction.MoveCursorUp -> "cursor_up_key"
+            KeyAction.MoveCursorDown -> "cursor_down_key"
+            KeyAction.SwitchToNumberLayout -> "switch_to_number_key"
+            KeyAction.SwitchToEnglishLayout -> "switch_to_english_key"
+            KeyAction.SwitchToKanaLayout -> "switch_to_kana_key"
+            KeyAction.ChangeInputMode -> "change_input_mode_key"
+            KeyAction.SelectAll -> "select_all_key"
+            KeyAction.Copy -> "copy_key"
+            KeyAction.VoiceInput -> "voice_input_key"
+            KeyAction.Space -> "space_key"
+            KeyAction.Confirm -> "confirm_key"
+            KeyAction.Enter -> "enter_key"
+            KeyAction.Delete -> "delete_key"
+            KeyAction.SwitchToNextIme -> "switch_next_ime"
+            is KeyAction.InputText -> "input_text_${normalizedSpecialKeySuffix(keyData.label)}_key"
+            else -> "${normalizedSpecialKeySuffix(keyData.label.ifBlank { "special" })}_key"
+        }
+    }
+
+    private fun normalizedSpecialKeySuffix(value: String): String {
+        val suffix = value
+            .lowercase()
+            .map { char ->
+                when {
+                    char in 'a'..'z' -> char
+                    char in '0'..'9' -> char
+                    else -> '_'
+                }
+            }
+            .joinToString("")
+            .trim('_')
+            .replace(Regex("_+"), "_")
+        return suffix.ifBlank { "special" }
     }
 
 
