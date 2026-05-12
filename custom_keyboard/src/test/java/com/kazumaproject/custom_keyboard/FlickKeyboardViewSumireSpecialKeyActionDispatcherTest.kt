@@ -103,13 +103,6 @@ class FlickKeyboardViewSumireSpecialKeyActionDispatcherTest {
         assertEquals(listOf(KeyAction.Text("abc") to true), dispatched)
     }
 
-    @Test
-    fun onPressPathDoesNotUseActionDispatcher() {
-        val dispatched = mutableListOf<Pair<KeyAction, Boolean>>()
-
-        assertTrue(dispatched.isEmpty())
-    }
-
     private fun assertDispatch(
         flickDirection: FlickDirection,
         expectedSumireDirection: SumireSpecialKeyDirection,

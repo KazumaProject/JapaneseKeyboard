@@ -1,14 +1,19 @@
 package com.kazumaproject.markdownhelperkeyboard.sumire_special_key
 
+import com.kazumaproject.custom_keyboard.data.FlickAction
+import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
+import com.kazumaproject.custom_keyboard.data.ResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
+import com.kazumaproject.custom_keyboard.data.dispatchSumireSpecialKeyRuntimeAction
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideEntity
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotSame
 import org.junit.Test
 
 class SumireSpecialKeyActionDisplayOverrideApplierTest {
@@ -63,7 +68,68 @@ class SumireSpecialKeyActionDisplayOverrideApplierTest {
         assertEquals(layout.normal("normal_key").keyData, applied.normal("normal_key").keyData)
     }
 
-    private fun testLayout(): KeyboardLayout {
+    @Test
+    fun tapDisplayOverrideAliasesOriginalLabelFlickMapByKeyIdWithoutMutatingSourceMap() {
+        val layout = testLayout(
+            flickKeyMaps = mapOf(
+                "Space" to listOf(
+                    mapOf(FlickDirection.TAP to FlickAction.Action(KeyAction.Space))
+                )
+            )
+        )
+        val originalFlickMaps = layout.flickKeyMaps
+
+        val applied = SumireSpecialKeyActionDisplayOverrideApplier.apply(
+            layout = layout,
+            layoutType = "toggle",
+            inputMode = "HIRAGANA",
+            overrides = listOf(action("special_key", "TAP", "Delete")),
+            displayMetadata = metadata()
+        )
+
+        assertEquals("Delete", applied.special("special_key").keyData.label)
+        assertEquals(originalFlickMaps, layout.flickKeyMaps)
+        assertEquals(originalFlickMaps["Space"], applied.flickKeyMaps["Space"])
+        assertEquals(originalFlickMaps["Space"], applied.flickKeyMaps["special_key"])
+        assertNotSame(layout.flickKeyMaps, applied.flickKeyMaps)
+    }
+
+    @Test
+    fun displayOverrideDoesNotBecomeExecutionSourceOfTruth() {
+        val layout = testLayout(
+            flickKeyMaps = mapOf(
+                "Space" to listOf(
+                    mapOf(FlickDirection.TAP to FlickAction.Action(KeyAction.Space))
+                )
+            )
+        )
+        val applied = SumireSpecialKeyActionDisplayOverrideApplier.apply(
+            layout = layout,
+            layoutType = "toggle",
+            inputMode = "HIRAGANA",
+            overrides = listOf(action("special_key", "TAP", "Delete")),
+            displayMetadata = metadata()
+        )
+
+        val dispatched = mutableListOf<Pair<KeyAction, Boolean>>()
+        dispatchSumireSpecialKeyRuntimeAction(
+            keyData = applied.special("special_key").keyData,
+            flickDirection = FlickDirection.TAP,
+            fallbackAction = applied.special("special_key").keyData.action,
+            isFlick = false,
+            resolve = { _, _ -> ResolvedSumireSpecialKeyAction.Action(KeyAction.Paste) }
+        ) { action, isFlick ->
+            dispatched += action to isFlick
+        }
+
+        assertEquals(KeyAction.Delete, applied.special("special_key").keyData.action)
+        assertEquals(listOf(KeyAction.Paste to false), dispatched)
+        assertEquals(layout.flickKeyMaps["Space"], applied.flickKeyMaps["special_key"])
+    }
+
+    private fun testLayout(
+        flickKeyMaps: Map<String, List<Map<FlickDirection, FlickAction>>> = emptyMap()
+    ): KeyboardLayout {
         val normal = KeyItem(
             id = "normal_key",
             keyData = KeyData("A", 0, 0, false, keyId = "normal_key"),
@@ -85,7 +151,7 @@ class SumireSpecialKeyActionDisplayOverrideApplierTest {
         )
         return KeyboardLayout(
             keys = listOf(normal.keyData, special.keyData),
-            flickKeyMaps = emptyMap(),
+            flickKeyMaps = flickKeyMaps,
             columnCount = 2,
             rowCount = 1,
             items = listOf(normal, special),
@@ -117,4 +183,3 @@ class SumireSpecialKeyActionDisplayOverrideApplierTest {
             updatedAt = 1L
         )
 }
-

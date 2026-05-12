@@ -55,6 +55,7 @@ import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
 import com.kazumaproject.custom_keyboard.data.buildSumireSpecialKeyDisplayActionMap
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.custom_keyboard.data.dispatchResolvedSumireSpecialKeyAction
+import com.kazumaproject.custom_keyboard.data.dispatchSumireSpecialKeyRuntimeAction
 import com.kazumaproject.custom_keyboard.data.toCircularFlickKeyMaps
 import com.kazumaproject.custom_keyboard.data.toLegacyFlickDirection
 import com.kazumaproject.custom_keyboard.data.toSumireSpecialKeyDirectionOrNull
@@ -1238,7 +1239,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                             }
 
                             override fun onFlick(action: KeyAction, isFlick: Boolean) {
-                                onFlick(action, isFlick, if (isFlick) FlickDirection.UP else FlickDirection.TAP)
+                                onFlickCommitted(
+                                    fallbackAction = action,
+                                    isFlick = isFlick,
+                                    direction = if (isFlick) FlickDirection.UP else FlickDirection.TAP
+                                )
                             }
 
                             override fun onFlick(
@@ -1246,18 +1251,25 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 isFlick: Boolean,
                                 direction: FlickDirection
                             ) {
-                                val sumireDirection =
-                                    direction.toSumireSpecialKeyDirectionOrNull()
-                                val handled = sumireDirection != null &&
-                                        dispatchResolvedSumireSpecialKeyAction(
-                                            resolveSumireSpecialKeyOverride(
-                                                keyData,
-                                                sumireDirection
-                                            ),
-                                            isFlick
-                                        )
-                                if (!handled) {
-                                    this@FlickKeyboardView.listener?.onAction(action, isFlick)
+                                onFlickCommitted(action, isFlick, direction)
+                            }
+
+                            override fun onFlickCommitted(
+                                fallbackAction: KeyAction?,
+                                isFlick: Boolean,
+                                direction: FlickDirection
+                            ) {
+                                dispatchSumireSpecialKeyRuntimeAction(
+                                    keyData = keyData,
+                                    flickDirection = direction,
+                                    fallbackAction = fallbackAction,
+                                    isFlick = isFlick,
+                                    resolve = ::resolveSumireSpecialKeyOverride
+                                ) { dispatchedAction, actionIsFlick ->
+                                    this@FlickKeyboardView.listener?.onAction(
+                                        dispatchedAction,
+                                        actionIsFlick
+                                    )
                                 }
                             }
 
