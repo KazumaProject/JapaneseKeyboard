@@ -56,6 +56,7 @@ import com.kazumaproject.custom_keyboard.data.buildSumireSpecialKeyDisplayAction
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.custom_keyboard.data.dispatchResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.dispatchSumireSpecialKeyRuntimeAction
+import com.kazumaproject.custom_keyboard.data.refreshSumireSpecialKeyTap
 import com.kazumaproject.custom_keyboard.data.toCircularFlickKeyMaps
 import com.kazumaproject.custom_keyboard.data.toLegacyFlickDirection
 import com.kazumaproject.custom_keyboard.data.toSumireSpecialKeyDirectionOrNull
@@ -1196,8 +1197,14 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.CROSS_FLICK -> {
-                val flickActionMap = keyData.keyId?.let { layout.flickKeyMaps[it] }?.firstOrNull()
-                    ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
+                val rawFlickActionMap =
+                    keyData.keyId?.let { layout.flickKeyMaps[it] }?.firstOrNull()
+                        ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
+                // Sumire 特殊キーで keyId alias を引いた場合、layout 構築時の static な
+                // TAP entry が残っている可能性がある。dynamicStates の影響で
+                // keyData.action / label / drawableResId は updateDynamicKey で更新されるので、
+                // attach 時に必ず現在の keyData.action を TAP に反映させる。
+                val flickActionMap = rawFlickActionMap?.refreshSumireSpecialKeyTap(keyData)
                 Log.d("FlickKeyboardView KeyType.CROSS_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
                     val displayFlickActionMap =
