@@ -12,9 +12,11 @@ import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyPlacementOverrideApplier
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyRepository
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,6 +27,7 @@ import javax.inject.Inject
 data class SumireSpecialKeyEditorUiState(
     val layoutType: String = "toggle",
     val inputMode: KeyboardInputMode = KeyboardInputMode.HIRAGANA,
+    val actionOverrides: List<SumireSpecialKeyActionOverrideEntity> = emptyList(),
     val previewLayout: KeyboardLayout? = null
 )
 
@@ -105,10 +108,18 @@ class SumireSpecialKeyEditorViewModel @Inject constructor(
         val layoutType = _uiState.value.layoutType
         val inputMode = _uiState.value.inputMode
         placementJob = viewModelScope.launch {
-            repository.observePlacementOverrides(layoutType, inputMode.name).collect { overrides ->
+            combine(
+                repository.observePlacementOverrides(layoutType, inputMode.name),
+                repository.observeActionOverrides(layoutType, inputMode.name)
+            ) { placementOverrides, actionOverrides ->
+                placementOverrides to actionOverrides
+            }.collect { (overrides, actionOverrides) ->
                 currentPlacementOverrides = overrides
                 _uiState.update {
-                    it.copy(previewLayout = buildPreviewLayout(layoutType, inputMode, overrides))
+                    it.copy(
+                        actionOverrides = actionOverrides,
+                        previewLayout = buildPreviewLayout(layoutType, inputMode, overrides)
+                    )
                 }
             }
         }

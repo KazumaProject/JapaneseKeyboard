@@ -130,6 +130,7 @@ import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.core.domain.window.getScreenHeight
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
@@ -211,6 +212,8 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionApplier
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyActionDisplayMetadata
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyActionDisplayOverrideApplier
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyActionResolver
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyPlacementOverrideApplier
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyRepository
@@ -4743,12 +4746,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 deleteKeyFlickSettings = currentDeleteKeyFlickSettings()
             ),
             customKeyboardMode
-        ).let { layout ->
+        ).let { baseLayout ->
+            SumireSpecialKeyActionDisplayOverrideApplier.apply(
+                layout = baseLayout,
+                layoutType = layoutType,
+                inputMode = customKeyboardMode.name,
+                overrides = sumireSpecialKeyActionOverrides,
+                displayMetadata = sumireSpecialKeyActionDisplayMetadata()
+            )
+        }.let { layout ->
             SumireSpecialKeyPlacementOverrideApplier.apply(
                 layout = layout,
                 layoutType = layoutType,
                 inputMode = customKeyboardMode.name,
                 overrides = sumireSpecialKeyPlacementOverrides
+            )
+        }
+    }
+
+    private fun sumireSpecialKeyActionDisplayMetadata(): List<SumireSpecialKeyActionDisplayMetadata> {
+        return KeyActionMapper.getDisplayActions(this).map {
+            SumireSpecialKeyActionDisplayMetadata(
+                action = it.action,
+                displayName = it.displayName,
+                iconResId = it.iconResId
             )
         }
     }
