@@ -1241,7 +1241,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 sumireSpecialKeyPlacementOverrides = placementOverrides
                 sumireSpecialKeyActionOverrides = actionOverrides
                 withContext(Dispatchers.Main.immediate) {
-                    renderCurrentKeyboardStateOnActiveSurface()
+                    if (qwertyMode.value == TenKeyQWERTYMode.Sumire) {
+                        refreshActiveSumireLayoutIfNeeded()
+                    } else {
+                        renderCurrentKeyboardStateOnActiveSurface()
+                    }
                 }
             }
         }
@@ -4704,6 +4708,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setInputModeOnActiveSurface(currentInputModeForSession)
         renderDynamicKeysOnActiveSurface()
         renderQwertyStateOnActiveSurface()
+    }
+
+    private fun refreshActiveSumireLayoutIfNeeded() {
+        if (qwertyMode.value != TenKeyQWERTYMode.Sumire) return
+        val surface = getActiveKeyboardSurface() ?: return
+        val customLayout = surface.customLayout ?: return
+        setSumireLayoutTo(customLayout)
+        renderDynamicKeysOnActiveSurface()
     }
 
     private fun defaultInputModeFor(inputType: InputTypeForIME): InputMode {

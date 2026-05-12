@@ -9,6 +9,7 @@ import com.kazumaproject.custom_keyboard.data.ResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
 import com.kazumaproject.custom_keyboard.data.buildSumireSpecialKeyDisplayActionMap
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class SumireSpecialKeyDisplayActionMapTest {
@@ -49,6 +50,66 @@ class SumireSpecialKeyDisplayActionMapTest {
         assertEquals(null, displayMap[FlickDirection.DOWN])
     }
 
+    @Test
+    fun replacesExistingDirectionsAndDoesNotMutateBaseMap() {
+        val keyData = specialKey()
+        val base = mapOf(
+            FlickDirection.TAP to FlickAction.Action(KeyAction.Space),
+            FlickDirection.UP to FlickAction.Action(KeyAction.Convert),
+            FlickDirection.DOWN to FlickAction.Action(KeyAction.Enter)
+        )
+
+        val displayMap = buildSumireSpecialKeyDisplayActionMap(keyData, base) { _, direction ->
+            when (direction) {
+                SumireSpecialKeyDirection.UP -> ResolvedSumireSpecialKeyAction.Action(KeyAction.Delete)
+                SumireSpecialKeyDirection.DOWN -> ResolvedSumireSpecialKeyAction.Action(KeyAction.Paste)
+                else -> ResolvedSumireSpecialKeyAction.Default
+            }
+        }
+
+        assertEquals(FlickAction.Action(KeyAction.Convert), base[FlickDirection.UP])
+        assertEquals(FlickAction.Action(KeyAction.Enter), base[FlickDirection.DOWN])
+        assertEquals(FlickAction.Action(KeyAction.Delete), displayMap[FlickDirection.UP])
+        assertEquals(FlickAction.Action(KeyAction.Paste), displayMap[FlickDirection.DOWN])
+    }
+
+    @Test
+    fun leftOverrideUsesUpLeftFarInDisplayMap() {
+        val keyData = specialKey()
+        val base = mapOf(FlickDirection.TAP to FlickAction.Action(KeyAction.Space))
+
+        val displayMap = buildSumireSpecialKeyDisplayActionMap(keyData, base) { _, direction ->
+            when (direction) {
+                SumireSpecialKeyDirection.LEFT -> ResolvedSumireSpecialKeyAction.Action(KeyAction.Copy)
+                else -> ResolvedSumireSpecialKeyAction.Default
+            }
+        }
+
+        assertEquals(FlickAction.Action(KeyAction.Copy), displayMap[FlickDirection.UP_LEFT_FAR])
+    }
+
+    @Test
+    fun inputTextOverrideBecomesTextActionAndDefaultOrNoneAddsNoAction() {
+        val keyData = specialKey()
+        val base = mapOf(FlickDirection.TAP to FlickAction.Action(KeyAction.Space))
+
+        val displayMap = buildSumireSpecialKeyDisplayActionMap(keyData, base) { _, direction ->
+            when (direction) {
+                SumireSpecialKeyDirection.UP -> ResolvedSumireSpecialKeyAction.InputText("abc")
+                SumireSpecialKeyDirection.RIGHT -> ResolvedSumireSpecialKeyAction.None
+                SumireSpecialKeyDirection.DOWN -> ResolvedSumireSpecialKeyAction.Default
+                else -> ResolvedSumireSpecialKeyAction.Default
+            }
+        }
+
+        assertEquals(
+            FlickAction.Action(KeyAction.Text("abc"), label = "abc"),
+            displayMap[FlickDirection.UP]
+        )
+        assertFalse(displayMap.containsKey(FlickDirection.UP_RIGHT_FAR))
+        assertFalse(displayMap.containsKey(FlickDirection.DOWN))
+    }
+
     private fun specialKey() = KeyData(
         label = "Space",
         row = 0,
@@ -60,4 +121,3 @@ class SumireSpecialKeyDisplayActionMapTest {
         keyType = KeyType.CROSS_FLICK
     )
 }
-

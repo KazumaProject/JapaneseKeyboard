@@ -54,6 +54,7 @@ import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
 import com.kazumaproject.custom_keyboard.data.buildSumireSpecialKeyDisplayActionMap
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
+import com.kazumaproject.custom_keyboard.data.dispatchResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.toCircularFlickKeyMaps
 import com.kazumaproject.custom_keyboard.data.toLegacyFlickDirection
 import com.kazumaproject.custom_keyboard.data.toSumireSpecialKeyDirectionOrNull
@@ -1931,18 +1932,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         resolved: ResolvedSumireSpecialKeyAction,
         isFlick: Boolean
     ): Boolean {
-        return when (resolved) {
-            ResolvedSumireSpecialKeyAction.Default -> false
-            ResolvedSumireSpecialKeyAction.None -> true
-            is ResolvedSumireSpecialKeyAction.Action -> {
-                listener?.onAction(resolved.action, isFlick)
-                true
-            }
-
-            is ResolvedSumireSpecialKeyAction.InputText -> {
-                listener?.onAction(KeyAction.Text(resolved.text), isFlick)
-                true
-            }
+        return dispatchResolvedSumireSpecialKeyAction(resolved, isFlick) { action, actionIsFlick ->
+            listener?.onAction(action, actionIsFlick)
         }
     }
 
