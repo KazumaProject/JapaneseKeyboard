@@ -44,6 +44,14 @@ class SumireSpecialKeyActionResolverTest {
             SumireSpecialKeyDirection.TAP
         )
         assertEquals(ResolvedSumireSpecialKeyAction.Default, result)
+
+        val blankResult = resolver.resolve(
+            "toggle",
+            "HIRAGANA",
+            specialKey.copy(keyId = ""),
+            SumireSpecialKeyDirection.TAP
+        )
+        assertEquals(ResolvedSumireSpecialKeyAction.Default, blankResult)
     }
 
     @Test

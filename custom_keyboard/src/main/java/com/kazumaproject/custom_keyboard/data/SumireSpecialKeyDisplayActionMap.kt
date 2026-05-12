@@ -22,7 +22,7 @@ fun buildSumireSpecialKeyDisplayActionMap(
     }.toMutableMap()
 
     SumireSpecialKeyDirection.entries.forEach { sumireDirection ->
-        val flickDirection = sumireDirection.toDisplayFlickDirection(displayMap.keys)
+        val flickDirection = sumireDirection.toDisplayFlickDirection()
         if (flickDirection in displayMap) return@forEach
         when (val resolved = resolve(keyData, sumireDirection)) {
             is ResolvedSumireSpecialKeyAction.Action -> {
@@ -42,30 +42,12 @@ fun buildSumireSpecialKeyDisplayActionMap(
     return displayMap
 }
 
-private fun SumireSpecialKeyDirection.toDisplayFlickDirection(
-    existingDirections: Set<FlickDirection>
-): FlickDirection {
+private fun SumireSpecialKeyDirection.toDisplayFlickDirection(): FlickDirection {
     return when (this) {
         SumireSpecialKeyDirection.TAP -> FlickDirection.TAP
         SumireSpecialKeyDirection.UP -> FlickDirection.UP
-        SumireSpecialKeyDirection.RIGHT ->
-            if (FlickDirection.UP_RIGHT in existingDirections &&
-                FlickDirection.UP_RIGHT_FAR !in existingDirections
-            ) {
-                FlickDirection.UP_RIGHT
-            } else {
-                FlickDirection.UP_RIGHT_FAR
-            }
-
+        SumireSpecialKeyDirection.RIGHT -> FlickDirection.UP_RIGHT_FAR
         SumireSpecialKeyDirection.DOWN -> FlickDirection.DOWN
-        SumireSpecialKeyDirection.LEFT ->
-            if (FlickDirection.UP_LEFT in existingDirections &&
-                FlickDirection.UP_LEFT_FAR !in existingDirections
-            ) {
-                FlickDirection.UP_LEFT
-            } else {
-                FlickDirection.UP_LEFT_FAR
-            }
+        SumireSpecialKeyDirection.LEFT -> FlickDirection.UP_LEFT_FAR
     }
 }
-
