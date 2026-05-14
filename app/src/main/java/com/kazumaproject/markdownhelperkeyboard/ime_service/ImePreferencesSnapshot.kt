@@ -142,6 +142,10 @@ data class ImePreferencesSnapshot(
     val customThemeSpecialKeyColor: Int,
     val customThemeKeyTextColor: Int,
     val customThemeSpecialKeyTextColor: Int,
+    val customThemeCandidateTextColor: Int,
+    val customThemeCandidateItemBgColor: Int,
+    val customThemeCandidateItemPressedBgColor: Int,
+    val customThemeShortcutIconColor: Int,
     val liquidGlassThemePreference: Boolean,
     val liquidGlassBlurRadiousPreference: Int,
     val liquidGlassKeyBlurRadiousPreference: Int,
@@ -170,7 +174,11 @@ data class ImePreferencesSnapshot(
     val enableGemmaTranslationPreference: Boolean,
 ) {
     companion object {
-        fun from(appPreference: AppPreference): ImePreferencesSnapshot {
+        fun from(
+            appPreference: AppPreference,
+            customThemeCandidateItemPressedBgColorDefault: Int =
+                AppPreference.DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR
+        ): ImePreferencesSnapshot {
             return ImePreferencesSnapshot(
                 keyboardOrder = appPreference.keyboard_order,
                 candidateTabOrder = appPreference.candidate_tab_order,
@@ -365,6 +373,19 @@ data class ImePreferencesSnapshot(
                 customThemeSpecialKeyColor = appPreference.custom_theme_special_key_color,
                 customThemeKeyTextColor = appPreference.custom_theme_key_text_color,
                 customThemeSpecialKeyTextColor = appPreference.custom_theme_special_key_text_color,
+                customThemeCandidateTextColor = appPreference.getCustomThemeCandidateTextColor(
+                    appPreference.custom_theme_key_text_color
+                ),
+                customThemeCandidateItemBgColor = appPreference.getCustomThemeCandidateItemBgColor(
+                    AppPreference.DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR
+                ),
+                customThemeCandidateItemPressedBgColor =
+                    appPreference.getCustomThemeCandidateItemPressedBgColor(
+                        customThemeCandidateItemPressedBgColorDefault
+                    ),
+                customThemeShortcutIconColor = appPreference.getCustomThemeShortcutIconColor(
+                    appPreference.custom_theme_special_key_text_color
+                ),
                 liquidGlassThemePreference = appPreference.liquid_glass_preference,
                 liquidGlassBlurRadiousPreference = appPreference.liquid_glass_blur_radius,
                 liquidGlassKeyBlurRadiousPreference = appPreference.liquid_glass_key_alpha,
