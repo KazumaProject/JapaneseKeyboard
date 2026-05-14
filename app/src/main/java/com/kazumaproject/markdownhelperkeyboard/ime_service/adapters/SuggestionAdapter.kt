@@ -1,6 +1,9 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
 import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.StateListDrawable
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.RelativeSizeSpan
@@ -10,6 +13,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
@@ -33,6 +37,37 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import timber.log.Timber
+
+internal class CandidateItemColorState {
+    var backgroundColor: Int? = null
+        private set
+    var pressedBackgroundColor: Int? = null
+        private set
+
+    fun setBackgroundColor(color: Int): Boolean {
+        if (backgroundColor == color) return false
+        backgroundColor = color
+        return true
+    }
+
+    fun setPressedBackgroundColor(color: Int): Boolean {
+        if (pressedBackgroundColor == color) return false
+        pressedBackgroundColor = color
+        return true
+    }
+
+    fun setColors(backgroundColor: Int, pressedBackgroundColor: Int): Boolean {
+        if (
+            this.backgroundColor == backgroundColor &&
+            this.pressedBackgroundColor == pressedBackgroundColor
+        ) {
+            return false
+        }
+        this.backgroundColor = backgroundColor
+        this.pressedBackgroundColor = pressedBackgroundColor
+        return true
+    }
+}
 
 class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -80,6 +115,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var candidateTextSize: Float = 14f
     private var candidateTextColor: Int? = null
+    private val candidateItemColorState = CandidateItemColorState()
 
     private var candidateEmptyDrawableColor: Int? = null
     private var candidateEmptyDrawableTextColor: Int? = null
@@ -519,6 +555,21 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setCandidateItemBackgroundColor(color: Int) {
+        if (!candidateItemColorState.setBackgroundColor(color)) return
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setCandidateItemPressedBackgroundColor(color: Int) {
+        if (!candidateItemColorState.setPressedBackgroundColor(color)) return
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setCandidateItemColors(backgroundColor: Int, pressedColor: Int) {
+        if (!candidateItemColorState.setColors(backgroundColor, pressedColor)) return
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setCandidateEmptyDrawableColor(color: Int) {
         if (candidateEmptyDrawableColor == color) return
         candidateEmptyDrawableColor = color
@@ -534,6 +585,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private fun onBindSuggestionViewHolder(holder: SuggestionViewHolder, position: Int) {
+        applyCandidateItemBackground(holder.itemView)
         val suggestion = suggestions[position]
         val paddingLength = when {
             position == 0 -> 4
@@ -657,6 +709,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private fun onBindGemmaActionViewHolder(holder: GemmaActionViewHolder, position: Int) {
+        applyCandidateItemBackground(holder.itemView)
         val suggestion = suggestions[position]
         holder.actionText.text = suggestion.string
         holder.actionText.textSize = candidateTextSize
@@ -689,6 +742,50 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+    private fun applyCandidateItemBackground(itemView: View) {
+        val backgroundColor = candidateItemColorState.backgroundColor
+        val pressedColor = candidateItemColorState.pressedBackgroundColor
+        if (backgroundColor == null && pressedColor == null) {
+            itemView.setBackgroundResource(defaultCandidateItemBackgroundRes())
+            return
+        }
+
+        itemView.background = StateListDrawable().apply {
+            addState(
+                intArrayOf(android.R.attr.state_pressed),
+                createCandidateItemDrawable(
+                    pressedColor ?: ContextCompat.getColor(
+                        itemView.context,
+                        com.kazumaproject.core.R.color.qwety_key_bg_color
+                    ),
+                    itemView.context.resources.displayMetrics.density
+                )
+            )
+            addState(
+                intArrayOf(),
+                createCandidateItemDrawable(
+                    backgroundColor ?: Color.TRANSPARENT,
+                    itemView.context.resources.displayMetrics.density
+                )
+            )
+        }
+    }
+
+    private fun defaultCandidateItemBackgroundRes(): Int {
+        return if (DynamicColors.isDynamicColorAvailable()) {
+            com.kazumaproject.core.R.drawable.recyclerview_item_bg_material
+        } else {
+            com.kazumaproject.core.R.drawable.recyclerview_item_bg
+        }
+    }
+
+    private fun createCandidateItemDrawable(color: Int, density: Float): GradientDrawable {
+        return GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = 16f * density
+        }
+    }
+
     fun updateHighlightPosition(newPosition: Int) {
         val previous = highlightedPosition
         highlightedPosition = newPosition
@@ -702,4 +799,5 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         return type == GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() ||
             type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
     }
+
 }

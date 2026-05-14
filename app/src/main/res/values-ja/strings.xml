@@ -696,6 +696,10 @@
     <string name="theme_custom_special_key_color">特殊キーの色</string>
     <string name="theme_custom_key_text_color">通常キーの文字色</string>
     <string name="theme_custom_special_key_text_color">特殊キーの文字色</string>
+    <string name="theme_custom_candidate_text_color">候補文字色</string>
+    <string name="theme_custom_candidate_item_bg_color">候補項目の背景色</string>
+    <string name="theme_custom_candidate_item_pressed_bg_color">候補項目の押下時背景色</string>
+    <string name="theme_custom_shortcut_icon_color">ショートカットアイコン色</string>
     <string name="keyboard_theme_dialog_title_2">色を選択</string>
     <string name="keyboardthemefragment">テーマ</string>
     <string name="tenkeycandidatelettersizefragment">キーのサイズ</string>

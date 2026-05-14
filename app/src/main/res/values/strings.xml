@@ -698,6 +698,10 @@
     <string name="theme_custom_special_key_color">Special key color</string>
     <string name="theme_custom_key_text_color">Key text color</string>
     <string name="theme_custom_special_key_text_color">Special key text color</string>
+    <string name="theme_custom_candidate_text_color">Candidate text color</string>
+    <string name="theme_custom_candidate_item_bg_color">Candidate item background color</string>
+    <string name="theme_custom_candidate_item_pressed_bg_color">Candidate item pressed background color</string>
+    <string name="theme_custom_shortcut_icon_color">Shortcut icon color</string>
     <string name="keyboard_theme_dialog_title_2">Select Color</string>
     <string name="keyboardthemefragment">Keyboard Theme</string>
     <string name="tenkeycandidatelettersizefragment">Adjust key size</string>
