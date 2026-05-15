@@ -181,6 +181,8 @@ object AppPreference {
     private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
+    private val CUSTOM_DIRECT_MODE_SPACE_HANKAKU_ENABLE =
+        Pair("custom_direct_mode_space_hankaku_preference", true)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
     private val LIVE_CONVERSION_START_LENGTH = Pair("live_conversion_start_length_preference", 1)
     private val LIVE_CONVERSION_CANDIDATE_YOMI =
@@ -1206,6 +1208,18 @@ object AppPreference {
         get() = preferences.getBoolean(SPACE_HANKAKU_ENABLE.first, SPACE_HANKAKU_ENABLE.second)
         set(value) = preferences.edit {
             it.putBoolean(SPACE_HANKAKU_ENABLE.first, value ?: false)
+        }
+
+    var custom_direct_mode_space_hankaku_preference: Boolean?
+        get() = preferences.getBoolean(
+            CUSTOM_DIRECT_MODE_SPACE_HANKAKU_ENABLE.first,
+            CUSTOM_DIRECT_MODE_SPACE_HANKAKU_ENABLE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(
+                CUSTOM_DIRECT_MODE_SPACE_HANKAKU_ENABLE.first,
+                value ?: CUSTOM_DIRECT_MODE_SPACE_HANKAKU_ENABLE.second
+            )
         }
 
     var live_conversion_preference: Boolean?

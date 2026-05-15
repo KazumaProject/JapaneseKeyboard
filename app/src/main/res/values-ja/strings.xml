@@ -158,6 +158,8 @@
     <string name="reconversion_symbol">読みを戻す</string>
     <string name="space_key_title">半角スペースの利用</string>
     <string name="space_key_summary">入力モードに関わらず、常に半角スペースを使用します。</string>
+    <string name="custom_direct_mode_space_hankaku_title">直接入力時に半角スペースを使用</string>
+    <string name="custom_direct_mode_space_hankaku_summary">直接入力モードでPreEditに文字がない場合、スペースキーで半角スペースを入力します。</string>
     <string name="live_conversion_title">ライブ変換 β</string>
     <string name="live_conversion_summary_on">ライブ変換は有効です</string>
     <string name="live_conversion_summary_off">ライブ変換は無効です</string>

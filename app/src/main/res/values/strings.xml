@@ -156,6 +156,8 @@
     <string name="reconversion_symbol">Restore Reading</string>
     <string name="space_key_title">Use half-width space</string>
     <string name="space_key_summary">Always use half-width space regardless of the input mode</string>
+    <string name="custom_direct_mode_space_hankaku_title">Use half-width space in Direct Mode</string>
+    <string name="custom_direct_mode_space_hankaku_summary">When Direct Mode is enabled and there is no PreEdit text, the space key enters a half-width space.</string>
     <string name="live_conversion_title">Live Conversion β</string>
     <string name="live_conversion_summary_on">Live conversion is enabled</string>
     <string name="live_conversion_summary_off">Live conversion is disabled</string>

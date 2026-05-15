@@ -338,6 +338,12 @@
             android:title="@string/space_key_title" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="custom_direct_mode_space_hankaku_preference"
+            android:summary="@string/custom_direct_mode_space_hankaku_summary"
+            android:title="@string/custom_direct_mode_space_hankaku_title" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="live_conversion_preference"
             android:summaryOff="@string/live_conversion_summary_off"

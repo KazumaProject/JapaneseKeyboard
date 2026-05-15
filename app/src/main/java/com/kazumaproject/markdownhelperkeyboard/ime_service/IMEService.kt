@@ -599,6 +599,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isUserDictionaryEnable: Boolean? = false
     private var isUserTemplateEnable: Boolean? = false
     private var hankakuPreference: Boolean? = false
+    private var customDirectModeSpaceHankakuPreference: Boolean = true
     private var isLiveConversionEnable: Boolean? = false
     private var liveConversionStartLength: Int = 1
     private var showLiveConversionCandidateYomi: Boolean = false
@@ -1335,6 +1336,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
         hankakuPreference = preferences.hankakuPreference
+        customDirectModeSpaceHankakuPreference =
+            preferences.customDirectModeSpaceHankakuPreference
         isLiveConversionEnable = preferences.isLiveConversionEnable
         liveConversionStartLength = preferences.liveConversionStartLength.coerceIn(1, 10)
         showLiveConversionCandidateYomi = preferences.showLiveConversionCandidateYomi
@@ -2482,6 +2485,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isUserDictionaryEnable = null
         isUserTemplateEnable = null
         hankakuPreference = null
+        customDirectModeSpaceHankakuPreference = true
         isLiveConversionEnable = null
         nBest = null
         lastCandidate = null
@@ -18356,27 +18360,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             if (isTablet == true) {
                 mainLayoutBinding?.tabletView?.apply {
-                    if (currentInputMode.get() == InputMode.ModeJapanese) {
-                        if (isFlick) {
-                            commitText(" ", 1)
-                        } else {
-                            commitText("　", 1)
-                        }
-                    } else {
-                        commitText(" ", 1)
-                    }
+                    commitText(
+                        resolveEmptySpaceForCurrentMode(
+                            isFlick = isFlick,
+                            currentInputMode = currentInputMode.get()
+                        ),
+                        1
+                    )
                 }
             } else {
                 mainLayoutBinding?.keyboardView?.apply {
-                    if (currentInputMode.value == InputMode.ModeJapanese) {
-                        if (isFlick) {
-                            commitText(" ", 1)
-                        } else {
-                            commitText("　", 1)
-                        }
-                    } else {
-                        commitText(" ", 1)
-                    }
+                    commitText(
+                        resolveEmptySpaceForCurrentMode(
+                            isFlick = isFlick,
+                            currentInputMode = currentInputMode.value
+                        ),
+                        1
+                    )
                 }
             }
         }
@@ -18388,6 +18388,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionClickNum = 0
             suggestionAdapter?.updateHighlightPosition(-1)
         }
+    }
+
+    private fun resolveEmptySpaceForCurrentMode(
+        isFlick: Boolean,
+        currentInputMode: InputMode
+    ): String {
+        return resolveEmptySpaceForCurrentMode(
+            isCustomLayoutDirectMode = isCustomLayoutDirectMode,
+            customDirectModeSpaceHankakuPreference = customDirectModeSpaceHankakuPreference,
+            isFlick = isFlick,
+            currentInputMode = currentInputMode
+        )
     }
 
     private var isFirstClickHasStringTail = false
