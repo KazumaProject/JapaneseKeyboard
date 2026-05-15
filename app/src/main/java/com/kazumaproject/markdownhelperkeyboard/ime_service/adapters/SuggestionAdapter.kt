@@ -648,6 +648,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         holder.yomiText.isVisible = yomiPresentation.isVisible
         holder.yomiText.text = yomiPresentation.text
         holder.yomiText.textSize = yomiPresentation.textSize
+        holder.yomiText.translationX = if (yomiPresentation.isVisible) {
+            holder.text.paint.measureText(" ".repeat(paddingLength))
+        } else {
+            0f
+        }
 
         candidateTextColor?.let { color ->
             holder.text.setTextColor(color)
