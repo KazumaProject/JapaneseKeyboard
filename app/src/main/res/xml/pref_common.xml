@@ -338,6 +338,12 @@
             android:title="@string/space_key_title" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="custom_direct_mode_space_hankaku_preference"
+            android:summary="@string/custom_direct_mode_space_hankaku_summary"
+            android:title="@string/custom_direct_mode_space_hankaku_title" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="live_conversion_preference"
             android:summaryOff="@string/live_conversion_summary_off"
@@ -353,6 +359,14 @@
             android:title="@string/live_conversion_start_length_title"
             app:min="1"
             app:showSeekBarValue="true" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="live_conversion_preference"
+            android:key="live_conversion_candidate_yomi_preference"
+            android:summaryOff="@string/live_conversion_candidate_yomi_summary_off"
+            android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
+            android:title="@string/live_conversion_candidate_yomi_title" />
 
         <SwitchPreferenceCompat
             android:defaultValue="false"

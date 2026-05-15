@@ -18,7 +18,17 @@ import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBack
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
 
+internal object CustomThemeColorPreferenceKeys {
+    const val CANDIDATE_TEXT_COLOR = "custom_theme_candidate_text_color"
+    const val CANDIDATE_ITEM_BG_COLOR = "custom_theme_candidate_item_bg_color"
+    const val CANDIDATE_ITEM_PRESSED_BG_COLOR = "custom_theme_candidate_item_pressed_bg_color"
+    const val SHORTCUT_ICON_COLOR = "custom_theme_shortcut_icon_color"
+}
+
 object AppPreference {
+
+    const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR = 0x00000000
+    const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR = 0xFFF0F0F3.toInt()
 
     private lateinit var preferences: SharedPreferences
     private val gson = Gson()
@@ -171,8 +181,12 @@ object AppPreference {
     private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
+    private val CUSTOM_DIRECT_MODE_SPACE_HANKAKU_ENABLE =
+        Pair("custom_direct_mode_space_hankaku_preference", true)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
     private val LIVE_CONVERSION_START_LENGTH = Pair("live_conversion_start_length_preference", 1)
+    private val LIVE_CONVERSION_CANDIDATE_YOMI =
+        Pair("live_conversion_candidate_yomi_preference", false)
     private const val OLD_SUMIRE_PREFERENCE_KEY = "sumire_keyboard_input_type_preference"
     private const val NEW_SUMIRE_STYLE_KEY = "sumire_keyboard_style_preference"
     private const val NEW_SUMIRE_METHOD_KEY = "sumire_input_method_preference"
@@ -237,6 +251,20 @@ object AppPreference {
         Pair("custom_theme_key_text_color_preference", Color.BLACK)
     private val CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR =
         Pair("custom_theme_special_key_text_color_preference", Color.BLACK)
+    private val CUSTOM_THEME_CANDIDATE_TEXT_COLOR =
+        Pair(CustomThemeColorPreferenceKeys.CANDIDATE_TEXT_COLOR, Color.BLACK)
+    private val CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR =
+        Pair(
+            CustomThemeColorPreferenceKeys.CANDIDATE_ITEM_BG_COLOR,
+            DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR
+        )
+    private val CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR =
+        Pair(
+            CustomThemeColorPreferenceKeys.CANDIDATE_ITEM_PRESSED_BG_COLOR,
+            DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR
+        )
+    private val CUSTOM_THEME_SHORTCUT_ICON_COLOR =
+        Pair(CustomThemeColorPreferenceKeys.SHORTCUT_ICON_COLOR, Color.BLACK)
 
     // New variables for Custom Border
     private val CUSTOM_THEME_BORDER_ENABLE = Pair("theme_custom_border_enable", false)
@@ -550,6 +578,12 @@ object AppPreference {
             )
         }.getOrNull()
         return normalizeQwertyNumberKeyFlickChars(parsed ?: emptyMap())
+    }
+
+    private fun readIntPreference(key: String, defaultValue: Int): Int {
+        return runCatching {
+            preferences.getInt(key, defaultValue)
+        }.getOrDefault(defaultValue)
     }
 
     var clipboard_history_enable: Boolean?
@@ -1176,6 +1210,18 @@ object AppPreference {
             it.putBoolean(SPACE_HANKAKU_ENABLE.first, value ?: false)
         }
 
+    var custom_direct_mode_space_hankaku_preference: Boolean?
+        get() = preferences.getBoolean(
+            CUSTOM_DIRECT_MODE_SPACE_HANKAKU_ENABLE.first,
+            CUSTOM_DIRECT_MODE_SPACE_HANKAKU_ENABLE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(
+                CUSTOM_DIRECT_MODE_SPACE_HANKAKU_ENABLE.first,
+                value ?: CUSTOM_DIRECT_MODE_SPACE_HANKAKU_ENABLE.second
+            )
+        }
+
     var live_conversion_preference: Boolean?
         get() = preferences.getBoolean(LIVE_CONVERSION_ENABLE.first, LIVE_CONVERSION_ENABLE.second)
         set(value) = preferences.edit {
@@ -1191,6 +1237,18 @@ object AppPreference {
             it.putInt(
                 LIVE_CONVERSION_START_LENGTH.first,
                 value ?: LIVE_CONVERSION_START_LENGTH.second
+            )
+        }
+
+    var live_conversion_candidate_yomi_preference: Boolean?
+        get() = preferences.getBoolean(
+            LIVE_CONVERSION_CANDIDATE_YOMI.first,
+            LIVE_CONVERSION_CANDIDATE_YOMI.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(
+                LIVE_CONVERSION_CANDIDATE_YOMI.first,
+                value ?: LIVE_CONVERSION_CANDIDATE_YOMI.second
             )
         }
 
@@ -1340,19 +1398,19 @@ object AppPreference {
         }
 
     var custom_theme_bg_color: Int
-        get() = preferences.getInt(CUSTOM_THEME_BG_COLOR.first, CUSTOM_THEME_BG_COLOR.second)
+        get() = readIntPreference(CUSTOM_THEME_BG_COLOR.first, CUSTOM_THEME_BG_COLOR.second)
         set(value) = preferences.edit {
             it.putInt(CUSTOM_THEME_BG_COLOR.first, value)
         }
 
     var custom_theme_key_color: Int
-        get() = preferences.getInt(CUSTOM_THEME_KEY_COLOR.first, CUSTOM_THEME_KEY_COLOR.second)
+        get() = readIntPreference(CUSTOM_THEME_KEY_COLOR.first, CUSTOM_THEME_KEY_COLOR.second)
         set(value) = preferences.edit {
             it.putInt(CUSTOM_THEME_KEY_COLOR.first, value)
         }
 
     var custom_theme_special_key_color: Int
-        get() = preferences.getInt(
+        get() = readIntPreference(
             CUSTOM_THEME_SPECIAL_KEY_COLOR.first,
             CUSTOM_THEME_SPECIAL_KEY_COLOR.second
         )
@@ -1361,7 +1419,7 @@ object AppPreference {
         }
 
     var custom_theme_key_text_color: Int
-        get() = preferences.getInt(
+        get() = readIntPreference(
             CUSTOM_THEME_KEY_TEXT_COLOR.first,
             CUSTOM_THEME_KEY_TEXT_COLOR.second
         )
@@ -1370,13 +1428,55 @@ object AppPreference {
         }
 
     var custom_theme_special_key_text_color: Int
-        get() = preferences.getInt(
+        get() = readIntPreference(
             CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR.first,
             CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR.second
         )
         set(value) = preferences.edit {
             it.putInt(CUSTOM_THEME_SPECIAL_KEY_TEXT_COLOR.first, value)
         }
+
+    var custom_theme_candidate_text_color: Int
+        get() = getCustomThemeCandidateTextColor(custom_theme_key_text_color)
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_CANDIDATE_TEXT_COLOR.first, value)
+        }
+
+    fun getCustomThemeCandidateTextColor(defaultColor: Int): Int {
+        return readIntPreference(CUSTOM_THEME_CANDIDATE_TEXT_COLOR.first, defaultColor)
+    }
+
+    var custom_theme_candidate_item_bg_color: Int
+        get() = getCustomThemeCandidateItemBgColor(CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR.second)
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR.first, value)
+        }
+
+    fun getCustomThemeCandidateItemBgColor(defaultColor: Int): Int {
+        return readIntPreference(CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR.first, defaultColor)
+    }
+
+    var custom_theme_candidate_item_pressed_bg_color: Int
+        get() = getCustomThemeCandidateItemPressedBgColor(
+            CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR.first, value)
+        }
+
+    fun getCustomThemeCandidateItemPressedBgColor(defaultColor: Int): Int {
+        return readIntPreference(CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR.first, defaultColor)
+    }
+
+    var custom_theme_shortcut_icon_color: Int
+        get() = getCustomThemeShortcutIconColor(custom_theme_special_key_text_color)
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_SHORTCUT_ICON_COLOR.first, value)
+        }
+
+    fun getCustomThemeShortcutIconColor(defaultColor: Int): Int {
+        return readIntPreference(CUSTOM_THEME_SHORTCUT_ICON_COLOR.first, defaultColor)
+    }
 
     var delete_key_left_flick_preference: Boolean
         get() = preferences.getBoolean(
