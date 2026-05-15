@@ -21,6 +21,7 @@ data class ImePreferencesSnapshot(
     val isUserDictionaryEnable: Boolean,
     val isUserTemplateEnable: Boolean,
     val hankakuPreference: Boolean,
+    val customDirectModeSpaceHankakuPreference: Boolean,
     val isLiveConversionEnable: Boolean,
     val liveConversionStartLength: Int,
     val showLiveConversionCandidateYomi: Boolean,
@@ -195,6 +196,8 @@ data class ImePreferencesSnapshot(
                 isUserDictionaryEnable = appPreference.user_dictionary_preference ?: true,
                 isUserTemplateEnable = appPreference.user_template_preference ?: true,
                 hankakuPreference = appPreference.space_hankaku_preference ?: false,
+                customDirectModeSpaceHankakuPreference =
+                    appPreference.custom_direct_mode_space_hankaku_preference ?: true,
                 isLiveConversionEnable = appPreference.live_conversion_preference ?: false,
                 liveConversionStartLength =
                     appPreference.live_conversion_start_length_preference ?: 1,
