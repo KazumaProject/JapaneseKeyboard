@@ -183,6 +183,8 @@ object AppPreference {
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
     private val LIVE_CONVERSION_ENABLE = Pair("live_conversion_preference", false)
     private val LIVE_CONVERSION_START_LENGTH = Pair("live_conversion_start_length_preference", 1)
+    private val LIVE_CONVERSION_CANDIDATE_YOMI =
+        Pair("live_conversion_candidate_yomi_preference", false)
     private const val OLD_SUMIRE_PREFERENCE_KEY = "sumire_keyboard_input_type_preference"
     private const val NEW_SUMIRE_STYLE_KEY = "sumire_keyboard_style_preference"
     private const val NEW_SUMIRE_METHOD_KEY = "sumire_input_method_preference"
@@ -1221,6 +1223,18 @@ object AppPreference {
             it.putInt(
                 LIVE_CONVERSION_START_LENGTH.first,
                 value ?: LIVE_CONVERSION_START_LENGTH.second
+            )
+        }
+
+    var live_conversion_candidate_yomi_preference: Boolean?
+        get() = preferences.getBoolean(
+            LIVE_CONVERSION_CANDIDATE_YOMI.first,
+            LIVE_CONVERSION_CANDIDATE_YOMI.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(
+                LIVE_CONVERSION_CANDIDATE_YOMI.first,
+                value ?: LIVE_CONVERSION_CANDIDATE_YOMI.second
             )
         }
 

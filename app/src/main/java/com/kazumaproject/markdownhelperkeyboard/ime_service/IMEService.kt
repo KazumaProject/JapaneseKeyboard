@@ -601,6 +601,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var hankakuPreference: Boolean? = false
     private var isLiveConversionEnable: Boolean? = false
     private var liveConversionStartLength: Int = 1
+    private var showLiveConversionCandidateYomi: Boolean = false
     private var nBest: Int? = 4
     private var flickSensitivityPreferenceValue: Int? = 100
     private var longPressTimeoutPreferenceValue: Int? = 300
@@ -1336,6 +1337,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         hankakuPreference = preferences.hankakuPreference
         isLiveConversionEnable = preferences.isLiveConversionEnable
         liveConversionStartLength = preferences.liveConversionStartLength.coerceIn(1, 10)
+        showLiveConversionCandidateYomi = preferences.showLiveConversionCandidateYomi
+        val shouldShowLiveConversionCandidateYomi =
+            preferences.isLiveConversionEnable && preferences.showLiveConversionCandidateYomi
+        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setShowCandidateYomiForLiveConversion(shouldShowLiveConversionCandidateYomi)
+        }
         nBest = preferences.nBest
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
         longPressTimeoutPreferenceValue = preferences.longPressTimeoutPreferenceValue

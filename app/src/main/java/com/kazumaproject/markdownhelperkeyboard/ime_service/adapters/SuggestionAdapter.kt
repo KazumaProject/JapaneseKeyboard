@@ -69,6 +69,31 @@ internal class CandidateItemColorState {
     }
 }
 
+internal data class CandidateYomiPresentation(
+    val isVisible: Boolean,
+    val text: String,
+    val textSize: Float
+)
+
+internal fun resolveCandidateYomiPresentation(
+    showCandidateYomiForLiveConversion: Boolean,
+    isFirstCandidate: Boolean,
+    suggestion: Candidate,
+    candidateTextSize: Float
+): CandidateYomiPresentation {
+    val yomi = suggestion.yomi
+    val shouldShowYomi =
+        showCandidateYomiForLiveConversion &&
+            isFirstCandidate &&
+            !yomi.isNullOrBlank() &&
+            yomi != suggestion.string
+    return CandidateYomiPresentation(
+        isVisible = shouldShowYomi,
+        text = if (shouldShowYomi) yomi.orEmpty() else "",
+        textSize = candidateTextSize * 0.72f
+    )
+}
+
 class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
@@ -115,6 +140,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var candidateTextSize: Float = 14f
     private var candidateTextColor: Int? = null
+    private var showCandidateYomiForLiveConversion: Boolean = false
     private val candidateItemColorState = CandidateItemColorState()
 
     private var candidateEmptyDrawableColor: Int? = null
@@ -286,6 +312,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
+        val yomiText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_yomi_text_view)
         val typeText: MaterialTextView = itemView.findViewById(R.id.suggestion_item_type_text_view)
     }
 
@@ -548,6 +575,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setShowCandidateYomiForLiveConversion(enabled: Boolean) {
+        if (showCandidateYomiForLiveConversion == enabled) return
+        showCandidateYomiForLiveConversion = enabled
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setCandidateTextColor(color: Int) {
         if (candidateTextColor == color) return
         candidateTextColor = color
@@ -606,11 +639,21 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
 
         holder.text.textSize = candidateTextSize
+        val yomiPresentation = resolveCandidateYomiPresentation(
+            showCandidateYomiForLiveConversion = showCandidateYomiForLiveConversion,
+            isFirstCandidate = position == 0,
+            suggestion = suggestion,
+            candidateTextSize = candidateTextSize
+        )
+        holder.yomiText.isVisible = yomiPresentation.isVisible
+        holder.yomiText.text = yomiPresentation.text
+        holder.yomiText.textSize = yomiPresentation.textSize
 
         candidateTextColor?.let { color ->
             holder.text.setTextColor(color)
             // 必要であれば typeText（[半]などの補足テキスト）にも同じ色、またはその色の薄い版などを適用
             holder.typeText.setTextColor(color)
+            holder.yomiText.setTextColor(color)
         }
 
         holder.typeText.text = when (suggestion.type) {
