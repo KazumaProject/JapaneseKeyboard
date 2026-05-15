@@ -48,10 +48,11 @@
         android:textAlignment="center"
         android:textColor="@color/main_text_color"
         android:textSize="8sp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintBottom_toBottomOf="@+id/suggestion_text_container"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@+id/suggestion_text_container"
-        app:layout_constraintTop_toBottomOf="@+id/suggestion_item_text_view" />
+        app:layout_constraintTop_toTopOf="@+id/suggestion_text_container"
+        app:layout_constraintVertical_bias="1" />
 
     <View
         android:id="@+id/candidate_divider"
