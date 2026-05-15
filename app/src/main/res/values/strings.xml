@@ -156,11 +156,16 @@
     <string name="reconversion_symbol">Restore Reading</string>
     <string name="space_key_title">Use half-width space</string>
     <string name="space_key_summary">Always use half-width space regardless of the input mode</string>
+    <string name="custom_direct_mode_space_hankaku_title">Use half-width space in Direct Mode</string>
+    <string name="custom_direct_mode_space_hankaku_summary">When Direct Mode is enabled and there is no PreEdit text, the space key enters a half-width space.</string>
     <string name="live_conversion_title">Live Conversion β</string>
     <string name="live_conversion_summary_on">Live conversion is enabled</string>
     <string name="live_conversion_summary_off">Live conversion is disabled</string>
     <string name="live_conversion_start_length_title">Live conversion start length</string>
     <string name="live_conversion_start_length_summary">Start live conversion after this many characters are entered.</string>
+    <string name="live_conversion_candidate_yomi_title">ライブ変換候補に読みを表示</string>
+    <string name="live_conversion_candidate_yomi_summary_on">ライブ変換候補の上部に読みを表示します</string>
+    <string name="live_conversion_candidate_yomi_summary_off">ライブ変換候補の上部に読みを表示しません</string>
     <string name="omission_search_title">Omit Modifier Key Input</string>
     <string name="omission_search_summary_on">Omit modifier key input is enabled\ne.g., "かつこう" → "がっこう"</string>
     <string name="omission_search_summary_off">Omit modifier key input is disabled</string>
@@ -698,6 +703,10 @@
     <string name="theme_custom_special_key_color">Special key color</string>
     <string name="theme_custom_key_text_color">Key text color</string>
     <string name="theme_custom_special_key_text_color">Special key text color</string>
+    <string name="theme_custom_candidate_text_color">Candidate text color</string>
+    <string name="theme_custom_candidate_item_bg_color">Candidate item background color</string>
+    <string name="theme_custom_candidate_item_pressed_bg_color">Candidate item pressed background color</string>
+    <string name="theme_custom_shortcut_icon_color">Shortcut icon color</string>
     <string name="keyboard_theme_dialog_title_2">Select Color</string>
     <string name="keyboardthemefragment">Keyboard Theme</string>
     <string name="tenkeycandidatelettersizefragment">Adjust key size</string>

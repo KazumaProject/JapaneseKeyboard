@@ -599,8 +599,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isUserDictionaryEnable: Boolean? = false
     private var isUserTemplateEnable: Boolean? = false
     private var hankakuPreference: Boolean? = false
+    private var customDirectModeSpaceHankakuPreference: Boolean = true
     private var isLiveConversionEnable: Boolean? = false
     private var liveConversionStartLength: Int = 1
+    private var showLiveConversionCandidateYomi: Boolean = false
     private var nBest: Int? = 4
     private var flickSensitivityPreferenceValue: Int? = 100
     private var longPressTimeoutPreferenceValue: Int? = 300
@@ -704,6 +706,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var customThemeSpecialKeyColor: Int? = Color.GRAY
     private var customThemeKeyTextColor: Int? = Color.BLACK
     private var customThemeSpecialKeyTextColor: Int? = Color.BLACK
+    private var customThemeCandidateTextColor: Int? = Color.BLACK
+    private var customThemeCandidateItemBgColor: Int? = Color.TRANSPARENT
+    private var customThemeCandidateItemPressedBgColor: Int? = Color.WHITE
+    private var customThemeShortcutIconColor: Int? = Color.BLACK
 
     private var liquidGlassThemePreference: Boolean? = false
     private var liquidGlassBlurRadiousPreference: Int? = 220
@@ -1296,7 +1302,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         physicalKeyboardFloatingXPosition = 200
         physicalKeyboardFloatingYPosition = 150
         _suggestionViewStatus.update { true }
-        val preferences = ImePreferencesSnapshot.from(appPreference)
+        val preferences = ImePreferencesSnapshot.from(
+            appPreference = appPreference,
+            customThemeCandidateItemPressedBgColorDefault = ContextCompat.getColor(
+                this,
+                com.kazumaproject.core.R.color.qwety_key_bg_color
+            )
+        )
         applyImePreferences(preferences)
         initializeMozcDictionaries(preferences)
         suggestionAdapter?.updateCustomTabVisibility(preferences.customKeyboardSuggestionPreference)
@@ -1324,8 +1336,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
         hankakuPreference = preferences.hankakuPreference
+        customDirectModeSpaceHankakuPreference =
+            preferences.customDirectModeSpaceHankakuPreference
         isLiveConversionEnable = preferences.isLiveConversionEnable
         liveConversionStartLength = preferences.liveConversionStartLength.coerceIn(1, 10)
+        showLiveConversionCandidateYomi = preferences.showLiveConversionCandidateYomi
+        val shouldShowLiveConversionCandidateYomi =
+            preferences.isLiveConversionEnable && preferences.showLiveConversionCandidateYomi
+        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setShowCandidateYomiForLiveConversion(shouldShowLiveConversionCandidateYomi)
+        }
         nBest = preferences.nBest
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
         longPressTimeoutPreferenceValue = preferences.longPressTimeoutPreferenceValue
@@ -1486,6 +1506,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customThemeSpecialKeyColor = preferences.customThemeSpecialKeyColor
         customThemeKeyTextColor = preferences.customThemeKeyTextColor
         customThemeSpecialKeyTextColor = preferences.customThemeSpecialKeyTextColor
+        customThemeCandidateTextColor = preferences.customThemeCandidateTextColor
+        customThemeCandidateItemBgColor = preferences.customThemeCandidateItemBgColor
+        customThemeCandidateItemPressedBgColor = preferences.customThemeCandidateItemPressedBgColor
+        customThemeShortcutIconColor = preferences.customThemeShortcutIconColor
         liquidGlassThemePreference = preferences.liquidGlassThemePreference
         liquidGlassBlurRadiousPreference = preferences.liquidGlassBlurRadiousPreference
         liquidGlassKeyBlurRadiousPreference = preferences.liquidGlassKeyBlurRadiousPreference
@@ -2461,6 +2485,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isUserDictionaryEnable = null
         isUserTemplateEnable = null
         hankakuPreference = null
+        customDirectModeSpaceHankakuPreference = true
         isLiveConversionEnable = null
         nBest = null
         lastCandidate = null
@@ -2555,6 +2580,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customThemeSpecialKeyColor = null
         customThemeKeyTextColor = null
         customThemeSpecialKeyTextColor = null
+        customThemeCandidateTextColor = null
+        customThemeCandidateItemBgColor = null
+        customThemeCandidateItemPressedBgColor = null
+        customThemeShortcutIconColor = null
 
         vibrationTimingStr = null
         mozcUTPersonName = null
@@ -3097,12 +3126,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     keyBackgroundColor = symbolKeyBg,
                                     liquidGlassEnable = liquidGlassThemePreference ?: false
                                 )
-                                suggestionAdapter?.setCandidateTextColor(
-                                    customThemeKeyTextColor ?: Color.BLACK
-                                )
-                                suggestionAdapterFull?.setCandidateTextColor(
-                                    customThemeKeyTextColor ?: Color.BLACK
-                                )
+                                listOfNotNull(suggestionAdapter, suggestionAdapterFull)
+                                    .forEach { adapter ->
+                                        adapter.setCandidateTextColor(
+                                            customThemeCandidateTextColor ?: Color.BLACK
+                                        )
+                                        adapter.setCandidateItemColors(
+                                            customThemeCandidateItemBgColor ?: Color.TRANSPARENT,
+                                            customThemeCandidateItemPressedBgColor
+                                                ?: ContextCompat.getColor(
+                                                    this@IMEService,
+                                                    com.kazumaproject.core.R.color.qwety_key_bg_color
+                                                )
+                                        )
+                                    }
                                 suggestionAdapter?.setCandidateEmptyDrawableColor(
                                     customThemeSpecialKeyColor ?: Color.WHITE
                                 )
@@ -13219,7 +13256,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         when (keyboardThemeMode) {
             "custom" -> {
-                shortcutAdapter?.setIconColor(customThemeSpecialKeyTextColor ?: Color.BLACK)
+                shortcutAdapter?.setIconColor(customThemeShortcutIconColor ?: Color.BLACK)
             }
 
             else -> {
@@ -18323,27 +18360,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             if (isTablet == true) {
                 mainLayoutBinding?.tabletView?.apply {
-                    if (currentInputMode.get() == InputMode.ModeJapanese) {
-                        if (isFlick) {
-                            commitText(" ", 1)
-                        } else {
-                            commitText("　", 1)
-                        }
-                    } else {
-                        commitText(" ", 1)
-                    }
+                    commitText(
+                        resolveEmptySpaceForCurrentMode(
+                            isFlick = isFlick,
+                            currentInputMode = currentInputMode.get()
+                        ),
+                        1
+                    )
                 }
             } else {
                 mainLayoutBinding?.keyboardView?.apply {
-                    if (currentInputMode.value == InputMode.ModeJapanese) {
-                        if (isFlick) {
-                            commitText(" ", 1)
-                        } else {
-                            commitText("　", 1)
-                        }
-                    } else {
-                        commitText(" ", 1)
-                    }
+                    commitText(
+                        resolveEmptySpaceForCurrentMode(
+                            isFlick = isFlick,
+                            currentInputMode = currentInputMode.value
+                        ),
+                        1
+                    )
                 }
             }
         }
@@ -18355,6 +18388,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionClickNum = 0
             suggestionAdapter?.updateHighlightPosition(-1)
         }
+    }
+
+    private fun resolveEmptySpaceForCurrentMode(
+        isFlick: Boolean,
+        currentInputMode: InputMode
+    ): String {
+        return resolveEmptySpaceForCurrentMode(
+            isCustomLayoutDirectMode = isCustomLayoutDirectMode,
+            customDirectModeSpaceHankakuPreference = customDirectModeSpaceHankakuPreference,
+            isFlick = isFlick,
+            currentInputMode = currentInputMode
+        )
     }
 
     private var isFirstClickHasStringTail = false

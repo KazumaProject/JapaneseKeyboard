@@ -42,6 +42,31 @@ fun buildSumireSpecialKeyDisplayActionMap(
     return displayMap
 }
 
+internal val DYNAMIC_SUMIRE_SPECIAL_KEY_TAP_OVERRIDE_DISPLAY_KEY_IDS: Set<String> = setOf(
+    "enter_key",
+    "space_convert_key",
+    "katakana_toggle_key"
+)
+
+fun KeyData.applyTapOverrideDisplayForDynamicSumireSpecialKey(
+    displayActions: List<DisplayAction>,
+    resolve: (KeyData, SumireSpecialKeyDirection) -> ResolvedSumireSpecialKeyAction
+): KeyData {
+    if (!isSpecialKey) return this
+    val keyId = keyId?.takeIf { it.isNotBlank() } ?: return this
+    if (keyId !in DYNAMIC_SUMIRE_SPECIAL_KEY_TAP_OVERRIDE_DISPLAY_KEY_IDS) return this
+
+    val resolved = resolve(this, SumireSpecialKeyDirection.TAP)
+    val action = (resolved as? ResolvedSumireSpecialKeyAction.Action)?.action ?: return this
+    val displayAction = displayActions.firstOrNull { it.action == action }
+
+    return copy(
+        action = action,
+        label = displayAction?.displayName ?: label,
+        drawableResId = displayAction?.iconResId ?: drawableResId
+    )
+}
+
 private fun SumireSpecialKeyDirection.toDisplayFlickDirection(): FlickDirection {
     return when (this) {
         SumireSpecialKeyDirection.TAP -> FlickDirection.TAP

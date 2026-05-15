@@ -21,8 +21,10 @@ data class ImePreferencesSnapshot(
     val isUserDictionaryEnable: Boolean,
     val isUserTemplateEnable: Boolean,
     val hankakuPreference: Boolean,
+    val customDirectModeSpaceHankakuPreference: Boolean,
     val isLiveConversionEnable: Boolean,
     val liveConversionStartLength: Int,
+    val showLiveConversionCandidateYomi: Boolean,
     val nBest: Int,
     val flickSensitivityPreferenceValue: Int,
     val longPressTimeoutPreferenceValue: Int,
@@ -142,6 +144,10 @@ data class ImePreferencesSnapshot(
     val customThemeSpecialKeyColor: Int,
     val customThemeKeyTextColor: Int,
     val customThemeSpecialKeyTextColor: Int,
+    val customThemeCandidateTextColor: Int,
+    val customThemeCandidateItemBgColor: Int,
+    val customThemeCandidateItemPressedBgColor: Int,
+    val customThemeShortcutIconColor: Int,
     val liquidGlassThemePreference: Boolean,
     val liquidGlassBlurRadiousPreference: Int,
     val liquidGlassKeyBlurRadiousPreference: Int,
@@ -170,7 +176,11 @@ data class ImePreferencesSnapshot(
     val enableGemmaTranslationPreference: Boolean,
 ) {
     companion object {
-        fun from(appPreference: AppPreference): ImePreferencesSnapshot {
+        fun from(
+            appPreference: AppPreference,
+            customThemeCandidateItemPressedBgColorDefault: Int =
+                AppPreference.DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR
+        ): ImePreferencesSnapshot {
             return ImePreferencesSnapshot(
                 keyboardOrder = appPreference.keyboard_order,
                 candidateTabOrder = appPreference.candidate_tab_order,
@@ -186,9 +196,13 @@ data class ImePreferencesSnapshot(
                 isUserDictionaryEnable = appPreference.user_dictionary_preference ?: true,
                 isUserTemplateEnable = appPreference.user_template_preference ?: true,
                 hankakuPreference = appPreference.space_hankaku_preference ?: false,
+                customDirectModeSpaceHankakuPreference =
+                    appPreference.custom_direct_mode_space_hankaku_preference ?: true,
                 isLiveConversionEnable = appPreference.live_conversion_preference ?: false,
                 liveConversionStartLength =
                     appPreference.live_conversion_start_length_preference ?: 1,
+                showLiveConversionCandidateYomi =
+                    appPreference.live_conversion_candidate_yomi_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
                 flickSensitivityPreferenceValue = appPreference.flick_sensitivity_preference ?: 100,
                 longPressTimeoutPreferenceValue =
@@ -365,6 +379,19 @@ data class ImePreferencesSnapshot(
                 customThemeSpecialKeyColor = appPreference.custom_theme_special_key_color,
                 customThemeKeyTextColor = appPreference.custom_theme_key_text_color,
                 customThemeSpecialKeyTextColor = appPreference.custom_theme_special_key_text_color,
+                customThemeCandidateTextColor = appPreference.getCustomThemeCandidateTextColor(
+                    appPreference.custom_theme_key_text_color
+                ),
+                customThemeCandidateItemBgColor = appPreference.getCustomThemeCandidateItemBgColor(
+                    AppPreference.DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR
+                ),
+                customThemeCandidateItemPressedBgColor =
+                    appPreference.getCustomThemeCandidateItemPressedBgColor(
+                        customThemeCandidateItemPressedBgColorDefault
+                    ),
+                customThemeShortcutIconColor = appPreference.getCustomThemeShortcutIconColor(
+                    appPreference.custom_theme_special_key_text_color
+                ),
                 liquidGlassThemePreference = appPreference.liquid_glass_preference,
                 liquidGlassBlurRadiousPreference = appPreference.liquid_glass_blur_radius,
                 liquidGlassKeyBlurRadiousPreference = appPreference.liquid_glass_key_alpha,

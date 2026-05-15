@@ -45,6 +45,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
@@ -52,6 +53,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.ResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
+import com.kazumaproject.custom_keyboard.data.applyTapOverrideDisplayForDynamicSumireSpecialKey
 import com.kazumaproject.custom_keyboard.data.buildSumireSpecialKeyDisplayActionMap
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.custom_keyboard.data.dispatchResolvedSumireSpecialKeyAction
@@ -397,10 +399,14 @@ class FlickKeyboardView @JvmOverloads constructor(
         val states = info.keyData.dynamicStates ?: return
         val newState = states.getOrNull(stateIndex) ?: states.firstOrNull() ?: return
 
-        val newKeyData = info.keyData.copy(
+        val dynamicStateKeyData = info.keyData.copy(
             label = newState.label ?: "",
             action = newState.action,
             drawableResId = newState.drawableResId
+        )
+        val newKeyData = dynamicStateKeyData.applyTapOverrideDisplayForDynamicSumireSpecialKey(
+            displayActions = KeyActionMapper.getDisplayActions(context),
+            resolve = ::resolveSumireSpecialKeyOverride
         )
 
         val oldView = info.view

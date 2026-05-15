@@ -11,6 +11,17 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 
+internal class ShortcutIconColorState {
+    var iconColor: Int? = null
+        private set
+
+    fun setIconColor(color: Int): Boolean {
+        if (iconColor == color) return false
+        iconColor = color
+        return true
+    }
+}
+
 class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(DiffCallback) {
 
     /**
@@ -19,8 +30,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
      */
     var onItemClicked: ((ShortcutType) -> Unit)? = null
 
-    // ★追加: アイコンの色を保持する変数 (nullの場合はデフォルトの色)
-    private var iconColor: Int? = null
+    private val iconColorState = ShortcutIconColorState()
 
     /**
      * ViewHolder now captures clicks and calls the adapter's listener.
@@ -50,7 +60,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         holder.imageView.setImageResource(item.iconResId) // Enumからアイコン取得
 
         // ★追加: 色が設定されていれば適用し、なければ解除する
-        iconColor?.let { color ->
+        iconColorState.iconColor?.let { color ->
             holder.imageView.setColorFilter(color, PorterDuff.Mode.SRC_IN)
         } ?: run {
             holder.imageView.clearColorFilter()
@@ -59,8 +69,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
 
     // ★追加: 外部から色を設定するメソッド
     fun setIconColor(color: Int) {
-        if (iconColor == color) return
-        iconColor = color
+        if (!iconColorState.setIconColor(color)) return
         notifyItemRangeChanged(0, itemCount)
     }
 

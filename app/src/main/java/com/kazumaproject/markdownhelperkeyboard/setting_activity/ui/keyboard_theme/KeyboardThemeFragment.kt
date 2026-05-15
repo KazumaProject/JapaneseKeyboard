@@ -42,6 +42,14 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         private const val PREF_KEY_CUSTOM_SPECIAL_KEY = "theme_custom_special_key_color"
         private const val PREF_KEY_CUSTOM_TEXT = "theme_custom_key_text_color"
         private const val PREF_KEY_CUSTOM_SPECIAL_TEXT = "theme_custom_special_key_text_color"
+        private const val PREF_KEY_CUSTOM_CANDIDATE_TEXT =
+            "theme_custom_candidate_text_color"
+        private const val PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG =
+            "theme_custom_candidate_item_bg_color"
+        private const val PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG =
+            "theme_custom_candidate_item_pressed_bg_color"
+        private const val PREF_KEY_CUSTOM_SHORTCUT_ICON =
+            "theme_custom_shortcut_icon_color"
 
         // Custom Border Keys
         private const val PREF_KEY_CUSTOM_BORDER_ENABLE = "theme_custom_border_enable"
@@ -203,6 +211,38 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             getString(R.string.theme_custom_special_key_text_color)
         ) { appPreference.custom_theme_special_key_text_color }
         customCategory.addPreference(customSpecialTextPref)
+
+        val customCandidateTextPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_CANDIDATE_TEXT,
+            getString(R.string.theme_custom_candidate_text_color)
+        ) { appPreference.custom_theme_candidate_text_color }
+        customCategory.addPreference(customCandidateTextPref)
+
+        val customCandidateItemBgPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG,
+            getString(R.string.theme_custom_candidate_item_bg_color)
+        ) { appPreference.custom_theme_candidate_item_bg_color }
+        customCategory.addPreference(customCandidateItemBgPref)
+
+        val customCandidateItemPressedBgPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG,
+            getString(R.string.theme_custom_candidate_item_pressed_bg_color)
+        ) {
+            appPreference.getCustomThemeCandidateItemPressedBgColor(
+                ContextCompat.getColor(context, com.kazumaproject.core.R.color.qwety_key_bg_color)
+            )
+        }
+        customCategory.addPreference(customCandidateItemPressedBgPref)
+
+        val customShortcutIconPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_SHORTCUT_ICON,
+            getString(R.string.theme_custom_shortcut_icon_color)
+        ) { appPreference.custom_theme_shortcut_icon_color }
+        customCategory.addPreference(customShortcutIconPref)
 
         // Custom Border Settings
         val customBorderEnablePref = SwitchPreferenceCompat(context).apply {
@@ -368,6 +408,10 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_KEY)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_TEXT)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_TEXT)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_TEXT)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_SHORTCUT_ICON)?.isVisible = isVisible
 
         // Border Settings
         findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_ENABLE)?.isVisible = isVisible
@@ -386,6 +430,14 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             PREF_KEY_CUSTOM_SPECIAL_KEY -> appPreference.custom_theme_special_key_color = color
             PREF_KEY_CUSTOM_TEXT -> appPreference.custom_theme_key_text_color = color
             PREF_KEY_CUSTOM_SPECIAL_TEXT -> appPreference.custom_theme_special_key_text_color =
+                color
+            PREF_KEY_CUSTOM_CANDIDATE_TEXT -> appPreference.custom_theme_candidate_text_color =
+                color
+            PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG ->
+                appPreference.custom_theme_candidate_item_bg_color = color
+            PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG ->
+                appPreference.custom_theme_candidate_item_pressed_bg_color = color
+            PREF_KEY_CUSTOM_SHORTCUT_ICON -> appPreference.custom_theme_shortcut_icon_color =
                 color
 
             // Border Color
