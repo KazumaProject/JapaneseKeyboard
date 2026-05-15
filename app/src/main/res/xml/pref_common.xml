@@ -356,6 +356,14 @@
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
+            android:dependency="live_conversion_preference"
+            android:key="live_conversion_candidate_yomi_preference"
+            android:summaryOff="@string/live_conversion_candidate_yomi_summary_off"
+            android:summaryOn="@string/live_conversion_candidate_yomi_summary_on"
+            android:title="@string/live_conversion_candidate_yomi_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
             android:key="omission_search_preference"
             android:summaryOff="@string/omission_search_summary_off"
             android:summaryOn="@string/omission_search_summary_on"
