@@ -2429,6 +2429,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
+        persistCurrentCustomKeyboardInputModeIfEnabled()
         isInputViewActive = false
         qwertyGlideInputCoordinator?.cancelPending()
         releaseKeyboardBackgroundVideoPlayer()
@@ -4846,6 +4847,50 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickView.setKeyboard(applyDeleteKeyFlickPreferences(layout))
     }
 
+    private fun syncCustomKeyboardToggleKeyIcons(flickView: FlickKeyboardView) {
+        flickView.updateKeyIconByAction(
+            KeyAction.SwitchDirectMode,
+            if (isCustomLayoutDirectMode) {
+                com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
+            } else {
+                com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+            }
+        )
+        flickView.updateKeyIconByAction(
+            KeyAction.SwitchRomajiEnglish,
+            if (isCustomLayoutRomajiMode) {
+                com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
+            } else {
+                com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
+            }
+        )
+        flickView.updateKeyIconByAction(
+            KeyAction.ShiftKey,
+            if (isCustomLayoutShiftPressed) {
+                com.kazumaproject.core.R.drawable.shift_fill_24px
+            } else {
+                com.kazumaproject.core.R.drawable.shift_24px
+            }
+        )
+        flickView.updateKeyIconByAction(
+            KeyAction.CapLockKey,
+            if (isCustomLayoutCapLock) {
+                com.kazumaproject.core.R.drawable.caps_lock
+            } else {
+                com.kazumaproject.core.R.drawable.caps_lock_outline
+            }
+        )
+    }
+
+    private fun syncCustomKeyboardToggleKeyIconsOnAvailableSurfaces() {
+        getNormalKeyboardSurface()
+            ?.customLayout
+            ?.let(::syncCustomKeyboardToggleKeyIcons)
+        getFloatingKeyboardSurface()
+            ?.customLayout
+            ?.let(::syncCustomKeyboardToggleKeyIcons)
+    }
+
     private fun setSumireLayoutTo(flickView: FlickKeyboardView) {
         val layoutType = sumireInputKeyLayoutType ?: "toggle"
         flickView.setSumireSpecialKeyActionResolver(
@@ -4940,8 +4985,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     return@launch
                 }
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
-            isCustomLayoutRomajiMode = finalLayout.isRomaji
-            isCustomLayoutDirectMode = finalLayout.isDirectMode
+            isCustomLayoutRomajiMode = resolveInitialCustomKeyboardRomajiMode(
+                layoutId = id,
+                stableId = expectedStableId,
+                defaultValue = finalLayout.isRomaji
+            )
+            isCustomLayoutDirectMode = resolveInitialCustomKeyboardDirectMode(
+                layoutId = id,
+                stableId = expectedStableId,
+                defaultValue = finalLayout.isDirectMode
+            )
             isCustomLayoutShiftPressed = false
             isCustomLayoutCapLock = false
             withContext(Dispatchers.Main) {
@@ -4949,6 +5002,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     return@withContext
                 }
                 setKeyboardWithDeleteKeyFlickPreferences(flickView, finalLayout)
+                syncCustomKeyboardToggleKeyIcons(flickView)
             }
         }
     }
@@ -7582,6 +7636,50 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomLayoutShiftPressed = false
     private var isCustomLayoutCapLock = false
 
+    private fun customKeyboardInputModePersistenceKey(layoutId: Long, stableId: String): String {
+        return stableId.takeIf { it.isNotBlank() } ?: layoutId.toString()
+    }
+
+    private fun resolveInitialCustomKeyboardDirectMode(
+        layoutId: Long,
+        stableId: String,
+        defaultValue: Boolean
+    ): Boolean {
+        if (appPreference.remember_custom_keyboard_input_mode_preference != true) {
+            return defaultValue
+        }
+        val key = customKeyboardInputModePersistenceKey(layoutId, stableId)
+        return appPreference.getCustomKeyboardLastDirectMode(key) ?: defaultValue
+    }
+
+    private fun resolveInitialCustomKeyboardRomajiMode(
+        layoutId: Long,
+        stableId: String,
+        defaultValue: Boolean
+    ): Boolean {
+        if (appPreference.remember_custom_keyboard_input_mode_preference != true) {
+            return defaultValue
+        }
+        val key = customKeyboardInputModePersistenceKey(layoutId, stableId)
+        return appPreference.getCustomKeyboardLastRomajiMode(key) ?: defaultValue
+    }
+
+    private fun persistCurrentCustomKeyboardInputModeIfEnabled() {
+        if (appPreference.remember_custom_keyboard_input_mode_preference != true) {
+            return
+        }
+        if (qwertyMode.value != TenKeyQWERTYMode.Custom) {
+            return
+        }
+        val layout = selectedCustomKeyboardLayoutOrNull() ?: return
+        val key = customKeyboardInputModePersistenceKey(
+            layoutId = layout.layoutId,
+            stableId = layout.stableId
+        )
+        appPreference.saveCustomKeyboardLastDirectMode(key, isCustomLayoutDirectMode)
+        appPreference.saveCustomKeyboardLastRomajiMode(key, isCustomLayoutRomajiMode)
+    }
+
     private fun selectedCustomKeyboardLayoutOrNull(): CustomKeyboardLayout? {
         currentCustomKeyboardStableId
             ?.let { stableId -> resolveCustomKeyboardIndexByStableId(customLayouts, stableId) }
@@ -7670,8 +7768,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.d("renderCustomKeyboardLayout: $id $dbLayout")
             val finalLayout = keyboardRepository.convertLayout(dbLayout)
             Timber.d("renderCustomKeyboardLayout: ${dbLayout.isRomaji} ${finalLayout.isRomaji}")
-            isCustomLayoutRomajiMode = finalLayout.isRomaji
-            isCustomLayoutDirectMode = finalLayout.isDirectMode
+            isCustomLayoutRomajiMode = resolveInitialCustomKeyboardRomajiMode(
+                layoutId = id,
+                stableId = expectedStableId,
+                defaultValue = finalLayout.isRomaji
+            )
+            isCustomLayoutDirectMode = resolveInitialCustomKeyboardDirectMode(
+                layoutId = id,
+                stableId = expectedStableId,
+                defaultValue = finalLayout.isDirectMode
+            )
             isCustomLayoutShiftPressed = false
             isCustomLayoutCapLock = false
             withContext(Dispatchers.Main) {
@@ -7680,6 +7786,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     return@withContext
                 }
                 setCustomLayoutOnAvailableSurfaces(finalLayout)
+                syncCustomKeyboardToggleKeyIconsOnAvailableSurfaces()
             }
         }
     }
@@ -8545,6 +8652,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.SwitchDirectMode -> {
                         isCustomLayoutDirectMode = !isCustomLayoutDirectMode
+                        persistCurrentCustomKeyboardInputModeIfEnabled()
 
                         Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
@@ -8557,6 +8665,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.SwitchRomajiEnglish -> {
                         isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
+                        persistCurrentCustomKeyboardInputModeIfEnabled()
                         Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
                                 KeyAction.SwitchRomajiEnglish,
@@ -8990,6 +9099,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.SwitchDirectMode -> {
                         isCustomLayoutDirectMode = !isCustomLayoutDirectMode
+                        persistCurrentCustomKeyboardInputModeIfEnabled()
 
                         Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
@@ -9014,6 +9124,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.SwitchRomajiEnglish -> {
                         isCustomLayoutRomajiMode = !isCustomLayoutRomajiMode
+                        persistCurrentCustomKeyboardInputModeIfEnabled()
                         Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
                                 KeyAction.SwitchRomajiEnglish,
