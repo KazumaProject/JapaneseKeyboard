@@ -200,6 +200,12 @@ object AppPreference {
         Pair("remember_last_custom_keyboard_preference", false)
     private val LAST_USED_CUSTOM_KEYBOARD_STABLE_ID =
         Pair("last_used_custom_keyboard_stable_id", "")
+    private val REMEMBER_CUSTOM_KEYBOARD_INPUT_MODE_PREFERENCE =
+        Pair("remember_custom_keyboard_input_mode_preference", false)
+    private const val CUSTOM_KEYBOARD_LAST_DIRECT_MODE_PREFIX =
+        "custom_keyboard_last_direct_mode_"
+    private const val CUSTOM_KEYBOARD_LAST_ROMAJI_MODE_PREFIX =
+        "custom_keyboard_last_romaji_mode_"
 
     private val KEYBOARD_FLOATING_POSITION_X = Pair("keyboard_floating_position_x", -1)
     private val KEYBOARD_FLOATING_POSITION_Y = Pair("keyboard_floating_position_y", -1)
@@ -1276,6 +1282,15 @@ object AppPreference {
             it.putBoolean(REMEMBER_LAST_CUSTOM_KEYBOARD_PREFERENCE.first, value ?: false)
         }
 
+    var remember_custom_keyboard_input_mode_preference: Boolean?
+        get() = preferences.getBoolean(
+            REMEMBER_CUSTOM_KEYBOARD_INPUT_MODE_PREFERENCE.first,
+            REMEMBER_CUSTOM_KEYBOARD_INPUT_MODE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(REMEMBER_CUSTOM_KEYBOARD_INPUT_MODE_PREFERENCE.first, value ?: false)
+        }
+
     var last_used_custom_keyboard_stable_id: String?
         get() = preferences.getString(
             LAST_USED_CUSTOM_KEYBOARD_STABLE_ID.first,
@@ -1284,6 +1299,32 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putString(LAST_USED_CUSTOM_KEYBOARD_STABLE_ID.first, value.orEmpty())
         }
+
+    fun saveCustomKeyboardLastDirectMode(key: String, value: Boolean) = preferences.edit {
+        it.putBoolean("$CUSTOM_KEYBOARD_LAST_DIRECT_MODE_PREFIX$key", value)
+    }
+
+    fun getCustomKeyboardLastDirectMode(key: String): Boolean? {
+        val preferenceKey = "$CUSTOM_KEYBOARD_LAST_DIRECT_MODE_PREFIX$key"
+        return if (preferences.contains(preferenceKey)) {
+            preferences.getBoolean(preferenceKey, false)
+        } else {
+            null
+        }
+    }
+
+    fun saveCustomKeyboardLastRomajiMode(key: String, value: Boolean) = preferences.edit {
+        it.putBoolean("$CUSTOM_KEYBOARD_LAST_ROMAJI_MODE_PREFIX$key", value)
+    }
+
+    fun getCustomKeyboardLastRomajiMode(key: String): Boolean? {
+        val preferenceKey = "$CUSTOM_KEYBOARD_LAST_ROMAJI_MODE_PREFIX$key"
+        return if (preferences.contains(preferenceKey)) {
+            preferences.getBoolean(preferenceKey, false)
+        } else {
+            null
+        }
+    }
 
     var sumire_input_selection_preference: String?
         get() = preferences.getString(
