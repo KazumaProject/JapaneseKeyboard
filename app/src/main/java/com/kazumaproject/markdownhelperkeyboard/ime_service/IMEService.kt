@@ -4846,6 +4846,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickView.setKeyboard(applyDeleteKeyFlickPreferences(layout))
     }
 
+    private fun syncCustomKeyboardToggleKeyIcons(flickView: FlickKeyboardView) {
+        flickView.updateKeyIconByAction(
+            KeyAction.SwitchDirectMode,
+            if (isCustomLayoutDirectMode) {
+                com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
+            } else {
+                com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+            }
+        )
+        flickView.updateKeyIconByAction(
+            KeyAction.SwitchRomajiEnglish,
+            if (isCustomLayoutRomajiMode) {
+                com.kazumaproject.core.R.drawable.language_japanese_kana_left_bold_24px
+            } else {
+                com.kazumaproject.core.R.drawable.language_japanese_kana_right_bold_24px
+            }
+        )
+        flickView.updateKeyIconByAction(
+            KeyAction.ShiftKey,
+            if (isCustomLayoutShiftPressed) {
+                com.kazumaproject.core.R.drawable.shift_fill_24px
+            } else {
+                com.kazumaproject.core.R.drawable.shift_24px
+            }
+        )
+        flickView.updateKeyIconByAction(
+            KeyAction.CapLockKey,
+            if (isCustomLayoutCapLock) {
+                com.kazumaproject.core.R.drawable.caps_lock
+            } else {
+                com.kazumaproject.core.R.drawable.caps_lock_outline
+            }
+        )
+    }
+
     private fun setSumireLayoutTo(flickView: FlickKeyboardView) {
         val layoutType = sumireInputKeyLayoutType ?: "toggle"
         flickView.setSumireSpecialKeyActionResolver(
@@ -4949,6 +4984,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     return@withContext
                 }
                 setKeyboardWithDeleteKeyFlickPreferences(flickView, finalLayout)
+                syncCustomKeyboardToggleKeyIcons(flickView)
             }
         }
     }
