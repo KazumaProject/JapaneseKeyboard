@@ -51,7 +51,7 @@ class DictionarySourceResolver @Inject constructor(
         }
         if (hasAny && (!hasAll || !validAll)) return DictionaryCategoryLoadState.Partial
         if (validAll && store.isExternalEnabledForCategory(category)) return DictionaryCategoryLoadState.User
-        if (category.isOptionalMozcUt()) {
+        if (category.isDisableableBundledDictionary()) {
             return if (store.isOptionalBundledEnabled(category)) {
                 DictionaryCategoryLoadState.Bundled
             } else {

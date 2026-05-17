@@ -116,7 +116,11 @@ class DictionaryOverrideStore private constructor(
         saveMetadata(metadata)
         if (spec.partOfTripleDictionary) {
             if (isTripleValid(spec.category)) {
-                setExternalEnabledForCategory(spec.category, true)
+                setExternalEnabledForCategory(
+                    spec.category,
+                    !spec.category.isDisableableBundledDictionary() ||
+                        isOptionalBundledEnabled(spec.category),
+                )
             }
         } else {
             setExternalEnabledForKey(key, true)
@@ -180,7 +184,10 @@ class DictionaryOverrideStore private constructor(
         prefs.getBoolean(keyExternalEnabledKey(key), false)
 
     fun isOptionalBundledEnabled(category: DictionaryCategory): Boolean =
-        prefs.getBoolean(optionalBundledEnabledKey(category), false)
+        prefs.getBoolean(
+            optionalBundledEnabledKey(category),
+            category in setOf(DictionaryCategory.READING_CORRECTION, DictionaryCategory.KOTOWAZA),
+        )
 
     fun setOptionalBundledEnabled(category: DictionaryCategory, enabled: Boolean) {
         prefs.edit().putBoolean(optionalBundledEnabledKey(category), enabled).apply()
