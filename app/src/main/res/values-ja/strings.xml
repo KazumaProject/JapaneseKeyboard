@@ -802,6 +802,7 @@
     <string name="external_dictionary_category_english">英語辞書</string>
     <string name="external_dictionary_replace_with_external_file">外部ファイルで置き換える</string>
     <string name="external_dictionary_use_bundled_dictionary">内蔵辞書を使用</string>
+    <string name="external_dictionary_use_dictionary_switch_title">この辞書を使用する</string>
     <string name="external_dictionary_switch_title_format">%1$s: %2$s</string>
     <string name="external_dictionary_state_bundled_in_use">内蔵辞書を使用中</string>
     <string name="external_dictionary_state_external_in_use">外部辞書を使用中</string>
@@ -811,6 +812,8 @@
     <string name="external_dictionary_state_missing">見つかりません</string>
     <string name="external_dictionary_state_invalid_bundled_fallback">外部ファイルが無効です。内蔵辞書を使用します</string>
     <string name="external_dictionary_state_partial_bundled_fallback">有効な外部ファイルが揃っていません。内蔵辞書を使用します</string>
+    <string name="external_dictionary_switch_on_invalid_uses_bundled">外部ファイルが無効なため、オンにすると内蔵辞書を使用します。</string>
+    <string name="external_dictionary_switch_on_partial_uses_bundled">外部ファイルが揃っていないため、オンにすると内蔵辞書を使用します。</string>
     <string name="external_dictionary_no_valid_external_file_selected">有効な外部ファイルが選択されていないため、内蔵辞書を使用中です。</string>
     <string name="external_dictionary_external_file_selected">外部ファイル選択済み</string>
     <string name="external_dictionary_external_file_selected_format">外部ファイル選択済み: %1$s</string>
