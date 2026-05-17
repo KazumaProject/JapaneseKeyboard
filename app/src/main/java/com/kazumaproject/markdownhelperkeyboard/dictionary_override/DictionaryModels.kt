@@ -253,3 +253,14 @@ fun DictionaryCategory.isOptionalMozcUt(): Boolean =
         DictionaryCategory.NEOLOGD,
         DictionaryCategory.WEB,
     )
+
+fun DictionaryCategory.isDisableableBundledDictionary(): Boolean =
+    this in setOf(
+        DictionaryCategory.READING_CORRECTION,
+        DictionaryCategory.KOTOWAZA,
+        DictionaryCategory.PERSON_NAME,
+        DictionaryCategory.PLACES,
+        DictionaryCategory.WIKI,
+        DictionaryCategory.NEOLOGD,
+        DictionaryCategory.WEB,
+    )

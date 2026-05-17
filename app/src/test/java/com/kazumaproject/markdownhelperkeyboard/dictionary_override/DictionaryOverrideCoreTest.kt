@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.dictionary_override
 
+import android.content.Context
 import android.content.SharedPreferences
 import com.google.gson.Gson
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.CORE_REPLACEMENT_CATEGORIES
@@ -12,6 +13,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.util.zip.ZipEntry
@@ -274,6 +278,85 @@ class DictionaryOverrideCoreTest {
         assertFalse(newPrefs.getBoolean(DictionaryOverrideStore.optionalBundledEnabledKey(DictionaryCategory.PLACES), true))
     }
 
+    @Test
+    fun sourceResolver_disableableDictionaryUsesBundledWhenEnabledWithoutOverrides() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("disableable-enabled"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = sourceResolver(store)
+
+        listOf(DictionaryCategory.PERSON_NAME, DictionaryCategory.READING_CORRECTION).forEach { category ->
+            store.setOptionalBundledEnabled(category, true)
+            assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(category))
+        }
+    }
+
+    @Test
+    fun sourceResolver_disableableDictionaryIsDisabledWhenBundledIsDisabled() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("disableable-disabled"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = sourceResolver(store)
+
+        listOf(DictionaryCategory.PERSON_NAME, DictionaryCategory.READING_CORRECTION).forEach { category ->
+            store.setOptionalBundledEnabled(category, false)
+            assertEquals(DictionaryCategoryLoadState.Disabled, resolver.resolveCategoryLoadState(category))
+        }
+    }
+
+    @Test
+    fun sourceResolver_coreDictionaryFallsBackToBundledEvenIfBundledFlagIsFalse() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("core-bundled"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = sourceResolver(store)
+
+        store.setOptionalBundledEnabled(DictionaryCategory.SYSTEM, false)
+
+        assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(DictionaryCategory.SYSTEM))
+    }
+
+    @Test
+    fun store_doesNotAutoEnableExternalForDisabledDisableableDictionaryAfterAllImports() {
+        val store = alwaysValidStore("import-disabled")
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, false)
+
+        saveTripleOverrides(store, DictionaryCategory.PERSON_NAME)
+
+        assertFalse(store.isExternalEnabledForCategory(DictionaryCategory.PERSON_NAME))
+    }
+
+    @Test
+    fun store_autoEnablesExternalForEnabledDisableableDictionaryAfterAllImports() {
+        val store = alwaysValidStore("import-enabled")
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, true)
+
+        saveTripleOverrides(store, DictionaryCategory.PERSON_NAME)
+
+        assertTrue(store.isExternalEnabledForCategory(DictionaryCategory.PERSON_NAME))
+    }
+
+    @Test
+    fun displayState_disableableDictionarySwitchIsEnabledWithoutOverrides() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("disableable-display"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = ExternalDictionaryDisplayStateResolver(store)
+
+        listOf(DictionaryCategory.PERSON_NAME, DictionaryCategory.READING_CORRECTION).forEach { category ->
+            val state = resolver.resolveDisableableCategoryDisplayState(category)
+            assertTrue(state.switchEnabled)
+        }
+    }
+
     private fun zip(name: String, bytes: ByteArray): ByteArray {
         val output = java.io.ByteArrayOutputStream()
         ZipOutputStream(output).use { zip ->
@@ -315,6 +398,34 @@ class DictionaryOverrideCoreTest {
         )
         return candidates.firstOrNull { it.exists() }
             ?: error("Resource file not found: $path")
+    }
+
+    private fun sourceResolver(store: DictionaryOverrideStore): DictionarySourceResolver =
+        DictionarySourceResolver(mock<Context>(), store)
+
+    private fun alwaysValidStore(name: String): DictionaryOverrideStore {
+        val validator = mock<DictionaryOverrideValidator>()
+        whenever(validator.validate(any(), any())).thenReturn(ValidationResult.valid())
+        return DictionaryOverrideStore(
+            directory = temp.newFolder(name),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+            validator = validator,
+        )
+    }
+
+    private fun saveTripleOverrides(
+        store: DictionaryOverrideStore,
+        category: DictionaryCategory,
+    ) {
+        DictionaryFileSpecs.forCategory(category).forEach { spec ->
+            val result = store.saveOverrideFromInputStream(
+                spec.key,
+                ByteArrayInputStream(byteArrayOf(1, 2, 3)),
+                "${spec.key.name}.dat",
+            )
+            assertTrue(result.isValid)
+        }
     }
 }
 

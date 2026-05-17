@@ -6,6 +6,7 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFi
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileSpecs
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ValidationStatus
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.isDisableableBundledDictionary
 
 internal val CORE_REPLACEMENT_CATEGORIES = listOf(
     DictionaryCategory.SYSTEM,
@@ -26,6 +27,7 @@ internal enum class ExternalDictionaryDisplayState {
     BundledInUseNoOverride,
     BundledInUseWithValidOverride,
     ExternalInUse,
+    Disabled,
     InvalidOverrideBundledFallback,
     PartialOverrideBundledFallback,
 }
@@ -92,6 +94,32 @@ internal class ExternalDictionaryDisplayStateResolver(
             displayState = displayState,
             switchEnabled = hasAllValidOverrides,
             switchChecked = displayState == ExternalDictionaryDisplayState.ExternalInUse,
+        )
+    }
+
+    fun resolveDisableableCategoryDisplayState(category: DictionaryCategory): ExternalDictionarySwitchState {
+        require(category.isDisableableBundledDictionary())
+        val specs = DictionaryFileSpecs.forCategory(category)
+        val hasAnyOverride = specs.any { store.hasOverride(it.key) }
+        val hasInvalidOverride = specs.any { spec ->
+            store.hasOverride(spec.key) &&
+                store.getOverrideMetadata(spec.key)?.validationStatus == ValidationStatus.INVALID
+        }
+        val hasAllValidOverrides = specs.all { store.isValidOverride(it.key) }
+        val bundledEnabled = store.isOptionalBundledEnabled(category)
+        val displayState = when {
+            !bundledEnabled -> ExternalDictionaryDisplayState.Disabled
+            hasInvalidOverride -> ExternalDictionaryDisplayState.InvalidOverrideBundledFallback
+            hasAllValidOverrides && store.isExternalEnabledForCategory(category) ->
+                ExternalDictionaryDisplayState.ExternalInUse
+            hasAllValidOverrides -> ExternalDictionaryDisplayState.BundledInUseWithValidOverride
+            hasAnyOverride -> ExternalDictionaryDisplayState.PartialOverrideBundledFallback
+            else -> ExternalDictionaryDisplayState.BundledInUseNoOverride
+        }
+        return ExternalDictionarySwitchState(
+            displayState = displayState,
+            switchEnabled = true,
+            switchChecked = bundledEnabled,
         )
     }
 }
