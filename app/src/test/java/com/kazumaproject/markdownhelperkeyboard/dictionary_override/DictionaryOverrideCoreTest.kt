@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.dictionary_override
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.net.Uri
 import com.google.gson.Gson
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.CORE_REPLACEMENT_CATEGORIES
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.COMMON_REPLACEMENT_KEYS
@@ -79,6 +80,174 @@ class DictionaryOverrideCoreTest {
         store.removeOverride(DictionaryFileKey.ID_DEF)
         assertFalse(store.hasOverride(DictionaryFileKey.ID_DEF))
         assertFalse(store.isExternalEnabledForKey(DictionaryFileKey.ID_DEF))
+    }
+
+    @Test
+    fun revision_saveOverrideFromInputStreamSuccessIncrements() {
+        val store = alwaysValidStore("revision-input-stream")
+        val before = store.currentRevision
+
+        val result = store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+
+        assertTrue(result.isValid)
+        assertEquals(before + 1L, store.currentRevision)
+    }
+
+    @Test
+    fun revision_saveOverrideFromUriSuccessIncrements() {
+        val uri = mock<Uri>()
+        val validator = mock<DictionaryOverrideValidator>()
+        whenever(validator.validate(any(), any())).thenReturn(ValidationResult.valid())
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("revision-uri"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+            validator = validator,
+            streamOpener = { ByteArrayInputStream("1 名詞\n".toByteArray()) },
+            nameResolver = { "id.def" },
+        )
+        val before = store.currentRevision
+
+        val result = store.saveOverrideFromUri(DictionaryFileKey.ID_DEF, uri)
+
+        assertTrue(result.isValid)
+        assertEquals(before + 1L, store.currentRevision)
+    }
+
+    @Test
+    fun revision_invalidImportDoesNotIncrement() {
+        val validator = mock<DictionaryOverrideValidator>()
+        whenever(validator.validate(any(), any())).thenReturn(ValidationResult.invalid("bad"))
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("revision-invalid"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+            validator = validator,
+        )
+        val before = store.currentRevision
+
+        val result = store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("bad".toByteArray()),
+            "id.def",
+        )
+
+        assertFalse(result.isValid)
+        assertEquals(before, store.currentRevision)
+    }
+
+    @Test
+    fun revision_removeOverrideIncrementsOnlyWhenStateChanges() {
+        val store = alwaysValidStore("revision-remove")
+        store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+        val afterSave = store.currentRevision
+
+        store.removeOverride(DictionaryFileKey.ID_DEF)
+        assertEquals(afterSave + 1L, store.currentRevision)
+
+        val afterRemove = store.currentRevision
+        store.removeOverride(DictionaryFileKey.ID_DEF)
+        assertEquals(afterRemove, store.currentRevision)
+    }
+
+    @Test
+    fun revision_removeAllOverridesIncrementsOnlyWhenStateChanges() {
+        val store = alwaysValidStore("revision-remove-all")
+        store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+        val afterSave = store.currentRevision
+
+        store.removeAllOverrides()
+        assertEquals(afterSave + 1L, store.currentRevision)
+
+        val afterRemoveAll = store.currentRevision
+        store.removeAllOverrides()
+        assertEquals(afterRemoveAll, store.currentRevision)
+    }
+
+    @Test
+    fun revision_setExternalEnabledForCategoryIncrementsOnlyWhenValueChanges() {
+        val store = alwaysValidStore("revision-category-enabled")
+        val before = store.currentRevision
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, false)
+        assertEquals(before + 2L, store.currentRevision)
+    }
+
+    @Test
+    fun revision_setExternalEnabledForKeyIncrementsOnlyWhenValueChanges() {
+        val store = alwaysValidStore("revision-key-enabled")
+        val before = store.currentRevision
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, false)
+        assertEquals(before + 2L, store.currentRevision)
+    }
+
+    @Test
+    fun revision_setOptionalBundledEnabledIncrementsOnlyWhenValueChanges() {
+        val store = alwaysValidStore("revision-optional-enabled")
+        val before = store.currentRevision
+
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, false)
+        assertEquals(before + 2L, store.currentRevision)
+    }
+
+    @Test
+    fun revision_tripleDictionaryFinalSaveAutoEnableUsesSingleIncrementForThatSave() {
+        val store = alwaysValidStore("revision-triple")
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, true)
+        val afterOptional = store.currentRevision
+
+        saveTripleOverrides(store, DictionaryCategory.PERSON_NAME)
+
+        assertEquals(afterOptional + 3L, store.currentRevision)
+        assertTrue(store.isExternalEnabledForCategory(DictionaryCategory.PERSON_NAME))
+    }
+
+    @Test
+    fun revision_markInvalidIncrementsOnlyWhenValidOverrideBecomesInvalid() {
+        val store = alwaysValidStore("revision-mark-invalid")
+        store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+        val afterSave = store.currentRevision
+
+        store.markInvalid(DictionaryFileKey.ID_DEF, "broken")
+        assertEquals(afterSave + 1L, store.currentRevision)
+
+        store.markInvalid(DictionaryFileKey.ID_DEF, "broken")
+        assertEquals(afterSave + 1L, store.currentRevision)
     }
 
     @Test
