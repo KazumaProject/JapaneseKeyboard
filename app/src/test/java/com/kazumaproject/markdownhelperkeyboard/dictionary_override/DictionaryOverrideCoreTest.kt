@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import com.google.gson.Gson
+import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.CORE_REPLACEMENT_CATEGORIES
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.COMMON_REPLACEMENT_KEYS
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionaryDisplayState
@@ -18,7 +19,11 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.ObjectOutputStream
+import java.nio.ByteBuffer
+import java.util.BitSet
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -526,6 +531,151 @@ class DictionaryOverrideCoreTest {
         }
     }
 
+    @Test
+    fun compatibility_tokenMaxPosTableIndexBelowPosTableRowCountIsCompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0, 1),
+            leftIds = shortArrayOf(0, 1),
+            rightIds = shortArrayOf(0, 1),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertTrue(result.isCompatible)
+    }
+
+    @Test
+    fun compatibility_tokenMaxPosTableIndexAtPosTableRowCountIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0, 2),
+            leftIds = shortArrayOf(0, 1),
+            rightIds = shortArrayOf(0, 1),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.SYSTEM_TOKEN })
+    }
+
+    @Test
+    fun compatibility_posTableLeftAndRightSizeMismatchIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0, 1),
+            rightIds = shortArrayOf(0),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.POS_TABLE })
+    }
+
+    @Test
+    fun compatibility_posTableMaxLeftIdOutsideConnectionMatrixIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(NUM_OF_CONNECTION_ID.toShort()),
+            rightIds = shortArrayOf(0),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.POS_TABLE })
+    }
+
+    @Test
+    fun compatibility_posTableMaxRightIdOutsideConnectionMatrixIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(NUM_OF_CONNECTION_ID.toShort()),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.POS_TABLE })
+    }
+
+    @Test
+    fun compatibility_connectionIdExpectedSizeIsCompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(0),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertTrue(result.isCompatible)
+    }
+
+    @Test
+    fun compatibility_connectionIdShortSizeIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(0),
+            connectionIds = connectionIdBytes(3),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.CONNECTION_ID })
+    }
+
+    @Test
+    fun compatibility_invalidTokenDatRemainsSingleFileValidationConcern() {
+        val file = temp.newFile("invalid-token.dat")
+        file.writeBytes(byteArrayOf(1, 2, 3))
+
+        val result = DictionaryOverrideValidator().validate(
+            file,
+            DictionaryFileSpecs.get(DictionaryFileKey.SYSTEM_TOKEN),
+        )
+
+        assertFalse(result.isValid)
+    }
+
+    @Test
+    fun compatibility_emptyTokenArrayUsesMinusOneMaxAndIsCompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(),
+            leftIds = shortArrayOf(),
+            rightIds = shortArrayOf(),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertTrue(result.isCompatible)
+    }
+
+    @Test
+    fun compatibility_canBecomeCompatibleAfterPosTableIsReplaced() {
+        val incompatible = validateFixture(
+            tokenPosIndices = shortArrayOf(2),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(0),
+            connectionIds = validConnectionIds(),
+        )
+        val compatible = validateFixture(
+            tokenPosIndices = shortArrayOf(2),
+            leftIds = shortArrayOf(0, 1, 2),
+            rightIds = shortArrayOf(0, 1, 2),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertFalse(incompatible.isCompatible)
+        assertTrue(compatible.isCompatible)
+    }
+
+    @Test
+    fun sourceResolver_incompatibleCategoryCanBeKeptOutOfAppliedStateByDisablingExternal() {
+        val store = alwaysValidStore("incompatible-not-applied")
+        saveTripleOverrides(store, DictionaryCategory.SYSTEM)
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, false)
+
+        val resolver = sourceResolver(store)
+
+        assertFalse(resolver.shouldUseOverride(DictionaryFileKey.SYSTEM_TOKEN))
+        assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(DictionaryCategory.SYSTEM))
+    }
+
     private fun zip(name: String, bytes: ByteArray): ByteArray {
         val output = java.io.ByteArrayOutputStream()
         ZipOutputStream(output).use { zip ->
@@ -595,6 +745,58 @@ class DictionaryOverrideCoreTest {
             )
             assertTrue(result.isValid)
         }
+    }
+
+    private fun validateFixture(
+        tokenPosIndices: ShortArray,
+        leftIds: ShortArray,
+        rightIds: ShortArray,
+        connectionIds: ByteArray,
+    ): DictionaryCompatibilityResult {
+        val files = mapOf(
+            DictionaryFileKey.SYSTEM_TOKEN to tokenBytes(tokenPosIndices),
+            DictionaryFileKey.POS_TABLE to posTableBytes(leftIds, rightIds),
+            DictionaryFileKey.CONNECTION_ID to connectionIds,
+        )
+        return DictionaryCompatibilityValidator.validateSources(
+            tokenCategories = listOf(DictionaryCategory.SYSTEM),
+            sourceOpener = { key -> ByteArrayInputStream(files.getValue(key)) },
+        )
+    }
+
+    private fun DictionaryCompatibilityResult.problems(): List<DictionaryCompatibilityProblem> =
+        when (this) {
+            DictionaryCompatibilityResult.Compatible -> emptyList()
+            is DictionaryCompatibilityResult.Incompatible -> problems
+        }
+
+    private fun tokenBytes(posTableIndices: ShortArray): ByteArray {
+        val output = ByteArrayOutputStream()
+        ObjectOutputStream(output).use { objectOutput ->
+            objectOutput.writeObject(posTableIndices)
+            objectOutput.writeObject(ShortArray(posTableIndices.size))
+            objectOutput.writeObject(IntArray(posTableIndices.size))
+            objectOutput.writeObject(BitSet())
+        }
+        return output.toByteArray()
+    }
+
+    private fun posTableBytes(leftIds: ShortArray, rightIds: ShortArray): ByteArray {
+        val output = ByteArrayOutputStream()
+        ObjectOutputStream(output).use { objectOutput ->
+            objectOutput.writeObject(leftIds)
+            objectOutput.writeObject(rightIds)
+        }
+        return output.toByteArray()
+    }
+
+    private fun validConnectionIds(): ByteArray =
+        connectionIdBytes(NUM_OF_CONNECTION_ID * NUM_OF_CONNECTION_ID)
+
+    private fun connectionIdBytes(size: Int): ByteArray {
+        val buffer = ByteBuffer.allocate(size * 2)
+        repeat(size) { buffer.putShort(0) }
+        return buffer.array()
     }
 }
 
