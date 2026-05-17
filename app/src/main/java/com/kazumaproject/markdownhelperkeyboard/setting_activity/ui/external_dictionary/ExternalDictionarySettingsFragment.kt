@@ -15,7 +15,11 @@ import androidx.preference.SwitchPreferenceCompat
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCompatibilityProblem
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCompatibilityResult
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCompatibilityValidator
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileRole
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileSpec
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileSpecs
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideMetadata
@@ -35,7 +39,11 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
     @Inject
     lateinit var store: DictionaryOverrideStore
 
+    @Inject
+    lateinit var compatibilityValidator: DictionaryCompatibilityValidator
+
     private var pendingKey: DictionaryFileKey? = null
+    private var compatibilityUiState = CompatibilityUiState()
     private val displayStateResolver: ExternalDictionaryDisplayStateResolver
         get() = ExternalDictionaryDisplayStateResolver(store)
 
@@ -50,6 +58,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         renderPreferences()
+        refreshCompatibilityUiState()
     }
 
     private fun renderPreferences() {
@@ -89,14 +98,19 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             val metadata = store.getOverrideMetadata(key)
             val switchState = displayStateResolver.resolveFileDisplayState(key)
             category.addPreference(SwitchPreferenceCompat(requireContext()).apply {
+                val problems = compatibilityUiState.commonKeyProblems[key].orEmpty()
                 this.title = switchTitle(getString(spec.displayNameRes))
-                summary = buildFileSummary(metadata, switchState.displayState)
-                isEnabled = switchState.switchEnabled
-                isChecked = switchState.switchChecked
+                summary = buildFileSummary(metadata, switchState.displayState, problems)
+                isEnabled = switchState.switchEnabled && problems.isEmpty()
+                isChecked = switchState.switchChecked && problems.isEmpty()
                 setOnPreferenceChangeListener { _, newValue ->
+                    if (newValue == true && problems.isNotEmpty()) {
+                        showCompatibilityProblemDialog(problems)
+                        return@setOnPreferenceChangeListener false
+                    }
                     store.setExternalEnabledForKey(key, newValue == true)
                     toastApplyTiming()
-                    rerenderPreferencesKeepingScroll()
+                    refreshCompatibilityUiState()
                     true
                 }
             })
@@ -114,33 +128,43 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
         if (dictionaryCategory in CORE_REPLACEMENT_CATEGORIES) {
             val switchState = displayStateResolver.resolveCategoryDisplayState(dictionaryCategory)
             category.addPreference(SwitchPreferenceCompat(requireContext()).apply {
+                val problems = compatibilityUiState.categoryProblems[dictionaryCategory].orEmpty()
                 this.title = switchTitle(categoryTitle(dictionaryCategory))
-                summary = buildCategorySummary(switchState)
-                isEnabled = switchState.switchEnabled
-                isChecked = switchState.switchChecked
+                summary = buildCategorySummary(switchState, problems)
+                isEnabled = switchState.switchEnabled && problems.isEmpty()
+                isChecked = switchState.switchChecked && problems.isEmpty()
                 setOnPreferenceChangeListener { _, newValue ->
+                    if (newValue == true && problems.isNotEmpty()) {
+                        showCompatibilityProblemDialog(problems)
+                        return@setOnPreferenceChangeListener false
+                    }
                     store.setExternalEnabledForCategory(dictionaryCategory, newValue == true)
                     toastApplyTiming()
-                    rerenderPreferencesKeepingScroll()
+                    refreshCompatibilityUiState()
                     true
                 }
             })
         } else if (dictionaryCategory.isDisableableBundledDictionary()) {
             val switchState = displayStateResolver.resolveDisableableCategoryDisplayState(dictionaryCategory)
             category.addPreference(SwitchPreferenceCompat(requireContext()).apply {
+                val problems = compatibilityUiState.categoryProblems[dictionaryCategory].orEmpty()
                 title = getString(R.string.external_dictionary_use_dictionary_switch_title)
-                summary = buildDisableableCategorySummary(dictionaryCategory, switchState)
+                summary = buildDisableableCategorySummary(dictionaryCategory, switchState, problems)
                 isEnabled = switchState.switchEnabled
                 isChecked = switchState.switchChecked
                 setOnPreferenceChangeListener { _, newValue ->
                     val enabled = newValue == true
                     store.setOptionalBundledEnabled(dictionaryCategory, enabled)
+                    if (enabled && problems.isNotEmpty()) {
+                        store.setExternalEnabledForCategory(dictionaryCategory, false)
+                        showCompatibilityProblemDialog(problems)
+                    }
                     store.setExternalEnabledForCategory(
                         dictionaryCategory,
-                        enabled && specs.all { store.isValidOverride(it.key) },
+                        enabled && specs.all { store.isValidOverride(it.key) } && problems.isEmpty(),
                     )
                     toastApplyTiming()
-                    rerenderPreferencesKeepingScroll()
+                    refreshCompatibilityUiState()
                     true
                 }
             })
@@ -167,7 +191,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             setOnPreferenceClickListener {
                 store.removeOverride(spec.key)
                 toastApplyTiming()
-                rerenderPreferencesKeepingScroll()
+                refreshCompatibilityUiState()
                 true
             }
         })
@@ -175,17 +199,40 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
 
     private fun importOverride(key: DictionaryFileKey, uri: Uri) {
         lifecycleScope.launch {
-            val result = withContext(Dispatchers.IO) {
-                store.saveOverrideFromUri(key, uri)
+            val importResult = withContext(Dispatchers.IO) {
+                val result = store.saveOverrideFromUri(key, uri)
+                val spec = DictionaryFileSpecs.get(key)
+                val compatibilityResult = if (result.isValid) {
+                    compatibilityValidator.validateActiveState()
+                } else {
+                    DictionaryCompatibilityResult.Compatible
+                }
+                val tokenCompatibilityResult = if (result.isValid && spec.role == DictionaryFileRole.TOKEN) {
+                    compatibilityValidator.validateCategoryReplacement(spec.category)
+                } else {
+                    DictionaryCompatibilityResult.Compatible
+                }
+                val disabledProblems = (
+                    disableIncompatibleActiveOverrides(compatibilityResult) +
+                        tokenCompatibilityResult.problems()
+                    ).distinctBy { it.messageForLog }
+                ImportResult(result, disabledProblems)
             }
-            val message = if (result.isValid) {
-                getString(R.string.external_dictionary_import_success)
+            val message = if (importResult.validationResult.isValid) {
+                if (importResult.disabledProblems.isEmpty()) {
+                    getString(R.string.external_dictionary_import_success)
+                } else {
+                    getString(R.string.external_dictionary_import_success_incompatible_not_applied)
+                }
             } else {
-                getString(R.string.external_dictionary_import_failed_format, result.message)
+                getString(R.string.external_dictionary_import_failed_format, importResult.validationResult.message)
             }
             if (!isAdded || view == null) return@launch
             Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
-            rerenderPreferencesKeepingScroll()
+            if (importResult.disabledProblems.isNotEmpty()) {
+                showCompatibilityProblemDialog(importResult.disabledProblems)
+            }
+            refreshCompatibilityUiState()
         }
     }
 
@@ -196,7 +243,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 store.removeAllOverrides()
                 toastApplyTiming()
-                rerenderPreferencesKeepingScroll()
+                refreshCompatibilityUiState()
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
@@ -218,9 +265,14 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
     private fun buildFileSummary(
         metadata: DictionaryOverrideMetadata?,
         state: ExternalDictionaryDisplayState,
+        compatibilityProblems: List<DictionaryCompatibilityProblem> = emptyList(),
     ): String {
+        val compatibilityLines = compatibilitySummaryLines(compatibilityProblems)
         if (metadata == null) {
-            return getString(R.string.external_dictionary_state_format, displayStateText(state))
+            return listOf(
+                getString(R.string.external_dictionary_state_format, displayStateText(state)),
+                *compatibilityLines.toTypedArray(),
+            ).filter { it.isNotBlank() }.joinToString("\n")
         }
         val date = DateFormat.format("yyyy-MM-dd HH:mm", Date(metadata.importedAt))
         val size = Formatter.formatFileSize(requireContext(), metadata.size)
@@ -230,10 +282,14 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             getString(R.string.external_dictionary_size_format, size),
             getString(R.string.external_dictionary_imported_format, date),
             metadata.validationMessage,
+            *compatibilityLines.toTypedArray(),
         ).joinToString("\n")
     }
 
-    private fun buildCategorySummary(switchState: ExternalDictionarySwitchState): String {
+    private fun buildCategorySummary(
+        switchState: ExternalDictionarySwitchState,
+        compatibilityProblems: List<DictionaryCompatibilityProblem> = emptyList(),
+    ): String {
         val lines = mutableListOf(
             getString(R.string.external_dictionary_state_format, displayStateText(switchState.displayState))
         )
@@ -243,12 +299,14 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             !switchState.switchEnabled ->
                 lines += getString(R.string.external_dictionary_no_valid_external_file_selected)
         }
+        lines += compatibilitySummaryLines(compatibilityProblems)
         return lines.joinToString("\n")
     }
 
     private fun buildDisableableCategorySummary(
         category: DictionaryCategory,
         switchState: ExternalDictionarySwitchState,
+        compatibilityProblems: List<DictionaryCompatibilityProblem> = emptyList(),
     ): String {
         val lines = mutableListOf(
             getString(R.string.external_dictionary_state_format, displayStateText(switchState.displayState))
@@ -268,7 +326,103 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             switchState.displayState == ExternalDictionaryDisplayState.BundledInUseWithValidOverride ->
                 lines += getString(R.string.external_dictionary_external_file_selected)
         }
+        lines += compatibilitySummaryLines(compatibilityProblems)
         return lines.joinToString("\n")
+    }
+
+    private fun refreshCompatibilityUiState() {
+        lifecycleScope.launch {
+            val nextState = withContext(Dispatchers.IO) { buildCompatibilityUiState() }
+            if (!isAdded || view == null) return@launch
+            compatibilityUiState = nextState
+            rerenderPreferencesKeepingScroll()
+        }
+    }
+
+    private fun buildCompatibilityUiState(): CompatibilityUiState {
+        val categoryProblems = DICTIONARY_CATEGORIES
+            .filter { it != DictionaryCategory.ENGLISH }
+            .associateWith { category ->
+                val hasValidTokenOverride = DictionaryFileSpecs.forCategory(category)
+                    .firstOrNull { it.role == DictionaryFileRole.TOKEN }
+                    ?.let { store.isValidOverride(it.key) }
+                    ?: false
+                if (hasValidTokenOverride) {
+                    compatibilityValidator.validateCategoryReplacement(category).problems()
+                } else {
+                    emptyList()
+                }
+            }
+            .filterValues { it.isNotEmpty() }
+        val commonKeyProblems = COMMON_REPLACEMENT_KEYS
+            .filter { store.isValidOverride(it) }
+            .associateWith { key ->
+                compatibilityValidator.validateActiveState(forceOverrideKeys = setOf(key)).problems()
+                    .filter { problem ->
+                        problem.affectedFileKey == key ||
+                            (key == DictionaryFileKey.POS_TABLE &&
+                                problem.requiredFileKeys.contains(DictionaryFileKey.POS_TABLE))
+                    }
+            }
+            .filterValues { it.isNotEmpty() }
+        return CompatibilityUiState(categoryProblems, commonKeyProblems)
+    }
+
+    private fun disableIncompatibleActiveOverrides(
+        result: DictionaryCompatibilityResult,
+    ): List<DictionaryCompatibilityProblem> {
+        val problems = result.problems()
+        if (problems.isEmpty()) return emptyList()
+        problems.forEach { problem ->
+            val affectedKey = problem.affectedFileKey
+            if (affectedKey != null && affectedKey in COMMON_REPLACEMENT_KEYS && store.isExternalEnabledForKey(affectedKey)) {
+                store.setExternalEnabledForKey(affectedKey, false)
+                return@forEach
+            }
+            if (
+                problem.requiredFileKeys.contains(DictionaryFileKey.POS_TABLE) &&
+                store.isExternalEnabledForKey(DictionaryFileKey.POS_TABLE)
+            ) {
+                store.setExternalEnabledForKey(DictionaryFileKey.POS_TABLE, false)
+                return@forEach
+            }
+            val affectedCategory = problem.affectedCategory
+            if (affectedCategory != null && store.isExternalEnabledForCategory(affectedCategory)) {
+                store.setExternalEnabledForCategory(affectedCategory, false)
+            }
+        }
+        return problems
+    }
+
+    private fun DictionaryCompatibilityResult.problems(): List<DictionaryCompatibilityProblem> =
+        when (this) {
+            DictionaryCompatibilityResult.Compatible -> emptyList()
+            is DictionaryCompatibilityResult.Incompatible -> problems
+        }
+
+    private fun compatibilitySummaryLines(
+        problems: List<DictionaryCompatibilityProblem>,
+    ): List<String> {
+        if (problems.isEmpty()) return emptyList()
+        return listOf(
+            getString(R.string.external_dictionary_compat_imported_but_not_usable),
+            getString(R.string.external_dictionary_compat_import_matching_common_files),
+            getString(R.string.external_dictionary_compat_dictionary_not_applied),
+        ) + problems.map { problem ->
+            val detail = getString(problem.messageResId, *problem.messageArgs.toTypedArray())
+            val fileName = problem.affectedFileKey?.let { getString(DictionaryFileSpecs.get(it).displayNameRes) }
+            val categoryName = problem.affectedCategory?.takeIf { it != DictionaryCategory.COMMON }?.let { categoryTitle(it) }
+            listOfNotNull(categoryName, fileName, detail).joinToString(": ")
+        }
+    }
+
+    private fun showCompatibilityProblemDialog(problems: List<DictionaryCompatibilityProblem>) {
+        if (!isAdded || view == null || problems.isEmpty()) return
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.external_dictionary_compat_dialog_title)
+            .setMessage(compatibilitySummaryLines(problems).joinToString("\n"))
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun displayStateText(state: ExternalDictionaryDisplayState): String {
@@ -322,6 +476,16 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
         ).show()
     }
 }
+
+private data class CompatibilityUiState(
+    val categoryProblems: Map<DictionaryCategory, List<DictionaryCompatibilityProblem>> = emptyMap(),
+    val commonKeyProblems: Map<DictionaryFileKey, List<DictionaryCompatibilityProblem>> = emptyMap(),
+)
+
+private data class ImportResult(
+    val validationResult: com.kazumaproject.markdownhelperkeyboard.dictionary_override.ValidationResult,
+    val disabledProblems: List<DictionaryCompatibilityProblem>,
+)
 
 private val DICTIONARY_CATEGORIES = listOf(
     DictionaryCategory.SYSTEM,

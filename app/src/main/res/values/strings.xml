@@ -694,6 +694,7 @@
     <string name="external_dictionary_remove_file_format">Remove %1$s</string>
     <string name="external_dictionary_remove_file_summary">Deletes only this external file.</string>
     <string name="external_dictionary_import_success">External dictionary file was imported.</string>
+    <string name="external_dictionary_import_success_incompatible_not_applied">External dictionary file was imported, but it was not applied to the keyboard.</string>
     <string name="external_dictionary_import_failed_format">Import failed: %1$s</string>
     <string name="external_dictionary_file_connection_id">connectionId</string>
     <string name="external_dictionary_file_pos_table">pos_table</string>
@@ -729,6 +730,17 @@
     <string name="external_dictionary_external_file_selected_format">External file selected: %1$s</string>
     <string name="external_dictionary_imported_format">Imported: %1$s</string>
     <string name="external_dictionary_size_format">Size: %1$s</string>
+    <string name="external_dictionary_compat_dialog_title">Dictionary files are not compatible</string>
+    <string name="external_dictionary_compat_imported_but_not_usable">This dictionary file was imported, but it cannot be used with the current pos_table.dat / connectionId.dat.</string>
+    <string name="external_dictionary_compat_import_matching_common_files">Please import the pos_table.dat and connectionId.dat generated with the same dictionary data.</string>
+    <string name="external_dictionary_compat_token_requires_pos_table_rows">token.dat requires pos_table.dat with at least %1$d rows, but the current pos_table.dat has %2$d rows.</string>
+    <string name="external_dictionary_compat_pos_table_id_out_of_range">pos_table.dat contains left/right IDs that exceed the current connectionId.dat matrix.</string>
+    <string name="external_dictionary_compat_connection_id_invalid_size">connectionId.dat has an invalid size.</string>
+    <string name="external_dictionary_compat_dictionary_not_applied">The dictionary was not applied to the keyboard. Existing dictionaries are still being used.</string>
+    <string name="external_dictionary_compat_pos_table_row_mismatch">pos_table.dat has different left/right row counts.</string>
+    <string name="external_dictionary_compat_pos_table_unreadable">pos_table.dat could not be read.</string>
+    <string name="external_dictionary_compat_connection_id_unreadable">connectionId.dat could not be read.</string>
+    <string name="external_dictionary_compat_token_negative_pos_index">token.dat contains an invalid pos_table index.</string>
     <string name="category_kana">Kana</string>
     <string name="tenkey_keymap_guide_title">Show key guides</string>
     <string name="tenkey_keymap_guide_summary">Displays guide characters on the keys to indicate how to input each character.</string>

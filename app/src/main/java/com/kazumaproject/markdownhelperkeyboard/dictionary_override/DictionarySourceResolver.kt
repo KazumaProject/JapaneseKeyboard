@@ -14,6 +14,17 @@ class DictionarySourceResolver @Inject constructor(
     fun openForKey(key: DictionaryFileKey): InputStream =
         if (shouldUseOverride(key)) openOverrideForKey(key) else openBundledForKey(key)
 
+    fun openForKeyInPlan(
+        key: DictionaryFileKey,
+        forceOverrideKeys: Set<DictionaryFileKey> = emptySet(),
+        forceOverrideCategories: Set<DictionaryCategory> = emptySet(),
+    ): InputStream =
+        if (shouldUseOverrideInPlan(key, forceOverrideKeys, forceOverrideCategories)) {
+            openOverrideForKey(key)
+        } else {
+            openBundledForKey(key)
+        }
+
     fun openBundledForKey(key: DictionaryFileKey): InputStream =
         context.assets.open(DictionaryFileSpecs.get(key).bundledAssetPath)
 
@@ -29,11 +40,31 @@ class DictionarySourceResolver @Inject constructor(
         }
     }
 
+    fun shouldUseOverrideInPlan(
+        key: DictionaryFileKey,
+        forceOverrideKeys: Set<DictionaryFileKey> = emptySet(),
+        forceOverrideCategories: Set<DictionaryCategory> = emptySet(),
+    ): Boolean {
+        val spec = DictionaryFileSpecs.get(key)
+        if (!store.isValidOverride(key)) return false
+        if (key in forceOverrideKeys) return true
+        return if (spec.partOfTripleDictionary) {
+            spec.category in forceOverrideCategories || shouldUseOverrideCategory(spec.category)
+        } else {
+            store.isExternalEnabledForKey(key)
+        }
+    }
+
     fun shouldUseOverrideCategory(category: DictionaryCategory): Boolean =
         store.isExternalEnabledForCategory(category) && isTripleComplete(category)
 
     fun isTripleComplete(category: DictionaryCategory): Boolean =
         DictionaryFileSpecs.forCategory(category).all { store.isValidOverride(it.key) }
+
+    fun hasValidOverride(key: DictionaryFileKey): Boolean = store.isValidOverride(key)
+
+    fun isOptionalBundledEnabled(category: DictionaryCategory): Boolean =
+        store.isOptionalBundledEnabled(category)
 
     fun resolveCategoryLoadState(category: DictionaryCategory): DictionaryCategoryLoadState {
         val specs = DictionaryFileSpecs.forCategory(category)
