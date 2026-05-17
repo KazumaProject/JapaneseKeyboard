@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm
 
 import com.kazumaproject.graph.Node
-import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,6 +24,7 @@ class NgramRuleScorerTest {
             graph = createIkinaInasenaGraph(),
             length = 2,
             connectionIds = connectionIds,
+            connectionMatrixSize = TEST_CONNECTION_MATRIX_SIZE,
             n = 3,
         ).first().string
         assertEquals("意気でいなせな", noRuleTop)
@@ -47,6 +47,7 @@ class NgramRuleScorerTest {
             graph = createIkinaInasenaGraph(),
             length = 2,
             connectionIds = connectionIds,
+            connectionMatrixSize = TEST_CONNECTION_MATRIX_SIZE,
             n = 3,
         ).first().string
 
@@ -248,6 +249,7 @@ class NgramRuleScorerTest {
                     graph = graph,
                     length = 3,
                     connectionIds = connectionIds,
+                    connectionMatrixSize = TEST_CONNECTION_MATRIX_SIZE,
                     n = 5,
                 )
             }
@@ -260,6 +262,7 @@ class NgramRuleScorerTest {
                         graph = graph,
                         length = 3,
                         connectionIds = connectionIds,
+                        connectionMatrixSize = TEST_CONNECTION_MATRIX_SIZE,
                         n = 5,
                     )
                     checksum += (candidates.firstOrNull()?.score ?: 0).toLong()
@@ -311,7 +314,7 @@ class NgramRuleScorerTest {
 
     private fun createConnectionIds(): ShortArray {
         // We only use IDs 0 and 1 in this synthetic graph.
-        return ShortArray(NUM_OF_CONNECTION_ID * 2) { 0 }
+        return ShortArray(TEST_CONNECTION_MATRIX_SIZE * TEST_CONNECTION_MATRIX_SIZE) { 0 }
     }
 
     private fun createBenchmarkGraph(): MutableMap<Int, MutableList<Node>> {
@@ -391,5 +394,9 @@ class NgramRuleScorerTest {
         TWO_NODE_ONLY,
         THREE_NODE_ONLY,
         MIXED,
+    }
+
+    private companion object {
+        const val TEST_CONNECTION_MATRIX_SIZE = 2
     }
 }

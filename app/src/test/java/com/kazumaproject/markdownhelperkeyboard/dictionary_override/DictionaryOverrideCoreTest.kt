@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
 import com.google.gson.Gson
+import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.CORE_REPLACEMENT_CATEGORIES
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.COMMON_REPLACEMENT_KEYS
@@ -544,6 +545,16 @@ class DictionaryOverrideCoreTest {
     }
 
     @Test
+    fun compatibility_connectionIdSize2670SquareInfersMatrixSize2670() {
+        assertEquals(2670, ConnectionMatrix.inferMatrixSize(2670 * 2670))
+    }
+
+    @Test
+    fun compatibility_connectionIdSize2672SquareInfersMatrixSize2672() {
+        assertEquals(2672, ConnectionMatrix.inferMatrixSize(2672 * 2672))
+    }
+
+    @Test
     fun compatibility_tokenMaxPosTableIndexAtPosTableRowCountIsIncompatible() {
         val result = validateFixture(
             tokenPosIndices = shortArrayOf(0, 2),
@@ -618,6 +629,57 @@ class DictionaryOverrideCoreTest {
 
         assertFalse(result.isCompatible)
         assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.CONNECTION_ID })
+    }
+
+    @Test
+    fun compatibility_connectionIdEmptySizeIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(0),
+            connectionIds = connectionIdBytes(0),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.CONNECTION_ID })
+    }
+
+    @Test
+    fun compatibility_posTableIdsWithinInferred2672MatrixAreCompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(2671),
+            rightIds = shortArrayOf(2671),
+            connectionIds = validConnectionIds(matrixSize = 2672),
+        )
+
+        assertTrue(result.isCompatible)
+    }
+
+    @Test
+    fun compatibility_posTableMaxLeftIdAtInferred2672MatrixSizeIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(2672),
+            rightIds = shortArrayOf(0),
+            connectionIds = validConnectionIds(matrixSize = 2672),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.POS_TABLE })
+    }
+
+    @Test
+    fun compatibility_posTableMaxRightIdAtInferred2672MatrixSizeIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(2672),
+            connectionIds = validConnectionIds(matrixSize = 2672),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.POS_TABLE })
     }
 
     @Test
@@ -790,8 +852,8 @@ class DictionaryOverrideCoreTest {
         return output.toByteArray()
     }
 
-    private fun validConnectionIds(): ByteArray =
-        connectionIdBytes(NUM_OF_CONNECTION_ID * NUM_OF_CONNECTION_ID)
+    private fun validConnectionIds(matrixSize: Int = NUM_OF_CONNECTION_ID): ByteArray =
+        connectionIdBytes(matrixSize * matrixSize)
 
     private fun connectionIdBytes(size: Int): ByteArray {
         val buffer = ByteBuffer.allocate(size * 2)
