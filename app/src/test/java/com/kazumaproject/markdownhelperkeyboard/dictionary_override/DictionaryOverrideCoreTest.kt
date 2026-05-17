@@ -1,6 +1,11 @@
 package com.kazumaproject.markdownhelperkeyboard.dictionary_override
 
 import android.content.SharedPreferences
+import com.google.gson.Gson
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.CORE_REPLACEMENT_CATEGORIES
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.COMMON_REPLACEMENT_KEYS
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionaryDisplayState
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionaryDisplayStateResolver
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -8,6 +13,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.ByteArrayInputStream
+import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
@@ -82,8 +88,174 @@ class DictionaryOverrideCoreTest {
         val resolver = FakeResolver(store)
 
         store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, true)
-        assertEquals(DictionaryCategoryLoadState.Missing, resolver.state(DictionaryCategory.COMMON))
+        assertEquals(DictionaryCategoryLoadState.Bundled, resolver.state(DictionaryCategory.COMMON))
         assertEquals(DictionaryCategoryLoadState.Bundled, resolver.state(DictionaryCategory.SYSTEM))
+    }
+
+    @Test
+    fun displayState_metadataNullIsBundledInUseNotMissingForCommonFiles() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("common-no-overrides"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = ExternalDictionaryDisplayStateResolver(store)
+
+        COMMON_REPLACEMENT_KEYS.forEach { key ->
+            val state = resolver.resolveFileDisplayState(key)
+            assertEquals(ExternalDictionaryDisplayState.BundledInUseNoOverride, state.displayState)
+            assertFalse(state.switchEnabled)
+            assertFalse(state.switchChecked)
+        }
+    }
+
+    @Test
+    fun displayState_commonValidOverrideUsesSwitchAsReplacementChoice() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("common-valid"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, false)
+        val bundledState = ExternalDictionaryDisplayStateResolver(store)
+            .resolveFileDisplayState(DictionaryFileKey.ID_DEF)
+        assertEquals(ExternalDictionaryDisplayState.BundledInUseWithValidOverride, bundledState.displayState)
+        assertTrue(bundledState.switchEnabled)
+        assertFalse(bundledState.switchChecked)
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, true)
+        val externalState = ExternalDictionaryDisplayStateResolver(store)
+            .resolveFileDisplayState(DictionaryFileKey.ID_DEF)
+        assertEquals(ExternalDictionaryDisplayState.ExternalInUse, externalState.displayState)
+        assertTrue(externalState.switchEnabled)
+        assertTrue(externalState.switchChecked)
+    }
+
+    @Test
+    fun displayState_invalidCommonOverrideFallsBackToBundledAndDisablesSwitch() {
+        val prefs = FakeSharedPreferences()
+        val directory = temp.newFolder("common-invalid")
+        addMetadataOverride(directory, prefs, DictionaryFileKey.POS_TABLE, ValidationStatus.INVALID)
+        val store = DictionaryOverrideStore(
+            directory = directory,
+            prefs = prefs,
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        store.setExternalEnabledForKey(DictionaryFileKey.POS_TABLE, true)
+
+        val state = ExternalDictionaryDisplayStateResolver(store)
+            .resolveFileDisplayState(DictionaryFileKey.POS_TABLE)
+
+        assertEquals(ExternalDictionaryDisplayState.InvalidOverrideBundledFallback, state.displayState)
+        assertFalse(state.switchEnabled)
+        assertFalse(state.switchChecked)
+    }
+
+    @Test
+    fun displayState_coreCategoriesUseBundledWhenNoExternalOverrideExists() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("core-no-overrides"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = ExternalDictionaryDisplayStateResolver(store)
+
+        CORE_REPLACEMENT_CATEGORIES.forEach { category ->
+            val state = resolver.resolveCategoryDisplayState(category)
+            assertEquals(ExternalDictionaryDisplayState.BundledInUseNoOverride, state.displayState)
+            assertFalse(state.switchEnabled)
+            assertFalse(state.switchChecked)
+        }
+    }
+
+    @Test
+    fun displayState_systemCategoryRequiresAllThreeValidFilesBeforeSwitchIsEnabled() {
+        val prefs = FakeSharedPreferences()
+        val directory = temp.newFolder("system-partial")
+        addMetadataOverride(directory, prefs, DictionaryFileKey.SYSTEM_TANGO, ValidationStatus.VALID)
+        val store = DictionaryOverrideStore(
+            directory = directory,
+            prefs = prefs,
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, true)
+
+        val state = ExternalDictionaryDisplayStateResolver(store)
+            .resolveCategoryDisplayState(DictionaryCategory.SYSTEM)
+
+        assertEquals(ExternalDictionaryDisplayState.PartialOverrideBundledFallback, state.displayState)
+        assertFalse(state.switchEnabled)
+        assertFalse(state.switchChecked)
+    }
+
+    @Test
+    fun displayState_systemCategoryUsesSwitchAsReplacementChoiceWhenAllFilesAreValid() {
+        val prefs = FakeSharedPreferences()
+        val directory = temp.newFolder("system-valid")
+        listOf(
+            DictionaryFileKey.SYSTEM_TANGO,
+            DictionaryFileKey.SYSTEM_YOMI,
+            DictionaryFileKey.SYSTEM_TOKEN,
+        ).forEach { key ->
+            addMetadataOverride(directory, prefs, key, ValidationStatus.VALID)
+        }
+        val store = DictionaryOverrideStore(
+            directory = directory,
+            prefs = prefs,
+            defaultPrefs = FakeSharedPreferences(),
+        )
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, false)
+        val bundledState = ExternalDictionaryDisplayStateResolver(store)
+            .resolveCategoryDisplayState(DictionaryCategory.SYSTEM)
+        assertEquals(ExternalDictionaryDisplayState.BundledInUseWithValidOverride, bundledState.displayState)
+        assertTrue(bundledState.switchEnabled)
+        assertFalse(bundledState.switchChecked)
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, true)
+        val externalState = ExternalDictionaryDisplayStateResolver(store)
+            .resolveCategoryDisplayState(DictionaryCategory.SYSTEM)
+        assertEquals(ExternalDictionaryDisplayState.ExternalInUse, externalState.displayState)
+        assertTrue(externalState.switchEnabled)
+        assertTrue(externalState.switchChecked)
+
+        val fileState = ExternalDictionaryDisplayStateResolver(store)
+            .resolveFileDisplayState(DictionaryFileSpecs.get(DictionaryFileKey.SYSTEM_TOKEN))
+        assertEquals(ExternalDictionaryDisplayState.ExternalInUse, fileState)
+    }
+
+    @Test
+    fun coreReplacementScopeDoesNotIncludeReadingCorrectionOrKotowaza() {
+        assertEquals(
+            listOf(
+                DictionaryCategory.SYSTEM,
+                DictionaryCategory.SINGLE_KANJI,
+                DictionaryCategory.EMOJI,
+                DictionaryCategory.EMOTICON,
+                DictionaryCategory.SYMBOL,
+                DictionaryCategory.ENGLISH,
+            ),
+            CORE_REPLACEMENT_CATEGORIES,
+        )
+        assertFalse(CORE_REPLACEMENT_CATEGORIES.contains(DictionaryCategory.READING_CORRECTION))
+        assertFalse(CORE_REPLACEMENT_CATEGORIES.contains(DictionaryCategory.KOTOWAZA))
+    }
+
+    @Test
+    fun japaneseResourcesContainAllExternalDictionaryStrings() {
+        val base = resourceFile("values/strings.xml").readText()
+        val japanese = resourceFile("values-ja/strings.xml").readText()
+        val keyRegex = Regex("""<string name="(external_dictionary_[^"]+)"""")
+        val baseKeys = keyRegex.findAll(base).map { it.groupValues[1] }.toSet()
+        val japaneseKeys = keyRegex.findAll(japanese).map { it.groupValues[1] }.toSet()
+
+        assertEquals(emptySet<String>(), baseKeys - japaneseKeys)
     }
 
     @Test
@@ -111,11 +283,44 @@ class DictionaryOverrideCoreTest {
         }
         return output.toByteArray()
     }
+
+    private fun addMetadataOverride(
+        directory: File,
+        prefs: SharedPreferences,
+        key: DictionaryFileKey,
+        status: ValidationStatus,
+    ) {
+        val spec = DictionaryFileSpecs.get(key)
+        if (!directory.exists()) directory.mkdirs()
+        File(directory, "${key.name}.bin").writeBytes(byteArrayOf(1, 2, 3))
+        val metadata = DictionaryOverrideMetadata(
+            key = key,
+            category = spec.category,
+            originalFileName = key.name,
+            importedAt = 1_700_000_000_000,
+            size = 3,
+            contentType = spec.contentType,
+            validationStatus = status,
+            validationMessage = status.name,
+        )
+        prefs.edit()
+            .putString(DictionaryOverrideStore.metadataPrefKey(key), Gson().toJson(metadata))
+            .apply()
+    }
+
+    private fun resourceFile(path: String): File {
+        val candidates = listOf(
+            File("src/main/res/$path"),
+            File("app/src/main/res/$path"),
+        )
+        return candidates.firstOrNull { it.exists() }
+            ?: error("Resource file not found: $path")
+    }
 }
 
 private class FakeResolver(private val store: DictionaryOverrideStore) {
     fun state(category: DictionaryCategory): DictionaryCategoryLoadState {
-        if (category == DictionaryCategory.COMMON) return DictionaryCategoryLoadState.Missing
+        if (category == DictionaryCategory.COMMON) return DictionaryCategoryLoadState.Bundled
         val specs = DictionaryFileSpecs.forCategory(category)
         val hasAny = specs.any { store.hasOverride(it.key) }
         val hasAll = specs.all { store.hasOverride(it.key) }
