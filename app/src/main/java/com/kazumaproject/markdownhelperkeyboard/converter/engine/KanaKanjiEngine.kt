@@ -22,6 +22,13 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCand
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideValidator
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.addCommasToNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsDigit
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsFullWidthNumber
@@ -51,12 +58,12 @@ import java.io.ObjectInputStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
-import java.util.zip.ZipInputStream
 
 class KanaKanjiEngine {
 
     private lateinit var graphBuilder: GraphBuilder
     private lateinit var findPath: FindPath
+    private var dictionaryBinaryReader: DictionaryBinaryReader? = null
 
     private lateinit var connectionIds: ShortArray
 
@@ -182,6 +189,31 @@ class KanaKanjiEngine {
         const val SCORE_OFFSET = 8000
         const val SCORE_OFFSET_SMALL = 6000
     }
+
+    fun setDictionaryBinaryReader(reader: DictionaryBinaryReader) {
+        dictionaryBinaryReader = reader
+    }
+
+    private fun dictionaryReader(context: Context): DictionaryBinaryReader {
+        dictionaryBinaryReader?.let { return it }
+        val appContext = context.applicationContext
+        val store = DictionaryOverrideStore(appContext, DictionaryOverrideValidator())
+        return DictionaryBinaryReader(DictionarySourceResolver(appContext, store), store)
+    }
+
+    private fun readerCategoryState(
+        context: Context,
+        category: DictionaryCategory,
+    ): DictionaryCategoryLoadState {
+        val appContext = context.applicationContext
+        val store = DictionaryOverrideStore(appContext, DictionaryOverrideValidator())
+        return DictionarySourceResolver(appContext, store).resolveCategoryLoadState(category)
+    }
+
+    private val loadableOptionalStates = setOf(
+        DictionaryCategoryLoadState.Bundled,
+        DictionaryCategoryLoadState.User,
+    )
 
     fun buildEngine(
         graphBuilder: GraphBuilder,
@@ -404,21 +436,16 @@ class KanaKanjiEngine {
 
 
     fun buildPersonNamesDictionary(context: Context) {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("person_name/tango_person_names.dat")))
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("person_name/yomi_person_names.dat")))
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("person_name/token_person_names.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-
-        this.personTangoTrie = LOUDS().readExternalNotCompress(objectInputTango)
-        this.personYomiTrie = LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+        val reader = dictionaryReader(context)
+        if (readerCategoryState(context, DictionaryCategory.PERSON_NAME) !in loadableOptionalStates) {
+            releasePersonNamesDictionary()
+            return
+        }
+        this.personTangoTrie = reader.loadLouds(DictionaryFileKey.PERSON_NAME_TANGO)
+        this.personYomiTrie = reader.loadLoudsWithTermId(DictionaryFileKey.PERSON_NAME_YOMI)
 
         this.personTokenArray = TokenArray()
-        this.personTokenArray?.readExternal(objectInputTokenArray)
-        this.personTokenArray?.readPOSTable(objectInputReadPOSTable)
+        this.personTokenArray = reader.loadTokenArray(DictionaryFileKey.PERSON_NAME_TOKEN)
 
         this.personSuccinctBitVectorLBSYomi = SuccinctBitVector(personYomiTrie!!.LBS)
         this.personSuccinctBitVectorIsLeaf = SuccinctBitVector(personYomiTrie!!.isLeaf)
@@ -427,36 +454,14 @@ class KanaKanjiEngine {
     }
 
     fun buildPlaceDictionary(context: Context) {
-        val zipInputStreamTango = ZipInputStream(context.assets.open("places/tango_places.dat.zip"))
-        zipInputStreamTango.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStreamTango)).use {
-            this.placesTangoTrie = LOUDS().readExternalNotCompress(it)
+        val reader = dictionaryReader(context)
+        if (readerCategoryState(context, DictionaryCategory.PLACES) !in loadableOptionalStates) {
+            releasePlacesDictionary()
+            return
         }
-        val zipInputStreamYomi = ZipInputStream(context.assets.open("places/yomi_places.dat.zip"))
-        zipInputStreamYomi.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStreamYomi)).use {
-            this.placesYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
-        }
-
-        this.placesTokenArray = TokenArray()
-
-        ZipInputStream(context.assets.open("places/token_places.dat.zip")).use { zipStream ->
-            var entry = zipStream.nextEntry
-            while (entry != null) {
-                if (entry.name == "token_places.dat") {
-                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
-                        this.placesTokenArray?.readExternal(objectInput)
-                    }
-                    break
-                }
-                entry = zipStream.nextEntry
-            }
-        }
-
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-
-        this.placesTokenArray?.readPOSTable(objectInputReadPOSTable)
+        this.placesTangoTrie = reader.loadLouds(DictionaryFileKey.PLACES_TANGO)
+        this.placesYomiTrie = reader.loadLoudsWithTermId(DictionaryFileKey.PLACES_YOMI)
+        this.placesTokenArray = reader.loadTokenArray(DictionaryFileKey.PLACES_TOKEN)
         this.placesSuccinctBitVectorLBSYomi = SuccinctBitVector(placesYomiTrie!!.LBS)
         this.placesSuccinctBitVectorIsLeaf = SuccinctBitVector(placesYomiTrie!!.isLeaf)
         this.placesSuccinctBitVectorTokenArray = SuccinctBitVector(placesTokenArray!!.bitvector)
@@ -464,37 +469,14 @@ class KanaKanjiEngine {
     }
 
     fun buildWikiDictionary(context: Context) {
-        val zipInputStreamTango = ZipInputStream(context.assets.open("wiki/tango_wiki.dat.zip"))
-        zipInputStreamTango.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStreamTango)).use {
-            this.wikiTangoTrie = LOUDS().readExternalNotCompress(it)
+        val reader = dictionaryReader(context)
+        if (readerCategoryState(context, DictionaryCategory.WIKI) !in loadableOptionalStates) {
+            releaseWikiDictionary()
+            return
         }
-        val zipInputStreamYomi = ZipInputStream(context.assets.open("wiki/yomi_wiki.dat.zip"))
-        zipInputStreamYomi.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStreamYomi)).use {
-            this.wikiYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
-        }
-
-        this.wikiTokenArray = TokenArray()
-
-        ZipInputStream(context.assets.open("wiki/token_wiki.dat.zip")).use { zipStream ->
-            var entry = zipStream.nextEntry
-            while (entry != null) {
-                if (entry.name == "token_wiki.dat") {
-                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
-                        this.wikiTokenArray?.readExternal(objectInput)
-                    }
-                    break
-                }
-                entry = zipStream.nextEntry
-            }
-        }
-
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-
-        this.wikiTokenArray?.readPOSTable(objectInputReadPOSTable)
-
+        this.wikiTangoTrie = reader.loadLouds(DictionaryFileKey.WIKI_TANGO)
+        this.wikiYomiTrie = reader.loadLoudsWithTermId(DictionaryFileKey.WIKI_YOMI)
+        this.wikiTokenArray = reader.loadTokenArray(DictionaryFileKey.WIKI_TOKEN)
         this.wikiSuccinctBitVectorLBSYomi = SuccinctBitVector(wikiYomiTrie!!.LBS)
         this.wikiSuccinctBitVectorIsLeaf = SuccinctBitVector(wikiYomiTrie!!.isLeaf)
         this.wikiSuccinctBitVectorTokenArray = SuccinctBitVector(wikiTokenArray!!.bitvector)
@@ -502,38 +484,14 @@ class KanaKanjiEngine {
     }
 
     fun buildNeologdDictionary(context: Context) {
-        val zipInputStreamTango =
-            ZipInputStream(context.assets.open("neologd/tango_neologd.dat.zip"))
-        zipInputStreamTango.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStreamTango)).use {
-            this.neologdTangoTrie = LOUDS().readExternalNotCompress(it)
+        val reader = dictionaryReader(context)
+        if (readerCategoryState(context, DictionaryCategory.NEOLOGD) !in loadableOptionalStates) {
+            releaseNeologdDictionary()
+            return
         }
-        val zipInputStreamYomi = ZipInputStream(context.assets.open("neologd/yomi_neologd.dat.zip"))
-        zipInputStreamYomi.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStreamYomi)).use {
-            this.neologdYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
-        }
-
-        this.neologdTokenArray = TokenArray()
-
-        ZipInputStream(context.assets.open("neologd/token_neologd.dat.zip")).use { zipStream ->
-            var entry = zipStream.nextEntry
-            while (entry != null) {
-                if (entry.name == "token_neologd.dat") {
-                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
-                        this.neologdTokenArray?.readExternal(objectInput)
-                    }
-                    break
-                }
-                entry = zipStream.nextEntry
-            }
-        }
-
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-
-        this.neologdTokenArray?.readPOSTable(objectInputReadPOSTable)
-
+        this.neologdTangoTrie = reader.loadLouds(DictionaryFileKey.NEOLOGD_TANGO)
+        this.neologdYomiTrie = reader.loadLoudsWithTermId(DictionaryFileKey.NEOLOGD_YOMI)
+        this.neologdTokenArray = reader.loadTokenArray(DictionaryFileKey.NEOLOGD_TOKEN)
         this.neologdSuccinctBitVectorLBSYomi = SuccinctBitVector(neologdYomiTrie!!.LBS)
         this.neologdSuccinctBitVectorIsLeaf = SuccinctBitVector(neologdYomiTrie!!.isLeaf)
         this.neologdSuccinctBitVectorTokenArray = SuccinctBitVector(neologdTokenArray!!.bitvector)
@@ -541,37 +499,14 @@ class KanaKanjiEngine {
     }
 
     fun buildWebDictionary(context: Context) {
-        val zipInputStreamTango = ZipInputStream(context.assets.open("web/tango_web.dat.zip"))
-        zipInputStreamTango.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStreamTango)).use {
-            this.webTangoTrie = LOUDS().readExternalNotCompress(it)
+        val reader = dictionaryReader(context)
+        if (readerCategoryState(context, DictionaryCategory.WEB) !in loadableOptionalStates) {
+            releaseWebDictionary()
+            return
         }
-        val zipInputStreamYomi = ZipInputStream(context.assets.open("web/yomi_web.dat.zip"))
-        zipInputStreamYomi.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStreamYomi)).use {
-            this.webYomiTrie = LOUDSWithTermId().readExternalNotCompress(it)
-        }
-
-        this.webTokenArray = TokenArray()
-
-        ZipInputStream(context.assets.open("web/token_web.dat.zip")).use { zipStream ->
-            var entry = zipStream.nextEntry
-            while (entry != null) {
-                if (entry.name == "token_web.dat") {
-                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
-                        this.webTokenArray?.readExternal(objectInput)
-                    }
-                    break
-                }
-                entry = zipStream.nextEntry
-            }
-        }
-
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-
-        this.webTokenArray?.readPOSTable(objectInputReadPOSTable)
-
+        this.webTangoTrie = reader.loadLouds(DictionaryFileKey.WEB_TANGO)
+        this.webYomiTrie = reader.loadLoudsWithTermId(DictionaryFileKey.WEB_YOMI)
+        this.webTokenArray = reader.loadTokenArray(DictionaryFileKey.WEB_TOKEN)
         this.webSuccinctBitVectorLBSYomi = SuccinctBitVector(webYomiTrie!!.LBS)
         this.webSuccinctBitVectorIsLeaf = SuccinctBitVector(webYomiTrie!!.isLeaf)
         this.webSuccinctBitVectorTokenArray = SuccinctBitVector(webTokenArray!!.bitvector)

@@ -1,17 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
-import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -19,9 +15,6 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
 
     @Inject
     lateinit var appPreference: AppPreference
-
-    @Inject
-    lateinit var kanaKanjiEngine: KanaKanjiEngine
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.pref_dictionary, rootKey)
@@ -70,6 +63,11 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("external_dictionary_settings_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.action_navigation_setting_to_externalDictionarySettingsFragment)
+            true
+        }
+
         val learnDictionaryPrefixSeekBar =
             findPreference<SeekBarPreference>("learn_prediction_preference")
         learnDictionaryPrefixSeekBar?.apply {
@@ -102,69 +100,5 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-        findPreference<SwitchPreferenceCompat>("mozc_ut_person_name_preference")?.apply {
-            setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildPersonNamesDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releasePersonNamesDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        findPreference<SwitchPreferenceCompat>("mozc_ut_places_preference")?.apply {
-            setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildPlaceDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releasePlacesDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        findPreference<SwitchPreferenceCompat>("mozc_ut_wiki_preference")?.apply {
-            setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildWikiDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releaseWikiDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        findPreference<SwitchPreferenceCompat>("mozc_ut_neologd_preference")?.apply {
-            setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildNeologdDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releaseNeologdDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        findPreference<SwitchPreferenceCompat>("mozc_ut_web_preference")?.apply {
-            setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildWebDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releaseWebDictionary()
-                    }
-                }
-                true
-            }
-        }
     }
 }

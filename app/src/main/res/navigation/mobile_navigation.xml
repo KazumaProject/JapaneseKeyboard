@@ -89,6 +89,9 @@
             android:id="@+id/action_navigation_setting_to_systemUserDictionaryBuilderFragment"
             app:destination="@id/systemUserDictionaryBuilderFragment" />
         <action
+            android:id="@+id/action_navigation_setting_to_externalDictionarySettingsFragment"
+            app:destination="@id/externalDictionarySettingsFragment" />
+        <action
             android:id="@+id/action_navigation_setting_to_ngramRuleFragment"
             app:destination="@id/ngramRuleFragment" />
         <action
@@ -337,6 +340,10 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.ui.SystemUserDictionaryBuilderFragment"
         android:label=""
         tools:layout="@layout/fragment_system_user_dictionary_builder" />
+    <fragment
+        android:id="@+id/externalDictionarySettingsFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionarySettingsFragment"
+        android:label="@string/external_dictionary_settings_title" />
     <fragment
         android:id="@+id/ngramRuleFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NgramRuleFragment"
