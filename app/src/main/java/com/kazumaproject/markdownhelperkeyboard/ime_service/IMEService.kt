@@ -159,6 +159,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
@@ -363,6 +364,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
+
+    @Inject
+    lateinit var dictionarySourceResolver: DictionarySourceResolver
 
     @Inject
     lateinit var englishEngine: EnglishEngine
@@ -1304,6 +1308,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _suggestionViewStatus.update { true }
         val preferences = ImePreferencesSnapshot.from(
             appPreference = appPreference,
+            dictionarySourceResolver = dictionarySourceResolver,
             customThemeCandidateItemPressedBgColorDefault = ContextCompat.getColor(
                 this,
                 com.kazumaproject.core.R.color.qwety_key_bg_color

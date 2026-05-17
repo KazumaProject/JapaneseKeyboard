@@ -3,6 +3,9 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
@@ -178,17 +181,45 @@ data class ImePreferencesSnapshot(
     companion object {
         fun from(
             appPreference: AppPreference,
+            dictionarySourceResolver: DictionarySourceResolver? = null,
             customThemeCandidateItemPressedBgColorDefault: Int =
                 AppPreference.DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR
         ): ImePreferencesSnapshot {
+            fun optionalEnabled(category: DictionaryCategory, legacyValue: Boolean?): Boolean {
+                val state = dictionarySourceResolver?.resolveCategoryLoadState(category)
+                return when (state) {
+                    DictionaryCategoryLoadState.User,
+                    DictionaryCategoryLoadState.Bundled -> true
+                    DictionaryCategoryLoadState.Disabled,
+                    DictionaryCategoryLoadState.Partial,
+                    DictionaryCategoryLoadState.Invalid,
+                    DictionaryCategoryLoadState.Missing -> false
+                    null -> legacyValue ?: false
+                }
+            }
             return ImePreferencesSnapshot(
                 keyboardOrder = appPreference.keyboard_order,
                 candidateTabOrder = appPreference.candidate_tab_order,
-                mozcUTPersonName = appPreference.mozc_ut_person_names_preference ?: false,
-                mozcUTPlaces = appPreference.mozc_ut_places_preference ?: false,
-                mozcUTWiki = appPreference.mozc_ut_wiki_preference ?: false,
-                mozcUTNeologd = appPreference.mozc_ut_neologd_preference ?: false,
-                mozcUTWeb = appPreference.mozc_ut_web_preference ?: false,
+                mozcUTPersonName = optionalEnabled(
+                    DictionaryCategory.PERSON_NAME,
+                    appPreference.mozc_ut_person_names_preference,
+                ),
+                mozcUTPlaces = optionalEnabled(
+                    DictionaryCategory.PLACES,
+                    appPreference.mozc_ut_places_preference,
+                ),
+                mozcUTWiki = optionalEnabled(
+                    DictionaryCategory.WIKI,
+                    appPreference.mozc_ut_wiki_preference,
+                ),
+                mozcUTNeologd = optionalEnabled(
+                    DictionaryCategory.NEOLOGD,
+                    appPreference.mozc_ut_neologd_preference,
+                ),
+                mozcUTWeb = optionalEnabled(
+                    DictionaryCategory.WEB,
+                    appPreference.mozc_ut_web_preference,
+                ),
                 isFlickOnlyMode = appPreference.flick_input_only_preference ?: false,
                 isOmissionSearchEnable = appPreference.omission_search_preference ?: false,
                 delayTime = appPreference.time_same_pronounce_typing_preference ?: 1000,
