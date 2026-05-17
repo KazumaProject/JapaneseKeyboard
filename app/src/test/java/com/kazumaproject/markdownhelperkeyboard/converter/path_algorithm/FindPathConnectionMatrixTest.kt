@@ -1,7 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm
 
 import com.kazumaproject.graph.Node
-import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -26,14 +25,15 @@ class FindPathConnectionMatrixTest {
 
     @Test
     fun backwardAStar_usesBuiltIn2670ConnectionMatrixWidth() {
-        val connectionIds = ShortArray(NUM_OF_CONNECTION_ID * NUM_OF_CONNECTION_ID)
-        connectionIds[1 * NUM_OF_CONNECTION_ID + 0] = (-70).toShort()
+        val matrixSize = 2670
+        val connectionIds = ShortArray(matrixSize * matrixSize)
+        connectionIds[1 * matrixSize + 0] = (-70).toShort()
 
         val candidates = FindPath().backwardAStar(
             graph = singleWordGraph(),
             length = 1,
             connectionIds = connectionIds,
-            connectionMatrixSize = NUM_OF_CONNECTION_ID,
+            connectionMatrixSize = matrixSize,
             n = 1,
         )
 

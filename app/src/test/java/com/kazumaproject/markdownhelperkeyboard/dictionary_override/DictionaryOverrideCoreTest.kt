@@ -5,13 +5,13 @@ import android.content.SharedPreferences
 import android.net.Uri
 import com.google.gson.Gson
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
-import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.CORE_REPLACEMENT_CATEGORIES
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.COMMON_REPLACEMENT_KEYS
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionaryDisplayState
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionaryDisplayStateResolver
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -555,6 +555,23 @@ class DictionaryOverrideCoreTest {
     }
 
     @Test
+    fun compatibility_connectionIdSizeZeroIsInvalidForMatrixSizeInference() {
+        assertNull(ConnectionMatrix.inferMatrixSize(0))
+    }
+
+    @Test
+    fun compatibility_connectionIdNonSquareSizeIsInvalidForMatrixSizeInference() {
+        assertNull(ConnectionMatrix.inferMatrixSize(2670 * 2670 + 1))
+    }
+
+    @Test
+    fun compatibility_bundledSizedConnectionIdListInfers2670MatrixSizeFromShortArraySize() {
+        val connectionIdList = ShortArray(2670 * 2670)
+
+        assertEquals(2670, ConnectionMatrix.inferMatrixSize(connectionIdList))
+    }
+
+    @Test
     fun compatibility_tokenMaxPosTableIndexAtPosTableRowCountIsIncompatible() {
         val result = validateFixture(
             tokenPosIndices = shortArrayOf(0, 2),
@@ -582,9 +599,10 @@ class DictionaryOverrideCoreTest {
 
     @Test
     fun compatibility_posTableMaxLeftIdOutsideConnectionMatrixIsIncompatible() {
+        val matrixSize = 2670
         val result = validateFixture(
             tokenPosIndices = shortArrayOf(0),
-            leftIds = shortArrayOf(NUM_OF_CONNECTION_ID.toShort()),
+            leftIds = shortArrayOf(matrixSize.toShort()),
             rightIds = shortArrayOf(0),
             connectionIds = validConnectionIds(),
         )
@@ -595,10 +613,11 @@ class DictionaryOverrideCoreTest {
 
     @Test
     fun compatibility_posTableMaxRightIdOutsideConnectionMatrixIsIncompatible() {
+        val matrixSize = 2670
         val result = validateFixture(
             tokenPosIndices = shortArrayOf(0),
             leftIds = shortArrayOf(0),
-            rightIds = shortArrayOf(NUM_OF_CONNECTION_ID.toShort()),
+            rightIds = shortArrayOf(matrixSize.toShort()),
             connectionIds = validConnectionIds(),
         )
 
@@ -852,7 +871,7 @@ class DictionaryOverrideCoreTest {
         return output.toByteArray()
     }
 
-    private fun validConnectionIds(matrixSize: Int = NUM_OF_CONNECTION_ID): ByteArray =
+    private fun validConnectionIds(matrixSize: Int = 2670): ByteArray =
         connectionIdBytes(matrixSize * matrixSize)
 
     private fun connectionIdBytes(size: Int): ByteArray {
