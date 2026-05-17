@@ -159,6 +159,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
@@ -369,6 +371,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     lateinit var dictionarySourceResolver: DictionarySourceResolver
 
     @Inject
+    lateinit var dictionaryOverrideStore: DictionaryOverrideStore
+
+    @Inject
+    lateinit var dictionaryBinaryReader: DictionaryBinaryReader
+
+    @Inject
     lateinit var englishEngine: EnglishEngine
 
     @Inject
@@ -538,6 +546,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    @Volatile
+    private var lastAppliedDictionaryOverrideRevision: Long = Long.MIN_VALUE
+    @Volatile
+    private var dictionaryOverrideApplyJob: Job? = null
 
     private var cachedEmoji: List<Emoji>? = null
     private var cachedEmoticons: List<Emoticon>? = null
@@ -1556,26 +1568,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshReconversionUi()
     }
 
-    private fun initializeMozcDictionaries(preferences: ImePreferencesSnapshot) {
+    private fun initializeMozcDictionaries(@Suppress("UNUSED_PARAMETER") preferences: ImePreferencesSnapshot) {
+        applyDictionaryOverrideRevisionIfNeeded()
         if (!kanaKanjiEngine.isSystemUserDictionaryInitialized()) {
             runCatching {
                 kanaKanjiEngine.loadSystemUserDictionaryFromFiles(applicationContext)
             }
         }
-        if (preferences.mozcUTPersonName && !kanaKanjiEngine.isMozcUTPersonDictionariesInitialized()) {
-            kanaKanjiEngine.buildPersonNamesDictionary(applicationContext)
-        }
-        if (preferences.mozcUTPlaces && !kanaKanjiEngine.isMozcUTPlacesDictionariesInitialized()) {
-            kanaKanjiEngine.buildPlaceDictionary(applicationContext)
-        }
-        if (preferences.mozcUTWiki && !kanaKanjiEngine.isMozcUTWikiDictionariesInitialized()) {
-            kanaKanjiEngine.buildWikiDictionary(applicationContext)
-        }
-        if (preferences.mozcUTNeologd && !kanaKanjiEngine.isMozcUTNeologdDictionariesInitialized()) {
-            kanaKanjiEngine.buildNeologdDictionary(applicationContext)
-        }
-        if (preferences.mozcUTWeb && !kanaKanjiEngine.isMozcUTWebDictionariesInitialized()) {
-            kanaKanjiEngine.buildWebDictionary(applicationContext)
+    }
+
+    private fun applyDictionaryOverrideRevisionIfNeeded() {
+        val currentRevision = dictionaryOverrideStore.currentRevision
+        if (currentRevision == lastAppliedDictionaryOverrideRevision) return
+        if (dictionaryOverrideApplyJob?.isActive == true) return
+
+        dictionaryOverrideApplyJob = ioScope.launch {
+            val revisionToApply = dictionaryOverrideStore.currentRevision
+            val success = runCatching {
+                kanaKanjiEngine.applyDictionaryOverrideState(applicationContext)
+                englishEngine.reloadDictionariesFromCurrentSources(dictionaryBinaryReader)
+            }.onFailure {
+                Timber.w(it, "Failed to apply dictionary override revision $revisionToApply")
+            }.isSuccess
+
+            if (success) {
+                lastAppliedDictionaryOverrideRevision = revisionToApply
+            }
         }
     }
 

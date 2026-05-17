@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_di
 
 import android.net.Uri
 import android.os.Bundle
+import android.os.Parcelable
 import android.text.format.DateFormat
 import android.text.format.Formatter
 import android.widget.Toast
@@ -95,7 +96,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
                 setOnPreferenceChangeListener { _, newValue ->
                     store.setExternalEnabledForKey(key, newValue == true)
                     toastApplyTiming()
-                    renderPreferences()
+                    rerenderPreferencesKeepingScroll()
                     true
                 }
             })
@@ -120,7 +121,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
                 setOnPreferenceChangeListener { _, newValue ->
                     store.setExternalEnabledForCategory(dictionaryCategory, newValue == true)
                     toastApplyTiming()
-                    renderPreferences()
+                    rerenderPreferencesKeepingScroll()
                     true
                 }
             })
@@ -139,7 +140,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
                         enabled && specs.all { store.isValidOverride(it.key) },
                     )
                     toastApplyTiming()
-                    renderPreferences()
+                    rerenderPreferencesKeepingScroll()
                     true
                 }
             })
@@ -166,7 +167,7 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             setOnPreferenceClickListener {
                 store.removeOverride(spec.key)
                 toastApplyTiming()
-                renderPreferences()
+                rerenderPreferencesKeepingScroll()
                 true
             }
         })
@@ -182,8 +183,9 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             } else {
                 getString(R.string.external_dictionary_import_failed_format, result.message)
             }
+            if (!isAdded || view == null) return@launch
             Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show()
-            renderPreferences()
+            rerenderPreferencesKeepingScroll()
         }
     }
 
@@ -194,10 +196,23 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             .setPositiveButton(android.R.string.ok) { _, _ ->
                 store.removeAllOverrides()
                 toastApplyTiming()
-                renderPreferences()
+                rerenderPreferencesKeepingScroll()
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
+    }
+
+    private fun rerenderPreferencesKeepingScroll() {
+        if (!isAdded || view == null) return
+        val savedState: Parcelable? = listView.layoutManager?.onSaveInstanceState()
+        renderPreferences()
+        if (savedState != null) {
+            listView.post {
+                if (isAdded && view != null) {
+                    listView.layoutManager?.onRestoreInstanceState(savedState)
+                }
+            }
+        }
     }
 
     private fun buildFileSummary(
