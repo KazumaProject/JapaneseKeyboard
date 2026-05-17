@@ -12,6 +12,15 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/external_dictionary_settings_title">
+
+        <Preference
+            android:key="external_dictionary_settings_preference"
+            android:title="@string/external_dictionary_settings_title"
+            app:summary="@string/external_dictionary_settings_summary" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory
         android:title="N-gram">
 
@@ -114,43 +123,6 @@
             android:summaryOff="@string/user_template_summary_off"
             android:summaryOn="@string/user_template_summary_on"
             android:title="@string/user_template_title" />
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="@string/category_mozc_ut_title">
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="mozc_ut_person_name_preference"
-            android:summaryOff="@string/mozc_ut_person_name_summary_off"
-            android:summaryOn="@string/mozc_ut_person_name_summary_on"
-            android:title="@string/mozc_ut_person_name_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="mozc_ut_places_preference"
-            android:summaryOff="@string/mozc_ut_places_summary_off"
-            android:summaryOn="@string/mozc_ut_places_summary_on"
-            android:title="@string/mozc_ut_places_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="mozc_ut_web_preference"
-            android:summaryOff="@string/mozc_ut_web_summary_off"
-            android:summaryOn="@string/mozc_ut_web_summary_on"
-            android:title="@string/mozc_ut_web_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="mozc_ut_wiki_preference"
-            android:summaryOff="@string/mozc_ut_wiki_summary_off"
-            android:summaryOn="@string/mozc_ut_wiki_summary_on"
-            android:title="@string/mozc_ut_wiki_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="mozc_ut_neologd_preference"
-            android:summaryOff="@string/mozc_ut_neologd_summary_off"
-            android:summaryOn="@string/mozc_ut_neologd_summary_on"
-            android:title="@string/mozc_ut_neologd_title" />
     </PreferenceCategory>
 
 </androidx.preference.PreferenceScreen>

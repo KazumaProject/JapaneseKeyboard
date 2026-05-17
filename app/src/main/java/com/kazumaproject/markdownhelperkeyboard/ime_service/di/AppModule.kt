@@ -6,7 +6,6 @@ import android.view.inputmethod.InputMethodManager
 import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
-import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.clicked_symbol.database.ClickedSymbolDao
@@ -54,6 +53,8 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_8_9
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_9_10
 import com.kazumaproject.markdownhelperkeyboard.delete_key_flick.database.DeleteKeyFlickDeleteTargetDao
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplateDao
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
@@ -79,9 +80,6 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
-import java.io.BufferedInputStream
-import java.io.ObjectInputStream
-import java.util.zip.ZipInputStream
 import javax.inject.Singleton
 
 @Module
@@ -244,70 +242,29 @@ object AppModule {
     @Singleton
     @Provides
     @ConnectionIds
-    fun provideConnectionIds(@ApplicationContext context: Context): ShortArray {
-        ZipInputStream(context.assets.open("connectionId.dat.zip")).use { zipStream ->
-            var entry = zipStream.nextEntry
-            while (entry != null) {
-                if (entry.name == "connectionId.dat") {
-                    BufferedInputStream(zipStream).use { inputStream ->
-                        return ConnectionIdBuilder().readShortArrayFromBytes(inputStream)
-                    }
-                }
-                entry = zipStream.nextEntry
-            }
-        }
-        throw IllegalArgumentException("connectionId.dat not found in connectionId.zip")
+    fun provideConnectionIds(reader: DictionaryBinaryReader): ShortArray {
+        return reader.loadConnectionIds(DictionaryFileKey.CONNECTION_ID)
     }
 
     @SystemTangoTrie
     @Singleton
     @Provides
-    fun provideTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val zipInputStream = ZipInputStream(context.assets.open("system/tango.dat.zip"))
-        zipInputStream.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
-            return LOUDS().readExternalNotCompress(it)
-        }
+    fun provideTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.SYSTEM_TANGO)
     }
 
     @SystemYomiTrie
     @Singleton
     @Provides
-    fun provideYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val zipInputStream = ZipInputStream(context.assets.open("system/yomi.dat.zip"))
-        zipInputStream.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
-            return LOUDSWithTermId().readExternalNotCompress(it)
-        }
+    fun provideYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.SYSTEM_YOMI)
     }
 
     @SystemTokenArray
     @Singleton
     @Provides
-    fun providesTokenArray(@ApplicationContext context: Context): TokenArray {
-        val tokenArray = TokenArray()
-
-        // Extract and read `token.dat` from `token.dat.zip`
-        ZipInputStream(context.assets.open("system/token.dat.zip")).use { zipStream ->
-            var entry = zipStream.nextEntry
-            while (entry != null) {
-                if (entry.name == "token.dat") { // Ensure we are processing the correct file inside the zip
-                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
-                        tokenArray.readExternal(objectInput) // Load `token.dat` into TokenArray
-                    }
-                    break
-                }
-                entry = zipStream.nextEntry
-            }
-        }
-
-        context.assets.open("pos_table.dat").use { inputStream ->
-            ObjectInputStream(BufferedInputStream(inputStream)).use { objectInput ->
-                tokenArray.readPOSTable(objectInput)
-            }
-        }
-
-        return tokenArray
+    fun providesTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.SYSTEM_TOKEN)
     }
 
     @Singleton
@@ -338,33 +295,22 @@ object AppModule {
     @SingleKanjiTangoTrie
     @Singleton
     @Provides
-    fun provideSingleKanjiTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("single_kanji/tango_singleKanji.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideSingleKanjiTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.SINGLE_KANJI_TANGO)
     }
 
     @SingleKanjiYomiTrie
     @Singleton
     @Provides
-    fun provideSingleKanjiYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("single_kanji/yomi_singleKanji.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideSingleKanjiYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.SINGLE_KANJI_YOMI)
     }
 
     @SingleKanjiTokenArray
     @Singleton
     @Provides
-    fun providesSingleKanjiTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("single_kanji/token_singleKanji.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesSingleKanjiTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.SINGLE_KANJI_TOKEN)
     }
 
     @Singleton
@@ -394,33 +340,22 @@ object AppModule {
     @EmojiTangoTrie
     @Singleton
     @Provides
-    fun provideEmojiTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoji/tango_emoji.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideEmojiTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.EMOJI_TANGO)
     }
 
     @EmojiYomiTrie
     @Singleton
     @Provides
-    fun provideEmojiYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoji/yomi_emoji.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideEmojiYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.EMOJI_YOMI)
     }
 
     @EmojiTokenArray
     @Singleton
     @Provides
-    fun providesEmojiTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoji/token_emoji.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesEmojiTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.EMOJI_TOKEN)
     }
 
     @Singleton
@@ -450,33 +385,22 @@ object AppModule {
     @EmoticonTangoTrie
     @Singleton
     @Provides
-    fun provideEmoticonTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoticon/tango_emoticon.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideEmoticonTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.EMOTICON_TANGO)
     }
 
     @EmoticonYomiTrie
     @Singleton
     @Provides
-    fun provideEmoticonYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoticon/yomi_emoticon.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideEmoticonYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.EMOTICON_YOMI)
     }
 
     @EmoticonTokenArray
     @Singleton
     @Provides
-    fun providesEmoticonTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoticon/token_emoticon.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesEmoticonTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.EMOTICON_TOKEN)
     }
 
     @Singleton
@@ -506,33 +430,22 @@ object AppModule {
     @SymbolTangoTrie
     @Singleton
     @Provides
-    fun provideSymbolTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("symbol/tango_symbol.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideSymbolTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.SYMBOL_TANGO)
     }
 
     @SymbolYomiTrie
     @Singleton
     @Provides
-    fun provideSymbolYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("symbol/yomi_symbol.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideSymbolYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.SYMBOL_YOMI)
     }
 
     @SymbolTokenArray
     @Singleton
     @Provides
-    fun providesSymbolTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("symbol/token_symbol.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesSymbolTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.SYMBOL_TOKEN)
     }
 
     @Singleton
@@ -563,33 +476,22 @@ object AppModule {
     @ReadingCorrectionTangoTrie
     @Singleton
     @Provides
-    fun provideReadingCorrectionTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("reading_correction/tango_reading_correction.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideReadingCorrectionTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.READING_CORRECTION_TANGO)
     }
 
     @ReadingCorrectionYomiTrie
     @Singleton
     @Provides
-    fun provideReadingCorrectionYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("reading_correction/yomi_reading_correction.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideReadingCorrectionYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.READING_CORRECTION_YOMI)
     }
 
     @ReadingCorrectionTokenArray
     @Singleton
     @Provides
-    fun providesReadingCorrectionTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("reading_correction/token_reading_correction.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesReadingCorrectionTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.READING_CORRECTION_TOKEN)
     }
 
     @Singleton
@@ -619,33 +521,22 @@ object AppModule {
     @KotowazaTangoTrie
     @Singleton
     @Provides
-    fun provideKotowazaTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("kotowaza/tango_kotowaza.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideKotowazaTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.KOTOWAZA_TANGO)
     }
 
     @KotowazaYomiTrie
     @Singleton
     @Provides
-    fun provideKotowazaYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("kotowaza/yomi_kotowaza.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideKotowazaYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.KOTOWAZA_YOMI)
     }
 
     @KotowazaTokenArray
     @Singleton
     @Provides
-    fun providesKotowazaTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("kotowaza/token_kotowaza.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesKotowazaTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.KOTOWAZA_TOKEN)
     }
 
     @Singleton
@@ -734,6 +625,7 @@ object AppModule {
         @KotowazaSuccinctBitVectorTangoLBS kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
         englishEngine: EnglishEngine,
         ngramRuleScorerManager: NgramRuleScorerManager,
+        dictionaryBinaryReader: DictionaryBinaryReader,
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
         val graphBuilder = GraphBuilder()
@@ -801,6 +693,7 @@ object AppModule {
             kotowazaSuccinctBitVectorTangoLBS = kotowazaSuccinctBitVectorTangoLBS,
             engineEngine = englishEngine
         )
+        kanaKanjiEngine.setDictionaryBinaryReader(dictionaryBinaryReader)
 
         return kanaKanjiEngine
     }
@@ -817,35 +710,22 @@ object AppModule {
     @Provides
     @Singleton
     @EnglishReadingLOUDS
-    fun provideEnglishReadingLOUDS(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId {
-        val zipInputStream = ZipInputStream(context.assets.open("english/reading.dat.zip"))
-        zipInputStream.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
-            return com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId()
-                .readExternalNotCompress(it)
-        }
+    fun provideEnglishReadingLOUDS(reader: DictionaryBinaryReader): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId {
+        return reader.loadEnglishReading(DictionaryFileKey.ENGLISH_READING)
     }
 
     @EnglishWordLOUDS
     @Singleton
     @Provides
-    fun provideEnglishWordLOUDS(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS {
-        val objectInputEnglish =
-            ObjectInputStream(BufferedInputStream(context.assets.open("english/word.dat")))
-        return com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS()
-            .readExternalNotCompress(objectInputEnglish)
+    fun provideEnglishWordLOUDS(reader: DictionaryBinaryReader): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS {
+        return reader.loadEnglishWord(DictionaryFileKey.ENGLISH_WORD)
     }
 
     @Provides
     @Singleton
     @EnglishTokenArray
-    fun provideEnglishTokenArray(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray {
-        val zipInputStream = ZipInputStream(context.assets.open("english/token.dat.zip"))
-        zipInputStream.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
-            return com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray()
-                .readExternal(it)
-        }
+    fun provideEnglishTokenArray(reader: DictionaryBinaryReader): com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray {
+        return reader.loadEnglishToken(DictionaryFileKey.ENGLISH_TOKEN)
     }
 
     @Singleton
