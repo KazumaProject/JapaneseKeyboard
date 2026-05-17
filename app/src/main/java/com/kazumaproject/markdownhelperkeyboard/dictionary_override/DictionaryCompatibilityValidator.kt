@@ -4,7 +4,7 @@ import androidx.annotation.StringRes
 import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
+import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import timber.log.Timber
 import java.io.InputStream
 import javax.inject.Inject
@@ -99,7 +99,8 @@ class DictionaryCompatibilityValidator @Inject constructor(
         ): DictionaryCompatibilityResult {
             val problems = mutableListOf<DictionaryCompatibilityProblem>()
             val posTableStats = readPosTableStats(sourceOpener, problems)
-            val connectionSize = readConnectionIdSize(sourceOpener, problems)
+            val connectionStats = readConnectionIdStats(sourceOpener, problems)
+            val connectionMatrixSize = connectionStats?.matrixSize
 
             if (posTableStats != null) {
                 if (posTableStats.leftRowCount != posTableStats.rightRowCount) {
@@ -112,35 +113,36 @@ class DictionaryCompatibilityValidator @Inject constructor(
                         messageArgs = listOf(posTableStats.leftRowCount, posTableStats.rightRowCount),
                     )
                 }
-                if (posTableStats.maxLeftId >= NUM_OF_CONNECTION_ID) {
+                if (connectionMatrixSize != null && posTableStats.maxLeftId >= connectionMatrixSize) {
                     problems += DictionaryCompatibilityProblem(
                         affectedCategory = DictionaryCategory.COMMON,
                         affectedFileKey = DictionaryFileKey.POS_TABLE,
                         requiredFileKeys = listOf(DictionaryFileKey.POS_TABLE, DictionaryFileKey.CONNECTION_ID),
-                        messageForLog = "pos_table.dat max leftId ${posTableStats.maxLeftId} exceeds connection matrix id range ${NUM_OF_CONNECTION_ID - 1}",
+                        messageForLog = "pos_table.dat max leftId ${posTableStats.maxLeftId} exceeds connection matrix id range ${connectionMatrixSize - 1}",
                         messageResId = R.string.external_dictionary_compat_pos_table_id_out_of_range,
+                        messageArgs = listOf(posTableStats.maxLeftId, connectionMatrixSize),
                     )
                 }
-                if (posTableStats.maxRightId >= NUM_OF_CONNECTION_ID) {
+                if (connectionMatrixSize != null && posTableStats.maxRightId >= connectionMatrixSize) {
                     problems += DictionaryCompatibilityProblem(
                         affectedCategory = DictionaryCategory.COMMON,
                         affectedFileKey = DictionaryFileKey.POS_TABLE,
                         requiredFileKeys = listOf(DictionaryFileKey.POS_TABLE, DictionaryFileKey.CONNECTION_ID),
-                        messageForLog = "pos_table.dat max rightId ${posTableStats.maxRightId} exceeds connection matrix id range ${NUM_OF_CONNECTION_ID - 1}",
+                        messageForLog = "pos_table.dat max rightId ${posTableStats.maxRightId} exceeds connection matrix id range ${connectionMatrixSize - 1}",
                         messageResId = R.string.external_dictionary_compat_pos_table_id_out_of_range,
+                        messageArgs = listOf(posTableStats.maxRightId, connectionMatrixSize),
                     )
                 }
             }
 
-            val expectedConnectionSize = NUM_OF_CONNECTION_ID * NUM_OF_CONNECTION_ID
-            if (connectionSize != null && connectionSize != expectedConnectionSize) {
+            if (connectionStats != null && connectionStats.matrixSize == null) {
                 problems += DictionaryCompatibilityProblem(
                     affectedCategory = DictionaryCategory.COMMON,
                     affectedFileKey = DictionaryFileKey.CONNECTION_ID,
                     requiredFileKeys = listOf(DictionaryFileKey.CONNECTION_ID),
-                    messageForLog = "connectionId.dat size $connectionSize does not match expected $expectedConnectionSize",
+                    messageForLog = "connectionId.dat size ${connectionStats.shortArraySize} is not a valid square matrix",
                     messageResId = R.string.external_dictionary_compat_connection_id_invalid_size,
-                    messageArgs = listOf(connectionSize, expectedConnectionSize),
+                    messageArgs = listOf(connectionStats.shortArraySize),
                 )
             }
 
@@ -229,14 +231,18 @@ class DictionaryCompatibilityValidator @Inject constructor(
                 null
             }
 
-        private fun readConnectionIdSize(
+        private fun readConnectionIdStats(
             sourceOpener: (DictionaryFileKey) -> InputStream,
             problems: MutableList<DictionaryCompatibilityProblem>,
-        ): Int? =
+        ): ConnectionIdStats? =
             runCatching {
                 sourceOpener(DictionaryFileKey.CONNECTION_ID).use { input ->
                     DictionaryBinaryReader.openZipAwareRaw(input, DictionaryFileKey.CONNECTION_ID.name).use { raw ->
-                        ConnectionIdBuilder().readShortArrayFromBytes(raw).size
+                        val size = ConnectionIdBuilder().readShortArrayFromBytes(raw).size
+                        ConnectionIdStats(
+                            shortArraySize = size,
+                            matrixSize = ConnectionMatrix.inferMatrixSize(size),
+                        )
                     }
                 }
             }.getOrElse { error ->
@@ -262,6 +268,11 @@ private data class PosTableStats(
     val rightRowCount: Int,
     val maxLeftId: Int,
     val maxRightId: Int,
+)
+
+private data class ConnectionIdStats(
+    val shortArraySize: Int,
+    val matrixSize: Int?,
 )
 
 private fun DictionaryCategory.hasJapaneseTokenArray(): Boolean =

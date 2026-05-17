@@ -4,7 +4,6 @@ import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
-import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import timber.log.Timber
@@ -22,12 +21,14 @@ class FindPath(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
         connectionIds: ShortArray,
+        connectionMatrixSize: Int,
         n: Int,
     ): MutableList<Candidate> {
         forwardDp(
             graph = graph,
             length = length,
             connectionIds = connectionIds,
+            connectionMatrixSize = connectionMatrixSize,
         )
 
         val resultFinal = mutableListOf<Candidate>()
@@ -87,6 +88,7 @@ class FindPath(
                         leftId = prevNode.l.toInt(),
                         rightId = node.first.r.toInt(),
                         connectionIds = connectionIds,
+                        connectionMatrixSize = connectionMatrixSize,
                     )
 
                     val ngramAdjustment = ngramRuleScorerProvider().score(
@@ -110,6 +112,7 @@ class FindPath(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
         connectionIds: ShortArray,
+        connectionMatrixSize: Int,
         beamWidth: Int = 20,
     ) {
         for (i in 1..length + 1) {
@@ -126,6 +129,7 @@ class FindPath(
                         leftId = prev.l.toInt(),
                         rightId = node.r.toInt(),
                         connectionIds = connectionIds,
+                        connectionMatrixSize = connectionMatrixSize,
                     )
                     val tempCost = prev.f + nodeScore + edgeCost
                     if (tempCost < score) {
@@ -149,6 +153,7 @@ class FindPath(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
         connectionIds: ShortArray,
+        connectionMatrixSize: Int,
         beamWidth: Int = 20,
     ) {
         for (i in 1..length + 1) {
@@ -165,6 +170,7 @@ class FindPath(
                         leftId = prev.l.toInt(),
                         rightId = node.r.toInt(),
                         connectionIds = connectionIds,
+                        connectionMatrixSize = connectionMatrixSize,
                     )
                     val tempCost = prev.f + nodeScore + edgeCost
                     if (tempCost < score) {
@@ -225,8 +231,17 @@ class FindPath(
         leftId: Int,
         rightId: Int,
         connectionIds: ShortArray,
+        connectionMatrixSize: Int,
     ): Int {
-        return connectionIds[leftId * NUM_OF_CONNECTION_ID + rightId].toInt()
+        require(connectionMatrixSize > 0) { "connectionMatrixSize must be positive: $connectionMatrixSize" }
+        require(leftId in 0 until connectionMatrixSize && rightId in 0 until connectionMatrixSize) {
+            "connection id out of range: leftId=$leftId, rightId=$rightId, matrixSize=$connectionMatrixSize"
+        }
+        val index = leftId * connectionMatrixSize + rightId
+        require(index in connectionIds.indices) {
+            "connection index out of range: index=$index, size=${connectionIds.size}, matrixSize=$connectionMatrixSize"
+        }
+        return connectionIds[index].toInt()
     }
 
     private fun getStringFromNode(node: Node): String {
@@ -261,12 +276,14 @@ class FindPath(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
         connectionIds: ShortArray,
+        connectionMatrixSize: Int,
         n: Int,
     ): BunsetsuCandidateResult {
         forwardDp(
             graph = graph,
             length = length,
             connectionIds = connectionIds,
+            connectionMatrixSize = connectionMatrixSize,
         )
 
         val resultFinal = mutableListOf<Candidate>()
@@ -338,6 +355,7 @@ class FindPath(
                         leftId = prevNode.l.toInt(),
                         rightId = node.first.r.toInt(),
                         connectionIds = connectionIds,
+                        connectionMatrixSize = connectionMatrixSize,
                     )
 
                     val ngramAdjustment = ngramRuleScorerProvider().score(
@@ -365,6 +383,7 @@ class FindPath(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
         connectionIds: ShortArray,
+        connectionMatrixSize: Int,
         n: Int,
     ): Pair<List<Candidate>, List<Int>> {
         val totalStartTime = System.currentTimeMillis()
@@ -376,6 +395,7 @@ class FindPath(
             graph = graph,
             length = length,
             connectionIds = connectionIds,
+            connectionMatrixSize = connectionMatrixSize,
         )
 
         val forwardDpTime = System.currentTimeMillis() - forwardDpStartTime
@@ -458,6 +478,7 @@ class FindPath(
                         leftId = prevNode.l.toInt(),
                         rightId = node.first.r.toInt(),
                         connectionIds = connectionIds,
+                        connectionMatrixSize = connectionMatrixSize,
                     )
 
                     val ngramAdjustment = ngramRuleScorerProvider().score(

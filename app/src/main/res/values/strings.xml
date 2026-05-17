@@ -734,8 +734,8 @@
     <string name="external_dictionary_compat_imported_but_not_usable">This dictionary file was imported, but it cannot be used with the current pos_table.dat / connectionId.dat.</string>
     <string name="external_dictionary_compat_import_matching_common_files">Please import the pos_table.dat and connectionId.dat generated with the same dictionary data.</string>
     <string name="external_dictionary_compat_token_requires_pos_table_rows">token.dat requires pos_table.dat with at least %1$d rows, but the current pos_table.dat has %2$d rows.</string>
-    <string name="external_dictionary_compat_pos_table_id_out_of_range">pos_table.dat contains left/right IDs that exceed the current connectionId.dat matrix.</string>
-    <string name="external_dictionary_compat_connection_id_invalid_size">connectionId.dat has an invalid size.</string>
+    <string name="external_dictionary_compat_pos_table_id_out_of_range">pos_table.dat contains left/right ID %1$d, but the current connectionId.dat matrix size is %2$d.</string>
+    <string name="external_dictionary_compat_connection_id_invalid_size">connectionId.dat must be a square matrix. Current ShortArray size: %1$d.</string>
     <string name="external_dictionary_compat_dictionary_not_applied">The dictionary was not applied to the keyboard. Existing dictionaries are still being used.</string>
     <string name="external_dictionary_compat_pos_table_row_mismatch">pos_table.dat has different left/right row counts.</string>
     <string name="external_dictionary_compat_pos_table_unreadable">pos_table.dat could not be read.</string>

@@ -17,6 +17,8 @@ import com.kazumaproject.domain.sortByEmojiCategory
 import com.kazumaproject.domain.toEmoticonCategory
 import com.kazumaproject.domain.toSymbolCategory
 import com.kazumaproject.hiraToKata
+import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
+import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -69,6 +71,7 @@ class KanaKanjiEngine {
     private var dictionaryBinaryReader: DictionaryBinaryReader? = null
 
     private lateinit var connectionIds: ShortArray
+    private var connectionMatrixSize: Int = NUM_OF_CONNECTION_ID
 
     private lateinit var systemYomiTrie: LOUDSWithTermId
     private lateinit var systemTangoTrie: LOUDS
@@ -232,6 +235,19 @@ class KanaKanjiEngine {
         val succinctBitVectorTangoLBS: SuccinctBitVector,
     )
 
+    private data class ConnectionMatrixSnapshot(
+        val connectionIds: ShortArray,
+        val matrixSize: Int,
+    )
+
+    private fun connectionMatrixSnapshot(): ConnectionMatrixSnapshot =
+        synchronized(this) {
+            ConnectionMatrixSnapshot(
+                connectionIds = connectionIds,
+                matrixSize = connectionMatrixSize,
+            )
+        }
+
     fun applyDictionaryOverrideState(context: Context) {
         val reader = dictionaryReader(context)
         val appContext = context.applicationContext
@@ -239,6 +255,8 @@ class KanaKanjiEngine {
         DictionaryCompatibilityValidator(DictionarySourceResolver(appContext, store))
             .requireActiveStateCompatible()
         val newConnectionIds = reader.loadConnectionIds(DictionaryFileKey.CONNECTION_ID)
+        val newConnectionMatrixSize = ConnectionMatrix.inferMatrixSize(newConnectionIds)
+            ?: error("connectionId.dat size ${newConnectionIds.size} is not a valid square matrix")
         val newSystem = loadTripleDictionary(reader, DictionaryCategory.SYSTEM)
         val newSingleKanji = loadTripleDictionary(reader, DictionaryCategory.SINGLE_KANJI)
         val newEmoji = loadTripleDictionary(reader, DictionaryCategory.EMOJI)
@@ -268,6 +286,7 @@ class KanaKanjiEngine {
 
         synchronized(this) {
             connectionIds = newConnectionIds
+            connectionMatrixSize = newConnectionMatrixSize
             assignSystemDictionary(newSystem)
             assignSingleKanjiDictionary(newSingleKanji)
             assignEmojiDictionary(newEmoji)
@@ -395,6 +414,8 @@ class KanaKanjiEngine {
 
         // System
         this@KanaKanjiEngine.connectionIds = connectionIdList
+        this@KanaKanjiEngine.connectionMatrixSize =
+            ConnectionMatrix.inferMatrixSize(connectionIdList) ?: NUM_OF_CONNECTION_ID
         this@KanaKanjiEngine.systemTangoTrie = systemTangoTrie
         this@KanaKanjiEngine.systemTokenArray = systemTokenArray
         this@KanaKanjiEngine.systemYomiTrie = systemYomiTrie
@@ -888,7 +909,14 @@ class KanaKanjiEngine {
                 )
             )
         } else {
-            findPath.backwardAStar(graph, input.length, connectionIds, n)
+            val connectionMatrix = connectionMatrixSnapshot()
+            findPath.backwardAStar(
+                graph = graph,
+                length = input.length,
+                connectionIds = connectionMatrix.connectionIds,
+                connectionMatrixSize = connectionMatrix.matrixSize,
+                n = n,
+            )
         }
 
         if (input.isDigitsOnly()) {
@@ -1363,7 +1391,14 @@ class KanaKanjiEngine {
                 splitPatterns = emptyList()
             )
         } else {
-            findPath.backwardAStarWithBunsetsu(graph, input.length, connectionIds, n)
+            val connectionMatrix = connectionMatrixSnapshot()
+            findPath.backwardAStarWithBunsetsu(
+                graph = graph,
+                length = input.length,
+                connectionIds = connectionMatrix.connectionIds,
+                connectionMatrixSize = connectionMatrix.matrixSize,
+                n = n,
+            )
         }
 
         if (input.isDigitsOnly()) {
@@ -1861,7 +1896,14 @@ class KanaKanjiEngine {
                 splitPatterns = emptyList()
             )
         } else {
-            findPath.backwardAStarWithBunsetsu(graph, input.length, connectionIds, n)
+            val connectionMatrix = connectionMatrixSnapshot()
+            findPath.backwardAStarWithBunsetsu(
+                graph = graph,
+                length = input.length,
+                connectionIds = connectionMatrix.connectionIds,
+                connectionMatrixSize = connectionMatrix.matrixSize,
+                n = n,
+            )
         }
 
         if (input.isDigitsOnly()) {
@@ -2301,7 +2343,14 @@ class KanaKanjiEngine {
                 )
             )
         } else {
-            findPath.backwardAStar(graph, input.length, connectionIds, n)
+            val connectionMatrix = connectionMatrixSnapshot()
+            findPath.backwardAStar(
+                graph = graph,
+                length = input.length,
+                connectionIds = connectionMatrix.connectionIds,
+                connectionMatrixSize = connectionMatrix.matrixSize,
+                n = n,
+            )
         }
 
         if (input.isDigitsOnly()) {
@@ -2728,7 +2777,14 @@ class KanaKanjiEngine {
                 )
             )
         } else {
-            findPath.backwardAStar(graph, input.length, connectionIds, n)
+            val connectionMatrix = connectionMatrixSnapshot()
+            findPath.backwardAStar(
+                graph = graph,
+                length = input.length,
+                connectionIds = connectionMatrix.connectionIds,
+                connectionMatrixSize = connectionMatrix.matrixSize,
+                n = n,
+            )
         }
 
         if (input.isDigitsOnly()) {
@@ -3187,7 +3243,14 @@ class KanaKanjiEngine {
                 splitPatterns = emptyList()
             )
         } else {
-            findPath.backwardAStarWithBunsetsu(graph, input.length, connectionIds, n)
+            val connectionMatrix = connectionMatrixSnapshot()
+            findPath.backwardAStarWithBunsetsu(
+                graph = graph,
+                length = input.length,
+                connectionIds = connectionMatrix.connectionIds,
+                connectionMatrixSize = connectionMatrix.matrixSize,
+                n = n,
+            )
         }
 
         if (input.isDigitsOnly()) {
