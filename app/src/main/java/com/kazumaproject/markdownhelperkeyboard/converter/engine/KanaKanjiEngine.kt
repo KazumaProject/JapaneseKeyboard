@@ -25,6 +25,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPat
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCompatibilityValidator
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileRole
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileSpecs
@@ -233,6 +234,10 @@ class KanaKanjiEngine {
 
     fun applyDictionaryOverrideState(context: Context) {
         val reader = dictionaryReader(context)
+        val appContext = context.applicationContext
+        val store = DictionaryOverrideStore(appContext, DictionaryOverrideValidator())
+        DictionaryCompatibilityValidator(DictionarySourceResolver(appContext, store))
+            .requireActiveStateCompatible()
         val newConnectionIds = reader.loadConnectionIds(DictionaryFileKey.CONNECTION_ID)
         val newSystem = loadTripleDictionary(reader, DictionaryCategory.SYSTEM)
         val newSingleKanji = loadTripleDictionary(reader, DictionaryCategory.SINGLE_KANJI)

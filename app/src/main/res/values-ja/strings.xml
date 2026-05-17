@@ -784,6 +784,7 @@
     <string name="external_dictionary_remove_file_format">%1$s を削除</string>
     <string name="external_dictionary_remove_file_summary">この外部ファイルのみ削除します。</string>
     <string name="external_dictionary_import_success">外部辞書ファイルをインポートしました。</string>
+    <string name="external_dictionary_import_success_incompatible_not_applied">外部辞書ファイルをインポートしましたが、キーボードへは反映されませんでした。</string>
     <string name="external_dictionary_import_failed_format">インポートに失敗しました: %1$s</string>
     <string name="external_dictionary_file_connection_id">接続 ID</string>
     <string name="external_dictionary_file_pos_table">品詞テーブル</string>
@@ -819,6 +820,17 @@
     <string name="external_dictionary_external_file_selected_format">外部ファイル選択済み: %1$s</string>
     <string name="external_dictionary_imported_format">インポート日時: %1$s</string>
     <string name="external_dictionary_size_format">サイズ: %1$s</string>
+    <string name="external_dictionary_compat_dialog_title">辞書ファイルに互換性がありません</string>
+    <string name="external_dictionary_compat_imported_but_not_usable">この辞書ファイルは読み込まれましたが、現在の pos_table.dat / connectionId.dat と互換性がないため使用できません。</string>
+    <string name="external_dictionary_compat_import_matching_common_files">この辞書を作成した時に同時に生成された pos_table.dat と connectionId.dat も読み込んでください。</string>
+    <string name="external_dictionary_compat_token_requires_pos_table_rows">token.dat は少なくとも %1$d 行の pos_table.dat を必要としますが、現在の pos_table.dat は %2$d 行です。</string>
+    <string name="external_dictionary_compat_pos_table_id_out_of_range">pos_table.dat に現在の connectionId.dat の範囲を超える leftId / rightId が含まれています。</string>
+    <string name="external_dictionary_compat_connection_id_invalid_size">connectionId.dat のサイズが正しくありません。</string>
+    <string name="external_dictionary_compat_dictionary_not_applied">この辞書はキーボードへ反映されませんでした。既存の辞書を継続して使用します。</string>
+    <string name="external_dictionary_compat_pos_table_row_mismatch">pos_table.dat の leftId / rightId の行数が一致しません。</string>
+    <string name="external_dictionary_compat_pos_table_unreadable">pos_table.dat を読み込めません。</string>
+    <string name="external_dictionary_compat_connection_id_unreadable">connectionId.dat を読み込めません。</string>
+    <string name="external_dictionary_compat_token_negative_pos_index">token.dat に不正な pos_table index が含まれています。</string>
     <string name="system_user_dictionary_builder_title">システムユーザー辞書の作成</string>
     <string name="system_user_dictionary_builder_summary">ユーザー指定の単語からシステムユーザー辞書を作成します</string>
     <string name="system_user_dictionary_build_button">辞書をビルド</string>
