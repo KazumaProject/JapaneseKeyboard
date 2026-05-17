@@ -18,7 +18,6 @@ import com.kazumaproject.domain.toEmoticonCategory
 import com.kazumaproject.domain.toSymbolCategory
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
-import com.kazumaproject.markdownhelperkeyboard.converter.Other.NUM_OF_CONNECTION_ID
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -71,7 +70,7 @@ class KanaKanjiEngine {
     private var dictionaryBinaryReader: DictionaryBinaryReader? = null
 
     private lateinit var connectionIds: ShortArray
-    private var connectionMatrixSize: Int = NUM_OF_CONNECTION_ID
+    private var connectionMatrixSize: Int = 0
 
     private lateinit var systemYomiTrie: LOUDSWithTermId
     private lateinit var systemTangoTrie: LOUDS
@@ -242,6 +241,9 @@ class KanaKanjiEngine {
 
     private fun connectionMatrixSnapshot(): ConnectionMatrixSnapshot =
         synchronized(this) {
+            check(connectionMatrixSize > 0) {
+                "connectionMatrixSize must be initialized from connectionId.dat before use"
+            }
             ConnectionMatrixSnapshot(
                 connectionIds = connectionIds,
                 matrixSize = connectionMatrixSize,
@@ -413,9 +415,10 @@ class KanaKanjiEngine {
         this@KanaKanjiEngine.findPath = findPath
 
         // System
+        val inferredConnectionMatrixSize = ConnectionMatrix.inferMatrixSize(connectionIdList)
+            ?: error("connectionId.dat size ${connectionIdList.size} is not a valid square matrix")
         this@KanaKanjiEngine.connectionIds = connectionIdList
-        this@KanaKanjiEngine.connectionMatrixSize =
-            ConnectionMatrix.inferMatrixSize(connectionIdList) ?: NUM_OF_CONNECTION_ID
+        this@KanaKanjiEngine.connectionMatrixSize = inferredConnectionMatrixSize
         this@KanaKanjiEngine.systemTangoTrie = systemTangoTrie
         this@KanaKanjiEngine.systemTokenArray = systemTokenArray
         this@KanaKanjiEngine.systemYomiTrie = systemYomiTrie
