@@ -757,6 +757,173 @@ class DictionaryOverrideCoreTest {
         assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(DictionaryCategory.SYSTEM))
     }
 
+    @Test
+    fun zipEntryNameMapper_mapsRequestedBasenames() {
+        assertEquals(DictionaryFileKey.SYSTEM_TANGO, DictionaryZipEntryNameMapper.map("tango.dat"))
+        assertEquals(DictionaryFileKey.SYSTEM_YOMI, DictionaryZipEntryNameMapper.map("yomi.dat"))
+        assertEquals(DictionaryFileKey.SYSTEM_TOKEN, DictionaryZipEntryNameMapper.map("token.dat"))
+        assertEquals(DictionaryFileKey.NEOLOGD_TANGO, DictionaryZipEntryNameMapper.map("tango_neologd.dat"))
+        assertEquals(DictionaryFileKey.NEOLOGD_YOMI, DictionaryZipEntryNameMapper.map("yomi_neologd.dat"))
+        assertEquals(DictionaryFileKey.NEOLOGD_TOKEN, DictionaryZipEntryNameMapper.map("token_neologd.dat"))
+        assertEquals(DictionaryFileKey.PLACES_TANGO, DictionaryZipEntryNameMapper.map("tango_places.dat"))
+        assertEquals(DictionaryFileKey.PLACES_YOMI, DictionaryZipEntryNameMapper.map("yomi_places.dat"))
+        assertEquals(DictionaryFileKey.PLACES_TOKEN, DictionaryZipEntryNameMapper.map("token_places.dat"))
+        assertEquals(DictionaryFileKey.CONNECTION_ID, DictionaryZipEntryNameMapper.map("connectionId.dat"))
+        assertEquals(DictionaryFileKey.CONNECTION_ID, DictionaryZipEntryNameMapper.map("connectionid.dat"))
+        assertEquals(DictionaryFileKey.CONNECTION_ID, DictionaryZipEntryNameMapper.map("connectionId.dat.zip"))
+        assertEquals(DictionaryFileKey.POS_TABLE, DictionaryZipEntryNameMapper.map("pos_table.dat"))
+        assertEquals(DictionaryFileKey.ID_DEF, DictionaryZipEntryNameMapper.map("id.def"))
+        assertNull(DictionaryZipEntryNameMapper.map("unknown.dat"))
+        assertTrue(DictionaryZipEntryNameMapper.isIgnored("__MACOSX/xxx"))
+        assertTrue(DictionaryZipEntryNameMapper.isIgnored(".DS_Store"))
+    }
+
+    @Test
+    fun zipEntryPlanner_duplicateKeyIsNotImportable() {
+        val plan = DictionaryZipEntryPlanner.plan(listOf("a/tango.dat", "b/tango.dat"))
+
+        assertEquals(2, plan.recognizedEntries)
+        assertEquals(listOf(DictionaryFileKey.SYSTEM_TANGO), plan.duplicateKeys.map { it.key })
+        assertTrue(plan.importableEntries.none { it.key == DictionaryFileKey.SYSTEM_TANGO })
+    }
+
+    @Test
+    fun zipEntryPlanner_partialDictionaryRecognizesSingleEntryWithoutAutoEnablingCategory() {
+        val plan = DictionaryZipEntryPlanner.plan(listOf("tango_neologd.dat"))
+        val store = alwaysValidStore("zip-partial-neologd")
+
+        val result = store.saveOverrideFromZipEntryInputStream(
+            DictionaryFileKey.NEOLOGD_TANGO,
+            ByteArrayInputStream(byteArrayOf(1, 2, 3)),
+            "tango_neologd.dat",
+        )
+
+        assertTrue(result.isValid)
+        assertEquals(listOf(DictionaryFileKey.NEOLOGD_TANGO), plan.importableEntries.map { it.key })
+        assertFalse(store.isExternalEnabledForCategory(DictionaryCategory.NEOLOGD))
+    }
+
+    @Test
+    fun zipEntryPlanner_mainDictionaryBundleMapsExpectedKeys() {
+        val plan = DictionaryZipEntryPlanner.plan(
+            listOf(
+                "connectionId.dat",
+                "pos_table.dat",
+                "id.def",
+                "tango.dat",
+                "yomi.dat",
+                "token.dat",
+                "tango_singleKanji.dat",
+                "yomi_singleKanji.dat",
+                "token_singleKanji.dat",
+                "tango_emoji.dat",
+                "yomi_emoji.dat",
+                "token_emoji.dat",
+                "tango_emoticon.dat",
+                "yomi_emoticon.dat",
+                "token_emoticon.dat",
+                "tango_symbol.dat",
+                "yomi_symbol.dat",
+                "token_symbol.dat",
+                "tango_reading_correction.dat",
+                "yomi_reading_correction.dat",
+                "token_reading_correction.dat",
+                "tango_kotowaza.dat",
+                "yomi_kotowaza.dat",
+                "token_kotowaza.dat",
+            )
+        )
+
+        assertEquals(
+            setOf(
+                DictionaryFileKey.CONNECTION_ID,
+                DictionaryFileKey.POS_TABLE,
+                DictionaryFileKey.ID_DEF,
+                DictionaryFileKey.SYSTEM_TANGO,
+                DictionaryFileKey.SYSTEM_YOMI,
+                DictionaryFileKey.SYSTEM_TOKEN,
+                DictionaryFileKey.SINGLE_KANJI_TANGO,
+                DictionaryFileKey.SINGLE_KANJI_YOMI,
+                DictionaryFileKey.SINGLE_KANJI_TOKEN,
+                DictionaryFileKey.EMOJI_TANGO,
+                DictionaryFileKey.EMOJI_YOMI,
+                DictionaryFileKey.EMOJI_TOKEN,
+                DictionaryFileKey.EMOTICON_TANGO,
+                DictionaryFileKey.EMOTICON_YOMI,
+                DictionaryFileKey.EMOTICON_TOKEN,
+                DictionaryFileKey.SYMBOL_TANGO,
+                DictionaryFileKey.SYMBOL_YOMI,
+                DictionaryFileKey.SYMBOL_TOKEN,
+                DictionaryFileKey.READING_CORRECTION_TANGO,
+                DictionaryFileKey.READING_CORRECTION_YOMI,
+                DictionaryFileKey.READING_CORRECTION_TOKEN,
+                DictionaryFileKey.KOTOWAZA_TANGO,
+                DictionaryFileKey.KOTOWAZA_YOMI,
+                DictionaryFileKey.KOTOWAZA_TOKEN,
+            ),
+            plan.importableEntries.map { it.key }.toSet(),
+        )
+    }
+
+    @Test
+    fun zipEntryPlanner_mozcUtBundleMapsPlacesAndPersonNames() {
+        val plan = DictionaryZipEntryPlanner.plan(
+            listOf(
+                "token_places.dat",
+                "yomi_places.dat",
+                "tango_places.dat",
+                "tango_person_names.dat",
+                "token_person_names.dat",
+                "yomi_person_names.dat",
+            )
+        )
+
+        assertEquals(
+            setOf(
+                DictionaryFileKey.PLACES_TOKEN,
+                DictionaryFileKey.PLACES_YOMI,
+                DictionaryFileKey.PLACES_TANGO,
+                DictionaryFileKey.PERSON_NAME_TANGO,
+                DictionaryFileKey.PERSON_NAME_TOKEN,
+                DictionaryFileKey.PERSON_NAME_YOMI,
+            ),
+            plan.importableEntries.map { it.key }.toSet(),
+        )
+    }
+
+    @Test
+    fun zipEntryPlanner_neologdBundleMapsNeologdTriple() {
+        val plan = DictionaryZipEntryPlanner.plan(
+            listOf("token_neologd.dat", "yomi_neologd.dat", "tango_neologd.dat")
+        )
+
+        assertEquals(
+            setOf(
+                DictionaryFileKey.NEOLOGD_TOKEN,
+                DictionaryFileKey.NEOLOGD_YOMI,
+                DictionaryFileKey.NEOLOGD_TANGO,
+            ),
+            plan.importableEntries.map { it.key }.toSet(),
+        )
+    }
+
+    @Test
+    fun zipSlipEntryNameMapsByBasenameButStoreUsesKeyBasedFileName() {
+        val plan = DictionaryZipEntryPlanner.plan(listOf("../../tango.dat"))
+        val store = alwaysValidStore("zip-slip")
+
+        val result = store.saveOverrideFromZipEntryInputStream(
+            DictionaryFileKey.SYSTEM_TANGO,
+            ByteArrayInputStream(byteArrayOf(1, 2, 3)),
+            "../../tango.dat",
+        )
+
+        assertTrue(result.isValid)
+        assertEquals(listOf(DictionaryFileKey.SYSTEM_TANGO), plan.importableEntries.map { it.key })
+        assertEquals("SYSTEM_TANGO.bin", DictionaryOverrideStore.savedFileNameForKey(DictionaryFileKey.SYSTEM_TANGO))
+        assertTrue(File(store.directory, "SYSTEM_TANGO.bin").exists())
+    }
+
     private fun zip(name: String, bytes: ByteArray): ByteArray {
         val output = java.io.ByteArrayOutputStream()
         ZipOutputStream(output).use { zip ->
