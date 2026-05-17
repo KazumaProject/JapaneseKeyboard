@@ -30,6 +30,9 @@ class DictionaryBinaryReader @Inject constructor(
     fun openZipAwareTextReader(input: InputStream, debugName: String): BufferedReader =
         openZipAwareText(input, debugName)
 
+    fun resolveCategoryLoadState(category: DictionaryCategory): DictionaryCategoryLoadState =
+        resolver.resolveCategoryLoadState(category)
+
     fun loadLouds(key: DictionaryFileKey): LOUDS =
         loadWithBundledFallback(key) { input ->
             openZipAwareObjectInputStream(input, key.name).use {

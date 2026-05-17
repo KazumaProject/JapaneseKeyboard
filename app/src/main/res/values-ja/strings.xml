@@ -771,7 +771,7 @@
     <string name="external_dictionary_settings_title">外部辞書ファイル</string>
     <string name="external_dictionary_settings_summary">内蔵辞書を選択した外部ファイルで置き換えます。</string>
     <string name="external_dictionary_apply_timing_title">反映タイミング</string>
-    <string name="external_dictionary_apply_timing_summary">キーボードの再起動後に反映されます。</string>
+    <string name="external_dictionary_apply_timing_summary">次回キーボードを開いたときに反映されます。</string>
     <string name="external_dictionary_reset_all">すべてリセット</string>
     <string name="external_dictionary_reset_all_summary">外部辞書ファイルの設定をすべて削除します。</string>
     <string name="external_dictionary_reset_all_confirm">外部辞書ファイルと設定をすべて削除しますか？</string>

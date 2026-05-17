@@ -13,6 +13,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideDicti
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideCandidateCaseExpander
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideCandidateProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideIndexedDictionaryProvider
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
 import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
 import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
 import kotlinx.coroutines.CoroutineScope
@@ -102,14 +104,45 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                     entries = entries,
                     dictionaryReady = true
                 )
-                qwertyGlideDecoder = decoder
-                qwertyGlideDictionaryReady = true
+                if (!isActive) return@launch
+                synchronized(this@EnglishEngine) {
+                    if (!isActive) return@launch
+                    qwertyGlideDecoder = decoder
+                    qwertyGlideDictionaryReady = true
+                }
                 if (BuildConfig.DEBUG) {
                     Timber.d(
                         "QWERTY glide dictionary warmup complete: entries=${entries.size} elapsed_ms=${(System.nanoTime() - startedAt) / 1_000_000L}"
                     )
                 }
             }
+        }
+    }
+
+    fun reloadDictionariesFromCurrentSources(reader: DictionaryBinaryReader) {
+        val newReadingLOUDS = reader.loadEnglishReading(DictionaryFileKey.ENGLISH_READING)
+        val newWordLOUDS = reader.loadEnglishWord(DictionaryFileKey.ENGLISH_WORD)
+        val newTokenArray = reader.loadEnglishToken(DictionaryFileKey.ENGLISH_TOKEN)
+        val newSuccinctBitVectorLBSReading = SuccinctBitVector(newReadingLOUDS.LBS)
+        val newSuccinctBitVectorReadingIsLeaf = SuccinctBitVector(newReadingLOUDS.isLeaf)
+        val newSuccinctBitVectorTokenArray = SuccinctBitVector(newTokenArray.bitvector)
+        val newSuccinctBitVectorLBSWord = SuccinctBitVector(newWordLOUDS.LBS)
+
+        synchronized(this) {
+            cancelQwertyGlideWarmup()
+            readingLOUDS = newReadingLOUDS
+            wordLOUDS = newWordLOUDS
+            tokenArray = newTokenArray
+            succinctBitVectorLBSReading = newSuccinctBitVectorLBSReading
+            succinctBitVectorReadingIsLeaf = newSuccinctBitVectorReadingIsLeaf
+            succinctBitVectorTokenArray = newSuccinctBitVectorTokenArray
+            succinctBitVectorLBSWord = newSuccinctBitVectorLBSWord
+            qwertyGlideDictionaryReady = false
+            qwertyGlideDecoder = null
+            qwertyFallbackGlideDecoder = createQwertyGlideDecoder(
+                entries = fallbackGlideDictionaryEntries(),
+                dictionaryReady = false,
+            )
         }
     }
 
