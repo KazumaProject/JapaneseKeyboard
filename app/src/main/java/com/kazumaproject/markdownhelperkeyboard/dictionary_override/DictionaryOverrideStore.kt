@@ -78,6 +78,20 @@ class DictionaryOverrideStore private constructor(
         }
     }
 
+    fun importOverridesFromZipUri(context: Context, zipUri: Uri): DictionaryZipImportResult =
+        ExternalDictionaryZipImporter(context, this).importFromUri(zipUri)
+
+    fun saveOverrideFromZipEntryInputStream(
+        key: DictionaryFileKey,
+        inputStream: InputStream,
+        entryName: String,
+    ): ValidationResult =
+        saveOverrideFromInputStream(
+            key = key,
+            inputStream = inputStream,
+            originalFileName = entryName,
+        )
+
     fun saveOverrideFromInputStream(
         key: DictionaryFileKey,
         inputStream: InputStream,
@@ -298,7 +312,7 @@ class DictionaryOverrideStore private constructor(
         if (!directory.exists()) directory.mkdirs()
     }
 
-    private fun overrideFile(key: DictionaryFileKey): File = File(directory, "${key.name}.bin")
+    private fun overrideFile(key: DictionaryFileKey): File = File(directory, savedFileNameForKey(key))
 
     companion object {
         private const val PREF_NAME = "dictionary_override_store"
@@ -307,6 +321,7 @@ class DictionaryOverrideStore private constructor(
         private val metadataType = object : TypeToken<DictionaryOverrideMetadata>() {}.type
 
         fun metadataPrefKey(key: DictionaryFileKey) = "metadata_${key.name}"
+        fun savedFileNameForKey(key: DictionaryFileKey) = "${key.name}.bin"
         fun keyExternalEnabledKey(key: DictionaryFileKey) = "external_enabled_key_${key.name}"
         fun categoryExternalEnabledKey(category: DictionaryCategory) =
             "external_enabled_category_${category.name}"

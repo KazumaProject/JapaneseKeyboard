@@ -5,8 +5,15 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.text.format.DateFormat
 import android.text.format.Formatter
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.view.MenuHost
+import androidx.core.view.MenuProvider
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.Preference
 import androidx.preference.PreferenceCategory
@@ -24,6 +31,7 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFi
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileSpecs
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideMetadata
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryZipImportResult
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.ValidationStatus
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.isDisableableBundledDictionary
 import dagger.hilt.android.AndroidEntryPoint
@@ -56,9 +64,46 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             }
         }
 
+    private val openZipDocumentLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+            if (uri != null) {
+                importDictionaryZip(uri)
+            }
+        }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         renderPreferences()
         refreshCompatibilityUiState()
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        setupMenu()
+    }
+
+    private fun setupMenu() {
+        val menuHost: MenuHost = requireActivity()
+        menuHost.addMenuProvider(object : MenuProvider {
+            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                menuInflater.inflate(R.menu.external_dictionary_menu, menu)
+            }
+
+            override fun onMenuItemSelected(menuItem: MenuItem): Boolean =
+                when (menuItem.itemId) {
+                    R.id.action_import_dictionary_zip -> {
+                        openZipDocumentLauncher.launch(
+                            arrayOf(
+                                "application/zip",
+                                "application/octet-stream",
+                                "application/x-zip-compressed",
+                                "*/*",
+                            )
+                        )
+                        true
+                    }
+                    else -> false
+                }
+        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
     }
 
     private fun renderPreferences() {
@@ -232,6 +277,40 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             if (importResult.disabledProblems.isNotEmpty()) {
                 showCompatibilityProblemDialog(importResult.disabledProblems)
             }
+            refreshCompatibilityUiState()
+        }
+    }
+
+    private fun importDictionaryZip(uri: Uri) {
+        lifecycleScope.launch {
+            val appContext = requireContext().applicationContext
+            val importResult = withContext(Dispatchers.IO) {
+                val result = store.importOverridesFromZipUri(appContext, uri)
+                val importedTokenCategories = result.imported
+                    .map { DictionaryFileSpecs.get(it.key) }
+                    .filter { it.role == DictionaryFileRole.TOKEN }
+                    .map { it.category }
+                    .distinct()
+                val activeProblems = if (result.imported.isNotEmpty()) {
+                    disableIncompatibleActiveOverrides(compatibilityValidator.validateActiveState())
+                } else {
+                    emptyList()
+                }
+                val categoryProblems = importedTokenCategories
+                    .flatMap { compatibilityValidator.validateCategoryReplacement(it).problems() }
+                ZipImportWorkResult(
+                    result = result,
+                    compatibilityProblems = (activeProblems + categoryProblems)
+                        .distinctBy { it.messageForLog },
+                )
+            }
+            if (!isAdded || view == null) return@launch
+            val resultWithCompatibility = importResult.result.copy(
+                incompatible = importResult.result.incompatible +
+                    importResult.compatibilityProblems.map { compatibilityProblemDetailLine(it) },
+            )
+            showZipImportResultDialog(resultWithCompatibility)
+            toastApplyTiming()
             refreshCompatibilityUiState()
         }
     }
@@ -425,6 +504,65 @@ class ExternalDictionarySettingsFragment : PreferenceFragmentCompat() {
             .show()
     }
 
+    private fun showZipImportResultDialog(result: DictionaryZipImportResult) {
+        if (!isAdded || view == null) return
+        MaterialAlertDialogBuilder(requireContext())
+            .setTitle(R.string.external_dictionary_zip_import_result_title)
+            .setMessage(buildZipImportResultMessage(result))
+            .setPositiveButton(android.R.string.ok, null)
+            .show()
+    }
+
+    private fun buildZipImportResultMessage(result: DictionaryZipImportResult): String {
+        val lines = mutableListOf(
+            getString(R.string.external_dictionary_zip_import_imported_format, result.importedCount),
+            getString(R.string.external_dictionary_zip_import_skipped_format, result.skipped.size),
+            getString(R.string.external_dictionary_zip_import_failed_format, result.failedCount),
+            getString(R.string.external_dictionary_zip_import_total_format, result.totalEntries),
+            getString(R.string.external_dictionary_zip_import_recognized_format, result.recognizedEntries),
+        )
+        if (result.incompatible.isNotEmpty()) {
+            lines += getString(R.string.external_dictionary_zip_import_incompatible_format, result.incompatible.size)
+        }
+        appendResultSection(lines, R.string.external_dictionary_zip_import_imported_section) {
+            result.imported.map { "${it.key.name}: ${it.entryName}" }
+        }
+        appendResultSection(lines, R.string.external_dictionary_zip_import_duplicate_section) {
+            result.duplicateKeys.map { "${it.key.name}: ${it.entryNames.joinToString()}" }
+        }
+        appendResultSection(lines, R.string.external_dictionary_zip_import_failed_section) {
+            result.failed.map { "${it.entryName}: ${it.reason}" }
+        }
+        appendResultSection(lines, R.string.external_dictionary_zip_import_skipped_section) {
+            result.skipped.map { "${it.entryName}: ${it.reason}" }
+        }
+        appendResultSection(lines, R.string.external_dictionary_zip_import_incompatible_section) {
+            result.incompatible
+        }
+        return lines.joinToString("\n")
+    }
+
+    private fun appendResultSection(
+        lines: MutableList<String>,
+        titleResId: Int,
+        values: () -> List<String>,
+    ) {
+        val sectionValues = values()
+        if (sectionValues.isEmpty()) return
+        lines += ""
+        lines += getString(titleResId)
+        lines += sectionValues.map { "- $it" }
+    }
+
+    private fun compatibilityProblemDetailLine(problem: DictionaryCompatibilityProblem): String {
+        val detail = getString(problem.messageResId, *problem.messageArgs.toTypedArray())
+        val fileName = problem.affectedFileKey?.let { getString(DictionaryFileSpecs.get(it).displayNameRes) }
+        val categoryName = problem.affectedCategory
+            ?.takeIf { it != DictionaryCategory.COMMON }
+            ?.let { categoryTitle(it) }
+        return listOfNotNull(categoryName, fileName, detail).joinToString(": ")
+    }
+
     private fun displayStateText(state: ExternalDictionaryDisplayState): String {
         val resId = when (state) {
             ExternalDictionaryDisplayState.BundledInUseNoOverride,
@@ -485,6 +623,11 @@ private data class CompatibilityUiState(
 private data class ImportResult(
     val validationResult: com.kazumaproject.markdownhelperkeyboard.dictionary_override.ValidationResult,
     val disabledProblems: List<DictionaryCompatibilityProblem>,
+)
+
+private data class ZipImportWorkResult(
+    val result: DictionaryZipImportResult,
+    val compatibilityProblems: List<DictionaryCompatibilityProblem>,
 )
 
 private val DICTIONARY_CATEGORIES = listOf(
