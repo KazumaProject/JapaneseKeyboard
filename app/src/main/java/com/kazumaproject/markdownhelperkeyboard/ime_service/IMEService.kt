@@ -159,12 +159,12 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
-import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
-import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
-import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
@@ -549,8 +549,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     @Volatile
     private var lastAppliedDictionaryOverrideRevision: Long = Long.MIN_VALUE
+
     @Volatile
     private var dictionaryOverrideApplyJob: Job? = null
 
@@ -3471,9 +3473,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 insertString,
                 suggestions
             )
+
             KeyEvent.KEYCODE_MUHENKAN -> switchToEnglishModeFloating(mainView)
             KeyEvent.KEYCODE_KATAKANA_HIRAGANA,
             KeyEvent.KEYCODE_KANA -> switchToHiraganaMode(mainView)
+
             KeyEvent.KEYCODE_EISU -> switchToEnglishModeFloating(mainView)
 
             KeyEvent.KEYCODE_DEL, KeyEvent.KEYCODE_FORWARD_DEL -> handleJapaneseDeleteFloating(
@@ -3708,6 +3712,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 insertString,
                 suggestions
             )
+
             PhysicalKeyboardShortcutAction.SWITCH_TO_ENGLISH -> switchToEnglishModeFloating(mainView)
             PhysicalKeyboardShortcutAction.CYCLE_INPUT_MODE -> toggleJapaneseEnglishMode(mainView)
             PhysicalKeyboardShortcutAction.CONVERT -> handleJapaneseSpaceFloating(
@@ -5746,13 +5751,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeyPreviousChar -> {
                 when (currentTenkeyInputMode(mainView)) {
-                        is InputMode.ModeNumber -> {
+                    is InputMode.ModeNumber -> {
 
-                        }
+                    }
 
-                        else -> {
-                            if (!isFlick) setNextReturnInputCharacter(insertString)
-                        }
+                    else -> {
+                        if (!isFlick) setNextReturnInputCharacter(insertString)
+                    }
                 }
             }
 
@@ -8456,10 +8461,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchRomajiEnglish -> {}
                     KeyAction.CapLockKey -> {}
                     KeyAction.ForceHalfWidthSpace -> {
-                        handleForceHalfWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                        handleForceHalfWidthSpaceOrConvert(
+                            mainView,
+                            floatingKeyboardBinding.takeIf { isFloatingView })
                     }
+
                     KeyAction.ForceFullWidthSpace -> {
-                        handleForceFullWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                        handleForceFullWidthSpaceOrConvert(
+                            mainView,
+                            floatingKeyboardBinding.takeIf { isFloatingView })
                     }
                 }
             }
@@ -8744,9 +8754,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
 
-                    KeyAction.MoveCustomKeyboardTab -> {}
-                    is KeyAction.MoveToCustomKeyboard -> {}
-                    KeyAction.ToggleKatakana -> {}
+                    KeyAction.MoveCustomKeyboardTab -> {
+                        scope.launch {
+                            if (customLayouts.isNotEmpty()) {
+                                val position =
+                                    (currentCustomKeyboardPosition + 1) % customLayouts.size
+                                selectCustomKeyboardTab(
+                                    index = position,
+                                    reason = CustomKeyboardSelectionReason.UserNextTab
+                                )
+                            }
+                        }
+                    }
+
+                    is KeyAction.MoveToCustomKeyboard -> {
+                        moveToCustomKeyboardByStableId(action.stableId)
+                    }
+
+                    KeyAction.ToggleKatakana -> {
+                        when (countToggleKatakana) {
+                            0 -> {
+                                _inputString.update {
+                                    it.hiraganaToKatakana()
+                                }
+                                countToggleKatakana++
+                            }
+
+                            1 -> {
+                                _inputString.update {
+                                    it.toHankakuKatakana()
+                                }
+                                countToggleKatakana++
+                            }
+
+                            2 -> {
+                                _inputString.update {
+                                    it.toHiragana()
+                                }
+                                countToggleKatakana = 0
+                            }
+                        }
+                    }
+
                     KeyAction.DeleteUntilSymbol -> {
                         if (isDeleteLeftFlickPreference == true) {
                             val insertString = inputString.value
@@ -8836,11 +8885,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.ForceHalfWidthSpace -> {
-                        handleForceHalfWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                        handleForceHalfWidthSpaceOrConvert(
+                            mainView,
+                            floatingKeyboardBinding.takeIf { isFloatingView })
                     }
 
                     KeyAction.ForceFullWidthSpace -> {
-                        handleForceFullWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                        handleForceFullWidthSpaceOrConvert(
+                            mainView,
+                            floatingKeyboardBinding.takeIf { isFloatingView })
                     }
                 }
             }
@@ -9366,11 +9419,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.ForceHalfWidthSpace -> {
-                        handleForceHalfWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                        handleForceHalfWidthSpaceOrConvert(
+                            mainView,
+                            floatingKeyboardBinding.takeIf { isFloatingView })
                     }
 
                     KeyAction.ForceFullWidthSpace -> {
-                        handleForceFullWidthSpaceOrConvert(mainView, floatingKeyboardBinding.takeIf { isFloatingView })
+                        handleForceFullWidthSpaceOrConvert(
+                            mainView,
+                            floatingKeyboardBinding.takeIf { isFloatingView })
                     }
                 }
             }
@@ -16262,16 +16319,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.distinctBy { it.string }
 
-        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
-            withContext(Dispatchers.IO) {
-                candidateOrderOverrideRepository.applyOrder(
-                    input = insertString,
-                    candidates = filteredCandidates
-                )
+        val orderedCandidates =
+            if (appPreference.candidate_order_override_enable_preference == true) {
+                withContext(Dispatchers.IO) {
+                    candidateOrderOverrideRepository.applyOrder(
+                        input = insertString,
+                        candidates = filteredCandidates
+                    )
+                }
+            } else {
+                filteredCandidates
             }
-        } else {
-            filteredCandidates
-        }
 
         updateBunsetsuStateAfterCandidateMerge(
             input = insertString,
@@ -16415,16 +16473,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.distinctBy { it.string }
 
-        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
-            withContext(Dispatchers.IO) {
-                candidateOrderOverrideRepository.applyOrder(
-                    input = insertString,
-                    candidates = filteredCandidates
-                )
+        val orderedCandidates =
+            if (appPreference.candidate_order_override_enable_preference == true) {
+                withContext(Dispatchers.IO) {
+                    candidateOrderOverrideRepository.applyOrder(
+                        input = insertString,
+                        candidates = filteredCandidates
+                    )
+                }
+            } else {
+                filteredCandidates
             }
-        } else {
-            filteredCandidates
-        }
 
         updateBunsetsuStateAfterCandidateMerge(
             input = insertString,
@@ -16577,16 +16636,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.distinctBy { it.string }
 
-        val orderedCandidates = if (appPreference.candidate_order_override_enable_preference == true) {
-            withContext(Dispatchers.IO) {
-                candidateOrderOverrideRepository.applyOrder(
-                    input = insertString,
-                    candidates = filteredCandidates
-                )
+        val orderedCandidates =
+            if (appPreference.candidate_order_override_enable_preference == true) {
+                withContext(Dispatchers.IO) {
+                    candidateOrderOverrideRepository.applyOrder(
+                        input = insertString,
+                        candidates = filteredCandidates
+                    )
+                }
+            } else {
+                filteredCandidates
             }
-        } else {
-            filteredCandidates
-        }
 
         updateBunsetsuStateAfterCandidateMerge(
             input = insertString,

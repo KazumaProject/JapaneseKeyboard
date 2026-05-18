@@ -32,6 +32,8 @@ fun FlickMapping.toFlickAction(): FlickAction {
         "CONVERT" -> KeyAction.Convert
         "CONFIRM" -> KeyAction.Confirm
         "MOVE_CURSOR_LEFT" -> KeyAction.MoveCursorLeft
+        "MOVE_CURSOR_UP" -> KeyAction.MoveCursorUp
+        "MOVE_CURSOR_DOWN" -> KeyAction.MoveCursorDown
         "MOVE_CURSOR_RIGHT" -> KeyAction.MoveCursorRight
         "SELECT_ALL" -> KeyAction.SelectAll
         "PASTE" -> KeyAction.Paste
@@ -84,6 +86,8 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         "CONVERT" -> KeyAction.Convert
         "CONFIRM" -> KeyAction.Confirm
         "MOVE_CURSOR_LEFT" -> KeyAction.MoveCursorLeft
+        "MOVE_CURSOR_UP" -> KeyAction.MoveCursorUp
+        "MOVE_CURSOR_DOWN" -> KeyAction.MoveCursorDown
         "MOVE_CURSOR_RIGHT" -> KeyAction.MoveCursorRight
         "SELECT_ALL" -> KeyAction.SelectAll
         "PASTE" -> KeyAction.Paste
@@ -142,6 +146,8 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
             KeyAction.Convert -> "CONVERT" to null
             KeyAction.Confirm -> "CONFIRM" to null
             KeyAction.MoveCursorLeft -> "MOVE_CURSOR_LEFT" to null
+            KeyAction.MoveCursorUp -> "MOVE_CURSOR_UP" to null
+            KeyAction.MoveCursorDown -> "MOVE_CURSOR_DOWN" to null
             KeyAction.MoveCursorRight -> "MOVE_CURSOR_RIGHT" to null
             KeyAction.SelectAll -> "SELECT_ALL" to null
             KeyAction.Paste -> "PASTE" to null

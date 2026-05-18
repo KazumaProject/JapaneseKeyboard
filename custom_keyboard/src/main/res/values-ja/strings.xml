@@ -26,6 +26,8 @@
     <string name="action_move_custom_keyboard_tab">タブの変更</string>
     <string name="action_move_to_custom_keyboard">特定のカスタムキーボードへ移動</string>
     <string name="action_move_cursor_left">カーソル左</string>
+    <string name="action_move_cursor_up">カーソル上</string>
+    <string name="action_move_cursor_down">カーソル下</string>
     <string name="action_move_cursor_right">カーソル右</string>
     <string name="action_select_all">すべて選択</string>
     <string name="switch_qwerty">QWERTY 切り替え</string>

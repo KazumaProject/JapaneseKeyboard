@@ -138,6 +138,16 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.baseline_arrow_left_24
             ),
             DisplayAction(
+                KeyAction.MoveCursorUp,
+                context.getString(R.string.action_move_cursor_up),
+                com.kazumaproject.core.R.drawable.outline_arrow_upward_alt_24
+            ),
+            DisplayAction(
+                KeyAction.MoveCursorDown,
+                context.getString(R.string.action_move_cursor_down),
+                com.kazumaproject.core.R.drawable.outline_arrow_downward_alt_24
+            ),
+            DisplayAction(
                 KeyAction.MoveCursorRight,
                 context.getString(R.string.action_move_cursor_right),
                 com.kazumaproject.core.R.drawable.baseline_arrow_right_24
@@ -182,6 +192,8 @@ object KeyActionMapper {
             is KeyAction.Convert -> "Convert"
             is KeyAction.Confirm -> "Confirm"
             is KeyAction.MoveCursorLeft -> "MoveCursorLeft"
+            is KeyAction.MoveCursorUp -> "MoveCursorUp"
+            is KeyAction.MoveCursorDown -> "MoveCursorDown"
             is KeyAction.MoveCursorRight -> "MoveCursorRight"
             is KeyAction.SelectLeft -> "SelectLeft"
             is KeyAction.SelectRight -> "SelectRight"
@@ -240,6 +252,8 @@ object KeyActionMapper {
             "Convert" -> KeyAction.Convert
             "Confirm" -> KeyAction.Confirm
             "MoveCursorLeft" -> KeyAction.MoveCursorLeft
+            "MoveCursorUp" -> KeyAction.MoveCursorUp
+            "MoveCursorDown" -> KeyAction.MoveCursorDown
             "MoveCursorRight" -> KeyAction.MoveCursorRight
             "SelectLeft" -> KeyAction.SelectLeft
             "SelectRight" -> KeyAction.SelectRight
