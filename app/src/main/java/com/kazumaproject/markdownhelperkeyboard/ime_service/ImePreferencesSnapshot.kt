@@ -73,6 +73,8 @@ data class ImePreferencesSnapshot(
     val tenkeyQWERTYSwitchNumber: Boolean,
     val tenkeyQKeymapGuide: Boolean,
     val flickKeymapGuide: Boolean,
+    val flickGuideTextSizeSp: Int,
+    val flickGuideMaxCharacters: Int,
     val isKeyboardFloatingMode: Boolean,
     val isKeyboardRounded: Boolean,
     val keyboardCornerRadiusDp: Int,
@@ -300,6 +302,9 @@ data class ImePreferencesSnapshot(
                     appPreference.tenkey_qwerty_switch_number_layout ?: false,
                 tenkeyQKeymapGuide = appPreference.tenkey_keymap_guide_layout ?: false,
                 flickKeymapGuide = appPreference.flick_keymap_guide_layout ?: false,
+                flickGuideTextSizeSp = appPreference.flick_guide_text_size_sp_preference ?: 9,
+                flickGuideMaxCharacters =
+                    appPreference.flick_guide_max_characters_preference ?: 1,
                 isKeyboardFloatingMode = appPreference.is_floating_mode ?: false,
                 isKeyboardRounded = appPreference.keyboard_corner_round_preference,
                 keyboardCornerRadiusDp =
