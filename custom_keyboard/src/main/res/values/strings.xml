@@ -26,6 +26,8 @@
     <string name="action_move_custom_keyboard_tab">Change Tab</string>
     <string name="action_move_to_custom_keyboard">Move to specific custom keyboard</string>
     <string name="action_move_cursor_left">Move Cursor Left</string>
+    <string name="action_move_cursor_up">Move Cursor Up</string>
+    <string name="action_move_cursor_down">Move Cursor Down</string>
     <string name="action_move_cursor_right">Move Cursor Right</string>
     <string name="action_select_all">Select All</string>
     <string name="switch_qwerty">Switch to QWERTY Keyboard</string>
