@@ -441,6 +441,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
     private var tenkeyQKeymapGuide: Boolean? = false
     private var flickKeymapGuidePreference: Boolean? = false
+    private var flickGuideTextSizeSpPreference: Int? = 9
+    private var flickGuideMaxCharactersPreference: Int? = 1
 
     private var floatingCandidateWindow: PopupWindow? = null
     private lateinit var floatingCandidateView: View
@@ -1421,6 +1423,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tenkeyQWERTYSwitchNumber = preferences.tenkeyQWERTYSwitchNumber
         tenkeyQKeymapGuide = preferences.tenkeyQKeymapGuide
         flickKeymapGuidePreference = preferences.flickKeymapGuide
+        flickGuideTextSizeSpPreference = preferences.flickGuideTextSizeSp
+        flickGuideMaxCharactersPreference = preferences.flickGuideMaxCharacters
         isKeyboardFloatingMode = preferences.isKeyboardFloatingMode
         isKeyboardRounded = preferences.isKeyboardRounded
         keyboardCornerRadiusDp = preferences.keyboardCornerRadiusDp.coerceIn(0, 64)
@@ -2356,6 +2360,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     (longPressTimeoutPreferenceValue ?: 300).toLong()
                 )
                 customLayoutDefault.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
+                customLayoutDefault.setFlickGuideTextSizeSp(
+                    (flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat()
+                )
+                customLayoutDefault.setFlickGuideMaxCodePoints(
+                    (flickGuideMaxCharactersPreference ?: 1).coerceIn(1, 4)
+                )
                 qwertyView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 qwertyView.applyPopupViewStyleSet(currentQwertyPopupViewStyleSet())
                 qwertyView.setSpecialKeyVisibility(
@@ -2628,6 +2638,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         deleteKeyHighLight = null
         customKeyboardSuggestionPreference = null
         flickKeymapGuidePreference = null
+        flickGuideTextSizeSpPreference = null
+        flickGuideMaxCharactersPreference = null
         zenzDebounceTimePreference = null
         zenzMaximumLetterSizePreference = null
         zenzMaximumContextSizePreference = null
@@ -8059,6 +8071,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         flickView.applyPopupViewStyleSet(currentFlickPopupViewStyleSet())
         flickView.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
+        flickView.setFlickGuideTextSizeSp(
+            (flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat()
+        )
+        flickView.setFlickGuideMaxCodePoints(
+            (flickGuideMaxCharactersPreference ?: 1).coerceIn(1, 4)
+        )
 
         flickView.setOnKeyboardActionListener(object :
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
