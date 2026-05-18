@@ -6,6 +6,30 @@ import org.junit.Test
 
 class TenkeyEnglishQwertySwitchResolverTest {
     @Test
+    fun tabletGojuonUsesTabletPreferenceWhenEnabled() {
+        assertTrue(
+            TenkeyEnglishQwertySwitchResolver.shouldSwitchEnglishToQwerty(
+                isTablet = true,
+                tabletGojuonLayoutPreference = true,
+                tabletTenkeyQwertySwitchEnglish = true,
+                tenkeyQwertySwitchEnglish = false
+            )
+        )
+    }
+
+    @Test
+    fun tabletGojuonDoesNotUsePhonePreferenceWhenTabletPreferenceIsDisabled() {
+        assertFalse(
+            TenkeyEnglishQwertySwitchResolver.shouldSwitchEnglishToQwerty(
+                isTablet = true,
+                tabletGojuonLayoutPreference = true,
+                tabletTenkeyQwertySwitchEnglish = false,
+                tenkeyQwertySwitchEnglish = true
+            )
+        )
+    }
+
+    @Test
     fun tabletTenkeyUsesTabletPreferenceWhenGojuonLayoutIsOff() {
         assertTrue(
             TenkeyEnglishQwertySwitchResolver.shouldSwitchEnglishToQwerty(
@@ -45,18 +69,6 @@ class TenkeyEnglishQwertySwitchResolverTest {
                 tabletGojuonLayoutPreference = false,
                 tabletTenkeyQwertySwitchEnglish = true,
                 tenkeyQwertySwitchEnglish = false
-            )
-        )
-    }
-
-    @Test
-    fun tabletGojuonSurfaceIsOutsideTabletTenkeyPreference() {
-        assertFalse(
-            TenkeyEnglishQwertySwitchResolver.shouldSwitchEnglishToQwerty(
-                isTablet = true,
-                tabletGojuonLayoutPreference = true,
-                tabletTenkeyQwertySwitchEnglish = true,
-                tenkeyQwertySwitchEnglish = true
             )
         )
     }
