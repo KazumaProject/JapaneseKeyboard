@@ -8,6 +8,12 @@
             android:key="tablet_use_gojuon_layout_preference"
             android:summary="@string/pref_tablet_layout_summary"
             android:title="@string/pref_tablet_layout_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="tablet_tenkey_kana_english_qwerty_preference"
+            android:summary="@string/pref_tablet_tenkey_kana_english_qwerty_summary"
+            android:title="@string/pref_tablet_tenkey_kana_english_qwerty_title" />
     </PreferenceCategory>
 
 </PreferenceScreen>
