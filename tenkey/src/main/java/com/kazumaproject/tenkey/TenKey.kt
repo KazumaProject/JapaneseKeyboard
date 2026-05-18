@@ -123,6 +123,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     // External listeners
     private var flickListener: FlickListener? = null
     private var longPressListener: LongPressListener? = null
+    private var inputModeChangedListener: ((InputMode) -> Unit)? = null
 
     private var flickSensitivity: Int = 100
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
@@ -1214,6 +1215,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         this.longPressListener = longPressListener
     }
 
+    fun setOnInputModeChangedListener(listener: (InputMode) -> Unit) {
+        this.inputModeChangedListener = listener
+    }
+
     /** Padding setters for side keys (symbol, cursors, delete, enter, previous char) **/
     fun setPaddingToSideKeySymbol(paddingSize: Int) {
         binding.sideKeySymbol.setPadding(paddingSize)
@@ -1240,6 +1245,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private fun release() {
         flickListener = null
         longPressListener = null
+        inputModeChangedListener = null
         longPressJob?.cancel()
         longPressJob = null
         isCursorMode = false
@@ -2382,6 +2388,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
         // ← WRITE to MutableStateFlow:
         _currentInputMode.update { newInputMode }
+        inputModeChangedListener?.invoke(newInputMode)
         // We don’t need to manually call setKeysInXXX or setInputMode(...) here,
         // because our collector in init { … } already calls `handleCurrentInputModeSwitch(...)`
         // and `binding.keySwitchKeyMode.setInputMode(...)`.
