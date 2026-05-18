@@ -103,6 +103,7 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
     private lateinit var pressedKey: PressedKey
+    private var inputModeChangedListener: ((InputMode) -> Unit)? = null
 
     private var flickSensitivity: Int = 100
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
@@ -1250,6 +1251,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private fun release() {
         flickListener = null
         longPressListener = null
+        inputModeChangedListener = null
         longPressJob?.cancel()
         longPressJob = null
     }
@@ -3390,6 +3392,10 @@ class TabletKeyboardView @JvmOverloads constructor(
         longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
+    fun setOnInputModeChangedListener(listener: (InputMode) -> Unit) {
+        inputModeChangedListener = listener
+    }
+
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
         when (inputMode) {
             InputMode.ModeJapanese -> {
@@ -3606,6 +3612,7 @@ class TabletKeyboardView @JvmOverloads constructor(
         }
         currentInputMode.set(newInputMode)
         binding.keySwitchKeyMode.setInputMode(newInputMode, isTablet = true)
+        inputModeChangedListener?.invoke(newInputMode)
     }
 
     fun resetLayout() {
