@@ -759,6 +759,10 @@
     <string name="tenkey_keymap_guide_summary">Displays guide characters on the keys to indicate how to input each character.</string>
     <string name="flick_keymap_guide_title">Show flick guides</string>
     <string name="flick_keymap_guide_summary">Displays the tap character in the center and flick guide characters around flick keys.</string>
+    <string name="flick_guide_text_size_title">Flick guide text size</string>
+    <string name="flick_guide_text_size_summary">Adjusts flick guide text size in sp.</string>
+    <string name="flick_guide_max_characters_title">Flick guide max characters</string>
+    <string name="flick_guide_max_characters_summary">Sets the maximum number of code points shown in each flick guide.</string>
     <string name="qwerty_margins_settings">QWERTY Margins Settings</string>
     <string name="vertical_margin_keys_height_gap">Vertical Margin (Keys Height Gap)</string>
     <string name="horizontal_gap_between_keys">Horizontal Gap (Between Keys)</string>
