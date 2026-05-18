@@ -19,12 +19,23 @@ class AutoSizeButton @JvmOverloads constructor(
     data class FlickGuideLabels(
         val tap: String = "",
         val up: String = "",
+        val upRight: String = "",
         val right: String = "",
+        val downRight: String = "",
         val down: String = "",
-        val left: String = ""
+        val downLeft: String = "",
+        val left: String = "",
+        val upLeft: String = ""
     ) {
         fun hasVisibleGuides(): Boolean {
-            return up.isNotEmpty() || right.isNotEmpty() || down.isNotEmpty() || left.isNotEmpty()
+            return up.isNotEmpty() ||
+                    upRight.isNotEmpty() ||
+                    right.isNotEmpty() ||
+                    downRight.isNotEmpty() ||
+                    down.isNotEmpty() ||
+                    downLeft.isNotEmpty() ||
+                    left.isNotEmpty() ||
+                    upLeft.isNotEmpty()
         }
     }
 
@@ -40,6 +51,7 @@ class AutoSizeButton @JvmOverloads constructor(
 
     private var flickGuideLabels: FlickGuideLabels? = null
     private var flickGuideTextColor: Int = Color.BLACK
+    private var flickGuideTextSizeSp: Float? = null
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
@@ -75,6 +87,13 @@ class AutoSizeButton @JvmOverloads constructor(
     fun setFlickGuideLabels(labels: FlickGuideLabels?, textColor: Int = currentTextColor) {
         flickGuideLabels = labels
         flickGuideTextColor = textColor
+        invalidate()
+    }
+
+    fun setFlickGuideTextSizeSp(sizeSp: Float) {
+        val coerced = sizeSp.coerceIn(6f, 16f)
+        if (flickGuideTextSizeSp == coerced) return
+        flickGuideTextSizeSp = coerced
         invalidate()
     }
 
@@ -120,8 +139,10 @@ class AutoSizeButton @JvmOverloads constructor(
         if (availableWidth <= 0 || availableHeight <= 0) return
 
         val minContentSize = min(availableWidth, availableHeight).toFloat()
+        val configuredGuideTextSizeSp =
+            flickGuideTextSizeSp ?: (defaultTextSize * 0.58f).coerceIn(8f, 13f)
         val guideTextSize = min(
-            spToPx((defaultTextSize * 0.58f).coerceIn(8f, 13f)),
+            spToPx(configuredGuideTextSizeSp.coerceIn(6f, 16f)),
             minContentSize * 0.22f
         )
         if (guideTextSize <= 0f) return
@@ -141,10 +162,15 @@ class AutoSizeButton @JvmOverloads constructor(
         val bottomBaseline = height - paddingBottom - dpToPx(3) - guideFm.descent
         val sideBaseline = centerY - (guideFm.ascent + guideFm.descent) / 2f
         val sideInset = maxOf(dpToPx(10).toFloat(), availableWidth * 0.16f)
+        val cornerInsetX = maxOf(dpToPx(8).toFloat(), availableWidth * 0.22f)
 
+        drawGuideText(canvas, labels.upLeft, paddingLeft + cornerInsetX, topBaseline)
         drawGuideText(canvas, labels.up, centerX, topBaseline)
+        drawGuideText(canvas, labels.upRight, width - paddingRight - cornerInsetX, topBaseline)
         drawGuideText(canvas, labels.right, width - paddingRight - sideInset, sideBaseline)
+        drawGuideText(canvas, labels.downRight, width - paddingRight - cornerInsetX, bottomBaseline)
         drawGuideText(canvas, labels.down, centerX, bottomBaseline)
+        drawGuideText(canvas, labels.downLeft, paddingLeft + cornerInsetX, bottomBaseline)
         drawGuideText(canvas, labels.left, paddingLeft + sideInset, sideBaseline)
 
         if (shouldDrawCenterTap(labels)) {

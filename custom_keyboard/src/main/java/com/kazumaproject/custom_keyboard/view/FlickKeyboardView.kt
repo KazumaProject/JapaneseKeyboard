@@ -53,6 +53,7 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.ResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
+import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.data.applyTapOverrideDisplayForDynamicSumireSpecialKey
 import com.kazumaproject.custom_keyboard.data.buildSumireSpecialKeyDisplayActionMap
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
@@ -151,6 +152,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var circularFlickDirectionCount: Int = 4
     private var borderWidth: Int = 1
     private var flickGuideEnabled: Boolean = false
+    private var flickGuideTextSizeSp: Float = 9f
+    private var flickGuideMaxCodePoints: Int = 1
     private var popupViewStyleSet = FlickPopupViewStyleSet(
         directional = PopupViewStyle(100, 28f),
         cross = PopupViewStyle(100, 18f),
@@ -235,6 +238,20 @@ class FlickKeyboardView @JvmOverloads constructor(
     fun setFlickGuideEnabled(enabled: Boolean) {
         if (flickGuideEnabled == enabled) return
         flickGuideEnabled = enabled
+        currentLayout?.let { setKeyboard(it) }
+    }
+
+    fun setFlickGuideTextSizeSp(sizeSp: Float) {
+        val coerced = sizeSp.coerceIn(6f, 16f)
+        if (flickGuideTextSizeSp == coerced) return
+        flickGuideTextSizeSp = coerced
+        currentLayout?.let { setKeyboard(it) }
+    }
+
+    fun setFlickGuideMaxCodePoints(maxCodePoints: Int) {
+        val coerced = maxCodePoints.coerceIn(1, 4)
+        if (flickGuideMaxCodePoints == coerced) return
+        flickGuideMaxCodePoints = coerced
         currentLayout?.let { setKeyboard(it) }
     }
 
@@ -631,6 +648,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         val targetTextSizeSp = getKeyTextSizeSp(keyData)
 
         button.setDefaultTextSize(targetTextSizeSp)
+        button.setFlickGuideTextSizeSp(flickGuideTextSizeSp)
         button.setFlickGuideLabels(null)
 
         if (keyData.label.contains("\n")) {
@@ -683,25 +701,25 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun getGuideLabels(stringMap: Map<FlickDirection, String>): AutoSizeButton.FlickGuideLabels {
-        val tap = sanitizeGuideCharacter(stringMap[FlickDirection.TAP] ?: "") ?: ""
-        val left = sanitizeGuideCharacter(
+        val tap = sanitizeGuideText(stringMap[FlickDirection.TAP] ?: "") ?: ""
+        val left = sanitizeGuideText(
             stringMap[FlickDirection.UP_LEFT_FAR]
                 ?: stringMap[FlickDirection.UP_LEFT]
                 ?: stringMap.entries.firstOrNull { it.key.name.contains("LEFT") }?.value
                 ?: ""
         ) ?: ""
-        val right = sanitizeGuideCharacter(
+        val right = sanitizeGuideText(
             stringMap[FlickDirection.UP_RIGHT_FAR]
                 ?: stringMap[FlickDirection.UP_RIGHT]
                 ?: stringMap.entries.firstOrNull { it.key.name.contains("RIGHT") }?.value
                 ?: ""
         ) ?: ""
-        val down = sanitizeGuideCharacter(
+        val down = sanitizeGuideText(
             stringMap[FlickDirection.DOWN]
                 ?: stringMap.entries.firstOrNull { it.key.name.contains("DOWN") }?.value
                 ?: ""
         ) ?: ""
-        val up = sanitizeGuideCharacter(stringMap[FlickDirection.UP] ?: "") ?: ""
+        val up = sanitizeGuideText(stringMap[FlickDirection.UP] ?: "") ?: ""
 
         return AutoSizeButton.FlickGuideLabels(
             tap = tap,
@@ -715,11 +733,11 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun getCircularGuideLabels(
         stringMap: Map<CircularFlickDirection, String>
     ): AutoSizeButton.FlickGuideLabels {
-        val tap = sanitizeGuideCharacter(stringMap[CircularFlickDirection.TAP] ?: "") ?: ""
-        val up = sanitizeGuideCharacter(stringMap[CircularFlickDirection.SLOT_0] ?: "") ?: ""
-        val right = sanitizeGuideCharacter(stringMap[CircularFlickDirection.SLOT_1] ?: "") ?: ""
-        val down = sanitizeGuideCharacter(stringMap[CircularFlickDirection.SLOT_2] ?: "") ?: ""
-        val left = sanitizeGuideCharacter(stringMap[CircularFlickDirection.SLOT_3] ?: "") ?: ""
+        val tap = sanitizeGuideText(stringMap[CircularFlickDirection.TAP] ?: "") ?: ""
+        val up = sanitizeGuideText(stringMap[CircularFlickDirection.SLOT_0] ?: "") ?: ""
+        val right = sanitizeGuideText(stringMap[CircularFlickDirection.SLOT_1] ?: "") ?: ""
+        val down = sanitizeGuideText(stringMap[CircularFlickDirection.SLOT_2] ?: "") ?: ""
+        val left = sanitizeGuideText(stringMap[CircularFlickDirection.SLOT_3] ?: "") ?: ""
         return AutoSizeButton.FlickGuideLabels(
             tap = tap,
             up = up,
@@ -729,10 +747,8 @@ class FlickKeyboardView @JvmOverloads constructor(
         )
     }
 
-    private fun sanitizeGuideCharacter(value: String): String? {
-        if (value.isEmpty()) return null
-        val endIndex = value.offsetByCodePoints(0, 1)
-        return value.substring(0, endIndex)
+    private fun sanitizeGuideText(value: String): String? {
+        return FlickGuideLabelMapper.sanitizeGuideText(value, flickGuideMaxCodePoints)
     }
 
     private fun getGuideTextColor(keyData: KeyData): Int {
@@ -781,6 +797,54 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
 
         button.setFlickGuideLabels(getCircularGuideLabels(stringMap), getGuideTextColor(keyData))
+    }
+
+    private fun applyTwoStepGuideLabels(
+        button: AutoSizeButton,
+        keyData: KeyData,
+        twoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
+    ) {
+        if (!flickGuideEnabled) {
+            button.setFlickGuideLabels(null)
+            return
+        }
+
+        if (!isSingleGuideCharacter(keyData.label)) {
+            button.setFlickGuideLabels(null)
+            return
+        }
+
+        button.setFlickGuideLabels(
+            FlickGuideLabelMapper.buildTwoStepRootGuideLabels(
+                twoStepMap,
+                flickGuideMaxCodePoints
+            ),
+            getGuideTextColor(keyData)
+        )
+    }
+
+    private fun applyHierarchicalGuideLabels(
+        button: AutoSizeButton,
+        keyData: KeyData,
+        rootMap: Map<TfbiFlickDirection, TfbiFlickNode>
+    ) {
+        if (!flickGuideEnabled) {
+            button.setFlickGuideLabels(null)
+            return
+        }
+
+        if (!isSingleGuideCharacter(keyData.label)) {
+            button.setFlickGuideLabels(null)
+            return
+        }
+
+        button.setFlickGuideLabels(
+            FlickGuideLabelMapper.buildHierarchicalGuideLabels(
+                rootMap,
+                flickGuideMaxCodePoints
+            ),
+            getGuideTextColor(keyData)
+        )
     }
 
     private fun isSingleGuideCharacter(value: String): Boolean {
@@ -1737,6 +1801,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                     ?: layout.twoStepLongPressKeyMaps[keyData.label]
 
                 if (twoStepMap != null) {
+                    if (keyView is AutoSizeButton) {
+                        applyTwoStepGuideLabels(keyView, keyData, twoStepMap)
+                    }
+
                     val controller = TfbiInputController(
                         context,
                         flickSensitivity = flickSensitivity.toFloat()
@@ -1812,8 +1880,13 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             KeyType.STICKY_TWO_STEP_FLICK -> {
-                val twoStepMap = layout.twoStepFlickKeyMaps[keyData.label]
+                val twoStepMap = layout.twoStepFlickKeyMaps[keyData.keyId]
+                    ?: layout.twoStepFlickKeyMaps[keyData.label]
                 if (twoStepMap != null) {
+                    if (keyView is AutoSizeButton) {
+                        applyTwoStepGuideLabels(keyView, keyData, twoStepMap)
+                    }
+
                     val controller = TfbiStickyFlickController(
                         context,
                         flickSensitivity = flickSensitivity.toFloat()
@@ -1863,6 +1936,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                 val statefulNode = layout.hierarchicalFlickMaps[keyData.label]
 
                 if (statefulNode != null) {
+                    if (keyView is AutoSizeButton) {
+                        applyHierarchicalGuideLabels(keyView, keyData, statefulNode.normalMap)
+                    }
+
                     Log.d(
                         "AttachBehavior",
                         "-> Attaching TfbiHierarchicalFlickController for ${keyData.label}"
@@ -1892,7 +1969,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 }
                             }
 
-                            override fun onModeChanged(newLabel: String) {
+                            override fun onModeChanged(
+                                newLabel: String,
+                                activeRootMap: Map<TfbiFlickDirection, TfbiFlickNode>
+                            ) {
                                 Log.d(
                                     "FlickKeyboardView",
                                     "onModeChanged: keyId=${keyData.keyId}, newLabel=$newLabel"
@@ -1906,6 +1986,13 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                                 val newVisualKeyData = keyData.copy(label = newLabel)
                                 updateKeyVisuals(keyView, newVisualKeyData)
+                                if (keyView is AutoSizeButton) {
+                                    applyHierarchicalGuideLabels(
+                                        keyView,
+                                        newVisualKeyData,
+                                        activeRootMap
+                                    )
+                                }
                             }
                         }
 
