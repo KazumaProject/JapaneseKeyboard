@@ -11,7 +11,9 @@ class KeyActionMapperSpecialActionTest {
             KeyAction.ToggleDakutenOnly to "ToggleDakutenOnly",
             KeyAction.ToggleHandakutenOnly to "ToggleHandakutenOnly",
             KeyAction.ForceHalfWidthSpace to "ForceHalfWidthSpace",
-            KeyAction.ForceFullWidthSpace to "ForceFullWidthSpace"
+            KeyAction.ForceFullWidthSpace to "ForceFullWidthSpace",
+            KeyAction.MoveCursorUp to "MoveCursorUp",
+            KeyAction.MoveCursorDown to "MoveCursorDown"
         )
 
         cases.forEach { (action, saved) ->

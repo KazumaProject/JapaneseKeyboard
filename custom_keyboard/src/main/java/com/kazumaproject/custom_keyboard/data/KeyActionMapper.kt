@@ -130,12 +130,22 @@ object KeyActionMapper {
             DisplayAction(
                 KeyAction.MoveToCustomKeyboard(""),
                 context.getString(R.string.action_move_to_custom_keyboard),
-                com.kazumaproject.core.R.drawable.keyboard_command_key_24px
+                com.kazumaproject.core.R.drawable.keyboard_24px
             ),
             DisplayAction(
                 KeyAction.MoveCursorLeft,
                 context.getString(R.string.action_move_cursor_left),
                 com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+            ),
+            DisplayAction(
+                KeyAction.MoveCursorUp,
+                context.getString(R.string.action_move_cursor_up),
+                com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24
+            ),
+            DisplayAction(
+                KeyAction.MoveCursorDown,
+                context.getString(R.string.action_move_cursor_down),
+                com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
             ),
             DisplayAction(
                 KeyAction.MoveCursorRight,
@@ -182,6 +192,8 @@ object KeyActionMapper {
             is KeyAction.Convert -> "Convert"
             is KeyAction.Confirm -> "Confirm"
             is KeyAction.MoveCursorLeft -> "MoveCursorLeft"
+            is KeyAction.MoveCursorUp -> "MoveCursorUp"
+            is KeyAction.MoveCursorDown -> "MoveCursorDown"
             is KeyAction.MoveCursorRight -> "MoveCursorRight"
             is KeyAction.SelectLeft -> "SelectLeft"
             is KeyAction.SelectRight -> "SelectRight"
@@ -240,6 +252,8 @@ object KeyActionMapper {
             "Convert" -> KeyAction.Convert
             "Confirm" -> KeyAction.Confirm
             "MoveCursorLeft" -> KeyAction.MoveCursorLeft
+            "MoveCursorUp" -> KeyAction.MoveCursorUp
+            "MoveCursorDown" -> KeyAction.MoveCursorDown
             "MoveCursorRight" -> KeyAction.MoveCursorRight
             "SelectLeft" -> KeyAction.SelectLeft
             "SelectRight" -> KeyAction.SelectRight
