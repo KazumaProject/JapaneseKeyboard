@@ -32,6 +32,12 @@ class TokenArray {
         return nodeIdList
     }
 
+    fun maxPosTableIndex(): Int =
+        posTableIndexList.maxOrNull()?.toInt() ?: -1
+
+    fun minPosTableIndex(): Int =
+        posTableIndexList.minOrNull()?.toInt() ?: 0
+
     fun getListDictionaryByYomiTermId(
         nodeId: Int,
         rank0ArrayTokenArrayBitvector: IntArray,
