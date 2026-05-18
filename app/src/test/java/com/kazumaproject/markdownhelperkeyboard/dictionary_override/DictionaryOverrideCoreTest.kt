@@ -908,6 +908,38 @@ class DictionaryOverrideCoreTest {
     }
 
     @Test
+    fun zipEntryPlanner_wikiBundleMapsWikiTriple() {
+        val plan = DictionaryZipEntryPlanner.plan(
+            listOf("token_wiki.dat", "yomi_wiki.dat", "tango_wiki.dat")
+        )
+
+        assertEquals(
+            setOf(
+                DictionaryFileKey.WIKI_TOKEN,
+                DictionaryFileKey.WIKI_YOMI,
+                DictionaryFileKey.WIKI_TANGO,
+            ),
+            plan.importableEntries.map { it.key }.toSet(),
+        )
+    }
+
+    @Test
+    fun zipEntryPlanner_webBundleMapsWebTriple() {
+        val plan = DictionaryZipEntryPlanner.plan(
+            listOf("token_web.dat", "yomi_web.dat", "tango_web.dat")
+        )
+
+        assertEquals(
+            setOf(
+                DictionaryFileKey.WEB_TOKEN,
+                DictionaryFileKey.WEB_YOMI,
+                DictionaryFileKey.WEB_TANGO,
+            ),
+            plan.importableEntries.map { it.key }.toSet(),
+        )
+    }
+
+    @Test
     fun zipSlipEntryNameMapsByBasenameButStoreUsesKeyBasedFileName() {
         val plan = DictionaryZipEntryPlanner.plan(listOf("../../tango.dat"))
         val store = alwaysValidStore("zip-slip")
