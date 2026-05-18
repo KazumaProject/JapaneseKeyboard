@@ -70,6 +70,9 @@ object AppPreference {
     private val TENKEY_SWITCH_QWERTY_PREFERENCE =
         Pair("tenkey_kana_english_qwerty_preference", false)
 
+    private val TABLET_TENKEY_SWITCH_QWERTY_PREFERENCE =
+        Pair("tablet_tenkey_kana_english_qwerty_preference", false)
+
     private val TENKEY_KEYMAP_GUIDE_PREFERENCE =
         Pair("tenkey_keymap_guide", false)
 
@@ -618,6 +621,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TENKEY_SWITCH_QWERTY_PREFERENCE.first, value ?: false)
+        }
+
+    var tablet_tenkey_qwerty_switch_english_layout: Boolean
+        get() = preferences.getBoolean(
+            TABLET_TENKEY_SWITCH_QWERTY_PREFERENCE.first,
+            TABLET_TENKEY_SWITCH_QWERTY_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TABLET_TENKEY_SWITCH_QWERTY_PREFERENCE.first, value)
         }
 
     var tenkey_keymap_guide_layout: Boolean?
