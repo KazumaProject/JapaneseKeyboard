@@ -40,7 +40,10 @@ class TfbiHierarchicalFlickController(
          * コントローラーの内部状態が変更されたことを通知します。
          * InputMethodService はこれを受け取り、キーのラベルを "か" -> "が" などに変更します。
          */
-        fun onModeChanged(newLabel: String)
+        fun onModeChanged(
+            newLabel: String,
+            activeRootMap: Map<TfbiFlickDirection, TfbiFlickNode>
+        )
     }
 
     companion object {
@@ -352,22 +355,23 @@ class TfbiHierarchicalFlickController(
 
         val rNode = rootNode ?: return
 
-        // 1. ★ 状態が変わったことを InputMethodService に通知
+        // 1. 新しいモードに基づいた新しい「ルートマップ」を取得
+        val newRootMap = getMapForCurrentMode(rNode)
+
+        // 2. ★ 状態が変わったことを InputMethodService に通知
         val newLabel = when (currentMode) {
             KeyMode.NORMAL -> rNode.label
-            KeyMode.DAKUTEN -> rNode.dakutenMap?.get(TfbiFlickDirection.TAP)
+            KeyMode.DAKUTEN -> newRootMap[TfbiFlickDirection.TAP]
                 ?.let { (it as? TfbiFlickNode.Input)?.char } ?: rNode.label
 
-            KeyMode.HANDAKUTEN -> rNode.handakutenMap?.get(TfbiFlickDirection.TAP)
+            KeyMode.HANDAKUTEN -> newRootMap[TfbiFlickDirection.TAP]
                 ?.let { (it as? TfbiFlickNode.Input)?.char } ?: rNode.label
         }
-        listener?.onModeChanged(newLabel)
+        listener?.onModeChanged(newLabel, newRootMap)
 
-        // 2. ★ マップのホットスワップ
+        // 3. ★ マップのホットスワップ
         Log.d(TAG, "Hot-swapping map stack to $newLabel map.")
 
-        // 3. 新しいモードに基づいた新しい「ルートマップ」を取得
-        val newRootMap = getMapForCurrentMode(rNode)
         this.rootMap = newRootMap
 
         // 4. 現在のスタック（パス）の情報をバックアップ
@@ -560,7 +564,9 @@ class TfbiHierarchicalFlickController(
             currentMode = KeyMode.NORMAL
             val rNode = rootNode
             if (rNode != null) {
-                listener?.onModeChanged(rNode.label)
+                val activeRootMap = getMapForCurrentMode(rNode)
+                rootMap = activeRootMap
+                listener?.onModeChanged(rNode.label, activeRootMap)
             }
         }
     }

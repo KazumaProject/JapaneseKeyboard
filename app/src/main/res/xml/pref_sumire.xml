@@ -47,6 +47,26 @@
             app:defaultValue="false"
             app:summary="@string/flick_keymap_guide_summary" />
 
+        <SeekBarPreference
+            android:defaultValue="9"
+            android:dependency="flick_keymap_guide"
+            android:key="flick_guide_text_size_sp_preference"
+            android:max="16"
+            android:title="@string/flick_guide_text_size_title"
+            app:min="6"
+            app:showSeekBarValue="true"
+            app:summary="@string/flick_guide_text_size_summary" />
+
+        <SeekBarPreference
+            android:defaultValue="1"
+            android:dependency="flick_keymap_guide"
+            android:key="flick_guide_max_characters_preference"
+            android:max="4"
+            android:title="@string/flick_guide_max_characters_title"
+            app:min="1"
+            app:showSeekBarValue="true"
+            app:summary="@string/flick_guide_max_characters_summary" />
+
         <Preference
             android:key="sumire_custom_angle_preference"
             android:title="@string/sumire_custom_angle_preference_title"

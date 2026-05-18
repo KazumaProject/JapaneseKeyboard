@@ -675,6 +675,10 @@
     <string name="tenkey_keymap_guide_summary">キーの上に入力の目安となるガイド文字を表示します</string>
     <string name="flick_keymap_guide_title">フリックガイドの表示</string>
     <string name="flick_keymap_guide_summary">フリックキーの中央にタップ文字、上下左右にフリック文字を表示します</string>
+    <string name="flick_guide_text_size_title">ガイド文字サイズ</string>
+    <string name="flick_guide_text_size_summary">フリックガイド文字のサイズを sp 単位で設定します</string>
+    <string name="flick_guide_max_characters_title">ガイド最大文字数</string>
+    <string name="flick_guide_max_characters_summary">各フリックガイドに表示する最大 code point 数を設定します</string>
     <string name="qwerty_margins_settings">QWERTYレイアウトの余白設定</string>
     <string name="vertical_margin_keys_height_gap">縦方向の余白 (キーの高さ間隔)</string>
     <string name="horizontal_gap_between_keys">横方向の隙間 (キー同士の間隔)</string>
