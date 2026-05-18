@@ -21,11 +21,10 @@ internal object TenkeyEnglishQwertySwitchResolver {
         tabletTenkeyQwertySwitchEnglish: Boolean,
         tenkeyQwertySwitchEnglish: Boolean
     ): Boolean {
-        return when {
-            isTabletGojuonSurface(isTablet, tabletGojuonLayoutPreference) -> false
-            isTabletTenkeySurface(isTablet, tabletGojuonLayoutPreference) ->
-                tabletTenkeyQwertySwitchEnglish
-            else -> tenkeyQwertySwitchEnglish
+        return if (isTablet == true) {
+            tabletTenkeyQwertySwitchEnglish
+        } else {
+            tenkeyQwertySwitchEnglish
         }
     }
 }

@@ -4775,6 +4775,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setInputModeOnActiveSurface(inputMode)
     }
 
+    private fun resizeTenkeySurfaceAfterQwertyNumberKey(
+        mainView: MainLayoutBinding,
+        insertString: String
+    ) {
+        if (insertString.isEmpty()) {
+            setKeyboardSizeSwitchKeyboard(mainView)
+        } else {
+            setKeyboardHeightWithAdditional(mainView)
+        }
+    }
+
+    private fun returnDefaultQwertyToTenkeyInputMode(
+        inputMode: InputMode,
+        mainView: MainLayoutBinding,
+        insertString: String
+    ) {
+        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+        setCurrentInputModeForSession(inputMode)
+        resizeTenkeySurfaceAfterQwertyNumberKey(mainView, insertString)
+    }
+
+    private fun returnDefaultQwertyFromNumberKey(
+        mainView: MainLayoutBinding,
+        insertString: String
+    ) {
+        val targetInputMode = if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
+            InputMode.ModeJapanese
+        } else {
+            InputMode.ModeNumber
+        }
+        returnDefaultQwertyToTenkeyInputMode(
+            inputMode = targetInputMode,
+            mainView = mainView,
+            insertString = insertString
+        )
+    }
+
     private fun setQwertyRomajiModeOnActiveSurface(enabled: Boolean) {
         getActiveKeyboardSurface()
             ?.qwertyView
@@ -5583,6 +5620,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     handleLongPress(key)
                 }
             })
+            setOnInputModeChangedListener { inputMode ->
+                handleTenKeyInputModeChanged(inputMode, mainView)
+            }
         }
     }
 
@@ -13932,44 +13972,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySwitchNumberKey -> {
                             if (previousTenKeyQWERTYMode == null) {
-                                if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
-                                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                    setCurrentInputModeForSession(InputMode.ModeJapanese)
-                                    if (insertString.isEmpty()) {
-                                        setKeyboardSizeSwitchKeyboard(mainView)
-                                    } else {
-                                        setKeyboardHeightWithAdditional(mainView)
-                                    }
-                                } else {
-                                    _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                    setCurrentInputModeForSession(InputMode.ModeNumber)
-                                    if (insertString.isEmpty()) {
-                                        setKeyboardSizeSwitchKeyboard(mainView)
-                                    } else {
-                                        setKeyboardHeightWithAdditional(mainView)
-                                    }
-                                }
+                                returnDefaultQwertyFromNumberKey(mainView, insertString)
                             } else {
                                 previousTenKeyQWERTYMode?.let {
                                     when (it) {
                                         TenKeyQWERTYMode.Default -> {
-                                            if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
-                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                                setCurrentInputModeForSession(InputMode.ModeJapanese)
-                                                if (insertString.isEmpty()) {
-                                                    setKeyboardSizeSwitchKeyboard(mainView)
-                                                } else {
-                                                    setKeyboardHeightWithAdditional(mainView)
-                                                }
-                                            } else {
-                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                                setCurrentInputModeForSession(InputMode.ModeNumber)
-                                                if (insertString.isEmpty()) {
-                                                    setKeyboardSizeSwitchKeyboard(mainView)
-                                                } else {
-                                                    setKeyboardHeightWithAdditional(mainView)
-                                                }
-                                            }
+                                            returnDefaultQwertyFromNumberKey(mainView, insertString)
                                         }
 
                                         TenKeyQWERTYMode.Sumire -> {
@@ -14007,23 +14015,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         }
 
                                         else -> {
-                                            if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
-                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                                setCurrentInputModeForSession(InputMode.ModeJapanese)
-                                                if (insertString.isEmpty()) {
-                                                    setKeyboardSizeSwitchKeyboard(mainView)
-                                                } else {
-                                                    setKeyboardHeightWithAdditional(mainView)
-                                                }
-                                            } else {
-                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                                                setCurrentInputModeForSession(InputMode.ModeNumber)
-                                                if (insertString.isEmpty()) {
-                                                    setKeyboardSizeSwitchKeyboard(mainView)
-                                                } else {
-                                                    setKeyboardHeightWithAdditional(mainView)
-                                                }
-                                            }
+                                            returnDefaultQwertyFromNumberKey(mainView, insertString)
                                         }
                                     }
                                 }
@@ -15620,37 +15612,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.keyboardView.apply {
                 when (currentInputMode.value) {
                     is InputMode.ModeJapanese -> {
-                        if (switchTenkeyEnglishToQwertyIfNeeded(
-                                inputMode = InputMode.ModeEnglish,
-                                mainView = mainView,
-                                insertString = insertString
-                            )
-                        ) {
-                            return
-                        } else {
-                            setSideKeySpaceDrawable(
-                                cachedSpaceDrawable
-                            )
-                            setSideKeyPreviousState(true)
-                            if (insertString.isNotEmpty()) {
-                                if (insertString.isNotEmpty() && insertString.last()
-                                        .isLatinAlphabet()
-                                ) {
-                                    setBackgroundSmallLetterKey(
-                                        cachedEnglishDrawable
-                                    )
-                                } else {
-                                    setBackgroundSmallLetterKey(
-                                        isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
-                                        isEnglish = false
-                                    )
-                                }
+                        setSideKeySpaceDrawable(
+                            cachedSpaceDrawable
+                        )
+                        setSideKeyPreviousState(true)
+                        if (insertString.isNotEmpty()) {
+                            if (insertString.isNotEmpty() && insertString.last()
+                                    .isLatinAlphabet()
+                            ) {
+                                setBackgroundSmallLetterKey(
+                                    cachedEnglishDrawable
+                                )
                             } else {
                                 setBackgroundSmallLetterKey(
                                     isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
                                     isEnglish = false
                                 )
                             }
+                        } else {
+                            setBackgroundSmallLetterKey(
+                                isLanguageEnable = tenkeyShowIMEButtonPreference ?: true,
+                                isEnglish = false
+                            )
                         }
                     }
 
