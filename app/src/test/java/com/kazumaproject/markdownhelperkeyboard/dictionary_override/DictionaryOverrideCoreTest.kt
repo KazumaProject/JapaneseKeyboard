@@ -1,0 +1,1135 @@
+package com.kazumaproject.markdownhelperkeyboard.dictionary_override
+
+import android.content.Context
+import android.content.SharedPreferences
+import android.net.Uri
+import com.google.gson.Gson
+import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.CORE_REPLACEMENT_CATEGORIES
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.COMMON_REPLACEMENT_KEYS
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionaryDisplayState
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.external_dictionary.ExternalDictionaryDisplayStateResolver
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import org.mockito.kotlin.any
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.ObjectOutputStream
+import java.nio.ByteBuffer
+import java.util.BitSet
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
+
+class DictionaryOverrideCoreTest {
+
+    @get:Rule
+    val temp = TemporaryFolder()
+
+    @Test
+    fun zipAwareRawInput_doesNotTreatRawDatAsZip() {
+        val bytes = byteArrayOf(1, 2, 3, 4, 5)
+        val read = DictionaryBinaryReader.openZipAwareRaw(ByteArrayInputStream(bytes), "raw").readBytes()
+        assertTrue(bytes.contentEquals(read))
+    }
+
+    @Test
+    fun zipAwareRawInput_detectsZipHeaderAndReturnsEntryStream() {
+        val zipped = zip("entry.dat", "payload".toByteArray())
+        val read = DictionaryBinaryReader.openZipAwareRaw(ByteArrayInputStream(zipped), "zip").readBytes()
+        assertEquals("payload", read.toString(Charsets.UTF_8))
+    }
+
+    @Test
+    fun zipAwareTextReader_readsRawAndZippedIdDefText() {
+        val raw = "1 名詞\n2 動詞\n".toByteArray()
+        val zipped = zip("id.def", raw)
+
+        val rawText = DictionaryBinaryReader.openZipAwareText(ByteArrayInputStream(raw), "raw-id").readText()
+        val zippedText = DictionaryBinaryReader.openZipAwareText(ByteArrayInputStream(zipped), "zip-id").readText()
+
+        assertEquals("1 名詞\n2 動詞\n", rawText)
+        assertEquals(rawText, zippedText)
+    }
+
+    @Test
+    fun store_savesRemovesMetadataAndEnabledStateForIdDef() {
+        val prefs = FakeSharedPreferences()
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("overrides"),
+            prefs = prefs,
+            defaultPrefs = FakeSharedPreferences(),
+        )
+
+        val result = store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+
+        assertTrue(result.isValid)
+        assertTrue(store.hasOverride(DictionaryFileKey.ID_DEF))
+        assertTrue(store.isExternalEnabledForKey(DictionaryFileKey.ID_DEF))
+        assertEquals("id.def", store.getOverrideMetadata(DictionaryFileKey.ID_DEF)?.originalFileName)
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, false)
+        assertFalse(store.isExternalEnabledForKey(DictionaryFileKey.ID_DEF))
+        assertTrue(store.hasOverride(DictionaryFileKey.ID_DEF))
+
+        store.removeOverride(DictionaryFileKey.ID_DEF)
+        assertFalse(store.hasOverride(DictionaryFileKey.ID_DEF))
+        assertFalse(store.isExternalEnabledForKey(DictionaryFileKey.ID_DEF))
+    }
+
+    @Test
+    fun revision_saveOverrideFromInputStreamSuccessIncrements() {
+        val store = alwaysValidStore("revision-input-stream")
+        val before = store.currentRevision
+
+        val result = store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+
+        assertTrue(result.isValid)
+        assertEquals(before + 1L, store.currentRevision)
+    }
+
+    @Test
+    fun revision_saveOverrideFromUriSuccessIncrements() {
+        val uri = mock<Uri>()
+        val validator = mock<DictionaryOverrideValidator>()
+        whenever(validator.validate(any(), any())).thenReturn(ValidationResult.valid())
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("revision-uri"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+            validator = validator,
+            streamOpener = { ByteArrayInputStream("1 名詞\n".toByteArray()) },
+            nameResolver = { "id.def" },
+        )
+        val before = store.currentRevision
+
+        val result = store.saveOverrideFromUri(DictionaryFileKey.ID_DEF, uri)
+
+        assertTrue(result.isValid)
+        assertEquals(before + 1L, store.currentRevision)
+    }
+
+    @Test
+    fun revision_invalidImportDoesNotIncrement() {
+        val validator = mock<DictionaryOverrideValidator>()
+        whenever(validator.validate(any(), any())).thenReturn(ValidationResult.invalid("bad"))
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("revision-invalid"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+            validator = validator,
+        )
+        val before = store.currentRevision
+
+        val result = store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("bad".toByteArray()),
+            "id.def",
+        )
+
+        assertFalse(result.isValid)
+        assertEquals(before, store.currentRevision)
+    }
+
+    @Test
+    fun revision_removeOverrideIncrementsOnlyWhenStateChanges() {
+        val store = alwaysValidStore("revision-remove")
+        store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+        val afterSave = store.currentRevision
+
+        store.removeOverride(DictionaryFileKey.ID_DEF)
+        assertEquals(afterSave + 1L, store.currentRevision)
+
+        val afterRemove = store.currentRevision
+        store.removeOverride(DictionaryFileKey.ID_DEF)
+        assertEquals(afterRemove, store.currentRevision)
+    }
+
+    @Test
+    fun revision_removeAllOverridesIncrementsOnlyWhenStateChanges() {
+        val store = alwaysValidStore("revision-remove-all")
+        store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+        val afterSave = store.currentRevision
+
+        store.removeAllOverrides()
+        assertEquals(afterSave + 1L, store.currentRevision)
+
+        val afterRemoveAll = store.currentRevision
+        store.removeAllOverrides()
+        assertEquals(afterRemoveAll, store.currentRevision)
+    }
+
+    @Test
+    fun revision_setExternalEnabledForCategoryIncrementsOnlyWhenValueChanges() {
+        val store = alwaysValidStore("revision-category-enabled")
+        val before = store.currentRevision
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, false)
+        assertEquals(before + 2L, store.currentRevision)
+    }
+
+    @Test
+    fun revision_setExternalEnabledForKeyIncrementsOnlyWhenValueChanges() {
+        val store = alwaysValidStore("revision-key-enabled")
+        val before = store.currentRevision
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, false)
+        assertEquals(before + 2L, store.currentRevision)
+    }
+
+    @Test
+    fun revision_setOptionalBundledEnabledIncrementsOnlyWhenValueChanges() {
+        val store = alwaysValidStore("revision-optional-enabled")
+        val before = store.currentRevision
+
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, true)
+        assertEquals(before + 1L, store.currentRevision)
+
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, false)
+        assertEquals(before + 2L, store.currentRevision)
+    }
+
+    @Test
+    fun revision_tripleDictionaryFinalSaveAutoEnableUsesSingleIncrementForThatSave() {
+        val store = alwaysValidStore("revision-triple")
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, true)
+        val afterOptional = store.currentRevision
+
+        saveTripleOverrides(store, DictionaryCategory.PERSON_NAME)
+
+        assertEquals(afterOptional + 3L, store.currentRevision)
+        assertTrue(store.isExternalEnabledForCategory(DictionaryCategory.PERSON_NAME))
+    }
+
+    @Test
+    fun revision_markInvalidIncrementsOnlyWhenValidOverrideBecomesInvalid() {
+        val store = alwaysValidStore("revision-mark-invalid")
+        store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+        val afterSave = store.currentRevision
+
+        store.markInvalid(DictionaryFileKey.ID_DEF, "broken")
+        assertEquals(afterSave + 1L, store.currentRevision)
+
+        store.markInvalid(DictionaryFileKey.ID_DEF, "broken")
+        assertEquals(afterSave + 1L, store.currentRevision)
+    }
+
+    @Test
+    fun tripleCategory_isPartialUntilAllFilesAreValidAndEnabled() {
+        val prefs = FakeSharedPreferences()
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("triple"),
+            prefs = prefs,
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = FakeResolver(store)
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, true)
+        assertEquals(DictionaryCategoryLoadState.Bundled, resolver.state(DictionaryCategory.COMMON))
+        assertEquals(DictionaryCategoryLoadState.Bundled, resolver.state(DictionaryCategory.SYSTEM))
+    }
+
+    @Test
+    fun displayState_metadataNullIsBundledInUseNotMissingForCommonFiles() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("common-no-overrides"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = ExternalDictionaryDisplayStateResolver(store)
+
+        COMMON_REPLACEMENT_KEYS.forEach { key ->
+            val state = resolver.resolveFileDisplayState(key)
+            assertEquals(ExternalDictionaryDisplayState.BundledInUseNoOverride, state.displayState)
+            assertFalse(state.switchEnabled)
+            assertFalse(state.switchChecked)
+        }
+    }
+
+    @Test
+    fun displayState_commonValidOverrideUsesSwitchAsReplacementChoice() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("common-valid"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        store.saveOverrideFromInputStream(
+            DictionaryFileKey.ID_DEF,
+            ByteArrayInputStream("1 名詞\n".toByteArray()),
+            "id.def",
+        )
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, false)
+        val bundledState = ExternalDictionaryDisplayStateResolver(store)
+            .resolveFileDisplayState(DictionaryFileKey.ID_DEF)
+        assertEquals(ExternalDictionaryDisplayState.BundledInUseWithValidOverride, bundledState.displayState)
+        assertTrue(bundledState.switchEnabled)
+        assertFalse(bundledState.switchChecked)
+
+        store.setExternalEnabledForKey(DictionaryFileKey.ID_DEF, true)
+        val externalState = ExternalDictionaryDisplayStateResolver(store)
+            .resolveFileDisplayState(DictionaryFileKey.ID_DEF)
+        assertEquals(ExternalDictionaryDisplayState.ExternalInUse, externalState.displayState)
+        assertTrue(externalState.switchEnabled)
+        assertTrue(externalState.switchChecked)
+    }
+
+    @Test
+    fun displayState_invalidCommonOverrideFallsBackToBundledAndDisablesSwitch() {
+        val prefs = FakeSharedPreferences()
+        val directory = temp.newFolder("common-invalid")
+        addMetadataOverride(directory, prefs, DictionaryFileKey.POS_TABLE, ValidationStatus.INVALID)
+        val store = DictionaryOverrideStore(
+            directory = directory,
+            prefs = prefs,
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        store.setExternalEnabledForKey(DictionaryFileKey.POS_TABLE, true)
+
+        val state = ExternalDictionaryDisplayStateResolver(store)
+            .resolveFileDisplayState(DictionaryFileKey.POS_TABLE)
+
+        assertEquals(ExternalDictionaryDisplayState.InvalidOverrideBundledFallback, state.displayState)
+        assertFalse(state.switchEnabled)
+        assertFalse(state.switchChecked)
+    }
+
+    @Test
+    fun displayState_coreCategoriesUseBundledWhenNoExternalOverrideExists() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("core-no-overrides"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = ExternalDictionaryDisplayStateResolver(store)
+
+        CORE_REPLACEMENT_CATEGORIES.forEach { category ->
+            val state = resolver.resolveCategoryDisplayState(category)
+            assertEquals(ExternalDictionaryDisplayState.BundledInUseNoOverride, state.displayState)
+            assertFalse(state.switchEnabled)
+            assertFalse(state.switchChecked)
+        }
+    }
+
+    @Test
+    fun displayState_systemCategoryRequiresAllThreeValidFilesBeforeSwitchIsEnabled() {
+        val prefs = FakeSharedPreferences()
+        val directory = temp.newFolder("system-partial")
+        addMetadataOverride(directory, prefs, DictionaryFileKey.SYSTEM_TANGO, ValidationStatus.VALID)
+        val store = DictionaryOverrideStore(
+            directory = directory,
+            prefs = prefs,
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, true)
+
+        val state = ExternalDictionaryDisplayStateResolver(store)
+            .resolveCategoryDisplayState(DictionaryCategory.SYSTEM)
+
+        assertEquals(ExternalDictionaryDisplayState.PartialOverrideBundledFallback, state.displayState)
+        assertFalse(state.switchEnabled)
+        assertFalse(state.switchChecked)
+    }
+
+    @Test
+    fun displayState_systemCategoryUsesSwitchAsReplacementChoiceWhenAllFilesAreValid() {
+        val prefs = FakeSharedPreferences()
+        val directory = temp.newFolder("system-valid")
+        listOf(
+            DictionaryFileKey.SYSTEM_TANGO,
+            DictionaryFileKey.SYSTEM_YOMI,
+            DictionaryFileKey.SYSTEM_TOKEN,
+        ).forEach { key ->
+            addMetadataOverride(directory, prefs, key, ValidationStatus.VALID)
+        }
+        val store = DictionaryOverrideStore(
+            directory = directory,
+            prefs = prefs,
+            defaultPrefs = FakeSharedPreferences(),
+        )
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, false)
+        val bundledState = ExternalDictionaryDisplayStateResolver(store)
+            .resolveCategoryDisplayState(DictionaryCategory.SYSTEM)
+        assertEquals(ExternalDictionaryDisplayState.BundledInUseWithValidOverride, bundledState.displayState)
+        assertTrue(bundledState.switchEnabled)
+        assertFalse(bundledState.switchChecked)
+
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, true)
+        val externalState = ExternalDictionaryDisplayStateResolver(store)
+            .resolveCategoryDisplayState(DictionaryCategory.SYSTEM)
+        assertEquals(ExternalDictionaryDisplayState.ExternalInUse, externalState.displayState)
+        assertTrue(externalState.switchEnabled)
+        assertTrue(externalState.switchChecked)
+
+        val fileState = ExternalDictionaryDisplayStateResolver(store)
+            .resolveFileDisplayState(DictionaryFileSpecs.get(DictionaryFileKey.SYSTEM_TOKEN))
+        assertEquals(ExternalDictionaryDisplayState.ExternalInUse, fileState)
+    }
+
+    @Test
+    fun coreReplacementScopeDoesNotIncludeReadingCorrectionOrKotowaza() {
+        assertEquals(
+            listOf(
+                DictionaryCategory.SYSTEM,
+                DictionaryCategory.SINGLE_KANJI,
+                DictionaryCategory.EMOJI,
+                DictionaryCategory.EMOTICON,
+                DictionaryCategory.SYMBOL,
+                DictionaryCategory.ENGLISH,
+            ),
+            CORE_REPLACEMENT_CATEGORIES,
+        )
+        assertFalse(CORE_REPLACEMENT_CATEGORIES.contains(DictionaryCategory.READING_CORRECTION))
+        assertFalse(CORE_REPLACEMENT_CATEGORIES.contains(DictionaryCategory.KOTOWAZA))
+    }
+
+    @Test
+    fun japaneseResourcesContainAllExternalDictionaryStrings() {
+        val base = resourceFile("values/strings.xml").readText()
+        val japanese = resourceFile("values-ja/strings.xml").readText()
+        val keyRegex = Regex("""<string name="(external_dictionary_[^"]+)"""")
+        val baseKeys = keyRegex.findAll(base).map { it.groupValues[1] }.toSet()
+        val japaneseKeys = keyRegex.findAll(japanese).map { it.groupValues[1] }.toSet()
+
+        assertEquals(emptySet<String>(), baseKeys - japaneseKeys)
+    }
+
+    @Test
+    fun optionalMigration_preservesLegacyOnOffValues() {
+        val oldPrefs = FakeSharedPreferences(
+            mutableMapOf(
+                "mozc_ut_person_name_preference" to true,
+                "mozc_ut_places_preference" to false,
+            )
+        )
+        val newPrefs = FakeSharedPreferences()
+
+        OptionalDictionaryMigration(oldPrefs, newPrefs).migrateIfNeeded()
+
+        assertTrue(newPrefs.getBoolean(DictionaryOverrideStore.optionalBundledEnabledKey(DictionaryCategory.PERSON_NAME), false))
+        assertFalse(newPrefs.getBoolean(DictionaryOverrideStore.optionalBundledEnabledKey(DictionaryCategory.PLACES), true))
+    }
+
+    @Test
+    fun sourceResolver_disableableDictionaryUsesBundledWhenEnabledWithoutOverrides() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("disableable-enabled"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = sourceResolver(store)
+
+        listOf(DictionaryCategory.PERSON_NAME, DictionaryCategory.READING_CORRECTION).forEach { category ->
+            store.setOptionalBundledEnabled(category, true)
+            assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(category))
+        }
+    }
+
+    @Test
+    fun sourceResolver_disableableDictionaryIsDisabledWhenBundledIsDisabled() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("disableable-disabled"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = sourceResolver(store)
+
+        listOf(DictionaryCategory.PERSON_NAME, DictionaryCategory.READING_CORRECTION).forEach { category ->
+            store.setOptionalBundledEnabled(category, false)
+            assertEquals(DictionaryCategoryLoadState.Disabled, resolver.resolveCategoryLoadState(category))
+        }
+    }
+
+    @Test
+    fun sourceResolver_coreDictionaryFallsBackToBundledEvenIfBundledFlagIsFalse() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("core-bundled"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = sourceResolver(store)
+
+        store.setOptionalBundledEnabled(DictionaryCategory.SYSTEM, false)
+
+        assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(DictionaryCategory.SYSTEM))
+    }
+
+    @Test
+    fun store_doesNotAutoEnableExternalForDisabledDisableableDictionaryAfterAllImports() {
+        val store = alwaysValidStore("import-disabled")
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, false)
+
+        saveTripleOverrides(store, DictionaryCategory.PERSON_NAME)
+
+        assertFalse(store.isExternalEnabledForCategory(DictionaryCategory.PERSON_NAME))
+    }
+
+    @Test
+    fun store_autoEnablesExternalForEnabledDisableableDictionaryAfterAllImports() {
+        val store = alwaysValidStore("import-enabled")
+        store.setOptionalBundledEnabled(DictionaryCategory.PERSON_NAME, true)
+
+        saveTripleOverrides(store, DictionaryCategory.PERSON_NAME)
+
+        assertTrue(store.isExternalEnabledForCategory(DictionaryCategory.PERSON_NAME))
+    }
+
+    @Test
+    fun displayState_disableableDictionarySwitchIsEnabledWithoutOverrides() {
+        val store = DictionaryOverrideStore(
+            directory = temp.newFolder("disableable-display"),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+        )
+        val resolver = ExternalDictionaryDisplayStateResolver(store)
+
+        listOf(DictionaryCategory.PERSON_NAME, DictionaryCategory.READING_CORRECTION).forEach { category ->
+            val state = resolver.resolveDisableableCategoryDisplayState(category)
+            assertTrue(state.switchEnabled)
+        }
+    }
+
+    @Test
+    fun compatibility_tokenMaxPosTableIndexBelowPosTableRowCountIsCompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0, 1),
+            leftIds = shortArrayOf(0, 1),
+            rightIds = shortArrayOf(0, 1),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertTrue(result.isCompatible)
+    }
+
+    @Test
+    fun compatibility_connectionIdSize2670SquareInfersMatrixSize2670() {
+        assertEquals(2670, ConnectionMatrix.inferMatrixSize(2670 * 2670))
+    }
+
+    @Test
+    fun compatibility_connectionIdSize2672SquareInfersMatrixSize2672() {
+        assertEquals(2672, ConnectionMatrix.inferMatrixSize(2672 * 2672))
+    }
+
+    @Test
+    fun compatibility_connectionIdSizeZeroIsInvalidForMatrixSizeInference() {
+        assertNull(ConnectionMatrix.inferMatrixSize(0))
+    }
+
+    @Test
+    fun compatibility_connectionIdNonSquareSizeIsInvalidForMatrixSizeInference() {
+        assertNull(ConnectionMatrix.inferMatrixSize(2670 * 2670 + 1))
+    }
+
+    @Test
+    fun compatibility_bundledSizedConnectionIdListInfers2670MatrixSizeFromShortArraySize() {
+        val connectionIdList = ShortArray(2670 * 2670)
+
+        assertEquals(2670, ConnectionMatrix.inferMatrixSize(connectionIdList))
+    }
+
+    @Test
+    fun compatibility_tokenMaxPosTableIndexAtPosTableRowCountIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0, 2),
+            leftIds = shortArrayOf(0, 1),
+            rightIds = shortArrayOf(0, 1),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.SYSTEM_TOKEN })
+    }
+
+    @Test
+    fun compatibility_posTableLeftAndRightSizeMismatchIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0, 1),
+            rightIds = shortArrayOf(0),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.POS_TABLE })
+    }
+
+    @Test
+    fun compatibility_posTableMaxLeftIdOutsideConnectionMatrixIsIncompatible() {
+        val matrixSize = 2670
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(matrixSize.toShort()),
+            rightIds = shortArrayOf(0),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.POS_TABLE })
+    }
+
+    @Test
+    fun compatibility_posTableMaxRightIdOutsideConnectionMatrixIsIncompatible() {
+        val matrixSize = 2670
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(matrixSize.toShort()),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.POS_TABLE })
+    }
+
+    @Test
+    fun compatibility_connectionIdExpectedSizeIsCompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(0),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertTrue(result.isCompatible)
+    }
+
+    @Test
+    fun compatibility_connectionIdShortSizeIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(0),
+            connectionIds = connectionIdBytes(3),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.CONNECTION_ID })
+    }
+
+    @Test
+    fun compatibility_connectionIdEmptySizeIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(0),
+            connectionIds = connectionIdBytes(0),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.CONNECTION_ID })
+    }
+
+    @Test
+    fun compatibility_posTableIdsWithinInferred2672MatrixAreCompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(2671),
+            rightIds = shortArrayOf(2671),
+            connectionIds = validConnectionIds(matrixSize = 2672),
+        )
+
+        assertTrue(result.isCompatible)
+    }
+
+    @Test
+    fun compatibility_posTableMaxLeftIdAtInferred2672MatrixSizeIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(2672),
+            rightIds = shortArrayOf(0),
+            connectionIds = validConnectionIds(matrixSize = 2672),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.POS_TABLE })
+    }
+
+    @Test
+    fun compatibility_posTableMaxRightIdAtInferred2672MatrixSizeIsIncompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(0),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(2672),
+            connectionIds = validConnectionIds(matrixSize = 2672),
+        )
+
+        assertFalse(result.isCompatible)
+        assertTrue(result.problems().any { it.affectedFileKey == DictionaryFileKey.POS_TABLE })
+    }
+
+    @Test
+    fun compatibility_invalidTokenDatRemainsSingleFileValidationConcern() {
+        val file = temp.newFile("invalid-token.dat")
+        file.writeBytes(byteArrayOf(1, 2, 3))
+
+        val result = DictionaryOverrideValidator().validate(
+            file,
+            DictionaryFileSpecs.get(DictionaryFileKey.SYSTEM_TOKEN),
+        )
+
+        assertFalse(result.isValid)
+    }
+
+    @Test
+    fun compatibility_emptyTokenArrayUsesMinusOneMaxAndIsCompatible() {
+        val result = validateFixture(
+            tokenPosIndices = shortArrayOf(),
+            leftIds = shortArrayOf(),
+            rightIds = shortArrayOf(),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertTrue(result.isCompatible)
+    }
+
+    @Test
+    fun compatibility_canBecomeCompatibleAfterPosTableIsReplaced() {
+        val incompatible = validateFixture(
+            tokenPosIndices = shortArrayOf(2),
+            leftIds = shortArrayOf(0),
+            rightIds = shortArrayOf(0),
+            connectionIds = validConnectionIds(),
+        )
+        val compatible = validateFixture(
+            tokenPosIndices = shortArrayOf(2),
+            leftIds = shortArrayOf(0, 1, 2),
+            rightIds = shortArrayOf(0, 1, 2),
+            connectionIds = validConnectionIds(),
+        )
+
+        assertFalse(incompatible.isCompatible)
+        assertTrue(compatible.isCompatible)
+    }
+
+    @Test
+    fun sourceResolver_incompatibleCategoryCanBeKeptOutOfAppliedStateByDisablingExternal() {
+        val store = alwaysValidStore("incompatible-not-applied")
+        saveTripleOverrides(store, DictionaryCategory.SYSTEM)
+        store.setExternalEnabledForCategory(DictionaryCategory.SYSTEM, false)
+
+        val resolver = sourceResolver(store)
+
+        assertFalse(resolver.shouldUseOverride(DictionaryFileKey.SYSTEM_TOKEN))
+        assertEquals(DictionaryCategoryLoadState.Bundled, resolver.resolveCategoryLoadState(DictionaryCategory.SYSTEM))
+    }
+
+    @Test
+    fun zipEntryNameMapper_mapsRequestedBasenames() {
+        assertEquals(DictionaryFileKey.SYSTEM_TANGO, DictionaryZipEntryNameMapper.map("tango.dat"))
+        assertEquals(DictionaryFileKey.SYSTEM_YOMI, DictionaryZipEntryNameMapper.map("yomi.dat"))
+        assertEquals(DictionaryFileKey.SYSTEM_TOKEN, DictionaryZipEntryNameMapper.map("token.dat"))
+        assertEquals(DictionaryFileKey.NEOLOGD_TANGO, DictionaryZipEntryNameMapper.map("tango_neologd.dat"))
+        assertEquals(DictionaryFileKey.NEOLOGD_YOMI, DictionaryZipEntryNameMapper.map("yomi_neologd.dat"))
+        assertEquals(DictionaryFileKey.NEOLOGD_TOKEN, DictionaryZipEntryNameMapper.map("token_neologd.dat"))
+        assertEquals(DictionaryFileKey.PLACES_TANGO, DictionaryZipEntryNameMapper.map("tango_places.dat"))
+        assertEquals(DictionaryFileKey.PLACES_YOMI, DictionaryZipEntryNameMapper.map("yomi_places.dat"))
+        assertEquals(DictionaryFileKey.PLACES_TOKEN, DictionaryZipEntryNameMapper.map("token_places.dat"))
+        assertEquals(DictionaryFileKey.CONNECTION_ID, DictionaryZipEntryNameMapper.map("connectionId.dat"))
+        assertEquals(DictionaryFileKey.CONNECTION_ID, DictionaryZipEntryNameMapper.map("connectionid.dat"))
+        assertEquals(DictionaryFileKey.CONNECTION_ID, DictionaryZipEntryNameMapper.map("connectionId.dat.zip"))
+        assertEquals(DictionaryFileKey.POS_TABLE, DictionaryZipEntryNameMapper.map("pos_table.dat"))
+        assertEquals(DictionaryFileKey.ID_DEF, DictionaryZipEntryNameMapper.map("id.def"))
+        assertNull(DictionaryZipEntryNameMapper.map("unknown.dat"))
+        assertTrue(DictionaryZipEntryNameMapper.isIgnored("__MACOSX/xxx"))
+        assertTrue(DictionaryZipEntryNameMapper.isIgnored(".DS_Store"))
+    }
+
+    @Test
+    fun zipEntryPlanner_duplicateKeyIsNotImportable() {
+        val plan = DictionaryZipEntryPlanner.plan(listOf("a/tango.dat", "b/tango.dat"))
+
+        assertEquals(2, plan.recognizedEntries)
+        assertEquals(listOf(DictionaryFileKey.SYSTEM_TANGO), plan.duplicateKeys.map { it.key })
+        assertTrue(plan.importableEntries.none { it.key == DictionaryFileKey.SYSTEM_TANGO })
+    }
+
+    @Test
+    fun zipEntryPlanner_partialDictionaryRecognizesSingleEntryWithoutAutoEnablingCategory() {
+        val plan = DictionaryZipEntryPlanner.plan(listOf("tango_neologd.dat"))
+        val store = alwaysValidStore("zip-partial-neologd")
+
+        val result = store.saveOverrideFromZipEntryInputStream(
+            DictionaryFileKey.NEOLOGD_TANGO,
+            ByteArrayInputStream(byteArrayOf(1, 2, 3)),
+            "tango_neologd.dat",
+        )
+
+        assertTrue(result.isValid)
+        assertEquals(listOf(DictionaryFileKey.NEOLOGD_TANGO), plan.importableEntries.map { it.key })
+        assertFalse(store.isExternalEnabledForCategory(DictionaryCategory.NEOLOGD))
+    }
+
+    @Test
+    fun zipEntryPlanner_mainDictionaryBundleMapsExpectedKeys() {
+        val plan = DictionaryZipEntryPlanner.plan(
+            listOf(
+                "connectionId.dat",
+                "pos_table.dat",
+                "id.def",
+                "tango.dat",
+                "yomi.dat",
+                "token.dat",
+                "tango_singleKanji.dat",
+                "yomi_singleKanji.dat",
+                "token_singleKanji.dat",
+                "tango_emoji.dat",
+                "yomi_emoji.dat",
+                "token_emoji.dat",
+                "tango_emoticon.dat",
+                "yomi_emoticon.dat",
+                "token_emoticon.dat",
+                "tango_symbol.dat",
+                "yomi_symbol.dat",
+                "token_symbol.dat",
+                "tango_reading_correction.dat",
+                "yomi_reading_correction.dat",
+                "token_reading_correction.dat",
+                "tango_kotowaza.dat",
+                "yomi_kotowaza.dat",
+                "token_kotowaza.dat",
+            )
+        )
+
+        assertEquals(
+            setOf(
+                DictionaryFileKey.CONNECTION_ID,
+                DictionaryFileKey.POS_TABLE,
+                DictionaryFileKey.ID_DEF,
+                DictionaryFileKey.SYSTEM_TANGO,
+                DictionaryFileKey.SYSTEM_YOMI,
+                DictionaryFileKey.SYSTEM_TOKEN,
+                DictionaryFileKey.SINGLE_KANJI_TANGO,
+                DictionaryFileKey.SINGLE_KANJI_YOMI,
+                DictionaryFileKey.SINGLE_KANJI_TOKEN,
+                DictionaryFileKey.EMOJI_TANGO,
+                DictionaryFileKey.EMOJI_YOMI,
+                DictionaryFileKey.EMOJI_TOKEN,
+                DictionaryFileKey.EMOTICON_TANGO,
+                DictionaryFileKey.EMOTICON_YOMI,
+                DictionaryFileKey.EMOTICON_TOKEN,
+                DictionaryFileKey.SYMBOL_TANGO,
+                DictionaryFileKey.SYMBOL_YOMI,
+                DictionaryFileKey.SYMBOL_TOKEN,
+                DictionaryFileKey.READING_CORRECTION_TANGO,
+                DictionaryFileKey.READING_CORRECTION_YOMI,
+                DictionaryFileKey.READING_CORRECTION_TOKEN,
+                DictionaryFileKey.KOTOWAZA_TANGO,
+                DictionaryFileKey.KOTOWAZA_YOMI,
+                DictionaryFileKey.KOTOWAZA_TOKEN,
+            ),
+            plan.importableEntries.map { it.key }.toSet(),
+        )
+    }
+
+    @Test
+    fun zipEntryPlanner_mozcUtBundleMapsPlacesAndPersonNames() {
+        val plan = DictionaryZipEntryPlanner.plan(
+            listOf(
+                "token_places.dat",
+                "yomi_places.dat",
+                "tango_places.dat",
+                "tango_person_names.dat",
+                "token_person_names.dat",
+                "yomi_person_names.dat",
+            )
+        )
+
+        assertEquals(
+            setOf(
+                DictionaryFileKey.PLACES_TOKEN,
+                DictionaryFileKey.PLACES_YOMI,
+                DictionaryFileKey.PLACES_TANGO,
+                DictionaryFileKey.PERSON_NAME_TANGO,
+                DictionaryFileKey.PERSON_NAME_TOKEN,
+                DictionaryFileKey.PERSON_NAME_YOMI,
+            ),
+            plan.importableEntries.map { it.key }.toSet(),
+        )
+    }
+
+    @Test
+    fun zipEntryPlanner_neologdBundleMapsNeologdTriple() {
+        val plan = DictionaryZipEntryPlanner.plan(
+            listOf("token_neologd.dat", "yomi_neologd.dat", "tango_neologd.dat")
+        )
+
+        assertEquals(
+            setOf(
+                DictionaryFileKey.NEOLOGD_TOKEN,
+                DictionaryFileKey.NEOLOGD_YOMI,
+                DictionaryFileKey.NEOLOGD_TANGO,
+            ),
+            plan.importableEntries.map { it.key }.toSet(),
+        )
+    }
+
+    @Test
+    fun zipEntryPlanner_wikiBundleMapsWikiTriple() {
+        val plan = DictionaryZipEntryPlanner.plan(
+            listOf("token_wiki.dat", "yomi_wiki.dat", "tango_wiki.dat")
+        )
+
+        assertEquals(
+            setOf(
+                DictionaryFileKey.WIKI_TOKEN,
+                DictionaryFileKey.WIKI_YOMI,
+                DictionaryFileKey.WIKI_TANGO,
+            ),
+            plan.importableEntries.map { it.key }.toSet(),
+        )
+    }
+
+    @Test
+    fun zipEntryPlanner_webBundleMapsWebTriple() {
+        val plan = DictionaryZipEntryPlanner.plan(
+            listOf("token_web.dat", "yomi_web.dat", "tango_web.dat")
+        )
+
+        assertEquals(
+            setOf(
+                DictionaryFileKey.WEB_TOKEN,
+                DictionaryFileKey.WEB_YOMI,
+                DictionaryFileKey.WEB_TANGO,
+            ),
+            plan.importableEntries.map { it.key }.toSet(),
+        )
+    }
+
+    @Test
+    fun zipSlipEntryNameMapsByBasenameButStoreUsesKeyBasedFileName() {
+        val plan = DictionaryZipEntryPlanner.plan(listOf("../../tango.dat"))
+        val store = alwaysValidStore("zip-slip")
+
+        val result = store.saveOverrideFromZipEntryInputStream(
+            DictionaryFileKey.SYSTEM_TANGO,
+            ByteArrayInputStream(byteArrayOf(1, 2, 3)),
+            "../../tango.dat",
+        )
+
+        assertTrue(result.isValid)
+        assertEquals(listOf(DictionaryFileKey.SYSTEM_TANGO), plan.importableEntries.map { it.key })
+        assertEquals("SYSTEM_TANGO.bin", DictionaryOverrideStore.savedFileNameForKey(DictionaryFileKey.SYSTEM_TANGO))
+        assertTrue(File(store.directory, "SYSTEM_TANGO.bin").exists())
+    }
+
+    private fun zip(name: String, bytes: ByteArray): ByteArray {
+        val output = java.io.ByteArrayOutputStream()
+        ZipOutputStream(output).use { zip ->
+            zip.putNextEntry(ZipEntry(name))
+            zip.write(bytes)
+            zip.closeEntry()
+        }
+        return output.toByteArray()
+    }
+
+    private fun addMetadataOverride(
+        directory: File,
+        prefs: SharedPreferences,
+        key: DictionaryFileKey,
+        status: ValidationStatus,
+    ) {
+        val spec = DictionaryFileSpecs.get(key)
+        if (!directory.exists()) directory.mkdirs()
+        File(directory, "${key.name}.bin").writeBytes(byteArrayOf(1, 2, 3))
+        val metadata = DictionaryOverrideMetadata(
+            key = key,
+            category = spec.category,
+            originalFileName = key.name,
+            importedAt = 1_700_000_000_000,
+            size = 3,
+            contentType = spec.contentType,
+            validationStatus = status,
+            validationMessage = status.name,
+        )
+        prefs.edit()
+            .putString(DictionaryOverrideStore.metadataPrefKey(key), Gson().toJson(metadata))
+            .apply()
+    }
+
+    private fun resourceFile(path: String): File {
+        val candidates = listOf(
+            File("src/main/res/$path"),
+            File("app/src/main/res/$path"),
+        )
+        return candidates.firstOrNull { it.exists() }
+            ?: error("Resource file not found: $path")
+    }
+
+    private fun sourceResolver(store: DictionaryOverrideStore): DictionarySourceResolver =
+        DictionarySourceResolver(mock<Context>(), store)
+
+    private fun alwaysValidStore(name: String): DictionaryOverrideStore {
+        val validator = mock<DictionaryOverrideValidator>()
+        whenever(validator.validate(any(), any())).thenReturn(ValidationResult.valid())
+        return DictionaryOverrideStore(
+            directory = temp.newFolder(name),
+            prefs = FakeSharedPreferences(),
+            defaultPrefs = FakeSharedPreferences(),
+            validator = validator,
+        )
+    }
+
+    private fun saveTripleOverrides(
+        store: DictionaryOverrideStore,
+        category: DictionaryCategory,
+    ) {
+        DictionaryFileSpecs.forCategory(category).forEach { spec ->
+            val result = store.saveOverrideFromInputStream(
+                spec.key,
+                ByteArrayInputStream(byteArrayOf(1, 2, 3)),
+                "${spec.key.name}.dat",
+            )
+            assertTrue(result.isValid)
+        }
+    }
+
+    private fun validateFixture(
+        tokenPosIndices: ShortArray,
+        leftIds: ShortArray,
+        rightIds: ShortArray,
+        connectionIds: ByteArray,
+    ): DictionaryCompatibilityResult {
+        val files = mapOf(
+            DictionaryFileKey.SYSTEM_TOKEN to tokenBytes(tokenPosIndices),
+            DictionaryFileKey.POS_TABLE to posTableBytes(leftIds, rightIds),
+            DictionaryFileKey.CONNECTION_ID to connectionIds,
+        )
+        return DictionaryCompatibilityValidator.validateSources(
+            tokenCategories = listOf(DictionaryCategory.SYSTEM),
+            sourceOpener = { key -> ByteArrayInputStream(files.getValue(key)) },
+        )
+    }
+
+    private fun DictionaryCompatibilityResult.problems(): List<DictionaryCompatibilityProblem> =
+        when (this) {
+            DictionaryCompatibilityResult.Compatible -> emptyList()
+            is DictionaryCompatibilityResult.Incompatible -> problems
+        }
+
+    private fun tokenBytes(posTableIndices: ShortArray): ByteArray {
+        val output = ByteArrayOutputStream()
+        ObjectOutputStream(output).use { objectOutput ->
+            objectOutput.writeObject(posTableIndices)
+            objectOutput.writeObject(ShortArray(posTableIndices.size))
+            objectOutput.writeObject(IntArray(posTableIndices.size))
+            objectOutput.writeObject(BitSet())
+        }
+        return output.toByteArray()
+    }
+
+    private fun posTableBytes(leftIds: ShortArray, rightIds: ShortArray): ByteArray {
+        val output = ByteArrayOutputStream()
+        ObjectOutputStream(output).use { objectOutput ->
+            objectOutput.writeObject(leftIds)
+            objectOutput.writeObject(rightIds)
+        }
+        return output.toByteArray()
+    }
+
+    private fun validConnectionIds(matrixSize: Int = 2670): ByteArray =
+        connectionIdBytes(matrixSize * matrixSize)
+
+    private fun connectionIdBytes(size: Int): ByteArray {
+        val buffer = ByteBuffer.allocate(size * 2)
+        repeat(size) { buffer.putShort(0) }
+        return buffer.array()
+    }
+}
+
+private class FakeResolver(private val store: DictionaryOverrideStore) {
+    fun state(category: DictionaryCategory): DictionaryCategoryLoadState {
+        if (category == DictionaryCategory.COMMON) return DictionaryCategoryLoadState.Bundled
+        val specs = DictionaryFileSpecs.forCategory(category)
+        val hasAny = specs.any { store.hasOverride(it.key) }
+        val hasAll = specs.all { store.hasOverride(it.key) }
+        val validAll = specs.all { store.isValidOverride(it.key) }
+        if (hasAny && (!hasAll || !validAll)) return DictionaryCategoryLoadState.Partial
+        if (validAll && store.isExternalEnabledForCategory(category)) return DictionaryCategoryLoadState.User
+        return DictionaryCategoryLoadState.Bundled
+    }
+}
+
+private class FakeSharedPreferences(
+    private val values: MutableMap<String, Any?> = mutableMapOf(),
+) : SharedPreferences {
+    override fun getAll(): MutableMap<String, *> = values
+    override fun getString(key: String?, defValue: String?): String? = values[key] as? String ?: defValue
+    override fun getStringSet(key: String?, defValues: MutableSet<String>?): MutableSet<String>? = defValues
+    override fun getInt(key: String?, defValue: Int): Int = values[key] as? Int ?: defValue
+    override fun getLong(key: String?, defValue: Long): Long = values[key] as? Long ?: defValue
+    override fun getFloat(key: String?, defValue: Float): Float = values[key] as? Float ?: defValue
+    override fun getBoolean(key: String?, defValue: Boolean): Boolean = values[key] as? Boolean ?: defValue
+    override fun contains(key: String?): Boolean = values.containsKey(key)
+    override fun edit(): SharedPreferences.Editor = Editor(values)
+    override fun registerOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener?) = Unit
+    override fun unregisterOnSharedPreferenceChangeListener(listener: SharedPreferences.OnSharedPreferenceChangeListener?) = Unit
+
+    private class Editor(private val values: MutableMap<String, Any?>) : SharedPreferences.Editor {
+        private var clear = false
+        private val pending = mutableMapOf<String, Any?>()
+        private val removals = mutableSetOf<String>()
+        override fun putString(key: String, value: String?): SharedPreferences.Editor = apply { pending[key] = value }
+        override fun putStringSet(key: String, values: MutableSet<String>?): SharedPreferences.Editor = this
+        override fun putInt(key: String, value: Int): SharedPreferences.Editor = apply { pending[key] = value }
+        override fun putLong(key: String, value: Long): SharedPreferences.Editor = apply { pending[key] = value }
+        override fun putFloat(key: String, value: Float): SharedPreferences.Editor = apply { pending[key] = value }
+        override fun putBoolean(key: String, value: Boolean): SharedPreferences.Editor = apply { pending[key] = value }
+        override fun remove(key: String): SharedPreferences.Editor = apply { removals.add(key) }
+        override fun clear(): SharedPreferences.Editor = apply { clear = true }
+        override fun commit(): Boolean {
+            apply()
+            return true
+        }
+        override fun apply() {
+            if (clear) values.clear()
+            removals.forEach(values::remove)
+            pending.forEach { (key, value) ->
+                if (value == null) values.remove(key) else values[key] = value
+            }
+        }
+    }
+}
