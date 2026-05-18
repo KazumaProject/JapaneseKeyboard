@@ -75,6 +75,10 @@ object AppPreference {
 
     private val FLICK_KEYMAP_GUIDE_PREFERENCE =
         Pair("flick_keymap_guide", false)
+    private val FLICK_GUIDE_TEXT_SIZE_SP_PREFERENCE =
+        Pair("flick_guide_text_size_sp_preference", 9)
+    private val FLICK_GUIDE_MAX_CHARACTERS_PREFERENCE =
+        Pair("flick_guide_max_characters_preference", 1)
 
     private val CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS =
         Pair("custom_keyboard_two_words_preference", true)
@@ -630,6 +634,30 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(FLICK_KEYMAP_GUIDE_PREFERENCE.first, value ?: false)
+        }
+
+    var flick_guide_text_size_sp_preference: Int?
+        get() = preferences.getInt(
+            FLICK_GUIDE_TEXT_SIZE_SP_PREFERENCE.first,
+            FLICK_GUIDE_TEXT_SIZE_SP_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                FLICK_GUIDE_TEXT_SIZE_SP_PREFERENCE.first,
+                value ?: FLICK_GUIDE_TEXT_SIZE_SP_PREFERENCE.second
+            )
+        }
+
+    var flick_guide_max_characters_preference: Int?
+        get() = preferences.getInt(
+            FLICK_GUIDE_MAX_CHARACTERS_PREFERENCE.first,
+            FLICK_GUIDE_MAX_CHARACTERS_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                FLICK_GUIDE_MAX_CHARACTERS_PREFERENCE.first,
+                value ?: FLICK_GUIDE_MAX_CHARACTERS_PREFERENCE.second
+            )
         }
 
     var qwerty_show_ime_button: Boolean?
