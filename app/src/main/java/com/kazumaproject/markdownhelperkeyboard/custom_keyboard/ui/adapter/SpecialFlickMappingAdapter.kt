@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.displayActionFor
 import java.util.UUID
 
 data class SpecialFlickMappingItem(
@@ -88,7 +89,7 @@ class SpecialFlickMappingAdapter(
         holder.spinner.setAdapter(adapter)
 
         val currentName = item.action?.let { act ->
-            displayActions.firstOrNull { it.action == act }?.displayName
+            displayActions.displayActionFor(act)?.displayName
         }.orEmpty()
         holder.spinner.setText(currentName, false)
 
