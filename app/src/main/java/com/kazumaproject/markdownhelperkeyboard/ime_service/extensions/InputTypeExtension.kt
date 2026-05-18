@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.extensions
 import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
+import java.util.Locale
 
 fun InputTypeForIME.isPassword(): Boolean = when (this) {
     InputTypeForIME.TextPassword,
@@ -18,7 +19,14 @@ fun InputTypeForIME.isPassword(): Boolean = when (this) {
  * This function uses bitwise masks for reliable detection instead of matching specific integer values.
  */
 fun getCurrentInputTypeForIME2(editorInfo: EditorInfo?): InputTypeForIME {
-    if (editorInfo == null || editorInfo.inputType == InputType.TYPE_NULL) {
+    if (editorInfo == null) {
+        return InputTypeForIME.Text
+    }
+
+    if (editorInfo.inputType == InputType.TYPE_NULL) {
+        if (hasPasswordLikeMetadata(editorInfo)) {
+            return InputTypeForIME.TextPassword
+        }
         return InputTypeForIME.Text
     }
 
@@ -43,12 +51,20 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
     val variation = inputType and InputType.TYPE_MASK_VARIATION
     val imeAction = editorInfo.imeOptions and EditorInfo.IME_MASK_ACTION
 
-    // 優先度1: 最も具体的なテキスト「種類」を先にチェック (パスワード、メールアドレスなど)
+    // 優先度1: 明示的なパスワード variation を最優先でチェック
     when (variation) {
         InputType.TYPE_TEXT_VARIATION_PASSWORD,
         InputType.TYPE_TEXT_VARIATION_WEB_PASSWORD -> return InputTypeForIME.TextPassword
 
         InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD -> return InputTypeForIME.TextVisiblePassword
+    }
+
+    if (hasPasswordLikeMetadata(editorInfo)) {
+        return InputTypeForIME.TextPassword
+    }
+
+    // 優先度2: その他の具体的なテキスト「種類」をチェック
+    when (variation) {
         InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
         InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS -> return InputTypeForIME.TextEmailAddress
 
@@ -56,14 +72,14 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
         InputType.TYPE_TEXT_VARIATION_PERSON_NAME -> return InputTypeForIME.TextPersonName
     }
 
-    // 優先度2: 強い目的を持つアクションを先に評価
+    // 優先度3: 強い目的を持つアクションを先に評価
     when (imeAction) {
         EditorInfo.IME_ACTION_SEARCH -> return InputTypeForIME.TextSearchView
         EditorInfo.IME_ACTION_GO -> return InputTypeForIME.TextUri // ブラウザのURLバーなど
         EditorInfo.IME_ACTION_SEND -> return InputTypeForIME.TextSend
     }
 
-    // 優先度3: 複数行の判定（最重要）
+    // 優先度4: 複数行の判定（最重要）
     val isMultiLine = (inputType and InputType.TYPE_TEXT_FLAG_MULTI_LINE) != 0
     val isImeMultiLine = (inputType and InputType.TYPE_TEXT_FLAG_IME_MULTI_LINE) != 0
 
@@ -77,23 +93,22 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
     // 1. single-line のフィールド
     // 2. multi-line だが、Enterキーでアクションを実行すべきフィールド (isImeMultiLine == true)
 
-    // 優先度4: 残りのIMEアクションを評価
+    // 優先度5: 残りのIMEアクションを評価
     when (imeAction) {
         EditorInfo.IME_ACTION_NEXT -> return InputTypeForIME.TextNextLine
         EditorInfo.IME_ACTION_DONE -> return InputTypeForIME.TextDone
     }
 
-    // 優先度5: フォールバック
+    // 優先度6: フォールバック
     if ((inputType and InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS) != 0) {
         return InputTypeForIME.TextNoSuggestion
     }
     editorInfo.hintText?.toString()?.let {
-        val hint = it.lowercase()
+        val hint = it.lowercase(Locale.ROOT)
         if (hint.contains("search") || hint.contains("検索")) return InputTypeForIME.TextSearchView
-        if (hint.contains("password")) return InputTypeForIME.TextPassword
     }
 
-    // 優先度6: デフォルト
+    // 優先度7: デフォルト
     // isMultiLineがtrueでもここに到達することがある（isImeMultiLineがtrueの場合）
     // その場合、適切なアクションが指定されていなければ、デフォルトのTextとして扱う
     if (isMultiLine) {
@@ -101,6 +116,25 @@ private fun getTextRelatedInputType(editorInfo: EditorInfo): InputTypeForIME {
     }
 
     return InputTypeForIME.Text
+}
+
+private fun hasPasswordLikeMetadata(editorInfo: EditorInfo): Boolean {
+    return containsPasswordLikeKeyword(editorInfo.hintText)
+            || containsPasswordLikeKeyword(editorInfo.fieldName)
+            || containsPasswordLikeKeyword(editorInfo.privateImeOptions)
+}
+
+private fun containsPasswordLikeKeyword(value: CharSequence?): Boolean {
+    val normalized = value?.toString()?.trim()?.lowercase(Locale.ROOT)
+    if (normalized.isNullOrEmpty()) {
+        return false
+    }
+
+    return normalized.contains("password")
+            || normalized.contains("passwd")
+            || normalized.contains("パスワード")
+            || normalized.contains("暗証番号")
+            || normalized.contains("暗証")
 }
 
 /**
