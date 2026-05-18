@@ -8822,11 +8822,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.MoveCursorDown -> {
                         cancelLeftLongPress()
                         cancelRightLongPress()
+                        val insertString = inputString.value
+                        if (cycleFocusedBunsetsuCandidate(delta = 1)) {
+                        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_DOWN)
+                        }
                     }
 
                     KeyAction.MoveCursorUp -> {
                         cancelLeftLongPress()
                         cancelRightLongPress()
+                        val insertString = inputString.value
+                        if (cycleFocusedBunsetsuCandidate(delta = -1)) {
+                        } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
+                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_UP)
+                        }
                     }
 
                     KeyAction.Cancel -> {
