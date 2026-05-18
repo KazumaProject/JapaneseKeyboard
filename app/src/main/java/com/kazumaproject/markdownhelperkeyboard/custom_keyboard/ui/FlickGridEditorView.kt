@@ -604,7 +604,7 @@ class FlickGridEditorView @JvmOverloads constructor(
             cellEnabled[pos] = true
             val item = items.firstOrNull { it.direction == dir }
             val action = item?.action
-            val displayAction = action?.let { a -> displayActions.firstOrNull { it.action == a } }
+            val displayAction = action?.let { a -> displayActions.displayActionFor(a) }
             // アイコンがあればアイコン、なければdisplayName
             if (displayAction?.iconResId != null) {
                 cellIconResId[pos] = displayAction.iconResId

@@ -15,7 +15,9 @@ class DataConverterExtensionsMoveToCustomKeyboardTest {
             KeyAction.ToggleDakutenOnly to "ToggleDakutenOnly",
             KeyAction.ToggleHandakutenOnly to "ToggleHandakutenOnly",
             KeyAction.ForceHalfWidthSpace to "ForceHalfWidthSpace",
-            KeyAction.ForceFullWidthSpace to "ForceFullWidthSpace"
+            KeyAction.ForceFullWidthSpace to "ForceFullWidthSpace",
+            KeyAction.MoveCursorUp to "MOVE_CURSOR_UP",
+            KeyAction.MoveCursorDown to "MOVE_CURSOR_DOWN"
         )
 
         cases.forEach { (action, actionType) ->
@@ -61,6 +63,16 @@ class DataConverterExtensionsMoveToCustomKeyboardTest {
         ).toFlickAction()
 
         assertEquals(FlickAction.Action(KeyAction.MoveToCustomKeyboard(stableId)), restored)
+
+        val circularRestored = CircularFlickMapping(
+            ownerKeyId = 1L,
+            stateIndex = 0,
+            circularDirection = CircularFlickDirection.SLOT_0,
+            actionType = dbStrings.first,
+            actionValue = dbStrings.second
+        ).toFlickAction()
+
+        assertEquals(FlickAction.Action(KeyAction.MoveToCustomKeyboard(stableId)), circularRestored)
     }
 
     @Test
