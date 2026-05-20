@@ -116,6 +116,51 @@ class KeyboardRepositoryGridPlacementTest {
     }
 
     @Test
+    fun dbRoundTrip_preservesFlexibleOnePointFiveSpanAfterCrush() {
+        val key = KeyData(
+            label = "A",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.Text("A"),
+            keyType = KeyType.NORMAL,
+            isSpecialKey = false,
+            keyId = "a",
+            rowSpan = 1,
+            colSpan = 2
+        )
+        val layoutAfterCrush = KeyboardLayout(
+            keys = listOf(key),
+            flickKeyMaps = emptyMap(),
+            columnCount = 2,
+            rowCount = 1,
+            items = listOf(
+                KeyItem(
+                    id = "a",
+                    keyData = key,
+                    placement = GridPlacement(
+                        rowUnits = 0,
+                        columnUnits = 0,
+                        rowSpanUnits = 2,
+                        columnSpanUnits = 3
+                    )
+                )
+            ),
+            columnUnitCount = 4,
+            rowUnitCount = 2,
+            isFlexiblePlacementLayout = true
+        )
+
+        val dbKeys = convertToDbKeys(layoutAfterCrush)
+        val restored = convertToUiLayout(dbKeys)
+        val restoredItem = restored.items.filterIsInstance<KeyItem>().single()
+
+        assertEquals(3, dbKeys.single().columnSpanUnits)
+        assertEquals(3, restoredItem.placement.columnSpanUnits)
+        assertEquals(2, restored.keys.single().colSpan)
+    }
+
+    @Test
     fun convertToUiModel_fallsBackTextActionOnlyForNormalNonSpecialKeys() {
         val normal = keyDefinition(
             identifier = "normal_key",
