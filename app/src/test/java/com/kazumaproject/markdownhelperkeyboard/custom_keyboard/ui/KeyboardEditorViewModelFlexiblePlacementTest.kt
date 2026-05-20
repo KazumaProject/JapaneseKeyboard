@@ -110,6 +110,239 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
+    fun flexibleKeyEdit_resizesOneByOneKeyToTwoByOneUsingPlacementUnits() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            singleKeyLayout(
+                "key_a",
+                "key_a",
+                columnUnitCount = 4,
+                rowUnitCount = 2,
+                isFlexiblePlacementLayout = true
+            )
+        )
+        val before = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+
+        vm.updateKeyAndMappings(
+            newKeyData = before.keyData.copy(label = "A", colSpan = 2),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap(),
+            flexibleRowSpanUnits = 2,
+            flexibleColumnSpanUnits = 4
+        )
+
+        val after = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+        assertEquals(2, before.placement.columnSpanUnits)
+        assertEquals(4, after.placement.columnSpanUnits)
+        assertEquals(2, after.keyData.colSpan)
+        assertEquals(2, after.placement.rowSpanUnits)
+        assertEquals("A", after.keyData.label)
+    }
+
+    @Test
+    fun flexibleKeyEdit_resizesOneByOneKeyToOneByTwoUsingPlacementUnits() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            singleKeyLayout(
+                "key_a",
+                "key_a",
+                columnUnitCount = 2,
+                rowUnitCount = 4,
+                isFlexiblePlacementLayout = true
+            )
+        )
+        val before = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+
+        vm.updateKeyAndMappings(
+            newKeyData = before.keyData.copy(label = "A", rowSpan = 2),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap(),
+            flexibleRowSpanUnits = 4,
+            flexibleColumnSpanUnits = 2
+        )
+
+        val after = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+        assertEquals(2, before.placement.rowSpanUnits)
+        assertEquals(4, after.placement.rowSpanUnits)
+        assertEquals(2, after.keyData.rowSpan)
+        assertEquals(2, after.placement.columnSpanUnits)
+    }
+
+    @Test
+    fun flexibleKeyEdit_keepsHalfWidthPlacementAfterLabelOnlyEdit() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            layoutFromItems(
+                items = listOf(keyItem("half_width", GridPlacement(0, 0, 2, 1))),
+                columnUnitCount = 2,
+                rowUnitCount = 2
+            )
+        )
+        val before = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+
+        vm.updateKeyAndMappings(
+            newKeyData = before.keyData.copy(label = "H", action = KeyAction.Text("H")),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap()
+        )
+
+        val after = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+        assertEquals(1, before.placement.columnSpanUnits)
+        assertEquals(1, after.placement.columnSpanUnits)
+        assertEquals(before.placement, after.placement)
+        assertEquals("H", after.keyData.label)
+    }
+
+    @Test
+    fun flexibleKeyEdit_keepsHalfHeightPlacementAfterLabelOnlyEdit() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            layoutFromItems(
+                items = listOf(keyItem("half_height", GridPlacement(0, 0, 1, 2))),
+                columnUnitCount = 2,
+                rowUnitCount = 2
+            )
+        )
+        val before = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+
+        vm.updateKeyAndMappings(
+            newKeyData = before.keyData.copy(label = "H", action = KeyAction.Text("H")),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap()
+        )
+
+        val after = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+        assertEquals(1, before.placement.rowSpanUnits)
+        assertEquals(1, after.placement.rowSpanUnits)
+        assertEquals(before.placement, after.placement)
+        assertEquals("H", after.keyData.label)
+    }
+
+    @Test
+    fun flexibleKeyEdit_rejectsResizeThatOverlapsAnotherItemAndKeepsMappingsUntouched() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            layoutFromItems(
+                items = listOf(
+                    keyItem("a", GridPlacement(0, 0, 2, 2)),
+                    keyItem("b", GridPlacement(0, 2, 2, 2))
+                ),
+                columnUnitCount = 4,
+                rowUnitCount = 2,
+                isFlexiblePlacementLayout = true
+            ).copy(flickKeyMaps = mapOf("a" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("a")))))
+        )
+        val beforeLayout = vm.uiState.value.layout
+        val target = beforeLayout.items.filterIsInstance<KeyItem>().first { it.id == "a" }
+
+        vm.updateKeyAndMappings(
+            newKeyData = target.keyData.copy(label = "A"),
+            flickMap = mapOf(FlickDirection.TAP to FlickAction.Input("A")),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap(),
+            flexibleRowSpanUnits = 2,
+            flexibleColumnSpanUnits = 4
+        )
+
+        assertEquals(beforeLayout, vm.uiState.value.layout)
+    }
+
+    @Test
+    fun flexibleKeyEdit_rejectsResizeOutsideCurrentBounds() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            singleKeyLayout(
+                "key_a",
+                "key_a",
+                columnUnitCount = 2,
+                rowUnitCount = 2,
+                isFlexiblePlacementLayout = true
+            )
+        )
+        val beforeLayout = vm.uiState.value.layout
+        val target = beforeLayout.items.filterIsInstance<KeyItem>().single()
+
+        vm.updateKeyAndMappings(
+            newKeyData = target.keyData.copy(label = "A", colSpan = 2),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap(),
+            flexibleRowSpanUnits = 2,
+            flexibleColumnSpanUnits = 4
+        )
+
+        assertEquals(beforeLayout, vm.uiState.value.layout)
+    }
+
+    @Test
+    fun flexibleKeyEdit_rejectsNonPositiveSpanUnits() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            singleKeyLayout(
+                "key_a",
+                "key_a",
+                columnUnitCount = 2,
+                rowUnitCount = 2,
+                isFlexiblePlacementLayout = true
+            )
+        )
+        val beforeLayout = vm.uiState.value.layout
+        val target = beforeLayout.items.filterIsInstance<KeyItem>().single()
+
+        vm.updateKeyAndMappings(
+            newKeyData = target.keyData.copy(label = "A"),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap(),
+            flexibleRowSpanUnits = 0,
+            flexibleColumnSpanUnits = 2
+        )
+
+        assertEquals(beforeLayout, vm.uiState.value.layout)
+    }
+
+    @Test
+    fun flexibleKeyEdit_preservesSpacerPlacementWhenResizingKey() {
+        val vm = viewModel()
+        val spacer = SpacerItem("spacer", GridPlacement(0, 4, 2, 2))
+        vm.applyTemplate(
+            layoutFromItems(
+                items = listOf(keyItem("a", GridPlacement(0, 0, 2, 2)), spacer),
+                columnUnitCount = 6,
+                rowUnitCount = 2
+            )
+        )
+        val target = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+
+        vm.updateKeyAndMappings(
+            newKeyData = target.keyData.copy(label = "A", colSpan = 2),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap(),
+            flexibleRowSpanUnits = 2,
+            flexibleColumnSpanUnits = 4
+        )
+
+        val afterLayout = vm.uiState.value.layout
+        val afterKey = afterLayout.items.filterIsInstance<KeyItem>().single()
+        val afterSpacer = afterLayout.items.filterIsInstance<SpacerItem>().single()
+        assertEquals(4, afterKey.placement.columnSpanUnits)
+        assertEquals(spacer.placement, afterSpacer.placement)
+    }
+
+    @Test
     fun addSpacer_rejectsOverlapWithKey() {
         val viewModel = viewModel()
         val key = KeyData(
@@ -199,6 +432,72 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         assertEquals("x", afterKey.label)
         assertEquals(beforeLayout.columnCount * 2, afterLayout.columnUnitCount)
         assertEquals(beforeLayout.rowCount * 2, afterLayout.rowUnitCount)
+    }
+
+    @Test
+    fun legacyLayout_keyResizeStillUsesRowSpanAndColSpanCells() {
+        val vm = viewModel()
+        val key = KeyData(
+            label = "a",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.Text("a"),
+            keyType = KeyType.NORMAL,
+            keyId = "key_a"
+        )
+        vm.applyTemplate(
+            KeyboardLayout(
+                keys = listOf(key),
+                flickKeyMaps = emptyMap(),
+                columnCount = 3,
+                rowCount = 2
+            )
+        )
+
+        vm.updateKeyAndMappings(
+            newKeyData = key.copy(label = "A", rowSpan = 2, colSpan = 2),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap()
+        )
+
+        val afterKey = vm.uiState.value.layout.keys.single()
+        assertEquals(2, afterKey.rowSpan)
+        assertEquals(2, afterKey.colSpan)
+        assertEquals(4, vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single().placement.rowSpanUnits)
+        assertEquals(4, vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single().placement.columnSpanUnits)
+    }
+
+    @Test
+    fun imeRuntimeLayoutItemsContainUpdatedFlexiblePlacementUnitsAfterResize() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            singleKeyLayout(
+                "key_a",
+                "key_a",
+                columnUnitCount = 4,
+                rowUnitCount = 2,
+                isFlexiblePlacementLayout = true
+            )
+        )
+        val target = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+
+        vm.updateKeyAndMappings(
+            newKeyData = target.keyData.copy(label = "A", colSpan = 2),
+            flickMap = emptyMap(),
+            twoStepMap = emptyMap(),
+            longPressFlickMap = emptyMap(),
+            twoStepLongPressMap = emptyMap(),
+            flexibleRowSpanUnits = 2,
+            flexibleColumnSpanUnits = 4
+        )
+
+        val runtimeLayout = vm.uiState.value.layout
+        val runtimeItem = runtimeLayout.items.filterIsInstance<KeyItem>().single()
+        assertEquals(4, runtimeItem.placement.columnSpanUnits)
+        assertEquals(runtimeItem.keyData, runtimeLayout.keys.single())
     }
 
     @Test
@@ -1272,15 +1571,27 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         return layoutFromItems(items, columnUnitCount = 6, rowUnitCount = 8)
     }
 
-    private fun singleKeyLayout(itemId: String, keyId: String): KeyboardLayout {
+    private fun singleKeyLayout(
+        itemId: String,
+        keyId: String,
+        columnUnitCount: Int = 2,
+        rowUnitCount: Int = 2,
+        isFlexiblePlacementLayout: Boolean = false
+    ): KeyboardLayout {
         val key = keyItem(itemId, GridPlacement(0, 0, 2, 2), keyId = keyId)
-        return layoutFromItems(listOf(key), columnUnitCount = 2, rowUnitCount = 2)
+        return layoutFromItems(
+            listOf(key),
+            columnUnitCount = columnUnitCount,
+            rowUnitCount = rowUnitCount,
+            isFlexiblePlacementLayout = isFlexiblePlacementLayout
+        )
     }
 
     private fun layoutFromItems(
         items: List<com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem>,
         columnUnitCount: Int,
-        rowUnitCount: Int
+        rowUnitCount: Int,
+        isFlexiblePlacementLayout: Boolean = false
     ): KeyboardLayout =
         KeyboardLayout(
             keys = items.filterIsInstance<KeyItem>().map { it.keyData },
@@ -1289,7 +1600,8 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
             rowCount = (rowUnitCount + 1) / 2,
             items = items,
             columnUnitCount = columnUnitCount,
-            rowUnitCount = rowUnitCount
+            rowUnitCount = rowUnitCount,
+            isFlexiblePlacementLayout = isFlexiblePlacementLayout
         )
 
     private fun keyItem(
