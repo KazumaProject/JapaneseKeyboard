@@ -28,8 +28,13 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.compatibleColumnSpan
+import com.kazumaproject.custom_keyboard.data.compatibleRowSpan
 import com.kazumaproject.custom_keyboard.data.toCircularFlickMap
+import com.kazumaproject.custom_keyboard.data.toCellSpanCeilFromGridUnits
+import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickSlotActionMapper
@@ -107,6 +112,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var currentRowSpan: Int = 1
     private var maxColSpan: Int = 1
     private var maxRowSpan: Int = 1
+    private var isFlexibleSizeEditing: Boolean = false
+    private var currentColumnSpanUnits: Int = 2
+    private var currentRowSpanUnits: Int = 2
+    private var maxColumnSpanUnits: Int = 2
+    private var maxRowSpanUnits: Int = 2
 
     // NEW: allowed directions for special-flick category (5 directions)
     private val allowedSpecialFlickDirections: List<FlickDirection> = listOf(
@@ -393,25 +403,45 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
 
         binding.btnColPlus.setOnClickListener {
-            if (currentColSpan < maxColSpan) {
+            if (isFlexibleSizeEditing) {
+                if (currentColumnSpanUnits < maxColumnSpanUnits) {
+                    currentColumnSpanUnits++
+                    updateSizeDisplay()
+                }
+            } else if (currentColSpan < maxColSpan) {
                 currentColSpan++
                 updateSizeDisplay()
             }
         }
         binding.btnColMinus.setOnClickListener {
-            if (currentColSpan > 1) {
+            if (isFlexibleSizeEditing) {
+                if (currentColumnSpanUnits > 1) {
+                    currentColumnSpanUnits--
+                    updateSizeDisplay()
+                }
+            } else if (currentColSpan > 1) {
                 currentColSpan--
                 updateSizeDisplay()
             }
         }
         binding.btnRowPlus.setOnClickListener {
-            if (currentRowSpan < maxRowSpan) {
+            if (isFlexibleSizeEditing) {
+                if (currentRowSpanUnits < maxRowSpanUnits) {
+                    currentRowSpanUnits++
+                    updateSizeDisplay()
+                }
+            } else if (currentRowSpan < maxRowSpan) {
                 currentRowSpan++
                 updateSizeDisplay()
             }
         }
         binding.btnRowMinus.setOnClickListener {
-            if (currentRowSpan > 1) {
+            if (isFlexibleSizeEditing) {
+                if (currentRowSpanUnits > 1) {
+                    currentRowSpanUnits--
+                    updateSizeDisplay()
+                }
+            } else if (currentRowSpan > 1) {
                 currentRowSpan--
                 updateSizeDisplay()
             }
@@ -666,6 +696,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         FlickDirectionMapper.toDisplayName(dir, requireContext())
 
     private fun updateSizeDisplay() {
+        if (isFlexibleSizeEditing) {
+            binding.textColSpan.text = formatGridUnitsAsCells(currentColumnSpanUnits)
+            binding.textRowSpan.text = formatGridUnitsAsCells(currentRowSpanUnits)
+
+            binding.btnColPlus.isEnabled = currentColumnSpanUnits < maxColumnSpanUnits
+            binding.btnColMinus.isEnabled = currentColumnSpanUnits > 1
+            binding.btnRowPlus.isEnabled = currentRowSpanUnits < maxRowSpanUnits
+            binding.btnRowMinus.isEnabled = currentRowSpanUnits > 1
+            return
+        }
+
         binding.textColSpan.text = currentColSpan.toString()
         binding.textRowSpan.text = currentRowSpan.toString()
 
@@ -674,6 +715,13 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         binding.btnRowPlus.isEnabled = currentRowSpan < maxRowSpan
         binding.btnRowMinus.isEnabled = currentRowSpan > 1
     }
+
+    private fun formatGridUnitsAsCells(units: Int): String =
+        if (units % 2 == 0) {
+            (units / 2).toString()
+        } else {
+            "${units / 2}.5"
+        }
 
     private fun setupToolbarAndMenu() {
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
@@ -891,13 +939,15 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // flexible layouts (so half-cell keys and editor-created keys
             // resolve correctly even when keyData.keyId is null/blank).
             val selectedId = state.selectedKeyIdentifier
+            val selectedKeyItem = selectedId?.let { id ->
+                state.layout.items
+                    .filterIsInstance<KeyItem>()
+                    .firstOrNull { it.id == id || it.keyData.keyId == id }
+            }
             currentKeyData = if (selectedId == null) {
                 null
             } else {
-                state.layout.items
-                    .filterIsInstance<com.kazumaproject.custom_keyboard.data.KeyItem>()
-                    .firstOrNull { it.id == selectedId || it.keyData.keyId == selectedId }
-                    ?.keyData
+                selectedKeyItem?.keyData
                     ?: state.layout.keys.firstOrNull { it.keyId == selectedId }
             }
 
@@ -908,10 +958,25 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
             val key = currentKeyData!!
 
-            currentColSpan = key.colSpan
-            currentRowSpan = key.rowSpan
-            maxColSpan = state.layout.columnCount - key.column
-            maxRowSpan = state.layout.rowCount - key.row
+            isFlexibleSizeEditing = state.layout.usesFlexiblePlacement() && selectedKeyItem != null
+            if (isFlexibleSizeEditing) {
+                val placement = selectedKeyItem!!.placement
+                currentColumnSpanUnits = placement.columnSpanUnits.coerceAtLeast(1)
+                currentRowSpanUnits = placement.rowSpanUnits.coerceAtLeast(1)
+                maxColumnSpanUnits =
+                    (state.layout.columnUnitCount - placement.columnUnits).coerceAtLeast(1)
+                maxRowSpanUnits =
+                    (state.layout.rowUnitCount - placement.rowUnits).coerceAtLeast(1)
+                currentColSpan = placement.compatibleColumnSpan()
+                currentRowSpan = placement.compatibleRowSpan()
+                maxColSpan = maxColumnSpanUnits.toCellSpanCeilFromGridUnits()
+                maxRowSpan = maxRowSpanUnits.toCellSpanCeilFromGridUnits()
+            } else {
+                currentColSpan = key.colSpan
+                currentRowSpan = key.rowSpan
+                maxColSpan = state.layout.columnCount - key.column
+                maxRowSpan = state.layout.rowCount - key.row
+            }
             updateSizeDisplay()
 
             // Key type: special / normal
@@ -1301,19 +1366,31 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // IMPORTANT: special flick should still be flickable (KeyType != NORMAL)
             isFlickable = (newKeyType != KeyType.NORMAL),
             drawableResId = newDrawableResId,
-            rowSpan = currentRowSpan,
-            colSpan = currentColSpan
+            rowSpan = if (isFlexibleSizeEditing) {
+                currentRowSpanUnits.toCellSpanCeilFromGridUnits()
+            } else {
+                currentRowSpan
+            },
+            colSpan = if (isFlexibleSizeEditing) {
+                currentColumnSpanUnits.toCellSpanCeilFromGridUnits()
+            } else {
+                currentColSpan
+            }
         )
 
-        viewModel.updateKeyAndMappings(
+        val updated = viewModel.updateKeyAndMappings(
             updatedKey,
             newFlickMap,
             newTwoStepMap,
             newLongPressFlickMap,
             newTwoStepLongPressMap,
-            newCircularFlickMaps
+            newCircularFlickMaps,
+            flexibleRowSpanUnits = currentRowSpanUnits.takeIf { isFlexibleSizeEditing },
+            flexibleColumnSpanUnits = currentColumnSpanUnits.takeIf { isFlexibleSizeEditing }
         )
-        findNavController().popBackStack()
+        if (updated) {
+            findNavController().popBackStack()
+        }
     }
 
     override fun onDestroyView() {

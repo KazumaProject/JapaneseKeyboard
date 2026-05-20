@@ -19,6 +19,7 @@ import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
 import com.kazumaproject.custom_keyboard.data.swapKeyPlacements
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
+import com.kazumaproject.custom_keyboard.data.withCompatibleSpanFrom
 import com.kazumaproject.custom_keyboard.data.withCanonicalFlexibleBounds
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -902,13 +903,16 @@ class KeyboardEditorViewModel @Inject constructor(
         twoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>,
         longPressFlickMap: Map<FlickDirection, String>,
         twoStepLongPressMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>,
-        circularFlickMaps: List<Map<CircularFlickDirection, FlickAction>> = emptyList()
-    ) {
+        circularFlickMaps: List<Map<CircularFlickDirection, FlickAction>> = emptyList(),
+        flexibleRowSpanUnits: Int? = null,
+        flexibleColumnSpanUnits: Int? = null
+    ): Boolean {
         val keyId = newKeyData.keyId ?: run {
             Timber.e("FATAL: updateKeyAndMappings received a KeyData with a null keyId!")
-            return
+            return false
         }
 
+        var didUpdate = false
         _uiState.update { currentState ->
             val layout = currentState.layout
 
@@ -951,21 +955,37 @@ class KeyboardEditorViewModel @Inject constructor(
                 // a full key (rowSpanUnits = 2) the next time the user opens
                 // the key editor.
                 //
-                // Resize/move of a flexible item happens through dedicated
-                // placement-mode flows (PlacingNewKey / MovingExistingItem)
-                // which write GridPlacement directly. Plain label/action/
-                // flick edits via KeyEditorFragment must keep
-                // `item.placement` untouched.
+                // Size edits from KeyEditorFragment pass span values in the
+                // same half-cell unit space as GridPlacement. If no flexible
+                // span is provided, plain label/action/flick edits must keep
+                // item.placement untouched.
+                val newPlacement = oldItem.placement.copy(
+                    rowSpanUnits = flexibleRowSpanUnits ?: oldItem.placement.rowSpanUnits,
+                    columnSpanUnits = flexibleColumnSpanUnits ?: oldItem.placement.columnSpanUnits
+                )
+                val updatedKeyData = newKeyData.withCompatibleSpanFrom(newPlacement)
                 val updatedItems = layout.items.map { item ->
                     if (item is KeyItem && item.id == oldItem.id) {
-                        item.copy(keyData = newKeyData)
+                        item.copy(
+                            keyData = updatedKeyData,
+                            placement = newPlacement
+                        )
                     } else {
                         item
                     }
                 }
 
+                if (hasPlacementIssues(updatedItems, layout.rowUnitCount, layout.columnUnitCount)) {
+                    return@update currentState
+                }
+
                 val canonicalLayout = layout.copyWithItems(updatedItems).withCanonicalFlexibleBounds()
-                if (hasPlacementIssues(updatedItems, canonicalLayout.rowUnitCount, canonicalLayout.columnUnitCount)) {
+                if (hasPlacementIssues(
+                        canonicalLayout.items,
+                        canonicalLayout.rowUnitCount,
+                        canonicalLayout.columnUnitCount
+                    )
+                ) {
                     return@update currentState
                 }
 
@@ -976,6 +996,7 @@ class KeyboardEditorViewModel @Inject constructor(
                     longPressFlickKeyMaps = finalLongPressFlickMaps,
                     twoStepLongPressKeyMaps = finalTwoStepLongPressMaps
                 )
+                didUpdate = true
                 return@update currentState.copy(layout = newLayout)
             }
 
@@ -1010,8 +1031,10 @@ class KeyboardEditorViewModel @Inject constructor(
                 longPressFlickKeyMaps = finalLongPressFlickMaps,
                 twoStepLongPressKeyMaps = finalTwoStepLongPressMaps
             )
+            didUpdate = true
             currentState.copy(layout = newLayout)
         }
+        return didUpdate
     }
 
     private fun applyUpdatedMappings(
