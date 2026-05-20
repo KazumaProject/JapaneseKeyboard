@@ -17,6 +17,7 @@ import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
+import com.kazumaproject.custom_keyboard.data.isPlacementOverlapping
 import com.kazumaproject.custom_keyboard.data.swapKeyPlacements
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.data.withCompatibleSpanFrom
@@ -673,6 +674,9 @@ class KeyboardEditorViewModel @Inject constructor(
     private fun KeyboardLayoutItem.matchesEditorItemId(selectedId: String): Boolean =
         id == selectedId || (this is KeyItem && keyData.keyId == selectedId)
 
+    private fun KeyboardLayoutItem.matchesAnyIdentifier(identifiers: Set<String>): Boolean =
+        id in identifiers || (this is KeyItem && keyData.keyId?.let { it in identifiers } == true)
+
     private fun KeyboardLayout.removeMappingsForDeletedItem(item: KeyboardLayoutItem): KeyboardLayout {
         if (item !is KeyItem) return this
         val removedKeyIds = buildSet {
@@ -963,20 +967,51 @@ class KeyboardEditorViewModel @Inject constructor(
                     rowSpanUnits = flexibleRowSpanUnits ?: oldItem.placement.rowSpanUnits,
                     columnSpanUnits = flexibleColumnSpanUnits ?: oldItem.placement.columnSpanUnits
                 )
+                if (
+                    newPlacement.rowSpanUnits <= 0 ||
+                    newPlacement.columnSpanUnits <= 0 ||
+                    newPlacement.rowUnits < 0 ||
+                    newPlacement.columnUnits < 0 ||
+                    newPlacement.rowUnits + newPlacement.rowSpanUnits > layout.rowUnitCount ||
+                    newPlacement.columnUnits + newPlacement.columnSpanUnits > layout.columnUnitCount
+                ) {
+                    return@update currentState
+                }
+
+                val targetIdentifiers = setOfNotNull(
+                    oldItem.id,
+                    oldItem.keyData.keyId,
+                    keyId
+                )
+                val crushedItems = layout.items.filter { item ->
+                    !item.matchesAnyIdentifier(targetIdentifiers) &&
+                            isPlacementOverlapping(newPlacement, item.placement)
+                }
+                val crushedItemIds = crushedItems.map { it.id }.toSet()
+                val crushedKeyIdentifiers = crushedItems
+                    .filterIsInstance<KeyItem>()
+                    .flatMap { item -> listOfNotNull(item.id, item.keyData.keyId) }
+                    .toSet()
                 val updatedKeyData = newKeyData.withCompatibleSpanFrom(newPlacement)
-                val updatedItems = layout.items.map { item ->
-                    if (item is KeyItem && item.id == oldItem.id) {
-                        item.copy(
-                            keyData = updatedKeyData,
-                            placement = newPlacement
-                        )
-                    } else {
-                        item
+                val updatedItems = layout.items.mapNotNull { item ->
+                    when {
+                        item.id in crushedItemIds -> null
+                        item is KeyItem && item.matchesAnyIdentifier(targetIdentifiers) -> {
+                            item.copy(
+                                keyData = updatedKeyData,
+                                placement = newPlacement
+                            )
+                        }
+                        else -> item
                     }
                 }
 
-                if (hasPlacementIssues(updatedItems, layout.rowUnitCount, layout.columnUnitCount)) {
-                    return@update currentState
+                crushedKeyIdentifiers.forEach { crushedKeyId ->
+                    finalFlickMaps.remove(crushedKeyId)
+                    finalCircularFlickMaps.remove(crushedKeyId)
+                    finalTwoStepMaps.remove(crushedKeyId)
+                    finalLongPressFlickMaps.remove(crushedKeyId)
+                    finalTwoStepLongPressMaps.remove(crushedKeyId)
                 }
 
                 val canonicalLayout = layout.copyWithItems(updatedItems).withCanonicalFlexibleBounds()

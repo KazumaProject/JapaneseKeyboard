@@ -173,7 +173,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun flexibleKeyEdit_keepsHalfWidthPlacementAfterLabelOnlyEdit() {
+    fun flexibleKeyEdit_labelOnlyEditKeepsHalfWidthPlacement() {
         val vm = viewModel()
         vm.applyTemplate(
             layoutFromItems(
@@ -184,13 +184,13 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         )
         val before = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
 
-        vm.updateKeyAndMappings(
+        assertTrue(vm.updateKeyAndMappings(
             newKeyData = before.keyData.copy(label = "H", action = KeyAction.Text("H")),
             flickMap = emptyMap(),
             twoStepMap = emptyMap(),
             longPressFlickMap = emptyMap(),
             twoStepLongPressMap = emptyMap()
-        )
+        ))
 
         val after = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
         assertEquals(1, before.placement.columnSpanUnits)
@@ -200,7 +200,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun flexibleKeyEdit_keepsHalfHeightPlacementAfterLabelOnlyEdit() {
+    fun flexibleKeyEdit_labelOnlyEditKeepsHalfHeightPlacement() {
         val vm = viewModel()
         vm.applyTemplate(
             layoutFromItems(
@@ -211,13 +211,13 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         )
         val before = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
 
-        vm.updateKeyAndMappings(
+        assertTrue(vm.updateKeyAndMappings(
             newKeyData = before.keyData.copy(label = "H", action = KeyAction.Text("H")),
             flickMap = emptyMap(),
             twoStepMap = emptyMap(),
             longPressFlickMap = emptyMap(),
             twoStepLongPressMap = emptyMap()
-        )
+        ))
 
         val after = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
         assertEquals(1, before.placement.rowSpanUnits)
@@ -227,7 +227,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
-    fun flexibleKeyEdit_rejectsResizeThatOverlapsAnotherItemAndKeepsMappingsUntouched() {
+    fun flexibleKeyEdit_resizeOnePointFiveCrushesPartiallyOverlappedKey() {
         val vm = viewModel()
         vm.applyTemplate(
             layoutFromItems(
@@ -238,26 +238,159 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
                 columnUnitCount = 4,
                 rowUnitCount = 2,
                 isFlexiblePlacementLayout = true
-            ).copy(flickKeyMaps = mapOf("a" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("a")))))
+            ).copy(
+                flickKeyMaps = mapOf(
+                    "a" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("a"))),
+                    "b" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("b")))
+                )
+            )
         )
         val beforeLayout = vm.uiState.value.layout
         val target = beforeLayout.items.filterIsInstance<KeyItem>().first { it.id == "a" }
 
-        vm.updateKeyAndMappings(
+        val success = vm.updateKeyAndMappings(
             newKeyData = target.keyData.copy(label = "A"),
             flickMap = mapOf(FlickDirection.TAP to FlickAction.Input("A")),
             twoStepMap = emptyMap(),
             longPressFlickMap = emptyMap(),
             twoStepLongPressMap = emptyMap(),
             flexibleRowSpanUnits = 2,
-            flexibleColumnSpanUnits = 4
+            flexibleColumnSpanUnits = 3
         )
 
-        assertEquals(beforeLayout, vm.uiState.value.layout)
+        val afterLayout = vm.uiState.value.layout
+        assertTrue(success)
+        assertEquals(3, item(afterLayout, "a").placement.columnSpanUnits)
+        assertTrue(afterLayout.items.none { it.id == "b" })
+        assertTrue(afterLayout.keys.none { it.keyId == "b" })
+        assertFalse(afterLayout.flickKeyMaps.containsKey("b"))
+        assertValidFlexibleLayout(afterLayout)
     }
 
     @Test
-    fun flexibleKeyEdit_rejectsResizeOutsideCurrentBounds() {
+    fun flexibleKeyEdit_resizeTwoCellsCrushesOverlappedKeyAndRemovesMappings() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            layoutFromItems(
+                items = listOf(
+                    keyItem("a", GridPlacement(0, 0, 2, 2)),
+                    keyItem("b", GridPlacement(0, 2, 2, 2))
+                ),
+                columnUnitCount = 4,
+                rowUnitCount = 2,
+                isFlexiblePlacementLayout = true
+            ).copy(
+                flickKeyMaps = mapOf("b" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("b")))),
+                circularFlickKeyMaps = mapOf("b" to listOf(mapOf(CircularFlickDirection.TAP to FlickAction.Input("b")))),
+                twoStepFlickKeyMaps = mapOf(
+                    "b" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.RIGHT to "b"))
+                ),
+                longPressFlickKeyMaps = mapOf("b" to mapOf(FlickDirection.UP to "b")),
+                twoStepLongPressKeyMaps = mapOf(
+                    "b" to mapOf(TfbiFlickDirection.TAP to mapOf(TfbiFlickDirection.LEFT to "b"))
+                )
+            )
+        )
+        val target = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().first { it.id == "a" }
+
+        assertTrue(
+            vm.updateKeyAndMappings(
+                newKeyData = target.keyData.copy(label = "A"),
+                flickMap = emptyMap(),
+                twoStepMap = emptyMap(),
+                longPressFlickMap = emptyMap(),
+                twoStepLongPressMap = emptyMap(),
+                flexibleRowSpanUnits = 2,
+                flexibleColumnSpanUnits = 4
+            )
+        )
+
+        val afterLayout = vm.uiState.value.layout
+        assertEquals(4, item(afterLayout, "a").placement.columnSpanUnits)
+        assertTrue(afterLayout.items.none { it.id == "b" })
+        assertTrue(afterLayout.keys.none { it.keyId == "b" })
+        assertFalse(afterLayout.flickKeyMaps.containsKey("b"))
+        assertFalse(afterLayout.circularFlickKeyMaps.containsKey("b"))
+        assertFalse(afterLayout.twoStepFlickKeyMaps.containsKey("b"))
+        assertFalse(afterLayout.longPressFlickKeyMaps.containsKey("b"))
+        assertFalse(afterLayout.twoStepLongPressKeyMaps.containsKey("b"))
+        assertValidFlexibleLayout(afterLayout)
+    }
+
+    @Test
+    fun flexibleKeyEdit_resizeOnePointFiveCrushesOverlappedSpacer() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            layoutFromItems(
+                items = listOf(
+                    keyItem("a", GridPlacement(0, 0, 2, 2)),
+                    SpacerItem("spacer", GridPlacement(0, 2, 2, 2))
+                ),
+                columnUnitCount = 4,
+                rowUnitCount = 2,
+                isFlexiblePlacementLayout = true
+            ).copy(
+                flickKeyMaps = mapOf("a" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("a"))))
+            )
+        )
+        val target = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single()
+
+        assertTrue(
+            vm.updateKeyAndMappings(
+                newKeyData = target.keyData.copy(label = "A"),
+                flickMap = mapOf(FlickDirection.TAP to FlickAction.Input("A")),
+                twoStepMap = emptyMap(),
+                longPressFlickMap = emptyMap(),
+                twoStepLongPressMap = emptyMap(),
+                flexibleRowSpanUnits = 2,
+                flexibleColumnSpanUnits = 3
+            )
+        )
+
+        val afterLayout = vm.uiState.value.layout
+        assertEquals(3, item(afterLayout, "a").placement.columnSpanUnits)
+        assertTrue(afterLayout.items.none { it.id == "spacer" })
+        assertTrue(afterLayout.flickKeyMaps.containsKey("a"))
+        assertValidFlexibleLayout(afterLayout)
+    }
+
+    @Test
+    fun flexibleKeyEdit_resizeKeepsNonOverlappedItems() {
+        val vm = viewModel()
+        vm.applyTemplate(
+            layoutFromItems(
+                items = listOf(
+                    keyItem("a", GridPlacement(0, 0, 2, 2)),
+                    keyItem("b", GridPlacement(0, 2, 2, 2)),
+                    keyItem("c", GridPlacement(0, 4, 2, 2))
+                ),
+                columnUnitCount = 6,
+                rowUnitCount = 2,
+                isFlexiblePlacementLayout = true
+            )
+        )
+        val target = vm.uiState.value.layout.items.filterIsInstance<KeyItem>().first { it.id == "a" }
+
+        assertTrue(
+            vm.updateKeyAndMappings(
+                newKeyData = target.keyData.copy(label = "A"),
+                flickMap = emptyMap(),
+                twoStepMap = emptyMap(),
+                longPressFlickMap = emptyMap(),
+                twoStepLongPressMap = emptyMap(),
+                flexibleRowSpanUnits = 2,
+                flexibleColumnSpanUnits = 3
+            )
+        )
+
+        val afterLayout = vm.uiState.value.layout
+        assertTrue(afterLayout.items.none { it.id == "b" })
+        assertEquals(GridPlacement(0, 4, 2, 2), item(afterLayout, "c").placement)
+        assertValidFlexibleLayout(afterLayout)
+    }
+
+    @Test
+    fun flexibleKeyEdit_rejectsResizeOutsideBounds() {
         val vm = viewModel()
         vm.applyTemplate(
             singleKeyLayout(
@@ -271,7 +404,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         val beforeLayout = vm.uiState.value.layout
         val target = beforeLayout.items.filterIsInstance<KeyItem>().single()
 
-        vm.updateKeyAndMappings(
+        assertFalse(vm.updateKeyAndMappings(
             newKeyData = target.keyData.copy(label = "A", colSpan = 2),
             flickMap = emptyMap(),
             twoStepMap = emptyMap(),
@@ -279,7 +412,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
             twoStepLongPressMap = emptyMap(),
             flexibleRowSpanUnits = 2,
             flexibleColumnSpanUnits = 4
-        )
+        ))
 
         assertEquals(beforeLayout, vm.uiState.value.layout)
     }
@@ -299,7 +432,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         val beforeLayout = vm.uiState.value.layout
         val target = beforeLayout.items.filterIsInstance<KeyItem>().single()
 
-        vm.updateKeyAndMappings(
+        assertFalse(vm.updateKeyAndMappings(
             newKeyData = target.keyData.copy(label = "A"),
             flickMap = emptyMap(),
             twoStepMap = emptyMap(),
@@ -307,7 +440,7 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
             twoStepLongPressMap = emptyMap(),
             flexibleRowSpanUnits = 0,
             flexibleColumnSpanUnits = 2
-        )
+        ))
 
         assertEquals(beforeLayout, vm.uiState.value.layout)
     }
@@ -468,6 +601,55 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
         assertEquals(2, afterKey.colSpan)
         assertEquals(4, vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single().placement.rowSpanUnits)
         assertEquals(4, vm.uiState.value.layout.items.filterIsInstance<KeyItem>().single().placement.columnSpanUnits)
+    }
+
+    @Test
+    fun legacyLayout_keyResizeStillCrushesOverlappedKeys() {
+        val vm = viewModel()
+        val keyA = KeyData(
+            label = "a",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.Text("a"),
+            keyType = KeyType.NORMAL,
+            keyId = "key_a"
+        )
+        val keyB = KeyData(
+            label = "b",
+            row = 0,
+            column = 1,
+            isFlickable = false,
+            action = KeyAction.Text("b"),
+            keyType = KeyType.NORMAL,
+            keyId = "key_b"
+        )
+        vm.applyTemplate(
+            KeyboardLayout(
+                keys = listOf(keyA, keyB),
+                flickKeyMaps = mapOf(
+                    "key_a" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("a"))),
+                    "key_b" to listOf(mapOf(FlickDirection.TAP to FlickAction.Input("b")))
+                ),
+                columnCount = 2,
+                rowCount = 1
+            )
+        )
+
+        assertTrue(
+            vm.updateKeyAndMappings(
+                newKeyData = keyA.copy(label = "A", colSpan = 2),
+                flickMap = mapOf(FlickDirection.TAP to FlickAction.Input("A")),
+                twoStepMap = emptyMap(),
+                longPressFlickMap = emptyMap(),
+                twoStepLongPressMap = emptyMap()
+            )
+        )
+
+        val afterLayout = vm.uiState.value.layout
+        assertTrue(afterLayout.keys.any { it.keyId == "key_a" && it.colSpan == 2 })
+        assertTrue(afterLayout.keys.none { it.keyId == "key_b" })
+        assertFalse(afterLayout.flickKeyMaps.containsKey("key_b"))
     }
 
     @Test
