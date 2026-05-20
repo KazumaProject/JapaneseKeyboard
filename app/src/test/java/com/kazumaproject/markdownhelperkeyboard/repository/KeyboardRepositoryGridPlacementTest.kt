@@ -69,6 +69,53 @@ class KeyboardRepositoryGridPlacementTest {
     }
 
     @Test
+    fun convertRoundTrip_preservesFlexibleSpanUnits() {
+        val half = KeyData(
+            label = "h",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.Text("h"),
+            keyType = KeyType.NORMAL,
+            isSpecialKey = false,
+            keyId = "half_key",
+            rowSpan = 1,
+            colSpan = 2
+        )
+        val layout = KeyboardLayout(
+            keys = listOf(half),
+            flickKeyMaps = emptyMap(),
+            columnCount = 2,
+            rowCount = 1,
+            items = listOf(
+                KeyItem(
+                    id = "half_key",
+                    keyData = half,
+                    placement = GridPlacement(
+                        rowUnits = 0,
+                        columnUnits = 0,
+                        rowSpanUnits = 1,
+                        columnSpanUnits = 3
+                    )
+                )
+            ),
+            columnUnitCount = 4,
+            rowUnitCount = 2
+        )
+
+        val dbKeys = convertToDbKeys(layout)
+        val restored = convertToUiLayout(dbKeys)
+        val restoredItem = restored.items.filterIsInstance<KeyItem>().single()
+
+        assertEquals(1, dbKeys.single().rowSpanUnits)
+        assertEquals(3, dbKeys.single().columnSpanUnits)
+        assertEquals(1, restoredItem.placement.rowSpanUnits)
+        assertEquals(3, restoredItem.placement.columnSpanUnits)
+        assertEquals(1, restored.keys.single().rowSpan)
+        assertEquals(2, restored.keys.single().colSpan)
+    }
+
+    @Test
     fun convertToUiModel_fallsBackTextActionOnlyForNormalNonSpecialKeys() {
         val normal = keyDefinition(
             identifier = "normal_key",

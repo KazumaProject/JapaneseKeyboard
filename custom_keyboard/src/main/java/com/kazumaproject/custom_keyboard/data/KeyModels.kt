@@ -109,6 +109,21 @@ data class GridPlacement(
     val columnSpanUnits: Int = 2
 )
 
+fun Int.toCellSpanCeilFromGridUnits(): Int =
+    (this + 1) / 2
+
+fun GridPlacement.compatibleRowSpan(): Int =
+    rowSpanUnits.toCellSpanCeilFromGridUnits()
+
+fun GridPlacement.compatibleColumnSpan(): Int =
+    columnSpanUnits.toCellSpanCeilFromGridUnits()
+
+fun KeyData.withCompatibleSpanFrom(placement: GridPlacement): KeyData =
+    copy(
+        rowSpan = placement.compatibleRowSpan(),
+        colSpan = placement.compatibleColumnSpan()
+    )
+
 sealed interface KeyboardLayoutItem {
     val id: String
     val placement: GridPlacement
