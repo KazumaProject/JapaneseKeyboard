@@ -3,6 +3,19 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyIconRef
+import com.kazumaproject.custom_keyboard.data.KeyIconType
+
+private fun iconRefFromDb(iconType: String?, iconValue: String?): KeyIconRef? {
+    val type = KeyIconType.fromDbValue(iconType) ?: return null
+    return when (type) {
+        KeyIconType.ACTION_DEFAULT -> KeyIconRef.ActionDefault
+        KeyIconType.DRAWABLE_RESOURCE_NAME,
+        KeyIconType.USER_IMAGE_FILE -> iconValue
+            ?.takeIf { it.isNotBlank() }
+            ?.let { KeyIconRef(type, it) }
+    }
+}
 
 private fun KeyAction.circularLabel(actionValue: String?): String? {
     return when (this) {
@@ -21,8 +34,10 @@ private fun KeyAction.circularLabel(actionValue: String?): String? {
  * DBから取得したFlickMappingを、UIで扱うFlickActionに変換します。
  */
 fun FlickMapping.toFlickAction(): FlickAction {
+    val iconRef = iconRefFromDb(iconType, iconValue)
     val action = when (this.actionType) {
-        "INPUT_TEXT" -> return FlickAction.Input(this.actionValue ?: "")
+        "INPUT_TEXT" -> return FlickAction.Input(this.actionValue ?: "", icon = iconRef)
+        "DoNothing" -> KeyAction.DoNothing
         "DELETE" -> KeyAction.Delete
         "BACKSPACE" -> KeyAction.Backspace
         "SPACE" -> KeyAction.Space
@@ -66,7 +81,7 @@ fun FlickMapping.toFlickAction(): FlickAction {
         else -> null
     }
     return if (action != null) {
-        FlickAction.Action(action, label = action.circularLabel(this.actionValue))
+        FlickAction.Action(action, label = action.circularLabel(this.actionValue), icon = iconRef)
     } else if (this.actionType.startsWith("INPUT_")) {
         // 将来的なINPUT_*アクションのために
         FlickAction.Input(this.actionValue ?: "")
@@ -76,8 +91,10 @@ fun FlickMapping.toFlickAction(): FlickAction {
 }
 
 fun CircularFlickMapping.toFlickAction(): FlickAction {
+    val iconRef = iconRefFromDb(iconType, iconValue)
     val action = when (this.actionType) {
-        "INPUT_TEXT" -> return FlickAction.Input(this.actionValue ?: "")
+        "INPUT_TEXT" -> return FlickAction.Input(this.actionValue ?: "", icon = iconRef)
+        "DoNothing" -> KeyAction.DoNothing
         "DELETE" -> KeyAction.Delete
         "BACKSPACE" -> KeyAction.Backspace
         "SPACE" -> KeyAction.Space
@@ -121,7 +138,7 @@ fun CircularFlickMapping.toFlickAction(): FlickAction {
         else -> null
     }
     return if (action != null) {
-        FlickAction.Action(action, label = action.circularLabel(this.actionValue))
+        FlickAction.Action(action, label = action.circularLabel(this.actionValue), icon = iconRef)
     } else if (this.actionType.startsWith("INPUT_")) {
         FlickAction.Input(this.actionValue ?: "")
     } else {
@@ -138,6 +155,7 @@ fun FlickAction.toDbStrings(): Pair<String, String?> {
         is FlickAction.Input -> "INPUT_TEXT" to this.char
         is FlickAction.Action -> when (val action = this.action) {
             is KeyAction.InputText -> "INPUT_TEXT" to action.text
+            KeyAction.DoNothing -> "DoNothing" to null
             KeyAction.Delete -> "DELETE" to null
             KeyAction.Backspace -> "BACKSPACE" to null
             KeyAction.Space -> "SPACE" to null

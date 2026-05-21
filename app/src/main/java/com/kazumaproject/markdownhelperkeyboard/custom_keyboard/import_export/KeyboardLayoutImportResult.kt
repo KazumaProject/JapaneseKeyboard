@@ -109,4 +109,11 @@ sealed class KeyboardLayoutImportWarning {
         val layoutIndex: Int,
         val fieldName: String
     ) : KeyboardLayoutImportWarning()
+
+    data class IconOverrideIgnored(
+        val layoutIndex: Int,
+        val itemKind: String,
+        val itemIndex: Int,
+        val reason: String
+    ) : KeyboardLayoutImportWarning()
 }

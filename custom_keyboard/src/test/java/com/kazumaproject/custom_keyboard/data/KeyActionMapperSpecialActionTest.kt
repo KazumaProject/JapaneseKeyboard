@@ -13,7 +13,8 @@ class KeyActionMapperSpecialActionTest {
             KeyAction.ForceHalfWidthSpace to "ForceHalfWidthSpace",
             KeyAction.ForceFullWidthSpace to "ForceFullWidthSpace",
             KeyAction.MoveCursorUp to "MoveCursorUp",
-            KeyAction.MoveCursorDown to "MoveCursorDown"
+            KeyAction.MoveCursorDown to "MoveCursorDown",
+            KeyAction.DoNothing to "DoNothing"
         )
 
         cases.forEach { (action, saved) ->

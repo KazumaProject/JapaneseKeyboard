@@ -8194,14 +8194,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
             override fun onPress(action: KeyAction) {
+                if (action == KeyAction.DoNothing) return
                 handleKeyPressFeedback(getKeySoundType(action))
             }
 
             override fun onActionLongPress(action: KeyAction) {
-                vibrate()
-                clearDeleteBufferWithView()
+                if (action != KeyAction.DoNothing) {
+                    vibrate()
+                    clearDeleteBufferWithView()
+                }
                 Timber.d("onActionLongPress: $action")
                 when (action) {
+                    KeyAction.DoNothing -> Unit
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {
                         // 現在のモードに応じて次のモードを決定
@@ -8401,6 +8405,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             override fun onActionUpAfterLongPress(action: KeyAction) {
                 Timber.d("onActionUpAfterLongPress: $action")
                 when (action) {
+                    KeyAction.DoNothing -> Unit
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
@@ -8481,8 +8486,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             override fun onFlickActionLongPress(action: KeyAction) {
                 Timber.d("onFlickActionLongPress: $action")
-                vibrate()
+                if (action != KeyAction.DoNothing) vibrate()
                 when (action) {
+                    KeyAction.DoNothing -> Unit
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
@@ -8612,9 +8618,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
-                vibrate()
+                if (action != KeyAction.DoNothing) vibrate()
                 Timber.d("onFlickActionUpAfterLongPress: $action $isFlick")
                 when (action) {
+                    KeyAction.DoNothing -> Unit
                     KeyAction.Backspace -> {}
                     KeyAction.ChangeInputMode -> {}
                     KeyAction.Confirm -> {}
@@ -8909,13 +8916,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
-                vibrate()
+                if (action != KeyAction.DoNothing) vibrate()
 
                 Timber.d("onAction: $action $isFlick")
                 if (!shouldPreserveDeleteHistoryForAction(action)) {
                     clearDeleteBufferWithView()
                 }
                 when (action) {
+                    KeyAction.DoNothing -> Unit
                     is KeyAction.Text -> {
                         val text = action.text
                         Timber.d("onAction Text: [$text] [${qwertyMode.value}] [$isDefaultRomajiHenkanMap]")
@@ -10173,7 +10181,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyAction.Delete,
             KeyAction.DeleteUntilSymbol,
             KeyAction.DeleteAfterCursorUntilSymbol,
-            KeyAction.UndoLastDelete -> true
+            KeyAction.UndoLastDelete,
+            KeyAction.DoNothing -> true
 
             else -> false
         }

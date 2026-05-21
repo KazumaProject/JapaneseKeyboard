@@ -44,6 +44,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyIconResolver
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
@@ -423,7 +424,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         )
 
         val oldView = info.view
-        val newViewIsIcon = newKeyData.isSpecialKey && newKeyData.drawableResId != null
+        val newViewIsIcon = KeyIconResolver.hasIcon(newKeyData)
         val newViewIsText = !newViewIsIcon
 
         val oldViewIsIcon = oldView is AppCompatImageButton
@@ -455,6 +456,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     fun updateKeyIconByAction(action: KeyAction, @DrawableRes drawableResId: Int) {
         dynamicKeyMap.values
             .filter { it.keyData.action == action }
+            .filter { !KeyIconResolver.hasIconOverride(it.keyData) }
             .forEach { info ->
                 if (info.view is AppCompatImageButton) {
                     (info.view as AppCompatImageButton).setImageResource(drawableResId)
@@ -852,11 +854,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         val isDarkTheme = context.isDarkThemeOn()
         val commonCornerRadius = dpToPx(8).toFloat()
 
-        val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
+        val keyView: View = if (KeyIconResolver.hasIcon(keyData)) {
             AppCompatImageButton(context).apply {
                 isFocusable = false
                 elevation = 0f
-                setImageResource(keyData.drawableResId)
+                KeyIconResolver.setImage(this, keyData)
                 contentDescription = keyData.label
                 scaleType = android.widget.ImageView.ScaleType.MATRIX
 
@@ -1977,7 +1979,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun updateKeyVisuals(view: View, keyData: KeyData) {
         when (view) {
             is AppCompatImageButton -> {
-                keyData.drawableResId?.let { view.setImageResource(it) }
+                KeyIconResolver.setImage(view, keyData)
                 applyImageButtonSizing(view, keyData)
                 view.contentDescription = keyData.label
                 view.isPressed = keyData.isHiLighted

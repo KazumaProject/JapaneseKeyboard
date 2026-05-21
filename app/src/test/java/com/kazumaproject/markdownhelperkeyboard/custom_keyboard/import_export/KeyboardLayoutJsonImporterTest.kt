@@ -990,6 +990,106 @@ class KeyboardLayoutJsonImporterTest {
         """.trimIndent()
     }
 
+    @Test
+    fun parse_withDrawableResourceNameIcon_keepsIconOverride() {
+        val json = """
+            {
+              "schemaVersion": 2,
+              "layouts": [
+                {
+                  "layout": {
+                    "layoutId": 1,
+                    "name": "Icons",
+                    "columnCount": 1,
+                    "rowCount": 1,
+                    "stableId": "stable-icons"
+                  },
+                  "keysWithFlicks": [
+                    {
+                      "key": {
+                        "keyId": 1,
+                        "ownerLayoutId": 1,
+                        "label": "",
+                        "row": 0,
+                        "column": 0,
+                        "rowSpan": 1,
+                        "colSpan": 1,
+                        "keyType": "NORMAL",
+                        "isSpecialKey": true,
+                        "keyIdentifier": "special",
+                        "action": "Delete",
+                        "iconType": "DRAWABLE_RESOURCE_NAME",
+                        "iconValue": "keyboard_24px"
+                      },
+                      "flicks": []
+                    }
+                  ],
+                  "spacers": []
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val layout = KeyboardLayoutJsonImporter.parse(json).layoutsOrThrow().single()
+        val key = layout.keysWithFlicks.single().key
+
+        assertEquals("DRAWABLE_RESOURCE_NAME", key.iconType)
+        assertEquals("keyboard_24px", key.iconValue)
+    }
+
+    @Test
+    fun parse_withMissingDrawableResourceNameIcon_warnsAndDropsIconOverride() {
+        val json = """
+            {
+              "schemaVersion": 2,
+              "layouts": [
+                {
+                  "layout": {
+                    "layoutId": 1,
+                    "name": "Icons",
+                    "columnCount": 1,
+                    "rowCount": 1,
+                    "stableId": "stable-icons"
+                  },
+                  "keysWithFlicks": [
+                    {
+                      "key": {
+                        "keyId": 1,
+                        "ownerLayoutId": 1,
+                        "label": "",
+                        "row": 0,
+                        "column": 0,
+                        "rowSpan": 1,
+                        "colSpan": 1,
+                        "keyType": "NORMAL",
+                        "isSpecialKey": true,
+                        "keyIdentifier": "special",
+                        "action": "Delete",
+                        "iconType": "DRAWABLE_RESOURCE_NAME",
+                        "iconValue": "missing_drawable"
+                      },
+                      "flicks": []
+                    }
+                  ],
+                  "spacers": []
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val result = KeyboardLayoutJsonImporter.parse(json)
+        val layout = result.layoutsOrThrow().single()
+        val warnings = when (result) {
+            is KeyboardLayoutImportResult.Success -> result.warnings
+            is KeyboardLayoutImportResult.PartialSuccess -> result.warnings
+            is KeyboardLayoutImportResult.Failure -> emptyList()
+        }
+
+        assertEquals(null, layout.keysWithFlicks.single().key.iconType)
+        assertEquals(null, layout.keysWithFlicks.single().key.iconValue)
+        assertTrue(warnings.any { it is KeyboardLayoutImportWarning.IconOverrideIgnored })
+    }
+
     private fun KeyboardLayoutImportResult.layoutsOrThrow(): List<ImportableKeyboardLayout> {
         return when (this) {
             is KeyboardLayoutImportResult.Success -> layouts

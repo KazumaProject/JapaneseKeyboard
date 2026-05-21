@@ -26,6 +26,7 @@ enum class KeyboardLayoutUsageMode(val serializedName: String) {
  */
 sealed class KeyAction {
     data object Cancel : KeyAction()
+    data object DoNothing : KeyAction()
 
     // 文字列入力系
     data class InputText(val text: String) : KeyAction()
@@ -86,6 +87,29 @@ sealed class KeyAction {
     data object VoiceInput : KeyAction()
 }
 
+enum class KeyIconType(val dbValue: String) {
+    ACTION_DEFAULT("ACTION_DEFAULT"),
+    DRAWABLE_RESOURCE_NAME("DRAWABLE_RESOURCE_NAME"),
+    USER_IMAGE_FILE("USER_IMAGE_FILE");
+
+    companion object {
+        fun fromDbValue(value: String?): KeyIconType? =
+            entries.firstOrNull { it.dbValue == value }
+    }
+}
+
+data class KeyIconRef(
+    val type: KeyIconType,
+    val value: String? = null
+) {
+    fun isOverride(): Boolean =
+        type == KeyIconType.DRAWABLE_RESOURCE_NAME || type == KeyIconType.USER_IMAGE_FILE
+
+    companion object {
+        val ActionDefault = KeyIconRef(KeyIconType.ACTION_DEFAULT)
+    }
+}
+
 data class KeyData(
     val label: String,
     val row: Int,
@@ -96,6 +120,7 @@ data class KeyData(
     val rowSpan: Int = 1,
     val colSpan: Int = 1,
     @DrawableRes val drawableResId: Int? = null,
+    val icon: KeyIconRef? = null,
     val isSpecialKey: Boolean = false,
     val isHiLighted: Boolean = false,
     val keyId: String? = null,
