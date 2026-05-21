@@ -90,6 +90,23 @@ class SumireSpecialKeyActionEditorViewModelTest {
     }
 
     @Test
+    fun doNothingIsSavedAsExplicitKeyActionAndDefaultStillDeletesOverride() = runTest(dispatcher) {
+        val repository = FakeSumireSpecialKeyDataSource()
+        val viewModel = viewModel(repository)
+        advanceUntilIdle()
+
+        viewModel.setKeyAction(SumireSpecialKeyDirection.TAP, KeyAction.DoNothing)
+        viewModel.setKeyAction(SumireSpecialKeyDirection.UP, KeyAction.Delete)
+        viewModel.setDefault(SumireSpecialKeyDirection.UP)
+        viewModel.save()
+        advanceUntilIdle()
+
+        assertEquals(listOf("TAP"), repository.upserts.map { it.direction })
+        assertEquals(listOf("DoNothing"), repository.upserts.map { it.actionString })
+        assertTrue(repository.deletedDirections.map { it.direction }.contains(SumireSpecialKeyDirection.UP))
+    }
+
+    @Test
     fun legacyNoneAndInputTextRecordsAreReadWithoutCrashing() = runTest(dispatcher) {
         val repository = FakeSumireSpecialKeyDataSource()
         repository.keyOverrides.value = listOf(

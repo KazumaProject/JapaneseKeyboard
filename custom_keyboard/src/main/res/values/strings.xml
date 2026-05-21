@@ -6,6 +6,7 @@
     <string name="flick_right">Flick Right</string>
     <string name="flick_bottom">Flick Down</string>
     <string name="action_delete">Delete</string>
+    <string name="action_do_nothing">Do nothing</string>
     <string name="action_space">Space</string>
     <string name="action_force_half_width_space">Half-width space</string>
     <string name="action_force_full_width_space">Full-width space</string>

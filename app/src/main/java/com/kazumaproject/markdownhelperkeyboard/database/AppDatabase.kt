@@ -79,7 +79,7 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         SumireSpecialKeyActionOverrideEntity::class,
         SumireSpecialKeyPlacementOverrideEntity::class,
     ],
-    version = 35,
+    version = 36,
     exportSchema = false
 )
 @TypeConverters(
@@ -900,6 +900,17 @@ abstract class AppDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        val MIGRATION_35_36 = object : Migration(35, 36) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `iconType` TEXT")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `iconValue` TEXT")
+                db.execSQL("ALTER TABLE `flick_mappings` ADD COLUMN `iconType` TEXT")
+                db.execSQL("ALTER TABLE `flick_mappings` ADD COLUMN `iconValue` TEXT")
+                db.execSQL("ALTER TABLE `circular_flick_mappings` ADD COLUMN `iconType` TEXT")
+                db.execSQL("ALTER TABLE `circular_flick_mappings` ADD COLUMN `iconValue` TEXT")
             }
         }
     }
