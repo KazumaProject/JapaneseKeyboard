@@ -88,6 +88,10 @@ data class KeyDefinitionDto(
     val isSpecialKey: Boolean? = null,
     @SerializedName("drawableResId")
     val drawableResId: Int? = null,
+    @SerializedName("iconType")
+    val iconType: String? = null,
+    @SerializedName("iconValue")
+    val iconValue: String? = null,
     @SerializedName("action")
     val action: String? = null,
     @SerializedName("rowUnits")
@@ -110,7 +114,11 @@ data class FlickMappingDto(
     @SerializedName("actionType")
     val actionType: String? = null,
     @SerializedName("actionValue")
-    val actionValue: String? = null
+    val actionValue: String? = null,
+    @SerializedName("iconType")
+    val iconType: String? = null,
+    @SerializedName("iconValue")
+    val iconValue: String? = null
 )
 
 data class CircularFlickMappingDto(
@@ -123,7 +131,11 @@ data class CircularFlickMappingDto(
     @SerializedName("actionType")
     val actionType: String? = null,
     @SerializedName("actionValue")
-    val actionValue: String? = null
+    val actionValue: String? = null,
+    @SerializedName("iconType")
+    val iconType: String? = null,
+    @SerializedName("iconValue")
+    val iconValue: String? = null
 )
 
 data class TwoStepFlickMappingDto(

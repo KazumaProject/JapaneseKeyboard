@@ -22,6 +22,11 @@ object KeyActionMapper {
     fun getDisplayActions(context: Context): List<DisplayAction> {
         return listOf(
             DisplayAction(
+                KeyAction.DoNothing,
+                context.getString(R.string.action_do_nothing),
+                com.kazumaproject.core.R.drawable.remove
+            ),
+            DisplayAction(
                 KeyAction.Delete,
                 context.getString(R.string.action_delete),
                 com.kazumaproject.core.R.drawable.backspace_24px
@@ -183,6 +188,7 @@ object KeyActionMapper {
     // KeyActionオブジェクトをDB保存用の文字列に変換
     fun fromKeyAction(keyAction: KeyAction?): String? {
         return when (keyAction) {
+            is KeyAction.DoNothing -> "DoNothing"
             is KeyAction.Delete -> "Delete"
             is KeyAction.Backspace -> "Backspace"
             is KeyAction.Space -> "Space"
@@ -244,6 +250,7 @@ object KeyActionMapper {
             return KeyAction.InputText(actionString.removePrefix(INPUT_TEXT_PREFIX))
         }
         return when (actionString) {
+            "DoNothing" -> KeyAction.DoNothing
             "Delete" -> KeyAction.Delete
             "Backspace" -> KeyAction.Backspace
             "Space" -> KeyAction.Space

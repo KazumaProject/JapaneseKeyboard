@@ -1,6 +1,11 @@
 package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui
 
 import android.Manifest
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
+import android.net.Uri
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.view.Menu
@@ -9,6 +14,10 @@ import android.view.MenuItem
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.AdapterView
+import android.widget.ImageView
+import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -28,6 +37,10 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyIconBuiltInDrawable
+import com.kazumaproject.custom_keyboard.data.KeyIconRef
+import com.kazumaproject.custom_keyboard.data.KeyIconResolver
+import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.compatibleColumnSpan
@@ -54,7 +67,10 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.File
+import java.util.UUID
 import javax.inject.Inject
+import kotlin.math.max
 
 private enum class OutputEditMode {
     NORMAL,
@@ -107,6 +123,10 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var customKeyboardTargets: List<CustomKeyboardLayout> = emptyList()
     private var customKeyboardTargetOptions: List<CustomKeyboardTargetOption> = emptyList()
     private var selectedTargetCustomKeyboardStableId: String? = null
+    private var selectedIconRef: KeyIconRef? = null
+    private var originalIconRef: KeyIconRef? = null
+    private val pendingUserIconPaths = mutableSetOf<String>()
+    private var didSaveKey = false
 
     private var currentColSpan: Int = 1
     private var currentRowSpan: Int = 1
@@ -374,6 +394,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
         binding.keyActionSpinner.doAfterTextChanged {
             updateCustomKeyboardTargetVisibility()
+            refreshIconPreview()
             updateDoneButtonState()
         }
 
@@ -400,6 +421,16 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 updateDoneButtonState()
             }
             updateDoneButtonState()
+        }
+
+        binding.buttonChooseBuiltinIcon.setOnClickListener {
+            showBuiltInIconPicker()
+        }
+        binding.buttonChooseImageIcon.setOnClickListener {
+            pickImageIcon.launch("image/*")
+        }
+        binding.buttonClearIconOverride.setOnClickListener {
+            replaceSelectedIcon(null)
         }
 
         binding.btnColPlus.setOnClickListener {
@@ -459,6 +490,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         binding.textSelectedDirection.isVisible = false
         binding.textCharInputLayout.isVisible = false
         currentCellMode = null
+        updateIconOverrideVisibility()
 
         if (isFlick) {
             if (currentSpecialFlickItems.isEmpty()) {
@@ -492,6 +524,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         binding.textSelectedDirection.isVisible = false
         binding.textCharInputLayout.isVisible = false
         binding.specialFlickEditorGroup.isVisible = false
+        updateIconOverrideVisibility()
         currentCellMode = null
 
         if (isCircular) {
@@ -957,6 +990,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
 
             val key = currentKeyData!!
+            selectedIconRef = key.icon?.takeIf { it.isOverride() }
+            originalIconRef = selectedIconRef
 
             isFlexibleSizeEditing = state.layout.usesFlexiblePlacement() && selectedKeyItem != null
             if (isFlexibleSizeEditing) {
@@ -1147,6 +1182,175 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
 
         }
+
+    private val pickImageIcon =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            if (uri != null) {
+                saveUserImageIcon(uri)
+            }
+        }
+
+    private fun updateIconOverrideVisibility() {
+        val isSpecial = binding.keyTypeChipGroup.checkedChipId == R.id.chip_special
+        binding.keyIconOverrideGroup.isVisible = isSpecial
+        if (isSpecial) refreshIconPreview()
+    }
+
+    private fun replaceSelectedIcon(newIcon: KeyIconRef?) {
+        selectedIconRef = newIcon
+        refreshIconPreview()
+        updateDoneButtonState()
+    }
+
+    private fun refreshIconPreview() {
+        val icon = selectedIconRef
+        val fallback = selectedSingleDisplayAction()?.iconResId
+            ?: (currentSpecialFlickItems.firstOrNull { it.direction == FlickDirection.TAP }?.action
+                ?.let { displayActionForAction(it)?.iconResId })
+            ?: currentKeyData?.drawableResId
+        val previewKey = KeyData(
+            label = "",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            isSpecialKey = true,
+            drawableResId = fallback,
+            icon = icon
+        )
+        KeyIconResolver.setImage(binding.keyIconPreview, previewKey)
+        binding.keyIconStatus.text = when (icon?.type) {
+            KeyIconType.DRAWABLE_RESOURCE_NAME ->
+                getString(R.string.custom_key_icon_builtin, icon.value.orEmpty())
+            KeyIconType.USER_IMAGE_FILE -> getString(R.string.custom_key_icon_user_image)
+            KeyIconType.ACTION_DEFAULT,
+            null -> getString(R.string.custom_key_icon_action_default)
+        }
+    }
+
+    private fun showBuiltInIconPicker() {
+        val icons = KeyIconBuiltInDrawable.allowList
+        val adapter = object : ArrayAdapter<com.kazumaproject.custom_keyboard.data.BuiltInKeyIcon>(
+            requireContext(),
+            android.R.layout.simple_list_item_1,
+            icons
+        ) {
+            override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
+                val context = parent.context
+                val row = (convertView as? android.widget.LinearLayout) ?: android.widget.LinearLayout(context).apply {
+                    orientation = android.widget.LinearLayout.HORIZONTAL
+                    gravity = android.view.Gravity.CENTER_VERTICAL
+                    setPadding(24, 16, 24, 16)
+                    addView(ImageView(context).apply {
+                        id = android.R.id.icon
+                        layoutParams = android.widget.LinearLayout.LayoutParams(48, 48)
+                        scaleType = ImageView.ScaleType.CENTER_INSIDE
+                    })
+                    addView(TextView(context).apply {
+                        id = android.R.id.text1
+                        layoutParams = android.widget.LinearLayout.LayoutParams(
+                            0,
+                            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT,
+                            1f
+                        ).apply { marginStart = 24 }
+                    })
+                }
+                val item = getItem(position)!!
+                row.findViewById<ImageView>(android.R.id.icon).setImageResource(item.resId)
+                row.findViewById<TextView>(android.R.id.text1).text = item.resourceName
+                return row
+            }
+        }
+        AlertDialog.Builder(requireContext())
+            .setTitle(R.string.custom_key_icon_builtin_dialog_title)
+            .setAdapter(adapter) { dialog, which ->
+                val item = icons[which]
+                replaceSelectedIcon(KeyIconRef(KeyIconType.DRAWABLE_RESOURCE_NAME, item.resourceName))
+                dialog.dismiss()
+            }
+            .show()
+    }
+
+    private fun saveUserImageIcon(uri: Uri) {
+        val context = requireContext()
+        runCatching {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(it, null, bounds)
+            }
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) error("not an image")
+            val maxSourceSize = 2048
+            var sample = 1
+            while (bounds.outWidth / sample > maxSourceSize || bounds.outHeight / sample > maxSourceSize) {
+                sample *= 2
+            }
+            val decoded = context.contentResolver.openInputStream(uri)?.use {
+                BitmapFactory.decodeStream(
+                    it,
+                    null,
+                    BitmapFactory.Options().apply { inSampleSize = sample }
+                )
+            } ?: error("decode failed")
+            val oriented = decoded.applyExifOrientation(uri)
+            val normalized = oriented.scaleToIconBitmap(maxSize = 128)
+            val directory = File(context.filesDir, KeyIconResolver.USER_ICON_DIRECTORY).apply {
+                mkdirs()
+            }
+            val file = File(directory, "${UUID.randomUUID()}.png")
+            file.outputStream().use { out ->
+                normalized.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            val relativePath = "${KeyIconResolver.USER_ICON_DIRECTORY}/${file.name}"
+            pendingUserIconPaths += relativePath
+            if (decoded !== oriented) decoded.recycle()
+            if (oriented !== normalized) oriented.recycle()
+            replaceSelectedIcon(
+                KeyIconRef(
+                    KeyIconType.USER_IMAGE_FILE,
+                    relativePath
+                )
+            )
+        }.onFailure { error ->
+            Timber.w(error, "Failed to save custom key icon")
+            Toast.makeText(context, R.string.custom_key_icon_image_error, Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun Bitmap.applyExifOrientation(uri: Uri): Bitmap {
+        val orientation = requireContext().contentResolver.openInputStream(uri)?.use {
+            ExifInterface(it).getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            )
+        } ?: ExifInterface.ORIENTATION_NORMAL
+        val degrees = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
+            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+            else -> 0f
+        }
+        if (degrees == 0f) return this
+        return Bitmap.createBitmap(this, 0, 0, width, height, Matrix().apply { postRotate(degrees) }, true)
+    }
+
+    private fun Bitmap.scaleToIconBitmap(maxSize: Int): Bitmap {
+        val longest = max(width, height)
+        if (longest <= maxSize) return this
+        val scale = maxSize.toFloat() / longest.toFloat()
+        return Bitmap.createScaledBitmap(
+            this,
+            (width * scale).toInt().coerceAtLeast(1),
+            (height * scale).toInt().coerceAtLeast(1),
+            true
+        )
+    }
+
+    private fun deleteUserIconFile(relativePath: String?) {
+        relativePath
+            ?.takeIf { it.startsWith("${KeyIconResolver.USER_ICON_DIRECTORY}/") && !it.contains("..") }
+            ?.let { File(requireContext().filesDir, it) }
+            ?.takeIf { it.isFile }
+            ?.delete()
+    }
 
     private fun onDone() {
         val originalKey = currentKeyData ?: return
@@ -1358,6 +1562,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
         }
 
+        val savedIconRef = selectedIconRef?.takeIf { isSpecial }
         val updatedKey = originalKey.copy(
             label = newLabel,
             keyType = newKeyType,
@@ -1366,6 +1571,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // IMPORTANT: special flick should still be flickable (KeyType != NORMAL)
             isFlickable = (newKeyType != KeyType.NORMAL),
             drawableResId = newDrawableResId,
+            icon = savedIconRef,
             rowSpan = if (isFlexibleSizeEditing) {
                 currentRowSpanUnits.toCellSpanCeilFromGridUnits()
             } else {
@@ -1389,12 +1595,29 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             flexibleColumnSpanUnits = currentColumnSpanUnits.takeIf { isFlexibleSizeEditing }
         )
         if (updated) {
+            didSaveKey = true
+            val selectedUserPath = savedIconRef
+                ?.takeIf { it.type == KeyIconType.USER_IMAGE_FILE }
+                ?.value
+            if (originalIconRef?.type == KeyIconType.USER_IMAGE_FILE &&
+                originalIconRef?.value != selectedUserPath
+            ) {
+                deleteUserIconFile(originalIconRef?.value)
+            }
+            pendingUserIconPaths
+                .filter { it != selectedUserPath }
+                .forEach { deleteUserIconFile(it) }
+            pendingUserIconPaths.clear()
             findNavController().popBackStack()
         }
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        if (!didSaveKey) {
+            pendingUserIconPaths.forEach { deleteUserIconFile(it) }
+            pendingUserIconPaths.clear()
+        }
         (activity as? AppCompatActivity)?.supportActionBar?.apply {
             title = null
             setDisplayHomeAsUpEnabled(false)

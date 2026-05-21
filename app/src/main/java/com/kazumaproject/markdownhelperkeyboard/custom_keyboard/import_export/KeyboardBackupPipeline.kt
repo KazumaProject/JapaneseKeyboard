@@ -7,6 +7,8 @@ import com.google.gson.reflect.TypeToken
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyIconBuiltInDrawable
+import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
@@ -309,6 +311,18 @@ object KeyboardBackupNormalizer {
                 keyType = enumValueOrNull<KeyType>(keyDto.keyType) ?: KeyType.NORMAL,
                 isSpecialKey = keyDto.isSpecialKey ?: false,
                 drawableResId = keyDto.drawableResId,
+                iconType = normalizedIconType(
+                    iconType = keyDto.iconType,
+                    iconValue = keyDto.iconValue,
+                    layoutIndex = layoutIndex,
+                    itemKind = "key",
+                    itemIndex = keyIndex,
+                    warnings = warnings
+                ),
+                iconValue = normalizedIconValue(
+                    iconType = keyDto.iconType,
+                    iconValue = keyDto.iconValue
+                ),
                 keyIdentifier = identifier,
                 action = remapKeyAction(
                     action = keyDto.action,
@@ -446,7 +460,16 @@ object KeyboardBackupNormalizer {
             stateIndex = flick.stateIndex ?: 0,
             flickDirection = direction,
             actionType = remapped.first,
-            actionValue = remapped.second
+            actionValue = remapped.second,
+            iconType = normalizedIconType(
+                iconType = flick.iconType,
+                iconValue = flick.iconValue,
+                layoutIndex = layoutIndex,
+                itemKind = "flick",
+                itemIndex = flickIndex,
+                warnings = warnings
+            ),
+            iconValue = normalizedIconValue(flick.iconType, flick.iconValue)
         )
     }
 
@@ -491,8 +514,63 @@ object KeyboardBackupNormalizer {
             stateIndex = flick.stateIndex ?: 0,
             circularDirection = direction,
             actionType = remapped.first,
-            actionValue = remapped.second
+            actionValue = remapped.second,
+            iconType = normalizedIconType(
+                iconType = flick.iconType,
+                iconValue = flick.iconValue,
+                layoutIndex = layoutIndex,
+                itemKind = "circularFlick",
+                itemIndex = flickIndex,
+                warnings = warnings
+            ),
+            iconValue = normalizedIconValue(flick.iconType, flick.iconValue)
         )
+    }
+
+    private fun normalizedIconType(
+        iconType: String?,
+        iconValue: String?,
+        layoutIndex: Int,
+        itemKind: String,
+        itemIndex: Int,
+        warnings: MutableList<KeyboardLayoutImportWarning>
+    ): String? {
+        val type = KeyIconType.fromDbValue(iconType) ?: return null
+        return when (type) {
+            KeyIconType.ACTION_DEFAULT -> type.dbValue
+            KeyIconType.DRAWABLE_RESOURCE_NAME -> {
+                if (KeyIconBuiltInDrawable.isAllowed(iconValue)) {
+                    type.dbValue
+                } else {
+                    warnings += KeyboardLayoutImportWarning.IconOverrideIgnored(
+                        layoutIndex = layoutIndex,
+                        itemKind = itemKind,
+                        itemIndex = itemIndex,
+                        reason = "unknown drawable resource name"
+                    )
+                    null
+                }
+            }
+            KeyIconType.USER_IMAGE_FILE -> {
+                warnings += KeyboardLayoutImportWarning.IconOverrideIgnored(
+                    layoutIndex = layoutIndex,
+                    itemKind = itemKind,
+                    itemIndex = itemIndex,
+                    reason = "user image files are not embedded in JSON backups"
+                )
+                null
+            }
+        }
+    }
+
+    private fun normalizedIconValue(iconType: String?, iconValue: String?): String? {
+        val type = KeyIconType.fromDbValue(iconType) ?: return null
+        return when (type) {
+            KeyIconType.ACTION_DEFAULT -> null
+            KeyIconType.DRAWABLE_RESOURCE_NAME ->
+                iconValue?.takeIf { KeyIconBuiltInDrawable.isAllowed(it) }
+            KeyIconType.USER_IMAGE_FILE -> null
+        }
     }
 
     private fun normalizeTwoStep(
