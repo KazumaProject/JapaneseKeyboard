@@ -565,6 +565,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
         } else {
             AutoSizeButton(context).apply {
+                val label = KeyIconResolver.resolvedLabelForRendering(keyData)
                 isFocusable = false; isClickable = true
                 isAllCaps = false
                 minimumHeight = 0
@@ -575,11 +576,11 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 setMinWidth(0)
                 includeFontPadding = false
                 setPadding(0, 0, 0, 0)
-                if (keyData.label.contains("\n")) {
-                    val parts = keyData.label.split("\n", limit = 2)
+                if (label.contains("\n")) {
+                    val parts = label.split("\n", limit = 2)
                     val primaryText = parts[0]
                     val secondaryText = parts.getOrNull(1) ?: ""
-                    val spannable = SpannableString(keyData.label)
+                    val spannable = SpannableString(label)
                     spannable.setSpan(
                         AbsoluteSizeSpan(spToPx(16f)),
                         0,
@@ -590,7 +591,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                         spannable.setSpan(
                             AbsoluteSizeSpan(spToPx(10f)),
                             primaryText.length + 1,
-                            keyData.label.length,
+                            label.length,
                             Spannable.SPAN_INCLUSIVE_INCLUSIVE
                         )
                     }
@@ -599,7 +600,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                     this.gravity = Gravity.CENTER
                     this.text = spannable
                 } else {
-                    text = keyData.label
+                    text = label
                     gravity = Gravity.CENTER
                 }
 

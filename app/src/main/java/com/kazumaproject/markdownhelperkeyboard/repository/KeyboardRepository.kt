@@ -1018,7 +1018,7 @@ class KeyboardRepository @Inject constructor(
 
     private fun drawableResIdForAction(action: KeyAction): Int? {
         return when (action) {
-            KeyAction.DoNothing -> com.kazumaproject.core.R.drawable.remove
+            KeyAction.DoNothing -> null
             KeyAction.Backspace -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.ChangeInputMode -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
