@@ -83,7 +83,11 @@ class SumireSpecialKeyRefreshTapTest {
         )
         assertNotSame(base, refreshed)
         assertEquals(
-            FlickAction.Action(KeyAction.Enter, label = "確定"),
+            FlickAction.Action(
+                KeyAction.Enter,
+                label = "確定",
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            ),
             refreshed[FlickDirection.TAP]
         )
         // 他の direction はそのまま保持される
@@ -112,7 +116,7 @@ class SumireSpecialKeyRefreshTapTest {
     }
 
     @Test
-    fun keepsExistingDrawableWhenKeyDataDrawableIsNull() {
+    fun actionDrawableReplacesExistingDrawableWhenKeyDataDrawableIsNull() {
         val base = mapOf(
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.NewLine, label = "改行", drawableResId = 42
@@ -132,7 +136,11 @@ class SumireSpecialKeyRefreshTapTest {
             )
         )
         assertEquals(
-            FlickAction.Action(KeyAction.Enter, label = "確定", drawableResId = 42),
+            FlickAction.Action(
+                KeyAction.Enter,
+                label = "確定",
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            ),
             refreshed[FlickDirection.TAP]
         )
     }

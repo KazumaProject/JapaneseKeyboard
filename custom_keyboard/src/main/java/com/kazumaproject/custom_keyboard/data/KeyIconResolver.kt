@@ -21,6 +21,18 @@ object KeyIconResolver {
     fun hasIconOverride(keyData: KeyData): Boolean =
         keyData.icon?.isOverride() == true
 
+    fun shouldTintIcon(icon: KeyIconRef?, fallbackResId: Int?): Boolean {
+        return when (icon?.type) {
+            KeyIconType.USER_IMAGE_FILE -> false
+            KeyIconType.DRAWABLE_RESOURCE_NAME -> true
+            KeyIconType.ACTION_DEFAULT,
+            null -> fallbackResId != null
+        }
+    }
+
+    fun shouldTintIcon(keyData: KeyData): Boolean =
+        shouldTintIcon(keyData.icon, keyData.drawableResId)
+
     fun setImage(imageView: ImageView, keyData: KeyData) {
         val drawable = resolveDrawable(imageView.context, keyData.icon, keyData.drawableResId)
         if (drawable != null) {

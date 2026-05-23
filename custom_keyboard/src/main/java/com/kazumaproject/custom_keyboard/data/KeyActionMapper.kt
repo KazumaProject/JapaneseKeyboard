@@ -24,7 +24,7 @@ object KeyActionMapper {
             DisplayAction(
                 KeyAction.DoNothing,
                 context.getString(R.string.action_do_nothing),
-                com.kazumaproject.core.R.drawable.remove
+                iconResIdForAction(KeyAction.DoNothing)
             ),
             DisplayAction(
                 KeyAction.Delete,
@@ -183,6 +183,44 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.settings_voice_24px
             )
         )
+    }
+
+    fun iconResIdForAction(action: KeyAction?): Int? {
+        return when (action) {
+            KeyAction.DoNothing -> null
+            KeyAction.Delete -> com.kazumaproject.core.R.drawable.backspace_24px
+            KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+            KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+            KeyAction.Space,
+            KeyAction.ForceHalfWidthSpace,
+            KeyAction.ForceFullWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
+            KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
+            KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
+            KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
+            KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
+            KeyAction.ToggleDakuten,
+            KeyAction.ToggleDakutenOnly,
+            KeyAction.ToggleHandakutenOnly -> com.kazumaproject.core.R.drawable.kana_small
+            KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.english_small
+            KeyAction.ShiftKey -> com.kazumaproject.core.R.drawable.shift_24px
+            KeyAction.CapLockKey -> com.kazumaproject.core.R.drawable.caps_lock
+            KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+            KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_24px
+            KeyAction.MoveCustomKeyboardTab -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
+            is KeyAction.MoveToCustomKeyboard -> com.kazumaproject.core.R.drawable.keyboard_24px
+            KeyAction.MoveCursorLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+            KeyAction.MoveCursorUp -> com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24
+            KeyAction.MoveCursorDown -> com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
+            KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
+            KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
+            KeyAction.SwitchToNumberLayout -> com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+            KeyAction.ToggleKatakana -> com.kazumaproject.core.R.drawable.katakana
+            KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
+            else -> null
+        }
     }
 
     // KeyActionオブジェクトをDB保存用の文字列に変換
