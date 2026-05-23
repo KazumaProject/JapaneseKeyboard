@@ -19,5 +19,7 @@ data class CircularFlickMapping(
     val stateIndex: Int = 0,
     val circularDirection: CircularFlickDirection,
     val actionType: String,
-    val actionValue: String?
+    val actionValue: String?,
+    val iconType: String? = null,
+    val iconValue: String? = null
 )

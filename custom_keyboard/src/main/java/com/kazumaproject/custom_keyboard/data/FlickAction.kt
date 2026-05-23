@@ -12,7 +12,8 @@ sealed class FlickAction {
     data class Input(
         val char: String,
         val label: String? = null,
-        @DrawableRes val drawableResId: Int? = null
+        @DrawableRes val drawableResId: Int? = null,
+        val icon: KeyIconRef? = null
     ) : FlickAction()
 
     /**
@@ -24,5 +25,6 @@ sealed class FlickAction {
         val action: KeyAction,
         val label: String? = null,
         @DrawableRes val drawableResId: Int? = null,
+        val icon: KeyIconRef? = null
     ) : FlickAction()
 }
