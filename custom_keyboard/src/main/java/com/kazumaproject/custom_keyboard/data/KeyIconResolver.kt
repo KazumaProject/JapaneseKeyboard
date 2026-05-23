@@ -16,10 +16,14 @@ object KeyIconResolver {
 
     fun hasIcon(keyData: KeyData): Boolean =
         keyData.isSpecialKey &&
-                (keyData.icon?.isOverride() == true || keyData.drawableResId != null)
+                (keyData.icon?.isOverride() == true ||
+                        (keyData.drawableResId != null && !suppressesDoNothingDefaultContent(keyData)))
 
     fun hasIconOverride(keyData: KeyData): Boolean =
         keyData.icon?.isOverride() == true
+
+    fun resolvedLabelForRendering(keyData: KeyData): String =
+        if (suppressesDoNothingDefaultContent(keyData)) "" else keyData.label
 
     fun shouldTintIcon(icon: KeyIconRef?, fallbackResId: Int?): Boolean {
         return when (icon?.type) {
@@ -31,10 +35,13 @@ object KeyIconResolver {
     }
 
     fun shouldTintIcon(keyData: KeyData): Boolean =
-        shouldTintIcon(keyData.icon, keyData.drawableResId)
+        !suppressesDoNothingDefaultContent(keyData) &&
+                shouldTintIcon(keyData.icon, keyData.drawableResId)
 
     fun setImage(imageView: ImageView, keyData: KeyData) {
-        val drawable = resolveDrawable(imageView.context, keyData.icon, keyData.drawableResId)
+        val fallbackResId = keyData.drawableResId
+            .takeUnless { suppressesDoNothingDefaultContent(keyData) }
+        val drawable = resolveDrawable(imageView.context, keyData.icon, fallbackResId)
         if (drawable != null) {
             imageView.setImageDrawable(drawable)
         } else {
@@ -57,6 +64,11 @@ object KeyIconResolver {
         if (overrideDrawable != null) return overrideDrawable
         return fallbackResId?.let { AppCompatResources.getDrawable(context, it) }
     }
+
+    private fun suppressesDoNothingDefaultContent(keyData: KeyData): Boolean =
+        keyData.isSpecialKey &&
+                keyData.action == KeyAction.DoNothing &&
+                !hasIconOverride(keyData)
 
     private fun loadUserImageDrawable(context: Context, relativePath: String): Drawable? {
         val safePath = relativePath

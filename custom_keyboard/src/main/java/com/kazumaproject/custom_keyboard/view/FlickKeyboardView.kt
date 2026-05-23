@@ -663,20 +663,21 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun applyButtonText(button: AutoSizeButton, keyData: KeyData) {
         val targetTextSizeSp = getKeyTextSizeSp(keyData)
+        val label = KeyIconResolver.resolvedLabelForRendering(keyData)
 
         button.setDefaultTextSize(targetTextSizeSp)
         button.setFlickGuideTextSizeSp(flickGuideTextSizeSp)
         button.setFlickGuideLabels(null)
 
-        if (keyData.label.contains("\n")) {
+        if (label.contains("\n")) {
             button.maxLines = 2
             button.setLineSpacing(0f, 0.9f)
             button.setPadding(0, dpToPx(4), 0, dpToPx(4))
             button.gravity = Gravity.CENTER
-            button.text = buildKeyLabelSpannable(keyData.label, targetTextSizeSp)
+            button.text = buildKeyLabelSpannable(label, targetTextSizeSp)
         } else {
             button.setTextSize(TypedValue.COMPLEX_UNIT_SP, targetTextSizeSp)
-            button.text = keyData.label
+            button.text = label
             button.gravity = Gravity.CENTER
         }
 
