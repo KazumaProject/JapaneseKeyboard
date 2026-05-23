@@ -2162,22 +2162,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (currentInputType in passwordTypesWithOutNumber) {
             if (switchQWERTYPassword == true) {
                 Timber.d("current input type in OnStartView passwordTypesWithOutNumber: [$currentInputType] [$restarting] [${currentInputModeForSession}] [${qwertyMode.value}]")
-                suggestionAdapter?.updateState(
-                    TenKeyQWERTYMode.TenKeyQWERTY, emptyList()
-                )
-                mainLayoutBinding?.let { mainView ->
-                    mainView.apply {
-                        if (isTabletGojuonSurface()) {
-                            tabletView.isVisible = false
-                        } else {
-                            keyboardView.isVisible = false
-                        }
-                        customLayoutDefault.isVisible = false
-                        qwertyView.setRomajiEnglishSwitchKeyVisibility(false)
-                        qwertyView.resetQWERTYKeyboard()
-                        qwertyView.isVisible = true
-                    }
+                currentInputModeForSession = InputMode.ModeEnglish
+                setCurrentQwertyRomajiModeForSession(false)
+                setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+                updateQwertyOnActiveSurface {
+                    resetQWERTYKeyboard(currentInputType.getQWERTYReturnTextInEn())
                 }
+                renderCurrentKeyboardStateOnActiveSurface()
             } else {
                 Timber.d("current input type in OnStartView passwordTypesWithOutNumber else: [$currentInputType] [$restarting]")
                 if (isTabletGojuonSurface()) {
