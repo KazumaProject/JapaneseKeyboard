@@ -25,6 +25,7 @@ import androidx.core.content.ContextCompat
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyIconResolver
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
@@ -534,7 +535,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             else -> dpToPx(3)
         }
 
-        val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
+        val keyView: View = if (KeyIconResolver.hasIcon(keyData)) {
             AppCompatImageButton(context).apply {
                 isFocusable = false; isClickable = true
                 minimumHeight = 0
@@ -545,7 +546,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 adjustViewBounds = false
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
                 elevation = 2f
-                setImageResource(keyData.drawableResId!!)
+                KeyIconResolver.setImage(this, keyData)
                 contentDescription = keyData.label
 
                 // ▼▼▼ 変更点2: InsetDrawable を使用 ▼▼▼
@@ -564,6 +565,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
             }
         } else {
             AutoSizeButton(context).apply {
+                val label = KeyIconResolver.resolvedLabelForRendering(keyData)
                 isFocusable = false; isClickable = true
                 isAllCaps = false
                 minimumHeight = 0
@@ -574,11 +576,11 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 setMinWidth(0)
                 includeFontPadding = false
                 setPadding(0, 0, 0, 0)
-                if (keyData.label.contains("\n")) {
-                    val parts = keyData.label.split("\n", limit = 2)
+                if (label.contains("\n")) {
+                    val parts = label.split("\n", limit = 2)
                     val primaryText = parts[0]
                     val secondaryText = parts.getOrNull(1) ?: ""
-                    val spannable = SpannableString(keyData.label)
+                    val spannable = SpannableString(label)
                     spannable.setSpan(
                         AbsoluteSizeSpan(spToPx(16f)),
                         0,
@@ -589,7 +591,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                         spannable.setSpan(
                             AbsoluteSizeSpan(spToPx(10f)),
                             primaryText.length + 1,
-                            keyData.label.length,
+                            label.length,
                             Spannable.SPAN_INCLUSIVE_INCLUSIVE
                         )
                     }
@@ -598,7 +600,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                     this.gravity = Gravity.CENTER
                     this.text = spannable
                 } else {
-                    text = keyData.label
+                    text = label
                     gravity = Gravity.CENTER
                 }
 

@@ -97,6 +97,8 @@ internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
             keyType = this.key.keyType.name,
             isSpecialKey = this.key.isSpecialKey,
             drawableResId = this.key.drawableResId,
+            iconType = this.key.iconType,
+            iconValue = this.key.iconValue,
             action = this.key.action,
             rowUnits = this.key.rowUnits,
             columnUnits = this.key.columnUnits,
@@ -109,7 +111,9 @@ internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
                 stateIndex = it.stateIndex,
                 flickDirection = it.flickDirection.name,
                 actionType = it.actionType,
-                actionValue = it.actionValue
+                actionValue = it.actionValue,
+                iconType = it.iconType,
+                iconValue = it.iconValue
             )
         },
         circularFlicks = this.circularFlicks.map {
@@ -118,7 +122,9 @@ internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
                 stateIndex = it.stateIndex,
                 circularDirection = it.circularDirection.name,
                 actionType = it.actionType,
-                actionValue = it.actionValue
+                actionValue = it.actionValue,
+                iconType = it.iconType,
+                iconValue = it.iconValue
             )
         },
         twoStepFlicks = this.twoStepFlicks.map {

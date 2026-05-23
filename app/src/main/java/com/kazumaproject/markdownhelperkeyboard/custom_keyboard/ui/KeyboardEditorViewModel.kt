@@ -17,8 +17,10 @@ import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
+import com.kazumaproject.custom_keyboard.data.isPlacementOverlapping
 import com.kazumaproject.custom_keyboard.data.swapKeyPlacements
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
+import com.kazumaproject.custom_keyboard.data.withCompatibleSpanFrom
 import com.kazumaproject.custom_keyboard.data.withCanonicalFlexibleBounds
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -672,6 +674,9 @@ class KeyboardEditorViewModel @Inject constructor(
     private fun KeyboardLayoutItem.matchesEditorItemId(selectedId: String): Boolean =
         id == selectedId || (this is KeyItem && keyData.keyId == selectedId)
 
+    private fun KeyboardLayoutItem.matchesAnyIdentifier(identifiers: Set<String>): Boolean =
+        id in identifiers || (this is KeyItem && keyData.keyId?.let { it in identifiers } == true)
+
     private fun KeyboardLayout.removeMappingsForDeletedItem(item: KeyboardLayoutItem): KeyboardLayout {
         if (item !is KeyItem) return this
         val removedKeyIds = buildSet {
@@ -902,13 +907,16 @@ class KeyboardEditorViewModel @Inject constructor(
         twoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>,
         longPressFlickMap: Map<FlickDirection, String>,
         twoStepLongPressMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>,
-        circularFlickMaps: List<Map<CircularFlickDirection, FlickAction>> = emptyList()
-    ) {
+        circularFlickMaps: List<Map<CircularFlickDirection, FlickAction>> = emptyList(),
+        flexibleRowSpanUnits: Int? = null,
+        flexibleColumnSpanUnits: Int? = null
+    ): Boolean {
         val keyId = newKeyData.keyId ?: run {
             Timber.e("FATAL: updateKeyAndMappings received a KeyData with a null keyId!")
-            return
+            return false
         }
 
+        var didUpdate = false
         _uiState.update { currentState ->
             val layout = currentState.layout
 
@@ -951,21 +959,68 @@ class KeyboardEditorViewModel @Inject constructor(
                 // a full key (rowSpanUnits = 2) the next time the user opens
                 // the key editor.
                 //
-                // Resize/move of a flexible item happens through dedicated
-                // placement-mode flows (PlacingNewKey / MovingExistingItem)
-                // which write GridPlacement directly. Plain label/action/
-                // flick edits via KeyEditorFragment must keep
-                // `item.placement` untouched.
-                val updatedItems = layout.items.map { item ->
-                    if (item is KeyItem && item.id == oldItem.id) {
-                        item.copy(keyData = newKeyData)
-                    } else {
-                        item
+                // Size edits from KeyEditorFragment pass span values in the
+                // same half-cell unit space as GridPlacement. If no flexible
+                // span is provided, plain label/action/flick edits must keep
+                // item.placement untouched.
+                val newPlacement = oldItem.placement.copy(
+                    rowSpanUnits = flexibleRowSpanUnits ?: oldItem.placement.rowSpanUnits,
+                    columnSpanUnits = flexibleColumnSpanUnits ?: oldItem.placement.columnSpanUnits
+                )
+                if (
+                    newPlacement.rowSpanUnits <= 0 ||
+                    newPlacement.columnSpanUnits <= 0 ||
+                    newPlacement.rowUnits < 0 ||
+                    newPlacement.columnUnits < 0 ||
+                    newPlacement.rowUnits + newPlacement.rowSpanUnits > layout.rowUnitCount ||
+                    newPlacement.columnUnits + newPlacement.columnSpanUnits > layout.columnUnitCount
+                ) {
+                    return@update currentState
+                }
+
+                val targetIdentifiers = setOfNotNull(
+                    oldItem.id,
+                    oldItem.keyData.keyId,
+                    keyId
+                )
+                val crushedItems = layout.items.filter { item ->
+                    !item.matchesAnyIdentifier(targetIdentifiers) &&
+                            isPlacementOverlapping(newPlacement, item.placement)
+                }
+                val crushedItemIds = crushedItems.map { it.id }.toSet()
+                val crushedKeyIdentifiers = crushedItems
+                    .filterIsInstance<KeyItem>()
+                    .flatMap { item -> listOfNotNull(item.id, item.keyData.keyId) }
+                    .toSet()
+                val updatedKeyData = newKeyData.withCompatibleSpanFrom(newPlacement)
+                val updatedItems = layout.items.mapNotNull { item ->
+                    when {
+                        item.id in crushedItemIds -> null
+                        item is KeyItem && item.matchesAnyIdentifier(targetIdentifiers) -> {
+                            item.copy(
+                                keyData = updatedKeyData,
+                                placement = newPlacement
+                            )
+                        }
+                        else -> item
                     }
                 }
 
+                crushedKeyIdentifiers.forEach { crushedKeyId ->
+                    finalFlickMaps.remove(crushedKeyId)
+                    finalCircularFlickMaps.remove(crushedKeyId)
+                    finalTwoStepMaps.remove(crushedKeyId)
+                    finalLongPressFlickMaps.remove(crushedKeyId)
+                    finalTwoStepLongPressMaps.remove(crushedKeyId)
+                }
+
                 val canonicalLayout = layout.copyWithItems(updatedItems).withCanonicalFlexibleBounds()
-                if (hasPlacementIssues(updatedItems, canonicalLayout.rowUnitCount, canonicalLayout.columnUnitCount)) {
+                if (hasPlacementIssues(
+                        canonicalLayout.items,
+                        canonicalLayout.rowUnitCount,
+                        canonicalLayout.columnUnitCount
+                    )
+                ) {
                     return@update currentState
                 }
 
@@ -976,6 +1031,7 @@ class KeyboardEditorViewModel @Inject constructor(
                     longPressFlickKeyMaps = finalLongPressFlickMaps,
                     twoStepLongPressKeyMaps = finalTwoStepLongPressMaps
                 )
+                didUpdate = true
                 return@update currentState.copy(layout = newLayout)
             }
 
@@ -1010,8 +1066,10 @@ class KeyboardEditorViewModel @Inject constructor(
                 longPressFlickKeyMaps = finalLongPressFlickMaps,
                 twoStepLongPressKeyMaps = finalTwoStepLongPressMaps
             )
+            didUpdate = true
             currentState.copy(layout = newLayout)
         }
+        return didUpdate
     }
 
     private fun applyUpdatedMappings(

@@ -4,6 +4,7 @@ import android.text.InputType
 import android.view.inputmethod.EditorInfo
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -12,13 +13,27 @@ class InputTypeExtensionTest {
     @Test
     fun textClassPasswordLikeHintTextReturnsTextPassword() {
         listOf(
+            "password",
             "Password",
             "PASSWORD",
-            "PassWord",
             "passwd",
+            "pwd",
+            "passcode",
+            "login_password",
+            "user_password",
+            "current_password",
+            "current-password",
+            "current password",
+            "currentPassword",
+            "currentPasswordInput",
+            "newPassword",
+            "oldPassword",
+            "confirmPassword",
             "パスワード",
             "暗証番号",
-            "暗証",
+            "credential",
+            "credentials",
+            "認証コード",
         ).forEach { hintText ->
             assertEquals(
                 hintText,
@@ -29,10 +44,57 @@ class InputTypeExtensionTest {
     }
 
     @Test
+    fun containsPasswordLikeKeywordMatchesOnlyExplicitPasswordLikeMetadata() {
+        listOf(
+            "password",
+            "Password",
+            "PASSWORD",
+            "passwd",
+            "pwd",
+            "passcode",
+            "login_password",
+            "user_password",
+            "current_password",
+            "current-password",
+            "current password",
+            "currentPassword",
+            "newPassword",
+            "oldPassword",
+            "confirmPassword",
+            "パスワード",
+            "暗証番号",
+            "credential",
+            "credentials",
+            "認証コード",
+        ).forEach { value ->
+            assertTrue(value, containsPasswordLikeKeyword(value))
+        }
+
+        listOf(
+            "pin",
+            "pinned",
+            "shipping",
+            "browser",
+            "webview",
+            "username",
+            "login",
+            "user",
+            "router",
+            "search",
+            "comment",
+            "",
+            "   ",
+        ).forEach { value ->
+            assertFalse(value, containsPasswordLikeKeyword(value))
+        }
+        assertFalse("null", containsPasswordLikeKeyword(null))
+    }
+
+    @Test
     fun textClassPasswordLikeFieldNameReturnsTextPassword() {
         assertEquals(
             InputTypeForIME.TextPassword,
-            editorInfo(fieldName = "password").currentInputType()
+            editorInfo(fieldName = "currentPasswordInput").currentInputType()
         )
     }
 
@@ -40,7 +102,7 @@ class InputTypeExtensionTest {
     fun textClassPasswordLikePrivateImeOptionsReturnsTextPassword() {
         assertEquals(
             InputTypeForIME.TextPassword,
-            editorInfo(privateImeOptions = "router.field=password").currentInputType()
+            editorInfo(privateImeOptions = "router.field=login_password").currentInputType()
         )
     }
 
@@ -56,6 +118,13 @@ class InputTypeExtensionTest {
         assertEquals(
             InputTypeForIME.Text,
             editorInfo(inputType = InputType.TYPE_NULL).currentInputType()
+        )
+        assertEquals(
+            InputTypeForIME.Text,
+            editorInfo(
+                inputType = InputType.TYPE_NULL,
+                hintText = "username"
+            ).currentInputType()
         )
     }
 
@@ -109,7 +178,18 @@ class InputTypeExtensionTest {
 
     @Test
     fun broadPassAndPinWordsAreNotTreatedAsPassword() {
-        listOf("passport", "passenger", "pin").forEach { hintText ->
+        listOf(
+            "pin",
+            "pinned",
+            "shipping",
+            "browser",
+            "webview",
+            "username",
+            "login",
+            "user",
+            "router",
+            "comment",
+        ).forEach { hintText ->
             assertEquals(
                 hintText,
                 InputTypeForIME.Text,

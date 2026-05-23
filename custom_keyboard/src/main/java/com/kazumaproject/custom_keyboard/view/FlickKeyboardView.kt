@@ -43,6 +43,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyIconResolver
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
@@ -414,7 +415,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         )
 
         val oldView = info.view
-        val newViewIsIcon = newKeyData.isSpecialKey && newKeyData.drawableResId != null
+        val newViewIsIcon = KeyIconResolver.hasIcon(newKeyData)
         val newViewIsText = !newViewIsIcon
 
         val oldViewIsIcon = oldView is AppCompatImageButton
@@ -446,9 +447,13 @@ class FlickKeyboardView @JvmOverloads constructor(
     fun updateKeyIconByAction(action: KeyAction, @DrawableRes drawableResId: Int) {
         dynamicKeyMap.values
             .filter { it.keyData.action == action }
+            .filter { !KeyIconResolver.hasIconOverride(it.keyData) }
             .forEach { info ->
                 if (info.view is AppCompatImageButton) {
-                    (info.view as AppCompatImageButton).setImageResource(drawableResId)
+                    (info.view as AppCompatImageButton).apply {
+                        setImageResource(drawableResId)
+                        applyImageButtonTint(this, info.keyData.copy(drawableResId = drawableResId))
+                    }
                 }
             }
     }
@@ -565,6 +570,18 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun applyImageButtonTint(button: AppCompatImageButton, keyData: KeyData) {
+        if (
+            themeMode == "custom" &&
+            keyData.isSpecialKey &&
+            KeyIconResolver.shouldTintIcon(keyData)
+        ) {
+            button.setColorFilter(customSpecialKeyTextColor)
+        } else {
+            button.clearColorFilter()
+        }
+    }
+
     private fun updateImageButtonMatrix(button: AppCompatImageButton, keyData: KeyData) {
         val drawable = button.drawable ?: return
 
@@ -633,20 +650,21 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun applyButtonText(button: AutoSizeButton, keyData: KeyData) {
         val targetTextSizeSp = getKeyTextSizeSp(keyData)
+        val label = KeyIconResolver.resolvedLabelForRendering(keyData)
 
         button.setDefaultTextSize(targetTextSizeSp)
         button.setFlickGuideTextSizeSp(flickGuideTextSizeSp)
         button.setFlickGuideLabels(null)
 
-        if (keyData.label.contains("\n")) {
+        if (label.contains("\n")) {
             button.maxLines = 2
             button.setLineSpacing(0f, 0.9f)
             button.setPadding(0, dpToPx(4), 0, dpToPx(4))
             button.gravity = Gravity.CENTER
-            button.text = buildKeyLabelSpannable(keyData.label, targetTextSizeSp)
+            button.text = buildKeyLabelSpannable(label, targetTextSizeSp)
         } else {
             button.setTextSize(TypedValue.COMPLEX_UNIT_SP, targetTextSizeSp)
-            button.text = keyData.label
+            button.text = label
             button.gravity = Gravity.CENTER
         }
 
@@ -843,11 +861,11 @@ class FlickKeyboardView @JvmOverloads constructor(
         val isDarkTheme = context.isDarkThemeOn()
         val commonCornerRadius = dpToPx(8).toFloat()
 
-        val keyView: View = if (keyData.isSpecialKey && keyData.drawableResId != null) {
+        val keyView: View = if (KeyIconResolver.hasIcon(keyData)) {
             AppCompatImageButton(context).apply {
                 isFocusable = false
                 elevation = 0f
-                setImageResource(keyData.drawableResId)
+                KeyIconResolver.setImage(this, keyData)
                 contentDescription = keyData.label
                 scaleType = android.widget.ImageView.ScaleType.MATRIX
 
@@ -883,7 +901,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                     "custom" -> {
                         if (customBorderEnable) {
                             setDrawableSolidColor(customSpecialKeyColor)
-                            setColorFilter(customSpecialKeyTextColor)
                             setBorder(customBorderColor, borderWidth)
                         } else {
                             val neumorphDrawable = getDynamicNeumorphDrawable(
@@ -911,10 +928,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 innerInsetVertical
                             )
                             background = layerDrawable
-                            setColorFilter(customSpecialKeyTextColor)
                         }
                     }
                 }
+                applyImageButtonTint(this, keyData)
 
                 if (liquidGlassEnable) {
                     setDrawableAlpha(liquidGlassKeyAlphaEnable)
@@ -1826,7 +1843,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun updateKeyVisuals(view: View, keyData: KeyData) {
         when (view) {
             is AppCompatImageButton -> {
-                keyData.drawableResId?.let { view.setImageResource(it) }
+                KeyIconResolver.setImage(view, keyData)
+                applyImageButtonTint(view, keyData)
                 applyImageButtonSizing(view, keyData)
                 view.contentDescription = keyData.label
                 view.isPressed = keyData.isHiLighted
