@@ -265,7 +265,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 binding.flickGridEditorView.updateCellIcon(
                     mode,
                     displayAction?.iconResId,
-                    displayAction?.displayName ?: ""
+                    displayAction?.displayName ?: "",
+                    selectedAction
                 )
                 if (mode.direction == FlickDirection.TAP) {
                     refreshIconPreview()

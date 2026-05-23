@@ -18,6 +18,7 @@ import androidx.annotation.AttrRes
 import androidx.core.content.ContextCompat
 import com.google.android.material.R as MaterialR
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.DisplayActionUi
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingItem
@@ -606,7 +607,10 @@ class FlickGridEditorView @JvmOverloads constructor(
             val action = item?.action
             val displayAction = action?.let { a -> displayActions.displayActionFor(a) }
             // アイコンがあればアイコン、なければdisplayName
-            if (displayAction?.iconResId != null) {
+            if (action == KeyAction.DoNothing) {
+                cellIconResId[pos] = null
+                cellLabels[pos] = ""
+            } else if (displayAction?.iconResId != null) {
                 cellIconResId[pos] = displayAction.iconResId
                 cellLabels[pos] = ""
             } else {
@@ -636,10 +640,20 @@ class FlickGridEditorView @JvmOverloads constructor(
     /**
      * 特殊フリックのセルをアイコンで更新
      */
-    fun updateCellIcon(mode: CellMode.SpecialFlick, iconResId: Int?, displayName: String) {
+    fun updateCellIcon(
+        mode: CellMode.SpecialFlick,
+        iconResId: Int?,
+        displayName: String,
+        action: KeyAction? = null
+    ) {
         val pos = specialFlickDirectionGrid[mode.direction] ?: return
-        cellIconResId[pos] = iconResId
-        cellLabels[pos] = if (iconResId != null) "" else displayName
+        if (action == KeyAction.DoNothing) {
+            cellIconResId[pos] = null
+            cellLabels[pos] = ""
+        } else {
+            cellIconResId[pos] = iconResId
+            cellLabels[pos] = if (iconResId != null) "" else displayName
+        }
         invalidate()
     }
 
