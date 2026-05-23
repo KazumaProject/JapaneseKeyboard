@@ -23,5 +23,7 @@ data class FlickMapping(
     val stateIndex: Int = 0,       // 状態インデックス (例: 「は」「ば」「ぱ」の切り替え)
     val flickDirection: FlickDirection, // フリック方向 (TAP, UP, LEFTなど)
     val actionType: String,        // KeyActionの種類を文字列で保存 (例: "INPUT_TEXT", "DELETE")
-    val actionValue: String?       // actionTypeに対応する値 (例: "あ", "^_^")
+    val actionValue: String?,      // actionTypeに対応する値 (例: "あ", "^_^")
+    val iconType: String? = null,
+    val iconValue: String? = null
 )

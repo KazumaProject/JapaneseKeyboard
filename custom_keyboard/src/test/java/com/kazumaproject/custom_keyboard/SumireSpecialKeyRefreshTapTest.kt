@@ -2,9 +2,13 @@ package com.kazumaproject.custom_keyboard
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.DisplayAction
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.ResolvedSumireSpecialKeyAction
+import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
+import com.kazumaproject.custom_keyboard.data.applyTapOverrideDisplayForDynamicSumireSpecialKey
 import com.kazumaproject.custom_keyboard.data.refreshSumireSpecialKeyTap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotSame
@@ -83,7 +87,11 @@ class SumireSpecialKeyRefreshTapTest {
         )
         assertNotSame(base, refreshed)
         assertEquals(
-            FlickAction.Action(KeyAction.Enter, label = "確定"),
+            FlickAction.Action(
+                KeyAction.Enter,
+                label = "確定",
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            ),
             refreshed[FlickDirection.TAP]
         )
         // 他の direction はそのまま保持される
@@ -112,7 +120,7 @@ class SumireSpecialKeyRefreshTapTest {
     }
 
     @Test
-    fun keepsExistingDrawableWhenKeyDataDrawableIsNull() {
+    fun actionDrawableReplacesExistingDrawableWhenKeyDataDrawableIsNull() {
         val base = mapOf(
             FlickDirection.TAP to FlickAction.Action(
                 KeyAction.NewLine, label = "改行", drawableResId = 42
@@ -132,7 +140,11 @@ class SumireSpecialKeyRefreshTapTest {
             )
         )
         assertEquals(
-            FlickAction.Action(KeyAction.Enter, label = "確定", drawableResId = 42),
+            FlickAction.Action(
+                KeyAction.Enter,
+                label = "確定",
+                drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            ),
             refreshed[FlickDirection.TAP]
         )
     }
@@ -159,5 +171,70 @@ class SumireSpecialKeyRefreshTapTest {
             FlickAction.Action(KeyAction.Enter, label = null, drawableResId = 99),
             refreshed[FlickDirection.TAP]
         )
+    }
+
+    @Test
+    fun doNothingTapRefreshSuppressesDefaultLabelAndDrawable() {
+        val base = mapOf(
+            FlickDirection.TAP to FlickAction.Action(
+                KeyAction.Enter,
+                label = "何もしない",
+                drawableResId = com.kazumaproject.core.R.drawable.remove
+            )
+        )
+        val refreshed = base.refreshSumireSpecialKeyTap(
+            KeyData(
+                label = "何もしない",
+                row = 0,
+                column = 0,
+                isFlickable = false,
+                action = KeyAction.DoNothing,
+                isSpecialKey = true,
+                keyId = "enter_key",
+                keyType = KeyType.CROSS_FLICK,
+                drawableResId = com.kazumaproject.core.R.drawable.remove
+            )
+        )
+
+        assertEquals(
+            FlickAction.Action(KeyAction.DoNothing),
+            refreshed[FlickDirection.TAP]
+        )
+    }
+
+    @Test
+    fun doNothingDynamicTapOverrideSuppressesDefaultLabelAndDrawable() {
+        val keyData = KeyData(
+            label = "確定",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.Enter,
+            isSpecialKey = true,
+            keyId = "enter_key",
+            keyType = KeyType.CROSS_FLICK,
+            drawableResId = com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+        )
+
+        val result = keyData.applyTapOverrideDisplayForDynamicSumireSpecialKey(
+            displayActions = listOf(
+                DisplayAction(
+                    KeyAction.DoNothing,
+                    "何もしない",
+                    com.kazumaproject.core.R.drawable.remove
+                )
+            ),
+            resolve = { _, direction ->
+                if (direction == SumireSpecialKeyDirection.TAP) {
+                    ResolvedSumireSpecialKeyAction.Action(KeyAction.DoNothing)
+                } else {
+                    ResolvedSumireSpecialKeyAction.Default
+                }
+            }
+        )
+
+        assertEquals(KeyAction.DoNothing, result.action)
+        assertEquals("", result.label)
+        assertEquals(null, result.drawableResId)
     }
 }

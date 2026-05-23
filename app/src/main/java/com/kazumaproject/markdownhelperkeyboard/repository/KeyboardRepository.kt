@@ -7,6 +7,10 @@ import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyIconBuiltInDrawable
+import com.kazumaproject.custom_keyboard.data.KeyIconRef
+import com.kazumaproject.custom_keyboard.data.KeyIconResolver
+import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
@@ -51,6 +55,16 @@ private data class DbKeyboardLayoutParts(
     val twoStepLongPressMap: Map<String, List<TwoStepLongPressMappingEntity>>,
     val spacers: List<SpacerDefinition> = emptyList()
 )
+
+private fun FlickAction.iconTypeForDb(): String? = when (this) {
+    is FlickAction.Action -> icon?.type?.dbValue
+    is FlickAction.Input -> icon?.type?.dbValue
+}
+
+private fun FlickAction.iconValueForDb(): String? = when (this) {
+    is FlickAction.Action -> icon?.takeIf { it.isOverride() }?.value
+    is FlickAction.Input -> icon?.takeIf { it.isOverride() }?.value
+}
 
 /**
  * `saveLayout(id = X)` で渡された X が DB 上に存在しなかった場合の例外。
@@ -884,6 +898,7 @@ class KeyboardRepository @Inject constructor(
                 null
             }
 
+            val iconRef = keyIconRefFromDb(dbKey.iconType, dbKey.iconValue)
             val keyData = if (restoredAction == null) {
                 KeyData(
                     label = dbKey.label,
@@ -895,6 +910,7 @@ class KeyboardRepository @Inject constructor(
                     colSpan = dbKey.colSpan,
                     isSpecialKey = dbKey.isSpecialKey,
                     drawableResId = null,
+                    icon = iconRef,
                     keyId = dbKey.keyIdentifier,
                     action = null
                 )
@@ -909,6 +925,7 @@ class KeyboardRepository @Inject constructor(
                     colSpan = dbKey.colSpan,
                     isSpecialKey = dbKey.isSpecialKey,
                     drawableResId = if (dbKey.isSpecialKey) drawableResIdForAction(restoredAction) else null,
+                    icon = iconRef,
                     keyId = dbKey.keyIdentifier,
                     action = restoredAction
                 )
@@ -1001,6 +1018,7 @@ class KeyboardRepository @Inject constructor(
 
     private fun drawableResIdForAction(action: KeyAction): Int? {
         return when (action) {
+            KeyAction.DoNothing -> null
             KeyAction.Backspace -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.ChangeInputMode -> com.kazumaproject.core.R.drawable.backspace_24px
             KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
@@ -1037,6 +1055,19 @@ class KeyboardRepository @Inject constructor(
             KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
             KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px
             else -> null
+        }
+    }
+
+    private fun keyIconRefFromDb(iconType: String?, iconValue: String?): KeyIconRef? {
+        val type = KeyIconType.fromDbValue(iconType) ?: return null
+        return when (type) {
+            KeyIconType.ACTION_DEFAULT -> KeyIconRef.ActionDefault
+            KeyIconType.DRAWABLE_RESOURCE_NAME -> iconValue
+                ?.takeIf { KeyIconBuiltInDrawable.isAllowed(it) }
+                ?.let { KeyIconRef(type, it) }
+            KeyIconType.USER_IMAGE_FILE -> iconValue
+                ?.takeIf { it.startsWith("${KeyIconResolver.USER_ICON_DIRECTORY}/") && !it.contains("..") }
+                ?.let { KeyIconRef(type, it) }
         }
     }
 
@@ -1098,6 +1129,10 @@ class KeyboardRepository @Inject constructor(
                     keyType = keyData.keyType,
                     isSpecialKey = keyData.isSpecialKey,
                     drawableResId = null,
+                    iconType = keyData.icon?.type?.dbValue,
+                    iconValue = keyData.icon
+                        ?.takeIf { it.isOverride() }
+                        ?.value,
                     keyIdentifier = keyIdentifier,
                     action = actionString,
                     rowUnits = placement.rowUnits,
@@ -1115,7 +1150,9 @@ class KeyboardRepository @Inject constructor(
                         stateIndex = stateIndex,
                         flickDirection = direction,
                         actionType = actionType,
-                        actionValue = actionValue
+                        actionValue = actionValue,
+                        iconType = flickAction.iconTypeForDb(),
+                        iconValue = flickAction.iconValueForDb()
                     )
                     flicksMap.getOrPut(keyIdentifier) { mutableListOf() }.add(flick)
                 }
@@ -1129,7 +1166,9 @@ class KeyboardRepository @Inject constructor(
                         stateIndex = stateIndex,
                         circularDirection = direction,
                         actionType = actionType,
-                        actionValue = actionValue
+                        actionValue = actionValue,
+                        iconType = flickAction.iconTypeForDb(),
+                        iconValue = flickAction.iconValueForDb()
                     )
                     circularFlicksMap.getOrPut(keyIdentifier) { mutableListOf() }.add(flick)
                 }

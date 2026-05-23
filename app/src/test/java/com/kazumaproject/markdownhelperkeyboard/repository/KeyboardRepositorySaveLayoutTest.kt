@@ -4,6 +4,8 @@ import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
+import com.kazumaproject.custom_keyboard.data.KeyIconRef
+import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
@@ -236,6 +238,47 @@ class KeyboardRepositorySaveLayoutTest {
         repository.setCurrentLayoutUsageMode(8L, KeyboardLayoutUsageMode.Number)
 
         verify(dao).setLayoutUsageModeExclusive(8L, KeyboardLayoutUsageMode.Number)
+    }
+
+    @Test
+    fun saveLayout_specialKeyPersistsIconOverrideStringsWithoutDrawableResId(): Unit = runBlocking {
+        whenever(dao.getMaxSortOrder()).thenReturn(0)
+        whenever(dao.findLayoutByStableId(any())).thenReturn(null)
+        whenever(
+            dao.insertFullKeyboardLayout(any(), any(), any(), any(), any(), any(), any(), any())
+        ).thenReturn(42L)
+
+        val key = KeyData(
+            label = "",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            keyType = KeyType.NORMAL,
+            isSpecialKey = true,
+            keyId = "special-1",
+            action = KeyAction.Delete,
+            drawableResId = com.kazumaproject.core.R.drawable.backspace_24px,
+            icon = KeyIconRef(KeyIconType.DRAWABLE_RESOURCE_NAME, "keyboard_24px")
+        )
+        val layout = KeyboardLayout(keys = listOf(key), flickKeyMaps = emptyMap(), columnCount = 5, rowCount = 4)
+
+        repository.saveLayout(layout, name = "icons", id = null)
+
+        val keysCaptor = argumentCaptor<List<KeyDefinition>>()
+        verify(dao).insertFullKeyboardLayout(
+            any(),
+            keysCaptor.capture(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any()
+        )
+        val savedKey = keysCaptor.firstValue.single()
+        assertNull(savedKey.drawableResId)
+        assertEquals("DRAWABLE_RESOURCE_NAME", savedKey.iconType)
+        assertEquals("keyboard_24px", savedKey.iconValue)
     }
 
     @Test

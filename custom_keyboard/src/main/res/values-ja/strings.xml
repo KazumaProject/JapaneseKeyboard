@@ -6,6 +6,7 @@
     <string name="flick_right">右フリック</string>
     <string name="flick_bottom">下フリック</string>
     <string name="action_delete">削除</string>
+    <string name="action_do_nothing">何もしない</string>
     <string name="action_space">空白</string>
     <string name="action_force_half_width_space">半角スペース</string>
     <string name="action_force_full_width_space">全角スペース</string>
