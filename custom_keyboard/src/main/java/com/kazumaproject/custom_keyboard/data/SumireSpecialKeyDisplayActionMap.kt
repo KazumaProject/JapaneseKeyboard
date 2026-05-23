@@ -63,7 +63,7 @@ fun KeyData.applyTapOverrideDisplayForDynamicSumireSpecialKey(
     return copy(
         action = action,
         label = displayAction?.displayName ?: label,
-        drawableResId = displayAction?.iconResId ?: drawableResId
+        drawableResId = if (displayAction != null) displayAction.iconResId else drawableResId
     )
 }
 
@@ -101,7 +101,7 @@ fun Map<FlickDirection, FlickAction>.refreshSumireSpecialKeyTap(
     val existingDrawable = (existingTap as? FlickAction.Action)?.drawableResId
 
     val resolvedLabel = keyData.label.takeIf { it.isNotBlank() } ?: existingLabel
-    val resolvedDrawable = keyData.drawableResId ?: existingDrawable
+    val resolvedDrawable = keyData.drawableResId ?: KeyActionMapper.iconResIdForAction(tapAction)
 
     if (existingTapAction == tapAction &&
         existingLabel == resolvedLabel &&

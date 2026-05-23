@@ -2,6 +2,7 @@ package com.kazumaproject.custom_keyboard
 
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.commitCrossFlickAction
+import com.kazumaproject.custom_keyboard.controller.isVisiblePopupAction
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
@@ -58,6 +59,16 @@ class CrossFlickInputControllerActionCommitTest {
         )
 
         assertEquals(listOf(null to FlickDirection.UP_RIGHT_FAR), committed)
+    }
+
+    @Test
+    fun doNothingActionIsNotVisibleInPopup() {
+        assertEquals(false, isVisiblePopupAction(FlickAction.Action(KeyAction.DoNothing)))
+    }
+
+    @Test
+    fun nonDoNothingActionRemainsVisibleInPopup() {
+        assertEquals(true, isVisiblePopupAction(FlickAction.Action(KeyAction.Paste)))
     }
 }
 

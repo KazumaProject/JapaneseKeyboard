@@ -13,6 +13,7 @@
     <string name="custom_key_icon_choose_image">画像を選択</string>
     <string name="custom_key_icon_clear">カスタムアイコンを解除</string>
     <string name="custom_key_icon_builtin_dialog_title">内蔵 drawable を選択</string>
+    <string name="custom_key_icon_builtin_search_hint">drawable 名を検索</string>
     <string name="custom_key_icon_image_error">この画像は使用できませんでした。</string>
     <string name="hardware_keyboard_category_title">物理キーボード</string>
     <string name="keyboard_layouts_label">Sumire キーボード配列</string>

@@ -28,4 +28,21 @@ class KeyActionMapperSpecialActionTest {
         assertEquals("小゛゜", KeyActionMapper.fromKeyAction(KeyAction.ToggleDakuten))
         assertEquals(KeyAction.ToggleDakuten, KeyActionMapper.toKeyAction("小゛゜"))
     }
+
+    @Test
+    fun doNothingDisplayActionHasNoIcon() {
+        assertEquals(null, KeyActionMapper.iconResIdForAction(KeyAction.DoNothing))
+    }
+
+    @Test
+    fun actionFallbackIconsRemainAvailableForDrawableActions() {
+        assertEquals(
+            com.kazumaproject.core.R.drawable.backspace_24px,
+            KeyActionMapper.iconResIdForAction(KeyAction.Delete)
+        )
+        assertEquals(
+            com.kazumaproject.core.R.drawable.keyboard_24px,
+            KeyActionMapper.iconResIdForAction(KeyAction.MoveToCustomKeyboard("target"))
+        )
+    }
 }
