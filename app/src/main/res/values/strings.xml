@@ -13,6 +13,7 @@
     <string name="custom_key_icon_choose_image">Choose image</string>
     <string name="custom_key_icon_clear">Clear custom icon</string>
     <string name="custom_key_icon_builtin_dialog_title">Choose built-in drawable</string>
+    <string name="custom_key_icon_builtin_search_hint">Search drawable names</string>
     <string name="custom_key_icon_image_error">Could not use that image.</string>
     <string name="hardware_keyboard_category_title">物理キーボード</string>
     <string name="keyboard_layouts_label">Sumire keyboard layouts</string>

@@ -441,6 +441,7 @@ class CrossFlickInputController(
         if (direction == FlickDirection.TAP) return
 
         val flickAction = resolveAction(direction) ?: return
+        if (!isVisiblePopupAction(flickAction)) return
         val anchor = anchorView ?: return
         val windowAnchor = resolveWindowAnchor(anchor)
         if (!isAnchorReady(anchor, windowAnchor)) return
@@ -805,6 +806,10 @@ internal fun resolveCrossFlickAction(
         if (action != null) return action
     }
     return null
+}
+
+internal fun isVisiblePopupAction(flickAction: FlickAction): Boolean {
+    return flickAction !is FlickAction.Action || flickAction.action != KeyAction.DoNothing
 }
 
 internal fun FlickDirection.directionCandidates(): List<FlickDirection> {

@@ -267,6 +267,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     displayAction?.iconResId,
                     displayAction?.displayName ?: ""
                 )
+                if (mode.direction == FlickDirection.TAP) {
+                    refreshIconPreview()
+                }
                 updateCustomKeyboardTargetVisibility()
                 updateDoneButtonState()
             }
@@ -502,6 +505,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 currentSpecialFlickItems.toList(),
                 specialFlickDisplayActions
             )
+            refreshIconPreview()
             binding.flickGridEditorView.selectInitialCell()
         } else {
             updateCustomKeyboardTargetVisibility()
@@ -1204,10 +1208,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private fun refreshIconPreview() {
         val icon = selectedIconRef
-        val fallback = selectedSingleDisplayAction()?.iconResId
-            ?: (currentSpecialFlickItems.firstOrNull { it.direction == FlickDirection.TAP }?.action
-                ?.let { displayActionForAction(it)?.iconResId })
-            ?: currentKeyData?.drawableResId
+        val fallback = currentSpecialKeyActionFallbackIconResId()
         val previewKey = KeyData(
             label = "",
             row = 0,
@@ -1227,12 +1228,24 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }
     }
 
+    private fun currentSpecialKeyActionFallbackIconResId(): Int? {
+        if (binding.keyTypeChipGroup.checkedChipId != R.id.chip_special) return null
+        return when (binding.specialCategoryChipGroup.checkedChipId) {
+            R.id.chip_special_flick -> currentSpecialFlickItems
+                .firstOrNull { it.direction == FlickDirection.TAP }
+                ?.action
+                ?.let { displayActionForAction(it)?.iconResId }
+
+            else -> selectedSingleDisplayAction()?.iconResId
+        }
+    }
+
     private fun showBuiltInIconPicker() {
         val icons = KeyIconBuiltInDrawable.allowList
         val adapter = object : ArrayAdapter<com.kazumaproject.custom_keyboard.data.BuiltInKeyIcon>(
             requireContext(),
             android.R.layout.simple_list_item_1,
-            icons
+            mutableListOf<com.kazumaproject.custom_keyboard.data.BuiltInKeyIcon>()
         ) {
             override fun getView(position: Int, convertView: View?, parent: android.view.ViewGroup): View {
                 val context = parent.context
@@ -1260,14 +1273,69 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 return row
             }
         }
-        AlertDialog.Builder(requireContext())
-            .setTitle(R.string.custom_key_icon_builtin_dialog_title)
-            .setAdapter(adapter) { dialog, which ->
-                val item = icons[which]
-                replaceSelectedIcon(KeyIconRef(KeyIconType.DRAWABLE_RESOURCE_NAME, item.resourceName))
-                dialog.dismiss()
+        val searchEditText = android.widget.EditText(requireContext()).apply {
+            hint = getString(R.string.custom_key_icon_builtin_search_hint)
+            isSingleLine = true
+            setPadding(24, 16, 24, 16)
+        }
+        val listView = android.widget.ListView(requireContext()).apply {
+            this.adapter = adapter
+            dividerHeight = 0
+        }
+        val contentView = android.widget.LinearLayout(requireContext()).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            addView(
+                searchEditText,
+                android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    android.widget.LinearLayout.LayoutParams.WRAP_CONTENT
+                )
+            )
+            addView(
+                listView,
+                android.widget.LinearLayout.LayoutParams(
+                    android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                    0,
+                    1f
+                )
+            )
+        }
+        fun updateIconList(query: String) {
+            val normalized = query.trim()
+            val filtered = if (normalized.isEmpty()) {
+                icons
+            } else {
+                icons.filter { icon ->
+                    icon.resourceName.contains(normalized, ignoreCase = true) ||
+                            icon.resourceName.replace('_', ' ')
+                                .contains(normalized, ignoreCase = true)
+                }
             }
-            .show()
+            adapter.clear()
+            adapter.addAll(filtered)
+            adapter.notifyDataSetChanged()
+        }
+        updateIconList("")
+
+        val dialog = AlertDialog.Builder(requireContext())
+            .setTitle(R.string.custom_key_icon_builtin_dialog_title)
+            .setView(contentView)
+            .setNegativeButton(R.string.close, null)
+            .create()
+        searchEditText.doAfterTextChanged { text ->
+            updateIconList(text?.toString().orEmpty())
+        }
+        listView.setOnItemClickListener { _, _, position, _ ->
+            val item = adapter.getItem(position) ?: return@setOnItemClickListener
+            replaceSelectedIcon(KeyIconRef(KeyIconType.DRAWABLE_RESOURCE_NAME, item.resourceName))
+            dialog.dismiss()
+        }
+        dialog.setOnShowListener {
+            listView.layoutParams = listView.layoutParams.apply {
+                height = resources.displayMetrics.heightPixels / 2
+            }
+        }
+        dialog.show()
     }
 
     private fun saveUserImageIcon(uri: Uri) {
