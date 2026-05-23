@@ -124,66 +124,17 @@ private fun hasPasswordLikeMetadata(editorInfo: EditorInfo): Boolean {
             || containsPasswordLikeKeyword(editorInfo.privateImeOptions)
 }
 
-internal fun containsPasswordLikeKeyword(value: CharSequence?): Boolean {
-    val normalized = value?.toString()?.toPasswordMetadataCandidate()
-    if (normalized == null) {
+private fun containsPasswordLikeKeyword(value: CharSequence?): Boolean {
+    val normalized = value?.toString()?.trim()?.lowercase(Locale.ROOT)
+    if (normalized.isNullOrEmpty()) {
         return false
     }
 
-    return PASSWORD_LIKE_KEYWORDS.any { keyword ->
-        normalized.raw.contains(keyword.raw)
-                || normalized.separatorNormalized.contains(keyword.separatorNormalized)
-                || normalized.compact.contains(keyword.compact)
-    }
-}
-
-private data class PasswordMetadataCandidate(
-    val raw: String,
-    val separatorNormalized: String,
-    val compact: String
-)
-
-private val PASSWORD_LIKE_KEYWORDS: List<PasswordMetadataCandidate> = listOf(
-    "password",
-    "passwd",
-    "pwd",
-    "passcode",
-    "login_password",
-    "user_password",
-    "current_password",
-    "new_password",
-    "old_password",
-    "confirm_password",
-    "パスワード",
-    "暗証番号",
-    "credential",
-    "credentials",
-    "認証コード"
-).mapNotNull { it.toPasswordMetadataCandidate() }
-
-private fun String.toPasswordMetadataCandidate(): PasswordMetadataCandidate? {
-    val trimmed = trim()
-    if (trimmed.isEmpty()) {
-        return null
-    }
-
-    val camelSeparated = trimmed.replace(
-        Regex("([\\p{Ll}\\p{Nd}])([\\p{Lu}])"),
-        "$1 $2"
-    )
-    val separatorNormalized = camelSeparated
-        .lowercase(Locale.ROOT)
-        .replace(Regex("[_\\-\\s]+"), " ")
-        .trim()
-    if (separatorNormalized.isEmpty()) {
-        return null
-    }
-
-    return PasswordMetadataCandidate(
-        raw = trimmed.lowercase(Locale.ROOT),
-        separatorNormalized = separatorNormalized,
-        compact = separatorNormalized.replace(" ", "")
-    )
+    return normalized.contains("password")
+            || normalized.contains("passwd")
+            || normalized.contains("パスワード")
+            || normalized.contains("暗証番号")
+            || normalized.contains("暗証")
 }
 
 /**
