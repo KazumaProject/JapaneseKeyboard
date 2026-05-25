@@ -62,4 +62,54 @@ class QwertyGlideIndexedDictionaryProviderTest {
         assertTrue(entry.characterMask and (1 shl ('k' - 'a')) != 0)
         assertTrue(entry.transitionMask != 0L)
     }
+
+    @Test
+    fun fromIndexedEntriesBuildsProvider() {
+        val provider = QwertyGlideIndexedDictionaryProvider.fromIndexedEntries(
+            listOf(QwertyGlideDictionaryEntry("test", 100).toTestIndexedEntry())
+        )
+
+        assertEquals(1, provider.entryCount)
+        assertEquals(listOf("test"), provider.indexedEntriesFor(listOf('t'), listOf('t'), 2, 4).map { it.word })
+    }
+
+    @Test
+    fun prebuiltFactoryMatchesRuntimeConstructorContracts() {
+        val runtimeProvider = QwertyGlideIndexedDictionaryProvider(
+            listOf(
+                QwertyGlideDictionaryEntry("an", 30),
+                QwertyGlideDictionaryEntry("as", 10),
+                QwertyGlideDictionaryEntry("to", 20),
+            )
+        )
+        val prebuiltProvider = QwertyGlideIndexedDictionaryProvider.fromIndexedEntries(
+            listOf(
+                QwertyGlideDictionaryEntry("an", 30).toTestIndexedEntry(),
+                QwertyGlideDictionaryEntry("as", 10).toTestIndexedEntry(),
+                QwertyGlideDictionaryEntry("to", 20).toTestIndexedEntry(),
+            )
+        )
+
+        val runtimeEntries = runtimeProvider.indexedEntriesFor(listOf('a', 't'), listOf('n', 's', 'o'), 2, 4)
+        val prebuiltEntries = prebuiltProvider.indexedEntriesFor(listOf('a', 't'), listOf('n', 's', 'o'), 2, 4)
+
+        assertEquals(runtimeEntries, prebuiltEntries)
+        assertEquals(
+            runtimeProvider.candidateCountFor(listOf('a', 't'), listOf('n', 's', 'o'), 2, 4),
+            prebuiltProvider.candidateCountFor(listOf('a', 't'), listOf('n', 's', 'o'), 2, 4)
+        )
+    }
+}
+
+private fun QwertyGlideDictionaryEntry.toTestIndexedEntry(): QwertyGlideIndexedEntry {
+    val normalized = word.lowercase()
+    return QwertyGlideIndexedEntry(
+        word = normalized,
+        wordCost = wordCost,
+        firstChar = normalized.first(),
+        lastChar = normalized.last(),
+        length = normalized.length,
+        characterMask = normalized.characterMask(),
+        transitionMask = normalized.transitionMask(),
+    )
 }
