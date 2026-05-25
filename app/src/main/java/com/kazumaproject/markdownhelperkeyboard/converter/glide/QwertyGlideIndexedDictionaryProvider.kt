@@ -14,44 +14,14 @@ data class QwertyGlideIndexedEntry(
     }
 }
 
-class QwertyGlideIndexedDictionaryProvider(
-    entries: Iterable<QwertyGlideDictionaryEntry>
+class QwertyGlideIndexedDictionaryProvider private constructor(
+    private val indexedEntries: Map<Pair<Char, Char>, List<QwertyGlideIndexedEntry>>,
 ) : QwertyGlideDictionaryProvider {
-    private val indexedEntries: Map<Pair<Char, Char>, List<QwertyGlideIndexedEntry>>
-    val entryCount: Int
+    val entryCount: Int = indexedEntries.values.sumOf { it.size }
 
-    init {
-        val deduped = linkedMapOf<String, QwertyGlideDictionaryEntry>()
-        entries.asSequence()
-            .mapNotNull { entry ->
-                val normalized = entry.word.lowercase()
-                if (normalized.length < 2 || normalized.any { it !in 'a'..'z' }) {
-                    null
-                } else {
-                    QwertyGlideDictionaryEntry(
-                        word = normalized,
-                        wordCost = entry.wordCost.coerceAtLeast(0)
-                    )
-                }
-            }
-            .forEach { entry ->
-                val existing = deduped[entry.word]
-                if (existing == null || entry.wordCost < existing.wordCost) {
-                    deduped[entry.word] = entry
-                }
-            }
-
-        val indexed = deduped.values
-            .map { it.toIndexedEntry() }
-            .sortedWith(compareBy<QwertyGlideIndexedEntry> { it.firstChar }
-                .thenBy { it.lastChar }
-                .thenBy { it.length }
-                .thenBy { it.word }
-                .thenBy { it.wordCost })
-
-        entryCount = indexed.size
-        indexedEntries = indexed.groupBy { it.firstChar to it.lastChar }
-    }
+    constructor(entries: Iterable<QwertyGlideDictionaryEntry>) : this(
+        indexedEntries = buildIndexedEntries(entries),
+    )
 
     override fun entriesFor(
         firstChar: Char,
@@ -97,6 +67,50 @@ class QwertyGlideIndexedDictionaryProvider(
     ): Int {
         return indexedEntriesFor(firstChars, lastChars, minLength, maxLength).size
     }
+
+    companion object {
+        private val indexedSort = compareBy<QwertyGlideIndexedEntry> { it.firstChar }
+            .thenBy { it.lastChar }
+            .thenBy { it.length }
+            .thenBy { it.word }
+            .thenBy { it.wordCost }
+
+        fun fromIndexedEntries(entries: List<QwertyGlideIndexedEntry>): QwertyGlideIndexedDictionaryProvider {
+            val sorted = entries.sortedWith(indexedSort)
+            return QwertyGlideIndexedDictionaryProvider(
+                indexedEntries = sorted.groupBy { it.firstChar to it.lastChar },
+            )
+        }
+
+        private fun buildIndexedEntries(
+            entries: Iterable<QwertyGlideDictionaryEntry>
+        ): Map<Pair<Char, Char>, List<QwertyGlideIndexedEntry>> {
+            val deduped = linkedMapOf<String, QwertyGlideDictionaryEntry>()
+            entries.asSequence()
+                .mapNotNull { entry ->
+                    val normalized = entry.word.lowercase()
+                    if (normalized.length < 2 || normalized.any { it !in 'a'..'z' }) {
+                        null
+                    } else {
+                        QwertyGlideDictionaryEntry(
+                            word = normalized,
+                            wordCost = entry.wordCost.coerceAtLeast(0)
+                        )
+                    }
+                }
+                .forEach { entry ->
+                    val existing = deduped[entry.word]
+                    if (existing == null || entry.wordCost < existing.wordCost) {
+                        deduped[entry.word] = entry
+                    }
+                }
+
+            return deduped.values
+                .map { it.toIndexedEntry() }
+                .sortedWith(indexedSort)
+                .groupBy { it.firstChar to it.lastChar }
+        }
+    }
 }
 
 private fun QwertyGlideDictionaryEntry.toIndexedEntry(): QwertyGlideIndexedEntry {
@@ -119,7 +133,7 @@ internal fun String.characterMask(): Int {
     return mask
 }
 
-private fun String.transitionMask(): Long {
+internal fun String.transitionMask(): Long {
     var mask = 0L
     for (i in 1 until length) {
         val from = this[i - 1] - 'a'
