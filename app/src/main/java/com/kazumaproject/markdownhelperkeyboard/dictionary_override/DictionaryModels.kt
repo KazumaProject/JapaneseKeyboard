@@ -30,6 +30,7 @@ enum class DictionaryFileRole {
     ENGLISH_READING,
     ENGLISH_WORD,
     ENGLISH_TOKEN,
+    ENGLISH_QWERTY_GLIDE_INDEX,
 }
 
 enum class DictionaryContentType {
@@ -42,6 +43,7 @@ enum class DictionaryContentType {
     ENGLISH_READING,
     ENGLISH_WORD,
     ENGLISH_TOKEN,
+    ENGLISH_QWERTY_GLIDE_INDEX,
 }
 
 enum class DictionaryFileKey {
@@ -72,6 +74,7 @@ enum class DictionaryFileKey {
     ENGLISH_READING,
     ENGLISH_WORD,
     ENGLISH_TOKEN,
+    ENGLISH_QWERTY_GLIDE_INDEX,
     PERSON_NAME_TANGO,
     PERSON_NAME_YOMI,
     PERSON_NAME_TOKEN,
@@ -146,6 +149,10 @@ enum class DictionaryCategoryLoadState {
 }
 
 object DictionaryFileSpecs {
+    private val bundledRuntimeArtifacts = setOf(
+        DictionaryFileKey.ENGLISH_QWERTY_GLIDE_INDEX,
+    )
+
     val all: List<DictionaryFileSpec> = listOf(
         spec(DictionaryFileKey.CONNECTION_ID, DictionaryCategory.COMMON, DictionaryFileRole.CONNECTION_ID, "connectionId.dat.zip", DictionaryContentType.CONNECTION_IDS, R.string.external_dictionary_file_connection_id, true, false),
         spec(DictionaryFileKey.POS_TABLE, DictionaryCategory.COMMON, DictionaryFileRole.POS_TABLE, "pos_table.dat", DictionaryContentType.POS_TABLE, R.string.external_dictionary_file_pos_table, true, false),
@@ -182,6 +189,7 @@ object DictionaryFileSpecs {
         triple(DictionaryFileKey.ENGLISH_READING, DictionaryCategory.ENGLISH, DictionaryFileRole.ENGLISH_READING, "english/reading.dat.zip", DictionaryContentType.ENGLISH_READING, R.string.external_dictionary_file_english_reading, true),
         triple(DictionaryFileKey.ENGLISH_WORD, DictionaryCategory.ENGLISH, DictionaryFileRole.ENGLISH_WORD, "english/word.dat", DictionaryContentType.ENGLISH_WORD, R.string.external_dictionary_file_english_word, true),
         triple(DictionaryFileKey.ENGLISH_TOKEN, DictionaryCategory.ENGLISH, DictionaryFileRole.ENGLISH_TOKEN, "english/token.dat.zip", DictionaryContentType.ENGLISH_TOKEN, R.string.external_dictionary_file_english_token, true),
+        spec(DictionaryFileKey.ENGLISH_QWERTY_GLIDE_INDEX, DictionaryCategory.ENGLISH, DictionaryFileRole.ENGLISH_QWERTY_GLIDE_INDEX, "english/qwerty_glide_index.dat", DictionaryContentType.ENGLISH_QWERTY_GLIDE_INDEX, R.string.external_dictionary_file_english_word, false, false),
 
         triple(DictionaryFileKey.PERSON_NAME_TANGO, DictionaryCategory.PERSON_NAME, DictionaryFileRole.TANGO, "person_name/tango_person_names.dat", DictionaryContentType.LOUDS, R.string.external_dictionary_file_tango, false),
         triple(DictionaryFileKey.PERSON_NAME_YOMI, DictionaryCategory.PERSON_NAME, DictionaryFileRole.YOMI, "person_name/yomi_person_names.dat", DictionaryContentType.LOUDS_WITH_TERM_ID, R.string.external_dictionary_file_yomi, false),
@@ -209,7 +217,7 @@ object DictionaryFileSpecs {
     fun get(key: DictionaryFileKey): DictionaryFileSpec = byKey.getValue(key)
 
     fun forCategory(category: DictionaryCategory): List<DictionaryFileSpec> =
-        all.filter { it.category == category }
+        all.filter { it.category == category && it.key !in bundledRuntimeArtifacts }
 
     fun tripleCategories(): List<DictionaryCategory> =
         all.filter { it.partOfTripleDictionary }.map { it.category }.distinct()
