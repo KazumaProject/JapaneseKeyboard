@@ -159,9 +159,11 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
@@ -1388,11 +1390,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             englishEngine.invalidateQwertyGlideCache()
             currentQwertyGlideCompositionText = null
         }
-        if (preferences.qwertyGlideInputPreference) {
-            englishEngine.warmUpQwertyGlideDecoderAsync()
-        } else if (qwertyGlidePreferenceChanged) {
-            englishEngine.cancelQwertyGlideWarmup()
-        }
+        englishEngine.configureQwertyGlideDecoder(
+            enabled = preferences.qwertyGlideInputPreference,
+            canUseBundledPrebuiltIndex = !dictionarySourceResolver.shouldUseOverrideCategory(
+                DictionaryCategory.ENGLISH
+            ),
+            prebuiltDictionaryLoader = QwertyGlidePrebuiltDictionaryLoader(dictionarySourceResolver),
+        )
         qwertyShowPopupWindowPreference = preferences.qwertyShowPopupWindowPreference
         qwertyEnableFlickUpPreference = preferences.qwertyEnableFlickUpPreference
         qwertyEnableFlickDownPreference = preferences.qwertyEnableFlickDownPreference
@@ -1594,7 +1598,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val revisionToApply = dictionaryOverrideStore.currentRevision
             val success = runCatching {
                 kanaKanjiEngine.applyDictionaryOverrideState(applicationContext)
-                englishEngine.reloadDictionariesFromCurrentSources(dictionaryBinaryReader)
+                englishEngine.reloadDictionariesFromCurrentSources(
+                    reader = dictionaryBinaryReader,
+                    qwertyGlideInputEnabled = qwertyGlideInputPreference,
+                    qwertyGlidePrebuiltDictionaryLoader = QwertyGlidePrebuiltDictionaryLoader(
+                        dictionarySourceResolver
+                    ),
+                    canUseBundledPrebuiltIndex = !dictionarySourceResolver.shouldUseOverrideCategory(
+                        DictionaryCategory.ENGLISH
+                    ),
+                )
             }.onFailure {
                 Timber.w(it, "Failed to apply dictionary override revision $revisionToApply")
             }.isSuccess

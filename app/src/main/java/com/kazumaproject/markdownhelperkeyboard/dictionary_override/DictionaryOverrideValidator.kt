@@ -51,6 +51,8 @@ class DictionaryOverrideValidator @Inject constructor() {
                         com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray()
                             .readExternal(it)
                     }
+                    DictionaryContentType.ENGLISH_QWERTY_GLIDE_INDEX ->
+                        error("QWERTY glide index is a bundled runtime artifact")
                 }
             }
             ValidationResult.valid()
