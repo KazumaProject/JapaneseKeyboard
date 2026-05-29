@@ -1892,6 +1892,17 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         refreshSpecialKeyIconSizesWhenLaidOut()
     }
 
+    fun setNumberView() {
+        cancelQwertyGlideCandidate(notify = glideStarted)
+        clearShiftCaps()
+        _qwertyMode.update { QWERTYMode.Number }
+        _romajiModeState.update { false }
+        binding.apply {
+            keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
+        }
+        refreshSpecialKeyIconSizesWhenLaidOut()
+    }
+
     fun setRomajiKeyboard(enterKeyText: String) {
         cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps()
