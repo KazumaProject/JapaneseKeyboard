@@ -74,6 +74,9 @@ class TenKeyCandidateLetterSizeFragment : Fragment() {
         binding.tenkeyLetterSizePreview.setUseThreeStateKeyboard(
             appPreference.tenkey_use_three_state_keyboard_preference
         )
+        binding.tenkeyLetterSizePreview.setUseQwertyNumberWhenThreeStateOff(
+            appPreference.tenkey_switch_number_to_qwerty_number_preference
+        )
         applySavedPreviewKeyScale()
         setupKeyLetterSizeSeekBar()
         setupKeyWidthSeekBar()

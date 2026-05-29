@@ -124,6 +124,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var flickListener: FlickListener? = null
     private var longPressListener: LongPressListener? = null
     private var inputModeChangedListener: ((InputMode) -> Unit)? = null
+    private var qwertyNumberModeRequestedListener: (() -> Unit)? = null
 
     private var flickSensitivity: Int = 100
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
@@ -132,6 +133,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     private var isLanguageIconEnabled = true
     private var useThreeStateKeyboard = true
+    private var useQwertyNumberWhenThreeStateOff = false
 
     /** ← REPLACED AtomicReference with StateFlow **/
     private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
@@ -1264,6 +1266,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         this.inputModeChangedListener = listener
     }
 
+    fun setOnQwertyNumberModeRequestedListener(listener: (() -> Unit)?) {
+        qwertyNumberModeRequestedListener = listener
+    }
+
     /** Padding setters for side keys (symbol, cursors, delete, enter, previous char) **/
     fun setPaddingToSideKeySymbol(paddingSize: Int) {
         binding.sideKeySymbolModeContainer.setIconPadding(paddingSize)
@@ -1274,6 +1280,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         binding.sideKeySymbolModeContainer.setUseThreeStateKeyboard(enabled)
         binding.keySwitchKeyMode.setInputMode(currentInputMode.value, false, enabled)
         requestLayout()
+    }
+
+    fun setUseQwertyNumberWhenThreeStateOff(enabled: Boolean) {
+        useQwertyNumberWhenThreeStateOff = enabled
     }
 
     fun setTextToMoveCursorMode(cursorMode: Boolean) {
@@ -1298,6 +1308,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         flickListener = null
         longPressListener = null
         inputModeChangedListener = null
+        qwertyNumberModeRequestedListener = null
         longPressJob?.cancel()
         longPressJob = null
         isCursorMode = false
@@ -2465,6 +2476,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     private fun switchToNumberMode() {
         if (useThreeStateKeyboard) return
+        if (useQwertyNumberWhenThreeStateOff) {
+            qwertyNumberModeRequestedListener?.invoke()
+            return
+        }
         _currentInputMode.update { InputMode.ModeNumber }
         inputModeChangedListener?.invoke(InputMode.ModeNumber)
     }

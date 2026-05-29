@@ -442,6 +442,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
     private var tenkeyUseThreeStateKeyboard: Boolean = true
+    private var tenkeySwitchNumberToQwertyNumberPreference: Boolean = false
+    private var qwertyNumberOpenedFromTenkeyTwoStateNumberKey: Boolean = false
     private var tabletTenkeyQwertySwitchEnglish: Boolean = false
     private var tenkeyQKeymapGuide: Boolean? = false
     private var flickKeymapGuidePreference: Boolean? = false
@@ -1430,6 +1432,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isCustomKeyboardTwoWordsOutputEnable = preferences.isCustomKeyboardTwoWordsOutputEnable
         tenkeyQWERTYSwitchNumber = preferences.tenkeyQWERTYSwitchNumber
         tenkeyUseThreeStateKeyboard = preferences.tenkeyUseThreeStateKeyboard
+        tenkeySwitchNumberToQwertyNumberPreference =
+            preferences.tenkeySwitchNumberToQwertyNumberPreference
         tabletTenkeyQwertySwitchEnglish = preferences.tabletTenkeyQwertySwitchEnglish
         tenkeyQKeymapGuide = preferences.tenkeyQKeymapGuide
         flickKeymapGuidePreference = preferences.flickKeymapGuide
@@ -2244,6 +2248,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setUseThreeStateKeyboard(
                     tenkeyUseThreeStateKeyboard
                 )
+                floatingKeyboardLayoutBinding.keyboardViewFloating.setUseQwertyNumberWhenThreeStateOff(
+                    tenkeySwitchNumberToQwertyNumberPreference
+                )
+                floatingKeyboardLayoutBinding.keyboardViewFloating.setOnQwertyNumberModeRequestedListener {
+                    switchTenkeyTwoStateNumberToQwertyNumber()
+                }
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
                     (longPressTimeoutPreferenceValue ?: 300).toLong()
                 )
@@ -2341,6 +2351,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 keyboardView.applyPopupViewStyle(currentTenKeyPopupViewStyle())
                 keyboardView.setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
+                keyboardView.setUseQwertyNumberWhenThreeStateOff(
+                    tenkeySwitchNumberToQwertyNumberPreference
+                )
+                keyboardView.setOnQwertyNumberModeRequestedListener {
+                    switchTenkeyTwoStateNumberToQwertyNumber()
+                }
                 val defaultLetterSize = when (currentInputModeForSession) {
                     InputMode.ModeJapanese -> 17f
                     InputMode.ModeEnglish -> 12f
@@ -2665,6 +2681,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isCustomKeyboardTwoWordsOutputEnable = null
         tenkeyQWERTYSwitchNumber = null
         tenkeyUseThreeStateKeyboard = true
+        tenkeySwitchNumberToQwertyNumberPreference = false
+        qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
         tabletTenkeyQwertySwitchEnglish = false
         tenkeyQKeymapGuide = null
         isKeyboardFloatingMode = null
@@ -4752,6 +4770,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return true
     }
 
+    private fun switchTenkeyTwoStateNumberToQwertyNumber() {
+        if (tenkeyUseThreeStateKeyboard) return
+        if (!tenkeySwitchNumberToQwertyNumberPreference) return
+
+        qwertyNumberOpenedFromTenkeyTwoStateNumberKey = true
+        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+        currentInputModeForSession = InputMode.ModeNumber
+        setCurrentQwertyRomajiModeForSession(false)
+        setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+        updateQwertyOnActiveSurface {
+            setNumberView()
+        }
+        renderCurrentKeyboardStateOnActiveSurface()
+
+        val insertString = inputString.value
+        mainLayoutBinding?.let { mainView ->
+            if (insertString.isEmpty()) {
+                setKeyboardSizeSwitchKeyboard(mainView)
+            } else {
+                setKeyboardHeightWithAdditional(mainView)
+            }
+        }
+        updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.TenKeyQWERTY)
+        previousTenKeyQWERTYMode = TenKeyQWERTYMode.Default
+    }
+
     private fun renderDynamicKeysOnActiveSurface() {
         val customLayout = getActiveKeyboardSurface()?.customLayout ?: return
         customLayout.updateDynamicKey(
@@ -4827,6 +4871,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView = mainView,
             insertString = insertString
         )
+    }
+
+    private fun returnTenkeyJapaneseFromTwoStateQwertyNumber(
+        mainView: MainLayoutBinding,
+        insertString: String
+    ) {
+        qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
+        setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(false)
+        updateQwertyOnActiveSurface { setDefaultView() }
+        returnDefaultQwertyToTenkeyInputMode(
+            inputMode = InputMode.ModeJapanese,
+            mainView = mainView,
+            insertString = insertString
+        )
+        previousTenKeyQWERTYMode = null
+        renderCurrentKeyboardStateOnActiveSurface()
+        updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.Default)
     }
 
     private fun setQwertyRomajiModeOnActiveSurface(enabled: Boolean) {
@@ -5322,6 +5383,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding.keyboardViewFloating.setUseThreeStateKeyboard(
             tenkeyUseThreeStateKeyboard
         )
+        floatingKeyboardLayoutBinding.keyboardViewFloating.setUseQwertyNumberWhenThreeStateOff(
+            tenkeySwitchNumberToQwertyNumberPreference
+        )
+        floatingKeyboardLayoutBinding.keyboardViewFloating.setOnQwertyNumberModeRequestedListener {
+            switchTenkeyTwoStateNumberToQwertyNumber()
+        }
         floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
             (longPressTimeoutPreferenceValue ?: 300).toLong()
         )
@@ -5425,6 +5492,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 borderWidth = customKeyBorderWidth ?: 1
             )
             setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
+            setUseQwertyNumberWhenThreeStateOff(tenkeySwitchNumberToQwertyNumberPreference)
+            setOnQwertyNumberModeRequestedListener {
+                switchTenkeyTwoStateNumberToQwertyNumber()
+            }
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")
@@ -14063,6 +14134,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         QWERTYKey.QWERTYKeySwitchNumberKey -> {
+                            if (qwertyNumberOpenedFromTenkeyTwoStateNumberKey) {
+                                returnTenkeyJapaneseFromTwoStateQwertyNumber(
+                                    mainView = mainView,
+                                    insertString = insertString
+                                )
+                                return
+                            }
                             if (previousTenKeyQWERTYMode == null) {
                                 returnDefaultQwertyFromNumberKey(mainView, insertString)
                             } else {
