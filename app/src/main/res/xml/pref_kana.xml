@@ -24,7 +24,13 @@
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="tenkey_use_three_state_keyboard_preference"
+            app:disableDependentsState="true"
             android:title="三状態キーボードの使用" />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="tenkey_use_three_state_keyboard_preference"
+            android:key="tenkey_switch_number_to_qwerty_number_preference"
+            android:title="数字入力時にQWERTY数字キーボードを使用" />
         <SwitchPreferenceCompat
             android:key="tenkey_keymap_guide"
             android:title="@string/tenkey_keymap_guide_title"

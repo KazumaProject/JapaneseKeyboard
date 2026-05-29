@@ -22,6 +22,11 @@ class AppPreferenceTabletTenkeyQwertyInstrumentedTest {
     }
 
     @Test
+    fun tenkeySwitchNumberToQwertyNumberDefaultIsFalse() {
+        assertFalse(AppPreference.tenkey_switch_number_to_qwerty_number_preference)
+    }
+
+    @Test
     fun tabletTenkeyEnglishQwertyIsIndependentFromPhoneTenkeyPreference() {
         AppPreference.tablet_tenkey_qwerty_switch_english_layout = true
 
@@ -39,10 +44,12 @@ class AppPreferenceTabletTenkeyQwertyInstrumentedTest {
     fun snapshotKeepsTabletTenkeyEnglishQwertySeparateFromPhoneTenkeyPreference() {
         AppPreference.tablet_tenkey_qwerty_switch_english_layout = true
         AppPreference.tenkey_qwerty_switch_number_layout = false
+        AppPreference.tenkey_switch_number_to_qwerty_number_preference = true
 
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
 
         assertTrue(snapshot.tabletTenkeyQwertySwitchEnglish)
         assertFalse(snapshot.tenkeyQWERTYSwitchNumber)
+        assertTrue(snapshot.tenkeySwitchNumberToQwertyNumberPreference)
     }
 }
