@@ -6,6 +6,7 @@ import android.text.Spanned
 import android.text.style.AbsoluteSizeSpan
 import android.text.style.RelativeSizeSpan
 import android.view.Gravity
+import android.view.View
 import androidx.appcompat.widget.AppCompatButton
 import androidx.appcompat.widget.AppCompatImageButton
 import com.kazumaproject.core.ui.appcompatbutton.CustomLineHeightSpan
@@ -61,6 +62,18 @@ fun AppCompatImageButton.layoutXPosition(): Int {
 }
 
 fun AppCompatImageButton.layoutYPosition(): Int {
+    val location = IntArray(2)
+    this.getLocationOnScreen(location)
+    return location[1]
+}
+
+fun View.layoutXPosition(): Int {
+    val location = IntArray(2)
+    this.getLocationOnScreen(location)
+    return location[0]
+}
+
+fun View.layoutYPosition(): Int {
     val location = IntArray(2)
     this.getLocationOnScreen(location)
     return location[1]

@@ -1612,6 +1612,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                 // no key pressed
             }
 
+            Key.SideKeyNumberMode -> {}
             Key.KeyDakutenSmall -> {}
             Key.KeyKutouten -> {}
             Key.SideKeyInputMode -> {}

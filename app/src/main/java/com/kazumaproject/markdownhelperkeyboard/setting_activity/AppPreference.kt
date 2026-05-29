@@ -70,6 +70,12 @@ object AppPreference {
     private val TENKEY_SWITCH_QWERTY_PREFERENCE =
         Pair("tenkey_kana_english_qwerty_preference", false)
 
+    private val TENKEY_USE_THREE_STATE_KEYBOARD_PREFERENCE =
+        Pair("tenkey_use_three_state_keyboard_preference", true)
+
+    private val TENKEY_SWITCH_NUMBER_TO_QWERTY_NUMBER_PREFERENCE =
+        Pair("tenkey_switch_number_to_qwerty_number_preference", false)
+
     private val TABLET_TENKEY_SWITCH_QWERTY_PREFERENCE =
         Pair("tablet_tenkey_kana_english_qwerty_preference", false)
 
@@ -621,6 +627,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TENKEY_SWITCH_QWERTY_PREFERENCE.first, value ?: false)
+        }
+
+    var tenkey_use_three_state_keyboard_preference: Boolean
+        get() = preferences.getBoolean(
+            TENKEY_USE_THREE_STATE_KEYBOARD_PREFERENCE.first,
+            TENKEY_USE_THREE_STATE_KEYBOARD_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_USE_THREE_STATE_KEYBOARD_PREFERENCE.first, value)
+        }
+
+    var tenkey_switch_number_to_qwerty_number_preference: Boolean
+        get() = preferences.getBoolean(
+            TENKEY_SWITCH_NUMBER_TO_QWERTY_NUMBER_PREFERENCE.first,
+            TENKEY_SWITCH_NUMBER_TO_QWERTY_NUMBER_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_SWITCH_NUMBER_TO_QWERTY_NUMBER_PREFERENCE.first, value)
         }
 
     var tablet_tenkey_qwerty_switch_english_layout: Boolean
