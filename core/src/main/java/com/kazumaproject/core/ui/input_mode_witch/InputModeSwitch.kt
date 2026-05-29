@@ -28,7 +28,7 @@ class InputModeSwitch(context: Context, attrs: AttributeSet) :
             when (inputMode) {
                 InputMode.ModeJapanese -> R.drawable.language_japanese_kana_left_bold_24px
                 InputMode.ModeEnglish -> R.drawable.language_japanese_kana_right_bold_24px
-                InputMode.ModeNumber -> R.drawable.input_mode_number_select_custom
+                InputMode.ModeNumber -> R.drawable.input_mode_japanese_select_custom
             }
         }
         val drawable = AppCompatResources.getDrawable(context, resId)
