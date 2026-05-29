@@ -131,6 +131,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var keySizeDelta = 0
 
     private var isLanguageIconEnabled = true
+    private var useThreeStateKeyboard = true
 
     /** ← REPLACED AtomicReference with StateFlow **/
     private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
@@ -313,7 +314,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             Key.SideKeyPreviousChar to binding.keyReturn,
             Key.SideKeyCursorLeft to binding.keySoftLeft,
             Key.SideKeyCursorRight to binding.keyMoveCursorRight,
-            Key.SideKeySymbol to binding.sideKeySymbol,
             Key.SideKeyInputMode to binding.keySwitchKeyMode,
             Key.SideKeyDelete to binding.keyDelete,
             Key.SideKeySpace to binding.keySpace,
@@ -343,7 +343,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 Log.d("TenKey", "currentInputMode: $inputMode")
                 // Whenever inputMode changes, update all keys and switch UI
                 handleCurrentInputModeSwitch(inputMode)
-                binding.keySwitchKeyMode.setInputMode(inputMode, false)
+                binding.keySwitchKeyMode.setInputMode(inputMode, false, useThreeStateKeyboard)
             }
         }
     }
@@ -648,7 +648,30 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun scalableKeyViews(): List<View> {
-        return listKeys.values.filterIsInstance<View>()
+        return binding.run {
+            listOf(
+                key1,
+                key2,
+                key3,
+                key4,
+                key5,
+                key6,
+                key7,
+                key8,
+                key9,
+                key11,
+                key12,
+                keySmallLetter,
+                keyReturn,
+                keySoftLeft,
+                keyMoveCursorRight,
+                sideKeySymbolModeContainer,
+                keySwitchKeyMode,
+                keyDelete,
+                keySpace,
+                keyEnter
+            )
+        }
     }
 
     private fun scaleMargin(baseMargin: Int, scalePercent: Int): Int {
@@ -710,7 +733,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
             // サイドキー
             listOf(
-                keyReturn, keySoftLeft, sideKeySymbol,
+                keyReturn, keySoftLeft,
                 keyDelete, keyMoveCursorRight, keySpace,
 
                 ).forEach { btn ->
@@ -720,6 +743,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 if (liquidGlassEnable) {
                     btn.setDrawableAlpha(liquidGlassKeyAlphaEnable)
                 }
+            }
+            sideKeySymbolModeContainer.setKeyBackground(
+                ContextCompat.getDrawable(context, sideRes)?.mutate()
+            )
+            if (liquidGlassEnable) {
+                sideKeySymbolModeContainer.setKeyDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
 
             keyEnter.background = ContextCompat
@@ -766,7 +795,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             val keys = listOf(
                 key1, key2, key3, key4, key5, key6,
                 key7, key8, key9, keySmallLetter, key11, key12,
-                keyReturn, keySoftLeft, sideKeySymbol,
+                keyReturn, keySoftLeft,
                 keyDelete, keyMoveCursorRight, keySpace, keyEnter, keySwitchKeyMode
             )
 
@@ -783,6 +812,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     ImageViewCompat.setImageTintList(view, textTint)
                 }
             }
+            sideKeySymbolModeContainer.setKeyBackground(getDynamicNeumorphDrawable(targetColor, radius))
+            sideKeySymbolModeContainer.setKeyTint(textTint)
         }
     }
 
@@ -968,7 +999,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             )
 
             val specialKeys = listOf(
-                keyReturn, keySoftLeft, sideKeySymbol,
+                keyReturn, keySoftLeft,
                 keyDelete, keyMoveCursorRight, keySpace, keyEnter,
                 keySwitchKeyMode
             )
@@ -1014,6 +1045,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
                 ImageViewCompat.setImageTintList(view, specialColorStateList)
                 view.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+            }
+            sideKeySymbolModeContainer.apply {
+                if (customBorderEnable) {
+                    setKeySolidColor(customSpecialKeyColor)
+                    setKeyBorder(customBorderColor, borderWidth)
+                } else {
+                    setKeyBackground(specialDrawableState?.newDrawable()?.mutate())
+                }
+                setKeyTint(specialColorStateList)
+                setKeyDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
         }
     }
@@ -1138,7 +1179,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             )
 
             val specialKeys = listOf(
-                keyReturn, keySoftLeft, sideKeySymbol,
+                keyReturn, keySoftLeft,
                 keyDelete, keyMoveCursorRight, keySpace, keyEnter,
                 keySwitchKeyMode
             )
@@ -1184,6 +1225,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     ImageViewCompat.setImageTintList(view, specialColorStateList)
                 }
             }
+            sideKeySymbolModeContainer.apply {
+                setKeyBackground(specialDrawableState?.newDrawable()?.mutate())
+                setKeyTint(specialColorStateList)
+            }
         }
     }
 
@@ -1221,7 +1266,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Padding setters for side keys (symbol, cursors, delete, enter, previous char) **/
     fun setPaddingToSideKeySymbol(paddingSize: Int) {
-        binding.sideKeySymbol.setPadding(paddingSize)
+        binding.sideKeySymbolModeContainer.setIconPadding(paddingSize)
+    }
+
+    fun setUseThreeStateKeyboard(enabled: Boolean) {
+        useThreeStateKeyboard = enabled
+        binding.sideKeySymbolModeContainer.setUseThreeStateKeyboard(enabled)
+        binding.keySwitchKeyMode.setInputMode(currentInputMode.value, false, enabled)
+        requestLayout()
     }
 
     fun setTextToMoveCursorMode(cursorMode: Boolean) {
@@ -1347,6 +1399,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             )
                             if (pressedKey.key == Key.SideKeyInputMode) {
                                 handleClickInputModeSwitch()
+                            } else if (pressedKey.key == Key.SideKeyNumberMode) {
+                                switchToNumberMode()
                             }
                         } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                             when (gestureType) {
@@ -1390,7 +1444,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     val button = getButtonFromKey(pressedKey.key)
                     button?.let {
                         if (it is AppCompatButton) {
-                            if (it == binding.sideKeySymbol) return false
                             // ← UPDATE: use state flow's value to set text after finger-up
                             when (currentInputMode.value) {
 
@@ -1504,6 +1557,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         "called $pressedKey ${binding.keySmallLetter.drawable == cachedLanguageDrawable}"
                     )
                     if (pressedKey.key == Key.SideKeySymbol ||
+                        pressedKey.key == Key.SideKeyNumberMode ||
                         pressedKey.key == Key.SideKeyInputMode ||
                         (pressedKey.key == Key.KeyDakutenSmall && binding.keySmallLetter.drawable == cachedLanguageDrawable)
                     ) {
@@ -1540,7 +1594,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                     val button = getButtonFromKey(pressedKey.key)
                                     button?.let {
                                         if (it is AppCompatButton) {
-                                            if (it == binding.sideKeySymbol) return false
                                             when (currentInputMode.value) {
                                                 InputMode.ModeJapanese -> setJapaneseTextFor(
                                                     it
@@ -1632,6 +1685,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 )
                                 if (pressedKey.key == Key.SideKeyInputMode) {
                                     handleClickInputModeSwitch()
+                                } else if (pressedKey.key == Key.SideKeyNumberMode) {
+                                    switchToNumberMode()
                                 }
                             } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                                 when (gestureType) {
@@ -1673,7 +1728,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             val button = getButtonFromKey(pressedKey.key)
                             button?.let {
                                 if (it is AppCompatButton) {
-                                    if (it == binding.sideKeySymbol) return false
                                     it.isPressed = false
                                     when (currentInputMode.value) {
                                         InputMode.ModeJapanese -> setJapaneseTextFor(
@@ -1807,12 +1861,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 binding.keyMoveCursorRight.layoutXPosition() + binding.keyMoveCursorRight.width,
                 binding.keyMoveCursorRight.layoutYPosition() + binding.keyMoveCursorRight.height
             ), KeyRect(
-                Key.SideKeySymbol,
-                binding.sideKeySymbol.layoutXPosition(),
-                binding.sideKeySymbol.layoutYPosition(),
-                binding.sideKeySymbol.layoutXPosition() + binding.sideKeySymbol.width,
-                binding.sideKeySymbol.layoutYPosition() + binding.sideKeySymbol.height
-            ), KeyRect(
                 Key.KeyMA,
                 binding.key7.layoutXPosition(),
                 binding.key7.layoutYPosition(),
@@ -1867,7 +1915,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 binding.keyEnter.layoutXPosition() + binding.keyEnter.width,
                 binding.keyEnter.layoutYPosition() + binding.keyEnter.height
             )
-        )
+        ) + sideKeySymbolModeKeyRects()
 
         // If the touch falls inside any key's rectangle, return that enum
         keyRects.forEach { rect ->
@@ -1885,6 +1933,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             dx * dx + dy * dy
         }
         return nearest?.key ?: Key.NotSelected
+    }
+
+    private fun sideKeySymbolModeKeyRects(): List<KeyRect> {
+        val container = binding.sideKeySymbolModeContainer
+        val left = container.layoutXPosition()
+        val top = container.layoutYPosition()
+        val right = left + container.width
+        val bottom = top + container.height
+        if (useThreeStateKeyboard) {
+            return listOf(KeyRect(Key.SideKeySymbol, left, top, right, bottom))
+        }
+        val centerX = left + (container.width / 2)
+        return listOf(
+            KeyRect(Key.SideKeyNumberMode, left, top, centerX, bottom),
+            KeyRect(Key.SideKeySymbol, centerX, top, right, bottom)
+        )
     }
 
     /**
@@ -1951,6 +2015,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Visually indicate which key is pressed **/
     private fun setKeyPressed() {
+        binding.sideKeySymbolModeContainer.setPressedKey(pressedKey.key)
         listKeys.forEach { (keyEnum, viewObj) ->
             when (viewObj) {
                 is InputModeSwitch -> viewObj.isPressed = (keyEnum == pressedKey.key)
@@ -1972,6 +2037,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Un–highlight all keys **/
     private fun resetAllKeys() {
+        binding.sideKeySymbolModeContainer.clearPressedKey()
         listKeys.values.forEach { viewObj ->
             when (viewObj) {
                 is InputModeSwitch -> viewObj.isPressed = false
@@ -1991,8 +2057,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == binding.sideKeySymbol) return
-
                 when (currentInputMode.value) {
                     InputMode.ModeJapanese -> {
                         popTextTop.setTextFlickTopJapanese(it.id)
@@ -2063,7 +2127,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == binding.sideKeySymbol) return
                 it.isPressed = true
                 when (currentInputMode.value) {
                     InputMode.ModeJapanese -> {
@@ -2105,7 +2168,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == binding.sideKeySymbol) return
                 it.isPressed = true
                 if (!isLongPressed) it.text = ""
                 when (gestureType) {
@@ -2305,7 +2367,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             val button = getButtonFromKey(pressedKey.key)
             button?.let {
                 if (it is AppCompatButton) {
-                    if (it == binding.sideKeySymbol) return
                     when (currentInputMode.value) {
                         InputMode.ModeJapanese -> setJapaneseTextFor(
                             it
@@ -2381,10 +2442,18 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Cycle through input modes when the switch key is clicked **/
     private fun handleClickInputModeSwitch() {
         // ← READ from StateFlow.value:
-        val newInputMode = when (currentInputMode.value) {
-            InputMode.ModeJapanese -> InputMode.ModeEnglish
-            InputMode.ModeEnglish -> InputMode.ModeNumber
-            InputMode.ModeNumber -> InputMode.ModeJapanese
+        val newInputMode = if (useThreeStateKeyboard) {
+            when (currentInputMode.value) {
+                InputMode.ModeJapanese -> InputMode.ModeEnglish
+                InputMode.ModeEnglish -> InputMode.ModeNumber
+                InputMode.ModeNumber -> InputMode.ModeJapanese
+            }
+        } else {
+            when (currentInputMode.value) {
+                InputMode.ModeJapanese -> InputMode.ModeEnglish
+                InputMode.ModeEnglish -> InputMode.ModeJapanese
+                InputMode.ModeNumber -> InputMode.ModeJapanese
+            }
         }
         // ← WRITE to MutableStateFlow:
         _currentInputMode.update { newInputMode }
@@ -2392,6 +2461,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         // We don’t need to manually call setKeysInXXX or setInputMode(...) here,
         // because our collector in init { … } already calls `handleCurrentInputModeSwitch(...)`
         // and `binding.keySwitchKeyMode.setInputMode(...)`.
+    }
+
+    private fun switchToNumberMode() {
+        if (useThreeStateKeyboard) return
+        _currentInputMode.update { InputMode.ModeNumber }
+        inputModeChangedListener?.invoke(InputMode.ModeNumber)
     }
 
     /** Sync UI to a specified input mode (called from collector) **/
@@ -2418,7 +2493,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             key12.text = ""
             keySmallLetter.setImageDrawable(null)
             keyReturn.setImageDrawable(null)
-            sideKeySymbol.setImageDrawable(null)
+            sideKeySymbolModeContainer.setImages(null, null)
             keySpace.setImageDrawable(null)
             keyMoveCursorRight.setImageDrawable(null)
             keySoftLeft.setImageDrawable(null)
@@ -2503,7 +2578,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keySmallLetter.visibility = View.INVISIBLE
 
             keyReturn.setImageDrawable(null)
-            sideKeySymbol.setImageDrawable(null)
+            sideKeySymbolModeContainer.setImages(null, null)
             keySpace.setImageDrawable(
                 cachedUndoDrawable
             )
@@ -2720,9 +2795,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     cachedUndoDrawable
                 )
             }
-            sideKeySymbol.apply {
+            sideKeySymbolModeContainer.apply {
                 visibility = View.VISIBLE
-                setImageDrawable(
+                setImages(
+                    ContextCompat.getDrawable(
+                        context,
+                        com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+                    ),
                     cachedSymbolDrawable
                 )
             }
@@ -2758,7 +2837,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
             binding.keyReturn.focusable = View.NOT_FOCUSABLE
             binding.keySoftLeft.focusable = View.NOT_FOCUSABLE
-            binding.sideKeySymbol.focusable = View.NOT_FOCUSABLE
+            binding.sideKeySymbolModeContainer.focusable = View.NOT_FOCUSABLE
             binding.keySwitchKeyMode.focusable = View.NOT_FOCUSABLE
             binding.keyDelete.focusable = View.NOT_FOCUSABLE
             binding.keyMoveCursorRight.focusable = View.NOT_FOCUSABLE
@@ -2780,7 +2859,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
             binding.keyReturn.isFocusable = false
             binding.keySoftLeft.isFocusable = false
-            binding.sideKeySymbol.isFocusable = false
+            binding.sideKeySymbolModeContainer.isFocusable = false
             binding.keySwitchKeyMode.isFocusable = false
             binding.keyDelete.isFocusable = false
             binding.keyMoveCursorRight.isFocusable = false

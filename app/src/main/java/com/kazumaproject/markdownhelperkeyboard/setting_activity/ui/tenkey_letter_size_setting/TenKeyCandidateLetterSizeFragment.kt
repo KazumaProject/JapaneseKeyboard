@@ -71,6 +71,9 @@ class TenKeyCandidateLetterSizeFragment : Fragment() {
 
         // サイズ調整とリスナー設定
         setKeyboardSize()
+        binding.tenkeyLetterSizePreview.setUseThreeStateKeyboard(
+            appPreference.tenkey_use_three_state_keyboard_preference
+        )
         applySavedPreviewKeyScale()
         setupKeyLetterSizeSeekBar()
         setupKeyWidthSeekBar()

@@ -37,26 +37,23 @@
         android:elevation="@dimen/key_elevation"
         android:scaleType="centerInside"
         android:src="@drawable/baseline_arrow_left_24"
-        app:layout_constraintBottom_toTopOf="@id/sideKey_symbol"
+        app:layout_constraintBottom_toTopOf="@id/sideKey_symbol_mode_container"
         app:layout_constraintEnd_toStartOf="@id/key_4"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/key_return"
         app:tint="@color/keyboard_icon_color" />
 
-    <androidx.appcompat.widget.AppCompatImageButton
-        android:id="@+id/sideKey_symbol"
+    <com.kazumaproject.tenkey.view.SideKeySymbolModeContainerView
+        android:id="@+id/sideKey_symbol_mode_container"
         style="?android:attr/borderlessButtonStyle"
         android:layout_width="0dp"
         android:layout_height="0dp"
         android:layout_marginVertical="@dimen/key_margin_vertical_size"
         android:layout_marginStart="@dimen/key_margin_start_size"
         android:layout_marginEnd="@dimen/key_margin_horizontal_size"
-        android:background="@drawable/ten_keys_side_bg"
+        android:background="@null"
         android:elevation="@dimen/key_elevation"
-        android:scaleType="centerInside"
-        android:src="@drawable/symbol"
-        android:tint="@color/keyboard_icon_color"
         app:layout_constraintBottom_toTopOf="@id/key_switch_key_mode"
         app:layout_constraintEnd_toStartOf="@id/key_7"
         app:layout_constraintHorizontal_weight="1"
@@ -81,7 +78,7 @@
         app:layout_constraintEnd_toStartOf="@id/key_small_letter"
         app:layout_constraintHorizontal_weight="1"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/sideKey_symbol" />
+        app:layout_constraintTop_toBottomOf="@+id/sideKey_symbol_mode_container" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/key_1"
@@ -241,7 +238,7 @@
         app:layout_constraintEnd_toStartOf="@id/key_8"
         app:layout_constraintHorizontal_chainStyle="spread"
         app:layout_constraintHorizontal_weight="1"
-        app:layout_constraintStart_toEndOf="@id/sideKey_symbol"
+        app:layout_constraintStart_toEndOf="@id/sideKey_symbol_mode_container"
         app:layout_constraintTop_toBottomOf="@+id/key_4" />
 
     <androidx.appcompat.widget.AppCompatButton

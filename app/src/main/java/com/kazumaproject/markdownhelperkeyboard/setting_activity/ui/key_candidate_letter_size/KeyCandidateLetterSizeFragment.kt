@@ -62,6 +62,9 @@ class KeyCandidateLetterSizeFragment : Fragment() {
             appPreference.tenkey_key_width_scale_percent ?: DEFAULT_KEY_SCALE_PERCENT,
             appPreference.tenkey_key_height_scale_percent ?: DEFAULT_KEY_SCALE_PERCENT
         )
+        binding.tenkeyLetterSizePreview.setUseThreeStateKeyboard(
+            appPreference.tenkey_use_three_state_keyboard_preference
+        )
         setupRecyclerView()
         setupPreviewData()
         setupCandidateLetterSizeSeekBar()

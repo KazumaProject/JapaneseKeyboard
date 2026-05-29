@@ -441,6 +441,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val clipboardMutex = Mutex()
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
+    private var tenkeyUseThreeStateKeyboard: Boolean = true
     private var tabletTenkeyQwertySwitchEnglish: Boolean = false
     private var tenkeyQKeymapGuide: Boolean? = false
     private var flickKeymapGuidePreference: Boolean? = false
@@ -1428,6 +1429,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         defaultEmojiSkinTonePreference = preferences.defaultEmojiSkinTone
         isCustomKeyboardTwoWordsOutputEnable = preferences.isCustomKeyboardTwoWordsOutputEnable
         tenkeyQWERTYSwitchNumber = preferences.tenkeyQWERTYSwitchNumber
+        tenkeyUseThreeStateKeyboard = preferences.tenkeyUseThreeStateKeyboard
         tabletTenkeyQwertySwitchEnglish = preferences.tabletTenkeyQwertySwitchEnglish
         tenkeyQKeymapGuide = preferences.tenkeyQKeymapGuide
         flickKeymapGuidePreference = preferences.flickKeymapGuide
@@ -2239,6 +2241,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
                     borderWidth = customKeyBorderWidth ?: 1
                 )
+                floatingKeyboardLayoutBinding.keyboardViewFloating.setUseThreeStateKeyboard(
+                    tenkeyUseThreeStateKeyboard
+                )
                 floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
                     (longPressTimeoutPreferenceValue ?: 300).toLong()
                 )
@@ -2335,6 +2340,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 keyboardView.applyPopupViewStyle(currentTenKeyPopupViewStyle())
+                keyboardView.setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
                 val defaultLetterSize = when (currentInputModeForSession) {
                     InputMode.ModeJapanese -> 17f
                     InputMode.ModeEnglish -> 12f
@@ -2658,6 +2664,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         userDictionaryPrefixMatchNumber = null
         isCustomKeyboardTwoWordsOutputEnable = null
         tenkeyQWERTYSwitchNumber = null
+        tenkeyUseThreeStateKeyboard = true
         tabletTenkeyQwertySwitchEnglish = false
         tenkeyQKeymapGuide = null
         isKeyboardFloatingMode = null
@@ -5312,6 +5319,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
             borderWidth = customKeyBorderWidth ?: 1
         )
+        floatingKeyboardLayoutBinding.keyboardViewFloating.setUseThreeStateKeyboard(
+            tenkeyUseThreeStateKeyboard
+        )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setLongPressTimeout(
             (longPressTimeoutPreferenceValue ?: 300).toLong()
         )
@@ -5414,6 +5424,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
                 borderWidth = customKeyBorderWidth ?: 1
             )
+            setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     Timber.d("Flick: $char $key $gestureType")

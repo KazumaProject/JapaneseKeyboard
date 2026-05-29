@@ -71,6 +71,7 @@ data class ImePreferencesSnapshot(
     val defaultEmojiSkinTone: String,
     val isCustomKeyboardTwoWordsOutputEnable: Boolean,
     val tenkeyQWERTYSwitchNumber: Boolean,
+    val tenkeyUseThreeStateKeyboard: Boolean,
     val tabletTenkeyQwertySwitchEnglish: Boolean,
     val tenkeyQKeymapGuide: Boolean,
     val flickKeymapGuide: Boolean,
@@ -301,6 +302,8 @@ data class ImePreferencesSnapshot(
                     appPreference.custom_keyboard_two_words_output ?: true,
                 tenkeyQWERTYSwitchNumber =
                     appPreference.tenkey_qwerty_switch_number_layout ?: false,
+                tenkeyUseThreeStateKeyboard =
+                    appPreference.tenkey_use_three_state_keyboard_preference,
                 tabletTenkeyQwertySwitchEnglish =
                     appPreference.tablet_tenkey_qwerty_switch_english_layout,
                 tenkeyQKeymapGuide = appPreference.tenkey_keymap_guide_layout ?: false,
