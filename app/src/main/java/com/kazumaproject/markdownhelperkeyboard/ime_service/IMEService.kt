@@ -163,8 +163,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebu
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
-import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
@@ -3522,9 +3522,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             KeyEvent.KEYCODE_DPAD_LEFT -> handleJapaneseDpadLeft(insertString)
             KeyEvent.KEYCODE_DPAD_RIGHT -> handleJapaneseDpadRight(insertString)
-            KeyEvent.KEYCODE_DPAD_UP -> handleJapaneseDpadUp(mainView, insertString, suggestions)
+            KeyEvent.KEYCODE_DPAD_UP -> handleJapaneseDpadUp(
+                e,
+                mainView,
+                insertString,
+                suggestions
+            )
             KeyEvent.KEYCODE_DPAD_DOWN -> handleJapaneseDpadDown(
-                mainView, insertString, suggestions
+                e,
+                mainView,
+                insertString,
+                suggestions
             )
 
             KeyEvent.KEYCODE_ENTER -> handleJapaneseEnterFloating(
@@ -4056,6 +4064,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleJapaneseDpadUp(
+        event: KeyEvent,
         mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
         insertString: String, suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
     ): Boolean {
@@ -4072,10 +4081,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         // insertStringが空の場合、元のロジックではフォールスルーしていた
-        return super.onKeyDown(KeyEvent.KEYCODE_DPAD_UP, null)
+        return super.onKeyDown(KeyEvent.KEYCODE_DPAD_UP, event)
     }
 
     private fun handleJapaneseDpadDown(
+        event: KeyEvent,
         mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
         insertString: String, suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
     ): Boolean {
@@ -4092,7 +4102,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         // insertStringが空の場合、元のロジックではフォールスルーしていた
-        return super.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, null)
+        return super.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, event)
     }
 
     private fun handleJapaneseEnterFloating(
@@ -4204,7 +4214,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             return true
         }
-        return super.onKeyDown(keyCode, null)
+        return false
     }
 
     private fun hasPhysicalTextShortcutModifier(event: KeyEvent): Boolean {
