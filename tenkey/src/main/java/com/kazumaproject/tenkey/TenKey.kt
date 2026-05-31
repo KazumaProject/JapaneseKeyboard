@@ -41,6 +41,9 @@ import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
+import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
+import com.kazumaproject.core.domain.state.toInputMode
+import com.kazumaproject.core.domain.state.toTwoStateNumberReturnTargetOrNull
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
@@ -134,6 +137,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var isLanguageIconEnabled = true
     private var useThreeStateKeyboard = true
     private var useQwertyNumberWhenThreeStateOff = false
+    private var twoStateNumberReturnTarget: TwoStateNumberReturnTarget =
+        TwoStateNumberReturnTarget.Japanese
 
     /** ← REPLACED AtomicReference with StateFlow **/
     private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
@@ -345,7 +350,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 Log.d("TenKey", "currentInputMode: $inputMode")
                 // Whenever inputMode changes, update all keys and switch UI
                 handleCurrentInputModeSwitch(inputMode)
-                binding.keySwitchKeyMode.setInputMode(inputMode, false, useThreeStateKeyboard)
+                binding.keySwitchKeyMode.setInputMode(
+                    inputMode = inputMode,
+                    isTablet = false,
+                    useThreeStateKeyboard = useThreeStateKeyboard,
+                    twoStateNumberReturnTarget = twoStateNumberReturnTarget
+                )
             }
         }
     }
@@ -1278,7 +1288,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     fun setUseThreeStateKeyboard(enabled: Boolean) {
         useThreeStateKeyboard = enabled
         binding.sideKeySymbolModeContainer.setUseThreeStateKeyboard(enabled)
-        binding.keySwitchKeyMode.setInputMode(currentInputMode.value, false, enabled)
+        binding.keySwitchKeyMode.setInputMode(
+            inputMode = currentInputMode.value,
+            isTablet = false,
+            useThreeStateKeyboard = enabled,
+            twoStateNumberReturnTarget = twoStateNumberReturnTarget
+        )
         requestLayout()
     }
 
@@ -2463,7 +2478,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             when (currentInputMode.value) {
                 InputMode.ModeJapanese -> InputMode.ModeEnglish
                 InputMode.ModeEnglish -> InputMode.ModeJapanese
-                InputMode.ModeNumber -> InputMode.ModeJapanese
+                InputMode.ModeNumber -> twoStateNumberReturnTarget.toInputMode()
             }
         }
         // ← WRITE to MutableStateFlow:
@@ -2476,12 +2491,19 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     private fun switchToNumberMode() {
         if (useThreeStateKeyboard) return
+        rememberTwoStateNumberReturnTargetFromCurrentMode()
         if (useQwertyNumberWhenThreeStateOff) {
             qwertyNumberModeRequestedListener?.invoke()
             return
         }
         _currentInputMode.update { InputMode.ModeNumber }
         inputModeChangedListener?.invoke(InputMode.ModeNumber)
+    }
+
+    private fun rememberTwoStateNumberReturnTargetFromCurrentMode() {
+        currentInputMode.value.toTwoStateNumberReturnTargetOrNull()?.let { target ->
+            twoStateNumberReturnTarget = target
+        }
     }
 
     /** Sync UI to a specified input mode (called from collector) **/

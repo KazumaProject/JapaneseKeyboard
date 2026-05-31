@@ -127,6 +127,9 @@ import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
+import com.kazumaproject.core.domain.state.toInputMode
+import com.kazumaproject.core.domain.state.toTwoStateNumberReturnTargetOrNull
 import com.kazumaproject.core.domain.window.getScreenHeight
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
@@ -444,6 +447,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyUseThreeStateKeyboard: Boolean = true
     private var tenkeySwitchNumberToQwertyNumberPreference: Boolean = false
     private var qwertyNumberOpenedFromTenkeyTwoStateNumberKey: Boolean = false
+    private var tenkeyTwoStateQwertyNumberReturnTarget: TwoStateNumberReturnTarget =
+        TwoStateNumberReturnTarget.Japanese
     private var tabletTenkeyQwertySwitchEnglish: Boolean = false
     private var tenkeyQKeymapGuide: Boolean? = false
     private var flickKeymapGuidePreference: Boolean? = false
@@ -2683,6 +2688,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tenkeyUseThreeStateKeyboard = true
         tenkeySwitchNumberToQwertyNumberPreference = false
         qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
+        tenkeyTwoStateQwertyNumberReturnTarget = TwoStateNumberReturnTarget.Japanese
         tabletTenkeyQwertySwitchEnglish = false
         tenkeyQKeymapGuide = null
         isKeyboardFloatingMode = null
@@ -4784,6 +4790,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (tenkeyUseThreeStateKeyboard) return
         if (!tenkeySwitchNumberToQwertyNumberPreference) return
 
+        rememberTenkeyTwoStateQwertyNumberReturnTarget()
         qwertyNumberOpenedFromTenkeyTwoStateNumberKey = true
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
         currentInputModeForSession = InputMode.ModeNumber
@@ -4804,6 +4811,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.TenKeyQWERTY)
         previousTenKeyQWERTYMode = TenKeyQWERTYMode.Default
+    }
+
+    private fun rememberTenkeyTwoStateQwertyNumberReturnTarget() {
+        currentInputModeForSession.toTwoStateNumberReturnTargetOrNull()?.let { target ->
+            tenkeyTwoStateQwertyNumberReturnTarget = target
+        }
     }
 
     private fun renderDynamicKeysOnActiveSurface() {
@@ -4883,15 +4896,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
-    private fun returnTenkeyJapaneseFromTwoStateQwertyNumber(
+    private fun returnTenkeyFromTwoStateQwertyNumber(
         mainView: MainLayoutBinding,
         insertString: String
     ) {
+        val returnInputMode = tenkeyTwoStateQwertyNumberReturnTarget.toInputMode()
+
         qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
         setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(false)
         updateQwertyOnActiveSurface { setDefaultView() }
         returnDefaultQwertyToTenkeyInputMode(
-            inputMode = InputMode.ModeJapanese,
+            inputMode = returnInputMode,
             mainView = mainView,
             insertString = insertString
         )
@@ -14145,7 +14160,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySwitchNumberKey -> {
                             if (qwertyNumberOpenedFromTenkeyTwoStateNumberKey) {
-                                returnTenkeyJapaneseFromTwoStateQwertyNumber(
+                                returnTenkeyFromTwoStateQwertyNumber(
                                     mainView = mainView,
                                     insertString = insertString
                                 )
