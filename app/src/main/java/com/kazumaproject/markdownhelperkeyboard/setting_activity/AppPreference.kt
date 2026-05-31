@@ -76,6 +76,11 @@ object AppPreference {
     private val TENKEY_SWITCH_NUMBER_TO_QWERTY_NUMBER_PREFERENCE =
         Pair("tenkey_switch_number_to_qwerty_number_preference", false)
 
+    private val TENKEY_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE =
+        Pair("tenkey_restore_input_mode_on_restart_preference", false)
+    private val TENKEY_LAST_INPUT_MODE_PREFERENCE =
+        Pair("tenkey_last_input_mode_preference", "japanese")
+
     private val TABLET_TENKEY_SWITCH_QWERTY_PREFERENCE =
         Pair("tablet_tenkey_kana_english_qwerty_preference", false)
 
@@ -205,6 +210,10 @@ object AppPreference {
     private const val NEW_SUMIRE_METHOD_KEY = "sumire_input_method_preference"
     private val SUMIRE_INPUT_SELECTION_PREFERENCE =
         Pair("sumire_keyboard_input_type_preference", "toggle-default")
+    private val SUMIRE_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE =
+        Pair("sumire_restore_input_mode_on_restart_preference", false)
+    private val SUMIRE_LAST_INPUT_MODE_PREFERENCE =
+        Pair("sumire_last_input_mode_preference", "japanese")
 
     private val DELETE_KEY_HIGH_LIGHT = Pair("henkan_delete_key_action_preference", true)
     private val CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE =
@@ -645,6 +654,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(TENKEY_SWITCH_NUMBER_TO_QWERTY_NUMBER_PREFERENCE.first, value)
+        }
+
+    var tenkey_restore_input_mode_on_restart_preference: Boolean
+        get() = preferences.getBoolean(
+            TENKEY_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE.first,
+            TENKEY_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE.first, value)
+        }
+
+    var tenkey_last_input_mode_preference: String
+        get() = preferences.getString(
+            TENKEY_LAST_INPUT_MODE_PREFERENCE.first,
+            TENKEY_LAST_INPUT_MODE_PREFERENCE.second
+        ) ?: TENKEY_LAST_INPUT_MODE_PREFERENCE.second
+        set(value) = preferences.edit {
+            it.putString(TENKEY_LAST_INPUT_MODE_PREFERENCE.first, value)
         }
 
     var tablet_tenkey_qwerty_switch_english_layout: Boolean
@@ -2307,6 +2334,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SUMIRE_ENGLISH_QWERTY_PREFERENCE.first, value)
+        }
+
+    var sumire_restore_input_mode_on_restart_preference: Boolean
+        get() = preferences.getBoolean(
+            SUMIRE_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE.first,
+            SUMIRE_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUMIRE_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE.first, value)
+        }
+
+    var sumire_last_input_mode_preference: String
+        get() = preferences.getString(
+            SUMIRE_LAST_INPUT_MODE_PREFERENCE.first,
+            SUMIRE_LAST_INPUT_MODE_PREFERENCE.second
+        ) ?: SUMIRE_LAST_INPUT_MODE_PREFERENCE.second
+        set(value) = preferences.edit {
+            it.putString(SUMIRE_LAST_INPUT_MODE_PREFERENCE.first, value)
         }
 
 

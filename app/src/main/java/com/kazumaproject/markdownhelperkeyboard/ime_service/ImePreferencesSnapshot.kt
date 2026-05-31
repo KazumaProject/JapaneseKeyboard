@@ -73,6 +73,10 @@ data class ImePreferencesSnapshot(
     val tenkeyQWERTYSwitchNumber: Boolean,
     val tenkeyUseThreeStateKeyboard: Boolean,
     val tenkeySwitchNumberToQwertyNumberPreference: Boolean,
+    val tenkeyRestoreInputModeOnRestart: Boolean,
+    val sumireRestoreInputModeOnRestart: Boolean,
+    val tenkeyLastInputModePreference: String,
+    val sumireLastInputModePreference: String,
     val tabletTenkeyQwertySwitchEnglish: Boolean,
     val tenkeyQKeymapGuide: Boolean,
     val flickKeymapGuide: Boolean,
@@ -307,6 +311,14 @@ data class ImePreferencesSnapshot(
                     appPreference.tenkey_use_three_state_keyboard_preference,
                 tenkeySwitchNumberToQwertyNumberPreference =
                     appPreference.tenkey_switch_number_to_qwerty_number_preference,
+                tenkeyRestoreInputModeOnRestart =
+                    appPreference.tenkey_restore_input_mode_on_restart_preference,
+                sumireRestoreInputModeOnRestart =
+                    appPreference.sumire_restore_input_mode_on_restart_preference,
+                tenkeyLastInputModePreference =
+                    appPreference.tenkey_last_input_mode_preference,
+                sumireLastInputModePreference =
+                    appPreference.sumire_last_input_mode_preference,
                 tabletTenkeyQwertySwitchEnglish =
                     appPreference.tablet_tenkey_qwerty_switch_english_layout,
                 tenkeyQKeymapGuide = appPreference.tenkey_keymap_guide_layout ?: false,
