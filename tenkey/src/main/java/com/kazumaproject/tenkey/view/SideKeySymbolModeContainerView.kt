@@ -34,6 +34,9 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
         background = null
         isClickable = false
         isFocusable = false
+        isPressed = false
+        setDuplicateParentStateEnabled(false)
+        setAddStatesFromChildren(false)
         clipToPadding = false
         clipChildren = false
 
@@ -58,11 +61,13 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
             layoutParams = LayoutParams(0, LayoutParams.MATCH_PARENT, 1f)
             background = AppCompatResources
                 .getDrawable(context, com.kazumaproject.core.R.drawable.ten_keys_side_bg)
-                ?.mutate()
+                .newIndependentDrawable()
             contentDescription = description
             scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
             isClickable = false
             isFocusable = false
+            isPressed = false
+            setDuplicateParentStateEnabled(false)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 focusable = View.NOT_FOCUSABLE
             }
@@ -74,6 +79,19 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
                 )
             )
         }
+    }
+
+    private fun Drawable?.newIndependentDrawable(): Drawable? {
+        val source = this ?: return null
+        return source.constantState?.newDrawable()?.mutate() ?: source.mutate()
+    }
+
+    override fun setPressed(pressed: Boolean) {
+        super.setPressed(false)
+    }
+
+    override fun dispatchSetPressed(pressed: Boolean) {
+        // Pressed state is controlled only by setPressedKey().
     }
 
     fun setUseThreeStateKeyboard(enabled: Boolean) {
@@ -108,10 +126,9 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
     }
 
     fun setKeyBackground(drawable: Drawable?) {
-        numberButton.background = drawable?.constantState?.newDrawable()?.mutate()
-            ?: drawable?.mutate()
-        symbolButton.background = drawable?.constantState?.newDrawable()?.mutate()
-            ?: drawable
+        numberButton.background = drawable.newIndependentDrawable()
+        symbolButton.background = drawable.newIndependentDrawable()
+        clearPressedKey()
     }
 
     fun setKeyTint(tint: ColorStateList?) {
@@ -127,11 +144,13 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
     fun setKeySolidColor(color: Int) {
         numberButton.setDrawableSolidColor(color)
         symbolButton.setDrawableSolidColor(color)
+        clearPressedKey()
     }
 
     fun setKeyBorder(color: Int, width: Int) {
         numberButton.setBorder(color, width)
         symbolButton.setBorder(color, width)
+        clearPressedKey()
     }
 
     fun setIconPadding(paddingSize: Int) {
@@ -141,11 +160,13 @@ class SideKeySymbolModeContainerView @JvmOverloads constructor(
     }
 
     fun setPressedKey(key: Key?) {
+        isPressed = false
         numberButton.isPressed = !useThreeStateKeyboard && key == Key.SideKeyNumberMode
         symbolButton.isPressed = key == Key.SideKeySymbol
     }
 
     fun clearPressedKey() {
+        isPressed = false
         numberButton.isPressed = false
         symbolButton.isPressed = false
     }
