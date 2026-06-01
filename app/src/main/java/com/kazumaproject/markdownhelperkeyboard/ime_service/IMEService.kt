@@ -126,6 +126,7 @@ import com.kazumaproject.core.domain.physical_keyboard.PhysicalKeyboardInputMode
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
+import com.kazumaproject.core.domain.state.QWERTYMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
 import com.kazumaproject.core.domain.state.toInputMode
@@ -447,6 +448,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyUseThreeStateKeyboard: Boolean = true
     private var tenkeySwitchNumberToQwertyNumberPreference: Boolean = false
     private var qwertyNumberOpenedFromTenkeyTwoStateNumberKey: Boolean = false
+    private var qwertySwitchNumberKeyReturnSource: RestartInputModeQwertyReturnSource =
+        RestartInputModeQwertyReturnSource.None
     private var tenkeyTwoStateQwertyNumberReturnTarget: TwoStateNumberReturnTarget =
         TwoStateNumberReturnTarget.Japanese
     private var tabletTenkeyQwertySwitchEnglish: Boolean = false
@@ -715,6 +718,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var enableShowLastShownKeyboardInRestart: Boolean? = false
     private var lastSavedKeyboardPosition: Int? = 0
+    private var tenkeyRestoreInputModeOnRestart: Boolean = false
+    private var sumireRestoreInputModeOnRestart: Boolean = false
+    private var tenkeyRestoreInputModeOnlyWithinTime: Boolean = false
+    private var tenkeyRestoreInputModeTimeoutMinutes: Int = 5
+    private var tenkeyLastInputModeSavedAtEpochMillis: Long = 0L
+    private var sumireRestoreInputModeOnlyWithinTime: Boolean = false
+    private var sumireRestoreInputModeTimeoutMinutes: Int = 5
+    private var sumireLastInputModeSavedAtEpochMillis: Long = 0L
+    private var tenkeyLastInputModePreference: String = "japanese"
+    private var tenkeyLastInputModePresentationPreference: String = "native"
+    private var tenkeyLastQwertyNumberReturnTargetPreference: String = "japanese"
+    private var sumireLastInputModePreference: String = "japanese"
+    private var sumireLastInputModePresentationPreference: String = "native"
 
     private var zenzEnableStatePreference: Boolean? = false
     private var zenzaiEnableStatePreference: Boolean? = false
@@ -1439,6 +1455,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tenkeyUseThreeStateKeyboard = preferences.tenkeyUseThreeStateKeyboard
         tenkeySwitchNumberToQwertyNumberPreference =
             preferences.tenkeySwitchNumberToQwertyNumberPreference
+        tenkeyRestoreInputModeOnRestart =
+            preferences.tenkeyRestoreInputModeOnRestart
+        sumireRestoreInputModeOnRestart =
+            preferences.sumireRestoreInputModeOnRestart
+        tenkeyRestoreInputModeOnlyWithinTime =
+            preferences.tenkeyRestoreInputModeOnlyWithinTime
+        tenkeyRestoreInputModeTimeoutMinutes =
+            preferences.tenkeyRestoreInputModeTimeoutMinutes
+        tenkeyLastInputModeSavedAtEpochMillis =
+            preferences.tenkeyLastInputModeSavedAtEpochMillis
+        sumireRestoreInputModeOnlyWithinTime =
+            preferences.sumireRestoreInputModeOnlyWithinTime
+        sumireRestoreInputModeTimeoutMinutes =
+            preferences.sumireRestoreInputModeTimeoutMinutes
+        sumireLastInputModeSavedAtEpochMillis =
+            preferences.sumireLastInputModeSavedAtEpochMillis
+        tenkeyLastInputModePreference =
+            preferences.tenkeyLastInputModePreference
+        tenkeyLastInputModePresentationPreference =
+            preferences.tenkeyLastInputModePresentationPreference
+        tenkeyLastQwertyNumberReturnTargetPreference =
+            preferences.tenkeyLastQwertyNumberReturnTargetPreference
+        sumireLastInputModePreference =
+            preferences.sumireLastInputModePreference
+        sumireLastInputModePresentationPreference =
+            preferences.sumireLastInputModePresentationPreference
         tabletTenkeyQwertySwitchEnglish = preferences.tabletTenkeyQwertySwitchEnglish
         tenkeyQKeymapGuide = preferences.tenkeyQKeymapGuide
         flickKeymapGuidePreference = preferences.flickKeymapGuide
@@ -2188,7 +2230,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("current input type in OnStartView passwordTypesWithOutNumber: [$currentInputType] [$restarting] [${currentInputModeForSession}] [${qwertyMode.value}]")
                 currentInputModeForSession = InputMode.ModeEnglish
                 setCurrentQwertyRomajiModeForSession(false)
-                setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                setQwertySwitchNumberKeyReturnSource(
+                    RestartInputModeQwertyReturnSource.TenKeyDefault
+                )
                 _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                 updateQwertyOnActiveSurface {
                     resetQWERTYKeyboard(currentInputType.getQWERTYReturnTextInEn())
@@ -2421,7 +2465,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 qwertyView.setNumberSwitchKeyTextStyle(
                     excludeNumber = qwertySwitchNumberKeyWithoutNumberPreference ?: false
                 )
-                qwertyView.setSwitchNumberLayoutKeyVisibility(false)
+                qwertyView.setSwitchNumberLayoutKeyVisibility(
+                    shouldShowQwertySwitchNumberLayoutKey()
+                )
                 qwertyView.setDeleteLeftFlickEnabled(isDeleteLeftFlickPreference ?: true)
                 qwertyView.setDeleteUpFlickEnabled(isDeleteUpFlickPreference ?: false)
                 qwertyView.setDeleteDownFlickEnabled(isDeleteDownFlickPreference ?: false)
@@ -2447,7 +2493,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val currentKeyboardType = keyboardOrder.getOrNull(currentKeyboardOrder)
                 if (shouldSwitchTenkeyEnglishToQwerty() && currentInputModeForSession == InputMode.ModeEnglish && currentKeyboardType == KeyboardType.TENKEY) {
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                    setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                    setQwertySwitchNumberKeyReturnSource(
+                        RestartInputModeQwertyReturnSource.TenKeyDefault
+                    )
                     setCurrentQwertyRomajiModeForSession(false)
                     qwertyView.resetQWERTYKeyboard(currentInputType.getQWERTYReturnTextInEn())
                     setKeyboardSizeSwitchKeyboard(mainView)
@@ -2500,6 +2548,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
         persistCurrentCustomKeyboardInputModeIfEnabled()
+        persistCurrentTenkeyOrSumireInputModeIfEnabled()
         isInputViewActive = false
         qwertyGlideInputCoordinator?.cancelPending()
         releaseKeyboardBackgroundVideoPlayer()
@@ -2687,7 +2736,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tenkeyQWERTYSwitchNumber = null
         tenkeyUseThreeStateKeyboard = true
         tenkeySwitchNumberToQwertyNumberPreference = false
+        tenkeyRestoreInputModeOnRestart = false
+        sumireRestoreInputModeOnRestart = false
+        tenkeyRestoreInputModeOnlyWithinTime = false
+        tenkeyRestoreInputModeTimeoutMinutes = 5
+        tenkeyLastInputModeSavedAtEpochMillis = 0L
+        sumireRestoreInputModeOnlyWithinTime = false
+        sumireRestoreInputModeTimeoutMinutes = 5
+        sumireLastInputModeSavedAtEpochMillis = 0L
+        tenkeyLastInputModePreference = "japanese"
+        tenkeyLastInputModePresentationPreference = "native"
+        tenkeyLastQwertyNumberReturnTargetPreference = "japanese"
+        sumireLastInputModePreference = "japanese"
+        sumireLastInputModePresentationPreference = "native"
         qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
+        qwertySwitchNumberKeyReturnSource = RestartInputModeQwertyReturnSource.None
         tenkeyTwoStateQwertyNumberReturnTarget = TwoStateNumberReturnTarget.Japanese
         tabletTenkeyQwertySwitchEnglish = false
         tenkeyQKeymapGuide = null
@@ -4772,7 +4835,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
         currentInputModeForSession = InputMode.ModeEnglish
         setCurrentQwertyRomajiModeForSession(false)
-        setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+        setQwertySwitchNumberKeyReturnSource(RestartInputModeQwertyReturnSource.TenKeyDefault)
         updateQwertyOnActiveSurface {
             resetQWERTYKeyboard(currentInputType.getQWERTYReturnTextInEn())
         }
@@ -4792,10 +4855,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         rememberTenkeyTwoStateQwertyNumberReturnTarget()
         qwertyNumberOpenedFromTenkeyTwoStateNumberKey = true
+        setQwertySwitchNumberKeyReturnSource(RestartInputModeQwertyReturnSource.TenKeyNumber)
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
         currentInputModeForSession = InputMode.ModeNumber
         setCurrentQwertyRomajiModeForSession(false)
-        setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
         updateQwertyOnActiveSurface {
             setNumberView()
         }
@@ -4859,6 +4922,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setInputModeOnActiveSurface(inputMode)
     }
 
+    private fun InputMode.toRestartPreferenceValue(): String {
+        return RestartInputModePreference.toPreferenceValue(this)
+    }
+
+    private fun inputModeFromRestartPreferenceValue(value: String): InputMode {
+        return RestartInputModePreference.fromPreferenceValue(value)
+    }
+
+    private fun TwoStateNumberReturnTarget.toRestartPreferenceValue(): String {
+        return RestartInputModePreference.toPreferenceValue(this)
+    }
+
+    private fun tenkeyQwertyNumberReturnTargetFromRestartPreferenceValue(
+        value: String
+    ): TwoStateNumberReturnTarget {
+        return RestartInputModePreference.twoStateNumberReturnTargetFromPreferenceValue(value)
+    }
+
     private fun resizeTenkeySurfaceAfterQwertyNumberKey(
         mainView: MainLayoutBinding,
         insertString: String
@@ -4876,6 +4957,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String
     ) {
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+        clearQwertySwitchNumberKeyReturnSource()
+        qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
+        previousTenKeyQWERTYMode = null
         setCurrentInputModeForSession(inputMode)
         resizeTenkeySurfaceAfterQwertyNumberKey(mainView, insertString)
     }
@@ -4903,7 +4987,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val returnInputMode = tenkeyTwoStateQwertyNumberReturnTarget.toInputMode()
 
         qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
-        setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(false)
+        clearQwertySwitchNumberKeyReturnSource()
         updateQwertyOnActiveSurface { setDefaultView() }
         returnDefaultQwertyToTenkeyInputMode(
             inputMode = returnInputMode,
@@ -4913,6 +4997,74 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         previousTenKeyQWERTYMode = null
         renderCurrentKeyboardStateOnActiveSurface()
         updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.Default)
+    }
+
+    private fun returnTenkeyFromQwertyNumberProxy(
+        mainView: MainLayoutBinding,
+        insertString: String
+    ) {
+        updateQwertyOnActiveSurface { setDefaultView() }
+        returnDefaultQwertyToTenkeyInputMode(
+            inputMode = InputMode.ModeNumber,
+            mainView = mainView,
+            insertString = insertString
+        )
+        renderCurrentKeyboardStateOnActiveSurface()
+        updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.Default)
+    }
+
+    private fun returnDefaultQwertyProxyToTenkey(
+        mainView: MainLayoutBinding,
+        insertString: String
+    ) {
+        returnDefaultQwertyFromNumberKey(mainView, insertString)
+        renderCurrentKeyboardStateOnActiveSurface()
+        updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.Default)
+    }
+
+    private fun returnSumireFromQwertyProxy(
+        mainView: MainLayoutBinding,
+        insertString: String
+    ) {
+        val inputMode = if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
+            InputMode.ModeJapanese
+        } else {
+            InputMode.ModeNumber
+        }
+        customKeyboardMode = inputMode.toSumireKeyboardInputMode()
+        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+        clearQwertySwitchNumberKeyReturnSource()
+        qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
+        previousTenKeyQWERTYMode = null
+        setCurrentInputModeForSession(inputMode)
+        createNewKeyboardLayoutForSumire()
+        if (insertString.isEmpty()) {
+            setKeyboardSizeSwitchKeyboard(mainView)
+        } else {
+            setKeyboardHeightWithAdditional(mainView)
+        }
+        renderCurrentKeyboardStateOnActiveSurface()
+        updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.Sumire)
+    }
+
+    private fun returnCustomFromQwertyProxy(
+        mainView: MainLayoutBinding,
+        insertString: String
+    ) {
+        customKeyboardMode = KeyboardInputMode.HIRAGANA
+        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
+        clearQwertySwitchNumberKeyReturnSource()
+        qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
+        previousTenKeyQWERTYMode = null
+        setCurrentInputModeForSession(InputMode.ModeJapanese)
+        createNewKeyboardLayoutForSumire()
+        if (insertString.isEmpty()) {
+            setKeyboardSizeSwitchKeyboard(mainView)
+        } else {
+            setKeyboardHeightWithAdditional(mainView)
+        }
+        renderCurrentKeyboardStateOnActiveSurface()
+        updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.Custom)
     }
 
     private fun setQwertyRomajiModeOnActiveSurface(enabled: Boolean) {
@@ -4933,10 +5085,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ?.setRomajiEnglishSwitchKeyTextWithStyle(isJapanese)
     }
 
-    private fun setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(isVisible: Boolean) {
-        getActiveKeyboardSurface()
-            ?.qwertyView
-            ?.setSwitchNumberLayoutKeyVisibility(isVisible)
+    private fun setQwertySwitchNumberKeyReturnSource(
+        source: RestartInputModeQwertyReturnSource
+    ) {
+        qwertySwitchNumberKeyReturnSource = source
+    }
+
+    private fun clearQwertySwitchNumberKeyReturnSource() {
+        qwertySwitchNumberKeyReturnSource = RestartInputModeQwertyReturnSource.None
+    }
+
+    private fun shouldShowQwertySwitchNumberLayoutKey(): Boolean {
+        if (qwertyMode.value != TenKeyQWERTYMode.TenKeyQWERTY) return false
+        if (qwertyNumberOpenedFromTenkeyTwoStateNumberKey) return true
+        if (isTenkeyThreeStateQwertyNumberProxyActive()) return true
+        if (qwertySwitchNumberKeyReturnSource != RestartInputModeQwertyReturnSource.None) {
+            return true
+        }
+        return previousTenKeyQWERTYMode == TenKeyQWERTYMode.Default ||
+                previousTenKeyQWERTYMode == TenKeyQWERTYMode.Sumire ||
+                previousTenKeyQWERTYMode == TenKeyQWERTYMode.Custom
+    }
+
+    private fun isTenkeyThreeStateQwertyNumberProxyActive(): Boolean {
+        if (keyboardOrder.getOrNull(currentKeyboardOrder) != KeyboardType.TENKEY) return false
+        if (!tenkeyUseThreeStateKeyboard) return false
+        if (currentInputModeForSession != InputMode.ModeNumber) return false
+        val qwertyView = getActiveKeyboardSurface()?.qwertyView ?: return false
+        return qwertyView.isVisible &&
+                qwertyView.snapshotUiState().qwertyMode == QWERTYMode.Number
     }
 
     private fun renderQwertyStateOnActiveSurface() {
@@ -4949,6 +5126,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji &&
                     qwertyShowSwitchRomajiEnglishPreference == true
         )
+        qwertyView.setSwitchNumberLayoutKeyVisibility(shouldShowQwertySwitchNumberLayoutKey())
         updateQwertyGlideInputModeOnActiveSurface()
     }
 
@@ -7143,12 +7321,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                             KeyboardType.ROMAJI -> {
                                 setCurrentInputModeForSession(InputMode.ModeJapanese)
-                                setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(false)
+                                clearQwertySwitchNumberKeyReturnSource()
                             }
 
                             KeyboardType.QWERTY -> {
                                 setCurrentInputModeForSession(InputMode.ModeEnglish)
-                                setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(false)
+                                clearQwertySwitchNumberKeyReturnSource()
                             }
 
                             KeyboardType.CUSTOM -> { /* 任意 */
@@ -7622,6 +7800,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             when (resolvedType) {
                 KeyboardType.TENKEY -> {
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                        clearQwertySwitchNumberKeyReturnSource()
                         if (isTabletGojuonSurface()) {
                             tabletView.isVisible = true
                             tabletView.resetLayout()
@@ -7631,6 +7810,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             tabletView.isVisible = false
                         }
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+                        switchTenkeyEnglishToQwertyIfNeeded(currentInputModeForSession, this)
                     } else {
                         customKeyboardMode = KeyboardInputMode.HIRAGANA
                         customLayoutDefault.isVisible = true
@@ -7643,6 +7823,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 KeyboardType.QWERTY -> {
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                        clearQwertySwitchNumberKeyReturnSource()
                         qwertyView.isVisible = true
                         keyboardView.isVisible = false
                         customLayoutDefault.isVisible = false
@@ -7663,6 +7844,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 KeyboardType.ROMAJI -> {
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                        clearQwertySwitchNumberKeyReturnSource()
                         qwertyView.isVisible = true
                         keyboardView.isVisible = false
                         customLayoutDefault.isVisible = false
@@ -7686,13 +7868,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 KeyboardType.SUMIRE -> {
                     Timber.d("showKeyboard keyboard: $currentInputModeForSession [$customKeyboardMode]")
-                    if (sumireEnglishQwertyPreference == true && customKeyboardMode == KeyboardInputMode.ENGLISH) {
+                    customKeyboardMode = currentInputModeForSession.toSumireKeyboardInputMode()
+                    if (sumireEnglishQwertyPreference == true && currentInputModeForSession == InputMode.ModeEnglish) {
                         if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                            setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                            setQwertySwitchNumberKeyReturnSource(
+                                RestartInputModeQwertyReturnSource.Sumire
+                            )
                             setCurrentQwertyRomajiModeForSession(false)
                             setKeyboardSizeSwitchKeyboard(this)
                             previousTenKeyQWERTYMode = TenKeyQWERTYMode.Sumire
+                            qwertyView.resetQWERTYKeyboard(
+                                currentInputType.getQWERTYReturnTextInEn()
+                            )
                             qwertyView.isVisible = true
                             customLayoutDefault.isVisible = false
                             keyboardView.isVisible = false
@@ -7717,6 +7905,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
                     } else {
+                        clearQwertySwitchNumberKeyReturnSource()
                         customLayoutDefault.isVisible = true
                         if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                             currentEnterKeyIndex = currentInputType.getEnterKeyIndexSumire()
@@ -7751,6 +7940,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         return@apply
                     }
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
+                        clearQwertySwitchNumberKeyReturnSource()
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
                     } else {
                         setNumberLayoutTo(customLayoutDefault)
@@ -7791,6 +7981,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         renderCurrentKeyboardStateOnActiveSurface()
     }
 
+    private fun InputMode.toSumireKeyboardInputMode(): KeyboardInputMode {
+        return when (this) {
+            InputMode.ModeJapanese -> KeyboardInputMode.HIRAGANA
+            InputMode.ModeEnglish -> KeyboardInputMode.ENGLISH
+            InputMode.ModeNumber -> KeyboardInputMode.SYMBOLS
+        }
+    }
+
     private fun applyCircularSlotActionSettings(
         layout: KeyboardLayout,
         mode: KeyboardInputMode
@@ -7824,7 +8022,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         val insertString = inputString.value
                         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                         mainLayoutBinding?.let { mainView ->
-                            setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                            setQwertySwitchNumberKeyReturnSource(
+                                RestartInputModeQwertyReturnSource.Custom
+                            )
                             setCurrentQwertyRomajiModeForSession(false)
                             if (insertString.isEmpty()) {
                                 setKeyboardSizeSwitchKeyboard(mainView)
@@ -7832,6 +8032,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 setKeyboardHeightWithAdditional(mainView)
                             }
                             previousTenKeyQWERTYMode = TenKeyQWERTYMode.Custom
+                            renderQwertyStateOnActiveSurface()
                         }
                     }
 
@@ -7859,7 +8060,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             val insertString = inputString.value
                             _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
                             mainLayoutBinding?.let { mainView ->
-                                setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(true)
+                                setQwertySwitchNumberKeyReturnSource(
+                                    RestartInputModeQwertyReturnSource.Sumire
+                                )
                                 setCurrentQwertyRomajiModeForSession(false)
                                 updateQwertyOnActiveSurface { setDefaultView() }
                                 if (insertString.isEmpty()) {
@@ -7868,6 +8071,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     setKeyboardHeightWithAdditional(mainView)
                                 }
                                 previousTenKeyQWERTYMode = TenKeyQWERTYMode.Sumire
+                                renderQwertyStateOnActiveSurface()
                             }
                         } else {
                             Timber.d("updateKeyboardLayout: $isFlickOnlyMode $sumireInputKeyType")
@@ -7937,6 +8141,82 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         appPreference.saveCustomKeyboardLastDirectMode(key, isCustomLayoutDirectMode)
         appPreference.saveCustomKeyboardLastRomajiMode(key, isCustomLayoutRomajiMode)
+    }
+
+    private fun resolveCurrentRestartInputModePersistenceTarget(): KeyboardType? {
+        return RestartInputModePreference.resolvePersistenceTarget(
+            currentKeyboardType = keyboardOrder.getOrNull(currentKeyboardOrder),
+            activeTenKeyQwertyMode = qwertyMode.value,
+            previousTenKeyQWERTYMode = previousTenKeyQWERTYMode,
+            qwertyReturnSource = qwertySwitchNumberKeyReturnSource
+        )
+    }
+
+    private fun resolveCurrentRestartInputModeState(): RestartInputModeState? {
+        val qwertyView = getActiveKeyboardSurface()?.qwertyView
+        return RestartInputModePreference.resolveStateForPersistence(
+            currentKeyboardType = keyboardOrder.getOrNull(currentKeyboardOrder),
+            activeTenKeyQwertyMode = qwertyMode.value,
+            previousTenKeyQWERTYMode = previousTenKeyQWERTYMode,
+            qwertyReturnSource = qwertySwitchNumberKeyReturnSource,
+            currentInputMode = currentInputModeForSession,
+            tenkeyTwoStateQwertyNumberReturnTarget = tenkeyTwoStateQwertyNumberReturnTarget,
+            tenkeyUseThreeStateKeyboard = tenkeyUseThreeStateKeyboard,
+            sumireEnglishQwertyPreference = sumireEnglishQwertyPreference == true,
+            isQwertyViewVisible = qwertyView?.isVisible == true,
+            isQwertyNumberLayout = qwertyView?.snapshotUiState()?.qwertyMode == QWERTYMode.Number
+        )
+    }
+
+    private fun persistCurrentTenkeyOrSumireInputModeIfEnabled() {
+        val state = resolveCurrentRestartInputModeState()
+        val persistence = RestartInputModePreference.resolvePersistenceValue(
+            currentInputType = currentInputType,
+            passwordTypesWithoutNumber = passwordTypesWithOutNumber,
+            numberTypes = numberTypes,
+            state = state,
+            tenkeyRestoreEnabled = tenkeyRestoreInputModeOnRestart,
+            sumireRestoreEnabled = sumireRestoreInputModeOnRestart,
+            fallbackInputMode = currentInputModeForSession
+        ) ?: return
+
+        val value = inputModeFromRestartPreferenceValue(persistence.value).toRestartPreferenceValue()
+        val presentationValue = restartInputModePresentationFromPreferenceValue(
+            persistence.presentationValue
+        ).toRestartPreferenceValue()
+        val tenkeyQwertyNumberReturnTargetValue =
+            tenkeyQwertyNumberReturnTargetFromRestartPreferenceValue(
+                persistence.tenkeyQwertyNumberReturnTargetValue
+                    ?: RestartInputModePreference.TENKEY_QWERTY_NUMBER_RETURN_JAPANESE
+            ).toRestartPreferenceValue()
+        val savedAtEpochMillis = System.currentTimeMillis()
+        when (persistence.target) {
+            KeyboardType.TENKEY -> {
+                appPreference.tenkey_last_input_mode_preference = value
+                appPreference.tenkey_last_input_mode_presentation_preference = presentationValue
+                appPreference.tenkey_last_qwerty_number_return_target_preference =
+                    tenkeyQwertyNumberReturnTargetValue
+                appPreference.tenkey_last_input_mode_saved_at_epoch_millis_preference =
+                    savedAtEpochMillis
+                tenkeyLastInputModePreference = value
+                tenkeyLastInputModePresentationPreference = presentationValue
+                tenkeyLastQwertyNumberReturnTargetPreference =
+                    tenkeyQwertyNumberReturnTargetValue
+                tenkeyLastInputModeSavedAtEpochMillis = savedAtEpochMillis
+            }
+
+            KeyboardType.SUMIRE -> {
+                appPreference.sumire_last_input_mode_preference = value
+                appPreference.sumire_last_input_mode_presentation_preference = presentationValue
+                appPreference.sumire_last_input_mode_saved_at_epoch_millis_preference =
+                    savedAtEpochMillis
+                sumireLastInputModePreference = value
+                sumireLastInputModePresentationPreference = presentationValue
+                sumireLastInputModeSavedAtEpochMillis = savedAtEpochMillis
+            }
+
+            else -> Unit
+        }
     }
 
     private fun selectedCustomKeyboardLayoutOrNull(): CustomKeyboardLayout? {
@@ -10046,10 +10326,147 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 appPreference.save_last_used_keyboard_position_preference = resolvedIndex
             }
             currentKeyboardOrder = resolvedIndex
-            showKeyboard(keyboardOrder[resolvedIndex])
+            val requestedType = keyboardOrder[resolvedIndex]
+            val restoredState = restoreInputModeForKeyboardRestartIfEnabled(requestedType)
+            showKeyboard(requestedType)
+            restoredState?.let(::restoreRestartInputModeState)
         } else {
             currentKeyboardOrder = 0
-            showKeyboard(keyboardOrder[0])
+            val requestedType = keyboardOrder[0]
+            val restoredState = restoreInputModeForKeyboardRestartIfEnabled(requestedType)
+            showKeyboard(requestedType)
+            restoredState?.let(::restoreRestartInputModeState)
+        }
+    }
+
+    private fun resolveRestoredRestartInputModeState(type: KeyboardType): RestartInputModeState? {
+        if (!isRestartInputModeRestoreAllowedByTimeLimit(type, System.currentTimeMillis())) {
+            return null
+        }
+        return RestartInputModePreference.resolveRestoredState(
+            type = type,
+            tenkeyRestoreEnabled = tenkeyRestoreInputModeOnRestart,
+            sumireRestoreEnabled = sumireRestoreInputModeOnRestart,
+            tenkeyLastInputModePreference = tenkeyLastInputModePreference,
+            tenkeyLastInputModePresentationPreference =
+                tenkeyLastInputModePresentationPreference,
+            tenkeyLastQwertyNumberReturnTargetPreference =
+                tenkeyLastQwertyNumberReturnTargetPreference,
+            sumireLastInputModePreference = sumireLastInputModePreference,
+            sumireLastInputModePresentationPreference =
+                sumireLastInputModePresentationPreference
+        )
+    }
+
+    private fun isRestartInputModeRestoreAllowedByTimeLimit(
+        type: KeyboardType,
+        nowEpochMillis: Long
+    ): Boolean {
+        return when (type) {
+            KeyboardType.TENKEY -> RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = tenkeyRestoreInputModeOnlyWithinTime,
+                timeoutMinutes = tenkeyRestoreInputModeTimeoutMinutes,
+                savedAtEpochMillis = tenkeyLastInputModeSavedAtEpochMillis,
+                nowEpochMillis = nowEpochMillis
+            )
+
+            KeyboardType.SUMIRE -> RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = sumireRestoreInputModeOnlyWithinTime,
+                timeoutMinutes = sumireRestoreInputModeTimeoutMinutes,
+                savedAtEpochMillis = sumireLastInputModeSavedAtEpochMillis,
+                nowEpochMillis = nowEpochMillis
+            )
+
+            else -> true
+        }
+    }
+
+    private fun restoreInputModeForKeyboardRestartIfEnabled(
+        type: KeyboardType
+    ): RestartInputModeState? {
+        val restoredState = resolveRestoredRestartInputModeState(type) ?: return null
+        setCurrentInputModeForSession(restoredState.inputMode)
+        return restoredState
+    }
+
+    private fun restoreRestartInputModeState(state: RestartInputModeState) {
+        when (state.presentation) {
+            RestartInputModePresentation.Native -> restoreNativeRestartInputModeState(state)
+            RestartInputModePresentation.SumireQwertyProxy ->
+                restoreSumireQwertyProxyRestartInputModeState(state)
+
+            RestartInputModePresentation.TenkeyQwertyNumberProxy ->
+                restoreTenkeyQwertyNumberProxyRestartInputModeState(state)
+        }
+    }
+
+    private fun restoreNativeRestartInputModeState(state: RestartInputModeState) {
+        setCurrentInputModeForSession(state.inputMode)
+        renderCurrentKeyboardStateOnActiveSurface()
+    }
+
+    private fun restoreSumireQwertyProxyRestartInputModeState(state: RestartInputModeState) {
+        if (state.keyboardType != KeyboardType.SUMIRE ||
+            state.inputMode != InputMode.ModeEnglish
+        ) {
+            restoreNativeRestartInputModeState(state)
+            return
+        }
+        applySumireQwertyProxyFromRestartState()
+    }
+
+    private fun restoreTenkeyQwertyNumberProxyRestartInputModeState(
+        state: RestartInputModeState
+    ) {
+        if (state.keyboardType != KeyboardType.TENKEY ||
+            state.inputMode != InputMode.ModeNumber
+        ) {
+            restoreNativeRestartInputModeState(state)
+            return
+        }
+        applyTenkeyQwertyNumberProxyFromRestartState(state)
+    }
+
+    private fun applySumireQwertyProxyFromRestartState() {
+        currentInputModeForSession = InputMode.ModeEnglish
+        customKeyboardMode = KeyboardInputMode.ENGLISH
+        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+        setQwertySwitchNumberKeyReturnSource(RestartInputModeQwertyReturnSource.Sumire)
+        previousTenKeyQWERTYMode = TenKeyQWERTYMode.Sumire
+        qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
+        setCurrentQwertyRomajiModeForSession(false)
+        updateQwertyOnActiveSurface {
+            resetQWERTYKeyboard(currentInputType.getQWERTYReturnTextInEn())
+        }
+        renderCurrentKeyboardStateOnActiveSurface()
+        resizeKeyboardAfterRestartQwertyProxy()
+        syncFloatingKeyboardContentForMode(TenKeyQWERTYMode.TenKeyQWERTY)
+        updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.TenKeyQWERTY)
+    }
+
+    private fun applyTenkeyQwertyNumberProxyFromRestartState(state: RestartInputModeState) {
+        currentInputModeForSession = InputMode.ModeNumber
+        _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+        setQwertySwitchNumberKeyReturnSource(RestartInputModeQwertyReturnSource.TenKeyNumber)
+        previousTenKeyQWERTYMode = TenKeyQWERTYMode.Default
+        tenkeyTwoStateQwertyNumberReturnTarget =
+            state.tenkeyQwertyNumberReturnTarget ?: TwoStateNumberReturnTarget.Japanese
+        qwertyNumberOpenedFromTenkeyTwoStateNumberKey = true
+        setCurrentQwertyRomajiModeForSession(false)
+        updateQwertyOnActiveSurface { setNumberView() }
+        renderCurrentKeyboardStateOnActiveSurface()
+        resizeKeyboardAfterRestartQwertyProxy()
+        syncFloatingKeyboardContentForMode(TenKeyQWERTYMode.TenKeyQWERTY)
+        updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.TenKeyQWERTY)
+    }
+
+    private fun resizeKeyboardAfterRestartQwertyProxy() {
+        mainLayoutBinding?.let { mainView ->
+            if (inputString.value.isEmpty()) {
+                setKeyboardSizeSwitchKeyboard(mainView)
+            } else {
+                setKeyboardHeightWithAdditional(mainView)
+            }
         }
     }
 
@@ -13964,7 +14381,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setNumberSwitchKeyTextStyle(
                 excludeNumber = qwertySwitchNumberKeyWithoutNumberPreference ?: false
             )
-            setSwitchNumberLayoutKeyVisibility(false)
+            setSwitchNumberLayoutKeyVisibility(shouldShowQwertySwitchNumberLayoutKey())
             setDeleteLeftFlickEnabled(isDeleteLeftFlickPreference ?: true)
             setDeleteUpFlickEnabled(isDeleteUpFlickPreference ?: false)
             setDeleteDownFlickEnabled(isDeleteDownFlickPreference ?: false)
@@ -14056,7 +14473,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 _inputString.update { "" }
                                 finishComposingText()
                                 setComposingText("", 0)
-                                setQwertySwitchNumberLayoutKeyVisibilityOnActiveSurface(false)
+                                clearQwertySwitchNumberKeyReturnSource()
                             }
                         }
 
@@ -14166,51 +14583,58 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 )
                                 return
                             }
+                            when (qwertySwitchNumberKeyReturnSource) {
+                                RestartInputModeQwertyReturnSource.TenKeyDefault -> {
+                                    returnDefaultQwertyProxyToTenkey(mainView, insertString)
+                                    return
+                                }
+
+                                RestartInputModeQwertyReturnSource.Sumire -> {
+                                    returnSumireFromQwertyProxy(mainView, insertString)
+                                    return
+                                }
+
+                                RestartInputModeQwertyReturnSource.TenKeyNumber -> {
+                                    returnTenkeyFromQwertyNumberProxy(mainView, insertString)
+                                    return
+                                }
+
+                                RestartInputModeQwertyReturnSource.Custom -> {
+                                    returnCustomFromQwertyProxy(mainView, insertString)
+                                    return
+                                }
+
+                                RestartInputModeQwertyReturnSource.None -> Unit
+                            }
+                            if (isTenkeyThreeStateQwertyNumberProxyActive()) {
+                                returnTenkeyFromQwertyNumberProxy(mainView, insertString)
+                                return
+                            }
                             if (previousTenKeyQWERTYMode == null) {
-                                returnDefaultQwertyFromNumberKey(mainView, insertString)
+                                returnDefaultQwertyProxyToTenkey(mainView, insertString)
                             } else {
                                 previousTenKeyQWERTYMode?.let {
                                     when (it) {
                                         TenKeyQWERTYMode.Default -> {
-                                            returnDefaultQwertyFromNumberKey(mainView, insertString)
+                                            returnDefaultQwertyProxyToTenkey(
+                                                mainView,
+                                                insertString
+                                            )
                                         }
 
                                         TenKeyQWERTYMode.Sumire -> {
-                                            if (qwertySwitchNumberKeyWithoutNumberPreference == true) {
-                                                customKeyboardMode = KeyboardInputMode.HIRAGANA
-                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
-                                                setCurrentInputModeForSession(InputMode.ModeJapanese)
-                                                createNewKeyboardLayoutForSumire()
-                                                if (insertString.isEmpty()) {
-                                                    setKeyboardSizeSwitchKeyboard(mainView)
-                                                } else {
-                                                    setKeyboardHeightWithAdditional(mainView)
-                                                }
-                                            } else {
-                                                customKeyboardMode = KeyboardInputMode.SYMBOLS
-                                                _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
-                                                createNewKeyboardLayoutForSumire()
-                                                if (insertString.isEmpty()) {
-                                                    setKeyboardSizeSwitchKeyboard(mainView)
-                                                } else {
-                                                    setKeyboardHeightWithAdditional(mainView)
-                                                }
-                                            }
+                                            returnSumireFromQwertyProxy(mainView, insertString)
                                         }
 
                                         TenKeyQWERTYMode.Custom -> {
-                                            customKeyboardMode = KeyboardInputMode.HIRAGANA
-                                            _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
-                                            createNewKeyboardLayoutForSumire()
-                                            if (insertString.isEmpty()) {
-                                                setKeyboardSizeSwitchKeyboard(mainView)
-                                            } else {
-                                                setKeyboardHeightWithAdditional(mainView)
-                                            }
+                                            returnCustomFromQwertyProxy(mainView, insertString)
                                         }
 
                                         else -> {
-                                            returnDefaultQwertyFromNumberKey(mainView, insertString)
+                                            returnDefaultQwertyProxyToTenkey(
+                                                mainView,
+                                                insertString
+                                            )
                                         }
                                     }
                                 }
