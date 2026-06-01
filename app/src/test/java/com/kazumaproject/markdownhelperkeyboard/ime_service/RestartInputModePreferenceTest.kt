@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import org.junit.Assert.assertEquals
@@ -91,6 +92,34 @@ class RestartInputModePreferenceTest {
         assertEquals(
             RestartInputModePresentation.Native,
             restartInputModePresentationFromPreferenceValue("unknown")
+        )
+    }
+
+    @Test
+    fun twoStateNumberReturnTargetConvertsToStableRestartPreferenceValue() {
+        assertEquals(
+            "japanese",
+            RestartInputModePreference.toPreferenceValue(TwoStateNumberReturnTarget.Japanese)
+        )
+        assertEquals(
+            "english",
+            RestartInputModePreference.toPreferenceValue(TwoStateNumberReturnTarget.English)
+        )
+    }
+
+    @Test
+    fun stableRestartPreferenceValueConvertsToTwoStateNumberReturnTarget() {
+        assertEquals(
+            TwoStateNumberReturnTarget.Japanese,
+            RestartInputModePreference.twoStateNumberReturnTargetFromPreferenceValue("japanese")
+        )
+        assertEquals(
+            TwoStateNumberReturnTarget.English,
+            RestartInputModePreference.twoStateNumberReturnTargetFromPreferenceValue("english")
+        )
+        assertEquals(
+            TwoStateNumberReturnTarget.Japanese,
+            RestartInputModePreference.twoStateNumberReturnTargetFromPreferenceValue("unknown")
         )
     }
 
@@ -330,7 +359,8 @@ class RestartInputModePreferenceTest {
             activeTenKeyQwertyMode = TenKeyQWERTYMode.TenKeyQWERTY,
             qwertyReturnSource = RestartInputModeQwertyReturnSource.TenKeyNumber,
             currentInputMode = InputMode.ModeNumber,
-            tenkeyUseThreeStateKeyboard = true,
+            tenkeyTwoStateQwertyNumberReturnTarget = TwoStateNumberReturnTarget.Japanese,
+            tenkeyUseThreeStateKeyboard = false,
             isQwertyViewVisible = true,
             isQwertyNumberLayout = true
         )
@@ -339,7 +369,8 @@ class RestartInputModePreferenceTest {
             RestartInputModeState(
                 KeyboardType.TENKEY,
                 InputMode.ModeNumber,
-                RestartInputModePresentation.TenkeyQwertyNumberProxy
+                RestartInputModePresentation.TenkeyQwertyNumberProxy,
+                TwoStateNumberReturnTarget.Japanese
             ),
             state
         )
@@ -347,24 +378,89 @@ class RestartInputModePreferenceTest {
             RestartInputModePersistence(
                 KeyboardType.TENKEY,
                 "number",
-                "tenkey_qwerty_number_proxy"
+                "tenkey_qwerty_number_proxy",
+                "japanese"
             ),
             persistenceValue(
                 target = state?.keyboardType,
                 tenkeyRestoreEnabled = true,
                 currentInputMode = state?.inputMode ?: InputMode.ModeJapanese,
-                presentation = state?.presentation ?: RestartInputModePresentation.Native
+                presentation = state?.presentation ?: RestartInputModePresentation.Native,
+                tenkeyQwertyNumberReturnTarget = state?.tenkeyQwertyNumberReturnTarget
             )
         )
     }
 
     @Test
-    fun tenkeyNumberQwertyProxyRestoredStateReadsFixedPresentationValue() {
+    fun tenkeyNumberQwertySurfacePersistsEnglishReturnTarget() {
+        val state = persistenceState(
+            currentKeyboardType = KeyboardType.TENKEY,
+            activeTenKeyQwertyMode = TenKeyQWERTYMode.TenKeyQWERTY,
+            qwertyReturnSource = RestartInputModeQwertyReturnSource.TenKeyNumber,
+            currentInputMode = InputMode.ModeNumber,
+            tenkeyTwoStateQwertyNumberReturnTarget = TwoStateNumberReturnTarget.English,
+            tenkeyUseThreeStateKeyboard = false,
+            isQwertyViewVisible = true,
+            isQwertyNumberLayout = true
+        )
+
         assertEquals(
             RestartInputModeState(
                 KeyboardType.TENKEY,
                 InputMode.ModeNumber,
-                RestartInputModePresentation.TenkeyQwertyNumberProxy
+                RestartInputModePresentation.TenkeyQwertyNumberProxy,
+                TwoStateNumberReturnTarget.English
+            ),
+            state
+        )
+        assertEquals(
+            RestartInputModePersistence(
+                KeyboardType.TENKEY,
+                "number",
+                "tenkey_qwerty_number_proxy",
+                "english"
+            ),
+            persistenceValue(
+                target = state?.keyboardType,
+                tenkeyRestoreEnabled = true,
+                currentInputMode = state?.inputMode ?: InputMode.ModeJapanese,
+                presentation = state?.presentation ?: RestartInputModePresentation.Native,
+                tenkeyQwertyNumberReturnTarget = state?.tenkeyQwertyNumberReturnTarget
+            )
+        )
+    }
+
+    @Test
+    fun tenkeyNumberQwertySurfaceWithoutTenkeyNumberSourcePersistsAsNative() {
+        val state = persistenceState(
+            currentKeyboardType = KeyboardType.TENKEY,
+            activeTenKeyQwertyMode = TenKeyQWERTYMode.TenKeyQWERTY,
+            qwertyReturnSource = RestartInputModeQwertyReturnSource.None,
+            currentInputMode = InputMode.ModeNumber,
+            tenkeyTwoStateQwertyNumberReturnTarget = TwoStateNumberReturnTarget.English,
+            tenkeyUseThreeStateKeyboard = false,
+            isQwertyViewVisible = true,
+            isQwertyNumberLayout = true
+        )
+
+        assertEquals(
+            RestartInputModeState(
+                KeyboardType.TENKEY,
+                InputMode.ModeNumber,
+                RestartInputModePresentation.Native
+            ),
+            state
+        )
+    }
+
+    @Test
+    fun tenkeyNumberQwertyProxyRestoredStateReadsReturnTarget() {
+        assertEquals(
+            RestartInputModeState(
+                KeyboardType.TENKEY,
+                InputMode.ModeNumber,
+                RestartInputModePresentation.TenkeyQwertyNumberProxy,
+                TwoStateNumberReturnTarget.English
             ),
             RestartInputModePreference.resolveRestoredState(
                 type = KeyboardType.TENKEY,
@@ -372,6 +468,29 @@ class RestartInputModePreferenceTest {
                 sumireRestoreEnabled = false,
                 tenkeyLastInputModePreference = "number",
                 tenkeyLastInputModePresentationPreference = "tenkey_qwerty_number_proxy",
+                tenkeyLastQwertyNumberReturnTargetPreference = "english",
+                sumireLastInputModePreference = "english",
+                sumireLastInputModePresentationPreference = "sumire_qwerty_proxy"
+            )
+        )
+    }
+
+    @Test
+    fun tenkeyNumberQwertyProxyRestoredStateUnknownReturnTargetFallsBackToJapanese() {
+        assertEquals(
+            RestartInputModeState(
+                KeyboardType.TENKEY,
+                InputMode.ModeNumber,
+                RestartInputModePresentation.TenkeyQwertyNumberProxy,
+                TwoStateNumberReturnTarget.Japanese
+            ),
+            RestartInputModePreference.resolveRestoredState(
+                type = KeyboardType.TENKEY,
+                tenkeyRestoreEnabled = true,
+                sumireRestoreEnabled = false,
+                tenkeyLastInputModePreference = "number",
+                tenkeyLastInputModePresentationPreference = "tenkey_qwerty_number_proxy",
+                tenkeyLastQwertyNumberReturnTargetPreference = "unknown",
                 sumireLastInputModePreference = "english",
                 sumireLastInputModePresentationPreference = "sumire_qwerty_proxy"
             )
@@ -386,6 +505,7 @@ class RestartInputModePreferenceTest {
             previousTenKeyQWERTYMode = TenKeyQWERTYMode.Default,
             qwertyReturnSource = RestartInputModeQwertyReturnSource.TenKeyDefault,
             currentInputMode = InputMode.ModeEnglish,
+            tenkeyTwoStateQwertyNumberReturnTarget = TwoStateNumberReturnTarget.English,
             isQwertyViewVisible = true
         )
 
@@ -483,17 +603,25 @@ class RestartInputModePreferenceTest {
         tenkeyRestoreEnabled: Boolean = false,
         sumireRestoreEnabled: Boolean = false,
         currentInputMode: InputMode,
-        presentation: RestartInputModePresentation = RestartInputModePresentation.Native
+        presentation: RestartInputModePresentation = RestartInputModePresentation.Native,
+        tenkeyQwertyNumberReturnTarget: TwoStateNumberReturnTarget? = null
     ): RestartInputModePersistence? {
+        val state = target?.let {
+            RestartInputModeState(
+                keyboardType = it,
+                inputMode = currentInputMode,
+                presentation = presentation,
+                tenkeyQwertyNumberReturnTarget = tenkeyQwertyNumberReturnTarget
+            )
+        }
         return RestartInputModePreference.resolvePersistenceValue(
             currentInputType = currentInputType,
             passwordTypesWithoutNumber = passwordTypesWithoutNumber,
             numberTypes = numberTypes,
-            target = target,
+            state = state,
             tenkeyRestoreEnabled = tenkeyRestoreEnabled,
             sumireRestoreEnabled = sumireRestoreEnabled,
-            currentInputMode = currentInputMode,
-            presentation = presentation
+            fallbackInputMode = currentInputMode
         )
     }
 
@@ -504,6 +632,8 @@ class RestartInputModePreferenceTest {
         qwertyReturnSource: RestartInputModeQwertyReturnSource =
             RestartInputModeQwertyReturnSource.None,
         currentInputMode: InputMode,
+        tenkeyTwoStateQwertyNumberReturnTarget: TwoStateNumberReturnTarget =
+            TwoStateNumberReturnTarget.Japanese,
         tenkeyUseThreeStateKeyboard: Boolean = false,
         sumireEnglishQwertyPreference: Boolean = false,
         isQwertyViewVisible: Boolean = false,
@@ -515,6 +645,8 @@ class RestartInputModePreferenceTest {
             previousTenKeyQWERTYMode = previousTenKeyQWERTYMode,
             qwertyReturnSource = qwertyReturnSource,
             currentInputMode = currentInputMode,
+            tenkeyTwoStateQwertyNumberReturnTarget =
+                tenkeyTwoStateQwertyNumberReturnTarget,
             tenkeyUseThreeStateKeyboard = tenkeyUseThreeStateKeyboard,
             sumireEnglishQwertyPreference = sumireEnglishQwertyPreference,
             isQwertyViewVisible = isQwertyViewVisible,
