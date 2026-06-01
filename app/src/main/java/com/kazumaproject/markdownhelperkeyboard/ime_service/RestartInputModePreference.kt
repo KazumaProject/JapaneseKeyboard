@@ -15,6 +15,9 @@ internal object RestartInputModePreference {
     const val TENKEY_QWERTY_NUMBER_PROXY = "tenkey_qwerty_number_proxy"
     const val TENKEY_QWERTY_NUMBER_RETURN_JAPANESE = "japanese"
     const val TENKEY_QWERTY_NUMBER_RETURN_ENGLISH = "english"
+    private const val MILLIS_PER_MINUTE = 60_000L
+    private const val MIN_RESTORE_TIMEOUT_MINUTES = 1
+    private const val MAX_RESTORE_TIMEOUT_MINUTES = 60
 
     fun toPreferenceValue(inputMode: InputMode): String {
         return when (inputMode) {
@@ -65,6 +68,29 @@ internal object RestartInputModePreference {
             TENKEY_QWERTY_NUMBER_RETURN_JAPANESE -> TwoStateNumberReturnTarget.Japanese
             else -> TwoStateNumberReturnTarget.Japanese
         }
+    }
+
+    fun normalizeRestoreTimeoutMinutes(value: Int): Int {
+        return value.coerceIn(
+            MIN_RESTORE_TIMEOUT_MINUTES,
+            MAX_RESTORE_TIMEOUT_MINUTES
+        )
+    }
+
+    fun isRestoreAllowedByTimeLimit(
+        onlyWithinTimeEnabled: Boolean,
+        timeoutMinutes: Int,
+        savedAtEpochMillis: Long,
+        nowEpochMillis: Long
+    ): Boolean {
+        if (!onlyWithinTimeEnabled) return true
+        if (savedAtEpochMillis <= 0L) return false
+        if (nowEpochMillis < savedAtEpochMillis) return false
+
+        val normalizedTimeoutMinutes = normalizeRestoreTimeoutMinutes(timeoutMinutes)
+        val elapsedMillis = nowEpochMillis - savedAtEpochMillis
+        val timeoutMillis = normalizedTimeoutMinutes.toLong() * MILLIS_PER_MINUTE
+        return elapsedMillis <= timeoutMillis
     }
 
     fun resolvePersistenceTarget(
