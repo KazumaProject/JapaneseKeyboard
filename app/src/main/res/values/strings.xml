@@ -1022,4 +1022,10 @@
     <string name="sumire_special_key_input_text">Input text</string>
     <string name="sumire_special_key_key_action">Special action</string>
     <string name="sumire_special_key_input_text_hint">Text to input</string>
+    <string name="tenkey_restore_input_mode_on_restart_title">Restore input mode on keyboard restart</string>
+    <string name="tenkey_restore_input_mode_on_restart_summary">Restores the last Japanese, English, or number input mode when TenKey is opened again.</string>
+    <string name="tenkey_use_three_state_keyboard_title">Use three-state keyboard switching</string>
+    <string name="tenkey_use_three_state_keyboard_summary">Switches TenKey between Japanese, English, and number input modes using the mode switch key.</string>
+    <string name="sumire_restore_input_mode_on_restart_title">Restore input mode on keyboard restart</string>
+    <string name="sumire_restore_input_mode_on_restart_summary">Restores the last Japanese, English, or number input mode when Sumire is opened again.</string>
 </resources>

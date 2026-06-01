@@ -1020,4 +1020,10 @@
     <string name="remember_custom_keyboard_input_mode_title">カスタムキーボードの入力モードを復元</string>
     <string name="remember_custom_keyboard_input_mode_summary_on">各カスタムキーボードで最後に使用した直接入力 / ローマ字入力モードを復元します</string>
     <string name="remember_custom_keyboard_input_mode_summary_off">各カスタムキーボードレイアウトに保存されている入力モードを使用します</string>
+    <string name="tenkey_restore_input_mode_on_restart_title">キーボード再起動時に入力モードを復元</string>
+    <string name="tenkey_restore_input_mode_on_restart_summary">TenKey を開き直したとき、最後に使用した日本語・英字・数字の入力モードを復元します。</string>
+    <string name="tenkey_use_three_state_keyboard_title">三状態キーボードの使用</string>
+    <string name="tenkey_use_three_state_keyboard_summary">TenKey の切り替えキーで、日本語・英字・数字の3つの入力モードを切り替えます。</string>
+    <string name="sumire_restore_input_mode_on_restart_title">キーボード再起動時に入力モードを復元</string>
+    <string name="sumire_restore_input_mode_on_restart_summary">Sumire を開き直したとき、最後に使用した日本語・英字・数字の入力モードを復元します。</string>
 </resources>

@@ -24,12 +24,14 @@
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="tenkey_restore_input_mode_on_restart_preference"
-            android:title="キーボード再起動時に入力モードを復元" />
+            android:title="@string/tenkey_restore_input_mode_on_restart_title"
+            app:summary="@string/tenkey_restore_input_mode_on_restart_summary" />
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="tenkey_use_three_state_keyboard_preference"
             app:disableDependentsState="true"
-            android:title="三状態キーボードの使用" />
+            android:title="@string/tenkey_use_three_state_keyboard_title"
+            app:summary="@string/tenkey_use_three_state_keyboard_summary" />
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:dependency="tenkey_use_three_state_keyboard_preference"

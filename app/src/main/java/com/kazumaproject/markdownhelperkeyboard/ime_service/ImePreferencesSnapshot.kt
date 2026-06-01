@@ -76,7 +76,9 @@ data class ImePreferencesSnapshot(
     val tenkeyRestoreInputModeOnRestart: Boolean,
     val sumireRestoreInputModeOnRestart: Boolean,
     val tenkeyLastInputModePreference: String,
+    val tenkeyLastInputModePresentationPreference: String,
     val sumireLastInputModePreference: String,
+    val sumireLastInputModePresentationPreference: String,
     val tabletTenkeyQwertySwitchEnglish: Boolean,
     val tenkeyQKeymapGuide: Boolean,
     val flickKeymapGuide: Boolean,
@@ -317,8 +319,12 @@ data class ImePreferencesSnapshot(
                     appPreference.sumire_restore_input_mode_on_restart_preference,
                 tenkeyLastInputModePreference =
                     appPreference.tenkey_last_input_mode_preference,
+                tenkeyLastInputModePresentationPreference =
+                    appPreference.tenkey_last_input_mode_presentation_preference,
                 sumireLastInputModePreference =
                     appPreference.sumire_last_input_mode_preference,
+                sumireLastInputModePresentationPreference =
+                    appPreference.sumire_last_input_mode_presentation_preference,
                 tabletTenkeyQwertySwitchEnglish =
                     appPreference.tablet_tenkey_qwerty_switch_english_layout,
                 tenkeyQKeymapGuide = appPreference.tenkey_keymap_guide_layout ?: false,
