@@ -722,6 +722,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var sumireRestoreInputModeOnRestart: Boolean = false
     private var tenkeyLastInputModePreference: String = "japanese"
     private var tenkeyLastInputModePresentationPreference: String = "native"
+    private var tenkeyLastQwertyNumberReturnTargetPreference: String = "japanese"
     private var sumireLastInputModePreference: String = "japanese"
     private var sumireLastInputModePresentationPreference: String = "native"
 
@@ -1456,6 +1457,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.tenkeyLastInputModePreference
         tenkeyLastInputModePresentationPreference =
             preferences.tenkeyLastInputModePresentationPreference
+        tenkeyLastQwertyNumberReturnTargetPreference =
+            preferences.tenkeyLastQwertyNumberReturnTargetPreference
         sumireLastInputModePreference =
             preferences.sumireLastInputModePreference
         sumireLastInputModePresentationPreference =
@@ -2719,6 +2722,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireRestoreInputModeOnRestart = false
         tenkeyLastInputModePreference = "japanese"
         tenkeyLastInputModePresentationPreference = "native"
+        tenkeyLastQwertyNumberReturnTargetPreference = "japanese"
         sumireLastInputModePreference = "japanese"
         sumireLastInputModePresentationPreference = "native"
         qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
@@ -4900,6 +4904,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun inputModeFromRestartPreferenceValue(value: String): InputMode {
         return RestartInputModePreference.fromPreferenceValue(value)
+    }
+
+    private fun TwoStateNumberReturnTarget.toRestartPreferenceValue(): String {
+        return RestartInputModePreference.toPreferenceValue(this)
+    }
+
+    private fun tenkeyQwertyNumberReturnTargetFromRestartPreferenceValue(
+        value: String
+    ): TwoStateNumberReturnTarget {
+        return RestartInputModePreference.twoStateNumberReturnTargetFromPreferenceValue(value)
     }
 
     private fun resizeTenkeySurfaceAfterQwertyNumberKey(
@@ -8122,6 +8136,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             previousTenKeyQWERTYMode = previousTenKeyQWERTYMode,
             qwertyReturnSource = qwertySwitchNumberKeyReturnSource,
             currentInputMode = currentInputModeForSession,
+            tenkeyTwoStateQwertyNumberReturnTarget = tenkeyTwoStateQwertyNumberReturnTarget,
             tenkeyUseThreeStateKeyboard = tenkeyUseThreeStateKeyboard,
             sumireEnglishQwertyPreference = sumireEnglishQwertyPreference == true,
             isQwertyViewVisible = qwertyView?.isVisible == true,
@@ -8135,23 +8150,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentInputType = currentInputType,
             passwordTypesWithoutNumber = passwordTypesWithOutNumber,
             numberTypes = numberTypes,
-            target = state?.keyboardType,
+            state = state,
             tenkeyRestoreEnabled = tenkeyRestoreInputModeOnRestart,
             sumireRestoreEnabled = sumireRestoreInputModeOnRestart,
-            currentInputMode = state?.inputMode ?: currentInputModeForSession,
-            presentation = state?.presentation ?: RestartInputModePresentation.Native
+            fallbackInputMode = currentInputModeForSession
         ) ?: return
 
         val value = inputModeFromRestartPreferenceValue(persistence.value).toRestartPreferenceValue()
         val presentationValue = restartInputModePresentationFromPreferenceValue(
             persistence.presentationValue
         ).toRestartPreferenceValue()
+        val tenkeyQwertyNumberReturnTargetValue =
+            tenkeyQwertyNumberReturnTargetFromRestartPreferenceValue(
+                persistence.tenkeyQwertyNumberReturnTargetValue
+                    ?: RestartInputModePreference.TENKEY_QWERTY_NUMBER_RETURN_JAPANESE
+            ).toRestartPreferenceValue()
         when (persistence.target) {
             KeyboardType.TENKEY -> {
                 appPreference.tenkey_last_input_mode_preference = value
                 appPreference.tenkey_last_input_mode_presentation_preference = presentationValue
+                appPreference.tenkey_last_qwerty_number_return_target_preference =
+                    tenkeyQwertyNumberReturnTargetValue
                 tenkeyLastInputModePreference = value
                 tenkeyLastInputModePresentationPreference = presentationValue
+                tenkeyLastQwertyNumberReturnTargetPreference =
+                    tenkeyQwertyNumberReturnTargetValue
             }
 
             KeyboardType.SUMIRE -> {
@@ -10293,6 +10316,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tenkeyLastInputModePreference = tenkeyLastInputModePreference,
             tenkeyLastInputModePresentationPreference =
                 tenkeyLastInputModePresentationPreference,
+            tenkeyLastQwertyNumberReturnTargetPreference =
+                tenkeyLastQwertyNumberReturnTargetPreference,
             sumireLastInputModePreference = sumireLastInputModePreference,
             sumireLastInputModePresentationPreference =
                 sumireLastInputModePresentationPreference
@@ -10342,7 +10367,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             restoreNativeRestartInputModeState(state)
             return
         }
-        applyTenkeyQwertyNumberProxyFromRestartState()
+        applyTenkeyQwertyNumberProxyFromRestartState(state)
     }
 
     private fun applySumireQwertyProxyFromRestartState() {
@@ -10362,12 +10387,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateFloatingKeyboardSizeForMode(TenKeyQWERTYMode.TenKeyQWERTY)
     }
 
-    private fun applyTenkeyQwertyNumberProxyFromRestartState() {
+    private fun applyTenkeyQwertyNumberProxyFromRestartState(state: RestartInputModeState) {
         currentInputModeForSession = InputMode.ModeNumber
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
         setQwertySwitchNumberKeyReturnSource(RestartInputModeQwertyReturnSource.TenKeyNumber)
         previousTenKeyQWERTYMode = TenKeyQWERTYMode.Default
-        qwertyNumberOpenedFromTenkeyTwoStateNumberKey = false
+        tenkeyTwoStateQwertyNumberReturnTarget =
+            state.tenkeyQwertyNumberReturnTarget ?: TwoStateNumberReturnTarget.Japanese
+        qwertyNumberOpenedFromTenkeyTwoStateNumberKey = true
         setCurrentQwertyRomajiModeForSession(false)
         updateQwertyOnActiveSurface { setNumberView() }
         renderCurrentKeyboardStateOnActiveSurface()
