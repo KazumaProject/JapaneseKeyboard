@@ -720,6 +720,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var lastSavedKeyboardPosition: Int? = 0
     private var tenkeyRestoreInputModeOnRestart: Boolean = false
     private var sumireRestoreInputModeOnRestart: Boolean = false
+    private var tenkeyRestoreInputModeOnlyWithinTime: Boolean = false
+    private var tenkeyRestoreInputModeTimeoutMinutes: Int = 5
+    private var tenkeyLastInputModeSavedAtEpochMillis: Long = 0L
+    private var sumireRestoreInputModeOnlyWithinTime: Boolean = false
+    private var sumireRestoreInputModeTimeoutMinutes: Int = 5
+    private var sumireLastInputModeSavedAtEpochMillis: Long = 0L
     private var tenkeyLastInputModePreference: String = "japanese"
     private var tenkeyLastInputModePresentationPreference: String = "native"
     private var tenkeyLastQwertyNumberReturnTargetPreference: String = "japanese"
@@ -1453,6 +1459,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.tenkeyRestoreInputModeOnRestart
         sumireRestoreInputModeOnRestart =
             preferences.sumireRestoreInputModeOnRestart
+        tenkeyRestoreInputModeOnlyWithinTime =
+            preferences.tenkeyRestoreInputModeOnlyWithinTime
+        tenkeyRestoreInputModeTimeoutMinutes =
+            preferences.tenkeyRestoreInputModeTimeoutMinutes
+        tenkeyLastInputModeSavedAtEpochMillis =
+            preferences.tenkeyLastInputModeSavedAtEpochMillis
+        sumireRestoreInputModeOnlyWithinTime =
+            preferences.sumireRestoreInputModeOnlyWithinTime
+        sumireRestoreInputModeTimeoutMinutes =
+            preferences.sumireRestoreInputModeTimeoutMinutes
+        sumireLastInputModeSavedAtEpochMillis =
+            preferences.sumireLastInputModeSavedAtEpochMillis
         tenkeyLastInputModePreference =
             preferences.tenkeyLastInputModePreference
         tenkeyLastInputModePresentationPreference =
@@ -2720,6 +2738,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         tenkeySwitchNumberToQwertyNumberPreference = false
         tenkeyRestoreInputModeOnRestart = false
         sumireRestoreInputModeOnRestart = false
+        tenkeyRestoreInputModeOnlyWithinTime = false
+        tenkeyRestoreInputModeTimeoutMinutes = 5
+        tenkeyLastInputModeSavedAtEpochMillis = 0L
+        sumireRestoreInputModeOnlyWithinTime = false
+        sumireRestoreInputModeTimeoutMinutes = 5
+        sumireLastInputModeSavedAtEpochMillis = 0L
         tenkeyLastInputModePreference = "japanese"
         tenkeyLastInputModePresentationPreference = "native"
         tenkeyLastQwertyNumberReturnTargetPreference = "japanese"
@@ -8165,23 +8189,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 persistence.tenkeyQwertyNumberReturnTargetValue
                     ?: RestartInputModePreference.TENKEY_QWERTY_NUMBER_RETURN_JAPANESE
             ).toRestartPreferenceValue()
+        val savedAtEpochMillis = System.currentTimeMillis()
         when (persistence.target) {
             KeyboardType.TENKEY -> {
                 appPreference.tenkey_last_input_mode_preference = value
                 appPreference.tenkey_last_input_mode_presentation_preference = presentationValue
                 appPreference.tenkey_last_qwerty_number_return_target_preference =
                     tenkeyQwertyNumberReturnTargetValue
+                appPreference.tenkey_last_input_mode_saved_at_epoch_millis_preference =
+                    savedAtEpochMillis
                 tenkeyLastInputModePreference = value
                 tenkeyLastInputModePresentationPreference = presentationValue
                 tenkeyLastQwertyNumberReturnTargetPreference =
                     tenkeyQwertyNumberReturnTargetValue
+                tenkeyLastInputModeSavedAtEpochMillis = savedAtEpochMillis
             }
 
             KeyboardType.SUMIRE -> {
                 appPreference.sumire_last_input_mode_preference = value
                 appPreference.sumire_last_input_mode_presentation_preference = presentationValue
+                appPreference.sumire_last_input_mode_saved_at_epoch_millis_preference =
+                    savedAtEpochMillis
                 sumireLastInputModePreference = value
                 sumireLastInputModePresentationPreference = presentationValue
+                sumireLastInputModeSavedAtEpochMillis = savedAtEpochMillis
             }
 
             else -> Unit
@@ -10309,6 +10340,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resolveRestoredRestartInputModeState(type: KeyboardType): RestartInputModeState? {
+        if (!isRestartInputModeRestoreAllowedByTimeLimit(type, System.currentTimeMillis())) {
+            return null
+        }
         return RestartInputModePreference.resolveRestoredState(
             type = type,
             tenkeyRestoreEnabled = tenkeyRestoreInputModeOnRestart,
@@ -10322,6 +10356,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             sumireLastInputModePresentationPreference =
                 sumireLastInputModePresentationPreference
         )
+    }
+
+    private fun isRestartInputModeRestoreAllowedByTimeLimit(
+        type: KeyboardType,
+        nowEpochMillis: Long
+    ): Boolean {
+        return when (type) {
+            KeyboardType.TENKEY -> RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = tenkeyRestoreInputModeOnlyWithinTime,
+                timeoutMinutes = tenkeyRestoreInputModeTimeoutMinutes,
+                savedAtEpochMillis = tenkeyLastInputModeSavedAtEpochMillis,
+                nowEpochMillis = nowEpochMillis
+            )
+
+            KeyboardType.SUMIRE -> RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = sumireRestoreInputModeOnlyWithinTime,
+                timeoutMinutes = sumireRestoreInputModeTimeoutMinutes,
+                savedAtEpochMillis = sumireLastInputModeSavedAtEpochMillis,
+                nowEpochMillis = nowEpochMillis
+            )
+
+            else -> true
+        }
     }
 
     private fun restoreInputModeForKeyboardRestartIfEnabled(

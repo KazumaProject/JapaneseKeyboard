@@ -78,12 +78,18 @@ object AppPreference {
 
     private val TENKEY_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE =
         Pair("tenkey_restore_input_mode_on_restart_preference", false)
+    private val TENKEY_RESTORE_INPUT_MODE_ONLY_WITHIN_TIME_PREFERENCE =
+        Pair("tenkey_restore_input_mode_only_within_time_preference", false)
+    private val TENKEY_RESTORE_INPUT_MODE_TIMEOUT_MINUTES_PREFERENCE =
+        Pair("tenkey_restore_input_mode_timeout_minutes_preference", 5)
     private val TENKEY_LAST_INPUT_MODE_PREFERENCE =
         Pair("tenkey_last_input_mode_preference", "japanese")
     private val TENKEY_LAST_INPUT_MODE_PRESENTATION_PREFERENCE =
         Pair("tenkey_last_input_mode_presentation_preference", "native")
     private val TENKEY_LAST_QWERTY_NUMBER_RETURN_TARGET_PREFERENCE =
         Pair("tenkey_last_qwerty_number_return_target_preference", "japanese")
+    private val TENKEY_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE =
+        Pair("tenkey_last_input_mode_saved_at_epoch_millis_preference", 0L)
 
     private val TABLET_TENKEY_SWITCH_QWERTY_PREFERENCE =
         Pair("tablet_tenkey_kana_english_qwerty_preference", false)
@@ -216,10 +222,16 @@ object AppPreference {
         Pair("sumire_keyboard_input_type_preference", "toggle-default")
     private val SUMIRE_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE =
         Pair("sumire_restore_input_mode_on_restart_preference", false)
+    private val SUMIRE_RESTORE_INPUT_MODE_ONLY_WITHIN_TIME_PREFERENCE =
+        Pair("sumire_restore_input_mode_only_within_time_preference", false)
+    private val SUMIRE_RESTORE_INPUT_MODE_TIMEOUT_MINUTES_PREFERENCE =
+        Pair("sumire_restore_input_mode_timeout_minutes_preference", 5)
     private val SUMIRE_LAST_INPUT_MODE_PREFERENCE =
         Pair("sumire_last_input_mode_preference", "japanese")
     private val SUMIRE_LAST_INPUT_MODE_PRESENTATION_PREFERENCE =
         Pair("sumire_last_input_mode_presentation_preference", "native")
+    private val SUMIRE_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE =
+        Pair("sumire_last_input_mode_saved_at_epoch_millis_preference", 0L)
 
     private val DELETE_KEY_HIGH_LIGHT = Pair("henkan_delete_key_action_preference", true)
     private val CUSTOM_KEYBOARD_SUGGESTION_PREFERENCE =
@@ -671,6 +683,24 @@ object AppPreference {
             it.putBoolean(TENKEY_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE.first, value)
         }
 
+    var tenkey_restore_input_mode_only_within_time_preference: Boolean
+        get() = preferences.getBoolean(
+            TENKEY_RESTORE_INPUT_MODE_ONLY_WITHIN_TIME_PREFERENCE.first,
+            TENKEY_RESTORE_INPUT_MODE_ONLY_WITHIN_TIME_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_RESTORE_INPUT_MODE_ONLY_WITHIN_TIME_PREFERENCE.first, value)
+        }
+
+    var tenkey_restore_input_mode_timeout_minutes_preference: Int
+        get() = preferences.getInt(
+            TENKEY_RESTORE_INPUT_MODE_TIMEOUT_MINUTES_PREFERENCE.first,
+            TENKEY_RESTORE_INPUT_MODE_TIMEOUT_MINUTES_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(TENKEY_RESTORE_INPUT_MODE_TIMEOUT_MINUTES_PREFERENCE.first, value)
+        }
+
     var tenkey_last_input_mode_preference: String
         get() = preferences.getString(
             TENKEY_LAST_INPUT_MODE_PREFERENCE.first,
@@ -696,6 +726,15 @@ object AppPreference {
         ) ?: TENKEY_LAST_QWERTY_NUMBER_RETURN_TARGET_PREFERENCE.second
         set(value) = preferences.edit {
             it.putString(TENKEY_LAST_QWERTY_NUMBER_RETURN_TARGET_PREFERENCE.first, value)
+        }
+
+    var tenkey_last_input_mode_saved_at_epoch_millis_preference: Long
+        get() = preferences.getLong(
+            TENKEY_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE.first,
+            TENKEY_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putLong(TENKEY_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE.first, value)
         }
 
     var tablet_tenkey_qwerty_switch_english_layout: Boolean
@@ -2369,6 +2408,24 @@ object AppPreference {
             it.putBoolean(SUMIRE_RESTORE_INPUT_MODE_ON_RESTART_PREFERENCE.first, value)
         }
 
+    var sumire_restore_input_mode_only_within_time_preference: Boolean
+        get() = preferences.getBoolean(
+            SUMIRE_RESTORE_INPUT_MODE_ONLY_WITHIN_TIME_PREFERENCE.first,
+            SUMIRE_RESTORE_INPUT_MODE_ONLY_WITHIN_TIME_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUMIRE_RESTORE_INPUT_MODE_ONLY_WITHIN_TIME_PREFERENCE.first, value)
+        }
+
+    var sumire_restore_input_mode_timeout_minutes_preference: Int
+        get() = preferences.getInt(
+            SUMIRE_RESTORE_INPUT_MODE_TIMEOUT_MINUTES_PREFERENCE.first,
+            SUMIRE_RESTORE_INPUT_MODE_TIMEOUT_MINUTES_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(SUMIRE_RESTORE_INPUT_MODE_TIMEOUT_MINUTES_PREFERENCE.first, value)
+        }
+
     var sumire_last_input_mode_preference: String
         get() = preferences.getString(
             SUMIRE_LAST_INPUT_MODE_PREFERENCE.first,
@@ -2385,6 +2442,15 @@ object AppPreference {
         ) ?: SUMIRE_LAST_INPUT_MODE_PRESENTATION_PREFERENCE.second
         set(value) = preferences.edit {
             it.putString(SUMIRE_LAST_INPUT_MODE_PRESENTATION_PREFERENCE.first, value)
+        }
+
+    var sumire_last_input_mode_saved_at_epoch_millis_preference: Long
+        get() = preferences.getLong(
+            SUMIRE_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE.first,
+            SUMIRE_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putLong(SUMIRE_LAST_INPUT_MODE_SAVED_AT_EPOCH_MILLIS_PREFERENCE.first, value)
         }
 
     var conversion_candidates_romaji_enable_preference: Boolean

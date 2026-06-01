@@ -75,6 +75,12 @@ data class ImePreferencesSnapshot(
     val tenkeySwitchNumberToQwertyNumberPreference: Boolean,
     val tenkeyRestoreInputModeOnRestart: Boolean,
     val sumireRestoreInputModeOnRestart: Boolean,
+    val tenkeyRestoreInputModeOnlyWithinTime: Boolean,
+    val tenkeyRestoreInputModeTimeoutMinutes: Int,
+    val tenkeyLastInputModeSavedAtEpochMillis: Long,
+    val sumireRestoreInputModeOnlyWithinTime: Boolean,
+    val sumireRestoreInputModeTimeoutMinutes: Int,
+    val sumireLastInputModeSavedAtEpochMillis: Long,
     val tenkeyLastInputModePreference: String,
     val tenkeyLastInputModePresentationPreference: String,
     val tenkeyLastQwertyNumberReturnTargetPreference: String,
@@ -318,6 +324,18 @@ data class ImePreferencesSnapshot(
                     appPreference.tenkey_restore_input_mode_on_restart_preference,
                 sumireRestoreInputModeOnRestart =
                     appPreference.sumire_restore_input_mode_on_restart_preference,
+                tenkeyRestoreInputModeOnlyWithinTime =
+                    appPreference.tenkey_restore_input_mode_only_within_time_preference,
+                tenkeyRestoreInputModeTimeoutMinutes =
+                    appPreference.tenkey_restore_input_mode_timeout_minutes_preference,
+                tenkeyLastInputModeSavedAtEpochMillis =
+                    appPreference.tenkey_last_input_mode_saved_at_epoch_millis_preference,
+                sumireRestoreInputModeOnlyWithinTime =
+                    appPreference.sumire_restore_input_mode_only_within_time_preference,
+                sumireRestoreInputModeTimeoutMinutes =
+                    appPreference.sumire_restore_input_mode_timeout_minutes_preference,
+                sumireLastInputModeSavedAtEpochMillis =
+                    appPreference.sumire_last_input_mode_saved_at_epoch_millis_preference,
                 tenkeyLastInputModePreference =
                     appPreference.tenkey_last_input_mode_preference,
                 tenkeyLastInputModePresentationPreference =

@@ -6,8 +6,10 @@ import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RestartInputModePreferenceTest {
@@ -156,6 +158,111 @@ class RestartInputModePreferenceTest {
                 tenkeyLastInputModePresentationPreference = "tenkey_qwerty_number_proxy",
                 sumireLastInputModePreference = "english",
                 sumireLastInputModePresentationPreference = "sumire_qwerty_proxy"
+            )
+        )
+    }
+
+    @Test
+    fun restoreTimeLimitOffAllowsRestoreWithoutSavedAt() {
+        assertTrue(
+            RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = false,
+                timeoutMinutes = 5,
+                savedAtEpochMillis = 0L,
+                nowEpochMillis = 10_000L
+            )
+        )
+    }
+
+    @Test
+    fun restoreTimeLimitOnWithoutSavedAtDoesNotAllowRestore() {
+        assertFalse(
+            RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = true,
+                timeoutMinutes = 5,
+                savedAtEpochMillis = 0L,
+                nowEpochMillis = 10_000L
+            )
+        )
+    }
+
+    @Test
+    fun restoreTimeLimitOnAllowsRestoreAtTimeoutBoundary() {
+        assertTrue(
+            RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = true,
+                timeoutMinutes = 5,
+                savedAtEpochMillis = 1_000L,
+                nowEpochMillis = 1_000L + 5L * 60_000L
+            )
+        )
+    }
+
+    @Test
+    fun restoreTimeLimitOnDoesNotAllowRestoreAfterTimeoutBoundary() {
+        assertFalse(
+            RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = true,
+                timeoutMinutes = 5,
+                savedAtEpochMillis = 1_000L,
+                nowEpochMillis = 1_000L + 5L * 60_000L + 1L
+            )
+        )
+    }
+
+    @Test
+    fun restoreTimeLimitOnDoesNotAllowRestoreWhenNowIsBeforeSavedAt() {
+        assertFalse(
+            RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = true,
+                timeoutMinutes = 5,
+                savedAtEpochMillis = 10_000L,
+                nowEpochMillis = 9_999L
+            )
+        )
+    }
+
+    @Test
+    fun restoreTimeoutMinutesNormalizeToSupportedRange() {
+        assertEquals(1, RestartInputModePreference.normalizeRestoreTimeoutMinutes(0))
+        assertEquals(1, RestartInputModePreference.normalizeRestoreTimeoutMinutes(1))
+        assertEquals(5, RestartInputModePreference.normalizeRestoreTimeoutMinutes(5))
+        assertEquals(60, RestartInputModePreference.normalizeRestoreTimeoutMinutes(60))
+        assertEquals(60, RestartInputModePreference.normalizeRestoreTimeoutMinutes(999))
+    }
+
+    @Test
+    fun restoreTimeLimitTreatsZeroTimeoutMinutesAsOneMinute() {
+        assertTrue(
+            RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = true,
+                timeoutMinutes = 0,
+                savedAtEpochMillis = 1_000L,
+                nowEpochMillis = 1_000L + 60_000L
+            )
+        )
+    }
+
+    @Test
+    fun restoreTimeLimitTreatsLargeTimeoutMinutesAsSixtyMinutes() {
+        assertTrue(
+            RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = true,
+                timeoutMinutes = 999,
+                savedAtEpochMillis = 1_000L,
+                nowEpochMillis = 1_000L + 60L * 60_000L
+            )
+        )
+    }
+
+    @Test
+    fun restoreTimeLimitWithLargeTimeoutMinutesDoesNotAllowRestoreAfterSixtyMinutes() {
+        assertFalse(
+            RestartInputModePreference.isRestoreAllowedByTimeLimit(
+                onlyWithinTimeEnabled = true,
+                timeoutMinutes = 999,
+                savedAtEpochMillis = 1_000L,
+                nowEpochMillis = 1_000L + 60L * 60_000L + 1L
             )
         )
     }
