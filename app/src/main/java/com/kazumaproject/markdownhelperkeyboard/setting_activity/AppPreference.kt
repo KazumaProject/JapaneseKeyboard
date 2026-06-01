@@ -82,6 +82,8 @@ object AppPreference {
         Pair("tenkey_last_input_mode_preference", "japanese")
     private val TENKEY_LAST_INPUT_MODE_PRESENTATION_PREFERENCE =
         Pair("tenkey_last_input_mode_presentation_preference", "native")
+    private val TENKEY_LAST_QWERTY_NUMBER_RETURN_TARGET_PREFERENCE =
+        Pair("tenkey_last_qwerty_number_return_target_preference", "japanese")
 
     private val TABLET_TENKEY_SWITCH_QWERTY_PREFERENCE =
         Pair("tablet_tenkey_kana_english_qwerty_preference", false)
@@ -685,6 +687,15 @@ object AppPreference {
         ) ?: TENKEY_LAST_INPUT_MODE_PRESENTATION_PREFERENCE.second
         set(value) = preferences.edit {
             it.putString(TENKEY_LAST_INPUT_MODE_PRESENTATION_PREFERENCE.first, value)
+        }
+
+    var tenkey_last_qwerty_number_return_target_preference: String
+        get() = preferences.getString(
+            TENKEY_LAST_QWERTY_NUMBER_RETURN_TARGET_PREFERENCE.first,
+            TENKEY_LAST_QWERTY_NUMBER_RETURN_TARGET_PREFERENCE.second
+        ) ?: TENKEY_LAST_QWERTY_NUMBER_RETURN_TARGET_PREFERENCE.second
+        set(value) = preferences.edit {
+            it.putString(TENKEY_LAST_QWERTY_NUMBER_RETURN_TARGET_PREFERENCE.first, value)
         }
 
     var tablet_tenkey_qwerty_switch_english_layout: Boolean

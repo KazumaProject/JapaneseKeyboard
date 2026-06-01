@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service
 
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
+import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 
@@ -12,6 +13,8 @@ internal object RestartInputModePreference {
     const val NATIVE = "native"
     const val SUMIRE_QWERTY_PROXY = "sumire_qwerty_proxy"
     const val TENKEY_QWERTY_NUMBER_PROXY = "tenkey_qwerty_number_proxy"
+    const val TENKEY_QWERTY_NUMBER_RETURN_JAPANESE = "japanese"
+    const val TENKEY_QWERTY_NUMBER_RETURN_ENGLISH = "english"
 
     fun toPreferenceValue(inputMode: InputMode): String {
         return when (inputMode) {
@@ -47,6 +50,23 @@ internal object RestartInputModePreference {
         }
     }
 
+    fun toPreferenceValue(target: TwoStateNumberReturnTarget): String {
+        return when (target) {
+            TwoStateNumberReturnTarget.Japanese -> TENKEY_QWERTY_NUMBER_RETURN_JAPANESE
+            TwoStateNumberReturnTarget.English -> TENKEY_QWERTY_NUMBER_RETURN_ENGLISH
+        }
+    }
+
+    fun twoStateNumberReturnTargetFromPreferenceValue(
+        value: String
+    ): TwoStateNumberReturnTarget {
+        return when (value) {
+            TENKEY_QWERTY_NUMBER_RETURN_ENGLISH -> TwoStateNumberReturnTarget.English
+            TENKEY_QWERTY_NUMBER_RETURN_JAPANESE -> TwoStateNumberReturnTarget.Japanese
+            else -> TwoStateNumberReturnTarget.Japanese
+        }
+    }
+
     fun resolvePersistenceTarget(
         currentKeyboardType: KeyboardType?,
         activeTenKeyQwertyMode: TenKeyQWERTYMode,
@@ -78,12 +98,14 @@ internal object RestartInputModePreference {
         }
     }
 
+    @Suppress("UNUSED_PARAMETER")
     fun resolveStateForPersistence(
         currentKeyboardType: KeyboardType?,
         activeTenKeyQwertyMode: TenKeyQWERTYMode,
         previousTenKeyQWERTYMode: TenKeyQWERTYMode?,
         qwertyReturnSource: RestartInputModeQwertyReturnSource,
         currentInputMode: InputMode,
+        tenkeyTwoStateQwertyNumberReturnTarget: TwoStateNumberReturnTarget,
         tenkeyUseThreeStateKeyboard: Boolean,
         sumireEnglishQwertyPreference: Boolean,
         isQwertyViewVisible: Boolean,
@@ -102,12 +124,22 @@ internal object RestartInputModePreference {
             activeTenKeyQwertyMode = activeTenKeyQwertyMode,
             qwertyReturnSource = qwertyReturnSource,
             previousTenKeyQWERTYMode = previousTenKeyQWERTYMode,
-            tenkeyUseThreeStateKeyboard = tenkeyUseThreeStateKeyboard,
             sumireEnglishQwertyPreference = sumireEnglishQwertyPreference,
             isQwertyViewVisible = isQwertyViewVisible,
             isQwertyNumberLayout = isQwertyNumberLayout
         )
-        return RestartInputModeState(target, currentInputMode, presentation)
+        val returnTarget =
+            if (presentation == RestartInputModePresentation.TenkeyQwertyNumberProxy) {
+                tenkeyTwoStateQwertyNumberReturnTarget
+            } else {
+                null
+            }
+        return RestartInputModeState(
+            keyboardType = target,
+            inputMode = currentInputMode,
+            presentation = presentation,
+            tenkeyQwertyNumberReturnTarget = returnTarget
+        )
     }
 
     private fun resolveCurrentPresentation(
@@ -116,7 +148,6 @@ internal object RestartInputModePreference {
         activeTenKeyQwertyMode: TenKeyQWERTYMode,
         qwertyReturnSource: RestartInputModeQwertyReturnSource,
         previousTenKeyQWERTYMode: TenKeyQWERTYMode?,
-        tenkeyUseThreeStateKeyboard: Boolean,
         sumireEnglishQwertyPreference: Boolean,
         isQwertyViewVisible: Boolean,
         isQwertyNumberLayout: Boolean
@@ -135,7 +166,7 @@ internal object RestartInputModePreference {
 
             target == KeyboardType.TENKEY &&
                     currentInputMode == InputMode.ModeNumber &&
-                    tenkeyUseThreeStateKeyboard &&
+                    qwertyReturnSource == RestartInputModeQwertyReturnSource.TenKeyNumber &&
                     isQwertyProxySurface &&
                     isQwertyNumberLayout ->
                 RestartInputModePresentation.TenkeyQwertyNumberProxy
@@ -148,22 +179,39 @@ internal object RestartInputModePreference {
         currentInputType: InputTypeForIME,
         passwordTypesWithoutNumber: Set<InputTypeForIME>,
         numberTypes: Set<InputTypeForIME>,
-        target: KeyboardType?,
+        state: RestartInputModeState?,
         tenkeyRestoreEnabled: Boolean,
         sumireRestoreEnabled: Boolean,
-        currentInputMode: InputMode,
-        presentation: RestartInputModePresentation = RestartInputModePresentation.Native
+        fallbackInputMode: InputMode
     ): RestartInputModePersistence? {
         if (currentInputType in passwordTypesWithoutNumber) return null
         if (currentInputType in numberTypes) return null
 
-        val value = toPreferenceValue(currentInputMode)
-        val presentationValue = toPreferenceValue(
-            normalizePresentation(target, currentInputMode, presentation)
+        val target = state?.keyboardType
+        val currentInputMode = state?.inputMode ?: fallbackInputMode
+        val normalizedPresentation = normalizePresentation(
+            target,
+            currentInputMode,
+            state?.presentation ?: RestartInputModePresentation.Native
         )
+        val value = toPreferenceValue(currentInputMode)
+        val presentationValue = toPreferenceValue(normalizedPresentation)
+        val tenkeyQwertyNumberReturnTargetValue =
+            if (target == KeyboardType.TENKEY &&
+                normalizedPresentation == RestartInputModePresentation.TenkeyQwertyNumberProxy
+            ) {
+                state.tenkeyQwertyNumberReturnTarget?.let(::toPreferenceValue)
+            } else {
+                null
+            }
         return when {
             target == KeyboardType.TENKEY && tenkeyRestoreEnabled ->
-                RestartInputModePersistence(KeyboardType.TENKEY, value, presentationValue)
+                RestartInputModePersistence(
+                    KeyboardType.TENKEY,
+                    value,
+                    presentationValue,
+                    tenkeyQwertyNumberReturnTargetValue
+                )
 
             target == KeyboardType.SUMIRE && sumireRestoreEnabled ->
                 RestartInputModePersistence(KeyboardType.SUMIRE, value, presentationValue)
@@ -178,6 +226,8 @@ internal object RestartInputModePreference {
         sumireRestoreEnabled: Boolean,
         tenkeyLastInputModePreference: String,
         tenkeyLastInputModePresentationPreference: String,
+        tenkeyLastQwertyNumberReturnTargetPreference: String =
+            TENKEY_QWERTY_NUMBER_RETURN_JAPANESE,
         sumireLastInputModePreference: String,
         sumireLastInputModePresentationPreference: String
     ): RestartInputModeState? {
@@ -200,7 +250,22 @@ internal object RestartInputModePreference {
             inputMode = inputMode,
             presentation = presentationFromPreferenceValue(presentationPreference)
         )
-        return RestartInputModeState(type, inputMode, presentation)
+        val returnTarget =
+            if (type == KeyboardType.TENKEY &&
+                presentation == RestartInputModePresentation.TenkeyQwertyNumberProxy
+            ) {
+                twoStateNumberReturnTargetFromPreferenceValue(
+                    tenkeyLastQwertyNumberReturnTargetPreference
+                )
+            } else {
+                null
+            }
+        return RestartInputModeState(
+            keyboardType = type,
+            inputMode = inputMode,
+            presentation = presentation,
+            tenkeyQwertyNumberReturnTarget = returnTarget
+        )
     }
 
     fun resolveRestoredMode(
@@ -216,6 +281,8 @@ internal object RestartInputModePreference {
             sumireRestoreEnabled = sumireRestoreEnabled,
             tenkeyLastInputModePreference = tenkeyLastInputModePreference,
             tenkeyLastInputModePresentationPreference = NATIVE,
+            tenkeyLastQwertyNumberReturnTargetPreference =
+                TENKEY_QWERTY_NUMBER_RETURN_JAPANESE,
             sumireLastInputModePreference = sumireLastInputModePreference,
             sumireLastInputModePresentationPreference = NATIVE
         )?.inputMode
@@ -256,7 +323,8 @@ internal sealed class RestartInputModePresentation {
 internal data class RestartInputModeState(
     val keyboardType: KeyboardType,
     val inputMode: InputMode,
-    val presentation: RestartInputModePresentation
+    val presentation: RestartInputModePresentation,
+    val tenkeyQwertyNumberReturnTarget: TwoStateNumberReturnTarget? = null
 )
 
 internal enum class RestartInputModeQwertyReturnSource {
@@ -270,7 +338,8 @@ internal enum class RestartInputModeQwertyReturnSource {
 internal data class RestartInputModePersistence(
     val target: KeyboardType,
     val value: String,
-    val presentationValue: String = RestartInputModePreference.NATIVE
+    val presentationValue: String = RestartInputModePreference.NATIVE,
+    val tenkeyQwertyNumberReturnTargetValue: String? = null
 )
 
 internal fun InputMode.toRestartPreferenceValue(): String {
