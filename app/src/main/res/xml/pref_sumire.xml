@@ -42,6 +42,29 @@
             app:summary="@string/kana_input_qwerty_preference_summary" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="sumire_restore_input_mode_on_restart_preference"
+            android:title="@string/sumire_restore_input_mode_on_restart_title"
+            app:summary="@string/sumire_restore_input_mode_on_restart_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="sumire_restore_input_mode_on_restart_preference"
+            android:key="sumire_restore_input_mode_only_within_time_preference"
+            android:title="@string/sumire_restore_input_mode_only_within_time_title"
+            app:summary="@string/sumire_restore_input_mode_only_within_time_summary" />
+
+        <SeekBarPreference
+            android:defaultValue="5"
+            android:dependency="sumire_restore_input_mode_only_within_time_preference"
+            android:key="sumire_restore_input_mode_timeout_minutes_preference"
+            android:max="60"
+            android:title="@string/sumire_restore_input_mode_timeout_minutes_title"
+            app:min="1"
+            app:showSeekBarValue="true"
+            app:summary="@string/sumire_restore_input_mode_timeout_minutes_summary" />
+
+        <SwitchPreferenceCompat
             android:key="flick_keymap_guide"
             android:title="@string/flick_keymap_guide_title"
             app:defaultValue="false"
