@@ -44,7 +44,8 @@
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="sumire_restore_input_mode_on_restart_preference"
-            android:title="キーボード再起動時に入力モードを復元" />
+            android:title="@string/sumire_restore_input_mode_on_restart_title"
+            app:summary="@string/sumire_restore_input_mode_on_restart_summary" />
 
         <SwitchPreferenceCompat
             android:key="flick_keymap_guide"
