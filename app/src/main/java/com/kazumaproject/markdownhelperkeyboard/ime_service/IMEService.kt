@@ -357,8 +357,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private data class ZenzRerankPlan(
         val leftContext: String,
+        val rightContext: String,
         val cacheKey: String,
         val rerankTargets: List<IndexedValue<Candidate>>
+    )
+
+    private data class ZenzContext(
+        val leftContext: String,
+        val rightContext: String
     )
 
     @Inject
@@ -11347,46 +11353,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return@withContext emptyList()
         }
 
-        // 3. 文脈（LeftContext）の取得
-        // try-catch で安全に処理
-        val leftContext = try {
-            withContext(Dispatchers.Main) {
-                val lastCandidateLength = if (isLiveConversionEnable == true) {
-                    lastCandidate?.length ?: 0
-                } else {
-                    insertString.length
-                }
-                //Timber.d("getLeftContext: $insertString lastCandidateLength:[$lastCandidateLength] suggestion: [${suggestionAdapter?.suggestions?.firstOrNull()?.string ?: ""}] lastCandidate [$lastCandidate]")
-                if (enableZenzRightContextPreference == true) {
-                    val tmpResult =
-                        getLeftContext(inputLength = lastCandidateLength).dropLast(
-                            lastCandidateLength
-                        )
-                    tmpResult.ifEmpty {
-                        getRightContext(inputLength = lastCandidateLength)
-                    }
-                } else {
-                    getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
-                }
-            }
-        } catch (e: Exception) {
-            Timber.e("Error performZenzRequest leftContext: ${e.stackTraceToString()}")
-            ""
-        }
+        val zenzContext = getZenzContext(insertString)
 
-        Timber.d("performZenzRequest: $insertString leftContext: [$leftContext]")
+        Timber.d(
+            "performZenzRequest: $insertString leftContext: [${zenzContext.leftContext}] rightContext: [${zenzContext.rightContext}]"
+        )
 
         // 4. エンジンによる生成処理
         try {
             // 処理直前にキャンセルされていないかチェック
             ensureActive()
 
-            val stringFromZenz = zenzEngine?.generateWithContextAndConditions(
+            val stringFromZenz = zenzEngine?.generateWithContextAndConditionsV32(
                 profile = zenzProfilePreference ?: "",
                 topic = "",
                 style = "",
                 preference = "",
-                leftContext = leftContext.ifEmpty { "" },
+                leftContext = zenzContext.leftContext,
+                rightContext = zenzContext.rightContext,
                 input = insertString.hiraganaToKatakana(),
                 maxTokens = zenzMaximumLetterSizePreference ?: 32
             ) ?: ""
@@ -11430,42 +11414,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return@withContext emptyList()
         }
 
-        // 3. 文脈（LeftContext）の取得
-        val leftContext = try {
-            withContext(Dispatchers.Main) {
-                val lastCandidateLength = if (isLiveConversionEnable == true) {
-                    lastCandidate?.length ?: 0
-                } else {
-                    insertString.length
-                }
-
-                if (enableZenzRightContextPreference == true) {
-                    val tmpResult =
-                        getLeftContext(inputLength = lastCandidateLength).dropLast(
-                            lastCandidateLength
-                        )
-                    tmpResult.ifEmpty {
-                        getRightContext(inputLength = lastCandidateLength)
-                    }
-                } else {
-                    getLeftContext(inputLength = lastCandidateLength).dropLast(lastCandidateLength)
-                }
-            }
-        } catch (e: Exception) {
-            Timber.e("Error performZenzRequest leftContext: ${e.stackTraceToString()}")
-            ""
-        }
+        val zenzContext = getZenzContext(insertString)
 
         // 4. エンジンによる生成処理
         try {
             ensureActive()
 
-            val stringFromZenz = zenzEngine?.candidateEvaluate(
+            val stringFromZenz = zenzEngine?.candidateEvaluateV32(
                 profile = zenzProfilePreference ?: "",
                 topic = "",
                 style = "",
                 preference = "",
-                leftContext = leftContext.ifEmpty { "" },
+                leftContext = zenzContext.leftContext,
+                rightContext = zenzContext.rightContext,
                 input = insertString.hiraganaToKatakana(),
                 candidate = firstCandidate
             ) ?: ""
@@ -11507,12 +11468,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
 
                     val secondCandidateFromZenz = ZenzCandidate(
-                        string = (zenzEngine?.generateWithContextAndConditions(
+                        string = (zenzEngine?.generateWithContextAndConditionsV32(
                             profile = zenzProfilePreference ?: "",
                             topic = "",
                             style = "",
                             preference = "",
                             leftContext = prefix,
+                            rightContext = zenzContext.rightContext,
                             input = insertString.hiraganaToKatakana(),
                             maxTokens = zenzMaximumLetterSizePreference ?: 32
                         ) ?: ""),
@@ -11597,25 +11559,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (rerankTargets.size < 2) return null
 
-        val leftContext = getZenzLeftContext(insertString)
-        val cacheKey = buildString {
-            append(zenzProfilePreference ?: "")
-            append('\u0001')
-            append(leftContext)
-            append('\u0001')
-            append(insertString.hiraganaToKatakana())
-            rerankTargets.forEach {
-                append('\u0002')
-                append(it.index)
-                append('\u0003')
-                append(it.value.string)
-                append('\u0003')
-                append(it.value.score)
-            }
-        }
+        val zenzContext = getZenzContext(insertString)
+        val cacheKey = buildZenzRerankCacheKey(
+            profile = zenzProfilePreference ?: "",
+            leftContext = zenzContext.leftContext,
+            rightContext = zenzContext.rightContext,
+            input = insertString.hiraganaToKatakana(),
+            rerankTargets = rerankTargets
+        )
 
         return ZenzRerankPlan(
-            leftContext = leftContext,
+            leftContext = zenzContext.leftContext,
+            rightContext = zenzContext.rightContext,
             cacheKey = cacheKey,
             rerankTargets = rerankTargets
         )
@@ -11627,12 +11582,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         plan: ZenzRerankPlan
     ): List<Candidate>? {
         val rawScores = withContext(Dispatchers.Default) {
-            zenzEngine?.scoreCandidates(
+            zenzEngine?.scoreCandidatesV32(
                 profile = zenzProfilePreference ?: "",
                 topic = "",
                 style = "",
                 preference = "",
-                leftContext = plan.leftContext.ifEmpty { "" },
+                leftContext = plan.leftContext,
+                rightContext = plan.rightContext,
                 input = insertString.hiraganaToKatakana(),
                 candidates = plan.rerankTargets.map { it.value.string }.toTypedArray()
             ) ?: FloatArray(0)
@@ -11689,7 +11645,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return reranked
     }
 
-    private suspend fun getZenzLeftContext(insertString: String): String {
+    private suspend fun getZenzContext(insertString: String): ZenzContext {
         return try {
             withContext(Dispatchers.Main) {
                 val lastCandidateLength = if (isLiveConversionEnable == true) {
@@ -11698,20 +11654,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     insertString.length
                 }
 
-                if (enableZenzRightContextPreference == true) {
-                    val tmpResult = getLeftContext(inputLength = lastCandidateLength)
-                        .dropLast(lastCandidateLength)
-                    tmpResult.ifEmpty {
+                val leftContext = getLeftContext(inputLength = lastCandidateLength)
+                    .dropLast(lastCandidateLength)
+                val resolvedContext = resolveZenzContext(
+                    leftContext = leftContext,
+                    rawRightContext = if (enableZenzRightContextPreference == true) {
                         getRightContext(inputLength = lastCandidateLength)
-                    }
-                } else {
-                    getLeftContext(inputLength = lastCandidateLength)
-                        .dropLast(lastCandidateLength)
-                }
+                    } else {
+                        ""
+                    },
+                    enableRightContext = enableZenzRightContextPreference == true
+                )
+                ZenzContext(
+                    leftContext = resolvedContext.leftContext,
+                    rightContext = resolvedContext.rightContext
+                )
             }
         } catch (e: Exception) {
-            Timber.e(e, "Error getZenzLeftContext")
-            ""
+            Timber.e(e, "Error getZenzContext")
+            ZenzContext("", "")
         }
     }
 
