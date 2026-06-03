@@ -165,14 +165,14 @@ static std::string preprocess_text(const std::string &text) {
     return out;
 }
 
-const std::string inputTag = u8"\uEE00";
-const std::string outputTag = u8"\uEE01";
-const std::string leftContextTag = u8"\uEE02";
-const std::string profileTag = u8"\uEE03";
-const std::string topicTag = u8"\uEE04";
-const std::string styleTag = u8"\uEE05";
-const std::string preferenceTag = u8"\uEE06";
-const std::string rightContextTag = u8"\uEE07";
+__attribute__((used)) static const char inputTag[] = u8"\uEE00";
+__attribute__((used)) static const char outputTag[] = u8"\uEE01";
+__attribute__((used)) static const char leftContextTag[] = u8"\uEE02";
+__attribute__((used)) static const char profileTag[] = u8"\uEE03";
+__attribute__((used)) static const char topicTag[] = u8"\uEE04";
+__attribute__((used)) static const char styleTag[] = u8"\uEE05";
+__attribute__((used)) static const char preferenceTag[] = u8"\uEE06";
+__attribute__((used)) static const char rightContextTag[] = u8"\uEE07";
 
 static std::string jstring_to_string(JNIEnv *env, jstring value) {
     if (!value) {
@@ -193,10 +193,22 @@ static std::string build_conditions(
         const std::string &preference
 ) {
     std::string conditions;
-    if (!profile.empty()) conditions += profileTag + profile;
-    if (!topic.empty()) conditions += topicTag + topic;
-    if (!style.empty()) conditions += styleTag + style;
-    if (!preference.empty()) conditions += preferenceTag + preference;
+    if (!profile.empty()) {
+        conditions += profileTag;
+        conditions += profile;
+    }
+    if (!topic.empty()) {
+        conditions += topicTag;
+        conditions += topic;
+    }
+    if (!style.empty()) {
+        conditions += styleTag;
+        conditions += style;
+    }
+    if (!preference.empty()) {
+        conditions += preferenceTag;
+        conditions += preference;
+    }
     return conditions;
 }
 
@@ -211,12 +223,16 @@ static std::string build_zenz_prompt(
 ) {
     std::string prompt = build_conditions(profile, topic, style, preference);
     if (!leftContext.empty()) {
-        prompt += leftContextTag + leftContext;
+        prompt += leftContextTag;
+        prompt += leftContext;
     }
     if (!rightContext.empty()) {
-        prompt += rightContextTag + rightContext;
+        prompt += rightContextTag;
+        prompt += rightContext;
     }
-    prompt += inputTag + input + outputTag;
+    prompt += inputTag;
+    prompt += input;
+    prompt += outputTag;
     return prompt;
 }
 

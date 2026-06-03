@@ -106,6 +106,24 @@ tasks.named("preBuild").configure {
     dependsOn(prepareZenzModel)
 }
 
+def cleanZenzReleaseNativeIntermediates = tasks.register("cleanZenzReleaseNativeIntermediates", Delete) {
+    group = "build"
+    description = "Deletes release native intermediates so libzenz.so is rebuilt from source before release packaging."
+
+    delete layout.projectDirectory.dir(".cxx/RelWithDebInfo")
+    delete layout.buildDirectory.dir("intermediates/cxx/RelWithDebInfo")
+    delete layout.buildDirectory.dir("intermediates/library_jni/release")
+    delete layout.buildDirectory.dir("intermediates/library_and_local_jars_jni/release")
+    delete layout.buildDirectory.dir("intermediates/merged_native_libs/release")
+    delete layout.buildDirectory.dir("intermediates/stripped_native_libs/release")
+}
+
+tasks.configureEach { task ->
+    if (task.name.startsWith("configureCMakeRelWithDebInfo")) {
+        task.dependsOn(cleanZenzReleaseNativeIntermediates)
+    }
+}
+
 dependencies {
     implementation 'androidx.core:core-ktx:1.17.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
