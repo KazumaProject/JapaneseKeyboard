@@ -1,3 +1,5 @@
+import java.security.MessageDigest
+
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
@@ -18,8 +20,9 @@ android {
 
     signingConfigs {
         release {
-            if (localProperties['KEYSTORE_FILE']) {
-                storeFile file(localProperties['KEYSTORE_FILE'])
+            def releaseKeystoreFile = localProperties['KEYSTORE_FILE'] ? file(localProperties['KEYSTORE_FILE']) : null
+            if (releaseKeystoreFile?.isFile()) {
+                storeFile releaseKeystoreFile
                 storePassword localProperties['KEYSTORE_PASSWORD']
                 keyAlias localProperties['KEY_ALIAS']
                 keyPassword localProperties['KEY_PASSWORD']
@@ -95,7 +98,7 @@ android {
     buildTypes {
         release {
             def releaseSigning = signingConfigs.findByName("release")
-            if (releaseSigning?.storeFile) {
+            if (releaseSigning?.storeFile?.isFile()) {
                 signingConfig releaseSigning
             }
             minifyEnabled true
@@ -152,6 +155,110 @@ android {
         }
     }
 
+}
+
+def containsByteSequence = { byte[] haystack, byte[] needle ->
+    if (needle.length == 0) {
+        return true
+    }
+    if (haystack.length < needle.length) {
+        return false
+    }
+    for (int i = 0; i <= haystack.length - needle.length; i++) {
+        boolean found = true
+        for (int j = 0; j < needle.length; j++) {
+            if (haystack[i + j] != needle[j]) {
+                found = false
+                break
+            }
+        }
+        if (found) {
+            return true
+        }
+    }
+    return false
+}
+
+def sha256Hex = { byte[] bytes ->
+    MessageDigest.getInstance("SHA-256")
+            .digest(bytes)
+            .collect { String.format("%02x", it & 0xff) }
+            .join()
+}
+
+def cleanFullStandardReleaseNativeIntermediates = tasks.register("cleanFullStandardReleaseNativeIntermediates", Delete) {
+    group = "build"
+    description = "Deletes app release native intermediates before packaging fullStandardRelease."
+
+    delete layout.buildDirectory.dir("intermediates/merged_native_libs/fullStandardRelease")
+    delete layout.buildDirectory.dir("intermediates/stripped_native_libs/fullStandardRelease")
+}
+
+tasks.configureEach { task ->
+    if (task.name == "mergeFullStandardReleaseNativeLibs") {
+        task.dependsOn(cleanFullStandardReleaseNativeIntermediates)
+    }
+}
+
+def verifyFullStandardReleaseAabNativeLibraries = tasks.register("verifyFullStandardReleaseAabNativeLibraries") {
+    group = "verification"
+    description = "Verifies libzenz.so contents in the fullStandardRelease AAB."
+
+    mustRunAfter("bundleFullStandardRelease")
+    outputs.upToDateWhen { false }
+
+    doLast {
+        def aabCandidates = [
+                layout.buildDirectory.file("outputs/bundle/fullStandardRelease/app-full-standard-release.aab").get().asFile,
+                file("fullStandard/release/app-full-standard-release.aab")
+        ]
+        def aabFile = aabCandidates.find { it.isFile() && it.length() > 0 }
+        if (aabFile == null) {
+            throw new GradleException("fullStandardRelease AAB was not found. Run :app:bundleFullStandardRelease first.")
+        }
+
+        def expectedAbis = ["arm64-v8a", "x86_64"]
+        byte[] rightContextTagBytes = [(byte) 0xee, (byte) 0xb8, (byte) 0x87] as byte[]
+        def requiredSymbols = [
+                "Java_com_kazumaproject_zenz_ZenzEngine_generateWithContextAndConditionsV32",
+                "Java_com_kazumaproject_zenz_ZenzEngine_scoreCandidatesV32",
+                "Java_com_kazumaproject_zenz_ZenzEngine_candidateEvaluateV32"
+        ]
+        def extractDir = layout.buildDirectory.dir("intermediates/verifyFullStandardReleaseAabNativeLibraries").get().asFile
+
+        delete(extractDir)
+        copy {
+            from zipTree(aabFile)
+            include expectedAbis.collect { "base/lib/${it}/libzenz.so" }
+            into extractDir
+        }
+
+        expectedAbis.each { abi ->
+            def soFile = new File(extractDir, "base/lib/${abi}/libzenz.so")
+            if (!soFile.isFile()) {
+                throw new GradleException("Missing base/lib/${abi}/libzenz.so in ${aabFile}")
+            }
+
+            byte[] soBytes = soFile.bytes
+            logger.lifecycle("${abi}/libzenz.so SHA-256: ${sha256Hex(soBytes)}")
+
+            if (!containsByteSequence(soBytes, rightContextTagBytes)) {
+                throw new GradleException("base/lib/${abi}/libzenz.so does not contain U+EE07 bytes ee b8 87")
+            }
+
+            requiredSymbols.each { symbol ->
+                if (!containsByteSequence(soBytes, symbol.getBytes("US-ASCII"))) {
+                    throw new GradleException("base/lib/${abi}/libzenz.so does not contain JNI symbol ${symbol}")
+                }
+            }
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.matching { it.name == "bundleFullStandardRelease" }.configureEach {
+        finalizedBy(verifyFullStandardReleaseAabNativeLibraries)
+    }
 }
 
 dependencies {
