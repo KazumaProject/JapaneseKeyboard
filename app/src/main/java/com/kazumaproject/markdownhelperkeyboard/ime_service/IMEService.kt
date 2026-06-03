@@ -938,6 +938,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
         private const val PAGE_SIZE: Int = 5
+        private const val ZENZ_LIVE_SLOT_EMPTY_TEXT = "..."
+        private val ZENZ_LIVE_SLOT_TYPE = (33).toByte()
+        private val ZENZ_LIVE_SLOT_TYPES = setOf(
+            (33).toByte(),
+            (36).toByte(),
+            (37).toByte(),
+            (38).toByte(),
+            (39).toByte(),
+            (40).toByte()
+        )
         private const val ZENZ_RERANK_TOP_K = 4
         private const val ZENZ_RERANK_ALPHA = 0.7f
         private const val ZENZ_RERANK_BETA = 0.3f
@@ -1016,7 +1026,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val zenzCandidates: StateFlow<List<ZenzCandidate>> = _zenzCandidates
     private var lastCandidate: String? = ""
 
-    private val _zenzRequest = MutableSharedFlow<String>(
+    private data class ZenzLiveRequest(
+        val displayInput: String,
+        val requestToken: Long
+    )
+
+    private data class ZenzLiveResultMeta(
+        val requestToken: Long,
+        val requestInput: String,
+        val displayInput: String
+    )
+
+    private data class ZenzLiveSlotState(
+        val requestInput: String,
+        val displayInput: String,
+        val candidate: Candidate?,
+        val isLoading: Boolean,
+        val requestToken: Long
+    )
+
+    private val _zenzRequest = MutableSharedFlow<ZenzLiveRequest>(
         extraBufferCapacity = 0
     )
 
@@ -1027,6 +1056,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var addUserDictionaryPopup: PopupWindow? = null
 
     private var filteredCandidateList: List<Candidate>? = emptyList()
+    private val _zenzLiveSlotState = MutableStateFlow<ZenzLiveSlotState?>(null)
+    private var zenzLiveLocalCandidatesSnapshot: List<Candidate> = emptyList()
+    private var zenzLiveSnapshotDisplayInput: String = ""
+    private var zenzLiveSnapshotRequestInput: String = ""
+    private var zenzLiveRequestToken: Long = 0L
+    private var zenzLiveLatestResultMeta: ZenzLiveResultMeta? = null
     private var zenzRerankJob: Job? = null
     private var zenzRerankRequestToken: Long = 0L
     private val zenzRerankCache = object : LinkedHashMap<String, List<Candidate>>(16, 0.75f, true) {
@@ -2180,6 +2215,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             nCtx = zenzMaximumContextSizePreference ?: 512,
             nThreads = zenzMaximumThreadSizePreference ?: 4
         )
+        clearZenzLiveSlot("onStartInputView")
         suggestionAdapter?.suggestions = emptyList()
         suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionAdapterFull?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
@@ -2583,6 +2619,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         zenzEngine = null
         qwertyGlideInputCoordinator?.cancelPending()
         englishEngine.cancelQwertyGlideWarmup()
+        clearZenzLiveSlot("onDestroy")
         suggestionAdapter?.release()
         suggestionAdapter = null
         shortcutAdapter = null
@@ -6727,6 +6764,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     selectedText = selectedText,
                     actions = actions
                 )
+                clearZenzLiveSlot("selected text Gemma actions")
                 suggestionAdapter?.suggestions = candidates
                 suggestionAdapterFull?.suggestions = candidates
                 suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
@@ -6767,6 +6805,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cancelActiveSelectedTextGemmaAction()
         selectedTextGemmaSession = null
         if (!clearSuggestions) return
+        clearZenzLiveSlot("selected text Gemma cleared")
         suggestionAdapter?.suggestions = emptyList()
         suggestionAdapterFull?.suggestions = emptyList()
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
@@ -7005,11 +7044,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isHenkan.get()) {
             val suggestions = suggestionAdapter?.suggestions.orEmpty()
             if (suggestions.isNotEmpty()) {
-                val selectedIndex = if (suggestionClickNum <= 0) {
+                val requestedIndex = if (suggestionClickNum <= 0) {
                     0
                 } else {
                     (suggestionClickNum - 1).coerceAtMost(suggestions.lastIndex)
                 }
+                val selectedIndex = resolveNonLoadingCandidateIndex(
+                    suggestions = suggestions,
+                    insertString = inputString.value,
+                    requestedIndex = requestedIndex
+                ) ?: return inputString.value + stringInTail.get()
                 return getCandidateCommitString(suggestions[selectedIndex]) + stringInTail.get()
             }
         }
@@ -7585,9 +7629,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (insertString.isNotEmpty()) {
             if (zenzEnableLongPressConversionPreference == true) {
                 scope.launch {
-                    filteredCandidateList = suggestionAdapter?.suggestions
-                    val candidates = performZenzRequest(insertString)
-                    _zenzCandidates.update { candidates }
+                    performImmediateZenzLiveRequest(insertString)
                 }
                 isSpaceKeyLongPressed = true
             } else {
@@ -8626,9 +8668,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         } else {
                             if (zenzEnableLongPressConversionPreference == true) {
                                 scope.launch {
-                                    filteredCandidateList = suggestionAdapter?.suggestions
-                                    val candidates = performZenzRequest(insertString)
-                                    _zenzCandidates.update { candidates }
+                                    performImmediateZenzLiveRequest(insertString)
                                 }
                             } else {
                                 if (conversionKeySwipePreference == true) {
@@ -8898,9 +8938,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         if (zenzEnableLongPressConversionPreference == true) {
                             val insertString = inputString.value
                             scope.launch {
-                                filteredCandidateList = suggestionAdapter?.suggestions
-                                val candidates = performZenzRequest(insertString)
-                                _zenzCandidates.update { candidates }
+                                performImmediateZenzLiveRequest(insertString)
                             }
                         } else {
                             if (conversionKeySwipePreference == true) {
@@ -10763,6 +10801,328 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun zenzLiveRequestBlockReason(displayInput: String): String? {
+        return when {
+            displayInput.isEmpty() -> "input empty"
+            zenzEnableStatePreference != true -> "Zenz preference disabled"
+            hasHardwareKeyboardConnected == true -> "hardware keyboard connected"
+            displayInput.length <= 1 -> "input too short"
+            !displayInput.isAllHiraganaWithSymbols() -> "input not hiragana"
+            zenzRerankPreference == true && zenzaiEnableStatePreference != true -> "Zenz rerank active"
+            else -> null
+        }
+    }
+
+    private fun shouldRequestZenzLiveGenerate(displayInput: String): Boolean {
+        return zenzLiveRequestBlockReason(displayInput) == null
+    }
+
+    private fun Candidate.isZenzLiveSlot(displayInput: String): Boolean {
+        return displayInput.isNotEmpty() &&
+                type in ZENZ_LIVE_SLOT_TYPES &&
+                yomi == displayInput &&
+                length.toInt() == displayInput.length
+    }
+
+    private fun Candidate.isZenzLiveLoadingSlot(currentInput: String): Boolean {
+        val state = _zenzLiveSlotState.value ?: return false
+        return state.isLoading &&
+                state.candidate == null &&
+                state.requestToken == zenzLiveRequestToken &&
+                state.displayInput == currentInput &&
+                string == ZENZ_LIVE_SLOT_EMPTY_TEXT &&
+                type == ZENZ_LIVE_SLOT_TYPE &&
+                isZenzLiveSlot(currentInput)
+    }
+
+    private fun List<Candidate>.withoutZenzLiveSlot(displayInput: String): List<Candidate> {
+        if (displayInput.isEmpty()) return this
+        return filterNot { it.isZenzLiveSlot(displayInput) }
+    }
+
+    private fun buildZenzLiveLoadingCandidate(displayInput: String): Candidate {
+        return Candidate(
+            string = ZENZ_LIVE_SLOT_EMPTY_TEXT,
+            type = ZENZ_LIVE_SLOT_TYPE,
+            length = displayInput.length.toUByte(),
+            score = Int.MAX_VALUE,
+            yomi = displayInput
+        )
+    }
+
+    private fun ZenzCandidate.toZenzLiveSlotCandidate(displayInput: String): Candidate {
+        return Candidate(
+            string = string,
+            type = type,
+            length = displayInput.length.toUByte(),
+            score = score,
+            yomi = displayInput,
+            leftId = leftId,
+            rightId = rightId
+        )
+    }
+
+    private fun buildDisplayedCandidatesWithZenzSlot(
+        localCandidates: List<Candidate>,
+        input: String,
+        zenzSlotState: ZenzLiveSlotState?
+    ): List<Candidate> {
+        if (input.isEmpty()) return localCandidates
+        if (zenzSlotState == null) return localCandidates
+        if (zenzSlotState.displayInput != input) return localCandidates
+        if (zenzSlotState.requestToken != zenzLiveRequestToken) return localCandidates
+        if (!shouldRequestZenzLiveGenerate(input)) return localCandidates
+
+        val zenzSlotCandidate = zenzSlotState.candidate ?: buildZenzLiveLoadingCandidate(input)
+        return listOf(zenzSlotCandidate) + localCandidates.withoutZenzLiveSlot(input)
+    }
+
+    private fun clearZenzLiveSlot(
+        reason: String,
+        updateDisplayedCandidates: Boolean = false,
+        invalidateRequest: Boolean = true
+    ) {
+        val previousState = _zenzLiveSlotState.value
+        val previousDisplayInput = previousState?.displayInput ?: zenzLiveSnapshotDisplayInput
+        val previousLocalCandidates = zenzLiveLocalCandidatesSnapshot
+        val hadState = previousState != null ||
+                zenzLiveSnapshotDisplayInput.isNotEmpty() ||
+                zenzLiveSnapshotRequestInput.isNotEmpty() ||
+                previousLocalCandidates.isNotEmpty()
+
+        if (invalidateRequest) {
+            zenzLiveRequestToken += 1L
+        }
+        _zenzLiveSlotState.value = null
+        zenzLiveLocalCandidatesSnapshot = emptyList()
+        zenzLiveSnapshotDisplayInput = ""
+        zenzLiveSnapshotRequestInput = ""
+        zenzLiveLatestResultMeta = null
+        lastLocalUpdatedInput.value = ""
+        _zenzCandidates.update { emptyList() }
+
+        if (hadState) {
+            Timber.d("Zenz live slot cleared: reason=%s", reason)
+        }
+        if (
+            updateDisplayedCandidates &&
+            previousDisplayInput.isNotEmpty() &&
+            inputString.value == previousDisplayInput &&
+            !suppressSuggestions
+        ) {
+            suggestionAdapter?.suggestions = previousLocalCandidates
+        }
+    }
+
+    private fun beginZenzLiveRequest(
+        displayInput: String,
+        localCandidates: List<Candidate> = emptyList()
+    ): ZenzLiveRequest? {
+        val blockReason = zenzLiveRequestBlockReason(displayInput)
+        if (blockReason != null) {
+            clearZenzLiveSlot(blockReason)
+            return null
+        }
+
+        zenzLiveRequestToken += 1L
+        val requestToken = zenzLiveRequestToken
+        val localSnapshot = localCandidates.withoutZenzLiveSlot(displayInput)
+
+        zenzLiveLocalCandidatesSnapshot = localSnapshot
+        zenzLiveSnapshotDisplayInput = displayInput
+        zenzLiveSnapshotRequestInput = displayInput
+        zenzLiveLatestResultMeta = null
+        _zenzCandidates.update { emptyList() }
+        val loadingState = ZenzLiveSlotState(
+            requestInput = displayInput,
+            displayInput = displayInput,
+            candidate = null,
+            isLoading = true,
+            requestToken = requestToken
+        )
+        _zenzLiveSlotState.value = loadingState
+        Timber.d("Zenz live slot loading shown: input=%s", displayInput)
+
+        if (localSnapshot.isNotEmpty() && inputString.value == displayInput && !suppressSuggestions) {
+            suggestionAdapter?.suggestions = buildDisplayedCandidatesWithZenzSlot(
+                localCandidates = localSnapshot,
+                input = displayInput,
+                zenzSlotState = loadingState
+            )
+        }
+
+        return ZenzLiveRequest(
+            displayInput = displayInput,
+            requestToken = requestToken
+        )
+    }
+
+    private suspend fun emitZenzLiveRequest(displayInput: String) {
+        val request = beginZenzLiveRequest(displayInput) ?: return
+        _zenzRequest.emit(request)
+    }
+
+    private fun isCurrentZenzLiveRequest(request: ZenzLiveRequest): Boolean {
+        val state = _zenzLiveSlotState.value ?: return false
+        return request.requestToken == zenzLiveRequestToken &&
+                state.requestToken == request.requestToken &&
+                state.displayInput == request.displayInput &&
+                inputString.value == request.displayInput &&
+                shouldRequestZenzLiveGenerate(request.displayInput)
+    }
+
+    private fun resolveZenzLiveRequestInput(request: ZenzLiveRequest): String? {
+        if (!isCurrentZenzLiveRequest(request)) return null
+
+        val requestInput = if (zenzaiEnableStatePreference == true) {
+            val suggestions = zenzLiveLocalCandidatesSnapshot
+                .takeIf { zenzLiveSnapshotDisplayInput == request.displayInput }
+                ?: emptyList()
+            val firstCandidate = suggestions.firstOrNull()
+            if (firstCandidate == null) {
+                clearZenzLiveSlot(
+                    reason = "zenzai local candidates empty",
+                    updateDisplayedCandidates = true
+                )
+                return null
+            }
+            firstCandidate.yomi ?: request.displayInput
+        } else {
+            request.displayInput
+        }
+
+        val state = _zenzLiveSlotState.value ?: return null
+        _zenzLiveSlotState.value = state.copy(requestInput = requestInput)
+        zenzLiveSnapshotRequestInput = requestInput
+        return requestInput
+    }
+
+    private fun publishZenzLiveResult(
+        request: ZenzLiveRequest,
+        requestInput: String,
+        candidates: List<ZenzCandidate>
+    ) {
+        if (!isCurrentZenzLiveRequest(request)) {
+            Timber.d(
+                "Zenz live result ignored because stale: requestInput=%s currentInput=%s",
+                requestInput,
+                inputString.value
+            )
+            return
+        }
+
+        zenzLiveLatestResultMeta = ZenzLiveResultMeta(
+            requestToken = request.requestToken,
+            requestInput = requestInput,
+            displayInput = request.displayInput
+        )
+        if (candidates.isEmpty()) {
+            clearZenzLiveSlot(
+                reason = "empty result",
+                updateDisplayedCandidates = true
+            )
+            return
+        }
+        _zenzCandidates.update { candidates }
+    }
+
+    private suspend fun performImmediateZenzLiveRequest(displayInput: String) {
+        val localCandidates = suggestionAdapter?.suggestions.orEmpty()
+            .withoutZenzLiveSlot(displayInput)
+        filteredCandidateList = localCandidates
+        val request = beginZenzLiveRequest(
+            displayInput = displayInput,
+            localCandidates = localCandidates
+        ) ?: return
+        val requestInput = resolveZenzLiveRequestInput(request) ?: return
+        val candidates = performZenzRequest(requestInput)
+        publishZenzLiveResult(
+            request = request,
+            requestInput = requestInput,
+            candidates = candidates
+        )
+    }
+
+    private fun acceptZenzLiveResult(resultFromZenz: List<ZenzCandidate>) {
+        val currentInput = inputString.value
+        val meta = zenzLiveLatestResultMeta
+        val state = _zenzLiveSlotState.value
+        val firstResult = resultFromZenz.firstOrNull()
+
+        if (currentInput.isEmpty()) {
+            clearZenzLiveSlot("input empty")
+            return
+        }
+        if (!shouldRequestZenzLiveGenerate(currentInput)) {
+            clearZenzLiveSlot(zenzLiveRequestBlockReason(currentInput) ?: "not target")
+            return
+        }
+        if (firstResult == null) {
+            if (meta != null && state != null && meta.requestToken == state.requestToken) {
+                clearZenzLiveSlot(
+                    reason = "empty result",
+                    updateDisplayedCandidates = true
+                )
+            }
+            return
+        }
+
+        val isStale = meta == null ||
+                state == null ||
+                meta.requestToken != zenzLiveRequestToken ||
+                state.requestToken != meta.requestToken ||
+                state.requestInput != meta.requestInput ||
+                state.displayInput != meta.displayInput ||
+                firstResult.originalString != state.requestInput ||
+                state.displayInput != currentInput
+
+        if (isStale) {
+            Timber.d(
+                "Zenz live result ignored because stale: originalString=%s currentInput=%s",
+                firstResult.originalString,
+                currentInput
+            )
+            return
+        }
+
+        val currentState = state ?: return
+        val resultSlot = firstResult.toZenzLiveSlotCandidate(currentState.displayInput)
+        val acceptedState = currentState.copy(
+            candidate = resultSlot,
+            isLoading = false
+        )
+        _zenzLiveSlotState.value = acceptedState
+
+        val localCandidates = zenzLiveLocalCandidatesSnapshot
+            .withoutZenzLiveSlot(currentState.displayInput)
+        val displayedCandidates = buildDisplayedCandidatesWithZenzSlot(
+            localCandidates = localCandidates,
+            input = currentState.displayInput,
+            zenzSlotState = acceptedState
+        )
+        suggestionAdapter?.suggestions = displayedCandidates
+        Timber.d(
+            "Zenz live result accepted: input=%s result=%s",
+            currentState.displayInput,
+            resultSlot.string
+        )
+    }
+
+    private fun resolveNonLoadingCandidateIndex(
+        suggestions: List<Candidate>,
+        insertString: String,
+        requestedIndex: Int
+    ): Int? {
+        if (suggestions.isEmpty()) return null
+        val safeIndex = requestedIndex.coerceIn(0, suggestions.lastIndex)
+        if (!suggestions[safeIndex].isZenzLiveLoadingSlot(insertString)) {
+            return safeIndex
+        }
+        return suggestions.indices.firstOrNull {
+            !suggestions[it].isZenzLiveLoadingSlot(insertString)
+        }
+    }
+
     @OptIn(FlowPreview::class)
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
         launch {
@@ -10841,6 +11201,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 when (currentFlag) {
                     CandidateShowFlag.Idle -> {
+                        clearZenzLiveSlot("suggestion idle")
                         suggestionAdapter?.suggestions = emptyList()
                         if (stringInTail.get().isEmpty()) {
                             if (isKeyboardFloatingMode == true) {
@@ -11262,24 +11623,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             zenzRequest
                 .debounce((zenzDebounceTimePreference ?: 300).toLong())
-                .collectLatest {
-                    if (zenzaiEnableStatePreference == true) {
-                        lastLocalUpdatedInput.first { completedInput ->
-                            completedInput == it
-                        }
-                        val suggestions = filteredCandidateList ?: emptyList()
-                        if (suggestions.isNotEmpty()) {
-                            val zenzCandidates =
-                                performZenzRequest(suggestions.first().yomi ?: it)
-                            _zenzCandidates.update { zenzCandidates }
-                        }
-                    } else {
-                        val zenzCandidates = performZenzRequest(it)
-                        lastLocalUpdatedInput.first { completedInput ->
-                            completedInput == it
-                        }
-                        _zenzCandidates.update { zenzCandidates }
+                .collectLatest { request ->
+                    lastLocalUpdatedInput.first { completedInput ->
+                        completedInput == request.displayInput ||
+                                request.requestToken != zenzLiveRequestToken ||
+                                inputString.value != request.displayInput
                     }
+                    if (!isCurrentZenzLiveRequest(request)) {
+                        return@collectLatest
+                    }
+
+                    val requestInput = resolveZenzLiveRequestInput(request)
+                        ?: return@collectLatest
+                    val zenzCandidates = performZenzRequest(requestInput)
+                    publishZenzLiveResult(
+                        request = request,
+                        requestInput = requestInput,
+                        candidates = zenzCandidates
+                    )
                 }
         }
 
@@ -11287,43 +11648,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             zenzCandidates
                 .buffer(kotlinx.coroutines.channels.Channel.CONFLATED)
                 .collectLatest { resultFromZenz ->
-                    val insertString = inputString.value
-                    if (insertString.isNotEmpty()) {
-                        if (resultFromZenz.isNotEmpty() &&
-                            resultFromZenz.first().originalString == insertString
-                        ) {
-                            val suggestions = filteredCandidateList ?: emptyList()
-                            if (suggestions.isNotEmpty() && suggestions.first().length.toInt() == insertString.length) {
-                                val resultFromZenzToCandidate = resultFromZenz.map {
-                                    Candidate(
-                                        string = it.string,
-                                        type = it.type,
-                                        length = it.length,
-                                        score = it.score
-                                    )
-                                }
-
-                                suggestionAdapter?.suggestions =
-                                    (resultFromZenzToCandidate + (suggestions)).distinctBy { it.string }
-
-                                if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
-                                    isContinuousTapInputEnabled.set(true)
-                                    lastFlickConvertedNextHiragana.set(true)
-                                    if (!hasConvertedKatakana) applyFirstSuggestion(
-                                        resultFromZenzToCandidate.first()
-                                    )
-                                }
-                            }
-                        } else {
-                            if (inputString.value.isEmpty()) {
-                                suggestionAdapter?.suggestions = emptyList()
-                                suggestionAdapterFull?.suggestions = emptyList()
-                            }
-                        }
-                    } else {
-                        suggestionAdapter?.suggestions = emptyList()
-                        suggestionAdapterFull?.suggestions = emptyList()
-                    }
+                    acceptZenzLiveResult(resultFromZenz)
                 }
         }
 
@@ -11714,9 +12039,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!shouldApplyCandidateResult(insertString)) {
             return
         }
+        val localCandidates = candidates.withoutZenzLiveSlot(insertString)
+        if (
+            _zenzLiveSlotState.value?.displayInput == insertString &&
+            shouldRequestZenzLiveGenerate(insertString)
+        ) {
+            zenzLiveLocalCandidatesSnapshot = localCandidates
+            zenzLiveSnapshotDisplayInput = insertString
+        }
+        val displayedCandidates = buildDisplayedCandidatesWithZenzSlot(
+            localCandidates = localCandidates,
+            input = insertString,
+            zenzSlotState = _zenzLiveSlotState.value
+        )
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
-                updateSuggestionsForFloatingCandidate(candidates.map {
+                updateSuggestionsForFloatingCandidate(localCandidates.map {
                     CandidateItem(
                         word = it.string, length = it.length
                     )
@@ -11724,13 +12062,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (!suppressSuggestions) {
-                suggestionAdapter?.suggestions = candidates
-                suggestionAdapterFull?.suggestions = candidates
+                suggestionAdapter?.suggestions = displayedCandidates
+                suggestionAdapterFull?.suggestions = localCandidates
             }
         }
 
         if (zenzEnableStatePreference == true) {
-            filteredCandidateList = candidates
+            filteredCandidateList = localCandidates
             lastLocalUpdatedInput.emit(insertString)
         }
     }
@@ -11742,6 +12080,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun clearSuggestionStateAfterCommit() {
+        clearZenzLiveSlot("commit")
         suggestionAdapter?.suggestions = emptyList()
         suggestionAdapterFull?.suggestions = emptyList()
         filteredCandidateList = emptyList()
@@ -12510,7 +12849,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 onRightKeyLongPressUp.set(true)
                 onDeleteLongPressUp.set(true)
             }
-            _zenzCandidates.update { emptyList() }
+            clearZenzLiveSlot("input empty")
             hasConvertedKatakana = false
             filteredCandidateList = emptyList()
             resetInputString()
@@ -13796,6 +14135,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemClickListener { candidate, position ->
                 val insertString = inputString.value
                 val currentInputMode: InputMode = currentTenkeyInputMode(mainView)
+                if (candidate.isZenzLiveLoadingSlot(insertString)) {
+                    Timber.d("Zenz live loading slot click ignored: input=%s", insertString)
+                    return@setOnItemClickListener
+                }
                 vibrate()
                 setCandidateClick(
                     candidate = candidate,
@@ -13806,6 +14149,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
+                if (candidate.isZenzLiveLoadingSlot(inputString.value)) return@setOnItemLongClickListener
                 if (isSelectedTextGemmaActionCandidate(candidate)) return@setOnItemLongClickListener
                 val insertString = inputString.value
                 if (shouldShowCandidateLongPressActions()) {
@@ -13900,6 +14244,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnItemClickListener { candidate, position ->
                 val insertString = inputString.value
                 val currentInputMode: InputMode = currentTenkeyInputMode(mainView)
+                if (candidate.isZenzLiveLoadingSlot(insertString)) {
+                    Timber.d("Zenz live loading slot click ignored: input=%s", insertString)
+                    return@setOnItemClickListener
+                }
                 vibrate()
                 setCandidateClick(
                     candidate = candidate,
@@ -13910,6 +14258,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             adapter.setOnItemLongClickListener { candidate, i ->
                 Timber.d("Candidate long tap: $candidate $i")
+                if (candidate.isZenzLiveLoadingSlot(inputString.value)) return@setOnItemLongClickListener
                 if (isSelectedTextGemmaActionCandidate(candidate)) return@setOnItemLongClickListener
                 val insertString = inputString.value
                 if (shouldShowCandidateLongPressActions()) {
@@ -14736,9 +15085,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 if (zenzEnableLongPressConversionPreference == true) {
                                     scope.launch {
-                                        filteredCandidateList = suggestionAdapter?.suggestions
-                                        val candidates = performZenzRequest(insertString)
-                                        _zenzCandidates.update { candidates }
+                                        performImmediateZenzLiveRequest(insertString)
                                     }
                                     isSpaceKeyLongPressed = true
                                 } else {
@@ -14884,6 +15231,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         if (candidates.isEmpty()) return
         if (currentQwertyRomajiModeForSession) return
+        clearZenzLiveSlot("qwerty glide candidates")
         suggestionClickNum = 0
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         suggestionAdapter?.suggestions = candidates
@@ -15054,6 +15402,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidate: Candidate, insertString: String, currentInputMode: InputMode, position: Int
     ) {
         Timber.d("setCandidateClick: $candidate")
+        if (candidate.isZenzLiveLoadingSlot(insertString)) {
+            Timber.d("Zenz live loading slot click ignored: input=%s", insertString)
+            return
+        }
         if (isSelectedTextGemmaActionCandidate(candidate) && handleSelectedTextGemmaActionClick(
                 position
             )
@@ -15713,11 +16065,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val suggestions = suggestionAdapter?.suggestions.orEmpty()
         if (suggestions.isNotEmpty()) {
-            val selectedIndex = if (suggestionClickNum <= 0) {
+            val requestedIndex = if (suggestionClickNum <= 0) {
                 0
             } else {
                 (suggestionClickNum - 1).coerceAtMost(suggestions.lastIndex)
             }
+            val selectedIndex = resolveNonLoadingCandidateIndex(
+                suggestions = suggestions,
+                insertString = inputString.value,
+                requestedIndex = requestedIndex
+            ) ?: return inputString.value + stringInTail.get()
             return getCandidateCommitString(suggestions[selectedIndex]) + stringInTail.get()
         }
 
@@ -15910,6 +16267,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearFunctionKeyConversionSource()
         _inputString.update { "" }
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+        clearZenzLiveSlot("resetAllFlags")
         suggestionAdapter?.suggestions = emptyList()
         stringInTail.set("")
         suggestionClickNum = 0
@@ -16153,7 +16511,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>, currentInputMode: InputMode, insertString: String
     ) {
         Timber.d("setEnterKeyAction: $insertString ${stringInTail.get()} $bunsetsuPositionList $henkanPressedWithBunsetsuDetect")
-        val index = (suggestionClickNum - 1).coerceAtLeast(0)
+        val index = resolveNonLoadingCandidateIndex(
+            suggestions = suggestions,
+            insertString = insertString,
+            requestedIndex = (suggestionClickNum - 1).coerceAtLeast(0)
+        ) ?: return
+        suggestionClickNum = index + 1
         val nextSuggestion = suggestions[index]
         processCandidate(
             candidate = nextSuggestion,
@@ -16499,13 +16862,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             hasHardwareKeyboardConnected != true &&
             zenzRerankPreference != true
         ) {
-            _zenzRequest.emit(insertString)
+            emitZenzLiveRequest(insertString)
         }
         if (zenzEnableStatePreference == true &&
             zenzRerankPreference == true &&
             zenzaiEnableStatePreference == true
         ) {
-            _zenzRequest.emit(insertString)
+            emitZenzLiveRequest(insertString)
         }
         val candidates = getSuggestionList(insertString, mainView)
         val filtered = if (stringInTail.get().isNotEmpty()) {
@@ -16561,13 +16924,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             hasHardwareKeyboardConnected != true &&
             zenzRerankPreference != true
         ) {
-            _zenzRequest.emit(insertString)
+            emitZenzLiveRequest(insertString)
         }
         if (zenzEnableStatePreference == true &&
             zenzRerankPreference == true &&
             zenzaiEnableStatePreference == true
         ) {
-            _zenzRequest.emit(insertString)
+            emitZenzLiveRequest(insertString)
         }
         val candidates = getSuggestionListOriginal(insertString, mainView)
         val filtered = if (stringInTail.get().isNotEmpty()) {
@@ -16617,6 +16980,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String, mainView: MainLayoutBinding
     ) {
         beginZenzRerankRequest()
+        clearZenzLiveSlot("candidate tab without Zenz live")
         val candidates = getSuggestionListWithoutPrediction(insertString)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
@@ -16675,6 +17039,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
     ) {
         beginZenzRerankRequest()
+        clearZenzLiveSlot("eisukana tab")
         val candidates = getSuggestionListEnglishKana(insertString)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
@@ -19050,14 +19415,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when {
             !listIterator.hasPrevious() && isSpaceKey -> {
                 setSuggestionComposingText(suggestions, insertString)
-                mainView.suggestionRecyclerView.smoothScrollToPosition(0)
-                suggestionAdapter?.updateHighlightPosition(0)
+                val selectedIndex = (suggestionClickNum - 1).coerceAtLeast(0)
+                mainView.suggestionRecyclerView.smoothScrollToPosition(selectedIndex)
+                suggestionAdapter?.updateHighlightPosition(selectedIndex)
             }
 
             !listIterator.hasPrevious() && !isSpaceKey -> {
                 setSuggestionComposingText(suggestions, insertString)
-                mainView.suggestionRecyclerView.smoothScrollToPosition(0)
-                suggestionAdapter?.updateHighlightPosition(0)
+                val selectedIndex = (suggestionClickNum - 1).coerceAtLeast(0)
+                mainView.suggestionRecyclerView.smoothScrollToPosition(selectedIndex)
+                suggestionAdapter?.updateHighlightPosition(selectedIndex)
             }
 
             listIterator.hasNext() && isSpaceKey -> {
@@ -19083,14 +19450,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when {
             !listIterator.hasPrevious() && isSpaceKey -> {
                 setSuggestionComposingText(suggestions, insertString)
-                floatingKeyboardLayoutBinding.suggestionRecyclerView.smoothScrollToPosition(0)
-                suggestionAdapter?.updateHighlightPosition(0)
+                val selectedIndex = (suggestionClickNum - 1).coerceAtLeast(0)
+                floatingKeyboardLayoutBinding.suggestionRecyclerView.smoothScrollToPosition(selectedIndex)
+                suggestionAdapter?.updateHighlightPosition(selectedIndex)
             }
 
             !listIterator.hasPrevious() && !isSpaceKey -> {
                 setSuggestionComposingText(suggestions, insertString)
-                floatingKeyboardLayoutBinding.suggestionRecyclerView.smoothScrollToPosition(0)
-                suggestionAdapter?.updateHighlightPosition(0)
+                val selectedIndex = (suggestionClickNum - 1).coerceAtLeast(0)
+                floatingKeyboardLayoutBinding.suggestionRecyclerView.smoothScrollToPosition(selectedIndex)
+                suggestionAdapter?.updateHighlightPosition(selectedIndex)
             }
 
             listIterator.hasNext() && isSpaceKey -> {
@@ -19178,8 +19547,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         Timber.d("setSuggestionComposingText: $isFirstClickHasStringTail $suggestionClickNum ${stringInTail.get()}")
 
-        val index = (suggestionClickNum - 1).coerceAtLeast(0)
+        val index = resolveNonLoadingCandidateIndex(
+            suggestions = suggestions,
+            insertString = insertString,
+            requestedIndex = (suggestionClickNum - 1).coerceAtLeast(0)
+        ) ?: return
         if (suggestionClickNum <= 0) suggestionClickNum = 1
+        suggestionClickNum = index + 1
+        suggestionAdapter?.updateHighlightPosition(index)
 
         val nextSuggestion = suggestions[index]
         val candidateType = nextSuggestion.type.toInt()
