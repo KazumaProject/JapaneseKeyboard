@@ -29,12 +29,34 @@ object ZenzEngine {
         maxTokens: Int
     ): String = ""
 
+    fun generateWithContextAndConditionsV32(
+        profile: String,
+        topic: String,
+        style: String,
+        preference: String,
+        leftContext: String,
+        rightContext: String,
+        input: String,
+        maxTokens: Int
+    ): String = ""
+
     fun candidateEvaluate(
         profile: String?,
         topic: String?,
         style: String?,
         preference: String?,
         leftContext: String?,
+        input: String,
+        candidate: String
+    ): String = ""
+
+    fun candidateEvaluateV32(
+        profile: String?,
+        topic: String?,
+        style: String?,
+        preference: String?,
+        leftContext: String?,
+        rightContext: String?,
         input: String,
         candidate: String
     ): String = ""
@@ -46,6 +68,17 @@ object ZenzEngine {
         preference: String?,
         leftContext: String?,
         input: String,
+        candidates: Array<String>
+    ): FloatArray = FloatArray(candidates.size)
+
+    fun scoreCandidatesV32(
+        profile: String?,
+        topic: String?,
+        style: String?,
+        preference: String?,
+        leftContext: String?,
+        rightContext: String?,
+        input: String?,
         candidates: Array<String>
     ): FloatArray = FloatArray(candidates.size)
 }
