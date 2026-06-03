@@ -10925,6 +10925,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 isZenzLiveSlotCandidate(this, displayInput)
     }
 
+    private fun shouldApplyZenzLiveResultToComposingText(
+        state: ZenzLiveSlotState,
+        candidate: Candidate
+    ): Boolean {
+        if (suppressSuggestions) return false
+        if (hasConvertedKatakana) return false
+        if (inputString.value != state.displayInput) return false
+        if (state.requestToken != zenzLiveRequestToken) return false
+        if (state.candidate != candidate) return false
+        if (candidate.yomi != state.displayInput) return false
+        if (candidate.length.toInt() != state.displayInput.length) return false
+        if (!shouldRequestZenzLiveGenerate(state.displayInput)) return false
+        if (isBunsetsuCursorMoveSessionActive()) return false
+        if (suggestionClickNum > 0) return false
+
+        return shouldStartLiveConversion(state.displayInput) ||
+                (isLiveConversionEnable != true && henkanPressedWithBunsetsuDetect)
+    }
+
     private fun hasLeadingZenzLiveSlot(
         displayedCandidates: List<Candidate>,
         displayInput: String
@@ -11252,6 +11271,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             zenzSlotState = acceptedState
         )
         suggestionAdapter?.suggestions = displayedCandidates
+        if (shouldApplyZenzLiveResultToComposingText(acceptedState, resultSlot)) {
+            isContinuousTapInputEnabled.set(true)
+            lastFlickConvertedNextHiragana.set(true)
+            val zenzCommitString = getCandidateCommitString(resultSlot)
+            if (zenzCommitString != lastCandidate) {
+                applyFirstSuggestion(resultSlot)
+            }
+        }
         Timber.d(
             "Zenz live result accepted: input=%s result=%s",
             currentState.displayInput,
