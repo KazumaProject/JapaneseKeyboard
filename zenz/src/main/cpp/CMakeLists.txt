@@ -4,8 +4,10 @@ project(zenz_core LANGUAGES C CXX)
 # -------------------------------------------------------------------
 # ★重要: パフォーマンス設定
 # -------------------------------------------------------------------
-# 常に Release ビルドにする（これをしないと推論が劇的に遅くなります）
-set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+# AGP が渡す build type を尊重する。単体 CMake 実行時だけ Release を既定にする。
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+endif()
 
 # 最適化オプションの強制
 # -ffast-math を使いつつ、無限大(Infinity)の計算は許可する設定
