@@ -1408,6 +1408,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         )
         applyImePreferences(preferences)
+        resetKeyboard()
         initializeMozcDictionaries(preferences)
         suggestionAdapter?.updateCustomTabVisibility(preferences.customKeyboardSuggestionPreference)
     }
@@ -1592,16 +1593,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         enableShowLastShownKeyboardInRestart =
             preferences.enableShowLastShownKeyboardInRestart
         lastSavedKeyboardPosition = preferences.lastSavedKeyboardPosition
-        if (preferences.enableShowLastShownKeyboardInRestart) {
-            currentKeyboardOrder =
-                normalizeKeyboardOrderIndex(preferences.lastSavedKeyboardPosition)
-            if (currentKeyboardOrder != preferences.lastSavedKeyboardPosition) {
-                lastSavedKeyboardPosition = currentKeyboardOrder
-                appPreference.save_last_used_keyboard_position_preference = currentKeyboardOrder
-            }
+        val keyboardSelection = if (preferences.enableShowLastShownKeyboardInRestart) {
+            resolveKeyboardForDisplay(
+                requestedType = null,
+                savedPosition = preferences.lastSavedKeyboardPosition,
+                source = "applyImePreferences.restoreLastShown",
+                persistNormalizedPosition = true,
+                applyOrientation = false
+            )
         } else {
-            currentKeyboardOrder = 0
+            resolveKeyboardForDisplay(
+                requestedType = null,
+                savedPosition = null,
+                source = "applyImePreferences.firstKeyboard",
+                applyOrientation = false
+            )
         }
+        currentKeyboardOrder = keyboardSelection.resolvedIndex ?: 0
         tenkeyHeightLandScapePreferenceValue = preferences.tenkeyHeightLandscapePreferenceValue
         tenkeyWidthLandScapePreferenceValue = preferences.tenkeyWidthLandscapePreferenceValue
         qwertyHeightLandScapePreferenceValue = preferences.qwertyHeightLandscapePreferenceValue
@@ -3400,6 +3408,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         setTabletKeyListeners(mainView)
                     }
                     setTenKeyListeners(mainView)
+                    hideAllKeyboards()
                     setKeyboardSizeSwitchKeyboard(mainView)
                     updateClipboardPreview()
                     mainView.suggestionRecyclerView.isVisible = suggestionViewStatus.value
@@ -7272,7 +7281,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             listView.choiceMode = ListView.CHOICE_MODE_SINGLE
 
             // --- 1) 行データを構築（内部→外部の順） ---
-            val internalOrder = appPreference.keyboard_order
+            val internalOrder = keyboardOrder
             val internalRows: List<RowItem.Internal> = internalOrder.map { type ->
                 val title = when (type) {
                     KeyboardType.TENKEY -> "日本語 - かな"
@@ -7392,7 +7401,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
 
-                        showKeyboard(nextType)
+                        showKeyboard(nextType, source = "showListPopup")
                         setKeyboardSizeSwitchKeyboard(mainView)
                     }
 
@@ -7849,12 +7858,91 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     /**
      * 指定されたキーボードを表示するための統一された関数
      */
-    private fun showKeyboard(type: KeyboardType) {
+    private fun showKeyboard(type: KeyboardType, source: String = "showKeyboard") {
+        val resolution = resolveKeyboardForDisplay(
+            requestedType = type,
+            savedPosition = null,
+            source = source,
+            applyOrientation = true
+        )
+        showResolvedKeyboard(resolution.resolvedKeyboard)
+    }
+
+    private fun resolveKeyboardForDisplay(
+        requestedType: KeyboardType?,
+        savedPosition: Int? = null,
+        source: String,
+        persistNormalizedPosition: Boolean = false,
+        applyOrientation: Boolean = true
+    ): KeyboardDisplayResolution {
+        val requestedFromPosition = if (requestedType == null) {
+            savedPosition?.let { keyboardOrder.getOrNull(it) }
+        } else {
+            requestedType
+        }
+        val requestedForResolver = if (applyOrientation) {
+            requestedFromPosition?.let(::resolveKeyboardTypeForCurrentOrientation)
+        } else {
+            requestedFromPosition
+        }
+        val resolution = resolveKeyboardDisplay(
+            requested = requestedForResolver,
+            keyboardOrder = keyboardOrder,
+            savedPosition = savedPosition
+        )
+
+        Timber.d(
+            "KeyboardDisplayResolver[$source]: requested=$requestedType " +
+                    "effectiveRequested=$requestedForResolver " +
+                    "savedPosition=$savedPosition savedPositionKeyboard=${resolution.savedPositionKeyboard} " +
+                    "keyboardOrder=${resolution.keyboardOrder} resolved=${resolution.resolvedKeyboard} " +
+                    "resolvedIndex=${resolution.resolvedIndex}"
+        )
+        if (resolution.requestedMissingFromOrder) {
+            Timber.w(
+                "KeyboardDisplayResolver[$source]: requested keyboard ${resolution.requested} " +
+                        "is not in keyboardOrder=${resolution.keyboardOrder}; " +
+                        "using ${resolution.resolvedKeyboard}"
+            )
+        }
+        if (resolution.savedPositionOutOfRange) {
+            Timber.w(
+                "KeyboardDisplayResolver[$source]: savedPosition=$savedPosition is out of range " +
+                        "for keyboardOrder=${resolution.keyboardOrder}; using ${resolution.resolvedKeyboard}"
+            )
+        }
+        if (resolution.usedEmptyOrderFallback) {
+            Timber.w(
+                "KeyboardDisplayResolver[$source]: keyboardOrder is empty; " +
+                        "falling back to ${KeyboardType.TENKEY}"
+            )
+        }
+        if (persistNormalizedPosition) {
+            persistNormalizedKeyboardPositionIfNeeded(resolution)
+        }
+        return resolution
+    }
+
+    private fun persistNormalizedKeyboardPositionIfNeeded(
+        resolution: KeyboardDisplayResolution
+    ) {
+        if (enableShowLastShownKeyboardInRestart != true) return
+        val resolvedIndex = resolution.resolvedIndex ?: return
+        if (lastSavedKeyboardPosition == resolvedIndex &&
+            !resolution.requestedMissingFromOrder &&
+            !resolution.savedPositionOutOfRange
+        ) {
+            return
+        }
+        lastSavedKeyboardPosition = resolvedIndex
+        appPreference.save_last_used_keyboard_position_preference = resolvedIndex
+    }
+
+    private fun showResolvedKeyboard(type: KeyboardType) {
         hideAllKeyboards()
-        val resolvedType = resolveKeyboardTypeForCurrentOrientation(type)
-        Timber.d("showKeyboard called: requested=$type resolved=$resolvedType")
+        Timber.d("showKeyboard called: resolved=$type")
         mainLayoutBinding?.apply {
-            when (resolvedType) {
+            when (type) {
                 KeyboardType.TENKEY -> {
                     if (qwertyMode.value != TenKeyQWERTYMode.Number) {
                         clearQwertySwitchNumberKeyReturnSource()
@@ -8395,11 +8483,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun fallbackFromCustomKeyboardIfNeeded() {
+        if (keyboardOrder.isEmpty()) {
+            Timber.w("fallbackFromCustomKeyboardIfNeeded: keyboardOrder is empty")
+            suggestionAdapter?.updateState(TenKeyQWERTYMode.Default, emptyList())
+            showKeyboard(KeyboardType.TENKEY, source = "fallbackFromCustomKeyboardIfNeeded.emptyOrder")
+            return
+        }
+
         val fallbackType = keyboardOrder.firstOrNull { it != KeyboardType.CUSTOM }
-            ?: KeyboardType.TENKEY
+        if (fallbackType == null) {
+            Timber.w("fallbackFromCustomKeyboardIfNeeded: no fallback in keyboardOrder=$keyboardOrder")
+            hideAllKeyboards()
+            return
+        }
         Timber.d("fallbackFromCustomKeyboardIfNeeded: fallbackType=$fallbackType")
+        keyboardOrder.indexOf(fallbackType)
+            .takeIf { it >= 0 }
+            ?.let { currentKeyboardOrder = it }
         suggestionAdapter?.updateState(TenKeyQWERTYMode.Default, emptyList())
-        showKeyboard(fallbackType)
+        showKeyboard(fallbackType, source = "fallbackFromCustomKeyboardIfNeeded")
     }
 
     private fun onCustomKeyboardLayoutsChanged(newLayouts: List<CustomKeyboardLayout>) {
@@ -10371,25 +10473,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resetKeyboard() {
         Timber.d("resetKeyboard called for showKeyboard")
-        if (keyboardOrder.isEmpty()) return
-        if (enableShowLastShownKeyboardInRestart == true) {
-            val resolvedIndex = normalizeKeyboardOrderIndex(lastSavedKeyboardPosition ?: 0)
-            if (resolvedIndex != (lastSavedKeyboardPosition ?: 0)) {
-                lastSavedKeyboardPosition = resolvedIndex
-                appPreference.save_last_used_keyboard_position_preference = resolvedIndex
-            }
-            currentKeyboardOrder = resolvedIndex
-            val requestedType = keyboardOrder[resolvedIndex]
-            val restoredState = restoreInputModeForKeyboardRestartIfEnabled(requestedType)
-            showKeyboard(requestedType)
-            restoredState?.let(::restoreRestartInputModeState)
+        val resolution = if (enableShowLastShownKeyboardInRestart == true) {
+            resolveKeyboardForDisplay(
+                requestedType = null,
+                savedPosition = lastSavedKeyboardPosition ?: 0,
+                source = "resetKeyboard.restoreLastShown",
+                persistNormalizedPosition = true,
+                applyOrientation = false
+            )
         } else {
-            currentKeyboardOrder = 0
-            val requestedType = keyboardOrder[0]
-            val restoredState = restoreInputModeForKeyboardRestartIfEnabled(requestedType)
-            showKeyboard(requestedType)
-            restoredState?.let(::restoreRestartInputModeState)
+            resolveKeyboardForDisplay(
+                requestedType = null,
+                savedPosition = null,
+                source = "resetKeyboard.firstKeyboard",
+                applyOrientation = false
+            )
         }
+        currentKeyboardOrder = resolution.resolvedIndex ?: 0
+        val requestedType = resolution.resolvedKeyboard
+        val restoredState = restoreInputModeForKeyboardRestartIfEnabled(requestedType)
+        showKeyboard(requestedType, source = "resetKeyboard.display")
+        restoredState?.let(::restoreRestartInputModeState)
     }
 
     private fun resolveRestoredRestartInputModeState(type: KeyboardType): RestartInputModeState? {
@@ -10540,18 +10644,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun refreshKeyboardForCurrentOrientation() {
         val mainView = mainLayoutBinding ?: return
-        if (keyboardOrder.isEmpty()) return
-        val requestedType = keyboardOrder.getOrNull(currentKeyboardOrder)
-            ?: keyboardOrder.getOrNull(lastSavedKeyboardPosition ?: -1)
-            ?: keyboardOrder.firstOrNull()
-            ?: return
-        showKeyboard(requestedType)
+        val resolution = resolveKeyboardForDisplay(
+            requestedType = keyboardOrder.getOrNull(currentKeyboardOrder),
+            savedPosition = lastSavedKeyboardPosition,
+            source = "refreshKeyboardForCurrentOrientation",
+            applyOrientation = false
+        )
+        currentKeyboardOrder = resolution.resolvedIndex ?: 0
+        showKeyboard(
+            resolution.resolvedKeyboard,
+            source = "refreshKeyboardForCurrentOrientation.display"
+        )
         setKeyboardSizeSwitchKeyboard(mainView)
-    }
-
-    private fun normalizeKeyboardOrderIndex(index: Int): Int {
-        if (keyboardOrder.isEmpty()) return 0
-        return index.takeIf { it in keyboardOrder.indices } ?: 0
     }
 
     private fun handleLeftCursor(gestureType: GestureType, insertString: String) {
@@ -14210,20 +14314,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setFirstKeyboardType() {
-        if (keyboardOrder.isNotEmpty()) {
-            val firstItem =
-                if (keyboardOrder.first() == KeyboardType.CUSTOM && customLayouts.isEmpty()) {
-                    keyboardOrder.firstOrNull { it != KeyboardType.CUSTOM } ?: KeyboardType.TENKEY
-                } else {
-                    keyboardOrder.first()
-                }
-            when (firstItem) {
-                KeyboardType.TENKEY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
-                KeyboardType.SUMIRE -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
-                KeyboardType.QWERTY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
-                KeyboardType.ROMAJI -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
-                KeyboardType.CUSTOM -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
-            }
+        val firstItem = resolveKeyboardForDisplay(
+            requestedType = null,
+            savedPosition = null,
+            source = "setFirstKeyboardType",
+            applyOrientation = false
+        ).resolvedKeyboard
+        when (firstItem) {
+            KeyboardType.TENKEY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
+            KeyboardType.SUMIRE -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Sumire }
+            KeyboardType.QWERTY -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
+            KeyboardType.ROMAJI -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTYRomaji }
+            KeyboardType.CUSTOM -> _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Custom }
         }
     }
 
@@ -14372,8 +14474,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView.root.layoutParams = params
                         }
                     } else {
-                        if (keyboardOrder.isEmpty()) return@apply
-                        showKeyboard(keyboardOrder[0])
+                        val resolution = resolveKeyboardForDisplay(
+                            requestedType = null,
+                            savedPosition = null,
+                            source = "physicalKeyboardToggle",
+                            applyOrientation = false
+                        )
+                        currentKeyboardOrder = resolution.resolvedIndex ?: 0
+                        showKeyboard(resolution.resolvedKeyboard, source = "physicalKeyboardToggle.display")
                         setKeyboardSizeSwitchKeyboard(mainView)
                     }
                 }
@@ -16573,7 +16681,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         onKeyboardSwitchLongPressUp = false
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
-        resetKeyboard()
         lastCandidate = ""
         _keyboardSymbolViewState.update { SymbolKeyboardState() }
         learnMultiple.stop()
@@ -19470,9 +19577,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     fun switchNextKeyboard() {
         if (keyboardOrder.isEmpty()) return
 
+        val currentResolution = resolveKeyboardForDisplay(
+            requestedType = keyboardOrder.getOrNull(currentKeyboardOrder),
+            savedPosition = null,
+            source = "switchNextKeyboard.current",
+            applyOrientation = false
+        )
+        currentKeyboardOrder = currentResolution.resolvedIndex ?: 0
+
         // モジュール演算で自動的に 0 に戻る
         val nextIndex = (currentKeyboardOrder + 1) % keyboardOrder.size
-        val nextType = keyboardOrder[nextIndex]
+        val nextResolution = resolveKeyboardForDisplay(
+            requestedType = keyboardOrder[nextIndex],
+            savedPosition = null,
+            source = "switchNextKeyboard.next",
+            applyOrientation = false
+        )
+        val nextType = nextResolution.resolvedKeyboard
 
         when (nextType) {
             KeyboardType.TENKEY -> {
@@ -19495,11 +19616,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         // 統一された showKeyboard 関数を呼び出す
-        showKeyboard(nextType)
+        showKeyboard(nextType, source = "switchNextKeyboard.display")
 
-        currentKeyboardOrder = nextIndex
+        currentKeyboardOrder = nextResolution.resolvedIndex ?: 0
         if (enableShowLastShownKeyboardInRestart == true) {
-            appPreference.save_last_used_keyboard_position_preference = nextIndex
+            nextResolution.resolvedIndex?.let { resolvedIndex ->
+                appPreference.save_last_used_keyboard_position_preference = resolvedIndex
+                lastSavedKeyboardPosition = resolvedIndex
+            }
         }
 
         if (qwertyMode.value == TenKeyQWERTYMode.Number) {
