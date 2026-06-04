@@ -315,7 +315,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val reading: String,
         val displayText: String,
         val candidates: List<Candidate> = emptyList(),
-        val selectedIndex: Int = 0
+        val selectedIndex: Int = 0,
+        val overrideDisplayCandidate: Candidate? = null
     )
 
     private data class BunsetsuConversionSession(
@@ -1037,13 +1038,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private data class ZenzLiveRequest(
         val displayInput: String,
-        val requestToken: Long
+        val requestToken: Long,
+        val bunsetsuTarget: BunsetsuZenzTarget? = null
+    )
+
+    private data class BunsetsuZenzTarget(
+        val conversionInput: String,
+        val segmentIndex: Int,
+        val segmentReading: String,
+        val leftContext: String
     )
 
     private data class ZenzLiveResultMeta(
         val requestToken: Long,
         val requestInput: String,
-        val displayInput: String
+        val displayInput: String,
+        val bunsetsuTarget: BunsetsuZenzTarget? = null
     )
 
     private data class ZenzLiveSlotState(
@@ -1051,7 +1061,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val displayInput: String,
         val candidate: Candidate?,
         val isLoading: Boolean,
-        val requestToken: Long
+        val requestToken: Long,
+        val bunsetsuTarget: BunsetsuZenzTarget? = null
     )
 
     private val _zenzRequest = MutableSharedFlow<ZenzLiveRequest>(
@@ -10930,6 +10941,65 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return zenzLiveRequestBlockReason(displayInput) == null
     }
 
+    private fun currentBunsetsuZenzTargetOrNull(): BunsetsuZenzTarget? {
+        val session = bunsetsuConversionSession ?: return null
+        if (!isBunsetsuCursorMoveSessionActive()) return null
+        if (session.segments.isEmpty()) return null
+
+        val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
+        val focusedSegment = session.segments[focusedIndex]
+        return BunsetsuZenzTarget(
+            conversionInput = session.conversionInput,
+            segmentIndex = focusedIndex,
+            segmentReading = focusedSegment.reading,
+            leftContext = buildBunsetsuZenzLeftContext(
+                segmentDisplayTexts = session.segments.map { it.displayText },
+                focusedIndex = focusedIndex
+            )
+        )
+    }
+
+    private fun doesBunsetsuSessionStillContainZenzTarget(
+        target: BunsetsuZenzTarget
+    ): Boolean {
+        val session = bunsetsuConversionSession ?: return false
+        if (!isBunsetsuCursorMoveSessionActive()) return false
+        val targetSegment = session.segments.getOrNull(target.segmentIndex) ?: return false
+        if (session.conversionInput != target.conversionInput) return false
+        if (targetSegment.reading != target.segmentReading) return false
+        return buildBunsetsuZenzLeftContext(
+            segmentDisplayTexts = session.segments.map { it.displayText },
+            focusedIndex = target.segmentIndex
+        ) == target.leftContext
+    }
+
+    private fun isCurrentBunsetsuZenzTarget(target: BunsetsuZenzTarget): Boolean {
+        val session = bunsetsuConversionSession ?: return false
+        if (!isBunsetsuCursorMoveSessionActive()) return false
+        return isBunsetsuZenzTargetCurrent(
+            conversionInput = session.conversionInput,
+            segmentReadings = session.segments.map { it.reading },
+            segmentDisplayTexts = session.segments.map { it.displayText },
+            focusedIndex = session.focusedIndex,
+            targetConversionInput = target.conversionInput,
+            targetSegmentIndex = target.segmentIndex,
+            targetSegmentReading = target.segmentReading,
+            targetLeftContext = target.leftContext
+        )
+    }
+
+    private fun currentBunsetsuZenzSlotTargetOrNull(
+        session: BunsetsuConversionSession,
+        focusedIndex: Int
+    ): BunsetsuZenzTarget? {
+        if (session.segments.isEmpty()) return null
+        val safeFocusedIndex = focusedIndex.coerceIn(0, session.segments.lastIndex)
+        val target = _zenzLiveSlotState.value?.bunsetsuTarget ?: return null
+        if (target.segmentIndex != safeFocusedIndex) return null
+        if (!isCurrentBunsetsuZenzTarget(target)) return null
+        return target
+    }
+
     private fun Candidate.isZenzLiveSlot(displayInput: String): Boolean {
         return displayInput.isNotEmpty() &&
                 type in ZENZ_LIVE_SLOT_TYPES &&
@@ -10937,8 +11007,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 length.toInt() == displayInput.length
     }
 
-    private fun Candidate.isZenzLiveLoadingSlot(currentInput: String): Boolean {
+    private fun Candidate.isZenzLiveLoadingSlot(
+        currentInput: String,
+        bunsetsuTarget: BunsetsuZenzTarget? = null
+    ): Boolean {
         val state = _zenzLiveSlotState.value ?: return false
+        if (state.bunsetsuTarget != bunsetsuTarget) return false
+        if (bunsetsuTarget != null && !isCurrentBunsetsuZenzTarget(bunsetsuTarget)) {
+            return false
+        }
         return state.isLoading &&
                 state.candidate == null &&
                 state.requestToken == zenzLiveRequestToken &&
@@ -10978,10 +11055,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun buildDisplayedCandidatesWithZenzSlot(
         localCandidates: List<Candidate>,
         input: String,
-        zenzSlotState: ZenzLiveSlotState?
+        zenzSlotState: ZenzLiveSlotState?,
+        allowBunsetsuTarget: Boolean = false
     ): List<Candidate> {
         if (input.isEmpty()) return localCandidates
         if (zenzSlotState == null) return localCandidates
+        if (zenzSlotState.bunsetsuTarget != null && !allowBunsetsuTarget) return localCandidates
         if (zenzSlotState.displayInput != input) return localCandidates
         if (zenzSlotState.requestToken != zenzLiveRequestToken) return localCandidates
         if (!shouldRequestZenzLiveGenerate(input)) return localCandidates
@@ -10991,13 +11070,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun buildDisplayedBunsetsuCandidatesWithZenzSlot(
+        session: BunsetsuConversionSession,
+        focusedIndex: Int,
         segmentCandidates: List<Candidate>,
         displayInput: String
     ): List<Candidate> {
+        if (session.segments.isEmpty()) return segmentCandidates
+        val safeFocusedIndex = focusedIndex.coerceIn(0, session.segments.lastIndex)
+        val segment = session.segments[safeFocusedIndex]
+        val state = _zenzLiveSlotState.value ?: return segmentCandidates
+        val target = state.bunsetsuTarget ?: return segmentCandidates
+        if (!isCurrentBunsetsuZenzTarget(target)) return segmentCandidates
+        if (target.segmentIndex != safeFocusedIndex) return segmentCandidates
+        if (target.segmentReading != segment.reading) return segmentCandidates
+
+        val zenzSlotDisplayInput = segment.reading.ifEmpty { displayInput }
         return buildDisplayedCandidatesWithZenzSlot(
-            localCandidates = segmentCandidates.withoutZenzLiveSlot(displayInput),
-            input = displayInput,
-            zenzSlotState = _zenzLiveSlotState.value
+            localCandidates = segmentCandidates.withoutZenzLiveSlot(zenzSlotDisplayInput),
+            input = zenzSlotDisplayInput,
+            zenzSlotState = state,
+            allowBunsetsuTarget = true
         )
     }
 
@@ -11007,26 +11099,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun isZenzLiveSlotCandidate(
         candidate: Candidate,
-        displayInput: String
+        displayInput: String,
+        bunsetsuTarget: BunsetsuZenzTarget? = null
     ): Boolean {
         val state = _zenzLiveSlotState.value ?: return false
         if (displayInput.isEmpty()) return false
         if (!shouldRequestZenzLiveGenerate(displayInput)) return false
         if (state.displayInput != displayInput) return false
+        if (state.bunsetsuTarget != bunsetsuTarget) return false
+        if (bunsetsuTarget != null && !isCurrentBunsetsuZenzTarget(bunsetsuTarget)) {
+            return false
+        }
         if (state.requestToken != zenzLiveRequestToken) return false
         if (!candidate.isZenzLiveSlot(displayInput)) return false
         return if (state.isLoading) {
-            state.candidate == null && candidate.isZenzLiveLoadingSlot(displayInput)
+            state.candidate == null && candidate.isZenzLiveLoadingSlot(displayInput, bunsetsuTarget)
         } else {
             state.candidate == candidate
         }
     }
 
-    private fun Candidate.isCurrentZenzLiveResultSlot(displayInput: String): Boolean {
+    private fun Candidate.isCurrentZenzLiveResultSlot(
+        displayInput: String,
+        bunsetsuTarget: BunsetsuZenzTarget? = null
+    ): Boolean {
         val state = _zenzLiveSlotState.value ?: return false
         return !state.isLoading &&
                 state.candidate == this &&
-                isZenzLiveSlotCandidate(this, displayInput)
+                isZenzLiveSlotCandidate(this, displayInput, bunsetsuTarget)
     }
 
     private fun shouldApplyZenzLiveResultToComposingText(
@@ -11050,10 +11150,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun hasLeadingZenzLiveSlot(
         displayedCandidates: List<Candidate>,
-        displayInput: String
+        displayInput: String,
+        bunsetsuTarget: BunsetsuZenzTarget? = null
     ): Boolean {
         return displayedCandidates.firstOrNull()?.let {
-            isZenzLiveSlotCandidate(it, displayInput)
+            isZenzLiveSlotCandidate(it, displayInput, bunsetsuTarget)
         } == true
     }
 
@@ -11061,17 +11162,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         displayedCandidates: List<Candidate>,
         segmentCandidates: List<Candidate>,
         displayedIndex: Int,
-        displayInput: String
+        zenzSlotDisplayInput: String,
+        zenzSlotTarget: BunsetsuZenzTarget?
     ): BunsetsuDisplayedSelection? {
         val displayedCandidate = displayedCandidates.getOrNull(displayedIndex) ?: return null
-        if (displayedCandidate.isZenzLiveLoadingSlot(displayInput)) {
+        if (displayedCandidate.isZenzLiveLoadingSlot(zenzSlotDisplayInput, zenzSlotTarget)) {
             return BunsetsuDisplayedSelection.LoadingZenzSlot
         }
-        if (displayedCandidate.isCurrentZenzLiveResultSlot(displayInput)) {
+        if (displayedCandidate.isCurrentZenzLiveResultSlot(zenzSlotDisplayInput, zenzSlotTarget)) {
             return BunsetsuDisplayedSelection.ZenzResultSlot(displayedCandidate)
         }
 
-        val segmentIndexOffset = if (hasLeadingZenzLiveSlot(displayedCandidates, displayInput)) {
+        val segmentIndexOffset = if (
+            hasLeadingZenzLiveSlot(displayedCandidates, zenzSlotDisplayInput, zenzSlotTarget)
+        ) {
             1
         } else {
             0
@@ -11090,14 +11194,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         displayedCandidates: List<Candidate>,
         segmentCandidates: List<Candidate>,
         displayedIndex: Int,
-        displayInput: String
+        zenzSlotDisplayInput: String,
+        zenzSlotTarget: BunsetsuZenzTarget?
     ): Int? {
         return when (
             val selection = displayedIndexToBunsetsuSelection(
                 displayedCandidates = displayedCandidates,
                 segmentCandidates = segmentCandidates,
                 displayedIndex = displayedIndex,
-                displayInput = displayInput
+                zenzSlotDisplayInput = zenzSlotDisplayInput,
+                zenzSlotTarget = zenzSlotTarget
             )
         ) {
             is BunsetsuDisplayedSelection.SegmentCandidate -> selection.segmentIndex
@@ -11107,11 +11213,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun bunsetsuCandidateIndexToDisplayedIndex(
         segmentIndex: Int,
-        displayedCandidates: List<Candidate>
+        displayedCandidates: List<Candidate>,
+        zenzSlotDisplayInput: String,
+        zenzSlotTarget: BunsetsuZenzTarget?
     ): Int {
         if (segmentIndex < 0) return RecyclerView.NO_POSITION
-        val displayInput = inputString.value
-        val displayIndexOffset = if (hasLeadingZenzLiveSlot(displayedCandidates, displayInput)) {
+        val displayIndexOffset = if (
+            hasLeadingZenzLiveSlot(displayedCandidates, zenzSlotDisplayInput, zenzSlotTarget)
+        ) {
             1
         } else {
             0
@@ -11124,7 +11233,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun refreshBunsetsuSuggestionViewsIfActive(): Boolean {
+    private fun refreshCurrentBunsetsuSuggestionViews(): Boolean {
         val mainView = mainLayoutBinding ?: return false
         val session = bunsetsuConversionSession ?: return false
         if (!isBunsetsuCursorMoveSessionActive()) return false
@@ -11132,7 +11241,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
         updateSuggestionViewsForBunsetsuSegment(
-            segment = session.segments[focusedIndex],
+            session = session,
+            focusedIndex = focusedIndex,
+            mainView = mainView,
+            floatingKeyboardLayoutBinding = floatingKeyboardBinding
+        )
+        return true
+    }
+
+    private fun refreshBunsetsuSuggestionViewsForCurrentZenzTargetIfActive(
+        target: BunsetsuZenzTarget? = _zenzLiveSlotState.value?.bunsetsuTarget
+    ): Boolean {
+        val mainView = mainLayoutBinding ?: return false
+        val session = bunsetsuConversionSession ?: return false
+        if (!isBunsetsuCursorMoveSessionActive()) return false
+        if (session.segments.isEmpty()) return false
+        val currentTarget = target ?: return false
+        if (!isCurrentBunsetsuZenzTarget(currentTarget)) return false
+
+        val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
+        updateSuggestionViewsForBunsetsuSegment(
+            session = session,
+            focusedIndex = focusedIndex,
             mainView = mainView,
             floatingKeyboardLayoutBinding = floatingKeyboardBinding
         )
@@ -11166,7 +11296,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (hadState) {
             Timber.d("Zenz live slot cleared: reason=%s", reason)
         }
-        if (refreshBunsetsuSuggestionViewsIfActive()) {
+        if (previousState?.bunsetsuTarget != null) {
+            if (refreshBunsetsuSuggestionViewsForCurrentZenzTargetIfActive(previousState.bunsetsuTarget)) {
+                return
+            }
+            return
+        }
+        if (isBunsetsuCursorMoveSessionActive()) {
+            refreshCurrentBunsetsuSuggestionViews()
             return
         }
         if (
@@ -11181,7 +11318,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun beginZenzLiveRequest(
         displayInput: String,
-        localCandidates: List<Candidate> = emptyList()
+        localCandidates: List<Candidate> = emptyList(),
+        bunsetsuTarget: BunsetsuZenzTarget? = null
     ): ZenzLiveRequest? {
         val blockReason = zenzLiveRequestBlockReason(displayInput)
         if (blockReason != null) {
@@ -11203,12 +11341,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             displayInput = displayInput,
             candidate = null,
             isLoading = true,
-            requestToken = requestToken
+            requestToken = requestToken,
+            bunsetsuTarget = bunsetsuTarget
         )
         _zenzLiveSlotState.value = loadingState
-        Timber.d("Zenz live slot loading shown: input=%s", displayInput)
+        if (bunsetsuTarget != null) {
+            Timber.d(
+                "Bunsetsu Zenz live request started: focusedIndex=%d segmentReading=%s leftContext=%s requestToken=%d",
+                bunsetsuTarget.segmentIndex,
+                bunsetsuTarget.segmentReading,
+                bunsetsuTarget.leftContext,
+                requestToken
+            )
+        } else {
+            Timber.d("Zenz live slot loading shown: input=%s", displayInput)
+        }
 
-        if (localSnapshot.isNotEmpty() && inputString.value == displayInput && !suppressSuggestions) {
+        if (bunsetsuTarget != null) {
+            if (isCurrentBunsetsuZenzTarget(bunsetsuTarget) && !suppressSuggestions) {
+                refreshBunsetsuSuggestionViewsForCurrentZenzTargetIfActive(bunsetsuTarget)
+            }
+        } else if (localSnapshot.isNotEmpty() && inputString.value == displayInput && !suppressSuggestions) {
             suggestionAdapter?.suggestions = buildDisplayedCandidatesWithZenzSlot(
                 localCandidates = localSnapshot,
                 input = displayInput,
@@ -11218,31 +11371,76 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         return ZenzLiveRequest(
             displayInput = displayInput,
-            requestToken = requestToken
+            requestToken = requestToken,
+            bunsetsuTarget = bunsetsuTarget
         )
     }
 
     private suspend fun emitZenzLiveRequest(displayInput: String) {
+        if (isBunsetsuCursorMoveSessionActive() && bunsetsuSeparation == true) {
+            requestZenzForCurrentBunsetsuSegmentIfNeeded(immediate = false)
+            return
+        }
         val request = beginZenzLiveRequest(displayInput) ?: return
         _zenzRequest.emit(request)
     }
 
     private fun isCurrentZenzLiveRequest(request: ZenzLiveRequest): Boolean {
         val state = _zenzLiveSlotState.value ?: return false
-        return request.requestToken == zenzLiveRequestToken &&
-                state.requestToken == request.requestToken &&
-                state.displayInput == request.displayInput &&
-                inputString.value == request.displayInput &&
-                shouldRequestZenzLiveGenerate(request.displayInput)
+        if (request.requestToken != zenzLiveRequestToken) return false
+        if (state.requestToken != request.requestToken) return false
+        if (state.displayInput != request.displayInput) return false
+        if (state.bunsetsuTarget != request.bunsetsuTarget) return false
+        if (!shouldRequestZenzLiveGenerate(request.displayInput)) return false
+
+        val target = request.bunsetsuTarget
+        return if (target == null) {
+            inputString.value == request.displayInput
+        } else {
+            isCurrentBunsetsuZenzTarget(target)
+        }
+    }
+
+    private fun isZenzLiveRequestStateCurrentForResult(
+        request: ZenzLiveRequest
+    ): Boolean {
+        val state = _zenzLiveSlotState.value ?: return false
+        if (request.requestToken != zenzLiveRequestToken) return false
+        if (state.requestToken != request.requestToken) return false
+        if (state.displayInput != request.displayInput) return false
+        if (state.bunsetsuTarget != request.bunsetsuTarget) return false
+        if (!shouldRequestZenzLiveGenerate(request.displayInput)) return false
+
+        val target = request.bunsetsuTarget
+        return if (target == null) {
+            inputString.value == request.displayInput
+        } else {
+            doesBunsetsuSessionStillContainZenzTarget(target)
+        }
     }
 
     private fun resolveZenzLiveRequestInput(request: ZenzLiveRequest): String? {
         if (!isCurrentZenzLiveRequest(request)) return null
 
         val requestInput = if (zenzaiEnableStatePreference == true) {
-            val suggestions = zenzLiveLocalCandidatesSnapshot
-                .takeIf { zenzLiveSnapshotDisplayInput == request.displayInput }
-                ?: emptyList()
+            val suggestions = if (request.bunsetsuTarget == null) {
+                zenzLiveLocalCandidatesSnapshot
+                    .takeIf { zenzLiveSnapshotDisplayInput == request.displayInput }
+                    ?: emptyList()
+            } else {
+                val target = request.bunsetsuTarget
+                val session = bunsetsuConversionSession
+                val segmentCandidates = session
+                    ?.segments
+                    ?.getOrNull(target.segmentIndex)
+                    ?.takeIf { segment ->
+                        session.conversionInput == target.conversionInput &&
+                                segment.reading == target.segmentReading
+                    }
+                    ?.candidates
+                    ?: emptyList()
+                segmentCandidates.withoutZenzLiveSlot(target.segmentReading)
+            }
             val firstCandidate = suggestions.firstOrNull()
             if (firstCandidate == null) {
                 clearZenzLiveSlot(
@@ -11251,9 +11449,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
                 return null
             }
-            firstCandidate.yomi ?: request.displayInput
+            firstCandidate.yomi ?: request.bunsetsuTarget?.segmentReading ?: request.displayInput
         } else {
-            request.displayInput
+            request.bunsetsuTarget?.segmentReading ?: request.displayInput
         }
 
         val state = _zenzLiveSlotState.value ?: return null
@@ -11267,19 +11465,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         requestInput: String,
         candidates: List<ZenzCandidate>
     ) {
-        if (!isCurrentZenzLiveRequest(request)) {
-            Timber.d(
-                "Zenz live result ignored because stale: requestInput=%s currentInput=%s",
-                requestInput,
-                inputString.value
-            )
+        if (!isZenzLiveRequestStateCurrentForResult(request)) {
+            val target = request.bunsetsuTarget
+            if (target != null) {
+                Timber.d(
+                    "Stale bunsetsu Zenz result ignored: requestToken=%d targetIndex=%d segmentReading=%s leftContext=%s",
+                    request.requestToken,
+                    target.segmentIndex,
+                    target.segmentReading,
+                    target.leftContext
+                )
+            } else {
+                Timber.d(
+                    "Zenz live result ignored because stale: requestInput=%s currentInput=%s",
+                    requestInput,
+                    inputString.value
+                )
+            }
             return
         }
 
         zenzLiveLatestResultMeta = ZenzLiveResultMeta(
             requestToken = request.requestToken,
             requestInput = requestInput,
-            displayInput = request.displayInput
+            displayInput = request.displayInput,
+            bunsetsuTarget = request.bunsetsuTarget
         )
         if (candidates.isEmpty()) {
             clearZenzLiveSlot(
@@ -11292,6 +11502,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun performImmediateZenzLiveRequest(displayInput: String) {
+        if (isBunsetsuCursorMoveSessionActive() && bunsetsuSeparation == true) {
+            requestZenzForCurrentBunsetsuSegmentIfNeeded(immediate = true)
+            return
+        }
         val localCandidates = suggestionAdapter?.suggestions.orEmpty()
             .withoutZenzLiveSlot(displayInput)
         filteredCandidateList = localCandidates
@@ -11300,7 +11514,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             localCandidates = localCandidates
         ) ?: return
         val requestInput = resolveZenzLiveRequestInput(request) ?: return
-        val candidates = performZenzRequest(requestInput)
+        val candidates = performZenzRequest(
+            insertString = requestInput,
+            leftContextOverride = request.bunsetsuTarget?.leftContext
+        )
         publishZenzLiveResult(
             request = request,
             requestInput = requestInput,
@@ -11308,11 +11525,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private suspend fun requestZenzForCurrentBunsetsuSegmentIfNeeded(
+        immediate: Boolean
+    ): Boolean {
+        val session = bunsetsuConversionSession ?: return false
+        if (bunsetsuSeparation != true) return false
+        if (!isBunsetsuCursorMoveSessionActive()) return false
+        if (session.segments.isEmpty()) return false
+
+        val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
+        val segment = session.segments[focusedIndex]
+        if (!shouldRequestZenzLiveGenerate(segment.reading)) return false
+        val target = currentBunsetsuZenzTargetOrNull() ?: return false
+        val request = beginZenzLiveRequest(
+            displayInput = segment.reading,
+            localCandidates = segment.candidates,
+            bunsetsuTarget = target
+        ) ?: return false
+
+        if (immediate) {
+            val requestInput = resolveZenzLiveRequestInput(request) ?: return true
+            val candidates = performZenzRequest(
+                insertString = requestInput,
+                leftContextOverride = target.leftContext
+            )
+            publishZenzLiveResult(
+                request = request,
+                requestInput = requestInput,
+                candidates = candidates
+            )
+        } else {
+            _zenzRequest.emit(request)
+        }
+        return true
+    }
+
     private fun acceptZenzLiveResult(resultFromZenz: List<ZenzCandidate>) {
-        val currentInput = inputString.value
         val meta = zenzLiveLatestResultMeta
         val state = _zenzLiveSlotState.value
         val firstResult = resultFromZenz.firstOrNull()
+        if (state?.bunsetsuTarget != null) {
+            acceptBunsetsuZenzLiveResult(
+                firstResult = firstResult,
+                meta = meta,
+                state = state
+            )
+            return
+        }
+
+        val currentInput = inputString.value
 
         if (currentInput.isEmpty()) {
             clearZenzLiveSlot("input empty")
@@ -11358,12 +11619,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         _zenzLiveSlotState.value = acceptedState
 
-        if (refreshBunsetsuSuggestionViewsIfActive()) {
-            Timber.d(
-                "Zenz live result accepted in bunsetsu session: input=%s result=%s",
-                currentState.displayInput,
-                resultSlot.string
-            )
+        if (isBunsetsuCursorMoveSessionActive()) {
+            refreshCurrentBunsetsuSuggestionViews()
             return
         }
 
@@ -11388,6 +11645,73 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentState.displayInput,
             resultSlot.string
         )
+    }
+
+    private fun acceptBunsetsuZenzLiveResult(
+        firstResult: ZenzCandidate?,
+        meta: ZenzLiveResultMeta?,
+        state: ZenzLiveSlotState
+    ) {
+        val target = state.bunsetsuTarget ?: return
+        if (firstResult == null) {
+            if (meta != null && meta.requestToken == state.requestToken && meta.bunsetsuTarget == target) {
+                clearZenzLiveSlot(
+                    reason = "empty result",
+                    updateDisplayedCandidates = true
+                )
+            }
+            return
+        }
+
+        val isStale = meta == null ||
+                meta.requestToken != zenzLiveRequestToken ||
+                state.requestToken != meta.requestToken ||
+                state.requestInput != meta.requestInput ||
+                state.displayInput != meta.displayInput ||
+                state.bunsetsuTarget != meta.bunsetsuTarget ||
+                firstResult.originalString != state.requestInput ||
+                !shouldRequestZenzLiveGenerate(state.displayInput) ||
+                !doesBunsetsuSessionStillContainZenzTarget(target)
+
+        if (isStale) {
+            Timber.d(
+                "Stale bunsetsu Zenz result ignored: requestToken=%d targetIndex=%d segmentReading=%s leftContext=%s",
+                state.requestToken,
+                target.segmentIndex,
+                target.segmentReading,
+                target.leftContext
+            )
+            return
+        }
+
+        val resultSlot = firstResult.toZenzLiveSlotCandidate(state.displayInput)
+        val acceptedState = state.copy(
+            candidate = resultSlot,
+            isLoading = false
+        )
+        _zenzLiveSlotState.value = acceptedState
+
+        val currentFocusedIndex = bunsetsuConversionSession
+            ?.takeIf { it.segments.isNotEmpty() }
+            ?.let { it.focusedIndex.coerceIn(0, it.segments.lastIndex) }
+            ?: RecyclerView.NO_POSITION
+        Timber.d(
+            "Bunsetsu Zenz result accepted: focusedIndex=%d targetIndex=%d segmentReading=%s result=%s",
+            currentFocusedIndex,
+            target.segmentIndex,
+            target.segmentReading,
+            resultSlot.string
+        )
+
+        if (isCurrentBunsetsuZenzTarget(target)) {
+            refreshBunsetsuSuggestionViewsForCurrentZenzTargetIfActive(target)
+        } else {
+            Timber.d(
+                "Bunsetsu Zenz result accepted but not displayed: currentFocusedIndex=%d targetIndex=%d",
+                currentFocusedIndex,
+                target.segmentIndex
+            )
+        }
     }
 
     private fun resolveNonLoadingCandidateIndex(
@@ -11906,18 +12230,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             zenzRequest
                 .debounce((zenzDebounceTimePreference ?: 300).toLong())
                 .collectLatest { request ->
-                    lastLocalUpdatedInput.first { completedInput ->
-                        completedInput == request.displayInput ||
-                                request.requestToken != zenzLiveRequestToken ||
-                                inputString.value != request.displayInput
+                    if (request.bunsetsuTarget == null) {
+                        lastLocalUpdatedInput.first { completedInput ->
+                            completedInput == request.displayInput ||
+                                    request.requestToken != zenzLiveRequestToken ||
+                                    inputString.value != request.displayInput
+                        }
                     }
                     if (!isCurrentZenzLiveRequest(request)) {
+                        if (
+                            request.bunsetsuTarget != null &&
+                            _zenzLiveSlotState.value?.requestToken == request.requestToken
+                        ) {
+                            clearZenzLiveSlot("bunsetsu target changed before Zenz request")
+                        }
                         return@collectLatest
                     }
 
                     val requestInput = resolveZenzLiveRequestInput(request)
                         ?: return@collectLatest
-                    val zenzCandidates = performZenzRequest(requestInput)
+                    val zenzCandidates = performZenzRequest(
+                        insertString = requestInput,
+                        leftContextOverride = request.bunsetsuTarget?.leftContext
+                    )
                     publishZenzLiveResult(
                         request = request,
                         requestInput = requestInput,
@@ -11947,7 +12282,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * collectLatest 内から呼び出されることを想定しています。
      */
     private suspend fun performZenzRequest(
-        insertString: String
+        insertString: String,
+        leftContextOverride: String? = null
     ): List<ZenzCandidate> = withContext(Dispatchers.Default) {
 
         // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
@@ -11960,7 +12296,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return@withContext emptyList()
         }
 
-        val zenzContext = getZenzContext(insertString)
+        val zenzContext = getZenzContext(
+            insertString = insertString,
+            leftContextOverride = leftContextOverride
+        )
 
         Timber.d(
             "performZenzRequest: $insertString leftContext: [${zenzContext.leftContext}] rightContext: [${zenzContext.rightContext}]"
@@ -12252,7 +12591,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return reranked
     }
 
-    private suspend fun getZenzContext(insertString: String): ZenzContext {
+    private suspend fun getZenzContext(
+        insertString: String,
+        leftContextOverride: String? = null
+    ): ZenzContext {
         return try {
             withContext(Dispatchers.Main) {
                 val lastCandidateLength = if (isLiveConversionEnable == true) {
@@ -12261,7 +12603,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     insertString.length
                 }
 
-                val leftContext = getLeftContext(inputLength = lastCandidateLength)
+                val leftContext = leftContextOverride ?: getLeftContext(inputLength = lastCandidateLength)
                     .dropLast(lastCandidateLength)
                 val resolvedContext = resolveZenzContext(
                     leftContext = leftContext,
@@ -12324,6 +12666,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val localCandidates = candidates.withoutZenzLiveSlot(insertString)
         if (
             _zenzLiveSlotState.value?.displayInput == insertString &&
+            _zenzLiveSlotState.value?.bunsetsuTarget == null &&
             shouldRequestZenzLiveGenerate(insertString)
         ) {
             zenzLiveLocalCandidatesSnapshot = localCandidates
@@ -13493,7 +13836,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updatedSegments[segmentIndex] = targetSegment.copy(
             candidates = candidates,
             displayText = displayText,
-            selectedIndex = 0
+            selectedIndex = 0,
+            overrideDisplayCandidate = null
         )
         return session.copy(segments = updatedSegments)
     }
@@ -13524,6 +13868,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             activeSplitPatternIndex = 0
         )
 
+        clearZenzLiveSlot("bunsetsu conversion session activated")
         isHenkan.set(true)
         henkanPressedWithBunsetsuDetect = true
         bunsetusMultipleDetect = true
@@ -13626,13 +13971,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun updateSuggestionViewsForBunsetsuSegment(
-        segment: BunsetsuSegmentState,
+        session: BunsetsuConversionSession,
+        focusedIndex: Int,
         mainView: MainLayoutBinding,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding?
     ) {
+        if (session.segments.isEmpty()) return
+        val safeFocusedIndex = focusedIndex.coerceIn(0, session.segments.lastIndex)
+        val segment = session.segments[safeFocusedIndex]
+        val zenzSlotTarget = currentBunsetsuZenzSlotTargetOrNull(
+            session = session,
+            focusedIndex = safeFocusedIndex
+        )
+        val zenzSlotDisplayInput = segment.reading
         val displayedCandidates = buildDisplayedBunsetsuCandidatesWithZenzSlot(
+            session = session,
+            focusedIndex = safeFocusedIndex,
             segmentCandidates = segment.candidates,
-            displayInput = inputString.value
+            displayInput = zenzSlotDisplayInput
         )
         suggestionAdapter?.suggestions = displayedCandidates
         suggestionAdapterFull?.suggestions = segment.candidates
@@ -13642,12 +13998,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             segment.selectedIndex.coerceIn(0, segment.candidates.lastIndex)
         }
-        val displayedHighlightIndex = if (segmentHighlightIndex == RecyclerView.NO_POSITION) {
-            RecyclerView.NO_POSITION
-        } else {
-            bunsetsuCandidateIndexToDisplayedIndex(
+        val zenzOverrideHighlightIndex = segment.overrideDisplayCandidate
+            ?.takeIf {
+                it.isCurrentZenzLiveResultSlot(
+                    displayInput = zenzSlotDisplayInput,
+                    bunsetsuTarget = zenzSlotTarget
+                )
+            }
+            ?.let {
+                if (displayedCandidates.firstOrNull() == it) {
+                    0
+                } else {
+                    RecyclerView.NO_POSITION
+                }
+            }
+            ?: RecyclerView.NO_POSITION
+        val displayedHighlightIndex = when {
+            zenzOverrideHighlightIndex != RecyclerView.NO_POSITION -> zenzOverrideHighlightIndex
+            segmentHighlightIndex == RecyclerView.NO_POSITION -> RecyclerView.NO_POSITION
+            else -> bunsetsuCandidateIndexToDisplayedIndex(
                 segmentIndex = segmentHighlightIndex,
-                displayedCandidates = displayedCandidates
+                displayedCandidates = displayedCandidates,
+                zenzSlotDisplayInput = zenzSlotDisplayInput,
+                zenzSlotTarget = zenzSlotTarget
             )
         }
         suggestionAdapter?.updateHighlightPosition(displayedHighlightIndex)
@@ -13687,7 +14060,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val highlightEnd = highlightStart + focusedSegment.displayText.length
 
         updateSuggestionViewsForBunsetsuSegment(
-            segment = focusedSegment,
+            session = session,
+            focusedIndex = focusedIndex,
             mainView = mainView,
             floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding
         )
@@ -13886,7 +14260,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 ((segment.selectedIndex + delta) % candidateCount + candidateCount) % candidateCount
             val updatedSegment = segment.copy(
                 selectedIndex = nextIndex,
-                displayText = displayTextFromCandidate(segment.candidates[nextIndex])
+                displayText = displayTextFromCandidate(segment.candidates[nextIndex]),
+                overrideDisplayCandidate = null
             )
             val updatedSegments = loadedSession.segments.toMutableList()
             updatedSegments[loadedSession.focusedIndex] = updatedSegment
@@ -15725,12 +16100,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
         val targetSegment = session.segments[focusedIndex]
+        val zenzSlotTarget = currentBunsetsuZenzSlotTargetOrNull(session, focusedIndex)
         return when (
             val selection = displayedIndexToBunsetsuSelection(
                 displayedCandidates = displayedCandidates,
                 segmentCandidates = targetSegment.candidates,
                 displayedIndex = position,
-                displayInput = inputString.value
+                zenzSlotDisplayInput = targetSegment.reading,
+                zenzSlotTarget = zenzSlotTarget
             )
         ) {
             BunsetsuDisplayedSelection.LoadingZenzSlot,
@@ -15769,8 +16146,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 displayedCandidates = displayedCandidates
             )
         ) {
-            setCursorLeftAfterCommitPair(candidate.string)
-            restoreKeyboardFromFullSuggestionViewIfNeeded()
+            if (!isBunsetsuCursorMoveSessionActive()) {
+                setCursorLeftAfterCommitPair(candidate.string)
+                restoreKeyboardFromFullSuggestionViewIfNeeded()
+            }
             return
         }
         if (insertString.isNotEmpty()) {
@@ -15807,11 +16186,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
         val targetSegment = session.segments[focusedIndex]
+        val zenzSlotTarget = currentBunsetsuZenzSlotTargetOrNull(session, focusedIndex)
         val selection = displayedIndexToBunsetsuSelection(
             displayedCandidates = displayedCandidates,
             segmentCandidates = targetSegment.candidates,
             displayedIndex = position,
-            displayInput = inputString.value
+            zenzSlotDisplayInput = targetSegment.reading,
+            zenzSlotTarget = zenzSlotTarget
         )
         val segmentSelection = when (selection) {
             BunsetsuDisplayedSelection.LoadingZenzSlot -> {
@@ -15820,15 +16201,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             is BunsetsuDisplayedSelection.ZenzResultSlot -> {
-                if (selection.candidate != candidate) {
+                val target = zenzSlotTarget
+                if (
+                    target == null ||
+                    selection.candidate != candidate ||
+                    !candidate.isCurrentZenzLiveResultSlot(
+                        displayInput = targetSegment.reading,
+                        bunsetsuTarget = target
+                    )
+                ) {
                     Timber.d(
                         "Zenz live result slot click ignored because candidate is stale: %s",
                         position
                     )
                     return true
                 }
-                clearBunsetsuConversionSession()
-                return false
+
+                val updatedSegments = session.segments.toMutableList()
+                updatedSegments[focusedIndex] = targetSegment.copy(
+                    displayText = displayTextFromCandidate(candidate),
+                    overrideDisplayCandidate = candidate
+                )
+                bunsetsuConversionSession = session.copy(segments = updatedSegments)
+                renderBunsetsuConversionSession(mainView, floatingKeyboardBinding)
+                Timber.d(
+                    "Bunsetsu Zenz result selected: focusedIndex=%d segmentReading=%s result=%s",
+                    focusedIndex,
+                    targetSegment.reading,
+                    candidate.string
+                )
+                return true
             }
 
             null -> {
@@ -15872,7 +16274,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val updatedSegments = session.segments.toMutableList()
         updatedSegments[focusedIndex] = targetSegment.copy(
             displayText = candidateDisplayText,
-            selectedIndex = segmentIndex
+            selectedIndex = segmentIndex,
+            overrideDisplayCandidate = null
         )
         bunsetsuConversionSession = session.copy(segments = updatedSegments)
         commitBunsetsuConversionUntilFocusedSegment(
