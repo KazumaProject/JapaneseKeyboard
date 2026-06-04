@@ -11030,6 +11030,55 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return filterNot { it.isZenzLiveSlot(displayInput) }
     }
 
+    private fun List<Candidate>.withoutFirstDuplicateOfZenzSlotCandidate(
+        displayInput: String,
+        zenzSlotCandidate: Candidate
+    ): List<Candidate> {
+        if (isEmpty()) return this
+
+        val zenzDisplayText = displayTextFromCandidate(zenzSlotCandidate)
+        var duplicateIndex = -1
+
+        for (index in indices) {
+            val candidate = this[index]
+
+            if (candidate.isZenzLiveSlot(displayInput)) {
+                continue
+            }
+
+            if (candidate.length.toInt() != displayInput.length) {
+                continue
+            }
+
+            if (displayTextFromCandidate(candidate) == zenzDisplayText) {
+                duplicateIndex = index
+                break
+            }
+        }
+
+        if (duplicateIndex == -1) {
+            return this.withoutZenzLiveSlot(displayInput)
+        }
+
+        val result = ArrayList<Candidate>(size - 1)
+
+        for (index in indices) {
+            val candidate = this[index]
+
+            if (candidate.isZenzLiveSlot(displayInput)) {
+                continue
+            }
+
+            if (index == duplicateIndex) {
+                continue
+            }
+
+            result.add(candidate)
+        }
+
+        return result
+    }
+
     private fun buildZenzLiveLoadingCandidate(displayInput: String): Candidate {
         return Candidate(
             string = ZENZ_LIVE_SLOT_EMPTY_TEXT,
@@ -11066,7 +11115,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!shouldRequestZenzLiveGenerate(input)) return localCandidates
 
         val zenzSlotCandidate = zenzSlotState.candidate ?: buildZenzLiveLoadingCandidate(input)
-        return listOf(zenzSlotCandidate) + localCandidates.withoutZenzLiveSlot(input)
+        val filteredLocalCandidates =
+            if (zenzSlotState.candidate == null) {
+                localCandidates.withoutZenzLiveSlot(input)
+            } else {
+                localCandidates.withoutFirstDuplicateOfZenzSlotCandidate(
+                    displayInput = input,
+                    zenzSlotCandidate = zenzSlotCandidate
+                )
+            }
+
+        return listOf(zenzSlotCandidate) + filteredLocalCandidates
     }
 
     private fun buildDisplayedBunsetsuCandidatesWithZenzSlot(
