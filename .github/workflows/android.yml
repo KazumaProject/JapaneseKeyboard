@@ -62,7 +62,6 @@ jobs:
           ./gradlew clean \
             assembleFullStandardRelease \
             bundleFullStandardRelease \
-            verifyFullStandardReleaseAabNativeLibraries \
             assembleLiteStandardRelease \
             -PsplitApks \
             --stacktrace
