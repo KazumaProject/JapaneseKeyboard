@@ -695,10 +695,66 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
     }
 
     @Test
+    fun editorUiState_showRowColumnDeleteButtonsDefaultsToTrue() {
+        assertTrue(EditorUiState().showRowColumnDeleteButtons)
+    }
+
+    @Test
+    fun viewModel_updateShowRowColumnDeleteButtons_updatesState() {
+        val vm = viewModel()
+
+        vm.updateShowRowColumnDeleteButtons(false)
+        assertFalse(vm.uiState.value.showRowColumnDeleteButtons)
+
+        vm.updateShowRowColumnDeleteButtons(true)
+        assertTrue(vm.uiState.value.showRowColumnDeleteButtons)
+    }
+
+    @Test
     fun viewModel_updateInsertionPolicy_updatesState() {
         val vm = qwertyViewModel()
         vm.updateInsertionPolicy(InsertionPolicy.PreferVertical)
         assertEquals(InsertionPolicy.PreferVertical, vm.uiState.value.insertionPolicy)
+    }
+
+    @Test
+    fun viewModel_swapKeys_gridLayoutKeepsPlacementAndKeyDataInSync() {
+        val vm = viewModel()
+        vm.applyTemplate(ordinaryGridLayout())
+
+        vm.swapKeys("key_a", "key_b")
+
+        val layout = vm.uiState.value.layout
+        val a = layout.items.filterIsInstance<KeyItem>().first { it.keyData.keyId == "key_a" }
+        val b = layout.items.filterIsInstance<KeyItem>().first { it.keyData.keyId == "key_b" }
+
+        assertFalse(layout.usesFlexiblePlacement())
+        assertEquals(GridPlacement(rowUnits = 0, columnUnits = 2, rowSpanUnits = 2, columnSpanUnits = 2), a.placement)
+        assertEquals(0, a.keyData.row)
+        assertEquals(1, a.keyData.column)
+        assertEquals(1, a.keyData.rowSpan)
+        assertEquals(1, a.keyData.colSpan)
+        assertEquals(GridPlacement(rowUnits = 0, columnUnits = 0, rowSpanUnits = 2, columnSpanUnits = 2), b.placement)
+        assertEquals(0, b.keyData.row)
+        assertEquals(0, b.keyData.column)
+        assertEquals(layout.items.filterIsInstance<KeyItem>().map { it.keyData }, layout.keys)
+    }
+
+    @Test
+    fun viewModel_swapKeys_flexibleLayoutKeepsUsingPlacementOnlySwap() {
+        val vm = qwertyViewModel()
+        val beforeLayout = vm.uiState.value.layout
+        val aBefore = beforeLayout.items.filterIsInstance<KeyItem>().first { it.keyData.keyId == "qwerty_key_a" }
+        val sBefore = beforeLayout.items.filterIsInstance<KeyItem>().first { it.keyData.keyId == "qwerty_key_s" }
+
+        vm.swapKeys("qwerty_key_a", "qwerty_key_s")
+
+        val afterLayout = vm.uiState.value.layout
+        val aAfter = afterLayout.items.filterIsInstance<KeyItem>().first { it.keyData.keyId == "qwerty_key_a" }
+        assertTrue(afterLayout.usesFlexiblePlacement())
+        assertEquals(sBefore.placement, aAfter.placement)
+        assertEquals(aBefore.keyData.row, aAfter.keyData.row)
+        assertEquals(aBefore.keyData.column, aAfter.keyData.column)
     }
 
     @Test
@@ -1768,6 +1824,33 @@ class KeyboardEditorViewModelFlexiblePlacementTest {
             isFlexiblePlacementLayout = isFlexiblePlacementLayout
         )
     }
+
+    private fun ordinaryGridLayout(): KeyboardLayout =
+        KeyboardLayout(
+            keys = listOf(
+                KeyData(
+                    label = "a",
+                    row = 0,
+                    column = 0,
+                    isFlickable = false,
+                    action = KeyAction.Text("a"),
+                    keyType = KeyType.NORMAL,
+                    keyId = "key_a"
+                ),
+                KeyData(
+                    label = "b",
+                    row = 0,
+                    column = 1,
+                    isFlickable = false,
+                    action = KeyAction.Text("b"),
+                    keyType = KeyType.NORMAL,
+                    keyId = "key_b"
+                )
+            ),
+            flickKeyMaps = emptyMap(),
+            columnCount = 2,
+            rowCount = 1
+        )
 
     private fun layoutFromItems(
         items: List<com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem>,

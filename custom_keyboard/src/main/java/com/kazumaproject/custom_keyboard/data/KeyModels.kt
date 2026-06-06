@@ -416,6 +416,71 @@ fun KeyboardLayout.swapKeyPlacements(
 }
 
 /**
+ * Swap two full-cell grid keys while keeping [KeyItem.placement] and the
+ * legacy [KeyData] row/column/span fields in sync.
+ *
+ * This helper is intentionally limited to ordinary grid layouts. Flexible /
+ * half-cell layouts must continue to use [swapKeyPlacements], because their
+ * GridPlacement values cannot always be represented by KeyData cell fields.
+ */
+fun KeyboardLayout.swapGridKeyPlacementsKeepingKeyDataInSync(
+    draggedKeyId: String,
+    targetKeyId: String
+): KeyboardLayout {
+    if (draggedKeyId == targetKeyId) return this
+    if (usesFlexiblePlacement()) return this
+
+    val keyItems = items.filterIsInstance<KeyItem>()
+    val dragged = keyItems.firstOrNull {
+        it.id == draggedKeyId || it.keyData.keyId == draggedKeyId
+    } ?: return this
+    val target = keyItems.firstOrNull {
+        it.id == targetKeyId || it.keyData.keyId == targetKeyId
+    } ?: return this
+    if (dragged.id == target.id) return this
+
+    val draggedPlacement = dragged.placement
+    val targetPlacement = target.placement
+    if (!draggedPlacement.canProjectToKeyDataCells() || !targetPlacement.canProjectToKeyDataCells()) {
+        return this
+    }
+
+    val newItems = items.map { item ->
+        when {
+            item is KeyItem && item.id == dragged.id -> item.withPlacementSyncedToKeyData(targetPlacement)
+            item is KeyItem && item.id == target.id -> item.withPlacementSyncedToKeyData(draggedPlacement)
+            else -> item
+        }
+    }
+
+    if (hasPlacementIssues(newItems, rowUnitCount, columnUnitCount)) {
+        return this
+    }
+
+    return copy(
+        items = newItems,
+        keys = newItems.filterIsInstance<KeyItem>().map { it.keyData }
+    )
+}
+
+private fun GridPlacement.canProjectToKeyDataCells(): Boolean =
+    rowUnits % 2 == 0 &&
+            columnUnits % 2 == 0 &&
+            rowSpanUnits % 2 == 0 &&
+            columnSpanUnits % 2 == 0
+
+private fun KeyItem.withPlacementSyncedToKeyData(placement: GridPlacement): KeyItem =
+    copy(
+        placement = placement,
+        keyData = keyData.copy(
+            row = placement.rowUnits / 2,
+            column = placement.columnUnits / 2,
+            rowSpan = placement.rowSpanUnits / 2,
+            colSpan = placement.columnSpanUnits / 2
+        )
+    )
+
+/**
  * Returns true if any KeyItem placement overlaps another KeyItem / SpacerItem
  * placement, or any item's placement extends outside [rowUnitCount] /
  * [columnUnitCount].

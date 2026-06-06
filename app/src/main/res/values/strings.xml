@@ -498,6 +498,7 @@
     <string name="deleted_all_words_text">Deleted all words.</string>
     <string name="confirm_all_words_delete_message">This will delete all registered words. This action cannot be undone. Are you sure?</string>
     <string name="read_from_template">Load from templates</string>
+    <string name="show_row_column_delete_buttons">Show row/column delete buttons</string>
     <string name="template_flick_kana_cursor">Kana input (cursor)</string>
     <string name="template_flick_english_cursor">English input (cursor)</string>
     <string name="template_qwerty">QWERTY</string>
@@ -558,6 +559,8 @@
     <string name="candidate_tab_summary">Display tabs at the top of the candidate view to switch between "Prediction", "Conversion", and "Alphanumeric/Kana".</string>
     <string name="shortcut_toolbar_title">Shortcut Toolbar</string>
     <string name="shortcut_toolbar_summary">Show a toolbar with useful shortcuts like switching Emoji keyboard</string>
+    <string name="shortcut_toolbar_integrated_in_suggestion_title">Integrate shortcuts into candidate bar</string>
+    <string name="shortcut_toolbar_integrated_in_suggestion_summary">When there is no composing text and no clipboard preview or selected-text AI actions are shown, display shortcut icons inside the candidate bar.</string>
     <string name="qwerty_romaji_english_visibility_title">Romaji/English Switch Key</string>
     <string name="qwerty_romaji_english_visibility_summary">Show a key (あa) to switch between Romaji input and English input</string>
     <string name="qwerty_glide_input_preference_title">Glide input for English QWERTY β</string>

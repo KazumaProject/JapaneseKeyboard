@@ -18,6 +18,7 @@ import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.data.hasPlacementIssues
 import com.kazumaproject.custom_keyboard.data.isPlacementOverlapping
+import com.kazumaproject.custom_keyboard.data.swapGridKeyPlacementsKeepingKeyDataInSync
 import com.kazumaproject.custom_keyboard.data.swapKeyPlacements
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.custom_keyboard.data.withCompatibleSpanFrom
@@ -72,7 +73,8 @@ data class EditorUiState(
     val previewStatus: PlacementPreviewStatus = PlacementPreviewStatus.None,
     val selectedItemId: String? = null,
     val insertionPolicy: InsertionPolicy = InsertionPolicy.PreferHorizontal,
-    val halfRowPlacement: HalfRowPlacement = HalfRowPlacement.Upper
+    val halfRowPlacement: HalfRowPlacement = HalfRowPlacement.Upper,
+    val showRowColumnDeleteButtons: Boolean = true
 )
 
 data class LayoutTemplate(val nameResId: Int, val layout: KeyboardLayout)
@@ -219,6 +221,10 @@ class KeyboardEditorViewModel @Inject constructor(
 
     fun updateName(name: String) {
         _uiState.update { it.copy(name = name) }
+    }
+
+    fun updateShowRowColumnDeleteButtons(show: Boolean) {
+        _uiState.update { it.copy(showRowColumnDeleteButtons = show) }
     }
 
     fun updateInsertionPolicy(policy: InsertionPolicy) {
@@ -1133,24 +1139,20 @@ class KeyboardEditorViewModel @Inject constructor(
     }
 
     /**
-     * Drag-swap two KeyItems by exchanging their [GridPlacement]s.
-     *
-     * Source of truth is `layout.items` + `GridPlacement` — KeyData.row /
-     * KeyData.column are NOT rewritten here, because they cannot represent
-     * half-cell offsets used by QWERTY-family templates and would corrupt
-     * the visual placement.
-     *
-     * The swap is rejected (no-op) if it would produce overlaps or
-     * out-of-bounds placements.
+     * Drag-swap two KeyItems. Flexible layouts keep GridPlacement as the source
+     * of truth; ordinary grid layouts also rewrite KeyData row/column/span so
+     * they do not accidentally become flexible after the swap.
      */
     fun swapKeys(draggedKeyId: String, targetKeyId: String) {
         _uiState.update { currentState ->
             val layout = currentState.layout
             if (draggedKeyId == targetKeyId) return@update currentState
 
-            val swapped = layout.swapKeyPlacements(draggedKeyId, targetKeyId)
-            // swapKeyPlacements returns the original layout if the swap is
-            // invalid (overlap, out of bounds, missing id).
+            val swapped = if (layout.usesFlexiblePlacement()) {
+                layout.swapKeyPlacements(draggedKeyId, targetKeyId)
+            } else {
+                layout.swapGridKeyPlacementsKeepingKeyDataInSync(draggedKeyId, targetKeyId)
+            }
             if (swapped === layout) return@update currentState
             currentState.copy(layout = swapped)
         }
