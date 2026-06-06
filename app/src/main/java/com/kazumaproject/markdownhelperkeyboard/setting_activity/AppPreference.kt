@@ -260,6 +260,8 @@ object AppPreference {
         )
     )
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
+    private val SETTING_HOME_FREQUENT_KEYS =
+        Pair("setting_home_frequent_keys_preference", "")
 
     private val defaultCandidateTabJson = gson.toJson(
         listOf(
@@ -1000,6 +1002,31 @@ object AppPreference {
             val json = gson.toJson(value)
             it.putString(KEYBOARD_ORDER.first, json)
         }
+
+    var setting_home_frequent_keys: List<String>
+        get() {
+            val json = preferences.getString(
+                SETTING_HOME_FREQUENT_KEYS.first,
+                SETTING_HOME_FREQUENT_KEYS.second
+            )
+            if (json.isNullOrBlank()) return emptyList()
+            val type = object : TypeToken<List<String>>() {}.type
+            return runCatching {
+                gson.fromJson<List<String>>(json, type)
+                    .orEmpty()
+                    .filter { it.isNotBlank() }
+                    .distinct()
+            }.getOrDefault(emptyList())
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                SETTING_HOME_FREQUENT_KEYS.first,
+                gson.toJson(value.filter { key -> key.isNotBlank() }.distinct())
+            )
+        }
+
+    val has_setting_home_frequent_keys: Boolean
+        get() = preferences.contains(SETTING_HOME_FREQUENT_KEYS.first)
 
     var candidate_tab_order: List<CandidateTab>
         get() {

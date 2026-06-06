@@ -81,7 +81,7 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
 
         findPreference<Preference>("gemma_prompt_template_management_preference")?.setOnPreferenceClickListener {
             navigateSafely(
-                R.id.action_navigation_setting_to_gemmaPromptTemplateFragment
+                R.id.gemmaPromptTemplateFragment
             )
             true
         }

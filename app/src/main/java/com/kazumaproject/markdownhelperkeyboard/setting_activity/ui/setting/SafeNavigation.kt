@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
+import android.os.Bundle
 import androidx.annotation.IdRes
 import androidx.fragment.app.Fragment
 import androidx.navigation.NavController
@@ -8,8 +9,12 @@ import androidx.navigation.fragment.findNavController
 import timber.log.Timber
 
 internal fun Fragment.navigateSafely(@IdRes resId: Int): Boolean {
+    return navigateSafely(resId, null)
+}
+
+internal fun Fragment.navigateSafely(@IdRes resId: Int, args: Bundle?): Boolean {
     return runCatching {
-        findNavController().navigateSafely(resId)
+        findNavController().navigateSafely(resId, args)
     }.getOrElse { error ->
         Timber.w(error, "Failed to obtain NavController for navigation target: %s", resId)
         false
@@ -17,6 +22,10 @@ internal fun Fragment.navigateSafely(@IdRes resId: Int): Boolean {
 }
 
 internal fun NavController.navigateSafely(@IdRes resId: Int): Boolean {
+    return navigateSafely(resId, null)
+}
+
+internal fun NavController.navigateSafely(@IdRes resId: Int, args: Bundle?): Boolean {
     val destination = currentDestination ?: return false
     val hasAction = destination.getAction(resId) != null || graph.getAction(resId) != null
     val hasDestination = graph.findNode(resId) != null
@@ -35,7 +44,7 @@ internal fun NavController.navigateSafely(@IdRes resId: Int): Boolean {
     }
 
     return runCatching {
-        navigate(resId)
+        navigate(resId, args)
         true
     }.getOrElse { error ->
         Timber.w(
