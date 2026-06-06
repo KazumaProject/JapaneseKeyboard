@@ -24,6 +24,7 @@
             android:id="@+id/setting_search_input"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:hint="@string/setting_search_hint"
             android:imeOptions="actionSearch"
             android:inputType="text"
             android:maxLines="1"
@@ -38,23 +39,40 @@
         android:layout_marginTop="14dp"
         android:textAppearance="?attr/textAppearanceLabelLarge"
         android:textColor="?attr/colorOnSurfaceVariant"
-        tools:text="120 件" />
+        android:visibility="gone"
+        tools:text="20 results"
+        tools:visibility="visible" />
 
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/setting_search_scroll"
+    <FrameLayout
+        android:id="@+id/setting_search_result_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="12dp"
-        android:layout_weight="1"
-        android:clipToPadding="false"
-        android:paddingBottom="80dp">
+        android:layout_weight="1">
 
-        <LinearLayout
-            android:id="@+id/setting_search_result_list"
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/setting_search_result_recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipToPadding="false"
+            android:overScrollMode="ifContentScrolls"
+            android:paddingBottom="16dp"
+            android:visibility="gone"
+            tools:itemCount="8"
+            tools:listitem="@layout/item_setting_search_result"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/setting_search_empty_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical" />
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:padding="24dp"
+            android:text="@string/setting_search_initial_empty"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:textColor="?attr/colorOnSurfaceVariant" />
 
-    </androidx.core.widget.NestedScrollView>
+    </FrameLayout>
 
 </LinearLayout>

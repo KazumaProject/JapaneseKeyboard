@@ -42,3 +42,8 @@ class GeneralInfoPreferenceFragment : CommonPreferenceFragment() {
 class AdvancedPreferenceFragment : CommonPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_advanced
 }
+
+@AndroidEntryPoint
+class LegacyCommonPreferenceFragment : CommonPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_common_legacy
+}
