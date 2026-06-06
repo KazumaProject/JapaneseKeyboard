@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/setting_frequent_card"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground"
+    app:cardBackgroundColor="?attr/colorSurface"
+    app:cardCornerRadius="8dp"
+    app:strokeColor="?attr/colorOutline"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:id="@+id/setting_frequent_row"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:minHeight="78dp"
+        android:orientation="horizontal"
+        android:paddingStart="10dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="10dp">
+
+        <ImageView
+            android:id="@+id/setting_frequent_drag_handle"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:contentDescription="@string/setting_frequent_drag_reorder"
+            android:padding="8dp"
+            android:src="@drawable/ic_drag_handle"
+            android:tint="?attr/colorOnSurfaceVariant" />
+
+        <ImageView
+            android:id="@+id/setting_frequent_icon"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginStart="4dp"
+            android:tint="?attr/colorPrimary"
+            tools:src="@drawable/keyboard_24px" />
+
+        <LinearLayout
+            android:id="@+id/setting_frequent_text_column"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/setting_frequent_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:textColor="?attr/colorOnSurface"
+                tools:text="Keyboard size" />
+
+            <TextView
+                android:id="@+id/setting_frequent_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                tools:text="Adjust keyboard height and width" />
+
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/setting_frequent_action_icon"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="8dp"
+            android:padding="8dp"
+            android:tint="?attr/colorPrimary"
+            tools:src="@drawable/baseline_check_24" />
+
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

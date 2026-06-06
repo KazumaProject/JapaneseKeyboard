@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item
+        name="setting_frequent_action_move_up"
+        type="id" />
+    <item
+        name="setting_frequent_action_move_down"
+        type="id" />
+</resources>

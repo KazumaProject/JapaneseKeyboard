@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.lifecycle.lifecycleScope
@@ -87,6 +88,11 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
         }
 
         updateGemmaModelSummary()
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        scrollToHighlightedPreferenceAfterLayout(view)
     }
 
     private fun importGemmaModel(uri: Uri) {

@@ -99,6 +99,14 @@ class SettingMainFragment : Fragment() {
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
+                    val navController = findNavController()
+                    if (!appPreference.setting_use_new_home_screen_preference &&
+                        navController.previousBackStackEntry?.destination?.id ==
+                        R.id.navigation_setting
+                    ) {
+                        requireActivity().finish()
+                        return
+                    }
                     if (!findNavController().popBackStack()) {
                         requireActivity().finish()
                     }

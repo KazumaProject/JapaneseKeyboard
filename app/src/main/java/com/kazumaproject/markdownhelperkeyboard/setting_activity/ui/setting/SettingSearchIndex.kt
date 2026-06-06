@@ -26,8 +26,11 @@ object SettingSearchIndex {
         R.id.aiConversionPreferenceFragment,
         R.id.operationFeedbackPreferenceFragment,
         R.id.clipboardShortcutPreferenceFragment,
+        R.id.dictionaryPreferenceFragment,
         R.id.generalInfoPreferenceFragment,
         R.id.advancedPreferenceFragment,
+        R.id.zenzPreferenceFragment,
+        R.id.gemmaPreferenceFragment,
     )
 
     fun searchable(context: Context): List<SettingDestination> {
@@ -42,6 +45,19 @@ object SettingSearchIndex {
             }
             "${destination.key}:${destination.category}:$targetId"
         }
+    }
+
+    fun destinationsForKeys(
+        context: Context,
+        keys: List<String>,
+    ): List<SettingDestination> {
+        val keySet = keys.toSet()
+        val order = keys.withIndex().associate { it.value to it.index }
+        return sources()
+            .flatMap { source -> readPreferenceXml(context, source) }
+            .filter { it.key in keySet }
+            .distinctBy { it.key }
+            .sortedBy { order[it.key] ?: Int.MAX_VALUE }
     }
 
     private fun sources(): List<PreferenceXmlSource> = buildList {
