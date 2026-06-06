@@ -146,6 +146,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val redoText: String,
         val incognitoIconDrawable: android.graphics.drawable.Drawable?,
     ) {
+        val hasClipboardPreview: Boolean
+            get() = pasteEnabled && (clipboardBitmap != null || clipboardText.isNotBlank())
+
         val hasVisibleAction: Boolean
             get() = undoEnabled ||
                 redoEnabled ||
@@ -302,7 +305,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     fun isShowingClipboardPreviewForEmptyState(): Boolean {
-        return isPasteEnabled && (clipboardBitmap != null || clipboardText.isNotBlank())
+        return currentHelperActionsState().hasClipboardPreview
     }
 
     fun isShowingCustomLayoutPicker(): Boolean {
@@ -696,10 +699,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 }
             }
 
-            clipboardPreviewTextDescription?.isVisible =
-                state.clipboardDescriptionShown &&
-                    state.pasteEnabled &&
-                    state.clipboardBitmap == null
+            clipboardPreviewTextDescription?.isVisible = false
 
             pasteIconParent?.apply {
                 setOnClickListener {
@@ -761,7 +761,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private fun shouldShowIntegratedShortcuts(): Boolean {
-        return showIntegratedShortcuts && shortcutItems.isNotEmpty() && !isShowingCustomLayoutPicker()
+        return showIntegratedShortcuts &&
+            shortcutItems.isNotEmpty() &&
+            !isShowingCustomLayoutPicker() &&
+            !isShowingClipboardPreviewForEmptyState()
     }
 
     private fun onBindShortcutViewHolder(
