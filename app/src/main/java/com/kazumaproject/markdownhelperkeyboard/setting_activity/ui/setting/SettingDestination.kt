@@ -95,6 +95,55 @@ object SettingDestinations {
         )
         add(
             destination(
+                key = "theme_custom_candidate_empty_popup_bg_color",
+                title = context.getString(R.string.theme_custom_candidate_empty_popup_bg_color),
+                summary = context.getString(R.string.theme_custom_candidate_empty_popup_bg_summary),
+                category = SettingCategory.KEYBOARD_DISPLAY,
+                keywords = listOf(
+                    "theme",
+                    "custom",
+                    "candidate",
+                    "empty",
+                    "popup",
+                    "background",
+                    "color",
+                    "undo",
+                    "redo",
+                    "reconvert",
+                    "paste",
+                ),
+                destinationId = R.id.keyboardThemeFragment,
+                iconRes = CoreR.drawable.outline_border_color_24,
+                highlightPreferenceKey = "theme_custom_candidate_empty_popup_bg_color",
+            )
+        )
+        add(
+            destination(
+                key = "theme_custom_candidate_empty_popup_text_color",
+                title = context.getString(R.string.theme_custom_candidate_empty_popup_text_color),
+                summary = context.getString(R.string.theme_custom_candidate_empty_popup_text_summary),
+                category = SettingCategory.KEYBOARD_DISPLAY,
+                keywords = listOf(
+                    "theme",
+                    "custom",
+                    "candidate",
+                    "empty",
+                    "popup",
+                    "text",
+                    "icon",
+                    "color",
+                    "undo",
+                    "redo",
+                    "reconvert",
+                    "paste",
+                ),
+                destinationId = R.id.keyboardThemeFragment,
+                iconRes = CoreR.drawable.outline_border_color_24,
+                highlightPreferenceKey = "theme_custom_candidate_empty_popup_text_color",
+            )
+        )
+        add(
+            destination(
                 key = "candidate_view_height_setting_fragment_preference",
                 title = context.getString(R.string.candidate_height_portrait_preference_title),
                 summary = context.getString(R.string.candidate_height_preference_sumary),
@@ -447,6 +496,8 @@ object SettingDestinations {
             "setting_route_advanced" -> R.id.advancedPreferenceFragment
             "setting_route_legacy_settings" -> R.id.settingMainFragment
             "setting_route_keyboard_theme" -> R.id.keyboardThemeFragment
+            "theme_custom_candidate_empty_popup_bg_color" -> R.id.keyboardThemeFragment
+            "theme_custom_candidate_empty_popup_text_color" -> R.id.keyboardThemeFragment
             "setting_route_kana_preferences" -> R.id.kanaPreferenceFragment
             "setting_route_qwerty_preferences" -> R.id.qwertyPreferenceFragment
             "setting_route_sumire_preferences" -> R.id.sumirePreferenceFragment
