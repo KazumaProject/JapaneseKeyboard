@@ -368,8 +368,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     inner class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val undoIconParent: ConstraintLayout? = itemView.findViewById(R.id.undo_icon_parent)
+        val undoImageView: ImageView? = itemView.findViewById(R.id.imageView)
         val undoIcon: MaterialTextView? = itemView.findViewById(R.id.undo_icon)
         val redoIconParent: ConstraintLayout? = itemView.findViewById(R.id.redo_icon_parent)
+        val redoImageView: ImageView? = itemView.findViewById(R.id.redo_image_view)
         val redoIcon: MaterialTextView? = itemView.findViewById(R.id.redo_icon)
         val reconvertIconParent: ConstraintLayout? = itemView.findViewById(R.id.reconvert_icon_parent)
         val reconvertIcon: MaterialTextView? = itemView.findViewById(R.id.reconvert_icon)
@@ -519,50 +521,48 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 isEnabled = isPasteEnabled
                 visibility = if (isPasteEnabled) View.VISIBLE else View.INVISIBLE
                 isFocusable = false
-
-                candidateEmptyDrawableColor?.let {
-                    this.setDrawableSolidColor(it)
-                }
             }
 
-            // ★修正: 画像プレビューのロジック
             pasteIcon?.apply {
                 if (clipboardBitmap != null) {
-                    // Bitmapがあればそれを設定
                     setImageBitmap(clipboardBitmap)
+                    clearColorFilter()
                     scaleType = ImageView.ScaleType.CENTER_CROP
                 } else {
-                    // なければデフォルトのアイコンを設定
                     setImageResource(com.kazumaproject.core.R.drawable.content_paste_24px)
                     scaleType = ImageView.ScaleType.CENTER_INSIDE
-                    candidateEmptyDrawableTextColor?.let {
-                        setColorFilter(it)
-                    }
                 }
             }
 
-            // テキストプレビューは、画像がない場合にのみ表示
             clipboardPreviewText?.text = if (clipboardBitmap == null) clipboardText else ""
-            candidateEmptyDrawableTextColor?.let {
-                clipboardPreviewText?.setTextColor(it)
-            }
-            candidateEmptyDrawableTextColor?.let { color ->
-                reconvertIcon?.setTextColor(color)
-                reconvertImageView?.setColorFilter(color)
-            }
+
+            applyEmptyHelperButtonStyle(
+                parent = undoIconParent,
+                text = undoIcon,
+                icon = undoImageView,
+                isDynamicColorEnable = isDynamicColorEnable,
+            )
+            applyEmptyHelperButtonStyle(
+                parent = redoIconParent,
+                text = redoIcon,
+                icon = redoImageView,
+                isDynamicColorEnable = isDynamicColorEnable,
+            )
+            applyEmptyHelperButtonStyle(
+                parent = reconvertIconParent,
+                text = reconvertIcon,
+                icon = reconvertImageView,
+                isDynamicColorEnable = isDynamicColorEnable,
+            )
+            applyEmptyHelperButtonStyle(
+                parent = pasteIconParent,
+                text = clipboardPreviewText,
+                icon = if (clipboardBitmap == null) pasteIcon else null,
+                isDynamicColorEnable = isDynamicColorEnable,
+            )
+            applyEmptyHelperTextColor(clipboardPreviewTextDescription)
 
             undoIconParent?.apply {
-                if (isDynamicColorEnable) {
-                    if (this.context.isDarkThemeOn()) {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
-                        )
-                    } else {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
-                        )
-                    }
-                }
                 isVisible = isUndoEnabled
                 setOnClickListener {
                     onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
@@ -574,17 +574,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             }
 
             redoIconParent?.apply {
-                if (isDynamicColorEnable) {
-                    if (this.context.isDarkThemeOn()) {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
-                        )
-                    } else {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
-                        )
-                    }
-                }
                 isVisible = isRedoEnabled
                 setOnClickListener {
                     onItemHelperIconClickListener?.invoke(HelperIcon.REDO)
@@ -596,17 +585,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             }
 
             reconvertIconParent?.apply {
-                if (isDynamicColorEnable) {
-                    if (this.context.isDarkThemeOn()) {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
-                        )
-                    } else {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
-                        )
-                    }
-                }
                 isVisible = isReconvertEnabled
                 setOnClickListener {
                     onItemHelperIconClickListener?.invoke(HelperIcon.RECONVERT)
@@ -616,7 +594,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 }
             }
 
-            // テキスト用の説明は、画像がない場合にのみ表示
             clipboardPreviewTextDescription?.isVisible =
                 isPasteEnabled && clipboardBitmap == null && isClipboardDescriptionShow
 
@@ -629,6 +606,53 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     true
                 }
             }
+        }
+    }
+
+    private fun applyEmptyHelperButtonStyle(
+        parent: ConstraintLayout?,
+        text: MaterialTextView?,
+        icon: ImageView?,
+        isDynamicColorEnable: Boolean,
+    ) {
+        applyEmptyHelperButtonBackground(parent, isDynamicColorEnable)
+        applyEmptyHelperTextColor(text)
+        candidateEmptyDrawableTextColor?.let { color ->
+            icon?.setColorFilter(color, PorterDuff.Mode.SRC_IN)
+        } ?: icon?.clearColorFilter()
+    }
+
+    private fun applyEmptyHelperTextColor(text: MaterialTextView?) {
+        text ?: return
+        text.setTextColor(
+            candidateEmptyDrawableTextColor ?: ContextCompat.getColor(
+                text.context,
+                com.kazumaproject.core.R.color.keyboard_icon_color,
+            )
+        )
+    }
+
+    private fun applyEmptyHelperButtonBackground(
+        parent: ConstraintLayout?,
+        isDynamicColorEnable: Boolean,
+    ) {
+        parent ?: return
+        val customBackgroundColor = candidateEmptyDrawableColor
+        if (customBackgroundColor != null) {
+            parent.setBackgroundResource(com.kazumaproject.core.R.drawable.ten_keys_center_bg)
+            parent.setDrawableSolidColor(customBackgroundColor)
+            return
+        }
+        if (isDynamicColorEnable) {
+            parent.setBackgroundResource(
+                if (parent.context.isDarkThemeOn()) {
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                } else {
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                }
+            )
+        } else {
+            parent.setBackgroundResource(com.kazumaproject.core.R.drawable.ten_keys_center_bg)
         }
     }
 
@@ -700,6 +724,25 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         if (candidateEmptyDrawableTextColor == color) return
         candidateEmptyDrawableTextColor = color
         // 全アイテムを更新して色を反映させる
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setCandidateEmptyPopupColors(backgroundColor: Int, textColor: Int) {
+        if (
+            candidateEmptyDrawableColor == backgroundColor &&
+            candidateEmptyDrawableTextColor == textColor
+        ) {
+            return
+        }
+        candidateEmptyDrawableColor = backgroundColor
+        candidateEmptyDrawableTextColor = textColor
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun clearCandidateEmptyPopupColors() {
+        if (candidateEmptyDrawableColor == null && candidateEmptyDrawableTextColor == null) return
+        candidateEmptyDrawableColor = null
+        candidateEmptyDrawableTextColor = null
         notifyItemRangeChanged(0, itemCount)
     }
 

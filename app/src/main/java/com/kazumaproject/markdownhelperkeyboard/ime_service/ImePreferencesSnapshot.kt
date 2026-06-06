@@ -169,6 +169,8 @@ data class ImePreferencesSnapshot(
     val customThemeCandidateTextColor: Int,
     val customThemeCandidateItemBgColor: Int,
     val customThemeCandidateItemPressedBgColor: Int,
+    val customThemeCandidateEmptyPopupBgColor: Int,
+    val customThemeCandidateEmptyPopupTextColor: Int,
     val customThemeShortcutIconColor: Int,
     val liquidGlassThemePreference: Boolean,
     val liquidGlassBlurRadiousPreference: Int,
@@ -475,6 +477,14 @@ data class ImePreferencesSnapshot(
                 customThemeCandidateItemPressedBgColor =
                     appPreference.getCustomThemeCandidateItemPressedBgColor(
                         customThemeCandidateItemPressedBgColorDefault
+                    ),
+                customThemeCandidateEmptyPopupBgColor =
+                    appPreference.getCustomThemeCandidateEmptyPopupBgColor(
+                        appPreference.custom_theme_special_key_color
+                    ),
+                customThemeCandidateEmptyPopupTextColor =
+                    appPreference.getCustomThemeCandidateEmptyPopupTextColor(
+                        appPreference.custom_theme_special_key_text_color
                     ),
                 customThemeShortcutIconColor = appPreference.getCustomThemeShortcutIconColor(
                     appPreference.custom_theme_special_key_text_color
