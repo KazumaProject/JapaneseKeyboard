@@ -330,9 +330,7 @@ class FrequentSettingsEditFragment : Fragment() {
 
     private fun SettingDestination.frequentFilterCategory(): SettingCategory {
         if (category != SettingCategory.FREQUENT) return category
-        val destinationId = when (val target = destination) {
-            is SettingDestinationType.NavDestination -> target.destinationId
-        }
+        val destinationId = SettingDestinations.destinationId(destination)
         return when (destinationId) {
             R.id.keyboardDisplayPreferenceFragment,
             R.id.keyboardSettingFragment,
