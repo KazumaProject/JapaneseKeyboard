@@ -76,6 +76,14 @@
                 android:layout_marginTop="8dp"
                 android:text="@string/read_from_template" />
 
+            <com.google.android.material.switchmaterial.SwitchMaterial
+                android:id="@+id/switch_row_column_delete_buttons"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:checked="true"
+                android:text="@string/show_row_column_delete_buttons" />
+
             <TextView
                 android:id="@+id/preview_output_text"
                 android:layout_width="match_parent"
