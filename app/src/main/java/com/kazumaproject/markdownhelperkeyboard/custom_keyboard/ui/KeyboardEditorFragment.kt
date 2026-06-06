@@ -25,6 +25,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
+import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.GridSpan
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.placement.HalfRowPlacement
@@ -112,6 +113,11 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             }
             if (usageMode != viewModel.uiState.value.layout.usageMode) {
                 viewModel.setCurrentLayoutUsageMode(viewModel.uiState.value.layoutId, usageMode)
+            }
+        }
+        binding.switchRowColumnDeleteButtons.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked != viewModel.uiState.value.showRowColumnDeleteButtons) {
+                viewModel.updateShowRowColumnDeleteButtons(isChecked)
             }
         }
         binding.buttonAddRow.setOnClickListener { viewModel.addRow() }
@@ -266,10 +272,18 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         if (binding.switchUsageModeNumber.isChecked != isNumberUsageMode) {
             binding.switchUsageModeNumber.isChecked = isNumberUsageMode
         }
+        val capabilities = keyboardEditorCapabilities(state.layout)
         applyKeyboardEditorCapabilityVisibility(
             binding = binding,
-            capabilities = keyboardEditorCapabilities(state.layout)
+            capabilities = capabilities
         )
+        val canToggleRowColumnDeleteButtons =
+            capabilities.showGridStructuralControls && !state.layout.usesFlexiblePlacement()
+        binding.switchRowColumnDeleteButtons.isVisible = capabilities.showGridStructuralControls
+        binding.switchRowColumnDeleteButtons.isEnabled = canToggleRowColumnDeleteButtons
+        if (binding.switchRowColumnDeleteButtons.isChecked != state.showRowColumnDeleteButtons) {
+            binding.switchRowColumnDeleteButtons.isChecked = state.showRowColumnDeleteButtons
+        }
         val insertionDirectionButtonId = when (state.insertionPolicy) {
             InsertionPolicy.PreferVertical -> R.id.button_insert_direction_column
             else -> R.id.button_insert_direction_row
@@ -285,7 +299,7 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
         }
         binding.halfRowPlacementPanel.isVisible = shouldShowHalfRowPlacementControls(
             state = state,
-            capabilities = keyboardEditorCapabilities(state.layout)
+            capabilities = capabilities
         )
         val halfRowButtonId = when (state.halfRowPlacement) {
             HalfRowPlacement.Upper -> R.id.button_half_row_upper
@@ -303,7 +317,8 @@ class KeyboardEditorFragment : Fragment(R.layout.fragment_keyboard_editor),
             insertionPolicy = state.placementCursor?.policy ?: state.insertionPolicy,
             selectedItemId = state.selectedItemId,
             previewInsertedItemId = state.previewInsertedItemId,
-            previewMovedItemIds = state.previewMovedItemIds
+            previewMovedItemIds = state.previewMovedItemIds,
+            showRowColumnDeleteButtons = state.showRowColumnDeleteButtons
         )
         binding.buttonConfirmPlacement.isEnabled = state.previewLayout != null
         binding.buttonCancelPlacement.isEnabled = isPlacementMode
@@ -417,6 +432,7 @@ internal fun applyKeyboardEditorCapabilityVisibility(
     binding.insertDirectionPanel.isVisible = capabilities.showInsertionDirectionControls
     binding.rowControlsGroup.isVisible = capabilities.showGridStructuralControls
     binding.columnControlsGroup.isVisible = capabilities.showGridStructuralControls
+    binding.switchRowColumnDeleteButtons.isVisible = capabilities.showGridStructuralControls
 }
 
 internal fun placementAddModeButtonId(editorMode: KeyboardEditorMode): Int {
