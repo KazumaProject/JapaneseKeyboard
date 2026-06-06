@@ -581,16 +581,7 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        arguments
-            ?.getString(ARG_HIGHLIGHT_PREFERENCE_KEY)
-            ?.takeIf { it.isNotBlank() }
-            ?.let { preferenceKey ->
-                view.post {
-                    runCatching {
-                        scrollToPreference(preferenceKey)
-                    }
-                }
-            }
+        scrollToHighlightedPreferenceAfterLayout(view)
     }
 
     protected open fun onCommonPreferencesCreated() = Unit
