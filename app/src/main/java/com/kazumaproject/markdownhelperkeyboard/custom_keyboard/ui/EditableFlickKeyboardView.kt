@@ -92,7 +92,8 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         selectedItemId: String? = null,
         previewInsertedItemId: String? = null,
         previewMovedItemIds: Set<String> = emptySet(),
-        editTargetMode: EditTargetMode = EditTargetMode.CUSTOM_KEYBOARD
+        editTargetMode: EditTargetMode = EditTargetMode.CUSTOM_KEYBOARD,
+        showRowColumnDeleteButtons: Boolean = true
     ) {
         this.removeAllViews()
         this.editTargetMode = editTargetMode
@@ -161,6 +162,7 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         }
 
         if (editTargetMode != EditTargetMode.CUSTOM_KEYBOARD) return
+        if (!showRowColumnDeleteButtons) return
 
         editorBounds.rowDeleteSpecs(displayLayout.rowCount).forEachIndexed { i, rowSpecBounds ->
             val deleteButton = createDeleteButton { listener?.onRowDeleted(i) }

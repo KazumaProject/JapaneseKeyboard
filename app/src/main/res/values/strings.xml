@@ -498,6 +498,7 @@
     <string name="deleted_all_words_text">Deleted all words.</string>
     <string name="confirm_all_words_delete_message">This will delete all registered words. This action cannot be undone. Are you sure?</string>
     <string name="read_from_template">Load from templates</string>
+    <string name="show_row_column_delete_buttons">Show row/column delete buttons</string>
     <string name="template_flick_kana_cursor">Kana input (cursor)</string>
     <string name="template_flick_english_cursor">English input (cursor)</string>
     <string name="template_qwerty">QWERTY</string>
