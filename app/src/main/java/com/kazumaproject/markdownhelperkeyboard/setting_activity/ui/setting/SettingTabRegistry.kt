@@ -16,7 +16,7 @@ object SettingTabRegistry {
         val tabs = mutableListOf(
             SettingTabSpec(
                 title = { context -> context.getString(R.string.category_common) },
-                fragmentFactory = { CommonPreferenceFragment() },
+                fragmentFactory = { LegacyCommonPreferenceFragment() },
             ),
             SettingTabSpec(
                 title = { context -> context.getString(R.string.keyboardthemefragment) },

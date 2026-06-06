@@ -1051,6 +1051,7 @@
     <string name="setting_search_title">Search Settings</string>
     <string name="setting_search_hint">Search by setting name, description, or key</string>
     <string name="setting_search_result_count">%1$d results</string>
+    <string name="setting_search_initial_empty">Type a setting name or feature to search</string>
     <string name="setting_search_empty">No matching settings</string>
     <string name="setting_search_result_content_description">%1$s. %2$s. Category: %3$s</string>
     <string name="setting_frequent_edit_title">Customize Frequently Used</string>
@@ -1063,11 +1064,18 @@
     <string name="setting_switch_to_new_home">Switch to new settings screen</string>
     <string name="setting_switch_to_legacy_home">Switch to legacy settings screen</string>
     <string name="setting_frequent_selected_count">Selected %1$d items</string>
+    <string name="setting_frequent_available_title">Add Settings</string>
+    <string name="setting_frequent_search_hint">Search settings to add</string>
+    <string name="setting_frequent_available_empty">No settings can be added</string>
+    <string name="setting_frequent_category_all">All</string>
     <string name="setting_frequent_drag_reorder">Drag to reorder</string>
     <string name="setting_frequent_add">Add to frequently used settings</string>
+    <string name="setting_frequent_add_content_description">Add %1$s to frequently used settings</string>
     <string name="setting_frequent_remove">Remove from frequently used settings</string>
+    <string name="setting_frequent_remove_content_description">Remove %1$s from frequently used settings</string>
     <string name="setting_frequent_selected">Selected</string>
     <string name="setting_frequent_unselected">Not selected</string>
+    <string name="setting_frequent_available">Available to add</string>
     <string name="keyboard_selection_fragment_summary">Choose which keyboard layouts are available and their order</string>
     <string name="setting_status_enabled">On</string>
     <string name="setting_status_disabled">Off</string>

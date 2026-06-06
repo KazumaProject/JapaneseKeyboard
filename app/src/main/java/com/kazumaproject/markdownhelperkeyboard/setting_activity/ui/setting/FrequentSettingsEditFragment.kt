@@ -1,30 +1,19 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
-import android.annotation.SuppressLint
-import android.content.res.ColorStateList
 import android.os.Bundle
-import android.util.TypedValue
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import androidx.annotation.AttrRes
-import androidx.core.content.ContextCompat
-import androidx.core.view.AccessibilityDelegateCompat
-import androidx.core.view.ViewCompat
 import androidx.core.view.isVisible
-import androidx.core.view.accessibility.AccessibilityNodeInfoCompat
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.ItemTouchHelper
-import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.google.android.material.R as MaterialR
-import androidx.appcompat.R as AppCompatR
-import com.kazumaproject.core.R as CoreR
+import com.google.android.material.chip.Chip
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSettingFrequentEditBinding
-import com.kazumaproject.markdownhelperkeyboard.databinding.ItemSettingFrequentEditBinding
-import com.kazumaproject.markdownhelperkeyboard.databinding.ItemSettingFrequentHeaderBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -38,10 +27,15 @@ class FrequentSettingsEditFragment : Fragment() {
     @Inject
     lateinit var appPreference: AppPreference
 
+    private lateinit var candidates: List<SettingDestination>
+    private lateinit var selectedAdapter: FrequentSelectedSettingsAdapter
+    private lateinit var availableAdapter: FrequentAvailableSettingsAdapter
+
     private var selectedKeys: MutableList<String> = mutableListOf()
-    private var frequentAdapter: FrequentSettingsAdapter? = null
+    private var selectedCategoryFilter: SettingCategory? = null
     private var itemTouchHelper: ItemTouchHelper? = null
     private var pendingDragSave = false
+    private var chipFiltersById: Map<Int, FrequentCategoryFilter> = emptyMap()
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -54,32 +48,43 @@ class FrequentSettingsEditFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        candidates = SettingDestinations.frequentCandidates(requireContext())
         selectedKeys = normalizedSelectedKeys().toMutableList()
 
-        frequentAdapter = FrequentSettingsAdapter()
-        binding.settingFrequentEditRecyclerView.apply {
-            layoutManager = LinearLayoutManager(requireContext())
-            adapter = frequentAdapter
-        }
-        setupDragAndDrop()
-
-        binding.settingFrequentEditResetButton.setOnClickListener {
-            selectedKeys = SettingDestinations.defaultFrequent(requireContext())
-                .map { it.key }
-                .toMutableList()
-            saveSelection()
-            renderRows()
-        }
-        renderRows()
+        setupAdapters()
+        setupCategoryChips()
+        setupInputs()
+        renderAll()
     }
 
     override fun onDestroyView() {
         itemTouchHelper?.attachToRecyclerView(null)
         itemTouchHelper = null
-        binding.settingFrequentEditRecyclerView.adapter = null
-        frequentAdapter = null
+        binding.settingFrequentSelectedRecyclerView.adapter = null
+        binding.settingFrequentAvailableRecyclerView.adapter = null
         super.onDestroyView()
         _binding = null
+    }
+
+    private fun setupAdapters() {
+        selectedAdapter = FrequentSelectedSettingsAdapter(
+            onRemove = { destination -> remove(destination.key) },
+            onStartDrag = { viewHolder -> itemTouchHelper?.startDrag(viewHolder) },
+            onMove = { key, direction -> move(key, direction) },
+        )
+        availableAdapter = FrequentAvailableSettingsAdapter(
+            onAdd = { destination -> add(destination.key) },
+        )
+
+        binding.settingFrequentSelectedRecyclerView.apply {
+            layoutManager = GridLayoutManager(requireContext(), selectedColumnCount())
+            adapter = selectedAdapter
+        }
+        binding.settingFrequentAvailableRecyclerView.apply {
+            layoutManager = GridLayoutManager(requireContext(), availableColumnCount())
+            adapter = availableAdapter
+        }
+        setupDragAndDrop()
     }
 
     private fun setupDragAndDrop() {
@@ -88,15 +93,13 @@ class FrequentSettingsEditFragment : Fragment() {
                 override fun getMovementFlags(
                     recyclerView: RecyclerView,
                     viewHolder: RecyclerView.ViewHolder,
-                ): Int {
-                    val row = frequentAdapter?.destinationRowAt(viewHolder.bindingAdapterPosition)
-                    val dragFlags = if (row?.selected == true) {
-                        ItemTouchHelper.UP or ItemTouchHelper.DOWN
-                    } else {
-                        0
-                    }
-                    return makeMovementFlags(dragFlags, 0)
-                }
+                ): Int = makeMovementFlags(
+                    ItemTouchHelper.UP or
+                        ItemTouchHelper.DOWN or
+                        ItemTouchHelper.LEFT or
+                        ItemTouchHelper.RIGHT,
+                    0,
+                )
 
                 override fun isLongPressDragEnabled(): Boolean = false
 
@@ -107,24 +110,17 @@ class FrequentSettingsEditFragment : Fragment() {
                     source: RecyclerView.ViewHolder,
                     target: RecyclerView.ViewHolder,
                 ): Boolean {
-                    val fromRow =
-                        frequentAdapter?.destinationRowAt(source.bindingAdapterPosition)
-                            ?: return false
-                    val toRow =
-                        frequentAdapter?.destinationRowAt(target.bindingAdapterPosition)
-                            ?: return false
-                    if (!fromRow.selected || !toRow.selected) return false
-
-                    val moved = moveSelectedKeyToTarget(
-                        fromKey = fromRow.destination.key,
-                        toKey = toRow.destination.key,
-                    )
+                    val fromPosition = source.bindingAdapterPosition
+                    val toPosition = target.bindingAdapterPosition
+                    if (fromPosition == RecyclerView.NO_POSITION ||
+                        toPosition == RecyclerView.NO_POSITION
+                    ) {
+                        return false
+                    }
+                    val moved = moveSelectedPosition(fromPosition, toPosition)
                     if (moved) {
                         pendingDragSave = true
-                        frequentAdapter?.moveRow(
-                            source.bindingAdapterPosition,
-                            target.bindingAdapterPosition,
-                        )
+                        renderSelected()
                     }
                     return moved
                 }
@@ -140,7 +136,7 @@ class FrequentSettingsEditFragment : Fragment() {
                     if (pendingDragSave) {
                         pendingDragSave = false
                         saveSelection()
-                        renderRows()
+                        renderSelected()
                     }
                 }
 
@@ -155,63 +151,101 @@ class FrequentSettingsEditFragment : Fragment() {
                 }
             }
         ).also { helper ->
-            helper.attachToRecyclerView(binding.settingFrequentEditRecyclerView)
+            helper.attachToRecyclerView(binding.settingFrequentSelectedRecyclerView)
         }
     }
 
-    private fun renderRows() {
-        val candidates = SettingDestinations.frequentCandidates(requireContext())
-        val byKey = candidates.associateBy { it.key }
-        val selectedDestinations = selectedKeys.mapNotNull { byKey[it] }
-        val unselectedDestinations = candidates.filterNot { it.key in selectedKeys }
-        val rows = buildList {
-            add(
-                FrequentSettingsRow.Header(
-                    id = "selected",
-                    title = getString(
-                        R.string.setting_frequent_selected_count,
-                        selectedDestinations.size,
-                    ),
-                )
-            )
-            selectedDestinations.forEachIndexed { index, destination ->
-                add(
-                    FrequentSettingsRow.DestinationRow(
-                        destination = destination,
-                        selected = true,
-                        selectedIndex = index,
-                    )
-                )
+    private fun setupCategoryChips() {
+        val filters = buildCategoryFilters()
+        val idMap = mutableMapOf<Int, FrequentCategoryFilter>()
+        binding.settingFrequentCategoryChipGroup.removeAllViews()
+        filters.forEachIndexed { index, filter ->
+            val chip = Chip(requireContext()).apply {
+                id = View.generateViewId()
+                text = filter.title
+                isCheckable = true
+                isChecked = index == 0
             }
-            add(
-                FrequentSettingsRow.Header(
-                    id = "unselected",
-                    title = getString(R.string.setting_frequent_unselected),
-                )
-            )
-            unselectedDestinations.forEach { destination ->
-                add(
-                    FrequentSettingsRow.DestinationRow(
-                        destination = destination,
-                        selected = false,
-                        selectedIndex = RecyclerView.NO_POSITION,
-                    )
-                )
-            }
+            binding.settingFrequentCategoryChipGroup.addView(chip)
+            idMap[chip.id] = filter
         }
-
-        frequentAdapter?.submitRows(rows)
-        binding.settingFrequentEditEmptyText.isVisible = selectedKeys.isEmpty()
+        chipFiltersById = idMap
+        binding.settingFrequentCategoryChipGroup.setOnCheckedStateChangeListener { _, checkedIds ->
+            selectedCategoryFilter = checkedIds.firstOrNull()?.let { chipFiltersById[it]?.category }
+            renderAvailable()
+        }
     }
 
-    private fun toggle(key: String, checked: Boolean) {
-        selectedKeys = if (checked) {
-            (selectedKeys + key).distinct().toMutableList()
-        } else {
-            selectedKeys.filterNot { it == key }.toMutableList()
+    private fun setupInputs() {
+        binding.settingFrequentEditResetButton.setOnClickListener {
+            selectedKeys = SettingDestinations.defaultFrequent(requireContext())
+                .map { it.key }
+                .toMutableList()
+            saveSelection()
+            renderAll()
         }
+        binding.settingFrequentAvailableSearchInput.addTextChangedListener(
+            object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    renderAvailable()
+                }
+                override fun afterTextChanged(s: Editable?) = Unit
+            }
+        )
+    }
+
+    private fun renderAll() {
+        renderSelected()
+        renderAvailable()
+    }
+
+    private fun renderSelected() {
+        val selectedDestinations = selectedKeys.mapNotNull { candidateByKey()[it] }
+        val countText = getString(
+            R.string.setting_frequent_selected_count,
+            selectedDestinations.size,
+        )
+        binding.settingFrequentSelectedCountText.apply {
+            text = countText
+            contentDescription = countText
+        }
+        binding.settingFrequentEditEmptyText.isVisible = selectedDestinations.isEmpty()
+        binding.settingFrequentSelectedRecyclerView.isVisible = selectedDestinations.isNotEmpty()
+        selectedAdapter.submitList(selectedDestinations)
+    }
+
+    private fun renderAvailable() {
+        val selectedKeySet = selectedKeys.toSet()
+        val availableCandidates = candidates
+            .filterNot { it.key in selectedKeySet }
+            .filter { destination ->
+                selectedCategoryFilter == null ||
+                    destination.frequentFilterCategory() == selectedCategoryFilter
+            }
+        val query = binding.settingFrequentAvailableSearchInput.text?.toString().orEmpty()
+        val filteredCandidates = SettingSearchIndex.filter(
+            context = requireContext(),
+            destinations = availableCandidates,
+            query = query,
+        )
+        binding.settingFrequentAvailableEmptyText.isVisible = filteredCandidates.isEmpty()
+        binding.settingFrequentAvailableRecyclerView.isVisible = filteredCandidates.isNotEmpty()
+        availableAdapter.submitList(filteredCandidates)
+    }
+
+    private fun add(key: String) {
+        if (key !in candidateByKey() || key in selectedKeys) return
+        selectedKeys = (selectedKeys + key).distinct().toMutableList()
         saveSelection()
-        renderRows()
+        renderAll()
+    }
+
+    private fun remove(key: String) {
+        if (key !in selectedKeys) return
+        selectedKeys = selectedKeys.filterNot { it == key }.toMutableList()
+        saveSelection()
+        renderAll()
     }
 
     private fun move(key: String, direction: Int): Boolean {
@@ -220,30 +254,25 @@ class FrequentSettingsEditFragment : Fragment() {
         if (currentIndex !in selectedKeys.indices || targetIndex !in selectedKeys.indices) {
             return false
         }
-        selectedKeys = selectedKeys.toMutableList().apply {
-            val item = removeAt(currentIndex)
-            add(targetIndex, item)
-        }
+        moveSelectedPosition(currentIndex, targetIndex)
         saveSelection()
-        renderRows()
+        renderSelected()
         return true
     }
 
-    private fun moveSelectedKeyToTarget(fromKey: String, toKey: String): Boolean {
-        val fromIndex = selectedKeys.indexOf(fromKey)
-        val toIndex = selectedKeys.indexOf(toKey)
-        if (fromIndex !in selectedKeys.indices || toIndex !in selectedKeys.indices) {
+    private fun moveSelectedPosition(fromPosition: Int, toPosition: Int): Boolean {
+        if (fromPosition !in selectedKeys.indices || toPosition !in selectedKeys.indices) {
             return false
         }
+        if (fromPosition == toPosition) return false
         selectedKeys = selectedKeys.toMutableList().apply {
-            val item = removeAt(fromIndex)
-            add(toIndex, item)
+            val item = removeAt(fromPosition)
+            add(toPosition, item)
         }
         return true
     }
 
     private fun normalizedSelectedKeys(): List<String> {
-        val candidates = SettingDestinations.frequentCandidates(requireContext())
         val allowedKeys = candidates.map { it.key }.toSet()
         val saved = appPreference.setting_home_frequent_keys
             .filter { it in allowedKeys }
@@ -252,270 +281,123 @@ class FrequentSettingsEditFragment : Fragment() {
             saved
         } else {
             SettingDestinations.defaultFrequent(requireContext()).map { it.key }
-        }
+        }.filter { it in allowedKeys }.distinct()
         appPreference.setting_home_frequent_keys = normalized
         return normalized
     }
 
     private fun saveSelection() {
-        val allowedKeys = SettingDestinations.frequentCandidates(requireContext())
-            .map { it.key }
-            .toSet()
+        val allowedKeys = candidates.map { it.key }.toSet()
         val normalized = selectedKeys.filter { it in allowedKeys }.distinct()
         selectedKeys = normalized.toMutableList()
         appPreference.setting_home_frequent_keys = normalized
     }
 
-    private fun resolveColor(@AttrRes attr: Int): Int {
-        val value = TypedValue()
-        requireContext().theme.resolveAttribute(attr, value, true)
-        return if (value.resourceId != 0) {
-            ContextCompat.getColor(requireContext(), value.resourceId)
-        } else {
-            value.data
+    private fun candidateByKey(): Map<String, SettingDestination> =
+        candidates.associateBy { it.key }
+
+    private fun selectedColumnCount(): Int =
+        if (resources.configuration.screenWidthDp >= 600) 3 else 2
+
+    private fun availableColumnCount(): Int =
+        if (resources.configuration.screenWidthDp >= 600) 2 else 1
+
+    private fun buildCategoryFilters(): List<FrequentCategoryFilter> {
+        val availableCategories = candidates.map { it.frequentFilterCategory() }.toSet()
+        val desiredCategories = listOf(
+            SettingCategory.KEYBOARD_DISPLAY,
+            SettingCategory.INPUT_METHOD,
+            SettingCategory.CANDIDATE_CONVERSION,
+            SettingCategory.DICTIONARY,
+            SettingCategory.AI_CONVERSION,
+            SettingCategory.CLIPBOARD_SHORTCUT,
+            SettingCategory.OPERATION_FEEDBACK,
+        )
+        return buildList {
+            add(FrequentCategoryFilter(getString(R.string.setting_frequent_category_all), null))
+            desiredCategories
+                .filter { it in availableCategories }
+                .forEach { category ->
+                    add(
+                        FrequentCategoryFilter(
+                            title = SettingDestinations.categoryTitle(requireContext(), category),
+                            category = category,
+                        )
+                    )
+                }
         }
     }
 
-    private fun dp(value: Int): Int =
-        (value * resources.displayMetrics.density).toInt()
-
-    private sealed class FrequentSettingsRow {
-        data class Header(
-            val id: String,
-            val title: String,
-        ) : FrequentSettingsRow()
-
-        data class DestinationRow(
-            val destination: SettingDestination,
-            val selected: Boolean,
-            val selectedIndex: Int,
-        ) : FrequentSettingsRow()
-    }
-
-    private inner class FrequentSettingsAdapter :
-        RecyclerView.Adapter<RecyclerView.ViewHolder>() {
-
-        private var rows: List<FrequentSettingsRow> = emptyList()
-
-        fun submitRows(nextRows: List<FrequentSettingsRow>) {
-            rows = nextRows
-            notifyDataSetChanged()
+    private fun SettingDestination.frequentFilterCategory(): SettingCategory {
+        if (category != SettingCategory.FREQUENT) return category
+        val destinationId = when (val target = destination) {
+            is SettingDestinationType.NavDestination -> target.destinationId
         }
+        return when (destinationId) {
+            R.id.keyboardDisplayPreferenceFragment,
+            R.id.keyboardSettingFragment,
+            R.id.keyboardSizeLandscapeFragment,
+            R.id.keyboardThemeFragment,
+            R.id.candidateViewHeightSettingFragment,
+            R.id.candidateHeightLandscapeSettingFragment,
+            R.id.keyCandidateLetterSizeFragment,
+            -> SettingCategory.KEYBOARD_DISPLAY
 
-        fun destinationRowAt(position: Int): FrequentSettingsRow.DestinationRow? =
-            rows.getOrNull(position) as? FrequentSettingsRow.DestinationRow
+            R.id.inputMethodPreferenceFragment,
+            R.id.keyboardSelectionFragment,
+            R.id.kanaPreferenceFragment,
+            R.id.qwertyPreferenceFragment,
+            R.id.sumirePreferenceFragment,
+            R.id.customKeyboardPreferenceFragment,
+            R.id.tabletPreferenceFragment,
+            R.id.hardwareKeyboardPreferenceFragment,
+            R.id.tenKeyCandidateLetterSizeFragment,
+            R.id.tenKeyPopupStyleSettingFragment,
+            R.id.qwertyMarginSettingFragment,
+            R.id.qwertyNumberKeyFlickSettingFragment,
+            R.id.qwertyPopupStyleSettingFragment,
+            R.id.flickKeyboardPopupStyleListFragment,
+            R.id.flickKeyboardSizeSettingsFragment,
+            R.id.circularFlickSettingsFragment,
+            R.id.circularSlotActionSettingFragment,
+            R.id.sumireSpecialKeyEditorFragment,
+            -> SettingCategory.INPUT_METHOD
 
-        fun moveRow(fromPosition: Int, toPosition: Int) {
-            if (fromPosition !in rows.indices || toPosition !in rows.indices) return
-            rows = rows.toMutableList().apply {
-                val item = removeAt(fromPosition)
-                add(toPosition, item)
-            }
-            notifyItemMoved(fromPosition, toPosition)
-        }
+            R.id.candidateConversionPreferenceFragment,
+            R.id.candidateTabOrderFragment,
+            R.id.candidateOrderOverrideFragment,
+            -> SettingCategory.CANDIDATE_CONVERSION
 
-        override fun getItemViewType(position: Int): Int =
-            when (rows[position]) {
-                is FrequentSettingsRow.Header -> VIEW_TYPE_HEADER
-                is FrequentSettingsRow.DestinationRow -> VIEW_TYPE_DESTINATION
-            }
+            R.id.dictionaryPreferenceFragment,
+            R.id.systemUserDictionaryBuilderFragment,
+            R.id.externalDictionarySettingsFragment,
+            R.id.ngramRuleFragment,
+            R.id.ngWordFragment,
+            -> SettingCategory.DICTIONARY
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
-            val inflater = LayoutInflater.from(parent.context)
-            return when (viewType) {
-                VIEW_TYPE_HEADER -> HeaderViewHolder(
-                    ItemSettingFrequentHeaderBinding.inflate(inflater, parent, false)
-                )
+            R.id.aiConversionPreferenceFragment,
+            R.id.zenzPreferenceFragment,
+            R.id.gemmaPreferenceFragment,
+            R.id.gemmaPromptTemplateFragment,
+            -> SettingCategory.AI_CONVERSION
 
-                else -> DestinationViewHolder(
-                    ItemSettingFrequentEditBinding.inflate(inflater, parent, false)
-                )
-            }
-        }
+            R.id.clipboardShortcutPreferenceFragment,
+            R.id.clipboardHistoryFragment,
+            R.id.shortcutSettingFragment,
+            -> SettingCategory.CLIPBOARD_SHORTCUT
 
-        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
-            when (val row = rows[position]) {
-                is FrequentSettingsRow.Header -> (holder as HeaderViewHolder).bind(row)
-                is FrequentSettingsRow.DestinationRow -> (holder as DestinationViewHolder).bind(row)
-            }
-        }
+            R.id.operationFeedbackPreferenceFragment,
+            R.id.deleteKeyFlickTargetsFragment,
+            R.id.cursorMoveTargetPairsFragment,
+            R.id.physicalKeyboardShortcutListFragment,
+            -> SettingCategory.OPERATION_FEEDBACK
 
-        override fun getItemCount(): Int = rows.size
-
-        private inner class HeaderViewHolder(
-            private val binding: ItemSettingFrequentHeaderBinding,
-        ) : RecyclerView.ViewHolder(binding.root) {
-            fun bind(row: FrequentSettingsRow.Header) {
-                binding.settingFrequentHeaderText.text = row.title
-            }
-        }
-
-        private inner class DestinationViewHolder(
-            private val binding: ItemSettingFrequentEditBinding,
-        ) : RecyclerView.ViewHolder(binding.root) {
-
-            @SuppressLint("ClickableViewAccessibility")
-            fun bind(row: FrequentSettingsRow.DestinationRow) {
-                val destination = row.destination
-                val selected = row.selected
-                val actionDescription = getString(
-                    if (selected) {
-                        R.string.setting_frequent_remove
-                    } else {
-                        R.string.setting_frequent_add
-                    }
-                )
-                val statusDescription = getString(
-                    if (selected) {
-                        R.string.setting_frequent_selected
-                    } else {
-                        R.string.setting_frequent_unselected
-                    }
-                )
-
-                binding.settingFrequentCard.apply {
-                    setCardBackgroundColor(
-                        resolveColor(
-                            if (selected) {
-                                MaterialR.attr.colorSurfaceVariant
-                            } else {
-                                MaterialR.attr.colorSurface
-                            }
-                        )
-                    )
-                    strokeWidth = dp(1)
-                    setStrokeColor(
-                        resolveColor(
-                            if (selected) {
-                                AppCompatR.attr.colorPrimary
-                            } else {
-                                MaterialR.attr.colorOutline
-                            }
-                        )
-                    )
-                    contentDescription = listOf(
-                        destination.title,
-                        destination.summary,
-                        statusDescription,
-                        actionDescription,
-                    ).filter { it.isNotBlank() }.joinToString(". ")
-                    setOnClickListener { toggle(destination.key, !selected) }
-                }
-
-                binding.settingFrequentDragHandle.apply {
-                    alpha = if (selected) 1f else 0.34f
-                    isEnabled = selected
-                    imageTintList = ColorStateList.valueOf(
-                        resolveColor(
-                            if (selected) {
-                                MaterialR.attr.colorOnSurfaceVariant
-                            } else {
-                                MaterialR.attr.colorOutline
-                            }
-                        )
-                    )
-                    contentDescription = getString(R.string.setting_frequent_drag_reorder)
-                    setOnTouchListener { _, event ->
-                        if (selected && event.actionMasked == MotionEvent.ACTION_DOWN) {
-                            itemTouchHelper?.startDrag(this@DestinationViewHolder)
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                }
-
-                binding.settingFrequentIcon.apply {
-                    setImageResource(destination.iconRes)
-                    imageTintList =
-                        ColorStateList.valueOf(resolveColor(AppCompatR.attr.colorPrimary))
-                }
-
-                binding.settingFrequentTitle.text = destination.title
-                binding.settingFrequentSummary.text = destination.summary
-
-                binding.settingFrequentActionIcon.apply {
-                    setImageResource(
-                        if (selected) {
-                            CoreR.drawable.baseline_check_24
-                        } else {
-                            CoreR.drawable.baseline_add_circle_outline_24
-                        }
-                    )
-                    imageTintList = ColorStateList.valueOf(
-                        resolveColor(
-                            if (selected) {
-                                AppCompatR.attr.colorPrimary
-                            } else {
-                                MaterialR.attr.colorOnSurfaceVariant
-                            }
-                        )
-                    )
-                    contentDescription = actionDescription
-                }
-
-                setAccessibilityMoveActions(row)
-            }
-
-            private fun setAccessibilityMoveActions(row: FrequentSettingsRow.DestinationRow) {
-                ViewCompat.setAccessibilityDelegate(
-                    binding.settingFrequentCard,
-                    object : AccessibilityDelegateCompat() {
-                        override fun onInitializeAccessibilityNodeInfo(
-                            host: View,
-                            info: AccessibilityNodeInfoCompat,
-                        ) {
-                            super.onInitializeAccessibilityNodeInfo(host, info)
-                            if (!row.selected) return
-
-                            if (row.selectedIndex > 0) {
-                                info.addAction(
-                                    AccessibilityNodeInfoCompat.AccessibilityActionCompat(
-                                        R.id.setting_frequent_action_move_up,
-                                        getString(
-                                            R.string.setting_frequent_move_up,
-                                            row.destination.title,
-                                        ),
-                                    )
-                                )
-                            }
-                            if (row.selectedIndex in 0 until selectedKeys.lastIndex) {
-                                info.addAction(
-                                    AccessibilityNodeInfoCompat.AccessibilityActionCompat(
-                                        R.id.setting_frequent_action_move_down,
-                                        getString(
-                                            R.string.setting_frequent_move_down,
-                                            row.destination.title,
-                                        ),
-                                    )
-                                )
-                            }
-                        }
-
-                        override fun performAccessibilityAction(
-                            host: View,
-                            action: Int,
-                            args: Bundle?,
-                        ): Boolean {
-                            if (row.selected) {
-                                when (action) {
-                                    R.id.setting_frequent_action_move_up ->
-                                        return move(row.destination.key, -1)
-
-                                    R.id.setting_frequent_action_move_down ->
-                                        return move(row.destination.key, 1)
-                                }
-                            }
-                            return super.performAccessibilityAction(host, action, args)
-                        }
-                    }
-                )
-            }
+            else -> SettingCategory.ADVANCED
         }
     }
 
-    private companion object {
-        const val VIEW_TYPE_HEADER = 0
-        const val VIEW_TYPE_DESTINATION = 1
-    }
+    private data class FrequentCategoryFilter(
+        val title: String,
+        val category: SettingCategory?,
+    )
 }
