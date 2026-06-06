@@ -284,6 +284,8 @@ object AppPreference {
 
     private val SHORTCUT_TOOLBAR_VISIBILITY_PREFERENCE =
         Pair("shortcut_toolbar_visibility_preference", false)
+    private val SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE =
+        Pair("shortcut_toolbar_integrated_in_suggestion_preference", false)
 
     private val APP_THEME_SEED_COLOR = Pair("app_theme_seed_color_preference", 0x00000000)
 
@@ -1575,6 +1577,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SHORTCUT_TOOLBAR_VISIBILITY_PREFERENCE.first, value)
+        }
+
+    var shortcut_toolbar_integrated_in_suggestion_preference: Boolean
+        get() = preferences.getBoolean(
+            SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE.first,
+            SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE.first, value)
         }
 
     var seedColor: Int

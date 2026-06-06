@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.graphics.PorterDuff
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.StateListDrawable
 import android.text.SpannableString
@@ -32,6 +33,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeybo
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
+import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -101,6 +103,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         const val VIEW_TYPE_SUGGESTION = 1
         const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
         const val VIEW_TYPE_GEMMA_ACTION = 3
+        const val VIEW_TYPE_SHORTCUT = 4
     }
 
     enum class HelperIcon {
@@ -113,6 +116,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var onItemHelperIconClickListener: ((HelperIcon) -> Unit)? = null
     private var onItemHelperIconLongClickListener: ((HelperIcon) -> Unit)? = null
     private var onCustomLayoutItemClickListener: ((Int) -> Unit)? = null
+    private var onShortcutItemClickListener: ((ShortcutType) -> Unit)? = null
     private var onShowSoftKeyboardClick: (() -> Unit)? = null
 
     private val adapterScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -135,6 +139,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var customLayouts: List<CustomKeyboardLayout> = emptyList()
 
     private var showCustomTab: Boolean = true
+
+    private var shortcutItems: List<ShortcutType> = emptyList()
+    private var showIntegratedShortcuts: Boolean = false
+    private var shortcutIconColor: Int? = null
 
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
 
@@ -166,6 +174,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         this.onCustomLayoutItemClickListener = listener
     }
 
+    fun setOnShortcutItemClickListener(listener: (ShortcutType) -> Unit) {
+        this.onShortcutItemClickListener = listener
+    }
+
     fun setOnPhysicalKeyboardListener(listener: () -> Unit) {
         this.onShowSoftKeyboardClick = listener
     }
@@ -176,6 +188,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onItemHelperIconClickListener = null
         onItemHelperIconLongClickListener = null
         onCustomLayoutItemClickListener = null
+        onShortcutItemClickListener = null
         onShowSoftKeyboardClick = null
         onListUpdated = null
         incognitoIconDrawable = null
@@ -249,6 +262,38 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         clipboardText = "" // 画像設定時にテキストはクリア
         if (suggestions.isEmpty()) {
             notifyItemChanged(0)
+        }
+    }
+
+    fun isShowingClipboardPreviewForEmptyState(): Boolean {
+        return isPasteEnabled && (clipboardBitmap != null || clipboardText.isNotBlank())
+    }
+
+    fun isShowingCustomLayoutPicker(): Boolean {
+        return currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty() && showCustomTab
+    }
+
+    fun setShortcutItems(items: List<ShortcutType>) {
+        if (shortcutItems == items) return
+        shortcutItems = items
+        if (suggestions.isEmpty()) {
+            notifyDataSetChanged()
+        }
+    }
+
+    fun setIntegratedShortcutVisibility(visible: Boolean) {
+        if (showIntegratedShortcuts == visible) return
+        showIntegratedShortcuts = visible
+        if (suggestions.isEmpty()) {
+            notifyDataSetChanged()
+        }
+    }
+
+    fun setShortcutIconColor(color: Int) {
+        if (shortcutIconColor == color) return
+        shortcutIconColor = color
+        if (showIntegratedShortcuts && suggestions.isEmpty()) {
+            notifyItemRangeChanged(0, itemCount)
         }
     }
 
@@ -342,6 +387,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val nameTextView: MaterialTextView = itemView.findViewById(R.id.custom_layout_name)
     }
 
+    inner class ShortcutViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val imageView: ImageView = itemView.findViewById(R.id.item_image)
+    }
+
     override fun getItemViewType(position: Int): Int {
         return if (suggestions.isNotEmpty()) {
             if (suggestions[position].isSelectedTextGemmaActionCandidate()) {
@@ -350,8 +399,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 VIEW_TYPE_SUGGESTION
             }
         } else {
-            if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty() && showCustomTab) {
+            if (isShowingCustomLayoutPicker()) {
                 VIEW_TYPE_CUSTOM_LAYOUT_PICKER
+            } else if (shouldShowIntegratedShortcuts()) {
+                VIEW_TYPE_SHORTCUT
             } else {
                 VIEW_TYPE_EMPTY
             }
@@ -362,7 +413,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         return if (suggestions.isNotEmpty()) {
             suggestions.size
         } else {
-            if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
+            if (shouldShowIntegratedShortcuts()) {
+                shortcutItems.size
+            } else if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
                 customLayouts.size
             } else {
                 1
@@ -403,6 +456,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 GemmaActionViewHolder(itemView)
             }
 
+            VIEW_TYPE_SHORTCUT -> {
+                val itemView = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.item_shortcut, parent, false)
+                ShortcutViewHolder(itemView)
+            }
+
             else -> throw IllegalArgumentException("Unknown view type: $viewType")
         }
     }
@@ -415,6 +474,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             )
             VIEW_TYPE_GEMMA_ACTION -> onBindGemmaActionViewHolder(
                 holder as GemmaActionViewHolder, position
+            )
+
+            VIEW_TYPE_SHORTCUT -> onBindShortcutViewHolder(
+                holder as ShortcutViewHolder, position
             )
 
             VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> onBindCustomLayoutViewHolder(
@@ -564,6 +627,29 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 setOnLongClickListener {
                     onItemHelperIconLongClickListener?.invoke(HelperIcon.PASTE)
                     true
+                }
+            }
+        }
+    }
+
+    private fun shouldShowIntegratedShortcuts(): Boolean {
+        return showIntegratedShortcuts && shortcutItems.isNotEmpty() && !isShowingCustomLayoutPicker()
+    }
+
+    private fun onBindShortcutViewHolder(holder: ShortcutViewHolder, position: Int) {
+        val item = shortcutItems.getOrNull(position) ?: return
+        holder.imageView.apply {
+            setImageResource(item.iconResId)
+            contentDescription = item.description
+            shortcutIconColor?.let { color ->
+                setColorFilter(color, PorterDuff.Mode.SRC_IN)
+            } ?: clearColorFilter()
+        }
+        holder.itemView.setOnClickListener {
+            val adapterPosition = holder.bindingAdapterPosition
+            if (adapterPosition != RecyclerView.NO_POSITION) {
+                shortcutItems.getOrNull(adapterPosition)?.let { shortcutType ->
+                    onShortcutItemClickListener?.invoke(shortcutType)
                 }
             }
         }

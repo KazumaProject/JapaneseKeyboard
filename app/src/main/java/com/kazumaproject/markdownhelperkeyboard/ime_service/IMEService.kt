@@ -692,6 +692,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var landscapeForceQwertyPreference: Boolean? = false
     private var landscapeForceQwertyRomajiPreference: Boolean? = false
     private var shortcutTollbarVisibility: Boolean? = false
+    private var shortcutToolbarIntegratedInSuggestion: Boolean? = false
+    private var shortcutToolbarHiddenForCandidates: Boolean = false
     private var clipboardPreviewVisibility: Boolean? = true
     private var clipboardPreviewTapToDelete: Boolean? = false
     private var isDeleteLeftFlickPreference: Boolean? = true
@@ -1238,6 +1240,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainLayoutBinding?.apply {
                         setMainSuggestionColumn(this)
                         suggestionRecyclerView.scrollToPosition(0)
+                        updateShortcutToolbarPresentation(this)
                     }
                 }
             }
@@ -1407,6 +1410,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
         resetAllFlags()
+        shortcutToolbarHiddenForCandidates = false
         physicalKeyboardFloatingXPosition = 200
         physicalKeyboardFloatingYPosition = 150
         _suggestionViewStatus.update { true }
@@ -1422,6 +1426,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         resetKeyboard()
         initializeMozcDictionaries(preferences)
         suggestionAdapter?.updateCustomTabVisibility(preferences.customKeyboardSuggestionPreference)
+        mainLayoutBinding?.let { updateShortcutToolbarPresentation(it) }
     }
 
     private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
@@ -1566,6 +1571,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         landscapeForceQwertyPreference = preferences.landscapeForceQwertyPreference
         landscapeForceQwertyRomajiPreference = preferences.landscapeForceQwertyRomajiPreference
         shortcutTollbarVisibility = preferences.shortcutTollbarVisibility
+        shortcutToolbarIntegratedInSuggestion = preferences.shortcutToolbarIntegratedInSuggestion
         isDeleteLeftFlickPreference = preferences.isDeleteLeftFlickPreference
         isDeleteUpFlickPreference = preferences.isDeleteUpFlickPreference
         isDeleteDownFlickPreference = preferences.isDeleteDownFlickPreference
@@ -2559,7 +2565,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     candidatesRowView.adapter = suggestionAdapterFull
                 }
                 candidateTabLayout.visibility = View.INVISIBLE
-                shortcutToolbarRecyclerview.isVisible = shortcutTollbarVisibility == true
+                updateShortcutToolbarPresentation(this)
                 val currentKeyboardType = keyboardOrder.getOrNull(currentKeyboardOrder)
                 if (shouldSwitchTenkeyEnglishToQwerty() && currentInputModeForSession == InputMode.ModeEnglish && currentKeyboardType == KeyboardType.TENKEY) {
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
@@ -2703,6 +2709,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         landscapeForceQwertyPreference = null
         landscapeForceQwertyRomajiPreference = null
         shortcutTollbarVisibility = null
+        shortcutToolbarIntegratedInSuggestion = null
+        shortcutToolbarHiddenForCandidates = false
         clipboardPreviewVisibility = null
         clipboardPreviewTapToDelete = null
         isDeleteLeftFlickPreference = null
@@ -3526,6 +3534,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setPasteEnabled(false)
             }
         }
+        mainLayoutBinding?.let { updateShortcutToolbarPresentation(it) }
 
         val tail = stringInTail.get()
         val hasTail = tail.isNotEmpty()
@@ -5447,6 +5456,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyView.setRomajiEnglishSwitchKeyVisibility(false)
             setNumberLayoutTo(customLayoutDefault)
             suggestionRecyclerView.isVisible = true
+            updateShortcutToolbarPresentation(this)
         }
         syncFloatingKeyboardContentForMode(TenKeyQWERTYMode.Number)
         renderCurrentKeyboardStateOnActiveSurface()
@@ -8498,6 +8508,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.w("fallbackFromCustomKeyboardIfNeeded: keyboardOrder is empty")
             suggestionAdapter?.updateState(TenKeyQWERTYMode.Default, emptyList())
             showKeyboard(KeyboardType.TENKEY, source = "fallbackFromCustomKeyboardIfNeeded.emptyOrder")
+            mainLayoutBinding?.let { updateShortcutToolbarPresentation(it) }
             return
         }
 
@@ -8513,6 +8524,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ?.let { currentKeyboardOrder = it }
         suggestionAdapter?.updateState(TenKeyQWERTYMode.Default, emptyList())
         showKeyboard(fallbackType, source = "fallbackFromCustomKeyboardIfNeeded")
+        mainLayoutBinding?.let { updateShortcutToolbarPresentation(it) }
     }
 
     private fun onCustomKeyboardLayoutsChanged(newLayouts: List<CustomKeyboardLayout>) {
@@ -8560,6 +8572,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
             suggestionAdapter?.updateState(TenKeyQWERTYMode.Custom, customLayouts)
+            mainLayoutBinding?.let { updateShortcutToolbarPresentation(it) }
             renderCustomKeyboardLayout(selectedLayout)
             syncFloatingKeyboardContentForMode(qwertyMode.value)
             renderCurrentKeyboardStateOnActiveSurface()
@@ -10093,6 +10106,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setPasteEnabled(false)
             }
         }
+        mainLayoutBinding?.let { updateShortcutToolbarPresentation(it) }
     }
 
     /**
@@ -10141,6 +10155,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
+        mainLayoutBinding?.let { updateShortcutToolbarPresentation(it) }
     }
 
     private fun pasteImageAction(bitmap: Bitmap) {
@@ -11858,7 +11873,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (candidateTabVisibility == true) {
                         mainView.candidateTabLayout.isVisible = true
                     }
-                    if (shortcutTollbarVisibility == true) {
+                    shortcutToolbarHiddenForCandidates = true
+                    suggestionAdapter?.setIntegratedShortcutVisibility(false)
+                    if (shouldUseIndependentShortcutToolbar()) {
                         mainView.shortcutToolbarRecyclerview.isInvisible = true
                     } else {
                         mainView.shortcutToolbarRecyclerview.isVisible = false
@@ -11869,6 +11886,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         clearZenzLiveSlot("suggestion idle")
                         suggestionAdapter?.suggestions = emptyList()
                         if (stringInTail.get().isEmpty()) {
+                            shortcutToolbarHiddenForCandidates = false
                             if (isKeyboardFloatingMode == true) {
                                 if (!suppressSuggestions) {
                                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
@@ -11905,8 +11923,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             mainView.candidateTabLayout.isVisible = false
                             val tab = mainView.candidateTabLayout.getTabAt(0)
                             mainView.candidateTabLayout.selectTab(tab)
-                            mainView.shortcutToolbarRecyclerview.isVisible =
-                                shortcutTollbarVisibility == true
                         }
                         suggestionAdapter?.apply {
                             if (deletedBuffer.isEmpty()) {
@@ -11953,9 +11969,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 setPasteEnabled(false)
                             }
                         }
+                        updateShortcutToolbarPresentation(mainView)
                     }
 
                     CandidateShowFlag.Updating -> {
+                        shortcutToolbarHiddenForCandidates = true
                         setSuggestionOnView(insertString, mainView)
                     }
                 }
@@ -11989,9 +12007,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setKeyboardSizeForHeightSymbol(mainView, isSymbolKeyboardShow.isShown)
                 }
                 mainView.apply {
-                    if (shortcutTollbarVisibility == true) {
-                        shortcutToolbarRecyclerview.isVisible = !isSymbolKeyboardShow.isShown
-                    }
+                    updateShortcutToolbarPresentation(mainView)
                     if (isSymbolKeyboardShow.isShown) {
                         when {
                             customLayoutDefault.isVisible -> {
@@ -12126,6 +12142,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     }
                 }
+                updateShortcutToolbarPresentation(mainView)
                 syncFloatingKeyboardContentForMode(it)
                 renderCurrentKeyboardStateOnActiveSurface()
                 updateFloatingKeyboardSizeForMode(it)
@@ -12276,6 +12293,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             shortCurRepository.enabledShortcutsFlow.collectLatest {
                 shortcutAdapter?.submitList(it)
+                suggestionAdapter?.setShortcutItems(it)
+                updateShortcutToolbarPresentation(mainView)
             }
         }
 
@@ -12969,7 +12988,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val finalKeyboardHeight = when {
             addCandidateTabHeight && candidateTabVisibility == true -> baseKeyboardHeight + mainView.candidateTabLayout.height
-            !addCandidateTabHeight && shortcutTollbarVisibility == true && !isSymbol -> baseKeyboardHeight + mainView.shortcutToolbarRecyclerview.height
+            !addCandidateTabHeight && shouldUseIndependentShortcutToolbar() && !isSymbol -> baseKeyboardHeight + mainView.shortcutToolbarRecyclerview.height
             else -> baseKeyboardHeight
         }
 
@@ -13058,7 +13077,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         finalStartMargin: Int,
         finalEndMargin: Int
     ) {
-        if (shortcutTollbarVisibility == true) {
+        if (shouldUseIndependentShortcutToolbar()) {
             (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
                 param.bottomMargin = heightPx + mainView.suggestionViewParent.height
                 mainView.shortcutToolbarRecyclerview.layoutParams = param
@@ -14946,6 +14965,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 setClipboardPreview("")
                                 setPasteEnabled(false)
                             }
+                            updateShortcutToolbarPresentation(mainView)
                         }
                     }
                 }
@@ -14970,6 +14990,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setClipboardPreview("")
                             setPasteEnabled(false)
                         }
+                        updateShortcutToolbarPresentation(mainView)
                     }
                 }
             }
@@ -14978,6 +14999,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     index = position,
                     reason = CustomKeyboardSelectionReason.UserTabClick
                 )
+            }
+            adapter.setOnShortcutItemClickListener { type ->
+                handleShortcutAction(type, mainView)
             }
         }
         suggestionAdapterFull?.let { adapter ->
@@ -15056,6 +15080,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setClipboardPreview("")
                             setPasteEnabled(false)
                         }
+                        mainLayoutBinding?.let { updateShortcutToolbarPresentation(it) }
                     }
                 }
             }
@@ -15140,7 +15165,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         return when (adapter?.getItemViewType(position)) {
                             // If the item is the empty view or the custom layout picker,
                             // make it span all columns.
-                            SuggestionAdapter.VIEW_TYPE_EMPTY, SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> spanCount
+                            SuggestionAdapter.VIEW_TYPE_EMPTY,
+                            SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER,
+                            SuggestionAdapter.VIEW_TYPE_SHORTCUT -> spanCount
                             // Otherwise (for regular suggestions), make it span just one column.
                             else -> 1
                         }
@@ -15166,6 +15193,105 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return suggestions.isNotEmpty() && suggestions.all { isSelectedTextGemmaActionCandidate(it) }
     }
 
+    private fun isShortcutToolbarIntegratedEnabled(): Boolean {
+        return shortcutTollbarVisibility == true && shortcutToolbarIntegratedInSuggestion == true
+    }
+
+    private fun shouldUseIndependentShortcutToolbar(): Boolean {
+        return shortcutTollbarVisibility == true && shortcutToolbarIntegratedInSuggestion != true
+    }
+
+    private fun resolveShortcutToolbarPresentation(): ShortcutToolbarPresentation {
+        val adapter = suggestionAdapter
+        return ShortcutToolbarPresentationPolicy.resolve(
+            ShortcutToolbarPresentationState(
+                shortcutToolbarVisible = shortcutTollbarVisibility == true,
+                integratedInSuggestion = shortcutToolbarIntegratedInSuggestion == true,
+                inputStringEmpty = inputString.value.isEmpty(),
+                tailEmpty = stringInTail.get().isEmpty(),
+                clipboardPreviewShown = adapter?.isShowingClipboardPreviewForEmptyState() == true,
+                selectedTextGemmaActionsShown = shouldUseSelectedTextGemmaActionLayout(),
+                suggestionsEmpty = adapter?.suggestions.orEmpty().isEmpty(),
+                customLayoutPickerShown = adapter?.isShowingCustomLayoutPicker() == true,
+                symbolKeyboardShown = keyboardSymbolViewState.value.isShown
+            )
+        )
+    }
+
+    private fun shouldShowIntegratedShortcutItems(): Boolean {
+        if (!isShortcutToolbarIntegratedEnabled()) return false
+        return resolveShortcutToolbarPresentation().showIntegratedShortcuts
+    }
+
+    private fun updateShortcutToolbarPresentation(mainView: MainLayoutBinding) {
+        val presentation = resolveShortcutToolbarPresentation()
+        val showIntegrated = shouldShowIntegratedShortcutItems()
+
+        suggestionAdapter?.setIntegratedShortcutVisibility(showIntegrated)
+        if (presentation.showIndependentToolbar && shortcutToolbarHiddenForCandidates) {
+            mainView.shortcutToolbarRecyclerview.isInvisible = true
+        } else {
+            mainView.shortcutToolbarRecyclerview.isVisible = presentation.showIndependentToolbar
+        }
+    }
+
+    private fun handleShortcutAction(type: ShortcutType, mainView: MainLayoutBinding) {
+        when (type) {
+            ShortcutType.SETTINGS -> {
+                launchSettingsActivity("setting_fragment_request")
+            }
+
+            ShortcutType.EMOJI -> {
+                vibrate()
+                _keyboardSymbolViewState.value = SymbolKeyboardState(
+                    isShown = !_keyboardSymbolViewState.value.isShown
+                )
+                stringInTail.set("")
+                finishComposingText()
+                setComposingText("", 0)
+            }
+
+            ShortcutType.TEMPLATE -> {
+                showUserTemplateListPopup()
+            }
+
+            ShortcutType.KEYBOARD_PICKER -> {
+                showKeyboardPicker()
+            }
+
+            ShortcutType.SELECT_ALL -> {
+                selectAllText()
+            }
+
+            ShortcutType.COPY -> {
+                copyAction()
+            }
+
+            ShortcutType.PASTE -> {
+                pasteAction()
+            }
+
+            ShortcutType.DATE_PICKER -> {
+                showCurrentDateListPopup()
+            }
+
+            ShortcutType.VOICE_INPUT -> {
+                startVoiceInput(mainView)
+            }
+
+            ShortcutType.CLIP_BOARD -> {
+                vibrate()
+                _keyboardSymbolViewState.value = SymbolKeyboardState(
+                    isShown = true,
+                    mode = SymbolMode.CLIPBOARD
+                )
+                stringInTail.set("")
+                finishComposingText()
+                setComposingText("", 0)
+            }
+        }
+    }
+
     private fun setShortCutAdapter(
         mainView: MainLayoutBinding
     ) {
@@ -15177,66 +15303,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         when (keyboardThemeMode) {
             "custom" -> {
                 shortcutAdapter?.setIconColor(customThemeShortcutIconColor ?: Color.BLACK)
+                suggestionAdapter?.setShortcutIconColor(customThemeShortcutIconColor ?: Color.BLACK)
             }
 
             else -> {
             }
         }
         shortcutAdapter?.onItemClicked = { type ->
-            when (type) {
-                ShortcutType.SETTINGS -> {
-                    launchSettingsActivity("setting_fragment_request")
-                }
-
-                ShortcutType.EMOJI -> {
-                    vibrate()
-                    _keyboardSymbolViewState.value = SymbolKeyboardState(
-                        isShown = !_keyboardSymbolViewState.value.isShown
-                    )
-                    stringInTail.set("")
-                    finishComposingText()
-                    setComposingText("", 0)
-                }
-
-                ShortcutType.TEMPLATE -> {
-                    showUserTemplateListPopup()
-                }
-
-                ShortcutType.KEYBOARD_PICKER -> {
-                    showKeyboardPicker()
-                }
-
-                ShortcutType.SELECT_ALL -> {
-                    selectAllText()
-                }
-
-                ShortcutType.COPY -> {
-                    copyAction()
-                }
-
-                ShortcutType.PASTE -> {
-                    pasteAction()
-                }
-
-                ShortcutType.DATE_PICKER -> {
-                    showCurrentDateListPopup()
-                }
-
-                ShortcutType.VOICE_INPUT -> {
-                    startVoiceInput(mainView)
-                }
-
-                ShortcutType.CLIP_BOARD -> {
-                    vibrate()
-                    _keyboardSymbolViewState.value = SymbolKeyboardState(
-                        isShown = true,
-                        mode = SymbolMode.CLIPBOARD
-                    )
-                    stringInTail.set("")
-                    finishComposingText()
-                    setComposingText("", 0)
-                }
-            }
+            handleShortcutAction(type, mainView)
         }
     }
 
@@ -19301,8 +19375,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val tab = mainView.candidateTabLayout.getTabAt(0)
             mainView.candidateTabLayout.selectTab(tab)
         }
-        mainView.shortcutToolbarRecyclerview.isVisible =
-            shortcutTollbarVisibility == true
+        updateShortcutToolbarPresentation(mainView)
         setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
     }
 
@@ -19324,8 +19397,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val tab = mainView.candidateTabLayout.getTabAt(0)
             mainView.candidateTabLayout.selectTab(tab)
         }
-        mainView.shortcutToolbarRecyclerview.isVisible =
-            shortcutTollbarVisibility == true
+        updateShortcutToolbarPresentation(mainView)
         setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
     }
 
