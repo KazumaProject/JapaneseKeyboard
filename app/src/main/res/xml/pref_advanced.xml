@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/setting_category_advanced_title">
+
+        <Preference
+            android:icon="@drawable/language_24dp"
+            android:key="custom_romaji_preference"
+            android:title="@string/custom_romaji_title"
+            app:summary="@string/custom_romaji_summary" />
+
+        <Preference
+            android:icon="@drawable/lightbulb_24dp"
+            android:key="setting_route_zenz_preferences"
+            android:summary="@string/setting_route_zenz_advanced_summary"
+            android:title="zenz" />
+
+        <Preference
+            android:icon="@drawable/lightbulb_24dp"
+            android:key="setting_route_gemma_preferences"
+            android:summary="@string/setting_route_gemma_advanced_summary"
+            android:title="Gemma" />
+
+        <Preference
+            android:key="setting_route_common_preferences"
+            android:summary="@string/setting_route_common_preferences_summary"
+            android:title="@string/category_common" />
+
+        <Preference
+            android:key="setting_route_legacy_settings"
+            android:summary="@string/setting_route_legacy_settings_summary"
+            android:title="@string/setting_route_legacy_settings_title" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/setting_category_existing_detail_title">
+
+        <Preference
+            android:key="setting_route_kana_preferences"
+            android:summary="@string/setting_route_kana_summary"
+            android:title="@string/category_kana" />
+
+        <Preference
+            android:key="setting_route_qwerty_preferences"
+            android:summary="@string/setting_route_qwerty_summary"
+            android:title="QWERTY" />
+
+        <Preference
+            android:key="setting_route_sumire_preferences"
+            android:summary="@string/setting_route_sumire_summary"
+            android:title="@string/category_sumire_input_keyboard_title" />
+
+        <Preference
+            android:key="setting_route_custom_keyboard_preferences"
+            android:summary="@string/setting_route_custom_keyboard_summary"
+            android:title="@string/category_custom_keyboard_title" />
+
+        <Preference
+            android:key="setting_route_tablet_preferences"
+            android:summary="@string/setting_route_tablet_summary"
+            android:title="@string/tablet_preference_category_title" />
+
+        <Preference
+            android:key="setting_route_hardware_keyboard_preferences"
+            android:summary="@string/setting_route_hardware_keyboard_summary"
+            android:title="@string/hardware_keyboard_category_title" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
