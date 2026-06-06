@@ -45,7 +45,7 @@ class FrequentSelectedSettingsAdapter(
         @SuppressLint("ClickableViewAccessibility")
         fun bind(destination: SettingDestination, position: Int, count: Int) {
             val context = binding.root.context
-            val summary = destination.summary
+            val summary = destination.editSummary(context)
 
             binding.settingFrequentCard.apply {
                 isClickable = false
@@ -181,7 +181,7 @@ class FrequentAvailableSettingsAdapter(
 
         fun bind(destination: SettingDestination) {
             val context = binding.root.context
-            val summary = destination.summary
+            val summary = destination.editSummary(context)
 
             binding.settingFrequentCard.apply {
                 isClickable = true
@@ -251,3 +251,20 @@ private fun android.content.Context.resolveThemeColor(@AttrRes attr: Int): Int {
         value.data
     }
 }
+
+private fun SettingDestination.editSummary(context: android.content.Context): String =
+    listOf(summary, destination.typeLabel(context))
+        .filter { it.isNotBlank() }
+        .joinToString(" / ")
+
+private fun SettingDestinationType.typeLabel(context: android.content.Context): String =
+    when (this) {
+        is SettingDestinationType.NavDestination ->
+            context.getString(R.string.setting_frequent_type_nav)
+        is SettingDestinationType.SwitchPreference ->
+            context.getString(R.string.setting_frequent_type_switch)
+        is SettingDestinationType.ListPreference ->
+            context.getString(R.string.setting_frequent_type_list)
+        is SettingDestinationType.IntPreferenceDialog ->
+            context.getString(R.string.setting_frequent_type_number)
+    }

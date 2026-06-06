@@ -54,9 +54,7 @@ object SettingSearchIndex {
             readPreferenceXml(context, source)
         }
         return (topLevel + xmlItems).distinctBy { destination ->
-            val targetId = when (val target = destination.destination) {
-                is SettingDestinationType.NavDestination -> target.destinationId
-            }
+            val targetId = SettingDestinations.destinationId(destination.destination)
             "${destination.key}:${destination.category}:$targetId"
         }
     }

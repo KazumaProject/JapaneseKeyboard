@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.content.Context
+import androidx.annotation.ArrayRes
 import androidx.annotation.DrawableRes
 import androidx.annotation.IdRes
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -25,6 +26,33 @@ sealed class SettingDestinationType {
     data class NavDestination(
         @IdRes val destinationId: Int,
         val highlightPreferenceKey: String? = null,
+    ) : SettingDestinationType()
+
+    data class SwitchPreference(
+        val preferenceKey: String,
+        val defaultValue: Boolean,
+        @IdRes val destinationId: Int,
+        val highlightPreferenceKey: String? = preferenceKey,
+    ) : SettingDestinationType()
+
+    data class ListPreference(
+        val preferenceKey: String,
+        @ArrayRes val entriesResId: Int,
+        @ArrayRes val entryValuesResId: Int,
+        val defaultValue: String,
+        @IdRes val destinationId: Int,
+        val highlightPreferenceKey: String? = preferenceKey,
+    ) : SettingDestinationType()
+
+    data class IntPreferenceDialog(
+        val preferenceKey: String,
+        val min: Int,
+        val max: Int,
+        val step: Int,
+        val defaultValue: Int,
+        val unit: String,
+        @IdRes val destinationId: Int,
+        val highlightPreferenceKey: String? = preferenceKey,
     ) : SettingDestinationType()
 }
 
@@ -541,6 +569,23 @@ object SettingDestinations {
             else -> null
         }
 
+    @IdRes
+    fun destinationId(destinationType: SettingDestinationType): Int? =
+        when (destinationType) {
+            is SettingDestinationType.NavDestination -> destinationType.destinationId
+            is SettingDestinationType.SwitchPreference -> destinationType.destinationId
+            is SettingDestinationType.ListPreference -> destinationType.destinationId
+            is SettingDestinationType.IntPreferenceDialog -> destinationType.destinationId
+        }
+
+    fun highlightPreferenceKey(destinationType: SettingDestinationType): String? =
+        when (destinationType) {
+            is SettingDestinationType.NavDestination -> destinationType.highlightPreferenceKey
+            is SettingDestinationType.SwitchPreference -> destinationType.highlightPreferenceKey
+            is SettingDestinationType.ListPreference -> destinationType.highlightPreferenceKey
+            is SettingDestinationType.IntPreferenceDialog -> destinationType.highlightPreferenceKey
+        }
+
     fun destination(
         key: String,
         title: String,
@@ -563,11 +608,135 @@ object SettingDestinations {
             summary = summary,
             category = category,
             keywords = localizedKeywords,
-            destination = SettingDestinationType.NavDestination(
+            destination = directDestinationTypeForKey(
+                key = key,
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey,
+            ) ?: SettingDestinationType.NavDestination(
                 destinationId = destinationId,
                 highlightPreferenceKey = highlightPreferenceKey,
             ),
             iconRes = iconRes,
         )
     }
+
+    private fun directDestinationTypeForKey(
+        key: String,
+        @IdRes destinationId: Int,
+        highlightPreferenceKey: String?,
+    ): SettingDestinationType? =
+        when (key) {
+            "keyboard_floating_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "landscape_force_qwerty_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "flick_input_only_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "live_conversion_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "enable_typo_correction_japanese_flick_keyboard_preference" ->
+                switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "enable_typo_correction_qwerty_english_keyboard_preference" ->
+                switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "omission_search_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "reconversion_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "candidate_tab_visibility_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "undo_enable_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "vibration_preference" -> switchPreference(key, true, destinationId, highlightPreferenceKey)
+            "key_sound_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "clipboard_preview_enable_preference" -> switchPreference(key, true, destinationId, highlightPreferenceKey)
+            "shortcut_toolbar_visibility_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
+            "shortcut_toolbar_integrated_in_suggestion_preference" ->
+                switchPreference(key, false, destinationId, highlightPreferenceKey)
+
+            "candidate_column_preference" -> SettingDestinationType.ListPreference(
+                preferenceKey = key,
+                entriesResId = CoreR.array.candidate_column_entries,
+                entryValuesResId = CoreR.array.candidate_column_values,
+                defaultValue = "1",
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            "symbol_mode_preference" -> SettingDestinationType.ListPreference(
+                preferenceKey = key,
+                entriesResId = CoreR.array.symbol_mode_entries,
+                entryValuesResId = CoreR.array.symbol_mode_values,
+                defaultValue = "EMOJI",
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            "default_emoji_skin_tone_preference" -> SettingDestinationType.ListPreference(
+                preferenceKey = key,
+                entriesResId = R.array.default_emoji_skin_tone_entries,
+                entryValuesResId = R.array.default_emoji_skin_tone_values,
+                defaultValue = "default",
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            "gemma_translation_target_language_preference" -> SettingDestinationType.ListPreference(
+                preferenceKey = key,
+                entriesResId = R.array.gemma_translation_target_language_entries,
+                entryValuesResId = R.array.gemma_translation_target_language_values,
+                defaultValue = "en",
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            "flick_sensitivity_preference" -> SettingDestinationType.IntPreferenceDialog(
+                preferenceKey = key,
+                min = 1,
+                max = 200,
+                step = 5,
+                defaultValue = 100,
+                unit = "",
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            "long_press_timeout_preference" -> SettingDestinationType.IntPreferenceDialog(
+                preferenceKey = key,
+                min = 100,
+                max = 2000,
+                step = 1,
+                defaultValue = 300,
+                unit = "ms",
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            "live_conversion_start_length_preference" -> SettingDestinationType.IntPreferenceDialog(
+                preferenceKey = key,
+                min = 1,
+                max = 10,
+                step = 1,
+                defaultValue = 1,
+                unit = "",
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            "zenz_debounce_time_preference" -> SettingDestinationType.IntPreferenceDialog(
+                preferenceKey = key,
+                min = 0,
+                max = 1024,
+                step = 10,
+                defaultValue = 300,
+                unit = "ms",
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            else -> null
+        }
+
+    private fun switchPreference(
+        key: String,
+        defaultValue: Boolean,
+        @IdRes destinationId: Int,
+        highlightPreferenceKey: String?,
+    ) = SettingDestinationType.SwitchPreference(
+        preferenceKey = key,
+        defaultValue = defaultValue,
+        destinationId = destinationId,
+        highlightPreferenceKey = highlightPreferenceKey ?: key,
+    )
 }
