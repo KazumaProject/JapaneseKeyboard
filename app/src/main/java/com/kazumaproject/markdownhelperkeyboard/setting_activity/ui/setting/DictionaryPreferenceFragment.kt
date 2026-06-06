@@ -39,32 +39,32 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
 
         findPreference<Preference>("ng_word_preference")?.setOnPreferenceClickListener {
             navigateSafely(
-                R.id.action_navigation_setting_to_ngWordFragment
+                R.id.ngWordFragment
             )
             true
         }
 
         findPreference<Preference>("system_user_dictionary_builder_preference")?.setOnPreferenceClickListener {
             navigateSafely(
-                R.id.action_navigation_setting_to_systemUserDictionaryBuilderFragment
+                R.id.systemUserDictionaryBuilderFragment
             )
             true
         }
 
         findPreference<Preference>("n_gram_rule_preference")?.setOnPreferenceClickListener {
             navigateSafely(
-                R.id.action_navigation_setting_to_ngramRuleFragment
+                R.id.ngramRuleFragment
             )
             true
         }
 
         findPreference<Preference>("candidate_order_override_preference")?.setOnPreferenceClickListener {
-            navigateSafely(R.id.action_navigation_setting_to_candidateOrderOverrideFragment)
+            navigateSafely(R.id.candidateOrderOverrideFragment)
             true
         }
 
         findPreference<Preference>("external_dictionary_settings_preference")?.setOnPreferenceClickListener {
-            navigateSafely(R.id.action_navigation_setting_to_externalDictionarySettingsFragment)
+            navigateSafely(R.id.externalDictionarySettingsFragment)
             true
         }
 
