@@ -7,16 +7,30 @@ import androidx.annotation.XmlRes
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import org.xmlpull.v1.XmlPullParser
+import java.text.Normalizer
+import java.util.Locale
 
 object SettingSearchIndex {
 
     private const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
     private const val APP_NS = "http://schemas.android.com/apk/res-auto"
+    private const val SINGLE_CHARACTER_RESULT_LIMIT = 20
+    private const val MULTI_CHARACTER_RESULT_LIMIT = 50
 
     private data class PreferenceXmlSource(
         @XmlRes val xmlRes: Int,
         @IdRes val destinationId: Int,
         val category: SettingCategory,
+    )
+
+    private data class ParsedSearchQuery(
+        val normalized: String,
+        val tokens: List<String>,
+    )
+
+    private data class ScoredDestination(
+        val destination: SettingDestination,
+        val score: Int,
     )
 
     private val highlightableDestinations = setOf(
@@ -47,6 +61,38 @@ object SettingSearchIndex {
         }
     }
 
+    fun search(
+        context: Context,
+        destinations: List<SettingDestination>,
+        query: String,
+    ): List<SettingDestination> {
+        val parsedQuery = parseQuery(query)
+        if (parsedQuery.tokens.isEmpty()) return emptyList()
+        val limit = if (parsedQuery.normalized.filterNot { it.isWhitespace() }.length <= 1) {
+            SINGLE_CHARACTER_RESULT_LIMIT
+        } else {
+            MULTI_CHARACTER_RESULT_LIMIT
+        }
+        return rankedMatches(context, destinations, parsedQuery).take(limit)
+    }
+
+    fun filter(
+        context: Context,
+        destinations: List<SettingDestination>,
+        query: String,
+    ): List<SettingDestination> {
+        val parsedQuery = parseQuery(query)
+        if (parsedQuery.tokens.isEmpty()) return stableSort(context, destinations)
+        return rankedMatches(context, destinations, parsedQuery)
+    }
+
+    fun normalizeForSearch(text: String): String =
+        Normalizer.normalize(text, Normalizer.Form.NFKC)
+            .lowercase(Locale.ROOT)
+            .replace(Regex("[_\\-.]+"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+
     fun destinationsForKeys(
         context: Context,
         keys: List<String>,
@@ -59,6 +105,99 @@ object SettingSearchIndex {
             .distinctBy { it.key }
             .sortedBy { order[it.key] ?: Int.MAX_VALUE }
     }
+
+    private fun parseQuery(query: String): ParsedSearchQuery {
+        val normalized = normalizeForSearch(query)
+        return ParsedSearchQuery(
+            normalized = normalized,
+            tokens = normalized.split(' ').filter { it.isNotBlank() },
+        )
+    }
+
+    private fun rankedMatches(
+        context: Context,
+        destinations: List<SettingDestination>,
+        query: ParsedSearchQuery,
+    ): List<SettingDestination> =
+        destinations
+            .mapNotNull { destination ->
+                score(context, destination, query)?.let { score ->
+                    ScoredDestination(destination, score)
+                }
+            }
+            .sortedWith(
+                compareByDescending<ScoredDestination> { it.score }
+                    .thenBy { it.destination.category.ordinal }
+                    .thenBy { it.destination.title }
+                    .thenBy { it.destination.key }
+            )
+            .map { it.destination }
+
+    private fun stableSort(
+        context: Context,
+        destinations: List<SettingDestination>,
+    ): List<SettingDestination> =
+        destinations.sortedWith(
+            compareBy<SettingDestination> { it.category.ordinal }
+                .thenBy { SettingDestinations.categoryTitle(context, it.category) }
+                .thenBy { it.title }
+                .thenBy { it.key }
+        )
+
+    private fun score(
+        context: Context,
+        destination: SettingDestination,
+        query: ParsedSearchQuery,
+    ): Int? {
+        val normalizedTitle = normalizeForSearch(destination.title)
+        val normalizedKey = normalizeForSearch(destination.key)
+        val normalizedSummary = normalizeForSearch(destination.summary)
+        val normalizedCategory =
+            normalizeForSearch(SettingDestinations.categoryTitle(context, destination.category))
+        val coreFields = setOf(normalizedTitle, normalizedKey, normalizedSummary)
+        val normalizedKeywords = destination.keywords
+            .map(::normalizeForSearch)
+            .filter { it.isNotBlank() && it !in coreFields }
+
+        var score = 0
+        query.tokens.forEach { token ->
+            score += scoreToken(
+                token = token,
+                title = normalizedTitle,
+                key = normalizedKey,
+                keywords = normalizedKeywords,
+                summary = normalizedSummary,
+                category = normalizedCategory,
+            ) ?: return null
+        }
+
+        if (normalizedTitle == query.normalized) {
+            score += 100_000
+        } else if (normalizedTitle.startsWith(query.normalized)) {
+            score += 8_000
+        }
+
+        return score
+    }
+
+    private fun scoreToken(
+        token: String,
+        title: String,
+        key: String,
+        keywords: List<String>,
+        summary: String,
+        category: String,
+    ): Int? =
+        when {
+            title == token -> 10_000
+            title.startsWith(token) -> 8_000
+            title.contains(token) -> 6_000
+            key.contains(token) -> 4_500
+            keywords.any { it.contains(token) } -> 3_500
+            summary.contains(token) -> 2_500
+            category.contains(token) -> 1_500
+            else -> null
+        }
 
     private fun sources(): List<PreferenceXmlSource> = buildList {
         add(PreferenceXmlSource(R.xml.pref_keyboard_display, R.id.keyboardDisplayPreferenceFragment, SettingCategory.KEYBOARD_DISPLAY))
