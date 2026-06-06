@@ -185,6 +185,13 @@
             app:summary="@string/shortcut_toolbar_summary" />
 
         <SwitchPreferenceCompat
+            android:dependency="shortcut_toolbar_visibility_preference"
+            android:key="shortcut_toolbar_integrated_in_suggestion_preference"
+            android:title="@string/shortcut_toolbar_integrated_in_suggestion_title"
+            app:defaultValue="false"
+            app:summary="@string/shortcut_toolbar_integrated_in_suggestion_summary" />
+
+        <SwitchPreferenceCompat
             android:key="candidate_tab_visibility_preference"
             android:title="@string/candidate_tab"
             app:defaultValue="false"
