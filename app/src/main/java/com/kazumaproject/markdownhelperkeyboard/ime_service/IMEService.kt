@@ -177,6 +177,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCan
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateEmptyPopupThemeColors
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME2
@@ -774,6 +775,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var customThemeCandidateTextColor: Int? = Color.BLACK
     private var customThemeCandidateItemBgColor: Int? = Color.TRANSPARENT
     private var customThemeCandidateItemPressedBgColor: Int? = Color.WHITE
+    private var customThemeCandidateEmptyPopupBgColor: Int? = Color.GRAY
+    private var customThemeCandidateEmptyPopupTextColor: Int? = Color.BLACK
     private var customThemeShortcutIconColor: Int? = Color.BLACK
 
     private var liquidGlassThemePreference: Boolean? = false
@@ -1666,6 +1669,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customThemeCandidateTextColor = preferences.customThemeCandidateTextColor
         customThemeCandidateItemBgColor = preferences.customThemeCandidateItemBgColor
         customThemeCandidateItemPressedBgColor = preferences.customThemeCandidateItemPressedBgColor
+        customThemeCandidateEmptyPopupBgColor =
+            preferences.customThemeCandidateEmptyPopupBgColor
+        customThemeCandidateEmptyPopupTextColor =
+            preferences.customThemeCandidateEmptyPopupTextColor
         customThemeShortcutIconColor = preferences.customThemeShortcutIconColor
         liquidGlassThemePreference = preferences.liquidGlassThemePreference
         liquidGlassBlurRadiousPreference = preferences.liquidGlassBlurRadiousPreference
@@ -2781,6 +2788,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         customThemeCandidateTextColor = null
         customThemeCandidateItemBgColor = null
         customThemeCandidateItemPressedBgColor = null
+        customThemeCandidateEmptyPopupBgColor = null
+        customThemeCandidateEmptyPopupTextColor = null
         customThemeShortcutIconColor = null
 
         vibrationTimingStr = null
@@ -3166,6 +3175,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private fun applyCandidateEmptyPopupThemeToAdapters() {
+        val adapters = listOfNotNull(suggestionAdapter, suggestionAdapterFull)
+        if (keyboardThemeMode != "custom") {
+            adapters.forEach { adapter ->
+                adapter.clearCandidateEmptyPopupColors()
+            }
+            return
+        }
+
+        val colors = resolveCandidateEmptyPopupThemeColors(
+            popupBackgroundColor = customThemeCandidateEmptyPopupBgColor,
+            popupTextColor = customThemeCandidateEmptyPopupTextColor,
+            specialKeyColor = customThemeSpecialKeyColor,
+            specialKeyTextColor = customThemeSpecialKeyTextColor,
+            defaultBackgroundColor = Color.WHITE,
+            defaultTextColor = Color.BLACK,
+        )
+        adapters.forEach { adapter ->
+            adapter.setCandidateEmptyPopupColors(
+                backgroundColor = colors.backgroundColor,
+                textColor = colors.textColor,
+            )
+        }
+    }
+
     private fun setupKeyboardView() {
         Timber.d("setupKeyboardView: Called")
         val isDynamicColorsEnable = DynamicColors.isDynamicColorAvailable()
@@ -3344,16 +3378,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                                 ?: ContextCompat.getColor(
                                                     this@IMEService,
                                                     com.kazumaproject.core.R.color.qwety_key_bg_color
-                                                )
+                                            )
                                         )
                                     }
-                                suggestionAdapter?.setCandidateEmptyDrawableColor(
-                                    customThemeSpecialKeyColor ?: Color.WHITE
-                                )
-
-                                suggestionAdapter?.setCandidateEmptyDrawableTextColor(
-                                    customThemeSpecialKeyTextColor ?: Color.BLACK
-                                )
 
                                 root.setDrawableSolidColor(customThemeBgColor ?: Color.WHITE)
                                 suggestionViewParent.setDrawableSolidColor(
@@ -3401,6 +3428,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                         }
                     }
+                    applyCandidateEmptyPopupThemeToAdapters()
                     mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
                     mainView.root.clipToOutline = isKeyboardRounded == true
                     applyKeyboardBackgroundIfNeeded(mainView)
