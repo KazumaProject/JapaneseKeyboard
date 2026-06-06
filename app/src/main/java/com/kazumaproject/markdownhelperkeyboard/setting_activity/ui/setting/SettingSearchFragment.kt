@@ -106,13 +106,10 @@ class SettingSearchFragment : Fragment() {
     }
 
     private fun navigateTo(destination: SettingDestination) {
-        when (val target = destination.destination) {
-            is SettingDestinationType.NavDestination -> {
-                val args = target.highlightPreferenceKey?.let { key ->
-                    bundleOf(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY to key)
-                }
-                navigateSafely(target.destinationId, args)
-            }
+        val destinationId = SettingDestinations.destinationId(destination.destination) ?: return
+        val args = SettingDestinations.highlightPreferenceKey(destination.destination)?.let { key ->
+            bundleOf(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY to key)
         }
+        navigateSafely(destinationId, args)
     }
 }
