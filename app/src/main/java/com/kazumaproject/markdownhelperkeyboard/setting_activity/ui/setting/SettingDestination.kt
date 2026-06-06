@@ -58,7 +58,8 @@ object SettingDestinations {
         return defaultKeys.mapNotNull { candidates[it] }
     }
 
-    fun frequentCandidates(context: Context): List<SettingDestination> = buildList {
+    fun frequentCandidates(context: Context): List<SettingDestination> {
+        val manualDestinations = buildList {
         add(
             destination(
                 key = "keyboard_screen_preference",
@@ -239,7 +240,69 @@ object SettingDestinations {
                 iconRes = CoreR.drawable.more_vert_24px,
             )
         )
+        }
+        val xmlDestinations = SettingSearchIndex.destinationsForKeys(
+            context = context,
+            keys = frequentCandidatePreferenceKeys,
+        )
+        return (manualDestinations + xmlDestinations).distinctBy { it.key }
     }
+
+    private val frequentCandidatePreferenceKeys = listOf(
+        "keyboard_floating_preference",
+        "landscape_force_qwerty_preference",
+        "keyboard_key_letter_size_fragment_preference",
+        "keyboard_background_image_select_preference",
+        "keyboard_background_video_select_preference",
+        "round_corner_keyboard_preference",
+        "keyboard_corner_radius_dp_preference",
+        "candidate_column_preference",
+        "candidate_tab_visibility_preference",
+        "candidate_tab_order_preference",
+        "live_conversion_preference",
+        "live_conversion_start_length_preference",
+        "enable_typo_correction_japanese_flick_keyboard_preference",
+        "enable_typo_correction_qwerty_english_keyboard_preference",
+        "omission_search_preference",
+        "reconversion_preference",
+        "keyboard_selection_preference",
+        "setting_route_sumire_preferences",
+        "setting_route_kana_preferences",
+        "setting_route_qwerty_preferences",
+        "setting_route_custom_keyboard_preferences",
+        "setting_route_tablet_preferences",
+        "flick_input_only_preference",
+        "flick_sensitivity_preference",
+        "long_press_timeout_preference",
+        "delete_key_flick_left_preference",
+        "undo_enable_preference",
+        "vibration_preference",
+        "key_sound_preference",
+        "space_key_preference",
+        "clipboard_history_preference_fragment",
+        "clipboard_preview_enable_preference",
+        "shortcut_toolbar_visibility_preference",
+        "shortcut_toolbar_integrated_in_suggestion_preference",
+        "shortcut_toolbar_item_preference",
+        "symbol_mode_preference",
+        "default_emoji_skin_tone_preference",
+        "system_user_dictionary_builder_preference",
+        "external_dictionary_settings_preference",
+        "n_gram_rule_preference",
+        "candidate_order_override_preference",
+        "ng_word_preference",
+        "learn_dictionary_preference",
+        "user_dictionary_preference",
+        "user_template_preference",
+        "enable_ai_conversion_zenz_preference",
+        "enable_zenz_rerank_preference",
+        "zenz_model_select_preference",
+        "enable_zenz_right_context_preference",
+        "zenz_debounce_time_preference",
+        "gemma_translation_enable_preference",
+        "gemma_translation_target_language_preference",
+        "gemma_prompt_template_management_preference",
+    )
 
     fun categories(context: Context): List<SettingDestination> = listOf(
         destination(

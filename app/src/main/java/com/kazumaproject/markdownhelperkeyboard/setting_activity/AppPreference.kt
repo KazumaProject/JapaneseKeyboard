@@ -262,6 +262,8 @@ object AppPreference {
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
     private val SETTING_HOME_FREQUENT_KEYS =
         Pair("setting_home_frequent_keys_preference", "")
+    private val SETTING_USE_NEW_HOME_SCREEN =
+        Pair("setting_use_new_home_screen_preference", true)
 
     private val defaultCandidateTabJson = gson.toJson(
         listOf(
@@ -1027,6 +1029,15 @@ object AppPreference {
 
     val has_setting_home_frequent_keys: Boolean
         get() = preferences.contains(SETTING_HOME_FREQUENT_KEYS.first)
+
+    var setting_use_new_home_screen_preference: Boolean
+        get() = preferences.getBoolean(
+            SETTING_USE_NEW_HOME_SCREEN.first,
+            SETTING_USE_NEW_HOME_SCREEN.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SETTING_USE_NEW_HOME_SCREEN.first, value)
+        }
 
     var candidate_tab_order: List<CandidateTab>
         get() {
