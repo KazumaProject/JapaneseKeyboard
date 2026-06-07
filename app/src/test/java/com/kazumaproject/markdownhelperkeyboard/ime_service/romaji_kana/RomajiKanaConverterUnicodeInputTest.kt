@@ -80,6 +80,24 @@ class RomajiKanaConverterUnicodeInputTest {
         assertEquals(Pair("か", 1), lastResult)
     }
 
+    @Test
+    fun handleUnicodeCharZenkaku_keepsNormalizedPhysicalRomajiSymbols() {
+        val converter = newZenkakuConverter()
+
+        assertEquals(Pair("、", 0), converter.handleUnicodeCharZenkaku('、'.code))
+        assertEquals(Pair("。", 0), converter.handleUnicodeCharZenkaku('。'.code))
+        assertEquals(Pair("ー", 0), converter.handleUnicodeCharZenkaku('ー'.code))
+    }
+
+    @Test
+    fun handleUnicodeChar_keepsNormalizedPhysicalRomajiSymbols() {
+        val converter = newConverter()
+
+        assertEquals(Pair("、", 0), converter.handleUnicodeChar('、'.code))
+        assertEquals(Pair("。", 0), converter.handleUnicodeChar('。'.code))
+        assertEquals(Pair("ー", 0), converter.handleUnicodeChar('ー'.code))
+    }
+
     private fun type(text: String): TypedResult {
         val converter = newConverter()
         var composing = ""
