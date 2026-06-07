@@ -16,7 +16,6 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
-import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
@@ -110,6 +109,54 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         UNDO, REDO, RECONVERT, PASTE
     }
 
+    private sealed class SuggestionDisplayItem {
+        data class CandidateItem(
+            val candidate: Candidate,
+            val candidateIndex: Int,
+        ) : SuggestionDisplayItem()
+
+        data class GemmaActionItem(
+            val candidate: Candidate,
+            val candidateIndex: Int,
+        ) : SuggestionDisplayItem()
+
+        data class HelperActionsItem(
+            val state: HelperActionsState,
+        ) : SuggestionDisplayItem()
+
+        data class ShortcutItem(
+            val shortcutType: ShortcutType,
+        ) : SuggestionDisplayItem()
+
+        data class CustomLayoutItem(
+            val layout: CustomKeyboardLayout,
+            val layoutIndex: Int,
+        ) : SuggestionDisplayItem()
+    }
+
+    private data class HelperActionsState(
+        val undoEnabled: Boolean,
+        val redoEnabled: Boolean,
+        val reconvertEnabled: Boolean,
+        val pasteEnabled: Boolean,
+        val clipboardDescriptionShown: Boolean,
+        val clipboardText: String,
+        val clipboardBitmap: Bitmap?,
+        val undoText: String,
+        val redoText: String,
+        val incognitoIconDrawable: android.graphics.drawable.Drawable?,
+    ) {
+        val hasClipboardPreview: Boolean
+            get() = pasteEnabled && (clipboardBitmap != null || clipboardText.isNotBlank())
+
+        val hasVisibleAction: Boolean
+            get() = undoEnabled ||
+                redoEnabled ||
+                reconvertEnabled ||
+                pasteEnabled ||
+                incognitoIconDrawable != null
+    }
+
     // Listeners for clicks
     private var onItemClickListener: ((Candidate, Int) -> Unit)? = null
     private var onItemLongClickListener: ((Candidate, Int) -> Unit)? = null
@@ -200,45 +247,39 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
      * Drawableがnullでなければアイコンを表示し、nullなら非表示にします。
      */
     fun setIncognitoIcon(drawable: android.graphics.drawable.Drawable?) {
+        if (incognitoIconDrawable === drawable) return
         this.incognitoIconDrawable = drawable
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
+        rebuildDisplayItems()
     }
 
     fun setUndoEnabled(enabled: Boolean) {
+        if (isUndoEnabled == enabled) return
         isUndoEnabled = enabled
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
+        rebuildDisplayItems()
     }
 
     fun setPasteEnabled(enabled: Boolean) {
+        if (isPasteEnabled == enabled) return
         isPasteEnabled = enabled
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
+        rebuildDisplayItems()
     }
 
     fun setRedoEnabled(enabled: Boolean) {
+        if (isRedoEnabled == enabled) return
         isRedoEnabled = enabled
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
+        rebuildDisplayItems()
     }
 
     fun setReconvertEnabled(enabled: Boolean) {
+        if (isReconvertEnabled == enabled) return
         isReconvertEnabled = enabled
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
+        rebuildDisplayItems()
     }
 
     fun setClipboardDescriptionTextVisibility(visibility: Boolean) {
+        if (isClipboardDescriptionShow == visibility) return
         isClipboardDescriptionShow = visibility
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
+        rebuildDisplayItems()
     }
 
     /**
@@ -246,11 +287,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
      * このとき、画像のプレビューはクリアされます。
      */
     fun setClipboardPreview(text: String) {
+        if (clipboardText == text && clipboardBitmap == null) return
         clipboardText = text
         clipboardBitmap = null // ★追加: テキスト設定時に画像はクリア
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
+        rebuildDisplayItems()
     }
 
     /**
@@ -258,15 +298,14 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
      * このとき、テキストのプレビューはクリアされます。
      */
     fun setClipboardImagePreview(bitmap: Bitmap?) {
+        if (clipboardBitmap == bitmap && clipboardText.isEmpty()) return
         clipboardBitmap = bitmap
         clipboardText = "" // 画像設定時にテキストはクリア
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
+        rebuildDisplayItems()
     }
 
     fun isShowingClipboardPreviewForEmptyState(): Boolean {
-        return isPasteEnabled && (clipboardBitmap != null || clipboardText.isNotBlank())
+        return currentHelperActionsState().hasClipboardPreview
     }
 
     fun isShowingCustomLayoutPicker(): Boolean {
@@ -276,17 +315,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     fun setShortcutItems(items: List<ShortcutType>) {
         if (shortcutItems == items) return
         shortcutItems = items
-        if (suggestions.isEmpty()) {
-            notifyDataSetChanged()
-        }
+        rebuildDisplayItems()
     }
 
     fun setIntegratedShortcutVisibility(visible: Boolean) {
         if (showIntegratedShortcuts == visible) return
         showIntegratedShortcuts = visible
-        if (suggestions.isEmpty()) {
-            notifyDataSetChanged()
-        }
+        rebuildDisplayItems()
     }
 
     fun setShortcutIconColor(color: Int) {
@@ -299,17 +334,15 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
 
     fun setUndoPreviewText(text: String) {
+        if (undoText == text) return
         undoText = text
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
+        rebuildDisplayItems()
     }
 
     fun setRedoPreviewText(text: String) {
+        if (redoText == text) return
         redoText = text
-        if (suggestions.isEmpty()) {
-            notifyItemChanged(0)
-        }
+        rebuildDisplayItems()
     }
 
     fun updateState(mode: TenKeyQWERTYMode, layouts: List<CustomKeyboardLayout>) {
@@ -317,43 +350,124 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         currentMode = mode
         customLayouts = layouts
         if (needsFullRefresh) {
-            // Custom layout tabs are backed by a different item list from candidate suggestions.
-            // Layout add/remove/reorder can change item count and view types at the same time, so
-            // targeted notifyItemChanged calls are unsafe here. Keep this boundary explicit so the
-            // tab list can be moved to a stableId-based DiffUtil/ListAdapter model later.
-            notifyDataSetChanged()
+            rebuildDisplayItems()
         }
     }
 
     fun updateCustomTabVisibility(visibility: Boolean) {
         if (showCustomTab == visibility) return
         showCustomTab = visibility
-        if (currentMode is TenKeyQWERTYMode.Custom) {
-            notifyDataSetChanged()
-        }
+        rebuildDisplayItems()
     }
 
-    private val diffCallback = object : DiffUtil.ItemCallback<Candidate>() {
-        override fun areItemsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem.string == newItem.string
-        }
-
-        override fun areContentsTheSame(oldItem: Candidate, newItem: Candidate): Boolean {
-            return oldItem == newItem
-        }
-    }
-    private val differ = AsyncListDiffer(this, diffCallback)
+    private var candidateSuggestions: List<Candidate> = emptyList()
+    private var displayItems: List<SuggestionDisplayItem> = buildDisplayItems()
 
     var suggestions: List<Candidate>
-        get() = differ.currentList
+        get() = candidateSuggestions
         set(value) {
-            // submitListの第2引数にコールバックを渡す
-            differ.submitList(value) {
-                onListUpdated?.invoke()
+            if (candidateSuggestions != value) {
+                candidateSuggestions = value
+                rebuildDisplayItems()
             }
+            onListUpdated?.invoke()
         }
 
     private var highlightedPosition: Int = RecyclerView.NO_POSITION
+
+    private fun rebuildDisplayItems() {
+        val oldItems = displayItems
+        val newItems = buildDisplayItems()
+        if (oldItems == newItems) return
+        val diffResult = DiffUtil.calculateDiff(
+            object : DiffUtil.Callback() {
+                override fun getOldListSize(): Int = oldItems.size
+
+                override fun getNewListSize(): Int = newItems.size
+
+                override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+                    val oldItem = oldItems[oldItemPosition]
+                    val newItem = newItems[newItemPosition]
+                    return when {
+                        oldItem is SuggestionDisplayItem.CandidateItem &&
+                            newItem is SuggestionDisplayItem.CandidateItem ->
+                            oldItem.candidateIndex == newItem.candidateIndex &&
+                                oldItem.candidate.string == newItem.candidate.string &&
+                                oldItem.candidate.type == newItem.candidate.type
+
+                        oldItem is SuggestionDisplayItem.GemmaActionItem &&
+                            newItem is SuggestionDisplayItem.GemmaActionItem ->
+                            oldItem.candidateIndex == newItem.candidateIndex &&
+                                oldItem.candidate.string == newItem.candidate.string &&
+                                oldItem.candidate.type == newItem.candidate.type
+
+                        oldItem is SuggestionDisplayItem.HelperActionsItem &&
+                            newItem is SuggestionDisplayItem.HelperActionsItem -> true
+
+                        oldItem is SuggestionDisplayItem.ShortcutItem &&
+                            newItem is SuggestionDisplayItem.ShortcutItem ->
+                            oldItem.shortcutType == newItem.shortcutType
+
+                        oldItem is SuggestionDisplayItem.CustomLayoutItem &&
+                            newItem is SuggestionDisplayItem.CustomLayoutItem ->
+                            oldItem.layout.stableId == newItem.layout.stableId
+
+                        else -> false
+                    }
+                }
+
+                override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
+                    return oldItems[oldItemPosition] == newItems[newItemPosition]
+                }
+            }
+        )
+        displayItems = newItems
+        diffResult.dispatchUpdatesTo(this)
+    }
+
+    private fun buildDisplayItems(): List<SuggestionDisplayItem> {
+        if (candidateSuggestions.isNotEmpty()) {
+            return candidateSuggestions.mapIndexed { index, candidate ->
+                if (candidate.isSelectedTextGemmaActionCandidate()) {
+                    SuggestionDisplayItem.GemmaActionItem(candidate, index)
+                } else {
+                    SuggestionDisplayItem.CandidateItem(candidate, index)
+                }
+            }
+        }
+
+        if (isShowingCustomLayoutPicker()) {
+            return customLayouts.mapIndexed { index, layout ->
+                SuggestionDisplayItem.CustomLayoutItem(layout, index)
+            }
+        }
+
+        return buildList {
+            val helperState = currentHelperActionsState()
+            if (helperState.hasVisibleAction) {
+                add(SuggestionDisplayItem.HelperActionsItem(helperState))
+            }
+            if (shouldShowIntegratedShortcuts()) {
+                shortcutItems.forEach { shortcutType ->
+                    add(SuggestionDisplayItem.ShortcutItem(shortcutType))
+                }
+            }
+        }
+    }
+
+    private fun currentHelperActionsState(): HelperActionsState =
+        HelperActionsState(
+            undoEnabled = isUndoEnabled,
+            redoEnabled = isRedoEnabled,
+            reconvertEnabled = isReconvertEnabled,
+            pasteEnabled = isPasteEnabled,
+            clipboardDescriptionShown = isClipboardDescriptionShow,
+            clipboardText = clipboardText,
+            clipboardBitmap = clipboardBitmap,
+            undoText = undoText,
+            redoText = redoText,
+            incognitoIconDrawable = incognitoIconDrawable,
+        )
 
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
@@ -368,8 +482,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     inner class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val undoIconParent: ConstraintLayout? = itemView.findViewById(R.id.undo_icon_parent)
+        val undoImageView: ImageView? = itemView.findViewById(R.id.imageView)
         val undoIcon: MaterialTextView? = itemView.findViewById(R.id.undo_icon)
         val redoIconParent: ConstraintLayout? = itemView.findViewById(R.id.redo_icon_parent)
+        val redoImageView: ImageView? = itemView.findViewById(R.id.redo_image_view)
         val redoIcon: MaterialTextView? = itemView.findViewById(R.id.redo_icon)
         val reconvertIconParent: ConstraintLayout? = itemView.findViewById(R.id.reconvert_icon_parent)
         val reconvertIcon: MaterialTextView? = itemView.findViewById(R.id.reconvert_icon)
@@ -392,35 +508,17 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     override fun getItemViewType(position: Int): Int {
-        return if (suggestions.isNotEmpty()) {
-            if (suggestions[position].isSelectedTextGemmaActionCandidate()) {
-                VIEW_TYPE_GEMMA_ACTION
-            } else {
-                VIEW_TYPE_SUGGESTION
-            }
-        } else {
-            if (isShowingCustomLayoutPicker()) {
-                VIEW_TYPE_CUSTOM_LAYOUT_PICKER
-            } else if (shouldShowIntegratedShortcuts()) {
-                VIEW_TYPE_SHORTCUT
-            } else {
-                VIEW_TYPE_EMPTY
-            }
+        return when (displayItems[position]) {
+            is SuggestionDisplayItem.CandidateItem -> VIEW_TYPE_SUGGESTION
+            is SuggestionDisplayItem.GemmaActionItem -> VIEW_TYPE_GEMMA_ACTION
+            is SuggestionDisplayItem.HelperActionsItem -> VIEW_TYPE_EMPTY
+            is SuggestionDisplayItem.ShortcutItem -> VIEW_TYPE_SHORTCUT
+            is SuggestionDisplayItem.CustomLayoutItem -> VIEW_TYPE_CUSTOM_LAYOUT_PICKER
         }
     }
 
     override fun getItemCount(): Int {
-        return if (suggestions.isNotEmpty()) {
-            suggestions.size
-        } else {
-            if (shouldShowIntegratedShortcuts()) {
-                shortcutItems.size
-            } else if (currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty()) {
-                customLayouts.size
-            } else {
-                1
-            }
-        }
+        return displayItems.size
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
@@ -467,103 +565,110 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        val item = displayItems.getOrNull(position) ?: return
         when (holder.itemViewType) {
-            VIEW_TYPE_EMPTY -> onBindEmptyViewHolder(holder as EmptyViewHolder)
+            VIEW_TYPE_EMPTY -> onBindEmptyViewHolder(
+                holder as EmptyViewHolder,
+                (item as SuggestionDisplayItem.HelperActionsItem).state,
+            )
             VIEW_TYPE_SUGGESTION -> onBindSuggestionViewHolder(
-                holder as SuggestionViewHolder, position
+                holder as SuggestionViewHolder,
+                item as SuggestionDisplayItem.CandidateItem,
             )
             VIEW_TYPE_GEMMA_ACTION -> onBindGemmaActionViewHolder(
-                holder as GemmaActionViewHolder, position
+                holder as GemmaActionViewHolder,
+                item as SuggestionDisplayItem.GemmaActionItem,
             )
 
             VIEW_TYPE_SHORTCUT -> onBindShortcutViewHolder(
-                holder as ShortcutViewHolder, position
+                holder as ShortcutViewHolder,
+                item as SuggestionDisplayItem.ShortcutItem,
             )
 
             VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> onBindCustomLayoutViewHolder(
-                holder as CustomLayoutViewHolder, position
+                holder as CustomLayoutViewHolder,
+                item as SuggestionDisplayItem.CustomLayoutItem,
             )
         }
     }
 
-    private fun onBindEmptyViewHolder(holder: EmptyViewHolder) {
+    private fun onBindEmptyViewHolder(holder: EmptyViewHolder, state: HelperActionsState) {
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
-        Timber.d("SuggestionAdapter onBindEmptyViewHolder: $clipboardText $isPasteEnabled")
+        Timber.d("SuggestionAdapter onBindEmptyViewHolder: ${state.clipboardText} ${state.pasteEnabled}")
         holder.apply {
             incognitoIcon?.apply {
-                if (incognitoIconDrawable != null) {
+                if (state.incognitoIconDrawable != null) {
                     visibility = View.VISIBLE
-                    setImageDrawable(incognitoIconDrawable)
+                    setImageDrawable(state.incognitoIconDrawable)
                 } else {
                     visibility = View.GONE
                 }
             }
 
             undoIcon?.apply {
-                isVisible = isUndoEnabled
+                isVisible = state.undoEnabled
                 isFocusable = false
-                Timber.d("undo text: $undoText")
-                debugPrintCodePoints(undoText)
-                text = undoText
+                Timber.d("undo text: ${state.undoText}")
+                debugPrintCodePoints(state.undoText)
+                text = state.undoText
             }
             redoIcon?.apply {
-                isVisible = isRedoEnabled
+                isVisible = state.redoEnabled
                 isFocusable = false
-                text = redoText
+                text = state.redoText
             }
             reconvertIcon?.apply {
-                isVisible = isReconvertEnabled
+                isVisible = state.reconvertEnabled
                 isFocusable = false
             }
             pasteIconParent?.apply {
-                isEnabled = isPasteEnabled
-                visibility = if (isPasteEnabled) View.VISIBLE else View.INVISIBLE
+                isEnabled = state.pasteEnabled
+                visibility = if (state.pasteEnabled) View.VISIBLE else View.GONE
                 isFocusable = false
-
-                candidateEmptyDrawableColor?.let {
-                    this.setDrawableSolidColor(it)
-                }
             }
 
-            // ★修正: 画像プレビューのロジック
             pasteIcon?.apply {
-                if (clipboardBitmap != null) {
-                    // Bitmapがあればそれを設定
-                    setImageBitmap(clipboardBitmap)
+                if (state.clipboardBitmap != null) {
+                    setImageBitmap(state.clipboardBitmap)
+                    clearColorFilter()
                     scaleType = ImageView.ScaleType.CENTER_CROP
                 } else {
-                    // なければデフォルトのアイコンを設定
                     setImageResource(com.kazumaproject.core.R.drawable.content_paste_24px)
                     scaleType = ImageView.ScaleType.CENTER_INSIDE
-                    candidateEmptyDrawableTextColor?.let {
-                        setColorFilter(it)
-                    }
                 }
             }
 
-            // テキストプレビューは、画像がない場合にのみ表示
-            clipboardPreviewText?.text = if (clipboardBitmap == null) clipboardText else ""
-            candidateEmptyDrawableTextColor?.let {
-                clipboardPreviewText?.setTextColor(it)
-            }
-            candidateEmptyDrawableTextColor?.let { color ->
-                reconvertIcon?.setTextColor(color)
-                reconvertImageView?.setColorFilter(color)
-            }
+            clipboardPreviewText?.text =
+                if (state.clipboardBitmap == null) state.clipboardText else ""
+
+            applyEmptyHelperButtonStyle(
+                parent = undoIconParent,
+                text = undoIcon,
+                icon = undoImageView,
+                isDynamicColorEnable = isDynamicColorEnable,
+            )
+            applyEmptyHelperButtonStyle(
+                parent = redoIconParent,
+                text = redoIcon,
+                icon = redoImageView,
+                isDynamicColorEnable = isDynamicColorEnable,
+            )
+            applyEmptyHelperButtonStyle(
+                parent = reconvertIconParent,
+                text = reconvertIcon,
+                icon = reconvertImageView,
+                isDynamicColorEnable = isDynamicColorEnable,
+            )
+            applyEmptyHelperButtonStyle(
+                parent = pasteIconParent,
+                text = clipboardPreviewText,
+                icon = if (state.clipboardBitmap == null) pasteIcon else null,
+                isDynamicColorEnable = isDynamicColorEnable,
+            )
+            applyEmptyHelperTextColor(clipboardPreviewTextDescription)
 
             undoIconParent?.apply {
-                if (isDynamicColorEnable) {
-                    if (this.context.isDarkThemeOn()) {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
-                        )
-                    } else {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
-                        )
-                    }
-                }
-                isVisible = isUndoEnabled
+                isVisible = state.undoEnabled
                 setOnClickListener {
                     onItemHelperIconClickListener?.invoke(HelperIcon.UNDO)
                 }
@@ -574,18 +679,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             }
 
             redoIconParent?.apply {
-                if (isDynamicColorEnable) {
-                    if (this.context.isDarkThemeOn()) {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
-                        )
-                    } else {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
-                        )
-                    }
-                }
-                isVisible = isRedoEnabled
+                isVisible = state.redoEnabled
                 setOnClickListener {
                     onItemHelperIconClickListener?.invoke(HelperIcon.REDO)
                 }
@@ -596,18 +690,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             }
 
             reconvertIconParent?.apply {
-                if (isDynamicColorEnable) {
-                    if (this.context.isDarkThemeOn()) {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
-                        )
-                    } else {
-                        setBackgroundResource(
-                            com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
-                        )
-                    }
-                }
-                isVisible = isReconvertEnabled
+                isVisible = state.reconvertEnabled
                 setOnClickListener {
                     onItemHelperIconClickListener?.invoke(HelperIcon.RECONVERT)
                 }
@@ -616,9 +699,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 }
             }
 
-            // テキスト用の説明は、画像がない場合にのみ表示
-            clipboardPreviewTextDescription?.isVisible =
-                isPasteEnabled && clipboardBitmap == null && isClipboardDescriptionShow
+            clipboardPreviewTextDescription?.isVisible = false
 
             pasteIconParent?.apply {
                 setOnClickListener {
@@ -632,24 +713,79 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    private fun shouldShowIntegratedShortcuts(): Boolean {
-        return showIntegratedShortcuts && shortcutItems.isNotEmpty() && !isShowingCustomLayoutPicker()
+    private fun applyEmptyHelperButtonStyle(
+        parent: ConstraintLayout?,
+        text: MaterialTextView?,
+        icon: ImageView?,
+        isDynamicColorEnable: Boolean,
+    ) {
+        applyEmptyHelperButtonBackground(parent, isDynamicColorEnable)
+        applyEmptyHelperTextColor(text)
+        candidateEmptyDrawableTextColor?.let { color ->
+            icon?.setColorFilter(color, PorterDuff.Mode.SRC_IN)
+        } ?: icon?.clearColorFilter()
     }
 
-    private fun onBindShortcutViewHolder(holder: ShortcutViewHolder, position: Int) {
-        val item = shortcutItems.getOrNull(position) ?: return
+    private fun applyEmptyHelperTextColor(text: MaterialTextView?) {
+        text ?: return
+        text.setTextColor(
+            candidateEmptyDrawableTextColor ?: ContextCompat.getColor(
+                text.context,
+                com.kazumaproject.core.R.color.keyboard_icon_color,
+            )
+        )
+    }
+
+    private fun applyEmptyHelperButtonBackground(
+        parent: ConstraintLayout?,
+        isDynamicColorEnable: Boolean,
+    ) {
+        parent ?: return
+        val customBackgroundColor = candidateEmptyDrawableColor
+        if (customBackgroundColor != null) {
+            parent.setBackgroundResource(com.kazumaproject.core.R.drawable.ten_keys_center_bg)
+            parent.setDrawableSolidColor(customBackgroundColor)
+            return
+        }
+        if (isDynamicColorEnable) {
+            parent.setBackgroundResource(
+                if (parent.context.isDarkThemeOn()) {
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                } else {
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                }
+            )
+        } else {
+            parent.setBackgroundResource(com.kazumaproject.core.R.drawable.ten_keys_center_bg)
+        }
+    }
+
+    private fun shouldShowIntegratedShortcuts(): Boolean {
+        return showIntegratedShortcuts &&
+            shortcutItems.isNotEmpty() &&
+            !isShowingCustomLayoutPicker() &&
+            !isShowingClipboardPreviewForEmptyState()
+    }
+
+    private fun onBindShortcutViewHolder(
+        holder: ShortcutViewHolder,
+        item: SuggestionDisplayItem.ShortcutItem,
+    ) {
+        val shortcutType = item.shortcutType
         holder.imageView.apply {
-            setImageResource(item.iconResId)
-            contentDescription = item.description
+            setImageResource(shortcutType.iconResId)
+            contentDescription = shortcutType.description
             shortcutIconColor?.let { color ->
                 setColorFilter(color, PorterDuff.Mode.SRC_IN)
             } ?: clearColorFilter()
         }
+        holder.itemView.contentDescription = shortcutType.description
         holder.itemView.setOnClickListener {
             val adapterPosition = holder.bindingAdapterPosition
             if (adapterPosition != RecyclerView.NO_POSITION) {
-                shortcutItems.getOrNull(adapterPosition)?.let { shortcutType ->
-                    onShortcutItemClickListener?.invoke(shortcutType)
+                val currentItem = displayItems.getOrNull(adapterPosition)
+                if (currentItem is SuggestionDisplayItem.ShortcutItem) {
+                    onShortcutItemClickListener?.invoke(currentItem.shortcutType)
                 }
             }
         }
@@ -703,9 +839,32 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         notifyItemRangeChanged(0, itemCount)
     }
 
-    private fun onBindSuggestionViewHolder(holder: SuggestionViewHolder, position: Int) {
+    fun setCandidateEmptyPopupColors(backgroundColor: Int, textColor: Int) {
+        if (
+            candidateEmptyDrawableColor == backgroundColor &&
+            candidateEmptyDrawableTextColor == textColor
+        ) {
+            return
+        }
+        candidateEmptyDrawableColor = backgroundColor
+        candidateEmptyDrawableTextColor = textColor
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun clearCandidateEmptyPopupColors() {
+        if (candidateEmptyDrawableColor == null && candidateEmptyDrawableTextColor == null) return
+        candidateEmptyDrawableColor = null
+        candidateEmptyDrawableTextColor = null
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    private fun onBindSuggestionViewHolder(
+        holder: SuggestionViewHolder,
+        item: SuggestionDisplayItem.CandidateItem,
+    ) {
         applyCandidateItemBackground(holder.itemView)
-        val suggestion = suggestions[position]
+        val suggestion = item.candidate
+        val position = item.candidateIndex
         val paddingLength = when {
             position == 0 -> 4
             suggestion.string.length == 1 -> 4
@@ -842,9 +1001,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    private fun onBindGemmaActionViewHolder(holder: GemmaActionViewHolder, position: Int) {
+    private fun onBindGemmaActionViewHolder(
+        holder: GemmaActionViewHolder,
+        item: SuggestionDisplayItem.GemmaActionItem,
+    ) {
         applyCandidateItemBackground(holder.itemView)
-        val suggestion = suggestions[position]
+        val suggestion = item.candidate
+        val position = item.candidateIndex
         holder.actionText.text = suggestion.string
         holder.actionText.textSize = candidateTextSize
         holder.badgeText.text = when (suggestion.type) {
@@ -868,11 +1031,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    private fun onBindCustomLayoutViewHolder(holder: CustomLayoutViewHolder, position: Int) {
-        val layoutItem = customLayouts[position]
-        holder.nameTextView.text = layoutItem.name
+    private fun onBindCustomLayoutViewHolder(
+        holder: CustomLayoutViewHolder,
+        item: SuggestionDisplayItem.CustomLayoutItem,
+    ) {
+        holder.nameTextView.text = item.layout.name
         holder.itemView.setOnClickListener {
-            onCustomLayoutItemClickListener?.invoke(position)
+            onCustomLayoutItemClickListener?.invoke(item.layoutIndex)
         }
     }
 
@@ -924,9 +1089,24 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val previous = highlightedPosition
         highlightedPosition = newPosition
         if (previous != RecyclerView.NO_POSITION) {
-            notifyItemChanged(previous)
+            notifyCandidateDisplayItemChanged(previous)
         }
-        notifyItemChanged(highlightedPosition)
+        if (highlightedPosition != RecyclerView.NO_POSITION) {
+            notifyCandidateDisplayItemChanged(highlightedPosition)
+        }
+    }
+
+    private fun notifyCandidateDisplayItemChanged(candidateIndex: Int) {
+        val displayIndex = displayItems.indexOfFirst { item ->
+            when (item) {
+                is SuggestionDisplayItem.CandidateItem -> item.candidateIndex == candidateIndex
+                is SuggestionDisplayItem.GemmaActionItem -> item.candidateIndex == candidateIndex
+                else -> false
+            }
+        }
+        if (displayIndex != -1) {
+            notifyItemChanged(displayIndex)
+        }
     }
 
     private fun Candidate.isSelectedTextGemmaActionCandidate(): Boolean {

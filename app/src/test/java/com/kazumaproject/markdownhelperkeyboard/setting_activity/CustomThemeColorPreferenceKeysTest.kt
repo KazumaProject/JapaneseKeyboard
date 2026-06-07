@@ -13,6 +13,8 @@ class CustomThemeColorPreferenceKeysTest {
             CustomThemeColorPreferenceKeys.CANDIDATE_TEXT_COLOR,
             CustomThemeColorPreferenceKeys.CANDIDATE_ITEM_BG_COLOR,
             CustomThemeColorPreferenceKeys.CANDIDATE_ITEM_PRESSED_BG_COLOR,
+            CustomThemeColorPreferenceKeys.CANDIDATE_EMPTY_POPUP_BG_COLOR,
+            CustomThemeColorPreferenceKeys.CANDIDATE_EMPTY_POPUP_TEXT_COLOR,
             CustomThemeColorPreferenceKeys.SHORTCUT_ICON_COLOR,
         )
 
@@ -20,7 +22,9 @@ class CustomThemeColorPreferenceKeysTest {
         assertEquals("custom_theme_candidate_text_color", keys[0])
         assertEquals("custom_theme_candidate_item_bg_color", keys[1])
         assertEquals("custom_theme_candidate_item_pressed_bg_color", keys[2])
-        assertEquals("custom_theme_shortcut_icon_color", keys[3])
+        assertEquals("custom_theme_candidate_empty_popup_bg_color", keys[3])
+        assertEquals("custom_theme_candidate_empty_popup_text_color", keys[4])
+        assertEquals("custom_theme_shortcut_icon_color", keys[5])
     }
 
     @Test

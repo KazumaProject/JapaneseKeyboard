@@ -51,7 +51,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_shortcut, parent, false)
+            .inflate(R.layout.item_shortcut_toolbar, parent, false)
         return ViewHolder(view)
     }
 
