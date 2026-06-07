@@ -61,7 +61,6 @@ jobs:
         run: |
           ./gradlew clean \
             assembleFullStandardRelease \
-            bundleFullStandardRelease \
             assembleLiteStandardRelease \
             -PsplitApks \
             --stacktrace
