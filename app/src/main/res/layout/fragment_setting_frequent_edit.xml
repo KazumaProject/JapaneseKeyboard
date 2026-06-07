@@ -30,13 +30,30 @@
         android:textAppearance="?attr/textAppearanceBodyMedium"
         android:textColor="?attr/colorOnSurfaceVariant" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/setting_frequent_edit_reset_button"
-        style="@style/Widget.Material3.Button.OutlinedButton"
+    <LinearLayout
+        android:id="@+id/setting_frequent_edit_button_row"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="14dp"
-        android:text="@string/setting_frequent_reset_default" />
+        android:orientation="horizontal">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/setting_frequent_add_button"
+            style="@style/Widget.Material3.Button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/setting_frequent_add_button"
+            app:icon="@drawable/baseline_add_circle_outline_24" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/setting_frequent_edit_reset_button"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="@string/setting_frequent_reset_default" />
+
+    </LinearLayout>
 
     <androidx.core.widget.NestedScrollView
         android:id="@+id/setting_frequent_edit_scroll"
@@ -83,74 +100,6 @@
                 android:nestedScrollingEnabled="false"
                 android:overScrollMode="never"
                 tools:itemCount="4"
-                tools:listitem="@layout/item_setting_frequent_edit" />
-
-            <TextView
-                android:id="@+id/setting_frequent_available_title"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
-                android:text="@string/setting_frequent_available_title"
-                android:textAppearance="?attr/textAppearanceTitleMedium"
-                android:textColor="?attr/colorOnSurface" />
-
-            <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/setting_frequent_available_search_input_layout"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:hint="@string/setting_frequent_search_hint"
-                app:startIconDrawable="@drawable/baseline_search_24">
-
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/setting_frequent_available_search_input"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/setting_frequent_search_hint"
-                    android:imeOptions="actionSearch"
-                    android:inputType="text"
-                    android:maxLines="1"
-                    android:singleLine="true" />
-
-            </com.google.android.material.textfield.TextInputLayout>
-
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:overScrollMode="never"
-                android:scrollbars="none">
-
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/setting_frequent_category_chip_group"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:singleSelection="true"
-                    app:singleLine="true" />
-
-            </HorizontalScrollView>
-
-            <TextView
-                android:id="@+id/setting_frequent_available_empty_text"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:gravity="center"
-                android:padding="20dp"
-                android:text="@string/setting_frequent_available_empty"
-                android:textAppearance="?attr/textAppearanceBodyMedium"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:visibility="gone" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/setting_frequent_available_recycler_view"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:clipToPadding="false"
-                android:nestedScrollingEnabled="false"
-                android:overScrollMode="never"
-                tools:itemCount="6"
                 tools:listitem="@layout/item_setting_frequent_edit" />
 
         </LinearLayout>

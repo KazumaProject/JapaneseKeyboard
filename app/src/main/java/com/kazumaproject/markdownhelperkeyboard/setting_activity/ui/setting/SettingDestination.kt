@@ -17,6 +17,7 @@ enum class SettingCategory {
     AI_CONVERSION,
     CLIPBOARD_SHORTCUT,
     OPERATION_FEEDBACK,
+    MANAGEMENT,
     BACKUP,
     APP_INFO,
     ADVANCED,
@@ -474,8 +475,47 @@ object SettingDestinations {
         ),
     )
 
+    fun management(context: Context): List<SettingDestination> = listOf(
+        destination(
+            key = "setting_management_learn_dictionary",
+            title = context.getString(R.string.learn_dictionary_fragment_title),
+            summary = context.getString(R.string.setting_management_learn_dictionary_summary),
+            category = SettingCategory.MANAGEMENT,
+            keywords = listOf("learn", "dictionary", "history"),
+            destinationId = R.id.navigation_learn_dictionary,
+            iconRes = CoreR.drawable.table_lamp_24px,
+        ),
+        destination(
+            key = "setting_management_user_dictionary",
+            title = context.getString(R.string.user_dictionary_title),
+            summary = context.getString(R.string.setting_management_user_dictionary_summary),
+            category = SettingCategory.MANAGEMENT,
+            keywords = listOf("user", "dictionary", "word"),
+            destinationId = R.id.navigation_user_dictionary,
+            iconRes = CoreR.drawable.dictionary_24px,
+        ),
+        destination(
+            key = "setting_management_user_template",
+            title = context.getString(R.string.user_template_fragment_title),
+            summary = context.getString(R.string.setting_management_user_template_summary),
+            category = SettingCategory.MANAGEMENT,
+            keywords = listOf("template", "snippet"),
+            destinationId = R.id.userTemplateFragment,
+            iconRes = CoreR.drawable.book_3_24px,
+        ),
+        destination(
+            key = "setting_management_custom_keyboard",
+            title = context.getString(R.string.custom_keyboard_fragment_label),
+            summary = context.getString(R.string.setting_management_custom_keyboard_summary),
+            category = SettingCategory.MANAGEMENT,
+            keywords = listOf("custom", "keyboard", "layout"),
+            destinationId = R.id.keyboardListFragment,
+            iconRes = CoreR.drawable.keyboard_24px,
+        ),
+    )
+
     fun all(context: Context): List<SettingDestination> =
-        defaultFrequent(context) + categories(context)
+        defaultFrequent(context) + categories(context) + management(context)
 
     fun categoryTitle(context: Context, category: SettingCategory): String =
         when (category) {
@@ -487,6 +527,7 @@ object SettingDestinations {
             SettingCategory.AI_CONVERSION -> context.getString(R.string.setting_category_ai_conversion_title)
             SettingCategory.CLIPBOARD_SHORTCUT -> context.getString(R.string.setting_category_clipboard_shortcut_title)
             SettingCategory.OPERATION_FEEDBACK -> context.getString(R.string.setting_category_operation_feedback_title)
+            SettingCategory.MANAGEMENT -> context.getString(R.string.setting_category_management_title)
             SettingCategory.BACKUP -> context.getString(R.string.back_up)
             SettingCategory.APP_INFO -> context.getString(R.string.category_about_app_title)
             SettingCategory.ADVANCED -> context.getString(R.string.setting_category_advanced_title)
@@ -503,6 +544,7 @@ object SettingDestinations {
             SettingCategory.AI_CONVERSION -> CoreR.drawable.lightbulb_24dp
             SettingCategory.CLIPBOARD_SHORTCUT -> CoreR.drawable.content_paste_24px
             SettingCategory.OPERATION_FEEDBACK -> CoreR.drawable.baseline_settings_24
+            SettingCategory.MANAGEMENT -> CoreR.drawable.baseline_settings_24
             SettingCategory.BACKUP -> CoreR.drawable.baseline_save_24
             SettingCategory.APP_INFO -> CoreR.drawable.question_mark_24dp
             SettingCategory.ADVANCED -> CoreR.drawable.more_vert_24px
@@ -522,6 +564,10 @@ object SettingDestinations {
             "setting_route_backup" -> R.id.generalInfoPreferenceFragment
             "setting_route_app_info" -> R.id.generalInfoPreferenceFragment
             "setting_route_advanced" -> R.id.advancedPreferenceFragment
+            "setting_management_learn_dictionary" -> R.id.navigation_learn_dictionary
+            "setting_management_user_dictionary" -> R.id.navigation_user_dictionary
+            "setting_management_user_template" -> R.id.userTemplateFragment
+            "setting_management_custom_keyboard" -> R.id.keyboardListFragment
             "setting_route_legacy_settings" -> R.id.settingMainFragment
             "setting_route_keyboard_theme" -> R.id.keyboardThemeFragment
             "theme_custom_candidate_empty_popup_bg_color" -> R.id.keyboardThemeFragment

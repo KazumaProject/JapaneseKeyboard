@@ -49,6 +49,7 @@ object SettingSearchIndex {
 
     fun searchable(context: Context): List<SettingDestination> {
         val topLevel = SettingDestinations.categories(context) +
+            SettingDestinations.management(context) +
             SettingDestinations.frequentCandidates(context)
         val xmlItems = sources().flatMap { source ->
             readPreferenceXml(context, source)
