@@ -10,6 +10,18 @@ import javax.xml.parsers.DocumentBuilderFactory
 
 class SumireJapanese109AContractTest {
     @Test
+    fun keyboardLayoutsXml_registersOnlySumireJapanese109A() {
+        val document = readXml("xml/keyboard_layouts.xml")
+        val layouts = document.getElementsByTagName("keyboard-layout")
+
+        assertEquals(1, layouts.length)
+        val layout = layouts.item(0).attributes
+        assertEquals("sumire_japanese_109a", layout.getNamedItem("android:name").nodeValue)
+        assertEquals("@raw/keyboard_layout_japanese_109a", layout.getNamedItem("android:keyboardLayout").nodeValue)
+        assertFalse(mainResFile("xml/keyboard_layouts.xml").readText().contains("sumire_japanese_" + "106"))
+    }
+
+    @Test
     fun prefHardwareKeyboard_hasNoInternalLayoutPreference() {
         val text = mainResFile("xml/pref_hardware_keyboard.xml").readText()
 
