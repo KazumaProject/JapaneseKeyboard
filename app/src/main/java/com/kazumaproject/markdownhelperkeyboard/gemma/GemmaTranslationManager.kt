@@ -3,13 +3,20 @@ package com.kazumaproject.markdownhelperkeyboard.gemma
 import android.content.Context
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.HandlerThread
 import android.provider.OpenableColumns
 import androidx.annotation.StringRes
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.android.asCoroutineDispatcher
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -18,9 +25,19 @@ import kotlinx.coroutines.withTimeout
 import timber.log.Timber
 import java.io.File
 import java.io.InputStream
+import java.lang.reflect.InvocationTargetException
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
+
+sealed interface GemmaLoadState {
+    data object Disabled : GemmaLoadState
+    data object MissingModel : GemmaLoadState
+    data object UnsupportedAbi : GemmaLoadState
+    data class Loading(val backendPreference: String) : GemmaLoadState
+    data class Ready(val backend: String, val modelPath: String) : GemmaLoadState
+    data class Failed(val message: String) : GemmaLoadState
+}
 
 @Singleton
 class GemmaTranslationManager @Inject constructor(
@@ -78,7 +95,12 @@ class GemmaTranslationManager @Inject constructor(
         }
     }
 
+    private val gemmaLoadThread = HandlerThread(GEMMA_LOAD_THREAD_NAME).apply { start() }
+    private val gemmaLoadDispatcher = Handler(gemmaLoadThread.looper)
+        .asCoroutineDispatcher(GEMMA_LOAD_THREAD_NAME)
     private val initializeMutex = Mutex()
+    private val _loadState = MutableStateFlow<GemmaLoadState>(GemmaLoadState.Disabled)
+    val loadState: StateFlow<GemmaLoadState> = _loadState.asStateFlow()
 
     @Volatile
     private var engineInstance: Any? = null
@@ -111,6 +133,30 @@ class GemmaTranslationManager @Inject constructor(
     fun getModelSummary(): String {
         if (!isSupportedAbi()) {
             return context.getString(R.string.gemma_translation_model_summary_unsupported_abi)
+        }
+
+        when (val state = loadState.value) {
+            GemmaLoadState.Disabled -> Unit
+            GemmaLoadState.MissingModel ->
+                return context.getString(R.string.gemma_translation_model_summary_missing)
+            GemmaLoadState.UnsupportedAbi ->
+                return context.getString(R.string.gemma_translation_model_summary_unsupported_abi)
+            is GemmaLoadState.Loading ->
+                return context.getString(
+                    R.string.gemma_translation_model_summary_loading_backend,
+                    backendPreferenceLabel(state.backendPreference),
+                )
+            is GemmaLoadState.Ready ->
+                return context.getString(
+                    R.string.gemma_translation_model_summary_ready,
+                    File(state.modelPath).name,
+                    state.backend,
+                )
+            is GemmaLoadState.Failed ->
+                return context.getString(
+                    R.string.gemma_translation_model_summary_error,
+                    state.message,
+                )
         }
 
         val modelFile = resolveModelFile()
@@ -185,18 +231,21 @@ class GemmaTranslationManager @Inject constructor(
         }.getOrThrow()
     }
 
-    suspend fun initializeIfEnabled(forceReload: Boolean = false): Boolean {
-        return initializeMutex.withLock {
+    suspend fun initializeIfEnabled(forceReload: Boolean = false): Boolean = withContext(gemmaLoadDispatcher) {
+        initializeMutex.withLock {
             if (!appPreference.enable_gemma_translation_preference) {
                 closeLocked()
                 lastErrorMessage = null
+                _loadState.value = GemmaLoadState.Disabled
                 return@withLock false
             }
 
             if (!isSupportedAbi()) {
                 closeLocked()
-                lastErrorMessage =
-                    context.getString(R.string.gemma_translation_model_summary_unsupported_abi)
+                val message = context.getString(R.string.gemma_translation_model_summary_unsupported_abi)
+                lastErrorMessage = message
+                _loadState.value = GemmaLoadState.UnsupportedAbi
+                Timber.w("Gemma initialization skipped because ABI is unsupported.")
                 return@withLock false
             }
 
@@ -204,50 +253,94 @@ class GemmaTranslationManager @Inject constructor(
             if (modelFile == null) {
                 closeLocked()
                 lastErrorMessage = context.getString(R.string.gemma_translation_model_summary_missing)
+                _loadState.value = GemmaLoadState.MissingModel
                 return@withLock false
             }
+
+            val backendPreference = BackendPreference.fromPreference(
+                appPreference.gemma_translation_backend_preference
+            )
 
             runCatching {
                 validateModelFile(modelFile)
             }.onFailure { error ->
+                val failure = error.unwrapReflectionException()
+                val message = failure.toUserVisibleMessage()
+                Timber.e(
+                    failure,
+                    "Gemma model validation failed. backendPreference=%s model=%s reason=%s",
+                    backendPreference.preferenceValue,
+                    safeModelPathForLog(modelFile.absolutePath),
+                    message,
+                )
                 closeLocked()
-                lastErrorMessage = error.toUserVisibleMessage()
+                lastErrorMessage = message
+                _loadState.value = GemmaLoadState.Failed(message)
                 return@withLock false
             }
 
             if (!forceReload && initialized && engineInstance != null && activeModelPath == modelFile.absolutePath) {
+                _loadState.value = GemmaLoadState.Ready(
+                    backend = activeBackendLabel(activeBackend),
+                    modelPath = modelFile.absolutePath,
+                )
                 return@withLock true
             }
 
             closeLocked()
+            _loadState.value = GemmaLoadState.Loading(backendPreference.preferenceValue)
 
             try {
-                val (createdEngine, resolvedBackend) = createEngineForPreference(
-                    modelPath = modelFile.absolutePath,
-                    backendPreference = BackendPreference.fromPreference(
-                        appPreference.gemma_translation_backend_preference
+                val (createdEngine, resolvedBackend) = withTimeout(INITIALIZE_TIMEOUT_MS) {
+                    createEngineForPreference(
+                        modelPath = modelFile.absolutePath,
+                        backendPreference = backendPreference,
                     )
-                )
+                }
                 engineInstance = createdEngine
                 activeBackend = resolvedBackend
 
                 activeModelPath = modelFile.absolutePath
                 initialized = true
                 lastErrorMessage = null
+                _loadState.value = GemmaLoadState.Ready(
+                    backend = activeBackendLabel(resolvedBackend),
+                    modelPath = modelFile.absolutePath,
+                )
+                Timber.i(
+                    "Gemma initialized. backendPreference=%s resolvedBackend=%s model=%s",
+                    backendPreference.preferenceValue,
+                    activeBackendLabel(resolvedBackend),
+                    safeModelPathForLog(modelFile.absolutePath),
+                )
                 true
             } catch (error: Throwable) {
-                Timber.e(error, "Gemma initialization failed.")
+                val failure = error.unwrapReflectionException()
+                val message = if (failure is TimeoutCancellationException) {
+                    context.getString(R.string.gemma_translation_model_summary_timeout)
+                } else {
+                    failure.toUserVisibleMessage()
+                }
+                Timber.e(
+                    failure,
+                    "Gemma initialization failed. backendPreference=%s model=%s reason=%s",
+                    backendPreference.preferenceValue,
+                    safeModelPathForLog(modelFile.absolutePath),
+                    message,
+                )
                 closeLocked()
-                lastErrorMessage = error.toUserVisibleMessage()
+                lastErrorMessage = message
+                _loadState.value = GemmaLoadState.Failed(message)
                 false
             }
         }
     }
 
-    suspend fun disable() {
+    suspend fun disable() = withContext(gemmaLoadDispatcher) {
         initializeMutex.withLock {
             closeLocked()
             lastErrorMessage = null
+            _loadState.value = GemmaLoadState.Disabled
         }
     }
 
@@ -309,8 +402,6 @@ class GemmaTranslationManager @Inject constructor(
                 createEngine(
                     modelPath = modelPath,
                     textBackendName = "CPU",
-                    visionBackendName = "CPU",
-                    audioBackendName = "CPU"
                 ) to ActiveBackend.Cpu
             }
 
@@ -319,32 +410,32 @@ class GemmaTranslationManager @Inject constructor(
                     createEngine(
                         modelPath = modelPath,
                         textBackendName = "GPU",
-                        visionBackendName = "CPU",
-                        audioBackendName = "CPU"
                     ) to ActiveBackend.Gpu
                 }.getOrElse { gpuError ->
+                    val gpuFailure = gpuError.unwrapReflectionException()
                     Timber.w(
-                        gpuError,
-                        "GPU Gemma initialization failed. Retrying with GPU_ARTISAN backend."
+                        gpuFailure,
+                        "GPU Gemma initialization failed. Retrying with GPU_ARTISAN backend. reason=%s",
+                        gpuFailure.toUserVisibleMessage(),
                     )
                     runCatching {
                         createEngine(
                             modelPath = modelPath,
                             textBackendName = "GPU_ARTISAN",
-                            visionBackendName = "CPU",
-                            audioBackendName = "CPU"
                         ) to ActiveBackend.Gpu
                     }.getOrElse { gpuArtisanError ->
+                        val gpuArtisanFailure = gpuArtisanError.unwrapReflectionException()
                         Timber.w(
-                            gpuArtisanError,
-                            "GPU and GPU_ARTISAN Gemma initialization failed. Falling back to CPU."
+                            gpuArtisanFailure,
+                            "GPU_ARTISAN Gemma initialization failed. Falling back to CPU. reason=%s",
+                            gpuArtisanFailure.toUserVisibleMessage(),
                         )
-                        createEngine(
+                        val cpuEngine = createEngine(
                             modelPath = modelPath,
                             textBackendName = "CPU",
-                            visionBackendName = "CPU",
-                            audioBackendName = "CPU"
-                        ) to ActiveBackend.CpuFallback
+                        )
+                        Timber.w("Gemma initialized with CPU fallback after GPU backends failed.")
+                        cpuEngine to ActiveBackend.CpuFallback
                     }
                 }
             }
@@ -354,37 +445,41 @@ class GemmaTranslationManager @Inject constructor(
     private fun createEngine(
         modelPath: String,
         textBackendName: String,
-        visionBackendName: String,
-        audioBackendName: String
+        visionBackendName: String? = null,
+        audioBackendName: String? = null
     ): Any {
-        ensureNativeLibraryLoaded()
-        val backendClass = Class.forName(BACKEND_CLASS)
-        val engineConfigClass = Class.forName(ENGINE_CONFIG_CLASS)
-        val textBackendValue = createBackendInstance(textBackendName)
-        val visionBackendValue = createBackendInstance(visionBackendName)
-        val audioBackendValue = createBackendInstance(audioBackendName)
-        val config = engineConfigClass.getConstructor(
-            String::class.java,
-            backendClass,
-            backendClass,
-            backendClass,
-            Integer::class.java,
-            String::class.java,
-        ).newInstance(
-            modelPath,
-            textBackendValue,
-            visionBackendValue,
-            audioBackendValue,
-            null,
-            context.cacheDir.absolutePath,
-        )
+        return runCatching {
+            ensureNativeLibraryLoaded()
+            val backendClass = Class.forName(BACKEND_CLASS)
+            val engineConfigClass = Class.forName(ENGINE_CONFIG_CLASS)
+            val textBackendValue = createBackendInstance(textBackendName)
+            val visionBackendValue = visionBackendName?.let(::createBackendInstance)
+            val audioBackendValue = audioBackendName?.let(::createBackendInstance)
+            val config = engineConfigClass.getConstructor(
+                String::class.java,
+                backendClass,
+                backendClass,
+                backendClass,
+                Integer::class.java,
+                String::class.java,
+            ).newInstance(
+                modelPath,
+                textBackendValue,
+                visionBackendValue,
+                audioBackendValue,
+                null,
+                context.cacheDir.absolutePath,
+            )
 
-        return Class.forName(ENGINE_CLASS)
-            .getConstructor(engineConfigClass)
-            .newInstance(config)
-            .apply {
-                javaClass.getMethod("initialize").invoke(this)
-            }
+            Class.forName(ENGINE_CLASS)
+                .getConstructor(engineConfigClass)
+                .newInstance(config)
+                .apply {
+                    javaClass.getMethod("initialize").invoke(this)
+                }
+        }.getOrElse { error ->
+            throw error.unwrapReflectionException()
+        }
     }
 
     private fun createBackendInstance(backendName: String): Any {
@@ -454,8 +549,30 @@ class GemmaTranslationManager @Inject constructor(
         initialized = false
         activeModelPath = null
         activeBackend = null
+        val conversation = activeConversation
+        activeConversation = null
+        closeQuietly(conversation)
         closeQuietly(engineInstance)
         engineInstance = null
+    }
+
+    private fun activeBackendLabel(backend: ActiveBackend?): String {
+        return context.getString(
+            backend?.summaryResId ?: R.string.gemma_translation_backend_runtime_cpu
+        )
+    }
+
+    private fun backendPreferenceLabel(backendPreference: String): String {
+        return when (BackendPreference.fromPreference(backendPreference)) {
+            BackendPreference.Cpu ->
+                context.getString(R.string.gemma_translation_backend_runtime_cpu)
+            BackendPreference.GpuIfAvailable ->
+                context.getString(R.string.gemma_translation_backend_runtime_gpu)
+        }
+    }
+
+    private fun safeModelPathForLog(modelPath: String): String {
+        return File(modelPath).name.ifBlank { "(empty)" }
     }
 
     private fun closeQuietly(target: Any?) {
@@ -463,7 +580,8 @@ class GemmaTranslationManager @Inject constructor(
         runCatching {
             target.javaClass.getMethod("close").invoke(target)
         }.onFailure {
-            Timber.w(it, "Failed to close LiteRT-LM resource cleanly.")
+            val failure = it.unwrapReflectionException()
+            Timber.w(failure, "Failed to close LiteRT-LM resource cleanly.")
         }
     }
 
@@ -666,13 +784,26 @@ class GemmaTranslationManager @Inject constructor(
     }
 
     private fun Throwable.toUserVisibleMessage(): String {
-        val localized = localizedMessage?.trim().orEmpty()
+        val failure = unwrapReflectionException()
+        val localized = failure.localizedMessage?.trim().orEmpty()
         if (localized.isNotEmpty()) return localized
 
-        val message = message?.trim().orEmpty()
+        val message = failure.message?.trim().orEmpty()
         if (message.isNotEmpty()) return message
 
-        return javaClass.simpleName
+        return failure.javaClass.simpleName
+    }
+
+    private fun Throwable.unwrapReflectionException(): Throwable {
+        return when (this) {
+            is InvocationTargetException -> {
+                targetException?.unwrapReflectionException()
+                    ?: cause?.unwrapReflectionException()
+                    ?: this
+            }
+
+            else -> this
+        }
     }
 
     private fun modelFileName(): String = modelFileCandidates().first()
@@ -689,6 +820,8 @@ class GemmaTranslationManager @Inject constructor(
         const val PROMPT_RESULT_CANDIDATE_TYPE = 42
         const val SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE = 43
         const val SELECTION_PROMPT_ACTION_CANDIDATE_TYPE = 44
+        private const val GEMMA_LOAD_THREAD_NAME = "GemmaLoadThread"
+        private const val INITIALIZE_TIMEOUT_MS = 60_000L
         private const val MODEL_DIR_NAME = "models"
         private const val MODEL_EXTENSION = ".litertlm"
         private const val SUPPORTED_MODEL_NAME_FRAGMENT = "gemma-4-e2b-it"

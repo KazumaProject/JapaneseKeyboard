@@ -5,12 +5,14 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
+import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.MenuProvider
 import androidx.navigation.NavController
 import androidx.navigation.NavOptions
-import androidx.navigation.findNavController
+import androidx.navigation.fragment.NavHostFragment
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.NavigationUI
 import androidx.navigation.ui.setupActionBarWithNavController
@@ -18,11 +20,11 @@ import androidx.navigation.ui.setupWithNavController
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.color.DynamicColorsOptions
-import com.kazumaproject.core.R as CoreR
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.ActivityMainBinding
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
+import com.kazumaproject.core.R as CoreR
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -30,6 +32,7 @@ class MainActivity : AppCompatActivity() {
     @Inject
     lateinit var appPreference: AppPreference
     private lateinit var binding: ActivityMainBinding
+    private lateinit var mainNavController: NavController
     private var currentDestinationId: Int? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -53,7 +56,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         val navView: BottomNavigationView = binding.navView
-        val navController = findNavController(R.id.nav_host_fragment_activity_main)
+        mainNavController = findMainNavController()
+        val navController = mainNavController
         val appBarConfiguration = AppBarConfiguration(
             setOf(
                 R.id.navigation_setting,
@@ -65,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         setupActionBarWithNavController(navController, appBarConfiguration)
         setupBottomNavigation(navView, navController)
         setupSettingHomeSwitchMenu(navController)
+        applySettingHomeModeFromPreference(navController)
         navController.addOnDestinationChangedListener { _, destination, _ ->
             currentDestinationId = destination.id
             if (destination.id == R.id.navigation_setting ||
@@ -87,7 +92,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onSupportNavigateUp(): Boolean {
-        val navController = findNavController(R.id.nav_host_fragment_activity_main)
+        val navController = currentNavController()
         return navController.navigateUp() || super.onSupportNavigateUp()
     }
 
@@ -97,7 +102,7 @@ class MainActivity : AppCompatActivity() {
     private fun handleIntent(intent: Intent?): Boolean {
         val extra = intent?.getStringExtra("openSettingActivity")
         return extra?.let { request ->
-            val navController = findNavController(R.id.nav_host_fragment_activity_main)
+            val navController = currentNavController()
             when (request) {
                 "setting_fragment_request" -> {
                     navigateToPreferredSettingHome(navController)
@@ -112,6 +117,55 @@ class MainActivity : AppCompatActivity() {
                 else -> false
             }
         } ?: false
+    }
+
+    private fun currentNavController(): NavController {
+        return if (::mainNavController.isInitialized) {
+            mainNavController
+        } else {
+            findMainNavController().also { mainNavController = it }
+        }
+    }
+
+    private fun findMainNavController(): NavController {
+        val navHostFragment = supportFragmentManager
+            .findFragmentById(R.id.nav_host_fragment_activity_main) as NavHostFragment
+        return navHostFragment.navController
+    }
+
+    fun applySettingHomeModeFromPreference(navController: NavController? = null) {
+        val useNewDashboard = appPreference.setting_use_new_home_screen_preference
+        updateBottomNavigationVisibility(useNewDashboard)
+        updateNavHostBottomConstraint(useNewDashboard)
+        navController?.let { ensurePreferredSettingHomeIfNeeded(it) }
+    }
+
+    private fun updateBottomNavigationVisibility(useNewDashboard: Boolean) {
+        binding.navView.visibility = if (useNewDashboard) View.GONE else View.VISIBLE
+    }
+
+    private fun updateNavHostBottomConstraint(useNewDashboard: Boolean) {
+        ConstraintSet().apply {
+            clone(binding.container)
+            clear(R.id.nav_host_fragment_activity_main, ConstraintSet.BOTTOM)
+            if (useNewDashboard) {
+                connect(
+                    R.id.nav_host_fragment_activity_main,
+                    ConstraintSet.BOTTOM,
+                    ConstraintSet.PARENT_ID,
+                    ConstraintSet.BOTTOM,
+                )
+            } else {
+                connect(
+                    R.id.nav_host_fragment_activity_main,
+                    ConstraintSet.BOTTOM,
+                    R.id.nav_view,
+                    ConstraintSet.TOP,
+                )
+            }
+            setMargin(R.id.nav_host_fragment_activity_main, ConstraintSet.BOTTOM, 0)
+            applyTo(binding.container)
+        }
     }
 
     private fun setupBottomNavigation(
@@ -170,7 +224,7 @@ class MainActivity : AppCompatActivity() {
         item.isVisible = visible
         if (!visible) return
 
-        if (destinationId == R.id.navigation_setting) {
+        if (appPreference.setting_use_new_home_screen_preference) {
             item.setTitle(R.string.setting_switch_to_legacy_home)
         } else {
             item.setTitle(R.string.setting_switch_to_new_home)
@@ -180,27 +234,21 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun switchSettingHome(navController: NavController) {
-        when (currentDestinationId ?: navController.currentDestination?.id) {
-            R.id.navigation_setting -> {
-                appPreference.setting_use_new_home_screen_preference = false
-                navigateReplacingCurrentHome(
-                    navController = navController,
-                    targetDestinationId = R.id.settingMainFragment,
-                    popUpToDestinationId = R.id.navigation_setting,
-                    inclusive = false,
-                )
-            }
+        appPreference.setting_use_new_home_screen_preference =
+            !appPreference.setting_use_new_home_screen_preference
+        applySettingHomeModeFromPreference()
+        navigateToPreferredSettingHome(navController)
+        invalidateOptionsMenu()
+    }
 
-            R.id.settingMainFragment -> {
-                appPreference.setting_use_new_home_screen_preference = true
-                navigateReplacingCurrentHome(
-                    navController = navController,
-                    targetDestinationId = R.id.navigation_setting,
-                    popUpToDestinationId = R.id.settingMainFragment,
-                    inclusive = true,
-                )
-            }
+    private fun ensurePreferredSettingHomeIfNeeded(navController: NavController): Boolean {
+        val currentDestinationId = navController.currentDestination?.id ?: return false
+        if (currentDestinationId != R.id.navigation_setting &&
+            currentDestinationId != R.id.settingMainFragment
+        ) {
+            return false
         }
+        return navigateToPreferredSettingHome(navController)
     }
 
     private fun navigateToPreferredSettingHome(navController: NavController): Boolean {

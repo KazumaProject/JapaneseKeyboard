@@ -301,7 +301,10 @@
     <string name="gemma_translation_model_summary_imported">読み込み済みモデル: %1$s</string>
     <string name="gemma_translation_model_summary_ready">ロード成功: %1$s（%2$s）</string>
     <string name="gemma_translation_model_summary_loading">Gemma 4 モデルを読み込み中…</string>
+    <string name="gemma_translation_model_summary_loading_backend">%1$s で Gemma 4 モデルを読み込み中…</string>
+    <string name="gemma_translation_model_summary_cpu_fallback_ready">GPU の初期化に失敗したため CPU フォールバックで動作しています。</string>
     <string name="gemma_translation_model_summary_error">Gemma 4 モデルの読み込みに失敗しました: %1$s</string>
+    <string name="gemma_translation_model_summary_timeout">Gemma の初期化がタイムアウトしました。</string>
     <string name="gemma_translation_model_summary_unsupported_abi">Gemma 翻訳は 64bit 端末（arm64-v8a / x86_64）が必要です。</string>
     <string name="gemma_translation_model_import_success">Gemma 4 モデルを読み込みました。</string>
     <string name="gemma_translation_model_import_failed">Gemma 4 モデルの読み込みに失敗しました。</string>
@@ -1050,6 +1053,11 @@
     <string name="setting_home_frequent_title">よく使う設定</string>
     <string name="setting_home_frequent_edit_content_description">よく使う設定を編集</string>
     <string name="setting_home_categories_title">カテゴリ</string>
+    <string name="setting_category_management_title">管理</string>
+    <string name="setting_management_learn_dictionary_summary">学習辞書の内容を確認・編集します</string>
+    <string name="setting_management_user_dictionary_summary">ユーザー辞書の単語を登録・管理します</string>
+    <string name="setting_management_user_template_summary">定型文やスニペットを管理します</string>
+    <string name="setting_management_custom_keyboard_summary">カスタムキーボード配列を管理します</string>
     <string name="setting_search_title">設定を検索</string>
     <string name="setting_search_hint">設定名・説明・key で検索</string>
     <string name="setting_search_result_count">%1$d 件</string>
@@ -1057,9 +1065,10 @@
     <string name="setting_search_empty">一致する設定がありません</string>
     <string name="setting_search_result_content_description">%1$s。%2$s。カテゴリ: %3$s</string>
     <string name="setting_frequent_edit_title">よく使う設定を編集</string>
-    <string name="setting_frequent_edit_description">設定トップに表示するカードを選びます。選択中のカードはドラッグで表示位置を変更できます。</string>
+    <string name="setting_frequent_edit_description">設定トップに表示するカードの追加・削除・並び替えができます。</string>
+    <string name="setting_frequent_add_button">設定を追加</string>
     <string name="setting_frequent_reset_default">初期状態に戻す</string>
-    <string name="setting_frequent_empty">表示するカードが選択されていません。設定トップに出したい項目を選択してください。</string>
+    <string name="setting_frequent_empty">表示するカードが選択されていません。「設定を追加」から設定トップに出したい項目を選んでください。</string>
     <string name="setting_frequent_select_content_description">%1$s をよく使う設定に表示</string>
     <string name="setting_frequent_move_up">%1$s を上へ移動</string>
     <string name="setting_frequent_move_down">%1$s を下へ移動</string>

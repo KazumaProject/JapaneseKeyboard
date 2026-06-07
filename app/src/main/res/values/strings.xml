@@ -305,7 +305,10 @@
     <string name="gemma_translation_model_summary_imported">Imported model: %1$s</string>
     <string name="gemma_translation_model_summary_ready">Loaded successfully: %1$s (%2$s)</string>
     <string name="gemma_translation_model_summary_loading">Loading Gemma 4 model…</string>
+    <string name="gemma_translation_model_summary_loading_backend">Loading Gemma 4 model with %1$s…</string>
+    <string name="gemma_translation_model_summary_cpu_fallback_ready">GPU initialization failed, so Gemma is running on CPU fallback.</string>
     <string name="gemma_translation_model_summary_error">Failed to load Gemma 4 model: %1$s</string>
+    <string name="gemma_translation_model_summary_timeout">Gemma initialization timed out.</string>
     <string name="gemma_translation_model_summary_unsupported_abi">Gemma translation requires a 64-bit device (arm64-v8a or x86_64).</string>
     <string name="gemma_translation_model_import_success">Gemma 4 model imported.</string>
     <string name="gemma_translation_model_import_failed">Failed to import Gemma 4 model.</string>
@@ -1052,6 +1055,11 @@
     <string name="setting_home_frequent_title">Frequently Used</string>
     <string name="setting_home_frequent_edit_content_description">Customize frequently used settings</string>
     <string name="setting_home_categories_title">Categories</string>
+    <string name="setting_category_management_title">Management</string>
+    <string name="setting_management_learn_dictionary_summary">Review and edit learned dictionary entries</string>
+    <string name="setting_management_user_dictionary_summary">Register and manage user dictionary words</string>
+    <string name="setting_management_user_template_summary">Manage reusable templates and snippets</string>
+    <string name="setting_management_custom_keyboard_summary">Manage custom keyboard layouts</string>
     <string name="setting_search_title">Search Settings</string>
     <string name="setting_search_hint">Search by setting name, description, or key</string>
     <string name="setting_search_result_count">%1$d results</string>
@@ -1059,9 +1067,10 @@
     <string name="setting_search_empty">No matching settings</string>
     <string name="setting_search_result_content_description">%1$s. %2$s. Category: %3$s</string>
     <string name="setting_frequent_edit_title">Customize Frequently Used</string>
-    <string name="setting_frequent_edit_description">Choose the cards shown on the settings top screen. Drag selected cards to arrange their order.</string>
+    <string name="setting_frequent_edit_description">Add, remove, and reorder the cards shown on the settings top screen.</string>
+    <string name="setting_frequent_add_button">Add setting</string>
     <string name="setting_frequent_reset_default">Reset to default</string>
-    <string name="setting_frequent_empty">No cards are selected. Select settings to show them on the top screen.</string>
+    <string name="setting_frequent_empty">No cards are selected. Use Add setting to choose cards for the top screen.</string>
     <string name="setting_frequent_select_content_description">Show %1$s in frequently used settings</string>
     <string name="setting_frequent_move_up">Move %1$s up</string>
     <string name="setting_frequent_move_down">Move %1$s down</string>

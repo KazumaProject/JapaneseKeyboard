@@ -162,9 +162,9 @@ class FrequentSelectedSettingsAdapter(
     }
 }
 
-class FrequentAvailableSettingsAdapter(
+class FrequentAddSettingsAdapter(
     private val onAdd: (SettingDestination) -> Unit,
-) : ListAdapter<SettingDestination, FrequentAvailableSettingsAdapter.ViewHolder>(DiffCallback) {
+) : ListAdapter<SettingDestination, FrequentAddSettingsAdapter.ViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val inflater = LayoutInflater.from(parent.context)

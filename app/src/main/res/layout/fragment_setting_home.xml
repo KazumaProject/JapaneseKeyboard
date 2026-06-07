@@ -117,6 +117,22 @@
             android:layout_marginTop="12dp"
             android:orientation="vertical" />
 
+        <TextView
+            android:id="@+id/setting_home_management_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:text="@string/setting_category_management_title"
+            android:textAppearance="?attr/textAppearanceTitleMedium"
+            android:textColor="?attr/colorOnSurface" />
+
+        <LinearLayout
+            android:id="@+id/setting_home_management_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:orientation="vertical" />
+
         <ProgressBar
             android:id="@+id/setting_home_progress_bar"
             android:layout_width="48dp"
