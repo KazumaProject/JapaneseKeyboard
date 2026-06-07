@@ -14,6 +14,8 @@ class ImePreferencesSnapshotCustomThemeTest {
         assertTrue(fieldNames.contains("customThemeCandidateTextColor"))
         assertTrue(fieldNames.contains("customThemeCandidateItemBgColor"))
         assertTrue(fieldNames.contains("customThemeCandidateItemPressedBgColor"))
+        assertTrue(fieldNames.contains("customThemeCandidateEmptyPopupBgColor"))
+        assertTrue(fieldNames.contains("customThemeCandidateEmptyPopupTextColor"))
         assertTrue(fieldNames.contains("customThemeShortcutIconColor"))
     }
 }

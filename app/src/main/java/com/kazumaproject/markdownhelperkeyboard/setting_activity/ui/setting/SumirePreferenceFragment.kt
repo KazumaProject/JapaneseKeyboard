@@ -71,35 +71,35 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
 
         sumireKeyboardSizePreference?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.action_navigation_setting_to_flickKeyboardSizeSettingsFragment)
+                navigateSafely(R.id.flickKeyboardSizeSettingsFragment)
                 true
             }
         }
 
         findPreference<Preference>("flick_keyboard_popup_view_style_preference")?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.action_navigation_setting_to_flickKeyboardPopupStyleListFragment)
+                navigateSafely(R.id.flickKeyboardPopupStyleListFragment)
                 true
             }
         }
 
         sumireCustomAnglePreference?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.action_navigation_setting_to_circularFlickSettingsFragment)
+                navigateSafely(R.id.circularFlickSettingsFragment)
                 true
             }
         }
 
         circularSlotActionSettingPreference?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.action_navigation_setting_to_circularSlotActionSettingFragment)
+                navigateSafely(R.id.circularSlotActionSettingFragment)
                 true
             }
         }
 
         findPreference<Preference>("sumire_special_key_editor_preference")?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.action_navigation_setting_to_sumireSpecialKeyEditorFragment)
+                navigateSafely(R.id.sumireSpecialKeyEditorFragment)
                 true
             }
         }
