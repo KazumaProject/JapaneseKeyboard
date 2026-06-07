@@ -201,7 +201,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
-import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.romaji.PhysicalRomajiSymbolNormalizer
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutAction
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutContext
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalShortcutMatcher
@@ -4351,7 +4350,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             _inputString.update { KanaDakutenComposer.append("", kana) }
                         }
                     } else {
-                        handlePhysicalRomajiOrUnicodeKey(e)?.let { romajiResult ->
+                        handlePhysicalRomajiOrUnicodeKey(keyCode, e)?.let { romajiResult ->
                             Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
                             _inputString.update {
                                 romajiResult.first
@@ -4375,7 +4374,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return super.onKeyDown(keyCode, e)
             }
 
-            val letterConverted = handlePhysicalRomajiOrUnicodeKey(e)
+            val letterConverted = handlePhysicalRomajiOrUnicodeKey(keyCode, e)
                 ?: return super.onKeyDown(keyCode, e)
             Timber.d("onKeyDown: $letterConverted")
             if (insertString.isNotEmpty()) {
@@ -4399,20 +4398,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return event.isCtrlPressed || event.isAltPressed || event.isMetaPressed
     }
 
-    private fun handlePhysicalRomajiOrUnicodeKey(event: KeyEvent): Pair<String, Int>? {
-        val resolvedUnicode = event.getUnicodeChar(event.metaState)
-        if (resolvedUnicode == 0) return null
+    private fun handlePhysicalRomajiOrUnicodeKey(
+        keyCode: Int,
+        event: KeyEvent
+    ): Pair<String, Int>? {
+        val unicode = event.getUnicodeChar(event.metaState)
+        if (unicode == 0) return null
 
-        val normalizedUnicode = PhysicalRomajiSymbolNormalizer.normalize(
-            keyCode = event.keyCode,
-            resolvedUnicode = resolvedUnicode,
-            isShiftPressed = event.isShiftPressed
-        )
-
-        return if (isDefaultRomajiHenkanMap) {
-            romajiConverter?.handleUnicodeCharZenkaku(normalizedUnicode)
+        return if (keyCode in KeyEvent.KEYCODE_A..KeyEvent.KEYCODE_Z) {
+            if (isDefaultRomajiHenkanMap) {
+                romajiConverter?.handleKeyEventZenkaku(event)
+            } else {
+                romajiConverter?.handleKeyEvent(event)
+            }
         } else {
-            romajiConverter?.handleUnicodeChar(normalizedUnicode)
+            if (isDefaultRomajiHenkanMap) {
+                romajiConverter?.handleUnicodeCharZenkaku(unicode)
+            } else {
+                romajiConverter?.handleUnicodeChar(unicode)
+            }
         }
     }
 
@@ -4423,15 +4427,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun logPhysicalKeyEventForDebug(keyCode: Int, event: KeyEvent) {
         if (!BuildConfig.DEBUG) return
-        val resolvedUnicode = event.getUnicodeChar(event.metaState)
         Timber.d(
-            "PhysicalKeyEvent keyCode=%d keyName=%s scanCode=%d unicodeChar=%d resolvedUnicode=%d resolvedChar=%s metaState=%d shift=%b alt=%b ctrl=%b meta=%b inputMode=%s",
+            "PhysicalKeyEvent keyCode=%d keyName=%s scanCode=%d unicodeChar=%d metaState=%d shift=%b alt=%b ctrl=%b meta=%b inputMode=%s",
             keyCode,
             KeyEvent.keyCodeToString(keyCode),
             event.scanCode,
             event.unicodeChar,
-            resolvedUnicode,
-            if (resolvedUnicode != 0) resolvedUnicode.toChar().toString() else "",
             event.metaState,
             event.isShiftPressed,
             event.isAltPressed,
