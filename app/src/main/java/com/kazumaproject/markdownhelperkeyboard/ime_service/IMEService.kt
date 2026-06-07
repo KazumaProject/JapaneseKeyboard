@@ -201,6 +201,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.romaji.PhysicalRomajiSymbolNormalizer
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutAction
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutContext
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalShortcutMatcher
@@ -4399,13 +4400,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handlePhysicalRomajiOrUnicodeKey(event: KeyEvent): Pair<String, Int>? {
-        val unicode = event.getUnicodeChar(event.metaState)
-        if (unicode == 0) return null
+        val resolvedUnicode = event.getUnicodeChar(event.metaState)
+        if (resolvedUnicode == 0) return null
+
+        val normalizedUnicode = PhysicalRomajiSymbolNormalizer.normalize(
+            keyCode = event.keyCode,
+            resolvedUnicode = resolvedUnicode,
+            isShiftPressed = event.isShiftPressed
+        )
 
         return if (isDefaultRomajiHenkanMap) {
-            romajiConverter?.handleUnicodeCharZenkaku(unicode)
+            romajiConverter?.handleUnicodeCharZenkaku(normalizedUnicode)
         } else {
-            romajiConverter?.handleUnicodeChar(unicode)
+            romajiConverter?.handleUnicodeChar(normalizedUnicode)
         }
     }
 
