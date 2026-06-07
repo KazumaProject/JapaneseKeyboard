@@ -18,9 +18,8 @@ android {
 
     signingConfigs {
         release {
-            def releaseKeystoreFile = localProperties['KEYSTORE_FILE'] ? file(localProperties['KEYSTORE_FILE']) : null
-            if (releaseKeystoreFile?.isFile()) {
-                storeFile releaseKeystoreFile
+            if (localProperties['KEYSTORE_FILE']) {
+                storeFile file(localProperties['KEYSTORE_FILE'])
                 storePassword localProperties['KEYSTORE_PASSWORD']
                 keyAlias localProperties['KEY_ALIAS']
                 keyPassword localProperties['KEY_PASSWORD']
@@ -32,8 +31,8 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 773
-        versionName "1.7.80"
+        versionCode 774
+        versionName "1.7.81"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -96,7 +95,7 @@ android {
     buildTypes {
         release {
             def releaseSigning = signingConfigs.findByName("release")
-            if (releaseSigning?.storeFile?.isFile()) {
+            if (releaseSigning?.storeFile) {
                 signingConfig releaseSigning
             }
             minifyEnabled true
