@@ -119,6 +119,15 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
     }
 
     /**
+     * Legacy keyCode-based physical keyboard path.
+     *
+     * Do not use this for normal physical keyboard text input. Normal physical
+     * keyboard input must resolve text through KeyEvent.getUnicodeChar(metaState)
+     * first so the selected Android KCM, including Sumire Japanese 109A, is
+     * respected.
+     *
+     * This method is kept for backward compatibility with existing callers/tests.
+     *
      * @return Pair( toShow, toDelete )
      *   - toShow: 新たに“追加”表示する文字列
      *   - toDelete: 画面上で“直前に”消すべき文字数
@@ -128,6 +137,15 @@ class RomajiKanaConverter(private val romajiToKana: Map<String, Pair<String, Int
     }
 
     /**
+     * Legacy keyCode-based physical keyboard path for zenkaku romaji maps.
+     *
+     * Do not use this for normal physical keyboard text input. Normal physical
+     * keyboard input must resolve text through KeyEvent.getUnicodeChar(metaState)
+     * first so the selected Android KCM, including Sumire Japanese 109A, is
+     * respected.
+     *
+     * This method is kept for backward compatibility with existing callers/tests.
+     *
      * @return Pair( toShow, toDelete )
      *   - toShow: 新たに“追加”表示する文字列
      *   - toDelete: 画面上で“直前に”消すべき文字数
