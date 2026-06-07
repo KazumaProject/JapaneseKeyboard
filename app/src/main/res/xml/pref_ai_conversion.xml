@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory android:title="@string/setting_category_ai_conversion_title">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="conversion_key_long_press_ai_conversion_preference"
+            android:summary="@string/conversion_key_long_press_ai_conversion_preference_summary"
+            android:title="@string/conversion_key_long_press_ai_conversion_preference_title" />
+
+        <Preference
+            android:icon="@drawable/lightbulb_24dp"
+            android:key="setting_route_zenz_preferences"
+            android:summary="@string/setting_route_zenz_summary"
+            android:title="zenz" />
+
+        <Preference
+            android:icon="@drawable/lightbulb_24dp"
+            android:key="setting_route_gemma_preferences"
+            android:summary="@string/setting_route_gemma_summary"
+            android:title="Gemma" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/setting_category_ai_advanced_title">
+
+        <Preference
+            android:key="setting_route_advanced"
+            android:summary="@string/setting_route_ai_advanced_summary"
+            android:title="@string/setting_category_advanced_title" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

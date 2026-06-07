@@ -5,10 +5,12 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.XmlRes
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -24,6 +26,7 @@ import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -31,13 +34,17 @@ import java.io.OutputStreamWriter
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class CommonPreferenceFragment : PreferenceFragmentCompat() {
+open class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
-    private companion object {
-        const val LONG_PRESS_TIMEOUT_MIN_MS = 100
-        const val LONG_PRESS_TIMEOUT_MAX_MS = 2000
-        const val LONG_PRESS_TIMEOUT_DEFAULT_MS = 300
+    companion object {
+        const val ARG_HIGHLIGHT_PREFERENCE_KEY = "highlightPreferenceKey"
+        private const val LONG_PRESS_TIMEOUT_MIN_MS = 100
+        private const val LONG_PRESS_TIMEOUT_MAX_MS = 2000
+        private const val LONG_PRESS_TIMEOUT_DEFAULT_MS = 300
     }
+
+    @get:XmlRes
+    protected open val preferencesXmlRes: Int = R.xml.pref_common
 
     @Inject
     lateinit var appPreference: AppPreference
@@ -222,7 +229,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-        setPreferencesFromResource(R.xml.pref_common, rootKey)
+        setPreferencesFromResource(preferencesXmlRes, rootKey)
 
         val packageInfo = requireContext().packageManager.getPackageInfo(
             requireContext().packageName, 0
@@ -292,7 +299,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         val customRomajiPreference = findPreference<Preference>("custom_romaji_preference")
         customRomajiPreference?.setOnPreferenceClickListener {
             navigateSafely(
-                R.id.action_navigation_setting_to_romajiMapFragment
+                R.id.romajiMapFragment
             )
             true
         }
@@ -303,7 +310,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         shortCutToolbarItemSettingPreference?.apply {
             setOnPreferenceClickListener {
                 navigateSafely(
-                    R.id.action_navigation_setting_to_shortcutSettingFragment
+                    R.id.shortcutSettingFragment
                 )
                 true
             }
@@ -314,7 +321,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         candidateTabOrderPreference?.apply {
             setOnPreferenceClickListener {
                 navigateSafely(
-                    R.id.action_navigation_setting_to_candidateTabOrderFragment
+                    R.id.candidateTabOrderFragment
                 )
                 true
             }
@@ -325,7 +332,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
         keyboardSelectionPreference?.setOnPreferenceClickListener {
             navigateSafely(
-                R.id.action_navigation_setting_to_keyboardSelectionFragment
+                R.id.keyboardSelectionFragment
             )
             true
         }
@@ -335,7 +342,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
         keyboardLetterSizePreference?.setOnPreferenceClickListener {
             navigateSafely(
-                R.id.action_navigation_setting_to_keyCandidateLetterSizeFragment
+                R.id.keyCandidateLetterSizeFragment
             )
             true
         }
@@ -390,7 +397,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
         keyboardSizeLandscapePreference?.setOnPreferenceClickListener {
             navigateSafely(
-                R.id.action_navigation_setting_to_keyboardSizeLandscapeFragment
+                R.id.keyboardSizeLandscapeFragment
             )
             true
         }
@@ -400,7 +407,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         candidateHeightFragmentSetting?.apply {
             setOnPreferenceClickListener {
                 navigateSafely(
-                    R.id.action_navigation_setting_to_candidateViewHeightSettingFragment
+                    R.id.candidateViewHeightSettingFragment
                 )
                 true
             }
@@ -411,7 +418,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         candidateHeightLandscapeFragmentSetting?.apply {
             setOnPreferenceClickListener {
                 navigateSafely(
-                    R.id.action_navigation_setting_to_candidateHeightLandscapeSettingFragment
+                    R.id.candidateHeightLandscapeSettingFragment
                 )
                 true
             }
@@ -422,7 +429,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         clipBoardHistoryPreference?.apply {
             setOnPreferenceClickListener {
                 navigateSafely(
-                    R.id.action_navigation_setting_to_clipboardHistoryFragment
+                    R.id.clipboardHistoryFragment
                 )
                 true
             }
@@ -524,7 +531,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
         findPreference<Preference>("delete_key_flick_left_targets_preference")?.apply {
             setOnPreferenceClickListener {
                 navigateSafely(
-                    R.id.action_navigation_setting_to_deleteKeyFlickTargetsFragment
+                    R.id.deleteKeyFlickTargetsFragment
                 )
                 true
             }
@@ -534,7 +541,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
             updateCursorMoveTargetPairsSummary()
             setOnPreferenceClickListener {
                 navigateSafely(
-                    R.id.action_navigation_setting_to_cursorMoveTargetPairsFragment
+                    R.id.cursorMoveTargetPairsFragment
                 )
                 true
             }
@@ -544,7 +551,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
         keyboardSettingPreference?.setOnPreferenceClickListener {
             navigateSafely(
-                R.id.action_navigation_setting_to_keyboardSettingFragment
+                R.id.keyboardSettingFragment
             )
             true
         }
@@ -553,7 +560,7 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
         openSourcePreference?.setOnPreferenceClickListener {
             navigateSafely(
-                R.id.action_navigation_dashboard_to_openSourceFragment
+                R.id.openSourceFragment
             )
             true
         }
@@ -567,6 +574,53 @@ class CommonPreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        setupRoutePreferences()
+        onCommonPreferencesCreated()
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        scrollToHighlightedPreferenceAfterLayout(view)
+    }
+
+    protected open fun onCommonPreferencesCreated() = Unit
+
+    private fun setupRoutePreferences() {
+        val routeTargets = mapOf(
+            "setting_route_keyboard_display" to R.id.keyboardDisplayPreferenceFragment,
+            "setting_route_input_method" to R.id.inputMethodPreferenceFragment,
+            "setting_route_candidate_conversion" to R.id.candidateConversionPreferenceFragment,
+            "setting_route_dictionary" to R.id.dictionaryPreferenceFragment,
+            "setting_route_ai_conversion" to R.id.aiConversionPreferenceFragment,
+            "setting_route_clipboard_shortcut" to R.id.clipboardShortcutPreferenceFragment,
+            "setting_route_operation_feedback" to R.id.operationFeedbackPreferenceFragment,
+            "setting_route_general_info" to R.id.generalInfoPreferenceFragment,
+            "setting_route_advanced" to R.id.advancedPreferenceFragment,
+            "setting_route_legacy_settings" to R.id.settingMainFragment,
+            "setting_route_keyboard_theme" to R.id.keyboardThemeFragment,
+            "setting_route_kana_preferences" to R.id.kanaPreferenceFragment,
+            "setting_route_qwerty_preferences" to R.id.qwertyPreferenceFragment,
+            "setting_route_sumire_preferences" to R.id.sumirePreferenceFragment,
+            "setting_route_custom_keyboard_preferences" to R.id.customKeyboardPreferenceFragment,
+            "setting_route_tablet_preferences" to R.id.tabletPreferenceFragment,
+            "setting_route_hardware_keyboard_preferences" to R.id.hardwareKeyboardPreferenceFragment,
+            "setting_route_common_preferences" to R.id.commonPreferenceFragment,
+            "setting_route_zenz_preferences" to R.id.zenzPreferenceFragment,
+            "setting_route_gemma_preferences" to R.id.gemmaPreferenceFragment,
+        )
+
+        routeTargets.forEach { (key, destinationId) ->
+            findPreference<Preference>(key)?.setOnPreferenceClickListener {
+                navigateSafely(destinationId)
+                true
+            }
+        }
+
+        findPreference<Preference>("setting_route_zenz_preferences")?.isVisible =
+            AppVariantConfig.hasZenz
+        findPreference<Preference>("setting_route_gemma_preferences")?.isVisible =
+            AppVariantConfig.hasGemma
     }
 
     override fun onResume() {

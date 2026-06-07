@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_th
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
+import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.preference.CheckBoxPreference
@@ -16,6 +17,7 @@ import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -48,6 +50,10 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             "theme_custom_candidate_item_bg_color"
         private const val PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG =
             "theme_custom_candidate_item_pressed_bg_color"
+        private const val PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG =
+            "theme_custom_candidate_empty_popup_bg_color"
+        private const val PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT =
+            "theme_custom_candidate_empty_popup_text_color"
         private const val PREF_KEY_CUSTOM_SHORTCUT_ICON =
             "theme_custom_shortcut_icon_color"
 
@@ -69,9 +75,13 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         private const val MODE_CUSTOM = "custom"
     }
 
+    private var pendingHighlightPreferenceKey: String? = null
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         val context = preferenceManager.context
         val screen = preferenceManager.createPreferenceScreen(context)
+        pendingHighlightPreferenceKey =
+            arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY)
 
         // -------------------------------------------------------
         // System Category
@@ -237,6 +247,20 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         customCategory.addPreference(customCandidateItemPressedBgPref)
 
+        val customCandidateEmptyPopupBgPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG,
+            getString(R.string.theme_custom_candidate_empty_popup_bg_color)
+        ) { appPreference.custom_theme_candidate_empty_popup_bg_color }
+        customCategory.addPreference(customCandidateEmptyPopupBgPref)
+
+        val customCandidateEmptyPopupTextPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT,
+            getString(R.string.theme_custom_candidate_empty_popup_text_color)
+        ) { appPreference.custom_theme_candidate_empty_popup_text_color }
+        customCategory.addPreference(customCandidateEmptyPopupTextPref)
+
         val customShortcutIconPref = createColorPreference(
             context,
             PREF_KEY_CUSTOM_SHORTCUT_ICON,
@@ -366,6 +390,17 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         updateCustomColorsVisibility(appPreference.theme_mode == MODE_CUSTOM)
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        pendingHighlightPreferenceKey?.let { key ->
+            listView.post {
+                findPreference<Preference>(key)?.let { preference ->
+                    scrollToPreference(preference)
+                }
+            }
+        }
+    }
+
     private fun createColorPreference(
         context: Context,
         key: String,
@@ -411,6 +446,8 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_TEXT)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_SHORTCUT_ICON)?.isVisible = isVisible
 
         // Border Settings
@@ -437,6 +474,10 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
                 appPreference.custom_theme_candidate_item_bg_color = color
             PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG ->
                 appPreference.custom_theme_candidate_item_pressed_bg_color = color
+            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG ->
+                appPreference.custom_theme_candidate_empty_popup_bg_color = color
+            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT ->
+                appPreference.custom_theme_candidate_empty_popup_text_color = color
             PREF_KEY_CUSTOM_SHORTCUT_ICON -> appPreference.custom_theme_shortcut_icon_color =
                 color
 

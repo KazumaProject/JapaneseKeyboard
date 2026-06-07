@@ -60,6 +60,8 @@ class CandidateStripPresentationPolicyTest {
             baseState(clipboardPreviewShown = true)
         )
 
+        assertFalse(presentation.showIndependentShortcutToolbar)
+        assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
         assertFalse(presentation.showIntegratedShortcut)
     }
 
@@ -69,6 +71,8 @@ class CandidateStripPresentationPolicyTest {
             baseState(selectedTextGemmaActionsShown = true)
         )
 
+        assertFalse(presentation.showIndependentShortcutToolbar)
+        assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
         assertFalse(presentation.showIntegratedShortcut)
     }
 
@@ -78,6 +82,8 @@ class CandidateStripPresentationPolicyTest {
             baseState(customLayoutPickerShown = true)
         )
 
+        assertFalse(presentation.showIndependentShortcutToolbar)
+        assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
         assertFalse(presentation.showIntegratedShortcut)
     }
 

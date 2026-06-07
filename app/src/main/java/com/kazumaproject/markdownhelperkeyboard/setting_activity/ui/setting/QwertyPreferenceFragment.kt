@@ -20,14 +20,14 @@ class QwertyPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("qwerty_button_size_preference")
         qwertyButtonMarginPreference?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.action_navigation_setting_to_qwertyMarginSettingFragment)
+                navigateSafely(R.id.qwertyMarginSettingFragment)
                 true
             }
         }
 
         findPreference<Preference>("qwerty_popup_view_style_preference")?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.action_navigation_setting_to_qwertyPopupStyleSettingFragment)
+                navigateSafely(R.id.qwertyPopupStyleSettingFragment)
                 true
             }
         }
@@ -35,7 +35,7 @@ class QwertyPreferenceFragment : PreferenceFragmentCompat() {
         findPreference<Preference>(QWERTY_NUMBER_KEY_FLICK_SETTING_PREFERENCE)?.apply {
             setOnPreferenceClickListener {
                 navigateSafely(
-                    R.id.action_navigation_setting_to_qwertyNumberKeyFlickSettingFragment
+                    R.id.qwertyNumberKeyFlickSettingFragment
                 )
                 true
             }

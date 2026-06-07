@@ -10,6 +10,7 @@ import androidx.core.content.ContextCompat.getSystemService
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.google.android.material.tabs.TabLayoutMediator
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSettingMainBinding
@@ -98,7 +99,17 @@ class SettingMainFragment : Fragment() {
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    requireActivity().finish()
+                    val navController = findNavController()
+                    if (!appPreference.setting_use_new_home_screen_preference &&
+                        navController.previousBackStackEntry?.destination?.id ==
+                        R.id.navigation_setting
+                    ) {
+                        requireActivity().finish()
+                        return
+                    }
+                    if (!findNavController().popBackStack()) {
+                        requireActivity().finish()
+                    }
                 }
             })
     }
@@ -113,7 +124,7 @@ class SettingMainFragment : Fragment() {
             binding.settingProgressBar.isVisible = false
             if (enabled == false) {
                 navigateSafely(
-                    R.id.action_navigation_setting_to_enableKeyboardFragment
+                    R.id.enableKeyboardFragment
                 )
             }
         }

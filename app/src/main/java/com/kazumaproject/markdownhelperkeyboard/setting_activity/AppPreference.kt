@@ -22,6 +22,8 @@ internal object CustomThemeColorPreferenceKeys {
     const val CANDIDATE_TEXT_COLOR = "custom_theme_candidate_text_color"
     const val CANDIDATE_ITEM_BG_COLOR = "custom_theme_candidate_item_bg_color"
     const val CANDIDATE_ITEM_PRESSED_BG_COLOR = "custom_theme_candidate_item_pressed_bg_color"
+    const val CANDIDATE_EMPTY_POPUP_BG_COLOR = "custom_theme_candidate_empty_popup_bg_color"
+    const val CANDIDATE_EMPTY_POPUP_TEXT_COLOR = "custom_theme_candidate_empty_popup_text_color"
     const val SHORTCUT_ICON_COLOR = "custom_theme_shortcut_icon_color"
 }
 
@@ -260,6 +262,10 @@ object AppPreference {
         )
     )
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
+    private val SETTING_HOME_FREQUENT_KEYS =
+        Pair("setting_home_frequent_keys_preference", "")
+    private val SETTING_USE_NEW_HOME_SCREEN =
+        Pair("setting_use_new_home_screen_preference", true)
 
     private val defaultCandidateTabJson = gson.toJson(
         listOf(
@@ -311,6 +317,10 @@ object AppPreference {
             CustomThemeColorPreferenceKeys.CANDIDATE_ITEM_PRESSED_BG_COLOR,
             DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR
         )
+    private val CUSTOM_THEME_CANDIDATE_EMPTY_POPUP_BG_COLOR =
+        Pair(CustomThemeColorPreferenceKeys.CANDIDATE_EMPTY_POPUP_BG_COLOR, Color.GRAY)
+    private val CUSTOM_THEME_CANDIDATE_EMPTY_POPUP_TEXT_COLOR =
+        Pair(CustomThemeColorPreferenceKeys.CANDIDATE_EMPTY_POPUP_TEXT_COLOR, Color.BLACK)
     private val CUSTOM_THEME_SHORTCUT_ICON_COLOR =
         Pair(CustomThemeColorPreferenceKeys.SHORTCUT_ICON_COLOR, Color.BLACK)
 
@@ -1001,6 +1011,40 @@ object AppPreference {
             it.putString(KEYBOARD_ORDER.first, json)
         }
 
+    var setting_home_frequent_keys: List<String>
+        get() {
+            val json = preferences.getString(
+                SETTING_HOME_FREQUENT_KEYS.first,
+                SETTING_HOME_FREQUENT_KEYS.second
+            )
+            if (json.isNullOrBlank()) return emptyList()
+            val type = object : TypeToken<List<String>>() {}.type
+            return runCatching {
+                gson.fromJson<List<String>>(json, type)
+                    .orEmpty()
+                    .filter { it.isNotBlank() }
+                    .distinct()
+            }.getOrDefault(emptyList())
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                SETTING_HOME_FREQUENT_KEYS.first,
+                gson.toJson(value.filter { key -> key.isNotBlank() }.distinct())
+            )
+        }
+
+    val has_setting_home_frequent_keys: Boolean
+        get() = preferences.contains(SETTING_HOME_FREQUENT_KEYS.first)
+
+    var setting_use_new_home_screen_preference: Boolean
+        get() = preferences.getBoolean(
+            SETTING_USE_NEW_HOME_SCREEN.first,
+            SETTING_USE_NEW_HOME_SCREEN.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SETTING_USE_NEW_HOME_SCREEN.first, value)
+        }
+
     var candidate_tab_order: List<CandidateTab>
         get() {
             val json = preferences.getString(
@@ -1672,6 +1716,26 @@ object AppPreference {
 
     fun getCustomThemeCandidateItemPressedBgColor(defaultColor: Int): Int {
         return readIntPreference(CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR.first, defaultColor)
+    }
+
+    var custom_theme_candidate_empty_popup_bg_color: Int
+        get() = getCustomThemeCandidateEmptyPopupBgColor(custom_theme_special_key_color)
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_CANDIDATE_EMPTY_POPUP_BG_COLOR.first, value)
+        }
+
+    fun getCustomThemeCandidateEmptyPopupBgColor(defaultColor: Int): Int {
+        return readIntPreference(CUSTOM_THEME_CANDIDATE_EMPTY_POPUP_BG_COLOR.first, defaultColor)
+    }
+
+    var custom_theme_candidate_empty_popup_text_color: Int
+        get() = getCustomThemeCandidateEmptyPopupTextColor(custom_theme_special_key_text_color)
+        set(value) = preferences.edit {
+            it.putInt(CUSTOM_THEME_CANDIDATE_EMPTY_POPUP_TEXT_COLOR.first, value)
+        }
+
+    fun getCustomThemeCandidateEmptyPopupTextColor(defaultColor: Int): Int {
+        return readIntPreference(CUSTOM_THEME_CANDIDATE_EMPTY_POPUP_TEXT_COLOR.first, defaultColor)
     }
 
     var custom_theme_shortcut_icon_color: Int

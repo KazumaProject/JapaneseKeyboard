@@ -16,14 +16,14 @@ class KanaPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<Preference>("kana_keyboard_letter_size_preference")
         letterSizePreference?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.action_navigation_setting_to_tenKeyCandidateLetterSizeFragment)
+                navigateSafely(R.id.tenKeyCandidateLetterSizeFragment)
                 true
             }
         }
 
         findPreference<Preference>("tenkey_popup_view_style_preference")?.apply {
             setOnPreferenceClickListener {
-                navigateSafely(R.id.action_navigation_setting_to_tenKeyPopupStyleSettingFragment)
+                navigateSafely(R.id.tenKeyPopupStyleSettingFragment)
                 true
             }
         }
