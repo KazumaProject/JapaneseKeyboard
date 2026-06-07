@@ -72,6 +72,7 @@ class SettingHomeFragment : Fragment() {
         initializeRomajiDataIfNeeded()
         renderFrequentCards()
         renderCategoryRows()
+        renderManagementRows()
 
         binding.settingHomeSearchButton.setOnClickListener {
             navigateSafely(R.id.settingSearchFragment)
@@ -133,6 +134,13 @@ class SettingHomeFragment : Fragment() {
         binding.settingHomeCategoryList.removeAllViews()
         SettingDestinations.categories(requireContext()).forEach { destination ->
             binding.settingHomeCategoryList.addView(createCategoryRow(destination))
+        }
+    }
+
+    private fun renderManagementRows() {
+        binding.settingHomeManagementList.removeAllViews()
+        SettingDestinations.management(requireContext()).forEach { destination ->
+            binding.settingHomeManagementList.addView(createCategoryRow(destination))
         }
     }
 
