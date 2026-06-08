@@ -1092,12 +1092,15 @@
     <string name="setting_frequent_unselected">Not selected</string>
     <string name="setting_frequent_available">Available to add</string>
     <string name="setting_frequent_type_nav">Opens screen</string>
+    <string name="setting_frequent_type_management">Management screen</string>
     <string name="setting_frequent_type_switch">Switch setting</string>
     <string name="setting_frequent_type_list">Choice setting</string>
     <string name="setting_frequent_type_number">Number setting</string>
+    <string name="setting_frequent_type_text">Text setting</string>
     <string name="keyboard_selection_fragment_summary">Choose which keyboard layouts are available and their order</string>
     <string name="setting_status_enabled">On</string>
     <string name="setting_status_disabled">Off</string>
+    <string name="setting_value_empty">Not set</string>
     <string name="setting_home_keyboard_size_summary">Height %1$ddp / Width %2$d%%</string>
     <string name="setting_home_dp_summary">%1$ddp</string>
     <string name="setting_home_current_value">Current: %1$s</string>

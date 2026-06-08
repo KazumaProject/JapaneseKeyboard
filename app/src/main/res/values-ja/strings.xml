@@ -1090,12 +1090,15 @@
     <string name="setting_frequent_unselected">未選択</string>
     <string name="setting_frequent_available">追加可能</string>
     <string name="setting_frequent_type_nav">画面を開く設定</string>
+    <string name="setting_frequent_type_management">管理画面</string>
     <string name="setting_frequent_type_switch">Switch 設定</string>
     <string name="setting_frequent_type_list">選択式設定</string>
     <string name="setting_frequent_type_number">数値設定</string>
+    <string name="setting_frequent_type_text">文字列設定</string>
     <string name="keyboard_selection_fragment_summary">利用するキーボードの種類と並び順を設定します</string>
     <string name="setting_status_enabled">有効</string>
     <string name="setting_status_disabled">無効</string>
+    <string name="setting_value_empty">未設定</string>
     <string name="setting_home_keyboard_size_summary">高さ %1$ddp / 幅 %2$d%%</string>
     <string name="setting_home_dp_summary">%1$ddp</string>
     <string name="setting_home_current_value">現在: %1$s</string>
