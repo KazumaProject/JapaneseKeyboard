@@ -20,6 +20,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.CombinedVibration
 import android.os.Handler
+import android.os.Looper
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -579,6 +580,89 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    private fun assertMainThread(functionName: String) {
+        check(Looper.myLooper() == Looper.getMainLooper()) {
+            "$functionName must be called on the main thread."
+        }
+    }
+
+    private fun runOnMainThread(action: () -> Unit) {
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            action()
+        } else {
+            mainHandler.post {
+                action()
+            }
+        }
+    }
+
+    private fun setSuggestionAdapterSuggestionsOnMain(candidates: List<Candidate>) {
+        runOnMainThread {
+            suggestionAdapter?.suggestions = candidates
+        }
+    }
+
+    private fun setSuggestionAdaptersOnMain(
+        candidates: List<Candidate>,
+        fullCandidates: List<Candidate> = candidates
+    ) {
+        runOnMainThread {
+            suggestionAdapter?.suggestions = candidates
+            suggestionAdapterFull?.suggestions = fullCandidates
+        }
+    }
+
+    private suspend fun updateSuggestionAdaptersOnMain(
+        candidates: List<Candidate>,
+        insertString: String,
+        fullCandidates: List<Candidate> = candidates
+    ) {
+        withContext(Dispatchers.Main.immediate) {
+            if (!shouldApplyCandidateResult(insertString)) return@withContext
+            suggestionAdapter?.suggestions = candidates
+            suggestionAdapterFull?.suggestions = fullCandidates
+        }
+    }
+
+    private suspend fun updateFloatingCandidatesOnMain(
+        candidates: List<CandidateItem>,
+        insertString: String,
+        highlightedAbsoluteIndex: Int? = null
+    ) {
+        withContext(Dispatchers.Main.immediate) {
+            if (!shouldApplyCandidateResult(insertString)) return@withContext
+            updateSuggestionsForFloatingCandidate(
+                suggestions = candidates,
+                highlightedAbsoluteIndex = highlightedAbsoluteIndex
+            )
+        }
+    }
+
+    private suspend fun applyFirstSuggestionOnMainIfCurrent(
+        insertString: String,
+        candidate: Candidate?
+    ): Boolean = withContext(Dispatchers.Main.immediate) {
+        if (!shouldApplyCandidateResult(insertString)) return@withContext false
+        isContinuousTapInputEnabled.set(true)
+        lastFlickConvertedNextHiragana.set(true)
+        if (!hasConvertedKatakana) {
+            candidate?.let { applyFirstSuggestion(it) }
+        }
+        true
+    }
+
+    private suspend fun updateBunsetsuSpaceKeyIfNeededOnMain(
+        mainView: MainLayoutBinding,
+        candidates: List<Candidate>,
+        insertString: String
+    ) {
+        withContext(Dispatchers.Main.immediate) {
+            if (!shouldApplyCandidateResult(insertString)) return@withContext
+            updateBunsetsuSpaceKeyIfNeeded(mainView, candidates, insertString)
+        }
+    }
 
     @Volatile
     private var lastAppliedDictionaryOverrideRevision: Long = Long.MIN_VALUE
@@ -1239,11 +1323,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         suggestionAdapter = SuggestionAdapter().apply {
             onListUpdated = {
-                if (isKeyboardFloatingMode != true) {
-                    mainLayoutBinding?.apply {
-                        setMainSuggestionColumn(this)
-                        suggestionRecyclerView.scrollToPosition(0)
-                        updateCandidateStripPresentation(this)
+                if (Looper.myLooper() == Looper.getMainLooper()) {
+                    updateMainCandidateStripAfterListUpdated()
+                } else {
+                    mainHandler.post {
+                        updateMainCandidateStripAfterListUpdated()
                     }
                 }
             }
@@ -2257,7 +2341,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             nThreads = zenzMaximumThreadSizePreference ?: 4
         )
         clearZenzLiveSlot("onStartInputView")
-        suggestionAdapter?.suggestions = emptyList()
+        setSuggestionAdapterSuggestionsOnMain(emptyList())
         suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionAdapterFull?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
         suggestionClickNum = 0
@@ -3581,8 +3665,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setComposingText("", 0)
                     endBatchEdit()
                 }
-                suggestionAdapter?.suggestions =
-                    emptyList() // avoid unnecessary allocations elsewhere
+                setSuggestionAdapterSuggestionsOnMain(
+                    emptyList()
+                ) // avoid unnecessary allocations elsewhere
             }
 
             // Caret moved while tail exists → commit tail
@@ -4131,8 +4216,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFirstClickHasStringTail = false
         listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
-        suggestionAdapter?.suggestions = emptyList()
-        suggestionAdapterFull?.suggestions = emptyList()
+        setSuggestionAdaptersOnMain(emptyList())
         updateSuggestionsForFloatingCandidate(emptyList())
         val spannableString = SpannableString(insertString)
         setComposingTextAfterEdit(
@@ -5913,6 +5997,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<CandidateItem>,
         highlightedAbsoluteIndex: Int? = null
     ) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post {
+                updateSuggestionsForFloatingCandidate(
+                    suggestions = suggestions,
+                    highlightedAbsoluteIndex = highlightedAbsoluteIndex
+                )
+            }
+            return
+        }
         Timber.d("updateSuggestionsForFloatingCandidate: $suggestions")
         fullSuggestionsList = suggestions
         highlightedAbsoluteIndex?.let { absoluteIndex ->
@@ -6831,8 +6924,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     actions = actions
                 )
                 clearZenzLiveSlot("selected text Gemma actions")
-                suggestionAdapter?.suggestions = candidates
-                suggestionAdapterFull?.suggestions = candidates
+                setSuggestionAdaptersOnMain(candidates)
                 suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
                 suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
             }
@@ -6872,8 +6964,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         selectedTextGemmaSession = null
         if (!clearSuggestions) return
         clearZenzLiveSlot("selected text Gemma cleared")
-        suggestionAdapter?.suggestions = emptyList()
-        suggestionAdapterFull?.suggestions = emptyList()
+        setSuggestionAdaptersOnMain(emptyList())
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
     }
@@ -11413,7 +11504,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             inputString.value == previousDisplayInput &&
             !suppressSuggestions
         ) {
-            suggestionAdapter?.suggestions = previousLocalCandidates
+            setSuggestionAdapterSuggestionsOnMain(previousLocalCandidates)
         }
     }
 
@@ -11463,10 +11554,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 refreshBunsetsuSuggestionViewsForCurrentZenzTargetIfActive(bunsetsuTarget)
             }
         } else if (localSnapshot.isNotEmpty() && inputString.value == displayInput && !suppressSuggestions) {
-            suggestionAdapter?.suggestions = buildDisplayedCandidatesWithZenzSlot(
-                localCandidates = localSnapshot,
-                input = displayInput,
-                zenzSlotState = loadingState
+            setSuggestionAdapterSuggestionsOnMain(
+                buildDisplayedCandidatesWithZenzSlot(
+                    localCandidates = localSnapshot,
+                    input = displayInput,
+                    zenzSlotState = loadingState
+                )
             )
         }
 
@@ -11732,7 +11825,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             input = currentState.displayInput,
             zenzSlotState = acceptedState
         )
-        suggestionAdapter?.suggestions = displayedCandidates
+        setSuggestionAdapterSuggestionsOnMain(displayedCandidates)
         if (shouldApplyZenzLiveResultToComposingText(acceptedState, resultSlot)) {
             isContinuousTapInputEnabled.set(true)
             lastFlickConvertedNextHiragana.set(true)
@@ -11904,7 +11997,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     CandidateShowFlag.Idle -> {
                         var resetCandidateTabSelection = false
                         clearZenzLiveSlot("suggestion idle")
-                        suggestionAdapter?.suggestions = emptyList()
+                        setSuggestionAdapterSuggestionsOnMain(emptyList())
                         if (stringInTail.get().isEmpty()) {
                             shortcutToolbarHiddenForCandidates = false
                             resetCandidateTabSelection = true
@@ -12780,16 +12873,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
-                updateSuggestionsForFloatingCandidate(localCandidates.map {
-                    CandidateItem(
-                        word = it.string, length = it.length
-                    )
-                })
+                updateFloatingCandidatesOnMain(
+                    candidates = localCandidates.map {
+                        CandidateItem(
+                            word = it.string, length = it.length
+                        )
+                    },
+                    insertString = insertString
+                )
             }
         } else {
             if (!suppressSuggestions) {
-                suggestionAdapter?.suggestions = displayedCandidates
-                suggestionAdapterFull?.suggestions = localCandidates
+                updateSuggestionAdaptersOnMain(
+                    candidates = displayedCandidates,
+                    insertString = insertString,
+                    fullCandidates = localCandidates
+                )
             }
         }
 
@@ -12807,8 +12906,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun clearSuggestionStateAfterCommit() {
         clearZenzLiveSlot("commit")
-        suggestionAdapter?.suggestions = emptyList()
-        suggestionAdapterFull?.suggestions = emptyList()
+        setSuggestionAdaptersOnMain(emptyList())
         filteredCandidateList = emptyList()
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             updateSuggestionsForFloatingCandidate(emptyList())
@@ -13488,6 +13586,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun hideFirstRowCandidatesInFullScreen(
         mainView: MainLayoutBinding
     ) {
+        assertMainThread("hideFirstRowCandidatesInFullScreen")
         mainView.candidatesRowView.post {
             if (!mainView.candidatesRowView.canScrollVertically(-1)) {
                 val flexboxManager =
@@ -13505,6 +13604,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun hideFirstRowCandidatesInFullScreenFloating(
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        assertMainThread("hideFirstRowCandidatesInFullScreenFloating")
         floatingKeyboardLayoutBinding.candidatesRowView.post {
             if (!floatingKeyboardLayoutBinding.candidatesRowView.canScrollVertically(-1)) {
                 val flexboxManager =
@@ -14085,6 +14185,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding?
     ) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post {
+                updateSuggestionViewsForBunsetsuSegment(
+                    session = session,
+                    focusedIndex = focusedIndex,
+                    mainView = mainView,
+                    floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding
+                )
+            }
+            return
+        }
         if (session.segments.isEmpty()) return
         val safeFocusedIndex = focusedIndex.coerceIn(0, session.segments.lastIndex)
         val segment = session.segments[safeFocusedIndex]
@@ -14099,8 +14210,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             segmentCandidates = segment.candidates,
             displayInput = zenzSlotDisplayInput
         )
-        suggestionAdapter?.suggestions = displayedCandidates
-        suggestionAdapterFull?.suggestions = segment.candidates
+        setSuggestionAdaptersOnMain(
+            candidates = displayedCandidates,
+            fullCandidates = segment.candidates
+        )
 
         val segmentHighlightIndex = if (segment.candidates.isEmpty()) {
             RecyclerView.NO_POSITION
@@ -14286,8 +14399,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 null
             }
         )
-        suggestionAdapter?.suggestions = emptyList()
-        suggestionAdapterFull?.suggestions = emptyList()
+        setSuggestionAdaptersOnMain(emptyList())
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         if (physicalKeyboardEnable.replayCache.isNotEmpty() &&
             physicalKeyboardEnable.replayCache.first()
@@ -14424,8 +14536,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _dakutenPressed.value = false
         lastFlickConvertedNextHiragana.set(true)
         isContinuousTapInputEnabled.set(true)
-        suggestionAdapter?.suggestions = emptyList()
-        suggestionAdapterFull?.suggestions = emptyList()
+        setSuggestionAdaptersOnMain(emptyList())
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         if (physicalKeyboardEnable.replayCache.isNotEmpty() &&
             physicalKeyboardEnable.replayCache.first()
@@ -15154,9 +15265,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun updateMainCandidateStripAfterListUpdated() {
+        assertMainThread("updateMainCandidateStripAfterListUpdated")
+        if (isKeyboardFloatingMode == true) return
+        val binding = mainLayoutBinding ?: return
+        setMainSuggestionColumn(binding)
+        binding.suggestionRecyclerView.scrollToPosition(0)
+        updateCandidateStripPresentation(binding)
+    }
+
     private fun setMainSuggestionColumn(
         mainView: MainLayoutBinding
     ) {
+        assertMainThread("setMainSuggestionColumn")
         val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
         val columnNum = if (isPortrait) {
@@ -15288,6 +15409,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidatesShown: Boolean = shortcutToolbarHiddenForCandidates,
         resetCandidateTabSelection: Boolean = false
     ) {
+        assertMainThread("updateCandidateStripPresentation")
         val presentation = resolveCandidateStripPresentation(
             candidatesShown = candidatesShown,
             resetCandidateTabSelection = resetCandidateTabSelection
@@ -16129,8 +16251,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearZenzLiveSlot("qwerty glide candidates")
         suggestionClickNum = 0
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
-        suggestionAdapter?.suggestions = candidates
-        suggestionAdapterFull?.suggestions = candidates
+        setSuggestionAdaptersOnMain(candidates)
         if (physicalKeyboardEnable.replayCache.firstOrNull() == true) {
             updateSuggestionsForFloatingCandidate(
                 candidates.map { CandidateItem(word = it.string, length = it.length) }
@@ -16568,8 +16689,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _dakutenPressed.value = false
         lastFlickConvertedNextHiragana.set(true)
         isContinuousTapInputEnabled.set(true)
-        suggestionAdapter?.suggestions = emptyList()
-        suggestionAdapterFull?.suggestions = emptyList()
+        setSuggestionAdaptersOnMain(emptyList())
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         if (physicalKeyboardEnable.replayCache.isNotEmpty() &&
             physicalKeyboardEnable.replayCache.first()
@@ -17271,7 +17391,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _inputString.update { "" }
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
         clearZenzLiveSlot("resetAllFlags")
-        suggestionAdapter?.suggestions = emptyList()
+        setSuggestionAdapterSuggestionsOnMain(emptyList())
         stringInTail.set("")
         suggestionClickNum = 0
         currentCustomKeyboardPosition = 0
@@ -17893,23 +18013,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
-            isContinuousTapInputEnabled.set(true)
-            lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && displayedCandidates.isNotEmpty()) applyFirstSuggestion(
-                displayedCandidates.first()
-            )
+            if (!applyFirstSuggestionOnMainIfCurrent(
+                    insertString = insertString,
+                    candidate = displayedCandidates.firstOrNull()
+                )
+            ) {
+                return
+            }
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
-            isContinuousTapInputEnabled.set(true)
-            lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && displayedCandidates.isNotEmpty()) applyFirstSuggestion(
-                displayedCandidates.first()
-            )
+            if (!applyFirstSuggestionOnMainIfCurrent(
+                    insertString = insertString,
+                    candidate = displayedCandidates.firstOrNull()
+                )
+            ) {
+                return
+            }
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
-        updateBunsetsuSpaceKeyIfNeeded(mainView, displayedCandidates, insertString)
+        updateBunsetsuSpaceKeyIfNeededOnMain(mainView, displayedCandidates, insertString)
 
         if (rerankPlan != null && cachedReranked == null) {
             maybeLaunchZenzRerank(requestToken, insertString, filtered, rerankPlan, mainView)
@@ -17955,23 +18079,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
-            isContinuousTapInputEnabled.set(true)
-            lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && displayedCandidates.isNotEmpty()) applyFirstSuggestion(
-                displayedCandidates.first()
-            )
+            if (!applyFirstSuggestionOnMainIfCurrent(
+                    insertString = insertString,
+                    candidate = displayedCandidates.firstOrNull()
+                )
+            ) {
+                return
+            }
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
-            isContinuousTapInputEnabled.set(true)
-            lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && displayedCandidates.isNotEmpty()) applyFirstSuggestion(
-                displayedCandidates.first()
-            )
+            if (!applyFirstSuggestionOnMainIfCurrent(
+                    insertString = insertString,
+                    candidate = displayedCandidates.firstOrNull()
+                )
+            ) {
+                return
+            }
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
-        updateBunsetsuSpaceKeyIfNeeded(mainView, displayedCandidates, insertString)
+        updateBunsetsuSpaceKeyIfNeededOnMain(mainView, displayedCandidates, insertString)
 
         if (rerankPlan != null && cachedReranked == null) {
             maybeLaunchZenzRerank(requestToken, insertString, filtered, rerankPlan, mainView)
@@ -17994,16 +18122,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
-                updateSuggestionsForFloatingCandidate(filtered.map {
-                    CandidateItem(
-                        word = it.string, length = it.length
-                    )
-                })
+                updateFloatingCandidatesOnMain(
+                    candidates = filtered.map {
+                        CandidateItem(
+                            word = it.string, length = it.length
+                        )
+                    },
+                    insertString = insertString
+                )
             }
         } else {
             if (!suppressSuggestions) {
-                suggestionAdapter?.suggestions = filtered
-                suggestionAdapterFull?.suggestions = filtered
+                updateSuggestionAdaptersOnMain(filtered, insertString)
             }
 
         }
@@ -18014,24 +18144,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
-            isContinuousTapInputEnabled.set(true)
-            lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+            if (!applyFirstSuggestionOnMainIfCurrent(
+                    insertString = insertString,
+                    candidate = filtered.firstOrNull()
+                )
+            ) {
+                return
+            }
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
-            isContinuousTapInputEnabled.set(true)
-            lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+            if (!applyFirstSuggestionOnMainIfCurrent(
+                    insertString = insertString,
+                    candidate = filtered.firstOrNull()
+                )
+            ) {
+                return
+            }
         }
         Timber.d("setCandidates called: $bunsetusMultipleDetect $bunsetsuPositionList i:[$insertString] s:[$stringInTail]")
         if (bunsetsuSeparation == true) {
             bunsetsuPositionList?.let {
                 if (bunsetusMultipleDetect && it.isNotEmpty()) {
-                    handleJapaneseModeSpaceKeyWithBunsetsu(
-                        mainView, filtered, insertString
-                    )
+                    withContext(Dispatchers.Main.immediate) {
+                        if (!shouldApplyCandidateResult(insertString)) return@withContext
+                        handleJapaneseModeSpaceKeyWithBunsetsu(
+                            mainView, filtered, insertString
+                        )
+                    }
                 }
             }
         }
@@ -18053,16 +18194,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             if (!suppressSuggestions) {
-                updateSuggestionsForFloatingCandidate(filtered.map {
-                    CandidateItem(
-                        word = it.string, length = it.length
-                    )
-                })
+                updateFloatingCandidatesOnMain(
+                    candidates = filtered.map {
+                        CandidateItem(
+                            word = it.string, length = it.length
+                        )
+                    },
+                    insertString = insertString
+                )
             }
         } else {
             if (!suppressSuggestions) {
-                suggestionAdapter?.suggestions = filtered
-                suggestionAdapterFull?.suggestions = filtered
+                updateSuggestionAdaptersOnMain(filtered, insertString)
             }
 
         }
@@ -18073,9 +18216,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
-            isContinuousTapInputEnabled.set(true)
-            lastFlickConvertedNextHiragana.set(true)
-            if (!hasConvertedKatakana && filtered.isNotEmpty()) applyFirstSuggestion(filtered.first())
+            if (!applyFirstSuggestionOnMainIfCurrent(
+                    insertString = insertString,
+                    candidate = filtered.firstOrNull()
+                )
+            ) {
+                return
+            }
         }
     }
 
@@ -19125,7 +19272,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             commitText(space, 1)
             _inputString.update { "" }
             if (isHenkan.get()) {
-                suggestionAdapter?.suggestions = emptyList()
+                setSuggestionAdapterSuggestionsOnMain(emptyList())
                 isHenkan.set(false)
                 henkanPressedWithBunsetsuDetect = false
                 suggestionClickNum = 0
@@ -19602,7 +19749,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (insertString.length == 1) {
                     stringInTail.set(stringBuilder.insert(0, insertString.last()).toString())
                     _inputString.update { "" }
-                    suggestionAdapter?.suggestions = emptyList()
+                    setSuggestionAdapterSuggestionsOnMain(emptyList())
                     if (isKeyboardFloatingMode == true) {
                         floatingKeyboardBinding?.let { mainView ->
                             animateSuggestionImageViewVisibility(
@@ -19710,7 +19857,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (insertString.length == 1) {
                 stringInTail.set(insertString + stringInTail.get())
                 _inputString.update { "" }
-                suggestionAdapter?.suggestions = emptyList()
+                setSuggestionAdapterSuggestionsOnMain(emptyList())
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { mainView ->
                         animateSuggestionImageViewVisibility(
@@ -20507,7 +20654,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ""
         }
         if (isHenkan.get()) {
-            suggestionAdapter?.suggestions = emptyList()
+            setSuggestionAdapterSuggestionsOnMain(emptyList())
             isHenkan.set(false)
             henkanPressedWithBunsetsuDetect = false
             suggestionClickNum = 0
@@ -20533,7 +20680,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         _inputString.update { "" }
         if (isHenkan.get()) {
-            suggestionAdapter?.suggestions = emptyList()
+            setSuggestionAdapterSuggestionsOnMain(emptyList())
             isHenkan.set(false)
             henkanPressedWithBunsetsuDetect = false
             suggestionClickNum = 0
