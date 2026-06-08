@@ -261,10 +261,15 @@ private fun SettingDestinationType.typeLabel(context: android.content.Context): 
     when (this) {
         is SettingDestinationType.NavDestination ->
             context.getString(R.string.setting_frequent_type_nav)
+        is SettingDestinationType.ManagementDestination ->
+            context.getString(R.string.setting_frequent_type_management)
         is SettingDestinationType.SwitchPreference ->
             context.getString(R.string.setting_frequent_type_switch)
         is SettingDestinationType.ListPreference ->
             context.getString(R.string.setting_frequent_type_list)
+        is SettingDestinationType.SeekBarPreference,
         is SettingDestinationType.IntPreferenceDialog ->
             context.getString(R.string.setting_frequent_type_number)
+        is SettingDestinationType.EditTextPreference ->
+            context.getString(R.string.setting_frequent_type_text)
     }

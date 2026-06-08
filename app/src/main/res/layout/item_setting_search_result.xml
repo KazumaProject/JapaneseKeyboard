@@ -70,9 +70,34 @@
                 android:textColor="?attr/colorPrimary"
                 tools:text="Keyboard Display" />
 
+            <TextView
+                android:id="@+id/setting_search_result_value"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAppearance="?attr/textAppearanceLabelMedium"
+                android:textColor="?attr/colorPrimary"
+                android:visibility="gone"
+                tools:text="Current: On"
+                tools:visibility="visible" />
+
         </LinearLayout>
 
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/setting_search_result_switch"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:clickable="false"
+            android:focusable="false"
+            android:visibility="gone"
+            tools:checked="true"
+            tools:visibility="visible" />
+
         <ImageView
+            android:id="@+id/setting_search_result_arrow"
             android:layout_width="24dp"
             android:layout_height="24dp"
             android:layout_marginStart="8dp"
