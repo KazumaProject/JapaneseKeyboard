@@ -29,6 +29,11 @@ sealed class SettingDestinationType {
         val highlightPreferenceKey: String? = null,
     ) : SettingDestinationType()
 
+    data class ManagementDestination(
+        @IdRes val destinationId: Int,
+        val highlightPreferenceKey: String? = null,
+    ) : SettingDestinationType()
+
     data class SwitchPreference(
         val preferenceKey: String,
         val defaultValue: Boolean,
@@ -41,6 +46,24 @@ sealed class SettingDestinationType {
         @ArrayRes val entriesResId: Int,
         @ArrayRes val entryValuesResId: Int,
         val defaultValue: String,
+        @IdRes val destinationId: Int,
+        val highlightPreferenceKey: String? = preferenceKey,
+    ) : SettingDestinationType()
+
+    data class SeekBarPreference(
+        val preferenceKey: String,
+        val min: Int,
+        val max: Int,
+        val increment: Int,
+        val defaultValue: Int,
+        @IdRes val destinationId: Int,
+        val highlightPreferenceKey: String? = preferenceKey,
+    ) : SettingDestinationType()
+
+    data class EditTextPreference(
+        val preferenceKey: String,
+        val defaultValue: String,
+        val obscureValue: Boolean,
         @IdRes val destinationId: Int,
         val highlightPreferenceKey: String? = preferenceKey,
     ) : SettingDestinationType()
@@ -68,6 +91,37 @@ data class SettingDestination(
 )
 
 object SettingDestinations {
+
+    private val managementDestinationKeys = setOf(
+        "setting_management_learn_dictionary",
+        "setting_management_user_dictionary",
+        "setting_management_user_template",
+        "setting_management_custom_keyboard",
+        "user_dictionary_preference",
+        "user_template_preference",
+        "custom_romaji_preference",
+        "shortcut_toolbar_item_preference",
+        "candidate_tab_order_preference",
+        "candidate_order_override_preference",
+        "ng_word_preference",
+        "physical_keyboard_shortcut_setting_preference",
+        "sumire_special_key_editor_preference",
+        "gemma_prompt_template_management_preference",
+        "system_user_dictionary_builder_preference",
+        "external_dictionary_settings_preference",
+        "n_gram_rule_preference",
+        "clipboard_history_preference_fragment",
+        "delete_key_flick_left_targets_preference",
+        "cursor_move_after_commit_target_pairs_preference",
+        "preference_open_source",
+    )
+
+    private val plainPreferenceInlineEditExceptionKeys = setOf(
+        "long_press_timeout_preference",
+    )
+
+    val inlineEditExceptionKeysForTesting: Set<String>
+        get() = plainPreferenceInlineEditExceptionKeys
 
     fun frequent(context: Context): List<SettingDestination> = defaultFrequent(context)
 
@@ -484,6 +538,9 @@ object SettingDestinations {
             keywords = listOf("learn", "dictionary", "history"),
             destinationId = R.id.navigation_learn_dictionary,
             iconRes = CoreR.drawable.table_lamp_24px,
+            destinationType = SettingDestinationType.ManagementDestination(
+                destinationId = R.id.navigation_learn_dictionary,
+            ),
         ),
         destination(
             key = "setting_management_user_dictionary",
@@ -493,6 +550,9 @@ object SettingDestinations {
             keywords = listOf("user", "dictionary", "word"),
             destinationId = R.id.navigation_user_dictionary,
             iconRes = CoreR.drawable.dictionary_24px,
+            destinationType = SettingDestinationType.ManagementDestination(
+                destinationId = R.id.navigation_user_dictionary,
+            ),
         ),
         destination(
             key = "setting_management_user_template",
@@ -502,6 +562,9 @@ object SettingDestinations {
             keywords = listOf("template", "snippet"),
             destinationId = R.id.userTemplateFragment,
             iconRes = CoreR.drawable.book_3_24px,
+            destinationType = SettingDestinationType.ManagementDestination(
+                destinationId = R.id.userTemplateFragment,
+            ),
         ),
         destination(
             key = "setting_management_custom_keyboard",
@@ -511,6 +574,9 @@ object SettingDestinations {
             keywords = listOf("custom", "keyboard", "layout"),
             destinationId = R.id.keyboardListFragment,
             iconRes = CoreR.drawable.keyboard_24px,
+            destinationType = SettingDestinationType.ManagementDestination(
+                destinationId = R.id.keyboardListFragment,
+            ),
         ),
     )
 
@@ -615,20 +681,49 @@ object SettingDestinations {
             else -> null
         }
 
+    fun isManagementDestinationKey(key: String): Boolean =
+        key in managementDestinationKeys
+
+    fun plainPreferenceInlineEditException(
+        key: String,
+        @IdRes destinationId: Int,
+        highlightPreferenceKey: String?,
+    ): SettingDestinationType? =
+        when (key) {
+            "long_press_timeout_preference" -> SettingDestinationType.IntPreferenceDialog(
+                preferenceKey = key,
+                min = 100,
+                max = 2000,
+                step = 1,
+                defaultValue = 300,
+                unit = "ms",
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            else -> null
+        }
+
     @IdRes
     fun destinationId(destinationType: SettingDestinationType): Int? =
         when (destinationType) {
             is SettingDestinationType.NavDestination -> destinationType.destinationId
+            is SettingDestinationType.ManagementDestination -> destinationType.destinationId
             is SettingDestinationType.SwitchPreference -> destinationType.destinationId
             is SettingDestinationType.ListPreference -> destinationType.destinationId
+            is SettingDestinationType.SeekBarPreference -> destinationType.destinationId
+            is SettingDestinationType.EditTextPreference -> destinationType.destinationId
             is SettingDestinationType.IntPreferenceDialog -> destinationType.destinationId
         }
 
     fun highlightPreferenceKey(destinationType: SettingDestinationType): String? =
         when (destinationType) {
             is SettingDestinationType.NavDestination -> destinationType.highlightPreferenceKey
+            is SettingDestinationType.ManagementDestination -> destinationType.highlightPreferenceKey
             is SettingDestinationType.SwitchPreference -> destinationType.highlightPreferenceKey
             is SettingDestinationType.ListPreference -> destinationType.highlightPreferenceKey
+            is SettingDestinationType.SeekBarPreference -> destinationType.highlightPreferenceKey
+            is SettingDestinationType.EditTextPreference -> destinationType.highlightPreferenceKey
             is SettingDestinationType.IntPreferenceDialog -> destinationType.highlightPreferenceKey
         }
 
@@ -641,6 +736,7 @@ object SettingDestinations {
         @IdRes destinationId: Int,
         @DrawableRes iconRes: Int,
         highlightPreferenceKey: String? = null,
+        destinationType: SettingDestinationType? = null,
     ): SettingDestination {
         val localizedKeywords = buildList {
             add(title)
@@ -654,135 +750,11 @@ object SettingDestinations {
             summary = summary,
             category = category,
             keywords = localizedKeywords,
-            destination = directDestinationTypeForKey(
-                key = key,
-                destinationId = destinationId,
-                highlightPreferenceKey = highlightPreferenceKey,
-            ) ?: SettingDestinationType.NavDestination(
+            destination = destinationType ?: SettingDestinationType.NavDestination(
                 destinationId = destinationId,
                 highlightPreferenceKey = highlightPreferenceKey,
             ),
             iconRes = iconRes,
         )
     }
-
-    private fun directDestinationTypeForKey(
-        key: String,
-        @IdRes destinationId: Int,
-        highlightPreferenceKey: String?,
-    ): SettingDestinationType? =
-        when (key) {
-            "keyboard_floating_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "landscape_force_qwerty_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "flick_input_only_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "live_conversion_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "enable_typo_correction_japanese_flick_keyboard_preference" ->
-                switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "enable_typo_correction_qwerty_english_keyboard_preference" ->
-                switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "omission_search_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "reconversion_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "candidate_tab_visibility_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "undo_enable_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "vibration_preference" -> switchPreference(key, true, destinationId, highlightPreferenceKey)
-            "key_sound_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "clipboard_preview_enable_preference" -> switchPreference(key, true, destinationId, highlightPreferenceKey)
-            "shortcut_toolbar_visibility_preference" -> switchPreference(key, false, destinationId, highlightPreferenceKey)
-            "shortcut_toolbar_integrated_in_suggestion_preference" ->
-                switchPreference(key, false, destinationId, highlightPreferenceKey)
-
-            "candidate_column_preference" -> SettingDestinationType.ListPreference(
-                preferenceKey = key,
-                entriesResId = CoreR.array.candidate_column_entries,
-                entryValuesResId = CoreR.array.candidate_column_values,
-                defaultValue = "1",
-                destinationId = destinationId,
-                highlightPreferenceKey = highlightPreferenceKey ?: key,
-            )
-
-            "symbol_mode_preference" -> SettingDestinationType.ListPreference(
-                preferenceKey = key,
-                entriesResId = CoreR.array.symbol_mode_entries,
-                entryValuesResId = CoreR.array.symbol_mode_values,
-                defaultValue = "EMOJI",
-                destinationId = destinationId,
-                highlightPreferenceKey = highlightPreferenceKey ?: key,
-            )
-
-            "default_emoji_skin_tone_preference" -> SettingDestinationType.ListPreference(
-                preferenceKey = key,
-                entriesResId = R.array.default_emoji_skin_tone_entries,
-                entryValuesResId = R.array.default_emoji_skin_tone_values,
-                defaultValue = "default",
-                destinationId = destinationId,
-                highlightPreferenceKey = highlightPreferenceKey ?: key,
-            )
-
-            "gemma_translation_target_language_preference" -> SettingDestinationType.ListPreference(
-                preferenceKey = key,
-                entriesResId = R.array.gemma_translation_target_language_entries,
-                entryValuesResId = R.array.gemma_translation_target_language_values,
-                defaultValue = "en",
-                destinationId = destinationId,
-                highlightPreferenceKey = highlightPreferenceKey ?: key,
-            )
-
-            "flick_sensitivity_preference" -> SettingDestinationType.IntPreferenceDialog(
-                preferenceKey = key,
-                min = 1,
-                max = 200,
-                step = 5,
-                defaultValue = 100,
-                unit = "",
-                destinationId = destinationId,
-                highlightPreferenceKey = highlightPreferenceKey ?: key,
-            )
-
-            "long_press_timeout_preference" -> SettingDestinationType.IntPreferenceDialog(
-                preferenceKey = key,
-                min = 100,
-                max = 2000,
-                step = 1,
-                defaultValue = 300,
-                unit = "ms",
-                destinationId = destinationId,
-                highlightPreferenceKey = highlightPreferenceKey ?: key,
-            )
-
-            "live_conversion_start_length_preference" -> SettingDestinationType.IntPreferenceDialog(
-                preferenceKey = key,
-                min = 1,
-                max = 10,
-                step = 1,
-                defaultValue = 1,
-                unit = "",
-                destinationId = destinationId,
-                highlightPreferenceKey = highlightPreferenceKey ?: key,
-            )
-
-            "zenz_debounce_time_preference" -> SettingDestinationType.IntPreferenceDialog(
-                preferenceKey = key,
-                min = 0,
-                max = 1024,
-                step = 10,
-                defaultValue = 300,
-                unit = "ms",
-                destinationId = destinationId,
-                highlightPreferenceKey = highlightPreferenceKey ?: key,
-            )
-
-            else -> null
-        }
-
-    private fun switchPreference(
-        key: String,
-        defaultValue: Boolean,
-        @IdRes destinationId: Int,
-        highlightPreferenceKey: String?,
-    ) = SettingDestinationType.SwitchPreference(
-        preferenceKey = key,
-        defaultValue = defaultValue,
-        destinationId = destinationId,
-        highlightPreferenceKey = highlightPreferenceKey ?: key,
-    )
 }
