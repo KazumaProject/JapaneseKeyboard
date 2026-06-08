@@ -232,7 +232,11 @@ object SettingSearchIndex {
                 while (parser.eventType != XmlPullParser.END_DOCUMENT) {
                     if (parser.eventType == XmlPullParser.START_TAG) {
                         val key = parser.getAttributeValue(ANDROID_NS, "key")
-                        if (!key.isNullOrBlank() && isVisibleInCurrentVariant(key)) {
+                        if (
+                            !key.isNullOrBlank() &&
+                            isVisibleInCurrentVariant(key) &&
+                            !parser.isPreferenceCategoryOrScreen()
+                        ) {
                             val title = readTextAttribute(context, parser, "title")
                                 .ifBlank { key }
                             val summary = readSummary(context, parser)
@@ -254,6 +258,13 @@ object SettingSearchIndex {
                                     iconRes = readIcon(parser)
                                         ?: SettingDestinations.defaultIconForCategory(source.category),
                                     highlightPreferenceKey = highlightKey,
+                                    destinationType = readDestinationType(
+                                        context = context,
+                                        parser = parser,
+                                        key = key,
+                                        destinationId = destinationId,
+                                        highlightPreferenceKey = highlightKey,
+                                    ),
                                 )
                             )
                         }
@@ -270,6 +281,130 @@ object SettingSearchIndex {
             "setting_route_gemma_preferences" -> AppVariantConfig.hasGemma
             else -> true
         }
+
+    private fun readDestinationType(
+        context: Context,
+        parser: XmlResourceParser,
+        key: String,
+        @IdRes destinationId: Int,
+        highlightPreferenceKey: String?,
+    ): SettingDestinationType {
+        val fallback = fallbackDestinationType(key, destinationId, highlightPreferenceKey)
+        if (SettingDestinations.isManagementDestinationKey(key)) return fallback
+
+        val simpleTagName = parser.name.substringAfterLast('.')
+        return when (simpleTagName) {
+            "SwitchPreferenceCompat",
+            "SwitchPreference" -> SettingDestinationType.SwitchPreference(
+                preferenceKey = key,
+                defaultValue = readBooleanAttribute(parser, "defaultValue", defaultValue = false),
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            "ListPreference",
+            "DropDownPreference" -> readListPreferenceType(
+                context = context,
+                parser = parser,
+                key = key,
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey,
+            ) ?: fallback
+
+            "SeekBarPreference" -> readSeekBarPreferenceType(
+                parser = parser,
+                key = key,
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey,
+            ) ?: fallback
+
+            "EditTextPreference" -> SettingDestinationType.EditTextPreference(
+                preferenceKey = key,
+                defaultValue = readTextAttribute(context, parser, "defaultValue"),
+                obscureValue = key.contains("password", ignoreCase = true) ||
+                    key.contains("secret", ignoreCase = true) ||
+                    key.contains("token", ignoreCase = true) ||
+                    key.contains("api_key", ignoreCase = true),
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+
+            "Preference" ->
+                SettingDestinations.plainPreferenceInlineEditException(
+                    key = key,
+                    destinationId = destinationId,
+                    highlightPreferenceKey = highlightPreferenceKey,
+                ) ?: fallback
+
+            else -> fallback
+        }
+    }
+
+    private fun fallbackDestinationType(
+        key: String,
+        @IdRes destinationId: Int,
+        highlightPreferenceKey: String?,
+    ): SettingDestinationType =
+        if (SettingDestinations.isManagementDestinationKey(key)) {
+            SettingDestinationType.ManagementDestination(
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey ?: key,
+            )
+        } else {
+            SettingDestinationType.NavDestination(
+                destinationId = destinationId,
+                highlightPreferenceKey = highlightPreferenceKey,
+            )
+        }
+
+    private fun readListPreferenceType(
+        context: Context,
+        parser: XmlResourceParser,
+        key: String,
+        @IdRes destinationId: Int,
+        highlightPreferenceKey: String?,
+    ): SettingDestinationType.ListPreference? {
+        val entriesResId = readResourceAttribute(parser, "entries") ?: return null
+        val entryValuesResId = readResourceAttribute(parser, "entryValues") ?: return null
+        val arraysMatch = runCatching {
+            val entries = context.resources.getStringArray(entriesResId)
+            val entryValues = context.resources.getStringArray(entryValuesResId)
+            entries.isNotEmpty() && entries.size == entryValues.size
+        }.getOrDefault(false)
+        if (!arraysMatch) return null
+
+        return SettingDestinationType.ListPreference(
+            preferenceKey = key,
+            entriesResId = entriesResId,
+            entryValuesResId = entryValuesResId,
+            defaultValue = readTextAttribute(context, parser, "defaultValue"),
+            destinationId = destinationId,
+            highlightPreferenceKey = highlightPreferenceKey ?: key,
+        )
+    }
+
+    private fun readSeekBarPreferenceType(
+        parser: XmlResourceParser,
+        key: String,
+        @IdRes destinationId: Int,
+        highlightPreferenceKey: String?,
+    ): SettingDestinationType.SeekBarPreference? {
+        val min = readIntAttribute(parser, "min") ?: 0
+        val max = readIntAttribute(parser, "max") ?: return null
+        val increment = readIntAttribute(parser, "seekBarIncrement") ?: 1
+        val defaultValue = readIntAttribute(parser, "defaultValue") ?: min
+        if (max < min || increment <= 0) return null
+
+        return SettingDestinationType.SeekBarPreference(
+            preferenceKey = key,
+            min = min,
+            max = max,
+            increment = increment,
+            defaultValue = defaultValue.coerceIn(min, max),
+            destinationId = destinationId,
+            highlightPreferenceKey = highlightPreferenceKey ?: key,
+        )
+    }
 
     private fun readTextAttribute(
         context: Context,
@@ -293,8 +428,41 @@ object SettingSearchIndex {
         return parser.getAttributeValue(namespace, name).orEmpty()
     }
 
+    private fun readBooleanAttribute(
+        parser: XmlResourceParser,
+        name: String,
+        defaultValue: Boolean,
+    ): Boolean {
+        val raw = parser.getAttributeValue(ANDROID_NS, name)
+            ?: parser.getAttributeValue(APP_NS, name)
+            ?: return defaultValue
+        return when (raw.lowercase(Locale.ROOT)) {
+            "true" -> true
+            "false" -> false
+            else -> defaultValue
+        }
+    }
+
+    private fun readIntAttribute(
+        parser: XmlResourceParser,
+        name: String,
+    ): Int? =
+        parser.getAttributeValue(ANDROID_NS, name)?.toIntOrNull()
+            ?: parser.getAttributeValue(APP_NS, name)?.toIntOrNull()
+
+    private fun readResourceAttribute(
+        parser: XmlResourceParser,
+        name: String,
+    ): Int? {
+        val androidResourceId = parser.getAttributeResourceValue(ANDROID_NS, name, 0)
+        if (androidResourceId != 0) return androidResourceId
+        val appResourceId = parser.getAttributeResourceValue(APP_NS, name, 0)
+        return appResourceId.takeIf { it != 0 }
+    }
+
     private fun readSummary(context: Context, parser: XmlResourceParser): String {
         val summary = readTextAttribute(context, parser, "summary")
+        if (summary == "%s") return ""
         if (summary.isNotBlank()) return summary
         val onOffSummary = listOf(
             readTextAttribute(context, parser, "summaryOn"),
@@ -307,6 +475,13 @@ object SettingSearchIndex {
         val resourceId = parser.getAttributeResourceValue(ANDROID_NS, "icon", 0)
         return resourceId.takeIf { it != 0 }
     }
+
+    private fun XmlResourceParser.isPreferenceCategoryOrScreen(): Boolean =
+        when (name.substringAfterLast('.')) {
+            "PreferenceCategory",
+            "PreferenceScreen" -> true
+            else -> false
+        }
 
     private fun buildKeywords(
         key: String,

@@ -20,6 +20,7 @@ class SettingSearchFragment : Fragment() {
 
     private lateinit var searchableDestinations: List<SettingDestination>
     private lateinit var searchAdapter: SettingSearchAdapter
+    private lateinit var settingCardEditorController: SettingCardEditorController
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -32,9 +33,11 @@ class SettingSearchFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        settingCardEditorController = SettingCardEditorController(requireContext())
         searchableDestinations = SettingSearchIndex.searchable(requireContext())
         searchAdapter = SettingSearchAdapter(
-            onClick = ::navigateTo,
+            editorController = settingCardEditorController,
+            onClick = ::handleSearchResultClick,
         )
 
         binding.settingSearchResultRecyclerView.apply {
@@ -111,5 +114,14 @@ class SettingSearchFragment : Fragment() {
             bundleOf(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY to key)
         }
         navigateSafely(destinationId, args)
+    }
+
+    private fun handleSearchResultClick(destination: SettingDestination) {
+        val handled = settingCardEditorController.handleClick(destination) {
+            searchAdapter.notifyDestinationChanged(destination)
+        }
+        if (!handled) {
+            navigateTo(destination)
+        }
     }
 }
