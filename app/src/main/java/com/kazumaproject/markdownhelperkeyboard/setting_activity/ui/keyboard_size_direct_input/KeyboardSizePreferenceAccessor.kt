@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_direct_input
 
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditConstraints
 
 data class KeyboardSizeValues(
     val heightDp: Int,
@@ -174,14 +175,14 @@ class KeyboardSizePreferenceAccessor(
     }
 
     companion object {
-        const val MinHeightDp = 100
-        const val MaxHeightDp = 420
-        const val MinWidthPercent = 32
-        const val MaxWidthPercent = 100
-        private const val MinMarginDp = 0
-        private const val DefaultHeightDp = 220
-        private const val DefaultWidthPercent = 100
-        private const val DefaultMarginDp = 0
+        const val MinHeightDp = KeyboardLayoutEditConstraints.MinHeightDp
+        const val MaxHeightDp = KeyboardLayoutEditConstraints.MaxHeightDp
+        const val MinWidthPercent = KeyboardLayoutEditConstraints.MinWidthPercent
+        const val MaxWidthPercent = KeyboardLayoutEditConstraints.MaxWidthPercent
+        private const val MinMarginDp = KeyboardLayoutEditConstraints.MinMarginDp
+        private const val DefaultHeightDp = KeyboardLayoutEditConstraints.DefaultHeightDp
+        private const val DefaultWidthPercent = KeyboardLayoutEditConstraints.DefaultWidthPercent
+        private const val DefaultMarginDp = KeyboardLayoutEditConstraints.DefaultMarginDp
 
         val DefaultValues = KeyboardSizeValues(
             heightDp = DefaultHeightDp,

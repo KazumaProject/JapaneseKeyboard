@@ -190,6 +190,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var shortcutItems: List<ShortcutType> = emptyList()
     private var showIntegratedShortcuts: Boolean = false
     private var shortcutIconColor: Int? = null
+    private var keyboardLayoutEditActive: Boolean = false
 
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
 
@@ -330,6 +331,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         if (showIntegratedShortcuts && suggestions.isEmpty()) {
             notifyItemRangeChanged(0, itemCount)
         }
+    }
+
+    fun setKeyboardLayoutEditActive(active: Boolean) {
+        if (keyboardLayoutEditActive == active) return
+        keyboardLayoutEditActive = active
+        notifyShortcutItemChanged(ShortcutType.KEYBOARD_LAYOUT_EDIT)
     }
 
 
@@ -773,7 +780,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     ) {
         val shortcutType = item.shortcutType
         holder.imageView.apply {
-            setImageResource(shortcutType.iconResId)
+            setImageResource(shortcutType.resolveShortcutIconResId())
             contentDescription = shortcutType.description
             shortcutIconColor?.let { color ->
                 setColorFilter(color, PorterDuff.Mode.SRC_IN)
@@ -788,6 +795,23 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     onShortcutItemClickListener?.invoke(currentItem.shortcutType)
                 }
             }
+        }
+    }
+
+    private fun ShortcutType.resolveShortcutIconResId(): Int {
+        return if (this == ShortcutType.KEYBOARD_LAYOUT_EDIT && keyboardLayoutEditActive) {
+            activeIconResId ?: iconResId
+        } else {
+            iconResId
+        }
+    }
+
+    private fun notifyShortcutItemChanged(shortcutType: ShortcutType) {
+        val index = displayItems.indexOfFirst {
+            it is SuggestionDisplayItem.ShortcutItem && it.shortcutType == shortcutType
+        }
+        if (index >= 0) {
+            notifyItemChanged(index)
         }
     }
 
