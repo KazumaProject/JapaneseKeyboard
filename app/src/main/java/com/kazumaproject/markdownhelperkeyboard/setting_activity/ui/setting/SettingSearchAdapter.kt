@@ -10,6 +10,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.ItemSettingSearchResultBinding
 
 class SettingSearchAdapter(
+    private val editorController: SettingCardEditorController,
     private val onClick: (SettingDestination) -> Unit,
 ) : ListAdapter<SettingDestination, SettingSearchAdapter.ViewHolder>(DiffCallback) {
 
@@ -22,6 +23,15 @@ class SettingSearchAdapter(
         holder.bind(getItem(position))
     }
 
+    fun notifyDestinationChanged(destination: SettingDestination) {
+        val index = currentList.indexOfFirst {
+            it.key == destination.key && it.destination == destination.destination
+        }
+        if (index >= 0) {
+            notifyItemChanged(index)
+        }
+    }
+
     inner class ViewHolder(
         private val binding: ItemSettingSearchResultBinding,
     ) : RecyclerView.ViewHolder(binding.root) {
@@ -30,6 +40,12 @@ class SettingSearchAdapter(
             val context = binding.root.context
             val categoryTitle = SettingDestinations.categoryTitle(context, destination.category)
             val summary = destination.summary.ifBlank { categoryTitle }
+            val currentValue = editorController.currentValueLabel(destination)
+            val managementLabel =
+                (destination.destination as? SettingDestinationType.ManagementDestination)
+                    ?.let { context.getString(R.string.setting_frequent_type_management) }
+            val switchTarget = destination.destination as? SettingDestinationType.SwitchPreference
+            val isDirectEditable = editorController.isDirectEditable(destination)
 
             binding.settingSearchResultIcon.setImageResource(destination.iconRes)
             binding.settingSearchResultTitle.text = destination.title
@@ -38,11 +54,27 @@ class SettingSearchAdapter(
                 isVisible = summary.isNotBlank()
             }
             binding.settingSearchResultCategory.text = categoryTitle
+            binding.settingSearchResultValue.apply {
+                text = currentValue?.let {
+                    context.getString(R.string.setting_home_current_value, it)
+                } ?: managementLabel
+                isVisible = currentValue != null || managementLabel != null
+            }
+            binding.settingSearchResultSwitch.apply {
+                isVisible = switchTarget != null
+                if (switchTarget != null) {
+                    isChecked = editorController.readSwitchPreference(switchTarget)
+                    contentDescription = destination.title
+                }
+            }
+            binding.settingSearchResultArrow.isVisible = !isDirectEditable
             binding.root.apply {
                 contentDescription = context.getString(
                     R.string.setting_search_result_content_description,
                     destination.title,
-                    summary,
+                    listOf(summary, currentValue, managementLabel)
+                        .filter { !it.isNullOrBlank() }
+                        .joinToString(". "),
                     categoryTitle,
                 )
                 setOnClickListener { onClick(destination) }
