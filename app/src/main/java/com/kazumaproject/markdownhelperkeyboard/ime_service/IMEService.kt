@@ -189,6 +189,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getQWERTY
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiraganaWithSymbols
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isPassword
+import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationFeedbackMoment
+import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTimingPolicy
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
@@ -6133,19 +6135,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         mainView: MainLayoutBinding
     ) {
-        when (vibrationTimingStr) {
-            "both" -> {
-                vibrate()
-            }
-
-            "press" -> {
-
-            }
-
-            "release" -> {
-                vibrate()
-            }
-        }
+        handleKeyReleaseFeedback()
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
             refreshEditHistoryUi()
@@ -6346,19 +6336,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
-        when (vibrationTimingStr) {
-            "both" -> {
-                vibrate()
-            }
-
-            "press" -> {
-
-            }
-
-            "release" -> {
-                vibrate()
-            }
-        }
+        handleKeyReleaseFeedback()
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
             refreshEditHistoryUi()
@@ -9307,7 +9285,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
-                if (action != KeyAction.DoNothing) vibrate()
+                if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
                 Timber.d("onFlickActionUpAfterLongPress: $action $isFlick")
                 when (action) {
                     KeyAction.DoNothing -> Unit
@@ -9605,7 +9583,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
-                if (action != KeyAction.DoNothing) vibrate()
+                if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
 
                 Timber.d("onAction: $action $isFlick")
                 if (!shouldPreserveDeleteHistoryForAction(action)) {
@@ -15758,19 +15736,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
                     Timber.d("onReleasedQWERTYKey: $qwertyKey")
-                    when (vibrationTimingStr) {
-                        "both" -> {
-                            vibrate()
-                        }
-
-                        "press" -> {
-
-                        }
-
-                        "release" -> {
-
-                        }
-                    }
+                    handleKeyReleaseFeedback()
                     val insertString = inputString.value
                     val sb = StringBuilder()
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
@@ -16151,19 +16117,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
                     Timber.d("onFlickUPQWERTYKey: $qwertyKey, $tap, $variations")
-                    when (vibrationTimingStr) {
-                        "both" -> {
-                            vibrate()
-                        }
-
-                        "press" -> {
-
-                        }
-
-                        "release" -> {
-
-                        }
-                    }
+                    handleKeyReleaseFeedback()
                     val insertString = inputString.value
                     val sb = StringBuilder()
 
@@ -16197,15 +16151,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     character: Char
                 ) {
                     Timber.d("onFlickDownQWERTYKey: $qwertyKey, $character")
-                    when (vibrationTimingStr) {
-                        "both" -> {
-                            vibrate()
-                        }
-
-                        "press" -> {}
-
-                        "release" -> {}
-                    }
+                    handleKeyReleaseFeedback()
                     if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
                         clearDeletedBuffer()
                         refreshEditHistoryUi()
@@ -20873,11 +20819,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleKeyPressFeedback(keySoundType: KeySoundType) {
-        when (vibrationTimingStr) {
-            "both", "press" -> vibrate()
-            "release", null -> Unit
-        }
+        if (shouldVibrateForKeyMoment(VibrationFeedbackMoment.PRESS)) vibrate()
         playKeySound(keySoundType)
+    }
+
+    private fun handleKeyReleaseFeedback() {
+        if (shouldVibrateForKeyMoment(VibrationFeedbackMoment.RELEASE)) vibrate()
+    }
+
+    private fun shouldVibrateForKeyMoment(moment: VibrationFeedbackMoment): Boolean {
+        return VibrationTimingPolicy.shouldVibrate(vibrationTimingStr, moment)
     }
 
     private fun playKeySound(keySoundType: KeySoundType) {
