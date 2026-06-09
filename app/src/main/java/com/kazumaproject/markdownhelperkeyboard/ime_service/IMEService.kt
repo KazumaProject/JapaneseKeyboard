@@ -726,6 +726,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val keyboardLayoutEditState: StateFlow<KeyboardLayoutEditState> =
         _keyboardLayoutEditState.asStateFlow()
     private var keyboardLayoutEditController: KeyboardLayoutEditController? = null
+    private var pendingFloatingLayoutEditValues: KeyboardLayoutEditValues.Floating? = null
+    private var floatingLayoutEditFramePosted = false
+    private var lastAppliedFloatingEditWidthPx: Int = -1
+    private var lastAppliedFloatingEditHeightPx: Int = -1
     private val _tenKeyQWERTYMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
     private val qwertyMode = _tenKeyQWERTYMode.asStateFlow()
     private val _physicalKeyboardEnable = MutableSharedFlow<Boolean>(replay = 1)
@@ -3479,6 +3483,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
         // floatingKeyboardBinding を作り直したので configureQwertyView guard をリセット。
         isFloatingQwertyConfigured = false
+        lastAppliedFloatingEditWidthPx = -1
+        lastAppliedFloatingEditHeightPx = -1
 
         floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
             setFloatingKeyboardListeners(floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding)
@@ -5982,10 +5988,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun updateFloatingKeyboardSizeForMode(
         mode: TenKeyQWERTYMode,
         updatePosition: Boolean = false,
-    ) {
-        if (isKeyboardFloatingMode != true) return
-        val floatingView = floatingKeyboardBinding ?: return
-        val popupWindow = floatingKeyboardView ?: return
+    ): Boolean {
+        if (isKeyboardFloatingMode != true) return false
+        val floatingView = floatingKeyboardBinding ?: return false
+        val popupWindow = floatingKeyboardView ?: return false
         val prefs = getKeyboardSizePreferences()
         val density = resources.displayMetrics.density
         val usesQwertySize =
@@ -5993,19 +5999,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val heightPref = if (usesQwertySize) prefs.qwertyHeightPref else prefs.heightPref
         val heightPx = (heightPref.coerceIn(60, 420) * density).toInt()
         val widthPx = resolveFloatingKeyboardWidthPx(mode)
+        var sizeChanged = false
+        var containerHeightChanged = false
         (floatingView.floatingKeyboardContainer.layoutParams as? ConstraintLayout.LayoutParams)
             ?.let { params ->
-                params.height = heightPx
-                floatingView.floatingKeyboardContainer.layoutParams = params
+                if (params.height != heightPx) {
+                    params.height = heightPx
+                    floatingView.floatingKeyboardContainer.layoutParams = params
+                    containerHeightChanged = true
+                    sizeChanged = true
+                }
             }
-        updateFloatingFullCandidatesHeight(floatingView, heightPx)
-        updateFloatingKeyboardBackgroundBounds(floatingView, heightPx)
-        updateFloatingPopupWindowBoundsSafely(
-            popupWindow = popupWindow,
-            widthPx = widthPx,
-            heightPx = ViewGroup.LayoutParams.WRAP_CONTENT,
-            updatePosition = updatePosition,
-        )
+        if (containerHeightChanged || lastAppliedFloatingEditHeightPx != heightPx) {
+            updateFloatingFullCandidatesHeight(floatingView, heightPx)
+            updateFloatingKeyboardBackgroundBounds(floatingView, heightPx)
+            lastAppliedFloatingEditHeightPx = heightPx
+            sizeChanged = true
+        }
+        val popupHeightPx = ViewGroup.LayoutParams.WRAP_CONTENT
+        val popupBoundsChanged =
+            lastAppliedFloatingEditWidthPx != widthPx ||
+                popupWindow.width != widthPx ||
+                popupWindow.height != popupHeightPx
+        if (updatePosition || popupBoundsChanged) {
+            updateFloatingPopupWindowBoundsSafely(
+                popupWindow = popupWindow,
+                widthPx = widthPx,
+                heightPx = popupHeightPx,
+                updatePosition = updatePosition,
+            )
+            lastAppliedFloatingEditWidthPx = widthPx
+            sizeChanged = true
+        }
+        return sizeChanged
     }
 
     private fun setTenKeyListeners(
@@ -15574,9 +15600,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     applyNormalKeyboardLayoutEditValues(values, persist = true)
                 },
                 onFloatingDraftChanged = { values ->
-                    applyFloatingKeyboardLayoutEditValues(values, persist = false)
+                    scheduleFloatingKeyboardLayoutEditDraft(values)
                 },
                 onFloatingEditCommitted = { values ->
+                    pendingFloatingLayoutEditValues = null
+                    floatingLayoutEditFramePosted = false
                     applyFloatingKeyboardLayoutEditValues(values, persist = true)
                 },
                 onReset = {
@@ -15775,11 +15803,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardLayoutEditController?.requestOverlayLayout()
     }
 
+    private fun scheduleFloatingKeyboardLayoutEditDraft(
+        values: KeyboardLayoutEditValues.Floating,
+    ) {
+        pendingFloatingLayoutEditValues = values
+        if (floatingLayoutEditFramePosted) return
+
+        val anchor = floatingKeyboardBinding?.floatingKeyboardContainer
+            ?: floatingKeyboardView?.contentView
+            ?: mainLayoutBinding?.root
+            ?: return
+
+        floatingLayoutEditFramePosted = true
+        anchor.postOnAnimation {
+            floatingLayoutEditFramePosted = false
+            val latest = pendingFloatingLayoutEditValues ?: return@postOnAnimation
+            applyFloatingKeyboardLayoutEditValues(latest, persist = false)
+        }
+    }
+
     private fun applyFloatingKeyboardLayoutEditValues(
         values: KeyboardLayoutEditValues.Floating,
         persist: Boolean,
     ) {
         val enabled = keyboardLayoutEditState.value as? KeyboardLayoutEditState.Enabled ?: return
+        if (persist) {
+            pendingFloatingLayoutEditValues = null
+            floatingLayoutEditFramePosted = false
+        }
         val normalized = if (persist) {
             KeyboardLayoutEditConstraints.normalizeFloatingForCommit(values)
         } else {
@@ -15798,11 +15849,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         _keyboardLayoutEditState.value = enabled.copy(values = normalized)
-        updateFloatingKeyboardSizeForMode(
+        val sizeChanged = updateFloatingKeyboardSizeForMode(
             mode = qwertyMode.value,
             updatePosition = false,
         )
-        keyboardLayoutEditController?.requestOverlayLayout()
+        if (sizeChanged) {
+            keyboardLayoutEditController?.requestOverlayLayout()
+        }
     }
 
     private fun updateNormalKeyboardLayoutEditCaches(
