@@ -140,13 +140,20 @@ class KeyboardLayoutEditOverlayView(
         val bounds = boundsProvider()
         if (bounds.isEmpty) return
         borderView.layout(bounds.left, bounds.top, bounds.right, bounds.bottom)
-        layoutCentered(topHandle, bounds.centerX(), bounds.top)
-        layoutCentered(bottomHandle, bounds.centerX(), bounds.bottom)
-        layoutCentered(leftHandle, bounds.left, bounds.centerY())
-        layoutCentered(rightHandle, bounds.right, bounds.centerY())
-        layoutCentered(resetButton, bounds.right - dp(76), bounds.top + dp(24))
-        layoutCentered(doneButton, bounds.right - dp(24), bounds.top + dp(24))
-        if (mode == Mode.Normal) {
+        if (mode == Mode.Floating) {
+            layoutCentered(topHandle, bounds.centerX(), bounds.top + dp(20))
+            layoutCentered(bottomHandle, bounds.centerX(), bounds.bottom - dp(20))
+            layoutCentered(leftHandle, bounds.left + dp(20), bounds.centerY())
+            layoutCentered(rightHandle, bounds.right - dp(20), bounds.centerY())
+            layoutCentered(resetButton, bounds.right - dp(76), bounds.top + dp(24))
+            layoutCentered(doneButton, bounds.right - dp(24), bounds.top + dp(24))
+        } else {
+            layoutCentered(topHandle, bounds.centerX(), bounds.top)
+            layoutCentered(bottomHandle, bounds.centerX(), bounds.bottom)
+            layoutCentered(leftHandle, bounds.left, bounds.centerY())
+            layoutCentered(rightHandle, bounds.right, bounds.centerY())
+            layoutCentered(resetButton, bounds.right - dp(76), bounds.top + dp(24))
+            layoutCentered(doneButton, bounds.right - dp(24), bounds.top + dp(24))
             layoutCentered(moveHandle, bounds.centerX(), bounds.centerY())
             layoutCentered(positionToggle, bounds.left + dp(24), bounds.top + dp(24))
         }
@@ -352,7 +359,6 @@ class KeyboardLayoutEditOverlayView(
     private fun updateFloatingDraft(values: KeyboardLayoutEditValues.Floating) {
         floatingValues = values
         callbacks.onFloatingDraftChanged(values)
-        requestLayout()
     }
 
     private fun commitCurrentValues() {

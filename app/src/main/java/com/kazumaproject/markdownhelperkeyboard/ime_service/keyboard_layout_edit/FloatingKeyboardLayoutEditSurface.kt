@@ -10,10 +10,10 @@ class FloatingKeyboardLayoutEditSurface(
 ) : KeyboardLayoutEditSurfaceAdapter {
 
     override val parent: FrameLayout
-        get() = binding.root
+        get() = binding.floatingKeyboardContainer
 
     override fun currentBoundsInParent(): Rect {
-        return boundsInParent(parent, binding.floatingKeyboardContainer)
+        return Rect(0, 0, parent.width, parent.height)
     }
 
     override fun availableWidthPx(): Int {
