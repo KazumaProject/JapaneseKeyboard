@@ -194,6 +194,16 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTi
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.FloatingKeyboardLayoutEditSurface
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditConstraints
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditController
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditOrientation
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditOverlayView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditSurface
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditTarget
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditValues
+import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.NormalKeyboardLayoutEditSurface
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateEvaluationResult
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.CandidateShowFlag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.SymbolKeyboardState
@@ -711,6 +721,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _keyboardSymbolViewState = MutableStateFlow(SymbolKeyboardState())
     private val keyboardSymbolViewState: StateFlow<SymbolKeyboardState> =
         _keyboardSymbolViewState.asStateFlow()
+    private val _keyboardLayoutEditState =
+        MutableStateFlow<KeyboardLayoutEditState>(KeyboardLayoutEditState.Disabled)
+    private val keyboardLayoutEditState: StateFlow<KeyboardLayoutEditState> =
+        _keyboardLayoutEditState.asStateFlow()
+    private var keyboardLayoutEditController: KeyboardLayoutEditController? = null
+    private var pendingFloatingLayoutEditValues: KeyboardLayoutEditValues.Floating? = null
+    private var floatingLayoutEditFramePosted = false
+    private var lastAppliedFloatingEditWidthPx: Int = -1
+    private var lastAppliedFloatingEditHeightPx: Int = -1
     private val _tenKeyQWERTYMode = MutableStateFlow<TenKeyQWERTYMode>(TenKeyQWERTYMode.Default)
     private val qwertyMode = _tenKeyQWERTYMode.asStateFlow()
     private val _physicalKeyboardEnable = MutableSharedFlow<Boolean>(replay = 1)
@@ -1336,6 +1355,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         suggestionAdapterFull = SuggestionAdapter()
         shortcutAdapter = ShortcutAdapter()
+        keyboardLayoutEditController = KeyboardLayoutEditController(this)
         currentNightMode = resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK
         clipboardManager =
             applicationContext.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
@@ -2481,6 +2501,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                            if (isKeyboardLayoutEditModeActive()) return
                             val insertString = inputString.value
                             val sb = StringBuilder()
                             val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
@@ -2524,6 +2545,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     })
                     setOnLongPressListener(object : LongPressListener {
                         override fun onLongPress(key: Key) {
+                            if (isKeyboardLayoutEditModeActive()) return
                             handleLongPressFloating(key)
                             Timber.d("Long Press: $key")
                         }
@@ -2683,38 +2705,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         if (hasPhysicalKeyboard) {
-            val popupContentView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
-            val recyclerView =
-                popupContentView.findViewById<RecyclerView>(R.id.floating_candidate_recycler_view)
-            recyclerView.adapter = listAdapter
-            recyclerView.layoutManager = LinearLayoutManager(this)
-            floatingCandidateWindow = PopupWindow(
-                popupContentView,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT
-            ).apply {
-                isOutsideTouchable = false
-            }
-
-            floatingDockWindow = PopupWindow(
-                floatingDockView,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT
-            )
-
             floatingDockView.setText("あ")
-            floatingModeSwitchWindow = PopupWindow(
-                floatingModeSwitchView,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT
-            )
-            floatingModeSwitchWindow?.isTouchable = false
+            ensurePhysicalKeyboardPopupWindows()
         }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
+        disableKeyboardLayoutEditMode()
         persistCurrentCustomKeyboardInputModeIfEnabled()
         persistCurrentTenkeyOrSumireInputModeIfEnabled()
         isInputViewActive = false
@@ -2726,10 +2725,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingDockWindow?.dismiss()
         floatingModeSwitchWindow?.dismiss()
         floatingKeyboardView?.dismiss()
+        floatingCandidateWindow = null
+        floatingDockWindow = null
+        floatingModeSwitchWindow = null
+        floatingKeyboardView = null
     }
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
+        disableKeyboardLayoutEditMode(updateSurface = false)
         isInputViewActive = false
         releaseKeyboardBackgroundVideoPlayer()
         releaseFloatingKeyboardBackgroundVideoPlayer()
@@ -2750,6 +2754,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter = null
         shortcutAdapter = null
         suggestionAdapterFull = null
+        keyboardLayoutEditController = null
         dismissJob = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         clearSymbols()
@@ -3015,9 +3020,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         Timber.d("onUpdateCursorAnchorInfo start: [${cursorAnchorInfo == null}] [${floatingCandidateWindow == null}]")
         val insertString = inputString.value
-        if (cursorAnchorInfo == null || floatingCandidateWindow == null || insertString.isEmpty()) {
+        if (cursorAnchorInfo == null || insertString.isEmpty()) {
             return
         }
+        ensurePhysicalKeyboardPopupWindows()
+        if (floatingCandidateWindow == null) return
 
         val matrix: Matrix = cursorAnchorInfo.matrix
         // カーソルのローカル座標を取得
@@ -3052,7 +3059,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentPopupWindow?.let { currentWindow ->
             Timber.d("onUpdateCursorAnchorInfo window debug: [$physicalKeyboardFloatingXPosition] [$physicalKeyboardFloatingYPosition] [${currentWindow.isShowing}]")
             if (currentWindow.isShowing) {
-                currentWindow.update(x, y, -1, -1)
+                updatePopupWindowPositionSafely(
+                    popupWindow = currentWindow,
+                    x = x,
+                    y = y,
+                )
             } else {
                 // 表示されていない場合は指定した位置に表示
                 showPopupWindowSafely(
@@ -3167,6 +3178,142 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }.getOrDefault(false)
     }
 
+    private fun ensurePhysicalKeyboardPopupWindows() {
+        if (floatingCandidateWindow == null) {
+            val popupContentView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
+            val recyclerView =
+                popupContentView.findViewById<RecyclerView>(R.id.floating_candidate_recycler_view)
+            recyclerView.adapter = listAdapter
+            recyclerView.layoutManager = LinearLayoutManager(this)
+            floatingCandidateWindow = PopupWindow(
+                popupContentView,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            ).apply {
+                isOutsideTouchable = false
+            }
+        }
+
+        if (floatingDockWindow == null) {
+            floatingDockWindow = PopupWindow(
+                floatingDockView,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        if (floatingModeSwitchWindow == null) {
+            floatingModeSwitchWindow = PopupWindow(
+                floatingModeSwitchView,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+            floatingModeSwitchWindow?.isTouchable = false
+        }
+    }
+
+    private fun canUpdatePopupWindow(popupWindow: PopupWindow?): Boolean {
+        if (popupWindow == null) return false
+        if (!popupWindow.isShowing) return false
+        if (popupWindow.contentView?.isAttachedToWindow != true) return false
+        return true
+    }
+
+    private fun updatePopupWindowPositionSafely(
+        popupWindow: PopupWindow?,
+        x: Int,
+        y: Int,
+    ) {
+        if (!canUpdatePopupWindow(popupWindow)) return
+
+        runCatching {
+            popupWindow?.update(x, y, -1, -1)
+        }.onFailure { throwable ->
+            Timber.w(throwable, "PopupWindow position update failed")
+        }
+    }
+
+    private fun updateFloatingPopupWindowBoundsSafely(
+        popupWindow: PopupWindow,
+        widthPx: Int,
+        heightPx: Int,
+        updatePosition: Boolean,
+    ) {
+        popupWindow.width = widthPx
+        popupWindow.height = heightPx
+
+        if (!canUpdatePopupWindow(popupWindow)) return
+
+        runCatching {
+            if (updatePosition) {
+                val savedX = appPreference.keyboard_floating_position_x
+                val savedY = appPreference.keyboard_floating_position_y
+
+                if (savedX >= 0 && savedY >= 0) {
+                    popupWindow.update(savedX, savedY, widthPx, heightPx)
+                } else {
+                    popupWindow.update(widthPx, heightPx)
+                }
+            } else {
+                popupWindow.update(widthPx, heightPx)
+            }
+        }.onFailure { throwable ->
+            Timber.w(throwable, "Floating PopupWindow bounds update failed")
+        }
+    }
+
+    private fun resolveFloatingKeyboardWidthPx(mode: TenKeyQWERTYMode): Int {
+        val prefs = getKeyboardSizePreferences()
+        val screenWidth = resources.displayMetrics.widthPixels
+        val usesQwertySize =
+            mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
+        val widthPref = if (usesQwertySize) prefs.qwertyWidthPref else prefs.widthPref
+        return if (widthPref == 100) {
+            ViewGroup.LayoutParams.MATCH_PARENT
+        } else {
+            (screenWidth * (widthPref / 100f)).toInt()
+        }
+    }
+
+    private fun resolveFloatingKeyboardAvailableWidthPx(): Int {
+        return window.window?.decorView?.width?.takeIf { it > 0 }
+            ?: mainLayoutBinding?.root?.width?.takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels
+    }
+
+    private fun resolveFloatingKeyboardUpdateWidthPx(mode: TenKeyQWERTYMode): Int {
+        val prefs = getKeyboardSizePreferences()
+        val availableWidth = resolveFloatingKeyboardAvailableWidthPx()
+        val usesQwertySize =
+            mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
+        val widthPref = if (usesQwertySize) {
+            prefs.qwertyWidthPref
+        } else {
+            prefs.widthPref
+        }
+        val widthPercent = KeyboardLayoutEditConstraints.normalizeWidthPercentForDraft(widthPref)
+
+        return (availableWidth * (widthPercent / 100f))
+            .toInt()
+            .coerceAtLeast(1)
+    }
+
+    private fun ensureFloatingKeyboardPopupWindow(): PopupWindow? {
+        val floatingView = floatingKeyboardBinding ?: return null
+        floatingKeyboardView?.let { return it }
+
+        return PopupWindow(
+            floatingView.root,
+            resolveFloatingKeyboardWidthPx(qwertyMode.value),
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).also { popupWindow ->
+            popupWindow.setOnDismissListener {
+                disableKeyboardLayoutEditMode(updateSurface = false)
+            }
+            floatingKeyboardView = popupWindow
+        }
+    }
+
     private fun updateComposingText(text: String) {
         // 途中経過の表示用（変換中のようなイメージ）
         currentInputConnection?.setComposingText(text, 1)
@@ -3253,11 +3400,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val newWidthPx = newWidthDp ?: popupWindow.width
 
-        val savedX = appPreference.keyboard_floating_position_x
-        val savedY = appPreference.keyboard_floating_position_y
-
-        popupWindow.update(
-            savedX, savedY, newWidthPx, ViewGroup.LayoutParams.WRAP_CONTENT
+        updateFloatingPopupWindowBoundsSafely(
+            popupWindow = popupWindow,
+            widthPx = newWidthPx,
+            heightPx = ViewGroup.LayoutParams.WRAP_CONTENT,
+            updatePosition = true,
         )
     }
 
@@ -3359,6 +3506,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
         // floatingKeyboardBinding を作り直したので configureQwertyView guard をリセット。
         isFloatingQwertyConfigured = false
+        lastAppliedFloatingEditWidthPx = -1
+        lastAppliedFloatingEditHeightPx = -1
 
         floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
             setFloatingKeyboardListeners(floatingKeyboardLayoutBinding = floatingKeyboardLayoutBinding)
@@ -3409,6 +3558,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     widthPx,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
+            }
+            floatingKeyboardView?.setOnDismissListener {
+                disableKeyboardLayoutEditMode(updateSurface = false)
             }
             updateFloatingKeyboardBackgroundBounds(floatingKeyboardLayoutBinding, heightPx)
             updateFloatingFullCandidatesHeight(floatingKeyboardLayoutBinding, heightPx)
@@ -4632,14 +4784,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 以前のdismiss処理がスケジュールされていればキャンセルする
         dismissJob?.cancel()
 
+        ensurePhysicalKeyboardPopupWindows()
         floatingModeSwitchView.text = showInputModeText
         floatingModeSwitchWindow?.dismiss()
         val modeSwitchPopupWindow = floatingModeSwitchWindow
         modeSwitchPopupWindow?.let { switchWindow ->
             switchWindow.isTouchable = false
             if (switchWindow.isShowing) {
-                switchWindow.update(
-                    physicalKeyboardFloatingXPosition, physicalKeyboardFloatingYPosition, -1, -1
+                updatePopupWindowPositionSafely(
+                    popupWindow = switchWindow,
+                    x = physicalKeyboardFloatingXPosition,
+                    y = physicalKeyboardFloatingYPosition,
                 )
             } else {
                 showPopupWindowSafely(
@@ -4782,6 +4937,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun applyFloatingModeState(isFloatingMode: Boolean) {
         val mainView = mainLayoutBinding ?: return
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
+            disableKeyboardLayoutEditMode()
             floatingKeyboardView?.dismiss()
             releaseFloatingKeyboardBackgroundVideoPlayer()
             // 物理キーボード接続中は Floating UI を出さないため、isKeyboardFloatingMode は
@@ -4794,26 +4950,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         this.isKeyboardFloatingMode = isFloatingMode
         if (isFloatingMode) {
-            (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                params.width = ViewGroup.LayoutParams.MATCH_PARENT
-                params.height = getScreenHeight(this@IMEService)
-                mainView.root.layoutParams = params
-            }
-            mainView.root.alpha = 0f
+            ensureFloatingInputHostLayout(mainView)
             bindSuggestionAdaptersForFloatingMode(mainView, isFloatingMode = true)
             clearNormalKeyboardBackgroundForFloatingMode(mainView)
             floatingKeyboardBinding?.let { floatingView ->
                 applyFloatingKeyboardBackgroundIfNeeded(floatingView)
             }
-            floatingKeyboardView?.apply {
-                Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode ${this.isShowing}")
-                if (!this.isShowing) {
+            val floatingKeyboardShown = ensureFloatingKeyboardPopupWindow()?.let { popupWindow ->
+                Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode ${popupWindow.isShowing}")
+                if (!popupWindow.isShowing) {
                     val anchorView = window.window?.decorView
                     val savedX = appPreference.keyboard_floating_position_x
                     val savedY = appPreference.keyboard_floating_position_y
                     val shown = if (savedX != -1 && savedY != -1) {
                         showPopupWindowSafely(
-                            popupWindow = this,
+                            popupWindow = popupWindow,
                             anchorView = anchorView,
                             gravity = Gravity.NO_GRAVITY,
                             x = savedX,
@@ -4822,7 +4973,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     } else {
                         showPopupWindowSafely(
-                            popupWindow = this,
+                            popupWindow = popupWindow,
                             anchorView = anchorView,
                             gravity = Gravity.BOTTOM or Gravity.END,
                             x = 0,
@@ -4833,8 +4984,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (!shown) {
                         Timber.w("Could not show floating keyboard, window token is not available yet.")
                     }
+                    shown
+                } else {
+                    true
                 }
-            }
+            } == true
             floatingKeyboardBinding?.let { floatingView ->
                 applyFloatingKeyboardBackgroundIfNeeded(floatingView)
             }
@@ -4852,8 +5006,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             renderCurrentKeyboardStateOnActiveSurface()
-            updateFloatingKeyboardSizeForMode(qwertyMode.value)
+            if (floatingKeyboardShown) {
+                updateFloatingKeyboardSizeForMode(
+                    mode = qwertyMode.value,
+                    updatePosition = false,
+                )
+            }
         } else {
+            disableKeyboardLayoutEditMode()
             // Floating mode OFF に戻す際は、Floating 中にユーザーが操作した
             // QWERTY 内部状態を通常 QWERTY 側へ引き継ぐ。
             floatingKeyboardBinding?.let { floatingView ->
@@ -4883,6 +5043,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // が一括で行われ、Floating ON -> OFF 復帰時に main 側表示が古い値で残るのを防ぐ。
             renderCurrentKeyboardStateOnActiveSurface()
         }
+    }
+
+    private fun ensureFloatingInputHostLayout(mainView: MainLayoutBinding) {
+        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.width = ViewGroup.LayoutParams.MATCH_PARENT
+            params.height = getScreenHeight(this@IMEService)
+            params.gravity = Gravity.TOP or Gravity.START
+            params.leftMargin = 0
+            params.topMargin = 0
+            params.rightMargin = 0
+            params.bottomMargin = 0
+            mainView.root.layoutParams = params
+        }
+
+        mainView.root.isVisible = true
+        mainView.root.alpha = 0f
     }
 
     private fun getNormalKeyboardSurface(): KeyboardSurface? {
@@ -5802,6 +5978,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     val insertString = inputString.value
                     val sb = StringBuilder()
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
@@ -5834,6 +6011,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
             setOnLongPressListener(object : LongPressListener {
                 override fun onLongPress(key: Key) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     handleLongPressFloating(key)
                     Timber.d("Long Press: $key")
                 }
@@ -5841,33 +6019,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun updateFloatingKeyboardSizeForMode(mode: TenKeyQWERTYMode) {
-        if (isKeyboardFloatingMode != true) return
-        val floatingView = floatingKeyboardBinding ?: return
-        val popupWindow = floatingKeyboardView ?: return
+    private fun updateFloatingKeyboardSizeForMode(
+        mode: TenKeyQWERTYMode,
+        updatePosition: Boolean = false,
+    ): Boolean {
+        if (isKeyboardFloatingMode != true) return false
+        val floatingView = floatingKeyboardBinding ?: return false
+        val popupWindow = floatingKeyboardView ?: return false
         val prefs = getKeyboardSizePreferences()
         val density = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
         val usesQwertySize =
             mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
         val heightPref = if (usesQwertySize) prefs.qwertyHeightPref else prefs.heightPref
-        val widthPref = if (usesQwertySize) prefs.qwertyWidthPref else prefs.widthPref
         val heightPx = (heightPref.coerceIn(60, 420) * density).toInt()
-        val widthPx = if (widthPref == 100) {
-            ViewGroup.LayoutParams.MATCH_PARENT
-        } else {
-            (screenWidth * (widthPref / 100f)).toInt()
-        }
+        val widthPx = resolveFloatingKeyboardUpdateWidthPx(mode)
+        var sizeChanged = false
+        var containerHeightChanged = false
         (floatingView.floatingKeyboardContainer.layoutParams as? ConstraintLayout.LayoutParams)
             ?.let { params ->
-                params.height = heightPx
-                floatingView.floatingKeyboardContainer.layoutParams = params
+                if (params.height != heightPx) {
+                    params.height = heightPx
+                    floatingView.floatingKeyboardContainer.layoutParams = params
+                    containerHeightChanged = true
+                    sizeChanged = true
+                }
             }
-        updateFloatingFullCandidatesHeight(floatingView, heightPx)
-        updateFloatingKeyboardBackgroundBounds(floatingView, heightPx)
-        val savedX = appPreference.keyboard_floating_position_x
-        val savedY = appPreference.keyboard_floating_position_y
-        popupWindow.update(savedX, savedY, widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
+        if (containerHeightChanged || lastAppliedFloatingEditHeightPx != heightPx) {
+            updateFloatingFullCandidatesHeight(floatingView, heightPx)
+            updateFloatingKeyboardBackgroundBounds(floatingView, heightPx)
+            lastAppliedFloatingEditHeightPx = heightPx
+            sizeChanged = true
+        }
+        val popupHeightPx = ViewGroup.LayoutParams.WRAP_CONTENT
+        val popupBoundsChanged =
+            lastAppliedFloatingEditWidthPx != widthPx ||
+                popupWindow.width != widthPx ||
+                popupWindow.height != popupHeightPx
+        if (updatePosition || popupBoundsChanged) {
+            updateFloatingPopupWindowBoundsSafely(
+                popupWindow = popupWindow,
+                widthPx = widthPx,
+                heightPx = popupHeightPx,
+                updatePosition = updatePosition,
+            )
+            lastAppliedFloatingEditWidthPx = widthPx
+            sizeChanged = true
+        }
+        return sizeChanged
     }
 
     private fun setTenKeyListeners(
@@ -5896,6 +6094,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Flick: $char $key $gestureType")
                     val insertString = inputString.value
                     val sb = StringBuilder()
@@ -5940,6 +6139,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
             setOnLongPressListener(object : LongPressListener {
                 override fun onLongPress(key: Key) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     handleLongPress(key)
                     Timber.d("Long Press: $key")
                 }
@@ -5965,6 +6165,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         floatingKeyboardLayoutBinding.apply {
             dragHandle.setOnTouchListener { _, event ->
+                if (isKeyboardLayoutEditModeActive()) return@setOnTouchListener true
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         val location = IntArray(2)
@@ -5982,7 +6183,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         appPreference.keyboard_floating_position_x = newX.toInt()
                         appPreference.keyboard_floating_position_y = newY.toInt()
                         Timber.d("dragHandle.setOnTouchListene: $newX $newY")
-                        floatingKeyboardView?.update(newX.toInt(), newY.toInt(), -1, -1)
+                        updatePopupWindowPositionSafely(
+                            popupWindow = floatingKeyboardView,
+                            x = newX.toInt(),
+                            y = newY.toInt(),
+                        )
                         true
                     }
 
@@ -6072,6 +6277,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Flick: $char $key $gestureType")
                     val insertString = inputString.value
                     val sb = StringBuilder()
@@ -6116,6 +6322,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
             setOnLongPressListener(object : LongPressListener {
                 override fun onLongPress(key: Key) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     handleLongPress(key)
                 }
             })
@@ -6135,6 +6342,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         mainView: MainLayoutBinding
     ) {
+        if (isKeyboardLayoutEditModeActive()) return
         handleKeyReleaseFeedback()
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
@@ -6336,6 +6544,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        if (isKeyboardLayoutEditModeActive()) return
         handleKeyReleaseFeedback()
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
@@ -6647,6 +6856,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleLongPress(
         key: Key
     ) {
+        if (isKeyboardLayoutEditModeActive()) return
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
@@ -6696,6 +6906,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleLongPressFloating(
         key: Key
     ) {
+        if (isKeyboardLayoutEditModeActive()) return
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
@@ -7741,6 +7952,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleDeleteLongPress() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (isHenkan.get()) {
             cancelHenkanByLongPressDeleteKey()
             hasConvertedKatakana = isLiveConversionEnable == true
@@ -8217,7 +8429,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionRecyclerView.isVisible = true
             syncFloatingKeyboardContentForMode(qwertyMode.value)
             renderCurrentKeyboardStateOnActiveSurface()
-            updateFloatingKeyboardSizeForMode(qwertyMode.value)
         }
     }
 
@@ -8865,11 +9076,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
             override fun onPress(action: KeyAction) {
+                if (isKeyboardLayoutEditModeActive()) return
                 if (action == KeyAction.DoNothing) return
                 handleKeyPressFeedback(getKeySoundType(action))
             }
 
             override fun onActionLongPress(action: KeyAction) {
+                if (isKeyboardLayoutEditModeActive()) return
                 if (action != KeyAction.DoNothing) {
                     vibrate()
                     clearDeleteBufferWithView()
@@ -9072,6 +9285,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onActionUpAfterLongPress(action: KeyAction) {
+                if (isKeyboardLayoutEditModeActive()) return
                 Timber.d("onActionUpAfterLongPress: $action")
                 when (action) {
                     KeyAction.DoNothing -> Unit
@@ -9149,11 +9363,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onFlickDirectionChanged(direction: FlickDirection) {
+                if (isKeyboardLayoutEditModeActive()) return
                 vibrate()
                 Timber.d("onFlickDirectionChanged: $direction")
             }
 
             override fun onFlickActionLongPress(action: KeyAction) {
+                if (isKeyboardLayoutEditModeActive()) return
                 Timber.d("onFlickActionLongPress: $action")
                 if (action != KeyAction.DoNothing) vibrate()
                 when (action) {
@@ -9285,6 +9501,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
+                if (isKeyboardLayoutEditModeActive()) return
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
                 Timber.d("onFlickActionUpAfterLongPress: $action $isFlick")
                 when (action) {
@@ -9583,6 +9800,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
+                if (isKeyboardLayoutEditModeActive()) return
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
 
                 Timber.d("onAction: $action $isFlick")
@@ -12334,6 +12552,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             physicalKeyboardEnable.collect { isPhysicalKeyboardEnable ->
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
                 if (isPhysicalKeyboardEnable) {
+                    disableKeyboardLayoutEditMode()
+                    ensurePhysicalKeyboardPopupWindows()
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         window.window?.setBackgroundBlurRadius(0)
                     }
@@ -12388,6 +12608,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             shortCurRepository.enabledShortcutsFlow.collectLatest {
                 shortcutAdapter?.submitList(it)
                 suggestionAdapter?.setShortcutItems(it)
+                updateKeyboardLayoutEditShortcutActiveState(
+                    active = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled
+                )
                 updateCandidateStripPresentation(mainView)
             }
         }
@@ -15035,6 +15258,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnPhysicalKeyboardListener {
                 mainView.apply {
                     if (keyboardView.isVisible || customLayoutDefault.isVisible || qwertyView.isVisible || tabletView.isVisible) {
+                        disableKeyboardLayoutEditMode()
                         hideAllKeyboards()
                         val heightPx = dpToPx(40f)
                         val widthPx = ViewGroup.LayoutParams.MATCH_PARENT
@@ -15323,6 +15547,537 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return suggestions.isNotEmpty() && suggestions.all { isSelectedTextGemmaActionCandidate(it) }
     }
 
+    private fun toggleKeyboardLayoutEditMode(mainView: MainLayoutBinding) {
+        if (keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled) {
+            disableKeyboardLayoutEditMode()
+            return
+        }
+        if (physicalKeyboardEnable.replayCache.firstOrNull() == true) {
+            disableKeyboardLayoutEditMode()
+            return
+        }
+
+        val isFloatingSurfaceActive =
+            isKeyboardFloatingMode == true &&
+                floatingKeyboardBinding != null &&
+                floatingKeyboardView?.isShowing == true
+
+        val surface = if (isFloatingSurfaceActive) {
+            KeyboardLayoutEditSurface.Floating
+        } else {
+            KeyboardLayoutEditSurface.Normal
+        }
+
+        if (surface == KeyboardLayoutEditSurface.Normal && mainView.root.alpha == 0f) {
+            disableKeyboardLayoutEditMode()
+            return
+        }
+
+        vibrate()
+        closeViewsThatConflictWithKeyboardLayoutEdit()
+
+        val target = KeyboardLayoutEditTarget.from(qwertyMode.value)
+        val orientation = currentKeyboardLayoutEditOrientation()
+        val state = KeyboardLayoutEditState.Enabled(
+            surface = surface,
+            target = target,
+            orientation = orientation,
+            values = when (surface) {
+                KeyboardLayoutEditSurface.Normal -> readNormalKeyboardLayoutEditValues(
+                    target = target,
+                    orientation = orientation,
+                )
+
+                KeyboardLayoutEditSurface.Floating -> readFloatingKeyboardLayoutEditValues(
+                    target = target,
+                    orientation = orientation,
+                )
+            },
+        )
+
+        val surfaceAdapter = when (surface) {
+            KeyboardLayoutEditSurface.Normal -> {
+                val targetView = resolveNormalKeyboardLayoutEditTargetView(mainView) ?: return
+                val overlayParent = keyboardContainer
+                    ?: (mainView.root.parent as? FrameLayout)
+                    ?: mainView.root
+                NormalKeyboardLayoutEditSurface(
+                    parent = overlayParent,
+                    targetView = targetView,
+                    availableWidthProvider = {
+                        overlayParent.width.takeIf { it > 0 }
+                            ?: resources.displayMetrics.widthPixels
+                    },
+                )
+            }
+
+            KeyboardLayoutEditSurface.Floating -> {
+                val floatingBinding = floatingKeyboardBinding ?: return
+                FloatingKeyboardLayoutEditSurface(
+                    binding = floatingBinding,
+                    availableWidthProvider = {
+                        resources.displayMetrics.widthPixels
+                    },
+                )
+            }
+        }
+
+        _keyboardLayoutEditState.value = state
+        keyboardLayoutEditController?.start(
+            state = state,
+            surfaceAdapter = surfaceAdapter,
+            callbacks = KeyboardLayoutEditOverlayView.Callbacks(
+                onNormalDraftChanged = { values ->
+                    applyNormalKeyboardLayoutEditValues(values, persist = false)
+                },
+                onNormalEditCommitted = { values ->
+                    applyNormalKeyboardLayoutEditValues(values, persist = true)
+                },
+                onFloatingDraftChanged = { values ->
+                    scheduleFloatingKeyboardLayoutEditDraft(values)
+                },
+                onFloatingEditCommitted = { values ->
+                    pendingFloatingLayoutEditValues = null
+                    floatingLayoutEditFramePosted = false
+                    applyFloatingKeyboardLayoutEditValues(values, persist = true)
+                },
+                onReset = {
+                    resetKeyboardLayoutEditValues()
+                },
+                onDone = {
+                    disableKeyboardLayoutEditMode()
+                },
+            ),
+        )
+        updateKeyboardLayoutEditShortcutActiveState(active = true)
+    }
+
+    private fun isKeyboardLayoutEditModeActive(): Boolean {
+        return keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled
+    }
+
+    private fun disableKeyboardLayoutEditMode(updateSurface: Boolean = true) {
+        val activeState = keyboardLayoutEditState.value as? KeyboardLayoutEditState.Enabled
+        val wasFloatingSurface = activeState?.surface == KeyboardLayoutEditSurface.Floating
+
+        if (
+            keyboardLayoutEditState.value == KeyboardLayoutEditState.Disabled &&
+            keyboardLayoutEditController?.isActive != true
+        ) {
+            return
+        }
+        keyboardLayoutEditController?.stop()
+        _keyboardLayoutEditState.value = KeyboardLayoutEditState.Disabled
+        updateKeyboardLayoutEditShortcutActiveState(active = false)
+        if (updateSurface) {
+            reloadKeyboardLayoutEditCachesFromPreferences()
+            if (wasFloatingSurface && isKeyboardFloatingMode == true) {
+                mainLayoutBinding?.let { ensureFloatingInputHostLayout(it) }
+                updateFloatingKeyboardSizeForMode(
+                    mode = qwertyMode.value,
+                    updatePosition = false,
+                )
+            } else {
+                mainLayoutBinding?.let { updateKeyboardLayout(it) }
+            }
+        }
+    }
+
+    private fun resetKeyboardLayoutEditValues() {
+        val enabled = keyboardLayoutEditState.value as? KeyboardLayoutEditState.Enabled ?: return
+        when (enabled.surface) {
+            KeyboardLayoutEditSurface.Normal -> {
+                val values = KeyboardLayoutEditValues.Normal(
+                    heightDp = KeyboardLayoutEditConstraints.DefaultHeightDp,
+                    widthPercent = KeyboardLayoutEditConstraints.DefaultWidthPercent,
+                    bottomMarginDp = KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginStartDp = KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginEndDp = KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    positionIsEnd = true,
+                )
+                applyNormalKeyboardLayoutEditValues(values, persist = true)
+                keyboardLayoutEditController?.updateValues(values)
+            }
+
+            KeyboardLayoutEditSurface.Floating -> {
+                val values = KeyboardLayoutEditValues.Floating(
+                    heightDp = KeyboardLayoutEditConstraints.DefaultHeightDp,
+                    widthPercent = KeyboardLayoutEditConstraints.DefaultWidthPercent,
+                )
+                applyFloatingKeyboardLayoutEditValues(values, persist = true)
+                keyboardLayoutEditController?.updateValues(values)
+            }
+        }
+    }
+
+    private fun updateKeyboardLayoutEditShortcutActiveState(active: Boolean) {
+        shortcutAdapter?.setKeyboardLayoutEditActive(active)
+        suggestionAdapter?.setKeyboardLayoutEditActive(active)
+    }
+
+    private fun closeViewsThatConflictWithKeyboardLayoutEdit() {
+        if (keyboardSymbolViewState.value.isShown) {
+            _keyboardSymbolViewState.value = SymbolKeyboardState()
+        }
+        floatingKeyboardBinding?.floatingSymbolKeyboard?.isVisible = false
+    }
+
+    private fun currentKeyboardLayoutEditOrientation(): KeyboardLayoutEditOrientation {
+        return KeyboardLayoutEditOrientation.from(
+            resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        )
+    }
+
+    private fun resolveNormalKeyboardLayoutEditTargetView(mainView: MainLayoutBinding): View? {
+        return if (KeyboardLayoutEditTarget.from(qwertyMode.value) == KeyboardLayoutEditTarget.QwertyFamily) {
+            mainView.qwertyView.takeIf { it.isVisible } ?: mainView.qwertyView
+        } else {
+            listOf(
+                mainView.keyboardView,
+                mainView.customLayoutDefault,
+                mainView.tabletView,
+                mainView.candidatesRowView,
+            ).firstOrNull { it.isVisible } ?: mainView.keyboardView
+        }
+    }
+
+    private fun readNormalKeyboardLayoutEditValues(
+        target: KeyboardLayoutEditTarget,
+        orientation: KeyboardLayoutEditOrientation,
+    ): KeyboardLayoutEditValues.Normal {
+        return when (orientation to target) {
+            KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.TenKeyFamily ->
+                KeyboardLayoutEditValues.Normal(
+                    heightDp = tenkeyHeightPreferenceValue ?: KeyboardLayoutEditConstraints.DefaultHeightDp,
+                    widthPercent = tenkeyWidthPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultWidthPercent,
+                    bottomMarginDp = tenkeyBottomMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginStartDp = tenkeyStartMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginEndDp = tenkeyEndMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    positionIsEnd = tenkeyPositionPreferenceValue ?: true,
+                )
+
+            KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.QwertyFamily ->
+                KeyboardLayoutEditValues.Normal(
+                    heightDp = qwertyHeightPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultHeightDp,
+                    widthPercent = qwertyWidthPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultWidthPercent,
+                    bottomMarginDp = qwertyBottomMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginStartDp = qwertyStartMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginEndDp = qwertyEndMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    positionIsEnd = qwertyPositionPreferenceValue ?: true,
+                )
+
+            KeyboardLayoutEditOrientation.Landscape to KeyboardLayoutEditTarget.TenKeyFamily ->
+                KeyboardLayoutEditValues.Normal(
+                    heightDp = tenkeyHeightLandScapePreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultHeightDp,
+                    widthPercent = tenkeyWidthLandScapePreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultWidthPercent,
+                    bottomMarginDp = tenkeyLandScapeBottomMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginStartDp = tenkeyLandScapeStartMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginEndDp = tenkeyLandScapeEndMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    positionIsEnd = tenkeyLandScapePositionPreferenceValue ?: true,
+                )
+
+            else ->
+                KeyboardLayoutEditValues.Normal(
+                    heightDp = qwertyHeightLandScapePreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultHeightDp,
+                    widthPercent = qwertyWidthLandScapePreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultWidthPercent,
+                    bottomMarginDp = qwertyLandScapeBottomMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginStartDp = qwertyLandScapeStartMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginEndDp = qwertyLandScapeEndMarginPreferenceValue
+                        ?: KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    positionIsEnd = qwertyLandScapePositionPreferenceValue ?: true,
+                )
+        }
+    }
+
+    private fun readFloatingKeyboardLayoutEditValues(
+        target: KeyboardLayoutEditTarget,
+        orientation: KeyboardLayoutEditOrientation,
+    ): KeyboardLayoutEditValues.Floating {
+        val normalValues = readNormalKeyboardLayoutEditValues(target, orientation)
+        return KeyboardLayoutEditValues.Floating(
+            heightDp = normalValues.heightDp,
+            widthPercent = normalValues.widthPercent,
+        )
+    }
+
+    private fun applyNormalKeyboardLayoutEditValues(
+        values: KeyboardLayoutEditValues.Normal,
+        persist: Boolean,
+    ) {
+        val enabled = keyboardLayoutEditState.value as? KeyboardLayoutEditState.Enabled ?: return
+        val normalized = if (persist) {
+            KeyboardLayoutEditConstraints.normalizeNormalForCommit(values)
+        } else {
+            KeyboardLayoutEditConstraints.normalizeNormalForDraft(values)
+        }
+        updateNormalKeyboardLayoutEditCaches(
+            target = enabled.target,
+            orientation = enabled.orientation,
+            values = normalized,
+        )
+        if (persist) {
+            saveNormalKeyboardLayoutEditValues(
+                target = enabled.target,
+                orientation = enabled.orientation,
+                values = normalized,
+            )
+        }
+        _keyboardLayoutEditState.value = enabled.copy(values = normalized)
+        mainLayoutBinding?.let { updateKeyboardLayout(it) }
+        keyboardLayoutEditController?.requestOverlayLayout()
+    }
+
+    private fun scheduleFloatingKeyboardLayoutEditDraft(
+        values: KeyboardLayoutEditValues.Floating,
+    ) {
+        pendingFloatingLayoutEditValues = values
+        if (floatingLayoutEditFramePosted) return
+
+        val anchor = floatingKeyboardBinding?.floatingKeyboardContainer
+            ?: floatingKeyboardView?.contentView
+            ?: mainLayoutBinding?.root
+            ?: return
+
+        floatingLayoutEditFramePosted = true
+        anchor.postOnAnimation {
+            floatingLayoutEditFramePosted = false
+            val latest = pendingFloatingLayoutEditValues ?: return@postOnAnimation
+            applyFloatingKeyboardLayoutEditValues(latest, persist = false)
+        }
+    }
+
+    private fun applyFloatingKeyboardLayoutEditValues(
+        values: KeyboardLayoutEditValues.Floating,
+        persist: Boolean,
+    ) {
+        val enabled = keyboardLayoutEditState.value as? KeyboardLayoutEditState.Enabled ?: return
+        if (persist) {
+            pendingFloatingLayoutEditValues = null
+            floatingLayoutEditFramePosted = false
+        }
+        val normalized = if (persist) {
+            KeyboardLayoutEditConstraints.normalizeFloatingForCommit(values)
+        } else {
+            KeyboardLayoutEditConstraints.normalizeFloatingForDraft(values)
+        }
+        updateFloatingKeyboardLayoutEditCaches(
+            target = enabled.target,
+            orientation = enabled.orientation,
+            values = normalized,
+        )
+        if (persist) {
+            saveFloatingKeyboardLayoutEditValues(
+                target = enabled.target,
+                orientation = enabled.orientation,
+                values = normalized,
+            )
+        }
+        _keyboardLayoutEditState.value = enabled.copy(values = normalized)
+        val sizeChanged = updateFloatingKeyboardSizeForMode(
+            mode = qwertyMode.value,
+            updatePosition = false,
+        )
+        if (sizeChanged) {
+            keyboardLayoutEditController?.requestOverlayLayout()
+        }
+    }
+
+    private fun updateNormalKeyboardLayoutEditCaches(
+        target: KeyboardLayoutEditTarget,
+        orientation: KeyboardLayoutEditOrientation,
+        values: KeyboardLayoutEditValues.Normal,
+    ) {
+        when (orientation to target) {
+            KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.TenKeyFamily -> {
+                tenkeyHeightPreferenceValue = values.heightDp
+                tenkeyWidthPreferenceValue = values.widthPercent
+                tenkeyBottomMarginPreferenceValue = values.bottomMarginDp
+                tenkeyStartMarginPreferenceValue = values.marginStartDp
+                tenkeyEndMarginPreferenceValue = values.marginEndDp
+                tenkeyPositionPreferenceValue = values.positionIsEnd
+            }
+
+            KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.QwertyFamily -> {
+                qwertyHeightPreferenceValue = values.heightDp
+                qwertyWidthPreferenceValue = values.widthPercent
+                qwertyBottomMarginPreferenceValue = values.bottomMarginDp
+                qwertyStartMarginPreferenceValue = values.marginStartDp
+                qwertyEndMarginPreferenceValue = values.marginEndDp
+                qwertyPositionPreferenceValue = values.positionIsEnd
+            }
+
+            KeyboardLayoutEditOrientation.Landscape to KeyboardLayoutEditTarget.TenKeyFamily -> {
+                tenkeyHeightLandScapePreferenceValue = values.heightDp
+                tenkeyWidthLandScapePreferenceValue = values.widthPercent
+                tenkeyLandScapeBottomMarginPreferenceValue = values.bottomMarginDp
+                tenkeyLandScapeStartMarginPreferenceValue = values.marginStartDp
+                tenkeyLandScapeEndMarginPreferenceValue = values.marginEndDp
+                tenkeyLandScapePositionPreferenceValue = values.positionIsEnd
+            }
+
+            else -> {
+                qwertyHeightLandScapePreferenceValue = values.heightDp
+                qwertyWidthLandScapePreferenceValue = values.widthPercent
+                qwertyLandScapeBottomMarginPreferenceValue = values.bottomMarginDp
+                qwertyLandScapeStartMarginPreferenceValue = values.marginStartDp
+                qwertyLandScapeEndMarginPreferenceValue = values.marginEndDp
+                qwertyLandScapePositionPreferenceValue = values.positionIsEnd
+            }
+        }
+    }
+
+    private fun updateFloatingKeyboardLayoutEditCaches(
+        target: KeyboardLayoutEditTarget,
+        orientation: KeyboardLayoutEditOrientation,
+        values: KeyboardLayoutEditValues.Floating,
+    ) {
+        when (orientation to target) {
+            KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.TenKeyFamily -> {
+                tenkeyHeightPreferenceValue = values.heightDp
+                tenkeyWidthPreferenceValue = values.widthPercent
+            }
+
+            KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.QwertyFamily -> {
+                qwertyHeightPreferenceValue = values.heightDp
+                qwertyWidthPreferenceValue = values.widthPercent
+            }
+
+            KeyboardLayoutEditOrientation.Landscape to KeyboardLayoutEditTarget.TenKeyFamily -> {
+                tenkeyHeightLandScapePreferenceValue = values.heightDp
+                tenkeyWidthLandScapePreferenceValue = values.widthPercent
+            }
+
+            else -> {
+                qwertyHeightLandScapePreferenceValue = values.heightDp
+                qwertyWidthLandScapePreferenceValue = values.widthPercent
+            }
+        }
+    }
+
+    private fun saveNormalKeyboardLayoutEditValues(
+        target: KeyboardLayoutEditTarget,
+        orientation: KeyboardLayoutEditOrientation,
+        values: KeyboardLayoutEditValues.Normal,
+    ) {
+        when (orientation to target) {
+            KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.TenKeyFamily -> {
+                appPreference.keyboard_height = values.heightDp
+                appPreference.keyboard_width = values.widthPercent
+                appPreference.keyboard_vertical_margin_bottom = values.bottomMarginDp
+                appPreference.keyboard_margin_start_dp = values.marginStartDp
+                appPreference.keyboard_margin_end_dp = values.marginEndDp
+                appPreference.keyboard_position = values.positionIsEnd
+            }
+
+            KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.QwertyFamily -> {
+                appPreference.qwerty_keyboard_height = values.heightDp
+                appPreference.qwerty_keyboard_width = values.widthPercent
+                appPreference.qwerty_keyboard_vertical_margin_bottom = values.bottomMarginDp
+                appPreference.qwerty_keyboard_margin_start_dp = values.marginStartDp
+                appPreference.qwerty_keyboard_margin_end_dp = values.marginEndDp
+                appPreference.qwerty_keyboard_position = values.positionIsEnd
+            }
+
+            KeyboardLayoutEditOrientation.Landscape to KeyboardLayoutEditTarget.TenKeyFamily -> {
+                appPreference.keyboard_height_landscape = values.heightDp
+                appPreference.keyboard_width_landscape = values.widthPercent
+                appPreference.keyboard_vertical_margin_bottom_landscape = values.bottomMarginDp
+                appPreference.keyboard_margin_start_dp_landscape = values.marginStartDp
+                appPreference.keyboard_margin_end_dp_landscape = values.marginEndDp
+                appPreference.keyboard_position_landscape = values.positionIsEnd
+            }
+
+            else -> {
+                appPreference.qwerty_keyboard_height_landscape = values.heightDp
+                appPreference.qwerty_keyboard_width_landscape = values.widthPercent
+                appPreference.qwerty_keyboard_vertical_margin_bottom_landscape =
+                    values.bottomMarginDp
+                appPreference.qwerty_keyboard_margin_start_dp_landscape = values.marginStartDp
+                appPreference.qwerty_keyboard_margin_end_dp_landscape = values.marginEndDp
+                appPreference.qwerty_keyboard_position_landscape = values.positionIsEnd
+            }
+        }
+    }
+
+    private fun saveFloatingKeyboardLayoutEditValues(
+        target: KeyboardLayoutEditTarget,
+        orientation: KeyboardLayoutEditOrientation,
+        values: KeyboardLayoutEditValues.Floating,
+    ) {
+        when (orientation to target) {
+            KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.TenKeyFamily -> {
+                appPreference.keyboard_height = values.heightDp
+                appPreference.keyboard_width = values.widthPercent
+            }
+
+            KeyboardLayoutEditOrientation.Portrait to KeyboardLayoutEditTarget.QwertyFamily -> {
+                appPreference.qwerty_keyboard_height = values.heightDp
+                appPreference.qwerty_keyboard_width = values.widthPercent
+            }
+
+            KeyboardLayoutEditOrientation.Landscape to KeyboardLayoutEditTarget.TenKeyFamily -> {
+                appPreference.keyboard_height_landscape = values.heightDp
+                appPreference.keyboard_width_landscape = values.widthPercent
+            }
+
+            else -> {
+                appPreference.qwerty_keyboard_height_landscape = values.heightDp
+                appPreference.qwerty_keyboard_width_landscape = values.widthPercent
+            }
+        }
+    }
+
+    private fun reloadKeyboardLayoutEditCachesFromPreferences() {
+        tenkeyHeightPreferenceValue = appPreference.keyboard_height
+        tenkeyWidthPreferenceValue = appPreference.keyboard_width
+        qwertyHeightPreferenceValue = appPreference.qwerty_keyboard_height
+        qwertyWidthPreferenceValue = appPreference.qwerty_keyboard_width
+        tenkeyPositionPreferenceValue = appPreference.keyboard_position
+        tenkeyBottomMarginPreferenceValue = appPreference.keyboard_vertical_margin_bottom
+        qwertyPositionPreferenceValue = appPreference.qwerty_keyboard_position
+        qwertyBottomMarginPreferenceValue = appPreference.qwerty_keyboard_vertical_margin_bottom
+        tenkeyStartMarginPreferenceValue = appPreference.keyboard_margin_start_dp
+        tenkeyEndMarginPreferenceValue = appPreference.keyboard_margin_end_dp
+        qwertyStartMarginPreferenceValue = appPreference.qwerty_keyboard_margin_start_dp
+        qwertyEndMarginPreferenceValue = appPreference.qwerty_keyboard_margin_end_dp
+        tenkeyHeightLandScapePreferenceValue = appPreference.keyboard_height_landscape
+        tenkeyWidthLandScapePreferenceValue = appPreference.keyboard_width_landscape
+        qwertyHeightLandScapePreferenceValue = appPreference.qwerty_keyboard_height_landscape
+        qwertyWidthLandScapePreferenceValue = appPreference.qwerty_keyboard_width_landscape
+        tenkeyLandScapePositionPreferenceValue = appPreference.keyboard_position_landscape
+        tenkeyLandScapeBottomMarginPreferenceValue =
+            appPreference.keyboard_vertical_margin_bottom_landscape
+        qwertyLandScapePositionPreferenceValue = appPreference.qwerty_keyboard_position_landscape
+        qwertyLandScapeBottomMarginPreferenceValue =
+            appPreference.qwerty_keyboard_vertical_margin_bottom_landscape
+        tenkeyLandScapeStartMarginPreferenceValue =
+            appPreference.keyboard_margin_start_dp_landscape
+        tenkeyLandScapeEndMarginPreferenceValue =
+            appPreference.keyboard_margin_end_dp_landscape
+        qwertyLandScapeStartMarginPreferenceValue =
+            appPreference.qwerty_keyboard_margin_start_dp_landscape
+        qwertyLandScapeEndMarginPreferenceValue =
+            appPreference.qwerty_keyboard_margin_end_dp_landscape
+    }
+
     private fun resolvedFixedHeightPx(view: View, fallbackDp: Float): Int {
         val layoutHeight = view.layoutParams?.height ?: 0
         return when {
@@ -15430,6 +16185,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             ShortcutType.KEYBOARD_PICKER -> {
                 showKeyboardPicker()
+            }
+
+            ShortcutType.KEYBOARD_LAYOUT_EDIT -> {
+                toggleKeyboardLayoutEditMode(mainView)
             }
 
             ShortcutType.SELECT_ALL -> {
@@ -15727,6 +16486,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Pressed Key: $qwertyKey")
                     handleKeyPressFeedback(getKeySoundType(qwertyKey))
                     deleteLongPressJob?.cancel()
@@ -15735,6 +16495,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onReleasedQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onReleasedQWERTYKey: $qwertyKey")
                     handleKeyReleaseFeedback()
                     val insertString = inputString.value
@@ -16039,6 +16800,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyDelete -> {
                             if (isHenkan.get()) {
@@ -16116,6 +16878,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onFlickUPQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onFlickUPQWERTYKey: $qwertyKey, $tap, $variations")
                     handleKeyReleaseFeedback()
                     val insertString = inputString.value
@@ -16150,6 +16913,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     qwertyKey: QWERTYKey,
                     character: Char
                 ) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onFlickDownQWERTYKey: $qwertyKey, $character")
                     handleKeyReleaseFeedback()
                     if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
@@ -16161,12 +16925,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
 
             setOnDeleteLeftFlickListener {
+                if (isKeyboardLayoutEditModeActive()) return@setOnDeleteLeftFlickListener
                 val insertString = inputString.value
                 Timber.d("setOnDeleteLeftFlickListener called: [$insertString]")
                 deleteWordOrSymbolsBeforeCursor(insertString)
             }
 
             setOnDeleteUpFlickListener {
+                if (isKeyboardLayoutEditModeActive()) return@setOnDeleteUpFlickListener
                 if (isDeleteUpFlickPreference != true) return@setOnDeleteUpFlickListener
                 val insertString = inputString.value
                 Timber.d("setOnDeleteUpFlickListener called: [$insertString]")
@@ -16174,6 +16940,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             setOnDeleteDownFlickListener {
+                if (isKeyboardLayoutEditModeActive()) return@setOnDeleteDownFlickListener
                 if (isDeleteDownFlickPreference != true) return@setOnDeleteDownFlickListener
                 Timber.d("setOnDeleteDownFlickListener called")
                 undoLastHistoryEntry()
@@ -18790,6 +19557,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun deleteLongPress() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (deleteLongPressJob?.isActive == true) return
         activeDeleteHistoryBatch = DeleteHistoryBatch(
             initialInput = inputString.value,
@@ -19718,6 +20486,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleLeftLongPress() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (!isHenkan.get()) {
             lastFlickConvertedNextHiragana.set(true)
             isContinuousTapInputEnabled.set(true)
@@ -19728,6 +20497,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleRightLongPress() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (!isHenkan.get()) {
             onRightKeyLongPressUp.set(false)
             suggestionClickNum = 0
@@ -20808,6 +21578,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun vibrate() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (isVibration == false) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibrationEffect = VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
@@ -20819,11 +21590,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleKeyPressFeedback(keySoundType: KeySoundType) {
+        if (isKeyboardLayoutEditModeActive()) return
         if (shouldVibrateForKeyMoment(VibrationFeedbackMoment.PRESS)) vibrate()
         playKeySound(keySoundType)
     }
 
     private fun handleKeyReleaseFeedback() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (shouldVibrateForKeyMoment(VibrationFeedbackMoment.RELEASE)) vibrate()
     }
 
