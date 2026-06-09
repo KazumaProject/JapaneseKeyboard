@@ -2497,6 +2497,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
                     setOnFlickListener(object : FlickListener {
                         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                            if (isKeyboardLayoutEditModeActive()) return
                             val insertString = inputString.value
                             val sb = StringBuilder()
                             val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
@@ -2540,6 +2541,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     })
                     setOnLongPressListener(object : LongPressListener {
                         override fun onLongPress(key: Key) {
+                            if (isKeyboardLayoutEditModeActive()) return
                             handleLongPressFloating(key)
                             Timber.d("Long Press: $key")
                         }
@@ -5826,6 +5828,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     val insertString = inputString.value
                     val sb = StringBuilder()
                     val suggestionList = suggestionAdapter?.suggestions ?: emptyList()
@@ -5858,6 +5861,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
             setOnLongPressListener(object : LongPressListener {
                 override fun onLongPress(key: Key) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     handleLongPressFloating(key)
                     Timber.d("Long Press: $key")
                 }
@@ -5865,7 +5869,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun updateFloatingKeyboardSizeForMode(mode: TenKeyQWERTYMode) {
+    private fun updateFloatingKeyboardSizeForMode(
+        mode: TenKeyQWERTYMode,
+        updatePosition: Boolean = false,
+    ) {
         if (isKeyboardFloatingMode != true) return
         val floatingView = floatingKeyboardBinding ?: return
         val popupWindow = floatingKeyboardView ?: return
@@ -5889,9 +5896,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         updateFloatingFullCandidatesHeight(floatingView, heightPx)
         updateFloatingKeyboardBackgroundBounds(floatingView, heightPx)
-        val savedX = appPreference.keyboard_floating_position_x
-        val savedY = appPreference.keyboard_floating_position_y
-        popupWindow.update(savedX, savedY, widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
+        if (updatePosition) {
+            val savedX = appPreference.keyboard_floating_position_x
+            val savedY = appPreference.keyboard_floating_position_y
+            if (savedX >= 0 && savedY >= 0) {
+                popupWindow.update(savedX, savedY, widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
+            } else {
+                popupWindow.update(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
+            }
+        } else {
+            popupWindow.update(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
     }
 
     private fun setTenKeyListeners(
@@ -5920,6 +5935,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Flick: $char $key $gestureType")
                     val insertString = inputString.value
                     val sb = StringBuilder()
@@ -5964,6 +5980,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
             setOnLongPressListener(object : LongPressListener {
                 override fun onLongPress(key: Key) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     handleLongPress(key)
                     Timber.d("Long Press: $key")
                 }
@@ -5989,6 +6006,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         floatingKeyboardLayoutBinding.apply {
             dragHandle.setOnTouchListener { _, event ->
+                if (isKeyboardLayoutEditModeActive()) return@setOnTouchListener true
                 when (event.action) {
                     MotionEvent.ACTION_DOWN -> {
                         val location = IntArray(2)
@@ -6096,6 +6114,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Flick: $char $key $gestureType")
                     val insertString = inputString.value
                     val sb = StringBuilder()
@@ -6140,6 +6159,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
             setOnLongPressListener(object : LongPressListener {
                 override fun onLongPress(key: Key) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     handleLongPress(key)
                 }
             })
@@ -6159,6 +6179,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         mainView: MainLayoutBinding
     ) {
+        if (isKeyboardLayoutEditModeActive()) return
         handleKeyReleaseFeedback()
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
@@ -6360,6 +6381,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        if (isKeyboardLayoutEditModeActive()) return
         handleKeyReleaseFeedback()
         if (deletedBuffer.isNotEmpty() && !selectMode.value && key != Key.SideKeyDelete) {
             clearDeletedBuffer()
@@ -6671,6 +6693,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleLongPress(
         key: Key
     ) {
+        if (isKeyboardLayoutEditModeActive()) return
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
@@ -6720,6 +6743,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleLongPressFloating(
         key: Key
     ) {
+        if (isKeyboardLayoutEditModeActive()) return
         when (key) {
             Key.NotSelected -> {}
             Key.SideKeyEnter -> {}
@@ -7765,6 +7789,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleDeleteLongPress() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (isHenkan.get()) {
             cancelHenkanByLongPressDeleteKey()
             hasConvertedKatakana = isLiveConversionEnable == true
@@ -8889,11 +8914,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             com.kazumaproject.custom_keyboard.view.FlickKeyboardView.OnKeyboardActionListener {
 
             override fun onPress(action: KeyAction) {
+                if (isKeyboardLayoutEditModeActive()) return
                 if (action == KeyAction.DoNothing) return
                 handleKeyPressFeedback(getKeySoundType(action))
             }
 
             override fun onActionLongPress(action: KeyAction) {
+                if (isKeyboardLayoutEditModeActive()) return
                 if (action != KeyAction.DoNothing) {
                     vibrate()
                     clearDeleteBufferWithView()
@@ -9096,6 +9123,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onActionUpAfterLongPress(action: KeyAction) {
+                if (isKeyboardLayoutEditModeActive()) return
                 Timber.d("onActionUpAfterLongPress: $action")
                 when (action) {
                     KeyAction.DoNothing -> Unit
@@ -9173,11 +9201,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onFlickDirectionChanged(direction: FlickDirection) {
+                if (isKeyboardLayoutEditModeActive()) return
                 vibrate()
                 Timber.d("onFlickDirectionChanged: $direction")
             }
 
             override fun onFlickActionLongPress(action: KeyAction) {
+                if (isKeyboardLayoutEditModeActive()) return
                 Timber.d("onFlickActionLongPress: $action")
                 if (action != KeyAction.DoNothing) vibrate()
                 when (action) {
@@ -9309,6 +9339,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean) {
+                if (isKeyboardLayoutEditModeActive()) return
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
                 Timber.d("onFlickActionUpAfterLongPress: $action $isFlick")
                 when (action) {
@@ -9607,6 +9638,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             override fun onAction(action: KeyAction, isFlick: Boolean) {
+                if (isKeyboardLayoutEditModeActive()) return
                 if (action != KeyAction.DoNothing) handleKeyReleaseFeedback()
 
                 Timber.d("onAction: $action $isFlick")
@@ -15357,7 +15389,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             disableKeyboardLayoutEditMode()
             return
         }
-        if (physicalKeyboardEnable.replayCache.firstOrNull() == true || mainView.root.alpha == 0f) {
+        if (physicalKeyboardEnable.replayCache.firstOrNull() == true) {
+            disableKeyboardLayoutEditMode()
+            return
+        }
+
+        val isFloatingSurfaceActive =
+            isKeyboardFloatingMode == true &&
+                floatingKeyboardBinding != null &&
+                floatingKeyboardView?.isShowing == true
+
+        val surface = if (isFloatingSurfaceActive) {
+            KeyboardLayoutEditSurface.Floating
+        } else {
+            KeyboardLayoutEditSurface.Normal
+        }
+
+        if (surface == KeyboardLayoutEditSurface.Normal && mainView.root.alpha == 0f) {
             disableKeyboardLayoutEditMode()
             return
         }
@@ -15365,15 +15413,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         vibrate()
         closeViewsThatConflictWithKeyboardLayoutEdit()
 
-        val surface = if (
-            isKeyboardFloatingMode == true &&
-            floatingKeyboardBinding != null &&
-            floatingKeyboardView?.isShowing == true
-        ) {
-            KeyboardLayoutEditSurface.Floating
-        } else {
-            KeyboardLayoutEditSurface.Normal
-        }
         val target = KeyboardLayoutEditTarget.from(qwertyMode.value)
         val orientation = currentKeyboardLayoutEditOrientation()
         val state = KeyboardLayoutEditState.Enabled(
@@ -15396,12 +15435,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val surfaceAdapter = when (surface) {
             KeyboardLayoutEditSurface.Normal -> {
                 val targetView = resolveNormalKeyboardLayoutEditTargetView(mainView) ?: return
-                NormalKeyboardLayoutEditSurface(mainView.root, targetView)
+                val overlayParent = keyboardContainer
+                    ?: (mainView.root.parent as? FrameLayout)
+                    ?: mainView.root
+                NormalKeyboardLayoutEditSurface(
+                    parent = overlayParent,
+                    targetView = targetView,
+                    availableWidthProvider = {
+                        overlayParent.width.takeIf { it > 0 }
+                            ?: resources.displayMetrics.widthPixels
+                    },
+                )
             }
 
             KeyboardLayoutEditSurface.Floating -> {
                 val floatingBinding = floatingKeyboardBinding ?: return
-                FloatingKeyboardLayoutEditSurface(floatingBinding)
+                FloatingKeyboardLayoutEditSurface(
+                    binding = floatingBinding,
+                    availableWidthProvider = {
+                        resources.displayMetrics.widthPixels
+                    },
+                )
             }
         }
 
@@ -15422,12 +15476,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 onFloatingEditCommitted = { values ->
                     applyFloatingKeyboardLayoutEditValues(values, persist = true)
                 },
+                onReset = {
+                    resetKeyboardLayoutEditValues()
+                },
                 onDone = {
                     disableKeyboardLayoutEditMode()
                 },
             ),
         )
         updateKeyboardLayoutEditShortcutActiveState(active = true)
+    }
+
+    private fun isKeyboardLayoutEditModeActive(): Boolean {
+        return keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled
     }
 
     private fun disableKeyboardLayoutEditMode(updateSurface: Boolean = true) {
@@ -15444,7 +15505,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             reloadKeyboardLayoutEditCachesFromPreferences()
             mainLayoutBinding?.let { updateKeyboardLayout(it) }
             if (isKeyboardFloatingMode == true) {
-                updateFloatingKeyboardSizeForMode(qwertyMode.value)
+                updateFloatingKeyboardSizeForMode(qwertyMode.value, updatePosition = true)
+            }
+        }
+    }
+
+    private fun resetKeyboardLayoutEditValues() {
+        val enabled = keyboardLayoutEditState.value as? KeyboardLayoutEditState.Enabled ?: return
+        when (enabled.surface) {
+            KeyboardLayoutEditSurface.Normal -> {
+                val values = KeyboardLayoutEditValues.Normal(
+                    heightDp = KeyboardLayoutEditConstraints.DefaultHeightDp,
+                    widthPercent = KeyboardLayoutEditConstraints.DefaultWidthPercent,
+                    bottomMarginDp = KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginStartDp = KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    marginEndDp = KeyboardLayoutEditConstraints.DefaultMarginDp,
+                    positionIsEnd = true,
+                )
+                applyNormalKeyboardLayoutEditValues(values, persist = true)
+                keyboardLayoutEditController?.updateValues(values)
+            }
+
+            KeyboardLayoutEditSurface.Floating -> {
+                val values = KeyboardLayoutEditValues.Floating(
+                    heightDp = KeyboardLayoutEditConstraints.DefaultHeightDp,
+                    widthPercent = KeyboardLayoutEditConstraints.DefaultWidthPercent,
+                )
+                applyFloatingKeyboardLayoutEditValues(values, persist = true)
+                keyboardLayoutEditController?.updateValues(values)
             }
         }
     }
@@ -15562,7 +15650,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         persist: Boolean,
     ) {
         val enabled = keyboardLayoutEditState.value as? KeyboardLayoutEditState.Enabled ?: return
-        val normalized = KeyboardLayoutEditConstraints.normalizeNormal(values)
+        val normalized = if (persist) {
+            KeyboardLayoutEditConstraints.normalizeNormalForCommit(values)
+        } else {
+            KeyboardLayoutEditConstraints.normalizeNormalForDraft(values)
+        }
         updateNormalKeyboardLayoutEditCaches(
             target = enabled.target,
             orientation = enabled.orientation,
@@ -15585,7 +15677,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         persist: Boolean,
     ) {
         val enabled = keyboardLayoutEditState.value as? KeyboardLayoutEditState.Enabled ?: return
-        val normalized = KeyboardLayoutEditConstraints.normalizeFloating(values)
+        val normalized = if (persist) {
+            KeyboardLayoutEditConstraints.normalizeFloatingForCommit(values)
+        } else {
+            KeyboardLayoutEditConstraints.normalizeFloatingForDraft(values)
+        }
         updateFloatingKeyboardLayoutEditCaches(
             target = enabled.target,
             orientation = enabled.orientation,
@@ -15599,7 +15695,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         _keyboardLayoutEditState.value = enabled.copy(values = normalized)
-        updateFloatingKeyboardSizeForMode(qwertyMode.value)
+        updateFloatingKeyboardSizeForMode(
+            mode = qwertyMode.value,
+            updatePosition = false,
+        )
         keyboardLayoutEditController?.requestOverlayLayout()
     }
 
@@ -16189,6 +16288,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Pressed Key: $qwertyKey")
                     handleKeyPressFeedback(getKeySoundType(qwertyKey))
                     deleteLongPressJob?.cancel()
@@ -16197,6 +16297,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onReleasedQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onReleasedQWERTYKey: $qwertyKey")
                     handleKeyReleaseFeedback()
                     val insertString = inputString.value
@@ -16501,6 +16602,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 override fun onLongPressQWERTYKey(qwertyKey: QWERTYKey) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     when (qwertyKey) {
                         QWERTYKey.QWERTYKeyDelete -> {
                             if (isHenkan.get()) {
@@ -16578,6 +16680,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 override fun onFlickUPQWERTYKey(
                     qwertyKey: QWERTYKey, tap: Char?, variations: List<Char>?
                 ) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onFlickUPQWERTYKey: $qwertyKey, $tap, $variations")
                     handleKeyReleaseFeedback()
                     val insertString = inputString.value
@@ -16612,6 +16715,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     qwertyKey: QWERTYKey,
                     character: Char
                 ) {
+                    if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("onFlickDownQWERTYKey: $qwertyKey, $character")
                     handleKeyReleaseFeedback()
                     if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
@@ -16623,12 +16727,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             })
 
             setOnDeleteLeftFlickListener {
+                if (isKeyboardLayoutEditModeActive()) return@setOnDeleteLeftFlickListener
                 val insertString = inputString.value
                 Timber.d("setOnDeleteLeftFlickListener called: [$insertString]")
                 deleteWordOrSymbolsBeforeCursor(insertString)
             }
 
             setOnDeleteUpFlickListener {
+                if (isKeyboardLayoutEditModeActive()) return@setOnDeleteUpFlickListener
                 if (isDeleteUpFlickPreference != true) return@setOnDeleteUpFlickListener
                 val insertString = inputString.value
                 Timber.d("setOnDeleteUpFlickListener called: [$insertString]")
@@ -16636,6 +16742,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             setOnDeleteDownFlickListener {
+                if (isKeyboardLayoutEditModeActive()) return@setOnDeleteDownFlickListener
                 if (isDeleteDownFlickPreference != true) return@setOnDeleteDownFlickListener
                 Timber.d("setOnDeleteDownFlickListener called")
                 undoLastHistoryEntry()
@@ -19252,6 +19359,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun deleteLongPress() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (deleteLongPressJob?.isActive == true) return
         activeDeleteHistoryBatch = DeleteHistoryBatch(
             initialInput = inputString.value,
@@ -20180,6 +20288,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleLeftLongPress() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (!isHenkan.get()) {
             lastFlickConvertedNextHiragana.set(true)
             isContinuousTapInputEnabled.set(true)
@@ -20190,6 +20299,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleRightLongPress() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (!isHenkan.get()) {
             onRightKeyLongPressUp.set(false)
             suggestionClickNum = 0
@@ -21270,6 +21380,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun vibrate() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (isVibration == false) return
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val vibrationEffect = VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK)
@@ -21281,11 +21392,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleKeyPressFeedback(keySoundType: KeySoundType) {
+        if (isKeyboardLayoutEditModeActive()) return
         if (shouldVibrateForKeyMoment(VibrationFeedbackMoment.PRESS)) vibrate()
         playKeySound(keySoundType)
     }
 
     private fun handleKeyReleaseFeedback() {
+        if (isKeyboardLayoutEditModeActive()) return
         if (shouldVibrateForKeyMoment(VibrationFeedbackMoment.RELEASE)) vibrate()
     }
 
