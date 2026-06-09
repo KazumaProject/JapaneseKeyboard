@@ -32,6 +32,12 @@ enum class ShortcutType(
         activeIconResId = com.kazumaproject.core.R.drawable.baseline_check_24,
         description = "キーボード調整"
     ),
+    KEYBOARD_FLOATING_TOGGLE(
+        "keyboard_floating_toggle",
+        com.kazumaproject.core.R.drawable.keyboard_floating_24px,
+        activeIconResId = com.kazumaproject.core.R.drawable.keyboard_normal_24px,
+        description = "フローティング切替"
+    ),
     SELECT_ALL(
         "select_all",
         com.kazumaproject.core.R.drawable.text_select_start_24dp,
