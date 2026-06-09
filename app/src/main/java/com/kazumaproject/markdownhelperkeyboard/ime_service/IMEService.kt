@@ -2701,32 +2701,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         if (hasPhysicalKeyboard) {
-            val popupContentView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
-            val recyclerView =
-                popupContentView.findViewById<RecyclerView>(R.id.floating_candidate_recycler_view)
-            recyclerView.adapter = listAdapter
-            recyclerView.layoutManager = LinearLayoutManager(this)
-            floatingCandidateWindow = PopupWindow(
-                popupContentView,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT
-            ).apply {
-                isOutsideTouchable = false
-            }
-
-            floatingDockWindow = PopupWindow(
-                floatingDockView,
-                WindowManager.LayoutParams.MATCH_PARENT,
-                WindowManager.LayoutParams.WRAP_CONTENT
-            )
-
             floatingDockView.setText("あ")
-            floatingModeSwitchWindow = PopupWindow(
-                floatingModeSwitchView,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT
-            )
-            floatingModeSwitchWindow?.isTouchable = false
+            ensurePhysicalKeyboardPopupWindows()
         }
     }
 
@@ -2745,6 +2721,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingDockWindow?.dismiss()
         floatingModeSwitchWindow?.dismiss()
         floatingKeyboardView?.dismiss()
+        floatingCandidateWindow = null
+        floatingDockWindow = null
+        floatingModeSwitchWindow = null
+        floatingKeyboardView = null
     }
 
     override fun onDestroy() {
@@ -3036,9 +3016,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         Timber.d("onUpdateCursorAnchorInfo start: [${cursorAnchorInfo == null}] [${floatingCandidateWindow == null}]")
         val insertString = inputString.value
-        if (cursorAnchorInfo == null || floatingCandidateWindow == null || insertString.isEmpty()) {
+        if (cursorAnchorInfo == null || insertString.isEmpty()) {
             return
         }
+        ensurePhysicalKeyboardPopupWindows()
+        if (floatingCandidateWindow == null) return
 
         val matrix: Matrix = cursorAnchorInfo.matrix
         // カーソルのローカル座標を取得
@@ -3073,7 +3055,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentPopupWindow?.let { currentWindow ->
             Timber.d("onUpdateCursorAnchorInfo window debug: [$physicalKeyboardFloatingXPosition] [$physicalKeyboardFloatingYPosition] [${currentWindow.isShowing}]")
             if (currentWindow.isShowing) {
-                currentWindow.update(x, y, -1, -1)
+                updatePopupWindowPositionSafely(
+                    popupWindow = currentWindow,
+                    x = x,
+                    y = y,
+                )
             } else {
                 // 表示されていない場合は指定した位置に表示
                 showPopupWindowSafely(
@@ -3188,6 +3174,119 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }.getOrDefault(false)
     }
 
+    private fun ensurePhysicalKeyboardPopupWindows() {
+        if (floatingCandidateWindow == null) {
+            val popupContentView = layoutInflater.inflate(R.layout.floating_candidate_layout, null)
+            val recyclerView =
+                popupContentView.findViewById<RecyclerView>(R.id.floating_candidate_recycler_view)
+            recyclerView.adapter = listAdapter
+            recyclerView.layoutManager = LinearLayoutManager(this)
+            floatingCandidateWindow = PopupWindow(
+                popupContentView,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            ).apply {
+                isOutsideTouchable = false
+            }
+        }
+
+        if (floatingDockWindow == null) {
+            floatingDockWindow = PopupWindow(
+                floatingDockView,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+        }
+
+        if (floatingModeSwitchWindow == null) {
+            floatingModeSwitchWindow = PopupWindow(
+                floatingModeSwitchView,
+                WindowManager.LayoutParams.WRAP_CONTENT,
+                WindowManager.LayoutParams.WRAP_CONTENT
+            )
+            floatingModeSwitchWindow?.isTouchable = false
+        }
+    }
+
+    private fun canUpdatePopupWindow(popupWindow: PopupWindow?): Boolean {
+        if (popupWindow == null) return false
+        if (!popupWindow.isShowing) return false
+        if (popupWindow.contentView?.isAttachedToWindow != true) return false
+        return true
+    }
+
+    private fun updatePopupWindowPositionSafely(
+        popupWindow: PopupWindow?,
+        x: Int,
+        y: Int,
+    ) {
+        if (!canUpdatePopupWindow(popupWindow)) return
+
+        runCatching {
+            popupWindow?.update(x, y, -1, -1)
+        }.onFailure { throwable ->
+            Timber.w(throwable, "PopupWindow position update failed")
+        }
+    }
+
+    private fun updateFloatingPopupWindowBoundsSafely(
+        popupWindow: PopupWindow,
+        widthPx: Int,
+        heightPx: Int,
+        updatePosition: Boolean,
+    ) {
+        popupWindow.width = widthPx
+        popupWindow.height = heightPx
+
+        if (!canUpdatePopupWindow(popupWindow)) return
+
+        runCatching {
+            if (updatePosition) {
+                val savedX = appPreference.keyboard_floating_position_x
+                val savedY = appPreference.keyboard_floating_position_y
+
+                if (savedX >= 0 && savedY >= 0) {
+                    popupWindow.update(savedX, savedY, widthPx, heightPx)
+                } else {
+                    popupWindow.update(widthPx, heightPx)
+                }
+            } else {
+                popupWindow.update(widthPx, heightPx)
+            }
+        }.onFailure { throwable ->
+            Timber.w(throwable, "Floating PopupWindow bounds update failed")
+        }
+    }
+
+    private fun resolveFloatingKeyboardWidthPx(mode: TenKeyQWERTYMode): Int {
+        val prefs = getKeyboardSizePreferences()
+        val screenWidth = resources.displayMetrics.widthPixels
+        val usesQwertySize =
+            mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
+        val widthPref = if (usesQwertySize) prefs.qwertyWidthPref else prefs.widthPref
+        return if (widthPref == 100) {
+            ViewGroup.LayoutParams.MATCH_PARENT
+        } else {
+            (screenWidth * (widthPref / 100f)).toInt()
+        }
+    }
+
+    private fun ensureFloatingKeyboardPopupWindow(): PopupWindow? {
+        val floatingView = floatingKeyboardBinding ?: return null
+        floatingKeyboardView?.let { return it }
+
+        return PopupWindow(
+            floatingView.root,
+            resolveFloatingKeyboardWidthPx(qwertyMode.value),
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+        ).also { popupWindow ->
+            popupWindow.setOnDismissListener {
+                disableKeyboardLayoutEditMode(updateSurface = false)
+            }
+            floatingKeyboardView = popupWindow
+        }
+    }
+
     private fun updateComposingText(text: String) {
         // 途中経過の表示用（変換中のようなイメージ）
         currentInputConnection?.setComposingText(text, 1)
@@ -3274,11 +3373,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val newWidthPx = newWidthDp ?: popupWindow.width
 
-        val savedX = appPreference.keyboard_floating_position_x
-        val savedY = appPreference.keyboard_floating_position_y
-
-        popupWindow.update(
-            savedX, savedY, newWidthPx, ViewGroup.LayoutParams.WRAP_CONTENT
+        updateFloatingPopupWindowBoundsSafely(
+            popupWindow = popupWindow,
+            widthPx = newWidthPx,
+            heightPx = ViewGroup.LayoutParams.WRAP_CONTENT,
+            updatePosition = true,
         )
     }
 
@@ -4656,14 +4755,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 以前のdismiss処理がスケジュールされていればキャンセルする
         dismissJob?.cancel()
 
+        ensurePhysicalKeyboardPopupWindows()
         floatingModeSwitchView.text = showInputModeText
         floatingModeSwitchWindow?.dismiss()
         val modeSwitchPopupWindow = floatingModeSwitchWindow
         modeSwitchPopupWindow?.let { switchWindow ->
             switchWindow.isTouchable = false
             if (switchWindow.isShowing) {
-                switchWindow.update(
-                    physicalKeyboardFloatingXPosition, physicalKeyboardFloatingYPosition, -1, -1
+                updatePopupWindowPositionSafely(
+                    popupWindow = switchWindow,
+                    x = physicalKeyboardFloatingXPosition,
+                    y = physicalKeyboardFloatingYPosition,
                 )
             } else {
                 showPopupWindowSafely(
@@ -4830,15 +4932,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingKeyboardBinding?.let { floatingView ->
                 applyFloatingKeyboardBackgroundIfNeeded(floatingView)
             }
-            floatingKeyboardView?.apply {
-                Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode ${this.isShowing}")
-                if (!this.isShowing) {
+            val floatingKeyboardShown = ensureFloatingKeyboardPopupWindow()?.let { popupWindow ->
+                Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode ${popupWindow.isShowing}")
+                if (!popupWindow.isShowing) {
                     val anchorView = window.window?.decorView
                     val savedX = appPreference.keyboard_floating_position_x
                     val savedY = appPreference.keyboard_floating_position_y
                     val shown = if (savedX != -1 && savedY != -1) {
                         showPopupWindowSafely(
-                            popupWindow = this,
+                            popupWindow = popupWindow,
                             anchorView = anchorView,
                             gravity = Gravity.NO_GRAVITY,
                             x = savedX,
@@ -4847,7 +4949,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     } else {
                         showPopupWindowSafely(
-                            popupWindow = this,
+                            popupWindow = popupWindow,
                             anchorView = anchorView,
                             gravity = Gravity.BOTTOM or Gravity.END,
                             x = 0,
@@ -4858,8 +4960,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (!shown) {
                         Timber.w("Could not show floating keyboard, window token is not available yet.")
                     }
+                    shown
+                } else {
+                    true
                 }
-            }
+            } == true
             floatingKeyboardBinding?.let { floatingView ->
                 applyFloatingKeyboardBackgroundIfNeeded(floatingView)
             }
@@ -4877,7 +4982,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             renderCurrentKeyboardStateOnActiveSurface()
-            updateFloatingKeyboardSizeForMode(qwertyMode.value)
+            if (floatingKeyboardShown) {
+                updateFloatingKeyboardSizeForMode(
+                    mode = qwertyMode.value,
+                    updatePosition = false,
+                )
+            }
         } else {
             disableKeyboardLayoutEditMode()
             // Floating mode OFF に戻す際は、Floating 中にユーザーが操作した
@@ -5878,17 +5988,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val popupWindow = floatingKeyboardView ?: return
         val prefs = getKeyboardSizePreferences()
         val density = resources.displayMetrics.density
-        val screenWidth = resources.displayMetrics.widthPixels
         val usesQwertySize =
             mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
         val heightPref = if (usesQwertySize) prefs.qwertyHeightPref else prefs.heightPref
-        val widthPref = if (usesQwertySize) prefs.qwertyWidthPref else prefs.widthPref
         val heightPx = (heightPref.coerceIn(60, 420) * density).toInt()
-        val widthPx = if (widthPref == 100) {
-            ViewGroup.LayoutParams.MATCH_PARENT
-        } else {
-            (screenWidth * (widthPref / 100f)).toInt()
-        }
+        val widthPx = resolveFloatingKeyboardWidthPx(mode)
         (floatingView.floatingKeyboardContainer.layoutParams as? ConstraintLayout.LayoutParams)
             ?.let { params ->
                 params.height = heightPx
@@ -5896,17 +6000,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         updateFloatingFullCandidatesHeight(floatingView, heightPx)
         updateFloatingKeyboardBackgroundBounds(floatingView, heightPx)
-        if (updatePosition) {
-            val savedX = appPreference.keyboard_floating_position_x
-            val savedY = appPreference.keyboard_floating_position_y
-            if (savedX >= 0 && savedY >= 0) {
-                popupWindow.update(savedX, savedY, widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
-            } else {
-                popupWindow.update(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
-            }
-        } else {
-            popupWindow.update(widthPx, ViewGroup.LayoutParams.WRAP_CONTENT)
-        }
+        updateFloatingPopupWindowBoundsSafely(
+            popupWindow = popupWindow,
+            widthPx = widthPx,
+            heightPx = ViewGroup.LayoutParams.WRAP_CONTENT,
+            updatePosition = updatePosition,
+        )
     }
 
     private fun setTenKeyListeners(
@@ -6024,7 +6123,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         appPreference.keyboard_floating_position_x = newX.toInt()
                         appPreference.keyboard_floating_position_y = newY.toInt()
                         Timber.d("dragHandle.setOnTouchListene: $newX $newY")
-                        floatingKeyboardView?.update(newX.toInt(), newY.toInt(), -1, -1)
+                        updatePopupWindowPositionSafely(
+                            popupWindow = floatingKeyboardView,
+                            x = newX.toInt(),
+                            y = newY.toInt(),
+                        )
                         true
                     }
 
@@ -8266,7 +8369,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionRecyclerView.isVisible = true
             syncFloatingKeyboardContentForMode(qwertyMode.value)
             renderCurrentKeyboardStateOnActiveSurface()
-            updateFloatingKeyboardSizeForMode(qwertyMode.value)
         }
     }
 
@@ -12391,6 +12493,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("physicalKeyboardEnable: $isPhysicalKeyboardEnable")
                 if (isPhysicalKeyboardEnable) {
                     disableKeyboardLayoutEditMode()
+                    ensurePhysicalKeyboardPopupWindows()
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                         window.window?.setBackgroundBlurRadius(0)
                     }
