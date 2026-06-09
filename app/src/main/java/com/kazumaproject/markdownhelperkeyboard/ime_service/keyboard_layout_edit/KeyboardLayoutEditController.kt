@@ -25,6 +25,7 @@ class KeyboardLayoutEditController(
         stop()
         activeSurface = surfaceAdapter
         _state.value = state
+        surfaceAdapter.setEditing(true)
         val overlay = KeyboardLayoutEditOverlayView(context).apply {
             configure(
                 mode = when (state.surface) {
@@ -33,12 +34,13 @@ class KeyboardLayoutEditController(
                 },
                 initialValues = state.values,
                 boundsProvider = surfaceAdapter::currentBoundsInParent,
+                availableWidthProvider = surfaceAdapter::availableWidthPx,
                 callbacks = callbacks,
             )
         }
         overlayView = overlay
-        surfaceAdapter.setEditing(true)
         surfaceAdapter.parent.addView(overlay, KeyboardLayoutEditOverlayView.defaultLayoutParams())
+        overlay.bringToFront()
     }
 
     fun stop() {
@@ -55,6 +57,11 @@ class KeyboardLayoutEditController(
         overlayView?.requestLayout()
     }
 
+    fun updateValues(values: KeyboardLayoutEditValues) {
+        overlayView?.updateValues(values)
+        requestOverlayLayout()
+    }
+
     val isActive: Boolean
         get() = _state.value is KeyboardLayoutEditState.Enabled
 }
@@ -62,5 +69,6 @@ class KeyboardLayoutEditController(
 interface KeyboardLayoutEditSurfaceAdapter {
     val parent: FrameLayout
     fun currentBoundsInParent(): Rect
+    fun availableWidthPx(): Int
     fun setEditing(isEditing: Boolean)
 }

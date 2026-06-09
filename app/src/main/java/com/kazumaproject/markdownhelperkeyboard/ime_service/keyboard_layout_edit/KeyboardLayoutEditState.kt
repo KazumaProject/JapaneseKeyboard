@@ -80,29 +80,63 @@ object KeyboardLayoutEditConstraints {
     const val DefaultWidthPercent = 100
     const val DefaultMarginDp = 0
 
-    fun normalizeNormal(
+    fun normalizeNormalForDraft(
         values: KeyboardLayoutEditValues.Normal,
     ): KeyboardLayoutEditValues.Normal {
         return values.copy(
             heightDp = values.heightDp.coerceIn(MinHeightDp, MaxHeightDp),
-            widthPercent = normalizeWidthPercent(values.widthPercent),
+            widthPercent = normalizeWidthPercentForDraft(values.widthPercent),
             bottomMarginDp = values.bottomMarginDp.coerceAtLeast(MinMarginDp),
             marginStartDp = values.marginStartDp.coerceAtLeast(MinMarginDp),
             marginEndDp = values.marginEndDp.coerceAtLeast(MinMarginDp),
         )
     }
 
-    fun normalizeFloating(
+    fun normalizeNormalForCommit(
+        values: KeyboardLayoutEditValues.Normal,
+    ): KeyboardLayoutEditValues.Normal {
+        return normalizeNormalForDraft(values).copy(
+            widthPercent = normalizeWidthPercentForCommit(values.widthPercent),
+        )
+    }
+
+    fun normalizeFloatingForDraft(
         values: KeyboardLayoutEditValues.Floating,
     ): KeyboardLayoutEditValues.Floating {
         return values.copy(
             heightDp = values.heightDp.coerceIn(MinFloatingHeightDp, MaxFloatingHeightDp),
-            widthPercent = normalizeWidthPercent(values.widthPercent),
+            widthPercent = normalizeWidthPercentForDraft(values.widthPercent),
         )
     }
 
-    fun normalizeWidthPercent(widthPercent: Int): Int {
+    fun normalizeFloatingForCommit(
+        values: KeyboardLayoutEditValues.Floating,
+    ): KeyboardLayoutEditValues.Floating {
+        return normalizeFloatingForDraft(values).copy(
+            widthPercent = normalizeWidthPercentForCommit(values.widthPercent),
+        )
+    }
+
+    fun normalizeNormal(values: KeyboardLayoutEditValues.Normal): KeyboardLayoutEditValues.Normal {
+        return normalizeNormalForCommit(values)
+    }
+
+    fun normalizeFloating(
+        values: KeyboardLayoutEditValues.Floating,
+    ): KeyboardLayoutEditValues.Floating {
+        return normalizeFloatingForCommit(values)
+    }
+
+    fun normalizeWidthPercentForDraft(widthPercent: Int): Int {
+        return widthPercent.coerceIn(MinWidthPercent, MaxWidthPercent)
+    }
+
+    fun normalizeWidthPercentForCommit(widthPercent: Int): Int {
         val clamped = widthPercent.coerceIn(MinWidthPercent, MaxWidthPercent)
         return if (clamped >= FullWidthThresholdPercent) MaxWidthPercent else clamped
+    }
+
+    fun normalizeWidthPercent(widthPercent: Int): Int {
+        return normalizeWidthPercentForCommit(widthPercent)
     }
 }

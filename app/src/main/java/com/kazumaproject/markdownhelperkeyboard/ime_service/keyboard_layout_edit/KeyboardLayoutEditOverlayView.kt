@@ -28,6 +28,7 @@ class KeyboardLayoutEditOverlayView(
         val onNormalEditCommitted: (KeyboardLayoutEditValues.Normal) -> Unit = {},
         val onFloatingDraftChanged: (KeyboardLayoutEditValues.Floating) -> Unit = {},
         val onFloatingEditCommitted: (KeyboardLayoutEditValues.Floating) -> Unit = {},
+        val onReset: () -> Unit = {},
         val onDone: () -> Unit = {},
     )
 
@@ -46,10 +47,15 @@ class KeyboardLayoutEditOverlayView(
         contentDescription = "キーボード移動"
     }
     private val positionToggle = ImageButton(context).apply {
-        setImageResource(com.kazumaproject.core.R.drawable.keyboard_tab_24px)
         background = circleDrawable()
         scaleType = ImageView.ScaleType.CENTER
         contentDescription = "左右寄せ切替"
+    }
+    private val resetButton = ImageButton(context).apply {
+        setImageResource(com.kazumaproject.core.R.drawable.undo_24px)
+        background = circleDrawable()
+        scaleType = ImageView.ScaleType.CENTER
+        contentDescription = "デフォルトに戻す"
     }
     private val doneButton = ImageButton(context).apply {
         setImageResource(com.kazumaproject.core.R.drawable.baseline_check_24)
@@ -60,12 +66,16 @@ class KeyboardLayoutEditOverlayView(
 
     private var mode: Mode = Mode.Normal
     private var boundsProvider: () -> Rect = { Rect() }
+    private var availableWidthProvider: () -> Int = {
+        resources.displayMetrics.widthPixels
+    }
     private var callbacks = Callbacks()
     private var normalValues: KeyboardLayoutEditValues.Normal? = null
     private var floatingValues: KeyboardLayoutEditValues.Floating? = null
 
     init {
-        isClickable = false
+        isClickable = true
+        isFocusable = true
         clipChildren = false
         clipToPadding = false
         addView(borderView)
@@ -75,7 +85,9 @@ class KeyboardLayoutEditOverlayView(
         addView(rightHandle)
         addView(moveHandle)
         addView(positionToggle)
+        addView(resetButton)
         addView(doneButton)
+        resetButton.setOnClickListener { callbacks.onReset() }
         doneButton.setOnClickListener { callbacks.onDone() }
         positionToggle.setOnClickListener { togglePosition() }
     }
@@ -84,27 +96,39 @@ class KeyboardLayoutEditOverlayView(
         mode: Mode,
         initialValues: KeyboardLayoutEditValues,
         boundsProvider: () -> Rect,
+        availableWidthProvider: () -> Int,
         callbacks: Callbacks,
     ) {
         this.mode = mode
         this.boundsProvider = boundsProvider
+        this.availableWidthProvider = availableWidthProvider
         this.callbacks = callbacks
-        when (initialValues) {
-            is KeyboardLayoutEditValues.Normal -> {
-                normalValues = initialValues
-                floatingValues = null
-            }
-
-            is KeyboardLayoutEditValues.Floating -> {
-                floatingValues = initialValues
-                normalValues = null
-            }
-        }
+        updateValues(initialValues)
         val normalMode = mode == Mode.Normal
         moveHandle.isVisible = normalMode
         positionToggle.isVisible = normalMode
         setupTouchHandlers()
         requestLayout()
+    }
+
+    fun updateValues(values: KeyboardLayoutEditValues) {
+        when (values) {
+            is KeyboardLayoutEditValues.Normal -> {
+                normalValues = values
+                floatingValues = null
+            }
+
+            is KeyboardLayoutEditValues.Floating -> {
+                floatingValues = values
+                normalValues = null
+            }
+        }
+        updatePositionToggleIcon()
+        requestLayout()
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        return true
     }
 
     override fun onAttachedToWindow() {
@@ -120,6 +144,7 @@ class KeyboardLayoutEditOverlayView(
         layoutCentered(bottomHandle, bounds.centerX(), bounds.bottom)
         layoutCentered(leftHandle, bounds.left, bounds.centerY())
         layoutCentered(rightHandle, bounds.right, bounds.centerY())
+        layoutCentered(resetButton, bounds.right - dp(76), bounds.top + dp(24))
         layoutCentered(doneButton, bounds.right - dp(24), bounds.top + dp(24))
         if (mode == Mode.Normal) {
             layoutCentered(moveHandle, bounds.centerX(), bounds.centerY())
@@ -145,6 +170,7 @@ class KeyboardLayoutEditOverlayView(
         measureChildWithExactSize(rightHandle, dp(40), dp(72))
         measureChildWithExactSize(moveHandle, dp(44), dp(44))
         measureChildWithExactSize(positionToggle, dp(44), dp(44))
+        measureChildWithExactSize(resetButton, dp(44), dp(44))
         measureChildWithExactSize(doneButton, dp(44), dp(44))
     }
 
@@ -206,45 +232,40 @@ class KeyboardLayoutEditOverlayView(
     private fun moveTouchListener(): View.OnTouchListener {
         var initialX = 0f
         var initialY = 0f
-        var initialBottomDp = 0
-        var initialStartDp = 0
-        var initialEndDp = 0
+        var initialValues: KeyboardLayoutEditValues.Normal? = null
         return View.OnTouchListener { _, event ->
-            val values = normalValues ?: return@OnTouchListener false
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
+                    val values = normalValues ?: return@OnTouchListener false
                     initialX = event.rawX
                     initialY = event.rawY
-                    initialBottomDp = values.bottomMarginDp
-                    initialStartDp = values.marginStartDp
-                    initialEndDp = values.marginEndDp
+                    initialValues = values
                     true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+                    val values = initialValues ?: return@OnTouchListener true
                     val deltaXDp = ((event.rawX - initialX) / resources.displayMetrics.density)
                     val deltaYDp = ((event.rawY - initialY) / resources.displayMetrics.density)
                     val maxHorizontalMarginDp = maxHorizontalMarginDp()
-                    val next = if (values.positionIsEnd) {
-                        values.copy(
-                            bottomMarginDp = (initialBottomDp - deltaYDp).roundToInt(),
-                            marginEndDp = (initialEndDp - deltaXDp).roundToInt()
-                                .coerceIn(0, maxHorizontalMarginDp),
-                        )
-                    } else {
-                        values.copy(
-                            bottomMarginDp = (initialBottomDp - deltaYDp).roundToInt(),
-                            marginStartDp = (initialStartDp + deltaXDp).roundToInt()
-                                .coerceIn(0, maxHorizontalMarginDp),
-                        )
-                    }
-                    updateNormalDraft(KeyboardLayoutEditConstraints.normalizeNormal(next))
+                    val next = calculateMoveDragValues(
+                        values = values,
+                        deltaXDp = deltaXDp,
+                        deltaYDp = deltaYDp,
+                        maxHorizontalMarginDp = maxHorizontalMarginDp,
+                    )
+                    updateNormalDraft(KeyboardLayoutEditConstraints.normalizeNormalForDraft(next))
                     true
                 }
 
                 MotionEvent.ACTION_UP,
                 MotionEvent.ACTION_CANCEL -> {
-                    normalValues?.let(callbacks.onNormalEditCommitted)
+                    normalValues?.let {
+                        callbacks.onNormalEditCommitted(
+                            KeyboardLayoutEditConstraints.normalizeNormalForCommit(it)
+                        )
+                    }
+                    initialValues = null
                     true
                 }
 
@@ -282,7 +303,7 @@ class KeyboardLayoutEditOverlayView(
             Mode.Normal -> {
                 val current = normalValues ?: return
                 updateNormalDraft(
-                    KeyboardLayoutEditConstraints.normalizeNormal(
+                    KeyboardLayoutEditConstraints.normalizeNormalForDraft(
                         current.copy(heightDp = heightDp)
                     )
                 )
@@ -291,7 +312,7 @@ class KeyboardLayoutEditOverlayView(
             Mode.Floating -> {
                 val current = floatingValues ?: return
                 updateFloatingDraft(
-                    KeyboardLayoutEditConstraints.normalizeFloating(
+                    KeyboardLayoutEditConstraints.normalizeFloatingForDraft(
                         current.copy(heightDp = heightDp)
                     )
                 )
@@ -304,7 +325,7 @@ class KeyboardLayoutEditOverlayView(
             Mode.Normal -> {
                 val current = normalValues ?: return
                 updateNormalDraft(
-                    KeyboardLayoutEditConstraints.normalizeNormal(
+                    KeyboardLayoutEditConstraints.normalizeNormalForDraft(
                         current.copy(widthPercent = widthPercent)
                     )
                 )
@@ -313,7 +334,7 @@ class KeyboardLayoutEditOverlayView(
             Mode.Floating -> {
                 val current = floatingValues ?: return
                 updateFloatingDraft(
-                    KeyboardLayoutEditConstraints.normalizeFloating(
+                    KeyboardLayoutEditConstraints.normalizeFloatingForDraft(
                         current.copy(widthPercent = widthPercent)
                     )
                 )
@@ -324,6 +345,7 @@ class KeyboardLayoutEditOverlayView(
     private fun updateNormalDraft(values: KeyboardLayoutEditValues.Normal) {
         normalValues = values
         callbacks.onNormalDraftChanged(values)
+        updatePositionToggleIcon()
         requestLayout()
     }
 
@@ -335,8 +357,17 @@ class KeyboardLayoutEditOverlayView(
 
     private fun commitCurrentValues() {
         when (mode) {
-            Mode.Normal -> normalValues?.let(callbacks.onNormalEditCommitted)
-            Mode.Floating -> floatingValues?.let(callbacks.onFloatingEditCommitted)
+            Mode.Normal -> normalValues?.let {
+                callbacks.onNormalEditCommitted(
+                    KeyboardLayoutEditConstraints.normalizeNormalForCommit(it)
+                )
+            }
+
+            Mode.Floating -> floatingValues?.let {
+                callbacks.onFloatingEditCommitted(
+                    KeyboardLayoutEditConstraints.normalizeFloatingForCommit(it)
+                )
+            }
         }
     }
 
@@ -344,7 +375,21 @@ class KeyboardLayoutEditOverlayView(
         val values = normalValues ?: return
         val next = values.copy(positionIsEnd = !values.positionIsEnd)
         updateNormalDraft(next)
-        callbacks.onNormalEditCommitted(next)
+        callbacks.onNormalEditCommitted(KeyboardLayoutEditConstraints.normalizeNormalForCommit(next))
+    }
+
+    private fun updatePositionToggleIcon() {
+        val isEnd = normalValues?.positionIsEnd ?: true
+        positionToggle.setImageResource(
+            if (isEnd) {
+                com.kazumaproject.core.R.drawable.align_horizontal_right_24px
+            } else {
+                com.kazumaproject.core.R.drawable.align_horizontal_left_24px
+            }
+        )
+        positionToggle.contentDescription =
+            if (isEnd) "右寄せ。タップで左寄せに変更"
+            else "左寄せ。タップで右寄せに変更"
     }
 
     private fun currentHeightDp(): Int {
@@ -362,18 +407,21 @@ class KeyboardLayoutEditOverlayView(
     }
 
     private fun percentFromWidthPx(widthPx: Float): Int {
-        val availableWidth = width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+        val availableWidth = availableWidthProvider().takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels
         if (availableWidth <= 0) return currentWidthPercent()
         return ((widthPx / availableWidth) * 100f).roundToInt()
     }
 
     private fun widthPxFromPercent(widthPercent: Int): Int {
-        val availableWidth = width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+        val availableWidth = availableWidthProvider().takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels
         return (availableWidth * (widthPercent / 100f)).roundToInt()
     }
 
     private fun maxHorizontalMarginDp(): Int {
-        val availableWidth = width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+        val availableWidth = availableWidthProvider().takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels
         val keyboardWidth = boundsProvider().width().takeIf { it > 0 }
             ?: widthPxFromPercent(currentWidthPercent())
         return ((availableWidth - keyboardWidth).coerceAtLeast(0) / resources.displayMetrics.density)
@@ -406,5 +454,27 @@ class KeyboardLayoutEditOverlayView(
                 Gravity.BOTTOM,
             )
         }
+    }
+}
+
+internal fun calculateMoveDragValues(
+    values: KeyboardLayoutEditValues.Normal,
+    deltaXDp: Float,
+    deltaYDp: Float,
+    maxHorizontalMarginDp: Int,
+): KeyboardLayoutEditValues.Normal {
+    val safeMaxHorizontalMarginDp = maxHorizontalMarginDp.coerceAtLeast(0)
+    return if (values.positionIsEnd) {
+        values.copy(
+            bottomMarginDp = (values.bottomMarginDp - deltaYDp).roundToInt(),
+            marginEndDp = (values.marginEndDp - deltaXDp).roundToInt()
+                .coerceIn(0, safeMaxHorizontalMarginDp),
+        )
+    } else {
+        values.copy(
+            bottomMarginDp = (values.bottomMarginDp - deltaYDp).roundToInt(),
+            marginStartDp = (values.marginStartDp + deltaXDp).roundToInt()
+                .coerceIn(0, safeMaxHorizontalMarginDp),
+        )
     }
 }

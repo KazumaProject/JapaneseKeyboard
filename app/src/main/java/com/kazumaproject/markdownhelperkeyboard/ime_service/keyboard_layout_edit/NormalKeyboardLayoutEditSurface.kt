@@ -7,10 +7,15 @@ import android.widget.FrameLayout
 class NormalKeyboardLayoutEditSurface(
     override val parent: FrameLayout,
     private val targetView: View,
+    private val availableWidthProvider: () -> Int,
 ) : KeyboardLayoutEditSurfaceAdapter {
 
     override fun currentBoundsInParent(): Rect {
         return boundsInParent(parent, targetView)
+    }
+
+    override fun availableWidthPx(): Int {
+        return availableWidthProvider()
     }
 
     override fun setEditing(isEditing: Boolean) = Unit
