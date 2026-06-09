@@ -4557,6 +4557,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 _physicalKeyboardEnable.emit(true)
             }
             isKeyboardFloatingMode = false
+            updateShortcutActiveStates()
             val sb = StringBuilder() // ここで宣言
 
             if (isBunsetsuCursorMoveSessionActive()) {
@@ -4946,6 +4947,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // 古い値 (true) のまま残り、getActiveKeyboardSurface() が見えていない floating 側を
             // 返してしまう。
             this.isKeyboardFloatingMode = false
+            updateShortcutActiveStates()
             return
         }
         this.isKeyboardFloatingMode = isFloatingMode
@@ -5043,6 +5045,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // が一括で行われ、Floating ON -> OFF 復帰時に main 側表示が古い値で残るのを防ぐ。
             renderCurrentKeyboardStateOnActiveSurface()
         }
+        updateShortcutActiveStates()
     }
 
     private fun ensureFloatingInputHostLayout(mainView: MainLayoutBinding) {
@@ -12600,17 +12603,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingCandidateWindow?.dismiss()
                     floatingDockWindow?.dismiss()
                 }
+                updateShortcutActiveStates()
                 Timber.d("isPhysicalKeyboardEnable: $isPhysicalKeyboardEnable")
             }
         }
 
         launch {
             shortCurRepository.enabledShortcutsFlow.collectLatest {
-                shortcutAdapter?.submitList(it)
+                shortcutAdapter?.submitList(it) {
+                    updateShortcutActiveStates()
+                }
                 suggestionAdapter?.setShortcutItems(it)
-                updateKeyboardLayoutEditShortcutActiveState(
-                    active = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled
-                )
+                updateShortcutActiveStates()
                 updateCandidateStripPresentation(mainView)
             }
         }
@@ -15649,7 +15653,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 },
             ),
         )
-        updateKeyboardLayoutEditShortcutActiveState(active = true)
+        updateShortcutActiveStates()
     }
 
     private fun isKeyboardLayoutEditModeActive(): Boolean {
@@ -15668,7 +15672,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         keyboardLayoutEditController?.stop()
         _keyboardLayoutEditState.value = KeyboardLayoutEditState.Disabled
-        updateKeyboardLayoutEditShortcutActiveState(active = false)
+        updateShortcutActiveStates()
         if (updateSurface) {
             reloadKeyboardLayoutEditCachesFromPreferences()
             if (wasFloatingSurface && isKeyboardFloatingMode == true) {
@@ -15710,9 +15714,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun updateKeyboardLayoutEditShortcutActiveState(active: Boolean) {
-        shortcutAdapter?.setKeyboardLayoutEditActive(active)
-        suggestionAdapter?.setKeyboardLayoutEditActive(active)
+    private fun updateShortcutActiveStates() {
+        val activeTypes = buildSet {
+            if (keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled) {
+                add(ShortcutType.KEYBOARD_LAYOUT_EDIT)
+            }
+
+            if (isKeyboardFloatingMode == true) {
+                add(ShortcutType.KEYBOARD_FLOATING_TOGGLE)
+            }
+        }
+
+        shortcutAdapter?.setActiveShortcutTypes(activeTypes)
+        suggestionAdapter?.setActiveShortcutTypes(activeTypes)
+    }
+
+    private fun toggleKeyboardFloatingModeFromShortcut() {
+        if (physicalKeyboardEnable.replayCache.firstOrNull() == true) {
+            return
+        }
+
+        disableKeyboardLayoutEditMode(updateSurface = false)
+
+        val next = isKeyboardFloatingMode != true
+        appPreference.is_floating_mode = next
+        _keyboardFloatingMode.update { next }
     }
 
     private fun closeViewsThatConflictWithKeyboardLayoutEdit() {
@@ -16189,6 +16215,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             ShortcutType.KEYBOARD_LAYOUT_EDIT -> {
                 toggleKeyboardLayoutEditMode(mainView)
+            }
+
+            ShortcutType.KEYBOARD_FLOATING_TOGGLE -> {
+                toggleKeyboardFloatingModeFromShortcut()
             }
 
             ShortcutType.SELECT_ALL -> {
@@ -21714,6 +21744,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 _physicalKeyboardEnable.emit(true)
             }
             isKeyboardFloatingMode = false
+            updateShortcutActiveStates()
         } else {
             Timber.d("No physical keyboard is connected.")
             floatingDockWindow?.dismiss()
@@ -21938,6 +21969,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 _physicalKeyboardEnable.emit(true)
             }
             isKeyboardFloatingMode = false
+            updateShortcutActiveStates()
         }
     }
 

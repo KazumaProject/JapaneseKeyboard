@@ -29,6 +29,12 @@ interface ShortcutDao {
     @Query("DELETE FROM shortcut_items")
     suspend fun deleteAll()
 
+    @Transaction
+    suspend fun replaceAll(items: List<ShortcutItem>) {
+        deleteAll()
+        insertAll(items)
+    }
+
     // 初期化用（データがない場合にデフォルトセットを入れるなど）
     @Transaction
     suspend fun initDefaultShortcuts(defaults: List<ShortcutItem>) {

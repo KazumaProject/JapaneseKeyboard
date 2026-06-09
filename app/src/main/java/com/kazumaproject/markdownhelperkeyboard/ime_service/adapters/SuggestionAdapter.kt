@@ -190,7 +190,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var shortcutItems: List<ShortcutType> = emptyList()
     private var showIntegratedShortcuts: Boolean = false
     private var shortcutIconColor: Int? = null
-    private var keyboardLayoutEditActive: Boolean = false
+    private var activeShortcutTypes: Set<ShortcutType> = emptySet()
 
     private var incognitoIconDrawable: android.graphics.drawable.Drawable? = null
 
@@ -333,10 +333,23 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+    fun setActiveShortcutTypes(activeTypes: Set<ShortcutType>) {
+        if (activeShortcutTypes == activeTypes) return
+        val oldActive = activeShortcutTypes
+        activeShortcutTypes = activeTypes
+        (oldActive union activeTypes).forEach { type ->
+            notifyShortcutItemChanged(type)
+        }
+    }
+
     fun setKeyboardLayoutEditActive(active: Boolean) {
-        if (keyboardLayoutEditActive == active) return
-        keyboardLayoutEditActive = active
-        notifyShortcutItemChanged(ShortcutType.KEYBOARD_LAYOUT_EDIT)
+        setActiveShortcutTypes(
+            if (active) {
+                activeShortcutTypes + ShortcutType.KEYBOARD_LAYOUT_EDIT
+            } else {
+                activeShortcutTypes - ShortcutType.KEYBOARD_LAYOUT_EDIT
+            }
+        )
     }
 
 
@@ -799,7 +812,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private fun ShortcutType.resolveShortcutIconResId(): Int {
-        return if (this == ShortcutType.KEYBOARD_LAYOUT_EDIT && keyboardLayoutEditActive) {
+        return if (this in activeShortcutTypes) {
             activeIconResId ?: iconResId
         } else {
             iconResId

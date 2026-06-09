@@ -6,4 +6,10 @@
     <item
         name="setting_frequent_action_move_down"
         type="id" />
+    <item
+        name="shortcut_toolbar_action_move_up"
+        type="id" />
+    <item
+        name="shortcut_toolbar_action_move_down"
+        type="id" />
 </resources>
