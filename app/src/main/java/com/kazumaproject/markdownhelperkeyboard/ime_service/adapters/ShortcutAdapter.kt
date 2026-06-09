@@ -31,6 +31,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
     var onItemClicked: ((ShortcutType) -> Unit)? = null
 
     private val iconColorState = ShortcutIconColorState()
+    private var keyboardLayoutEditActive: Boolean = false
 
     /**
      * ViewHolder now captures clicks and calls the adapter's listener.
@@ -57,7 +58,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
-        holder.imageView.setImageResource(item.iconResId) // Enumからアイコン取得
+        holder.imageView.setImageResource(item.resolveIconResId()) // Enumからアイコン取得
 
         // ★追加: 色が設定されていれば適用し、なければ解除する
         iconColorState.iconColor?.let { color ->
@@ -71,6 +72,23 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
     fun setIconColor(color: Int) {
         if (!iconColorState.setIconColor(color)) return
         notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setKeyboardLayoutEditActive(active: Boolean) {
+        if (keyboardLayoutEditActive == active) return
+        keyboardLayoutEditActive = active
+        val index = currentList.indexOf(ShortcutType.KEYBOARD_LAYOUT_EDIT)
+        if (index >= 0) {
+            notifyItemChanged(index)
+        }
+    }
+
+    private fun ShortcutType.resolveIconResId(): Int {
+        return if (this == ShortcutType.KEYBOARD_LAYOUT_EDIT && keyboardLayoutEditActive) {
+            activeIconResId ?: iconResId
+        } else {
+            iconResId
+        }
     }
 
     private object DiffCallback : DiffUtil.ItemCallback<ShortcutType>() {
