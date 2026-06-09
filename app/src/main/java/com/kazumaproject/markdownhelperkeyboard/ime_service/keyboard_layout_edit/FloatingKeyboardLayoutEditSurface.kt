@@ -6,6 +6,7 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayo
 
 class FloatingKeyboardLayoutEditSurface(
     private val binding: FloatingKeyboardLayoutBinding,
+    private val availableWidthProvider: () -> Int,
 ) : KeyboardLayoutEditSurfaceAdapter {
 
     override val parent: FrameLayout
@@ -13,6 +14,10 @@ class FloatingKeyboardLayoutEditSurface(
 
     override fun currentBoundsInParent(): Rect {
         return boundsInParent(parent, binding.floatingKeyboardContainer)
+    }
+
+    override fun availableWidthPx(): Int {
+        return availableWidthProvider()
     }
 
     override fun setEditing(isEditing: Boolean) {
