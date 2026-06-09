@@ -4927,12 +4927,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         this.isKeyboardFloatingMode = isFloatingMode
         if (isFloatingMode) {
-            (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                params.width = ViewGroup.LayoutParams.MATCH_PARENT
-                params.height = getScreenHeight(this@IMEService)
-                mainView.root.layoutParams = params
-            }
-            mainView.root.alpha = 0f
+            ensureFloatingInputHostLayout(mainView)
             bindSuggestionAdaptersForFloatingMode(mainView, isFloatingMode = true)
             clearNormalKeyboardBackgroundForFloatingMode(mainView)
             floatingKeyboardBinding?.let { floatingView ->
@@ -5025,6 +5020,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // が一括で行われ、Floating ON -> OFF 復帰時に main 側表示が古い値で残るのを防ぐ。
             renderCurrentKeyboardStateOnActiveSurface()
         }
+    }
+
+    private fun ensureFloatingInputHostLayout(mainView: MainLayoutBinding) {
+        (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            params.width = ViewGroup.LayoutParams.MATCH_PARENT
+            params.height = getScreenHeight(this@IMEService)
+            params.gravity = Gravity.TOP or Gravity.START
+            params.leftMargin = 0
+            params.topMargin = 0
+            params.rightMargin = 0
+            params.bottomMargin = 0
+            mainView.root.layoutParams = params
+        }
+
+        mainView.root.isVisible = true
+        mainView.root.alpha = 0f
     }
 
     private fun getNormalKeyboardSurface(): KeyboardSurface? {
@@ -15623,6 +15634,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun disableKeyboardLayoutEditMode(updateSurface: Boolean = true) {
+        val activeState = keyboardLayoutEditState.value as? KeyboardLayoutEditState.Enabled
+        val wasFloatingSurface = activeState?.surface == KeyboardLayoutEditSurface.Floating
+
         if (
             keyboardLayoutEditState.value == KeyboardLayoutEditState.Disabled &&
             keyboardLayoutEditController?.isActive != true
@@ -15634,9 +15648,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateKeyboardLayoutEditShortcutActiveState(active = false)
         if (updateSurface) {
             reloadKeyboardLayoutEditCachesFromPreferences()
-            mainLayoutBinding?.let { updateKeyboardLayout(it) }
-            if (isKeyboardFloatingMode == true) {
-                updateFloatingKeyboardSizeForMode(qwertyMode.value, updatePosition = true)
+            if (wasFloatingSurface && isKeyboardFloatingMode == true) {
+                mainLayoutBinding?.let { ensureFloatingInputHostLayout(it) }
+                updateFloatingKeyboardSizeForMode(
+                    mode = qwertyMode.value,
+                    updatePosition = false,
+                )
+            } else {
+                mainLayoutBinding?.let { updateKeyboardLayout(it) }
             }
         }
     }
