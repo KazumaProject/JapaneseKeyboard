@@ -3275,6 +3275,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun resolveFloatingKeyboardAvailableWidthPx(): Int {
+        return window.window?.decorView?.width?.takeIf { it > 0 }
+            ?: mainLayoutBinding?.root?.width?.takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels
+    }
+
+    private fun resolveFloatingKeyboardUpdateWidthPx(mode: TenKeyQWERTYMode): Int {
+        val prefs = getKeyboardSizePreferences()
+        val availableWidth = resolveFloatingKeyboardAvailableWidthPx()
+        val usesQwertySize =
+            mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
+        val widthPref = if (usesQwertySize) {
+            prefs.qwertyWidthPref
+        } else {
+            prefs.widthPref
+        }
+        val widthPercent = KeyboardLayoutEditConstraints.normalizeWidthPercentForDraft(widthPref)
+
+        return (availableWidth * (widthPercent / 100f))
+            .toInt()
+            .coerceAtLeast(1)
+    }
+
     private fun ensureFloatingKeyboardPopupWindow(): PopupWindow? {
         val floatingView = floatingKeyboardBinding ?: return null
         floatingKeyboardView?.let { return it }
@@ -6009,7 +6032,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mode == TenKeyQWERTYMode.TenKeyQWERTY || mode == TenKeyQWERTYMode.TenKeyQWERTYRomaji
         val heightPref = if (usesQwertySize) prefs.qwertyHeightPref else prefs.heightPref
         val heightPx = (heightPref.coerceIn(60, 420) * density).toInt()
-        val widthPx = resolveFloatingKeyboardWidthPx(mode)
+        val widthPx = resolveFloatingKeyboardUpdateWidthPx(mode)
         var sizeChanged = false
         var containerHeightChanged = false
         (floatingView.floatingKeyboardContainer.layoutParams as? ConstraintLayout.LayoutParams)
