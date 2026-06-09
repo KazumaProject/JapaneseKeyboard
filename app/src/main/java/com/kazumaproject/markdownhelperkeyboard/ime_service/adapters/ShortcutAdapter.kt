@@ -31,7 +31,7 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
     var onItemClicked: ((ShortcutType) -> Unit)? = null
 
     private val iconColorState = ShortcutIconColorState()
-    private var keyboardLayoutEditActive: Boolean = false
+    private var activeShortcutTypes: Set<ShortcutType> = emptySet()
 
     /**
      * ViewHolder now captures clicks and calls the adapter's listener.
@@ -74,17 +74,31 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
         notifyItemRangeChanged(0, itemCount)
     }
 
-    fun setKeyboardLayoutEditActive(active: Boolean) {
-        if (keyboardLayoutEditActive == active) return
-        keyboardLayoutEditActive = active
-        val index = currentList.indexOf(ShortcutType.KEYBOARD_LAYOUT_EDIT)
-        if (index >= 0) {
-            notifyItemChanged(index)
+    fun setActiveShortcutTypes(activeTypes: Set<ShortcutType>) {
+        if (activeShortcutTypes == activeTypes) return
+        val oldActive = activeShortcutTypes
+        activeShortcutTypes = activeTypes
+
+        (oldActive union activeTypes).forEach { type ->
+            val index = currentList.indexOf(type)
+            if (index >= 0) {
+                notifyItemChanged(index)
+            }
         }
     }
 
+    fun setKeyboardLayoutEditActive(active: Boolean) {
+        setActiveShortcutTypes(
+            if (active) {
+                activeShortcutTypes + ShortcutType.KEYBOARD_LAYOUT_EDIT
+            } else {
+                activeShortcutTypes - ShortcutType.KEYBOARD_LAYOUT_EDIT
+            }
+        )
+    }
+
     private fun ShortcutType.resolveIconResId(): Int {
-        return if (this == ShortcutType.KEYBOARD_LAYOUT_EDIT && keyboardLayoutEditActive) {
+        return if (this in activeShortcutTypes) {
             activeIconResId ?: iconResId
         } else {
             iconResId
