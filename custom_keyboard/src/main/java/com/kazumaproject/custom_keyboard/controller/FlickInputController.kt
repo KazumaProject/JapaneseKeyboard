@@ -168,7 +168,7 @@ class FlickInputController(context: Context) {
                 return true
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 longPressJob?.cancel()
 
                 val finalDirectionToInput = if (isDownModeActive || isLongPressModeActive) {
@@ -183,6 +183,16 @@ class FlickInputController(context: Context) {
                     listener?.onFlick(finalDirectionToInput, character)
                 }
 
+                hidePopup()
+                return true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                longPressJob?.cancel()
+                isLongPressModeActive = false
+                isDownModeActive = false
+                previousDirection = FlickDirection.TAP
+                lastValidFlickDirection = FlickDirection.TAP
                 hidePopup()
                 return true
             }

@@ -119,7 +119,7 @@ class StandardFlickInputController(context: Context) {
                 return true
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 segmentedDrawable?.highlightDirection = null
                 val dx = event.rawX - initialTouchX
                 val dy = event.rawY - initialTouchY
@@ -130,6 +130,13 @@ class StandardFlickInputController(context: Context) {
                     }
                 }
                 dismissPopup()
+                return true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                segmentedDrawable?.highlightDirection = null
+                dismissPopup()
+                anchorView = null
                 return true
             }
         }
