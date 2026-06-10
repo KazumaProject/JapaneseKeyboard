@@ -14,6 +14,18 @@ import javax.inject.Singleton
 class ShortcutRepository @Inject constructor(
     private val shortcutDao: ShortcutDao
 ) {
+    private val fallbackShortcuts = listOf(ShortcutType.SETTINGS)
+
+    val defaultShortcuts = listOf(
+        ShortcutType.SETTINGS,
+        ShortcutType.EMOJI,
+        ShortcutType.TEMPLATE,
+        ShortcutType.COPY,
+        ShortcutType.PASTE,
+        ShortcutType.KEYBOARD_PICKER,
+        ShortcutType.KEYBOARD_LAYOUT_EDIT,
+        ShortcutType.CLIP_BOARD
+    )
 
     /**
      * 現在有効なショートカットのリストを監視可能なFlowとして返します。
@@ -21,10 +33,11 @@ class ShortcutRepository @Inject constructor(
      */
     val enabledShortcutsFlow: Flow<List<ShortcutType>> = shortcutDao.getAllShortcutsFlow()
         .map { items ->
-            // Entity -> Enum 変換
-            items.mapNotNull { item ->
-                ShortcutType.fromId(item.typeId)
-            }
+            val shortcuts = items
+                .mapNotNull { item -> ShortcutType.fromId(item.typeId) }
+                .distinct()
+
+            shortcuts.ifEmpty { fallbackShortcuts }
         }
 
     /**
@@ -35,18 +48,18 @@ class ShortcutRepository @Inject constructor(
      */
     suspend fun updateShortcuts(shortcuts: List<ShortcutType>) {
         withContext(Dispatchers.IO) {
-            // Enum -> Entity 変換 (indexをsortOrderにする)
-            val itemsToSave = shortcuts.mapIndexed { index, type ->
+            val normalized = shortcuts
+                .distinct()
+                .ifEmpty { fallbackShortcuts }
+
+            val itemsToSave = normalized.mapIndexed { index, type ->
                 ShortcutItem(
                     typeId = type.id,
                     sortOrder = index
                 )
             }
 
-            // トランザクション的に処理（Daoに @Transaction メソッドを作っても良いが、ここではシンプルに実装）
-            // 既存の並びを削除して、新しい順序で全挿入する
-            shortcutDao.deleteAll()
-            shortcutDao.insertAll(itemsToSave)
+            shortcutDao.replaceAll(itemsToSave)
         }
     }
 
@@ -58,16 +71,6 @@ class ShortcutRepository @Inject constructor(
         withContext(Dispatchers.IO) {
             val currentItems = shortcutDao.getAllShortcuts()
             if (currentItems.isEmpty()) {
-                val defaultShortcuts = listOf(
-                    ShortcutType.SETTINGS,
-                    ShortcutType.EMOJI,
-                    ShortcutType.TEMPLATE,
-                    ShortcutType.COPY,
-                    ShortcutType.PASTE,
-                    ShortcutType.KEYBOARD_PICKER,
-                    ShortcutType.KEYBOARD_LAYOUT_EDIT,
-                    ShortcutType.CLIP_BOARD
-                )
                 updateShortcuts(defaultShortcuts)
             }
         }
