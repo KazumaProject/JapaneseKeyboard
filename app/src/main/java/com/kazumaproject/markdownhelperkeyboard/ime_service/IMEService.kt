@@ -2057,9 +2057,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }.getOrDefault(false)
     }
 
-    private fun clearNormalKeyboardBackgroundForFloatingMode(mainView: MainLayoutBinding) {
+    private fun prepareNormalRootAsFloatingHost(mainView: MainLayoutBinding) {
         releaseKeyboardBackgroundVideoPlayer()
         clearKeyboardBackgroundImage(mainView.keyboardBackgroundImage)
+
+        mainView.keyboardBackgroundVideo.isVisible = false
+        mainView.keyboardBackgroundImage.isVisible = false
+
+        mainView.root.background = null
+        mainView.suggestionViewParent.background = null
+        mainView.candidateTabLayout.background = null
+        mainView.shortcutToolbarRecyclerview.setBackgroundColor(Color.TRANSPARENT)
+
+        mainView.root.isVisible = true
+        mainView.root.alpha = 0f
+    }
+
+    private fun clearNormalKeyboardBackgroundForFloatingMode(mainView: MainLayoutBinding) {
+        prepareNormalRootAsFloatingHost(mainView)
     }
 
     private fun applyKeyboardBackgroundIfNeeded(
@@ -2304,6 +2319,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
+    }
+
+    private fun applyNormalKeyboardChrome(mainView: MainLayoutBinding) {
+        applyKeyboardContainerBackgrounds(mainView)
+
+        if (liquidGlassThemePreference == true) {
+            mainView.root.setDrawableAlpha(liquidGlassBlurRadiousPreference ?: 220)
+            mainView.suggestionViewParent.setDrawableAlpha(0)
+            mainView.candidateTabLayout.setDrawableAlpha(0)
+        }
+
+        mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
+        mainView.root.clipToOutline = isKeyboardRounded == true
     }
 
     private fun applyFloatingKeyboardContainerBackgrounds(
@@ -2569,20 +2597,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 checkForPhysicalKeyboard(true)
             }
             mainView.apply {
-                applyKeyboardContainerBackgrounds(mainView)
-
-                if (liquidGlassThemePreference == true) {
-                    mainView.root.setDrawableAlpha(liquidGlassBlurRadiousPreference ?: 220)
-                    mainView.suggestionViewParent.setDrawableAlpha(0)
-                    mainView.candidateTabLayout.setDrawableAlpha(0)
-                }
-
-                mainView.root.outlineProvider = ViewOutlineProvider.BACKGROUND
-                mainView.root.clipToOutline = isKeyboardRounded == true
-
-                applyKeyboardBackgroundIfNeeded(mainView)
                 if (isKeyboardFloatingMode == true) {
+                    ensureFloatingInputHostLayout(mainView)
+                    prepareNormalRootAsFloatingHost(mainView)
                     floatingKeyboardBinding?.let { applyFloatingKeyboardBackgroundIfNeeded(it) }
+                } else {
+                    applyNormalKeyboardChrome(mainView)
+                    applyKeyboardBackgroundIfNeeded(mainView)
                 }
 
                 suggestionRecyclerView.isVisible = true
@@ -2997,22 +3018,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun shouldApplyImeWindowBlur(): Boolean {
+        return liquidGlassThemePreference == true &&
+                isKeyboardFloatingMode != true &&
+                physicalKeyboardEnable.replayCache.firstOrNull() != true &&
+                hasHardwareKeyboardConnected != true
+    }
+
+    private fun updateImeWindowBlurForCurrentMode(targetWindow: Window? = window.window) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return
+
+        val blurRadius = if (shouldApplyImeWindowBlur()) 50 else 0
+        targetWindow?.setBackgroundBlurRadius(blurRadius)
+    }
+
     override fun onConfigureWindow(win: Window?, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
         super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
-        // Android 12 (API 31) 以上の場合
-        if (
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-        ) {
-            if (liquidGlassThemePreference == true &&
-                isKeyboardFloatingMode != true &&
-                hasHardwareKeyboardConnected != true
-            ) {
-                // 背景のアプリに対してブラーをかける
-                win?.setBackgroundBlurRadius(50)
-            } else {
-                win?.setBackgroundBlurRadius(0)
-            }
-        }
+        updateImeWindowBlurForCurrentMode(win)
     }
 
     override fun onUpdateCursorAnchorInfo(cursorAnchorInfo: CursorAnchorInfo?) {
@@ -4557,6 +4579,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 _physicalKeyboardEnable.emit(true)
             }
             isKeyboardFloatingMode = false
+            updateShortcutActiveStates()
             val sb = StringBuilder() // ここで宣言
 
             if (isBunsetsuCursorMoveSessionActive()) {
@@ -4946,16 +4969,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // 古い値 (true) のまま残り、getActiveKeyboardSurface() が見えていない floating 側を
             // 返してしまう。
             this.isKeyboardFloatingMode = false
+            updateImeWindowBlurForCurrentMode()
+            updateShortcutActiveStates()
             return
         }
         this.isKeyboardFloatingMode = isFloatingMode
+        updateImeWindowBlurForCurrentMode()
         if (isFloatingMode) {
             ensureFloatingInputHostLayout(mainView)
             bindSuggestionAdaptersForFloatingMode(mainView, isFloatingMode = true)
-            clearNormalKeyboardBackgroundForFloatingMode(mainView)
-            floatingKeyboardBinding?.let { floatingView ->
-                applyFloatingKeyboardBackgroundIfNeeded(floatingView)
-            }
+            prepareNormalRootAsFloatingHost(mainView)
             val floatingKeyboardShown = ensureFloatingKeyboardPopupWindow()?.let { popupWindow ->
                 Timber.d("applyFloatingModeState: isFloatingMode=$isFloatingMode ${popupWindow.isShowing}")
                 if (!popupWindow.isShowing) {
@@ -5029,6 +5052,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingKeyboardView?.dismiss()
             releaseFloatingKeyboardBackgroundVideoPlayer()
             setKeyboardSizeSwitchKeyboard(mainView)
+            applyNormalKeyboardChrome(mainView)
             applyKeyboardBackgroundIfNeeded(mainView, skipForFloatingMode = false)
             // isKeyboardFloatingMode は既に false にセット済みなので、
             // renderCurrentKeyboardStateOnActiveSurface() は main surface に対して動作する。
@@ -5043,6 +5067,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // が一括で行われ、Floating ON -> OFF 復帰時に main 側表示が古い値で残るのを防ぐ。
             renderCurrentKeyboardStateOnActiveSurface()
         }
+        updateShortcutActiveStates()
     }
 
     private fun ensureFloatingInputHostLayout(mainView: MainLayoutBinding) {
@@ -5059,6 +5084,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         mainView.root.isVisible = true
         mainView.root.alpha = 0f
+        prepareNormalRootAsFloatingHost(mainView)
     }
 
     private fun getNormalKeyboardSurface(): KeyboardSurface? {
@@ -12554,9 +12580,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (isPhysicalKeyboardEnable) {
                     disableKeyboardLayoutEditMode()
                     ensurePhysicalKeyboardPopupWindows()
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        window.window?.setBackgroundBlurRadius(0)
-                    }
+                    updateImeWindowBlurForCurrentMode()
 
                     val showInputModeText = when (currentInputModeForSession) {
                         InputMode.ModeJapanese -> "あ"
@@ -12572,7 +12596,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         params.height = getScreenHeight(this@IMEService)
                         mainView.root.layoutParams = params
                     }
-                    mainView.root.alpha = 0f
+                    prepareNormalRootAsFloatingHost(mainView)
                     requestCursorUpdates(
                         InputConnection.CURSOR_UPDATE_IMMEDIATE or InputConnection.CURSOR_UPDATE_MONITOR
                     )
@@ -12594,23 +12618,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     isHenkan.set(false)
                     henkanPressedWithBunsetsuDetect = false
                 } else {
-                    mainView.root.alpha = 1f
                     requestCursorUpdates(0)
-                    setKeyboardSizeForHeightPhysicalKeyboard(mainView)
                     floatingCandidateWindow?.dismiss()
                     floatingDockWindow?.dismiss()
+                    updateImeWindowBlurForCurrentMode()
+
+                    if (isKeyboardFloatingMode == true) {
+                        ensureFloatingInputHostLayout(mainView)
+                    } else {
+                        mainView.root.alpha = 1f
+                        setKeyboardSizeForHeightPhysicalKeyboard(mainView)
+                        applyNormalKeyboardChrome(mainView)
+                        applyKeyboardBackgroundIfNeeded(mainView)
+                    }
                 }
+                updateShortcutActiveStates()
                 Timber.d("isPhysicalKeyboardEnable: $isPhysicalKeyboardEnable")
             }
         }
 
         launch {
             shortCurRepository.enabledShortcutsFlow.collectLatest {
-                shortcutAdapter?.submitList(it)
+                shortcutAdapter?.submitList(it) {
+                    updateShortcutActiveStates()
+                }
                 suggestionAdapter?.setShortcutItems(it)
-                updateKeyboardLayoutEditShortcutActiveState(
-                    active = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled
-                )
+                updateShortcutActiveStates()
                 updateCandidateStripPresentation(mainView)
             }
         }
@@ -15649,7 +15682,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 },
             ),
         )
-        updateKeyboardLayoutEditShortcutActiveState(active = true)
+        updateShortcutActiveStates()
     }
 
     private fun isKeyboardLayoutEditModeActive(): Boolean {
@@ -15668,7 +15701,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         keyboardLayoutEditController?.stop()
         _keyboardLayoutEditState.value = KeyboardLayoutEditState.Disabled
-        updateKeyboardLayoutEditShortcutActiveState(active = false)
+        updateShortcutActiveStates()
         if (updateSurface) {
             reloadKeyboardLayoutEditCachesFromPreferences()
             if (wasFloatingSurface && isKeyboardFloatingMode == true) {
@@ -15710,9 +15743,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun updateKeyboardLayoutEditShortcutActiveState(active: Boolean) {
-        shortcutAdapter?.setKeyboardLayoutEditActive(active)
-        suggestionAdapter?.setKeyboardLayoutEditActive(active)
+    private fun updateShortcutActiveStates() {
+        val activeTypes = buildSet {
+            if (keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled) {
+                add(ShortcutType.KEYBOARD_LAYOUT_EDIT)
+            }
+
+            if (isKeyboardFloatingMode == true) {
+                add(ShortcutType.KEYBOARD_FLOATING_TOGGLE)
+            }
+        }
+
+        shortcutAdapter?.setActiveShortcutTypes(activeTypes)
+        suggestionAdapter?.setActiveShortcutTypes(activeTypes)
+    }
+
+    private fun toggleKeyboardFloatingModeFromShortcut() {
+        if (physicalKeyboardEnable.replayCache.firstOrNull() == true) {
+            return
+        }
+
+        disableKeyboardLayoutEditMode(updateSurface = false)
+
+        val next = isKeyboardFloatingMode != true
+        appPreference.is_floating_mode = next
+        _keyboardFloatingMode.update { next }
     }
 
     private fun closeViewsThatConflictWithKeyboardLayoutEdit() {
@@ -16189,6 +16244,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             ShortcutType.KEYBOARD_LAYOUT_EDIT -> {
                 toggleKeyboardLayoutEditMode(mainView)
+            }
+
+            ShortcutType.KEYBOARD_FLOATING_TOGGLE -> {
+                toggleKeyboardFloatingModeFromShortcut()
             }
 
             ShortcutType.SELECT_ALL -> {
@@ -21714,6 +21773,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 _physicalKeyboardEnable.emit(true)
             }
             isKeyboardFloatingMode = false
+            updateShortcutActiveStates()
         } else {
             Timber.d("No physical keyboard is connected.")
             floatingDockWindow?.dismiss()
@@ -21938,6 +21998,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 _physicalKeyboardEnable.emit(true)
             }
             isKeyboardFloatingMode = false
+            updateShortcutActiveStates()
         }
     }
 
