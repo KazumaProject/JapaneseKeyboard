@@ -21,6 +21,7 @@ import android.os.Bundle
 import android.os.CombinedVibration
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -959,6 +960,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var keyboardContainer: FrameLayout? = null
 
     private var isSpaceKeyLongPressed = false
+    private var suppressSpaceConvertTapUntilUptimeMillis = 0L
     private val _selectMode = MutableStateFlow(false)
     private val selectMode: StateFlow<Boolean> = _selectMode
 
@@ -1146,9 +1148,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val zenzCandidates: StateFlow<List<ZenzCandidate>> = _zenzCandidates
     private var lastCandidate: String? = ""
 
+    private enum class ZenzRequestSource {
+        AutoLive,
+        ManualConvertLongPress,
+        BunsetsuSegment
+    }
+
     private data class ZenzLiveRequest(
         val displayInput: String,
         val requestToken: Long,
+        val source: ZenzRequestSource,
         val bunsetsuTarget: BunsetsuZenzTarget? = null
     )
 
@@ -1163,6 +1172,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val requestToken: Long,
         val requestInput: String,
         val displayInput: String,
+        val source: ZenzRequestSource,
         val bunsetsuTarget: BunsetsuZenzTarget? = null
     )
 
@@ -1172,6 +1182,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val candidate: Candidate?,
         val isLoading: Boolean,
         val requestToken: Long,
+        val source: ZenzRequestSource,
         val bunsetsuTarget: BunsetsuZenzTarget? = null
     )
 
@@ -6478,7 +6489,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             Key.SideKeySpace -> {
-                if (cursorMoveMode.value) {
+                if (shouldSuppressSpaceConvertTapAfterLongPress()) {
+                    return
+                } else if (cursorMoveMode.value) {
                     _cursorMoveMode.update { false }
                 } else {
                     if (!isSpaceKeyLongPressed) {
@@ -6684,7 +6697,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             Key.SideKeySpace -> {
-                if (cursorMoveMode.value) {
+                if (shouldSuppressSpaceConvertTapAfterLongPress()) {
+                    return
+                } else if (cursorMoveMode.value) {
                     _cursorMoveMode.update { false }
                 } else {
                     if (!isSpaceKeyLongPressed) {
@@ -7992,30 +8007,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun markSpaceConvertLongPressConsumed() {
+        isSpaceKeyLongPressed = true
+        suppressSpaceConvertTapUntilUptimeMillis = SystemClock.uptimeMillis() + 700L
+    }
+
+    private fun shouldSuppressSpaceConvertTapAfterLongPress(): Boolean {
+        if (suppressSpaceConvertTapUntilUptimeMillis <= 0L) return false
+        val shouldSuppress = SystemClock.uptimeMillis() <= suppressSpaceConvertTapUntilUptimeMillis
+        suppressSpaceConvertTapUntilUptimeMillis = 0L
+        if (shouldSuppress) {
+            isSpaceKeyLongPressed = false
+        }
+        return shouldSuppress
+    }
+
     private fun handleSpaceLongAction() {
         Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
         if (switchBunsetsuSplitPattern()) {
-            isSpaceKeyLongPressed = true
+            markSpaceConvertLongPressConsumed()
             return
         }
         val insertString = inputString.value
+        markSpaceConvertLongPressConsumed()
         if (insertString.isNotEmpty()) {
             if (zenzEnableLongPressConversionPreference == true) {
                 scope.launch {
-                    performImmediateZenzLiveRequest(insertString)
+                    performImmediateZenzLiveRequest(
+                        displayInput = insertString,
+                        source = ZenzRequestSource.ManualConvertLongPress
+                    )
                 }
-                isSpaceKeyLongPressed = true
             } else {
                 if (conversionKeySwipePreference == true) {
                     if (!isHenkan.get()) {
                         _cursorMoveMode.update { true }
-                        isSpaceKeyLongPressed = true
                     }
                 } else {
                     mainLayoutBinding?.let {
                         if (currentInputModeForSession == InputMode.ModeJapanese) {
                             if (isHenkan.get()) return
-                            isSpaceKeyLongPressed = true
                             if (hasConvertedKatakana) {
                                 if (isLiveConversionEnable == true) {
                                     applyFirstSuggestion(
@@ -8065,7 +8096,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         } else {
             _cursorMoveMode.update { true }
-            isSpaceKeyLongPressed = true
         }
         Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
@@ -8073,15 +8103,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleSpaceLongActionSumire() {
         Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
         if (switchBunsetsuSplitPattern()) {
-            isSpaceKeyLongPressed = true
+            markSpaceConvertLongPressConsumed()
             return
         }
         val insertString = inputString.value
+        markSpaceConvertLongPressConsumed()
         if (insertString.isNotEmpty()) {
             mainLayoutBinding?.let {
                 if (currentInputModeForSession == InputMode.ModeJapanese) {
                     if (isHenkan.get()) return
-                    isSpaceKeyLongPressed = true
                     if (hasConvertedKatakana) {
                         if (isLiveConversionEnable == true) {
                             applyFirstSuggestion(
@@ -8128,7 +8158,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
             _cursorMoveMode.update { true }
-            isSpaceKeyLongPressed = true
         }
         Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
@@ -8136,15 +8165,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleSpaceLongActionFloating() {
         Timber.d("SideKeySpace LongPress Floting: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
         if (switchBunsetsuSplitPattern(floatingKeyboardLayoutBinding = floatingKeyboardBinding)) {
-            isSpaceKeyLongPressed = true
+            markSpaceConvertLongPressConsumed()
             return
         }
         val insertString = inputString.value
+        markSpaceConvertLongPressConsumed()
         if (insertString.isNotEmpty()) {
             floatingKeyboardBinding?.let {
                 if (it.keyboardViewFloating.currentInputMode.value == InputMode.ModeJapanese) {
                     if (isHenkan.get()) return
-                    isSpaceKeyLongPressed = true
                     if (hasConvertedKatakana) {
                         if (isLiveConversionEnable == true) {
                             applyFirstSuggestion(
@@ -8191,7 +8220,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
             _cursorMoveMode.update { true }
-            isSpaceKeyLongPressed = true
         }
         Timber.d("SideKeySpace LongPress Floating after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
@@ -9127,18 +9155,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         updateKeyboardLayout()
                     }
 
-                    KeyAction.Convert, KeyAction.Space -> {
+                    KeyAction.Convert -> {
                         val insertString = inputString.value
                         if (switchBunsetsuSplitPattern()) {
-                            isSpaceKeyLongPressed = true
+                            markSpaceConvertLongPressConsumed()
                             return
                         }
+                        markSpaceConvertLongPressConsumed()
                         if (insertString.isEmpty()) {
                             flickView.setCursorMode(true)
                         } else {
                             if (zenzEnableLongPressConversionPreference == true) {
                                 scope.launch {
-                                    performImmediateZenzLiveRequest(insertString)
+                                    performImmediateZenzLiveRequest(
+                                        displayInput = insertString,
+                                        source = ZenzRequestSource.ManualConvertLongPress
+                                    )
                                 }
                             } else {
                                 if (conversionKeySwipePreference == true) {
@@ -9150,6 +9182,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 }
                             }
                         }
+                    }
+
+                    KeyAction.Space -> {
+                        if (switchBunsetsuSplitPattern()) {
+                            markSpaceConvertLongPressConsumed()
+                            return
+                        }
+                        flickView.setCursorMode(true)
+                        markSpaceConvertLongPressConsumed()
                     }
 
                     KeyAction.Copy -> {
@@ -9405,13 +9446,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.Confirm -> {}
                     KeyAction.Convert -> {
                         if (switchBunsetsuSplitPattern()) {
-                            isSpaceKeyLongPressed = true
+                            markSpaceConvertLongPressConsumed()
                             return
                         }
+                        markSpaceConvertLongPressConsumed()
                         if (zenzEnableLongPressConversionPreference == true) {
                             val insertString = inputString.value
                             scope.launch {
-                                performImmediateZenzLiveRequest(insertString)
+                                performImmediateZenzLiveRequest(
+                                    displayInput = insertString,
+                                    source = ZenzRequestSource.ManualConvertLongPress
+                                )
                             }
                         } else {
                             if (conversionKeySwipePreference == true) {
@@ -9477,10 +9522,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Space -> {
                         if (switchBunsetsuSplitPattern()) {
-                            isSpaceKeyLongPressed = true
+                            markSpaceConvertLongPressConsumed()
                             return
                         }
                         flickView.setCursorMode(true)
+                        markSpaceConvertLongPressConsumed()
                     }
 
                     KeyAction.SwitchToNextIme -> {
@@ -9600,6 +9646,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.ShowEmojiKeyboard -> {}
                     KeyAction.Convert, KeyAction.Space -> {
                         flickView.setCursorMode(false)
+                        if (shouldSuppressSpaceConvertTapAfterLongPress()) {
+                            return
+                        }
                         isSpaceKeyLongPressed = false
                         if (inputString.value.isEmpty()) {
                             val isHankaku = hankakuPreference == true
@@ -10082,6 +10131,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Convert, KeyAction.Space -> {
+                        if (shouldSuppressSpaceConvertTapAfterLongPress()) {
+                            return
+                        }
                         val insertString = inputString.value
                         val suggestions = suggestionAdapter?.suggestions ?: emptyList()
                         if (cursorMoveMode.value) {
@@ -11280,20 +11332,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun zenzLiveRequestBlockReason(displayInput: String): String? {
+    private fun zenzLiveRequestBlockReason(
+        displayInput: String,
+        source: ZenzRequestSource
+    ): String? {
         return when {
             displayInput.isEmpty() -> "input empty"
-            zenzEnableStatePreference != true -> "Zenz preference disabled"
+            source == ZenzRequestSource.ManualConvertLongPress &&
+                    zenzEnableLongPressConversionPreference != true -> "Zenz long press preference disabled"
+            source != ZenzRequestSource.ManualConvertLongPress &&
+                    zenzEnableStatePreference != true -> "Zenz preference disabled"
             hasHardwareKeyboardConnected == true -> "hardware keyboard connected"
             displayInput.length <= 1 -> "input too short"
             !displayInput.isAllHiraganaWithSymbols() -> "input not hiragana"
-            zenzRerankPreference == true && zenzaiEnableStatePreference != true -> "Zenz rerank active"
+            source != ZenzRequestSource.ManualConvertLongPress &&
+                    zenzRerankPreference == true &&
+                    zenzaiEnableStatePreference != true -> "Zenz rerank active"
             else -> null
         }
     }
 
-    private fun shouldRequestZenzLiveGenerate(displayInput: String): Boolean {
-        return zenzLiveRequestBlockReason(displayInput) == null
+    private fun shouldRequestZenzLiveGenerate(
+        displayInput: String,
+        source: ZenzRequestSource = ZenzRequestSource.AutoLive
+    ): Boolean {
+        return zenzLiveRequestBlockReason(displayInput, source) == null
     }
 
     private fun currentBunsetsuZenzTargetOrNull(): BunsetsuZenzTarget? {
@@ -11391,7 +11454,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): List<Candidate> {
         if (isEmpty()) return this
 
-        val zenzDisplayText = displayTextFromCandidate(zenzSlotCandidate)
+        val zenzCommitString = getCandidateCommitString(zenzSlotCandidate)
         var duplicateIndex = -1
 
         for (index in indices) {
@@ -11405,7 +11468,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 continue
             }
 
-            if (displayTextFromCandidate(candidate) == zenzDisplayText) {
+            if (getCandidateCommitString(candidate) == zenzCommitString) {
                 duplicateIndex = index
                 break
             }
@@ -11467,7 +11530,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (zenzSlotState.bunsetsuTarget != null && !allowBunsetsuTarget) return localCandidates
         if (zenzSlotState.displayInput != input) return localCandidates
         if (zenzSlotState.requestToken != zenzLiveRequestToken) return localCandidates
-        if (!shouldRequestZenzLiveGenerate(input)) return localCandidates
+        if (!shouldRequestZenzLiveGenerate(input, zenzSlotState.source)) return localCandidates
 
         val zenzSlotCandidate = zenzSlotState.candidate ?: buildZenzLiveLoadingCandidate(input)
         val filteredLocalCandidates =
@@ -11518,7 +11581,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ): Boolean {
         val state = _zenzLiveSlotState.value ?: return false
         if (displayInput.isEmpty()) return false
-        if (!shouldRequestZenzLiveGenerate(displayInput)) return false
+        if (!shouldRequestZenzLiveGenerate(displayInput, state.source)) return false
         if (state.displayInput != displayInput) return false
         if (state.bunsetsuTarget != bunsetsuTarget) return false
         if (bunsetsuTarget != null && !isCurrentBunsetsuZenzTarget(bunsetsuTarget)) {
@@ -11548,14 +11611,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidate: Candidate
     ): Boolean {
         if (suppressSuggestions) return false
-        if (hasConvertedKatakana) return false
         if (inputString.value != state.displayInput) return false
         if (state.requestToken != zenzLiveRequestToken) return false
         if (state.candidate != candidate) return false
         if (candidate.yomi != state.displayInput) return false
         if (candidate.length.toInt() != state.displayInput.length) return false
-        if (!shouldRequestZenzLiveGenerate(state.displayInput)) return false
+        if (!shouldRequestZenzLiveGenerate(state.displayInput, state.source)) return false
         if (isBunsetsuCursorMoveSessionActive()) return false
+        if (state.source == ZenzRequestSource.ManualConvertLongPress) return true
+        if (hasConvertedKatakana) return false
         if (suggestionClickNum > 0) return false
 
         return shouldStartLiveConversion(state.displayInput) ||
@@ -11733,9 +11797,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun beginZenzLiveRequest(
         displayInput: String,
         localCandidates: List<Candidate> = emptyList(),
+        source: ZenzRequestSource = ZenzRequestSource.AutoLive,
         bunsetsuTarget: BunsetsuZenzTarget? = null
     ): ZenzLiveRequest? {
-        val blockReason = zenzLiveRequestBlockReason(displayInput)
+        val blockReason = zenzLiveRequestBlockReason(displayInput, source)
         if (blockReason != null) {
             clearZenzLiveSlot(blockReason)
             return null
@@ -11756,6 +11821,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidate = null,
             isLoading = true,
             requestToken = requestToken,
+            source = source,
             bunsetsuTarget = bunsetsuTarget
         )
         _zenzLiveSlotState.value = loadingState
@@ -11788,6 +11854,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return ZenzLiveRequest(
             displayInput = displayInput,
             requestToken = requestToken,
+            source = source,
             bunsetsuTarget = bunsetsuTarget
         )
     }
@@ -11797,7 +11864,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             requestZenzForCurrentBunsetsuSegmentIfNeeded(immediate = false)
             return
         }
-        val request = beginZenzLiveRequest(displayInput) ?: return
+        val request = beginZenzLiveRequest(
+            displayInput = displayInput,
+            source = ZenzRequestSource.AutoLive
+        ) ?: return
         _zenzRequest.emit(request)
     }
 
@@ -11806,8 +11876,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (request.requestToken != zenzLiveRequestToken) return false
         if (state.requestToken != request.requestToken) return false
         if (state.displayInput != request.displayInput) return false
+        if (state.source != request.source) return false
         if (state.bunsetsuTarget != request.bunsetsuTarget) return false
-        if (!shouldRequestZenzLiveGenerate(request.displayInput)) return false
+        if (!shouldRequestZenzLiveGenerate(request.displayInput, request.source)) return false
 
         val target = request.bunsetsuTarget
         return if (target == null) {
@@ -11824,8 +11895,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (request.requestToken != zenzLiveRequestToken) return false
         if (state.requestToken != request.requestToken) return false
         if (state.displayInput != request.displayInput) return false
+        if (state.source != request.source) return false
         if (state.bunsetsuTarget != request.bunsetsuTarget) return false
-        if (!shouldRequestZenzLiveGenerate(request.displayInput)) return false
+        if (!shouldRequestZenzLiveGenerate(request.displayInput, request.source)) return false
 
         val target = request.bunsetsuTarget
         return if (target == null) {
@@ -11838,7 +11910,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun resolveZenzLiveRequestInput(request: ZenzLiveRequest): String? {
         if (!isCurrentZenzLiveRequest(request)) return null
 
-        val requestInput = if (zenzaiEnableStatePreference == true) {
+        val requestInput = if (
+            request.source != ZenzRequestSource.ManualConvertLongPress &&
+            zenzaiEnableStatePreference == true
+        ) {
             val suggestions = if (request.bunsetsuTarget == null) {
                 zenzLiveLocalCandidatesSnapshot
                     .takeIf { zenzLiveSnapshotDisplayInput == request.displayInput }
@@ -11905,6 +11980,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             requestToken = request.requestToken,
             requestInput = requestInput,
             displayInput = request.displayInput,
+            source = request.source,
             bunsetsuTarget = request.bunsetsuTarget
         )
         if (candidates.isEmpty()) {
@@ -11917,7 +11993,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _zenzCandidates.update { candidates }
     }
 
-    private suspend fun performImmediateZenzLiveRequest(displayInput: String) {
+    private suspend fun performImmediateZenzLiveRequest(
+        displayInput: String,
+        source: ZenzRequestSource = ZenzRequestSource.ManualConvertLongPress
+    ) {
         if (isBunsetsuCursorMoveSessionActive() && bunsetsuSeparation == true) {
             requestZenzForCurrentBunsetsuSegmentIfNeeded(immediate = true)
             return
@@ -11927,7 +12006,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         filteredCandidateList = localCandidates
         val request = beginZenzLiveRequest(
             displayInput = displayInput,
-            localCandidates = localCandidates
+            localCandidates = localCandidates,
+            source = source
         ) ?: return
         val requestInput = resolveZenzLiveRequestInput(request) ?: return
         val candidates = performZenzRequest(
@@ -11951,11 +12031,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val focusedIndex = session.focusedIndex.coerceIn(0, session.segments.lastIndex)
         val segment = session.segments[focusedIndex]
-        if (!shouldRequestZenzLiveGenerate(segment.reading)) return false
+        if (!shouldRequestZenzLiveGenerate(segment.reading, ZenzRequestSource.BunsetsuSegment)) return false
         val target = currentBunsetsuZenzTargetOrNull() ?: return false
         val request = beginZenzLiveRequest(
             displayInput = segment.reading,
             localCandidates = segment.candidates,
+            source = ZenzRequestSource.BunsetsuSegment,
             bunsetsuTarget = target
         ) ?: return false
 
@@ -11995,8 +12076,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearZenzLiveSlot("input empty")
             return
         }
-        if (!shouldRequestZenzLiveGenerate(currentInput)) {
-            clearZenzLiveSlot(zenzLiveRequestBlockReason(currentInput) ?: "not target")
+        if (!shouldRequestZenzLiveGenerate(currentInput, state?.source ?: ZenzRequestSource.AutoLive)) {
+            clearZenzLiveSlot(
+                zenzLiveRequestBlockReason(
+                    currentInput,
+                    state?.source ?: ZenzRequestSource.AutoLive
+                ) ?: "not target"
+            )
             return
         }
         if (firstResult == null) {
@@ -12015,6 +12101,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 state.requestToken != meta.requestToken ||
                 state.requestInput != meta.requestInput ||
                 state.displayInput != meta.displayInput ||
+                state.source != meta.source ||
                 firstResult.originalString != state.requestInput ||
                 state.displayInput != currentInput
 
@@ -12084,9 +12171,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 state.requestToken != meta.requestToken ||
                 state.requestInput != meta.requestInput ||
                 state.displayInput != meta.displayInput ||
+                state.source != meta.source ||
                 state.bunsetsuTarget != meta.bunsetsuTarget ||
                 firstResult.originalString != state.requestInput ||
-                !shouldRequestZenzLiveGenerate(state.displayInput) ||
+                !shouldRequestZenzLiveGenerate(state.displayInput, state.source) ||
                 !doesBunsetsuSessionStillContainZenzTarget(target)
 
         if (isStale) {
@@ -16600,7 +16688,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         QWERTYKey.QWERTYKeySpace -> {
                             Timber.d("onReleasedQWERTYKey: QWERTYKeySpace $isSpaceKeyLongPressed")
-                            if (!isSpaceKeyLongPressed) {
+                            if (shouldSuppressSpaceConvertTapAfterLongPress()) {
+                                // Long press already handled cursor movement or manual Zenz conversion.
+                            } else if (!isSpaceKeyLongPressed) {
                                 handleSpaceKeyClickInQWERTY(insertString, mainView, suggestionList)
                             }
                             isSpaceKeyLongPressed = false
@@ -16880,27 +16970,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         QWERTYKey.QWERTYKeySpace -> {
                             val insertString = inputString.value
                             if (switchBunsetsuSplitPattern()) {
-                                isSpaceKeyLongPressed = true
+                                markSpaceConvertLongPressConsumed()
                                 return
                             }
+                            markSpaceConvertLongPressConsumed()
                             if (insertString.isEmpty() || !currentQwertyRomajiModeForSession) {
                                 setCursorMode(true)
-                                isSpaceKeyLongPressed = true
                             } else {
                                 if (zenzEnableLongPressConversionPreference == true) {
                                     scope.launch {
-                                        performImmediateZenzLiveRequest(insertString)
+                                        performImmediateZenzLiveRequest(
+                                            displayInput = insertString,
+                                            source = ZenzRequestSource.ManualConvertLongPress
+                                        )
                                     }
-                                    isSpaceKeyLongPressed = true
                                 } else {
                                     if (conversionKeySwipePreference == true) {
                                         if (!isHenkan.get()) {
                                             setCursorMode(true)
-                                            isSpaceKeyLongPressed = true
                                         }
                                     } else {
                                         setCursorMode(true)
-                                        isSpaceKeyLongPressed = true
                                     }
                                 }
                             }
