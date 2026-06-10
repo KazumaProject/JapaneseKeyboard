@@ -133,8 +133,14 @@ class TfbiInputController(
                 handleTouchMove(event, view)
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 handleTouchUp(event)
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                isTouchActive = false
+                clearLongPressCallback(attachedView)
+                resetState()
             }
         }
         return true
