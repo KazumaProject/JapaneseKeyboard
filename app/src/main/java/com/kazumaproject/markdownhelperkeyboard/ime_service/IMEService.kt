@@ -13432,15 +13432,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val presentation = resolveCandidateStripPresentation(
             candidatesShown = addCandidateTabHeight || shortcutToolbarHiddenForCandidates
         )
+        val candidateTabOffset =
+            if (addCandidateTabHeight && presentation.showCandidateTab) {
+                candidateTabHeightPx(mainView)
+            } else {
+                0
+            }
         val finalKeyboardHeight = when {
-            addCandidateTabHeight && presentation.showCandidateTab ->
-                baseKeyboardHeight + candidateTabHeightPx(mainView)
+            candidateTabOffset > 0 ->
+                baseKeyboardHeight + candidateTabOffset
 
             !addCandidateTabHeight && presentation.showIndependentShortcutToolbar && !isSymbol ->
                 baseKeyboardHeight + shortcutToolbarHeightPx(mainView)
 
             else -> baseKeyboardHeight
         }
+        val backgroundSurfaceHeight = finalKeyboardHeight - candidateTabOffset
 
         val finalKeyboardWidth =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
@@ -13484,6 +13491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView = mainView,
             heightPx = heightPx,
             finalKeyboardHeight = finalKeyboardHeight,
+            backgroundSurfaceHeight = backgroundSurfaceHeight,
             finalKeyboardWidth = finalKeyboardWidth,
             gravity = gravity,
             finalBottomMargin = finalBottomMargin,
@@ -13517,10 +13525,36 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     /**
      * 計算されたレイアウトパラメータを各ビューに適用するヘルパー関数
      */
+    private fun updateNormalKeyboardBackgroundBounds(
+        mainView: MainLayoutBinding,
+        heightPx: Int
+    ) {
+        if (heightPx <= 0) return
+
+        (mainView.keyboardBackgroundContainer.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+            var changed = false
+
+            if (params.height != heightPx) {
+                params.height = heightPx
+                changed = true
+            }
+
+            if (params.gravity != Gravity.BOTTOM) {
+                params.gravity = Gravity.BOTTOM
+                changed = true
+            }
+
+            if (changed) {
+                mainView.keyboardBackgroundContainer.layoutParams = params
+            }
+        }
+    }
+
     private fun applyKeyboardLayoutParameters(
         mainView: MainLayoutBinding,
         heightPx: Int,
         finalKeyboardHeight: Int,
+        backgroundSurfaceHeight: Int,
         finalKeyboardWidth: Int,
         gravity: Int,
         finalBottomMargin: Int,
@@ -13561,6 +13595,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.gravity = gravity
             mainView.root.layoutParams = params
         }
+
+        updateNormalKeyboardBackgroundBounds(
+            mainView = mainView,
+            heightPx = backgroundSurfaceHeight
+        )
 
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
@@ -13668,11 +13707,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val presentation = resolveCandidateStripPresentation(candidatesShown = true)
-        val finalKeyboardHeight = if (presentation.showCandidateTab) {
-            keyboardHeight + candidateTabHeightPx(mainView)
+        val candidateTabOffset = if (presentation.showCandidateTab) {
+            candidateTabHeightPx(mainView)
         } else {
-            keyboardHeight
+            0
         }
+        val finalKeyboardHeight = keyboardHeight + candidateTabOffset
+        val backgroundSurfaceHeight = finalKeyboardHeight - candidateTabOffset
 
         val finalKeyboardWidth =
             if (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji) {
@@ -13723,6 +13764,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             params.bottomMargin = finalBottomMargin
             mainView.root.layoutParams = params
         }
+
+        updateNormalKeyboardBackgroundBounds(
+            mainView = mainView,
+            heightPx = backgroundSurfaceHeight
+        )
 
         // Adjust suggestion view constraints since it's no longer attached to the parent bottom
         val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
