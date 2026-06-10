@@ -119,8 +119,11 @@ import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
 import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
+import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
 import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateTailResolver
 import com.kazumaproject.core.domain.physical_keyboard.KanaDakutenComposer
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKanaMapper
@@ -2745,6 +2748,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
+        stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode()
         persistCurrentCustomKeyboardInputModeIfEnabled()
         persistCurrentTenkeyOrSumireInputModeIfEnabled()
@@ -2765,6 +2769,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
+        stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
         isInputViewActive = false
         releaseKeyboardBackgroundVideoPlayer()
@@ -3583,6 +3588,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
             } else {
+                stopAllOngoingKeyLongPresses()
                 floatingKeyboardView?.dismiss()
                 floatingKeyboardView = null
 
@@ -3593,6 +3599,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
             floatingKeyboardView?.setOnDismissListener {
+                stopAllOngoingKeyLongPresses()
                 disableKeyboardLayoutEditMode(updateSurface = false)
             }
             updateFloatingKeyboardBackgroundBounds(floatingKeyboardLayoutBinding, heightPx)
@@ -4972,6 +4979,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val mainView = mainLayoutBinding ?: return
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             disableKeyboardLayoutEditMode()
+            stopAllOngoingKeyLongPresses()
             floatingKeyboardView?.dismiss()
             releaseFloatingKeyboardBackgroundVideoPlayer()
             // 物理キーボード接続中は Floating UI を出さないため、isKeyboardFloatingMode は
@@ -5060,6 +5068,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             bindSuggestionAdaptersForFloatingMode(mainView, isFloatingMode = false)
             mainView.root.isVisible = true
             mainView.root.alpha = 1f
+            stopAllOngoingKeyLongPresses()
             floatingKeyboardView?.dismiss()
             releaseFloatingKeyboardBackgroundVideoPlayer()
             setKeyboardSizeSwitchKeyboard(mainView)
@@ -6053,6 +6062,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Timber.d("Long Press: $key")
                 }
             })
+            setOnKeyTouchCancelListener(object : KeyTouchCancelListener {
+                override fun onKeyTouchCanceled(key: Key, reason: KeyTouchCancelReason) {
+                    cancelOngoingLongPressForKey(key)
+                }
+            })
         }
     }
 
@@ -6129,6 +6143,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setOnQwertyNumberModeRequestedListener {
                 switchTenkeyTwoStateNumberToQwertyNumber()
             }
+            setOnKeyTouchCancelListener(object : KeyTouchCancelListener {
+                override fun onKeyTouchCanceled(key: Key, reason: KeyTouchCancelReason) {
+                    cancelOngoingLongPressForKey(key)
+                }
+            })
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     if (isKeyboardLayoutEditModeActive()) return
@@ -6363,6 +6382,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     handleLongPress(key)
                 }
             })
+            setOnKeyTouchCancelListener(object : KeyTouchCancelListener {
+                override fun onKeyTouchCanceled(key: Key, reason: KeyTouchCancelReason) {
+                    cancelOngoingLongPressForKey(key)
+                }
+            })
             setOnInputModeChangedListener { inputMode ->
                 handleTenKeyInputModeChanged(inputMode, mainView)
             }
@@ -6418,10 +6442,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         handleLeftCursor(gestureType, insertString)
                     }
                 }
-                onLeftKeyLongPressUp.set(true)
-                leftCursorKeyLongKeyPressed.set(false)
-                leftLongPressJob?.cancel()
-                leftLongPressJob = null
+                cancelLeftLongPress()
             }
 
             Key.SideKeyCursorRight -> {
@@ -6435,10 +6456,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         actionInRightKeyPressed(gestureType, insertString)
                     }
                 }
-                onRightKeyLongPressUp.set(true)
-                rightCursorKeyLongKeyPressed.set(false)
-                rightLongPressJob?.cancel()
-                rightLongPressJob = null
+                cancelRightLongPress()
             }
 
             Key.SideKeyDelete -> {
@@ -6624,10 +6642,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         handleLeftCursor(gestureType, insertString)
                     }
                 }
-                onLeftKeyLongPressUp.set(true)
-                leftCursorKeyLongKeyPressed.set(false)
-                leftLongPressJob?.cancel()
-                leftLongPressJob = null
+                cancelLeftLongPress()
             }
 
             Key.SideKeyCursorRight -> {
@@ -6641,10 +6656,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         actionInRightKeyPressed(gestureType, insertString)
                     }
                 }
-                onRightKeyLongPressUp.set(true)
-                rightCursorKeyLongKeyPressed.set(false)
-                rightLongPressJob?.cancel()
-                rightLongPressJob = null
+                cancelRightLongPress()
             }
 
             Key.SideKeyDelete -> {
@@ -9135,6 +9147,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 handleKeyPressFeedback(getKeySoundType(action))
             }
 
+            override fun onLongPressActionCanceled(action: KeyAction) {
+                cancelOngoingLongPressForAction(action)
+            }
+
             override fun onActionLongPress(action: KeyAction) {
                 if (isKeyboardLayoutEditModeActive()) return
                 if (action != KeyAction.DoNothing) {
@@ -10476,6 +10492,84 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         rightCursorKeyLongKeyPressed.set(false)
         rightLongPressJob?.cancel()
         rightLongPressJob = null
+    }
+
+    private fun stopAllOngoingKeyLongPresses() {
+        stopDeleteLongPress()
+        cancelLeftLongPress()
+        cancelRightLongPress()
+        stopSpaceLongPressState()
+        onKeyboardSwitchLongPressUp = false
+    }
+
+    private fun stopSpaceLongPressState() {
+        isSpaceKeyLongPressed = false
+        _cursorMoveMode.update { false }
+
+        mainLayoutBinding?.keyboardView?.setTextToMoveCursorMode(false)
+        floatingKeyboardBinding?.keyboardViewFloating?.setTextToMoveCursorMode(false)
+        mainLayoutBinding?.qwertyView?.setCursorMode(false)
+        floatingKeyboardBinding?.qwertyViewFloating?.setCursorMode(false)
+        mainLayoutBinding?.customLayoutDefault?.setCursorMode(false)
+        floatingKeyboardBinding?.customLayoutFloating?.setCursorMode(false)
+    }
+
+    private fun cancelOngoingLongPressForKey(key: Key) {
+        when (key) {
+            Key.SideKeyDelete -> stopDeleteLongPress()
+            Key.SideKeyCursorLeft -> cancelLeftLongPress()
+            Key.SideKeyCursorRight -> cancelRightLongPress()
+            Key.SideKeySpace -> stopSpaceLongPressState()
+            Key.SideKeyInputMode,
+            Key.KeyDakutenSmall -> {
+                onKeyboardSwitchLongPressUp = false
+            }
+
+            Key.NotSelected -> Unit
+            else -> Unit
+        }
+    }
+
+    private fun cancelOngoingLongPressForQwertyKey(key: QWERTYKey) {
+        when (key) {
+            QWERTYKey.QWERTYKeyDelete -> stopDeleteLongPress()
+            QWERTYKey.QWERTYKeyCursorLeft -> cancelLeftLongPress()
+            QWERTYKey.QWERTYKeyCursorRight -> cancelRightLongPress()
+            QWERTYKey.QWERTYKeySpace -> stopSpaceLongPressState()
+            QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
+                onKeyboardSwitchLongPressUp = false
+            }
+
+            else -> Unit
+        }
+    }
+
+    private fun cancelOngoingLongPressForAction(action: KeyAction) {
+        when (action) {
+            KeyAction.Delete,
+            KeyAction.Backspace,
+            KeyAction.DeleteUntilSymbol,
+            KeyAction.DeleteAfterCursorUntilSymbol,
+            KeyAction.UndoLastDelete -> {
+                stopDeleteLongPress()
+            }
+
+            KeyAction.MoveCursorLeft -> cancelLeftLongPress()
+            KeyAction.MoveCursorRight -> cancelRightLongPress()
+            KeyAction.Space,
+            KeyAction.Convert,
+            KeyAction.ForceHalfWidthSpace,
+            KeyAction.ForceFullWidthSpace -> {
+                stopSpaceLongPressState()
+            }
+
+            KeyAction.SwitchToNextIme -> {
+                onKeyboardSwitchLongPressUp = false
+            }
+
+            KeyAction.Cancel -> stopAllOngoingKeyLongPresses()
+            else -> Unit
+        }
     }
 
     private fun copyAction() {
@@ -16676,13 +16770,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 specialTextSizeSp = qwertySpecialKeyTextSize ?: 12.0f,
                 specialIconSizeDp = qwertySpecialKeyIconSize ?: 18.0f
             )
+            setOnQwertyKeyTouchCancelListener(object : QwertyKeyTouchCancelListener {
+                override fun onQwertyKeyTouchCanceled(
+                    key: QWERTYKey,
+                    reason: KeyTouchCancelReason
+                ) {
+                    cancelOngoingLongPressForQwertyKey(key)
+                }
+            })
 
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Pressed Key: $qwertyKey")
                     handleKeyPressFeedback(getKeySoundType(qwertyKey))
-                    deleteLongPressJob?.cancel()
+                    if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
+                        stopDeleteLongPress()
+                    }
                 }
 
                 override fun onReleasedQWERTYKey(
@@ -16762,10 +16866,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     handleLeftCursor(GestureType.Tap, insertString)
                                 }
                             }
-                            onLeftKeyLongPressUp.set(true)
-                            leftCursorKeyLongKeyPressed.set(false)
-                            leftLongPressJob?.cancel()
-                            leftLongPressJob = null
+                            cancelLeftLongPress()
                             isSpaceKeyLongPressed = false
                         }
 
@@ -16783,10 +16884,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     actionInRightKeyPressed(GestureType.Tap, insertString)
                                 }
                             }
-                            onRightKeyLongPressUp.set(true)
-                            rightCursorKeyLongKeyPressed.set(false)
-                            rightLongPressJob?.cancel()
-                            rightLongPressJob = null
+                            cancelRightLongPress()
                             isSpaceKeyLongPressed = false
                         }
 
@@ -16794,10 +16892,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (!leftCursorKeyLongKeyPressed.get()) {
                                 handleLeftCursor(GestureType.FlickTop, insertString)
                             }
-                            onLeftKeyLongPressUp.set(true)
-                            leftCursorKeyLongKeyPressed.set(false)
-                            leftLongPressJob?.cancel()
-                            leftLongPressJob = null
+                            cancelLeftLongPress()
                             isSpaceKeyLongPressed = false
                         }
 
@@ -16805,10 +16900,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (!leftCursorKeyLongKeyPressed.get()) {
                                 handleLeftCursor(GestureType.FlickBottom, insertString)
                             }
-                            onLeftKeyLongPressUp.set(true)
-                            leftCursorKeyLongKeyPressed.set(false)
-                            leftLongPressJob?.cancel()
-                            leftLongPressJob = null
+                            cancelLeftLongPress()
                             isSpaceKeyLongPressed = false
                         }
 

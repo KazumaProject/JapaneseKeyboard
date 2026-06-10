@@ -36,6 +36,8 @@ import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyMap
 import com.kazumaproject.core.domain.key.KeyRect
 import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
@@ -126,6 +128,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     // External listeners
     private var flickListener: FlickListener? = null
     private var longPressListener: LongPressListener? = null
+    private var keyTouchCancelListener: KeyTouchCancelListener? = null
     private var inputModeChangedListener: ((InputMode) -> Unit)? = null
     private var qwertyNumberModeRequestedListener: (() -> Unit)? = null
 
@@ -1272,6 +1275,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         this.longPressListener = longPressListener
     }
 
+    fun setOnKeyTouchCancelListener(listener: KeyTouchCancelListener?) {
+        keyTouchCancelListener = listener
+    }
+
     fun setOnInputModeChangedListener(listener: (InputMode) -> Unit) {
         this.inputModeChangedListener = listener
     }
@@ -1320,8 +1327,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Clean up references when view is detached **/
     private fun release() {
+        cancelActiveTouch(KeyTouchCancelReason.DetachedFromWindow)
         flickListener = null
         longPressListener = null
+        keyTouchCancelListener = null
         inputModeChangedListener = null
         qwertyNumberModeRequestedListener = null
         longPressJob?.cancel()
@@ -1339,6 +1348,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         super.onDetachedFromWindow()
         Log.d("TenKey: onDetachedFromWindow", "called")
         release()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (changedView == this && visibility != View.VISIBLE) {
+            cancelActiveTouch(KeyTouchCancelReason.ViewHidden)
+        }
     }
 
     /** Intercept all touch events so we can handle them manually in onTouch **/
@@ -1784,10 +1800,34 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     return false
                 }
 
+                MotionEvent.ACTION_CANCEL -> {
+                    cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
+                    return true
+                }
+
                 else -> return false
             }
         }
         return false
+    }
+
+    private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        resetLongPressAction()
+        resetAllKeys()
+
+        if (::popupWindowActive.isInitialized) {
+            popupWindowActive.hide()
+        }
+
+        if (::pressedKey.isInitialized && pressedKey.key != Key.NotSelected) {
+            keyTouchCancelListener?.onKeyTouchCanceled(pressedKey.key, reason)
+            pressedKey = pressedKey.copy(key = Key.NotSelected)
+        }
+
+        if (isCursorMode) {
+            handleCurrentInputModeSwitch(currentInputMode.value)
+        }
+        isCursorMode = false
     }
 
     /** Handle orientation changes by re‐applying text on all keys **/
