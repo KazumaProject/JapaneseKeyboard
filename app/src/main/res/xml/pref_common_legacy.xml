@@ -108,6 +108,27 @@
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
+            android:key="suminagashi_ink_effect_preference"
+            android:summary="@string/suminagashi_ink_effect_summary"
+            android:title="@string/suminagashi_ink_effect_title" />
+
+        <ListPreference
+            android:defaultValue="random"
+            android:dependency="suminagashi_ink_effect_preference"
+            android:entries="@array/suminagashi_ink_color_mode_entries"
+            android:entryValues="@array/suminagashi_ink_color_mode_values"
+            android:key="suminagashi_ink_color_mode_preference"
+            android:summary="%s"
+            android:title="@string/suminagashi_ink_color_mode_title" />
+
+        <Preference
+            android:dependency="suminagashi_ink_effect_preference"
+            android:key="suminagashi_ink_color_preference"
+            android:summary="@string/suminagashi_ink_color_summary"
+            android:title="@string/suminagashi_ink_color_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
             android:key="round_corner_keyboard_preference"
             android:summary="@string/pref_round_corner_keyboard_summary"
             android:title="@string/pref_round_corner_keyboard_title" />
