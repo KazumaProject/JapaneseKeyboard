@@ -2183,6 +2183,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingView?.let { setupFloatingSuminagashiInkEffect(it) }
     }
 
+    private fun clearSuminagashiInkEffects() {
+        mainLayoutBinding?.suminagashiInkView?.clearInk()
+        floatingKeyboardBinding?.floatingSuminagashiInkView?.clearInk()
+    }
+
     private fun setupMainSuminagashiInkEffect(mainView: MainLayoutBinding) {
         val enabled = suminagashiInkEffectPreference && isKeyboardFloatingMode != true
 
@@ -2278,7 +2283,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             MotionEvent.ACTION_UP,
             MotionEvent.ACTION_POINTER_UP -> {
                 val index = event.actionIndex
-                inkView.onPointerUp(event.getPointerId(index))
+                if (mapMotionEventToTarget(event, index, sourceRoot, targetContainer, inkMappedPoint)) {
+                    inkView.onPointerUp(
+                        pointerId = event.getPointerId(index),
+                        x = inkMappedPoint[0],
+                        y = inkMappedPoint[1]
+                    )
+                } else {
+                    inkView.onPointerUp(event.getPointerId(index))
+                }
             }
 
             MotionEvent.ACTION_CANCEL -> {
@@ -2936,6 +2949,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         persistCurrentTenkeyOrSumireInputModeIfEnabled()
         isInputViewActive = false
         qwertyGlideInputCoordinator?.cancelPending()
+        clearSuminagashiInkEffects()
         releaseKeyboardBackgroundVideoPlayer()
         releaseFloatingKeyboardBackgroundVideoPlayer()
         stopVoiceInput()
@@ -2949,11 +2963,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardView = null
     }
 
+    override fun onWindowHidden() {
+        clearSuminagashiInkEffects()
+        super.onWindowHidden()
+    }
+
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
         isInputViewActive = false
+        clearSuminagashiInkEffects()
         releaseKeyboardBackgroundVideoPlayer()
         releaseFloatingKeyboardBackgroundVideoPlayer()
         super.onDestroy()

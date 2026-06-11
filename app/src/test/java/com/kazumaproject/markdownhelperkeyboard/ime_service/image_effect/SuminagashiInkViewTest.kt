@@ -1,10 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
 import android.view.View
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -65,10 +68,51 @@ class SuminagashiInkViewTest {
 
         assertEquals(0, view.dropCountForTesting())
         assertEquals(0, view.pointerStateCountForTesting())
+        assertFalse(view.hasResidualInkForTesting())
     }
 
     @Test
-    fun cancelClearsPointerState() {
+    fun clearInkRemovesResidualSurfaceState() {
+        view.layout(0, 0, 240, 180)
+        view.configure(
+            enabled = true,
+            colorMode = "fixed",
+            fixedColor = Color.rgb(38, 70, 120)
+        )
+        view.onPointerDown(pointerId = 3, x = 20f, y = 30f)
+        val bitmap = Bitmap.createBitmap(240, 180, Bitmap.Config.ARGB_8888)
+
+        view.draw(Canvas(bitmap))
+
+        assertTrue(view.hasResidualInkForTesting())
+
+        view.clearInk()
+
+        assertEquals(0, view.dropCountForTesting())
+        assertEquals(0, view.pointerStateCountForTesting())
+        assertFalse(view.hasResidualInkForTesting())
+        bitmap.recycle()
+    }
+
+    @Test
+    fun pointerUpKeepsInkAndClearsPointerState() {
+        view.configure(
+            enabled = true,
+            colorMode = "fixed",
+            fixedColor = Color.rgb(38, 70, 120)
+        )
+        view.onPointerDown(pointerId = 7, x = 20f, y = 30f)
+        val dropsBeforeUp = view.dropCountForTesting()
+        assertEquals(1, view.pointerStateCountForTesting())
+
+        view.onPointerUp(pointerId = 7, x = 24f, y = 34f)
+
+        assertEquals(0, view.pointerStateCountForTesting())
+        assertTrue(view.dropCountForTesting() > dropsBeforeUp)
+    }
+
+    @Test
+    fun cancelClearsPointerStateButKeepsInk() {
         view.configure(
             enabled = true,
             colorMode = "fixed",
@@ -80,6 +124,7 @@ class SuminagashiInkViewTest {
         view.onCancel()
 
         assertEquals(0, view.pointerStateCountForTesting())
+        assertTrue(view.dropCountForTesting() > 0)
     }
 
     @Test
