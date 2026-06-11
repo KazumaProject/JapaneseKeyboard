@@ -277,7 +277,9 @@ class SuminagashiInkView @JvmOverloads constructor(
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
         if (changedView == this && visibility != VISIBLE) {
-            clearInk()
+            frameScheduled = false
+        } else if (changedView == this && visibility == VISIBLE && hasRenderableInk()) {
+            scheduleNextFrame()
         }
     }
 
@@ -587,7 +589,7 @@ class SuminagashiInkView @JvmOverloads constructor(
         val driftY = cos(time * 0.17f) * 0.68f + sin(time * 0.13f) * 0.38f
 
         scratchCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-        bitmapPaint.alpha = 246
+        bitmapPaint.alpha = 255
         scratchCanvas.drawBitmap(bitmap, driftX, driftY, bitmapPaint)
 
         bitmapPaint.alpha = 9
@@ -609,7 +611,9 @@ class SuminagashiInkView @JvmOverloads constructor(
         canvas.drawBitmap(scratchBitmap, 0f, 0f, bitmapPaint)
 
         val decay = if (drops.isEmpty()) RESIDUAL_IDLE_DECAY else RESIDUAL_ACTIVE_DECAY
-        residualInkEnergy *= decay
+        residualInkEnergy = (residualInkEnergy * decay).coerceAtLeast(
+            RESIDUAL_PERSISTENT_ENERGY_FLOOR
+        )
         if (residualInkEnergy <= MIN_RESIDUAL_ENERGY) {
             clearResidualSurface()
             residualInkEnergy = 0f
@@ -997,6 +1001,11 @@ class SuminagashiInkView @JvmOverloads constructor(
     @VisibleForTesting
     internal fun hasResidualInkForTesting(): Boolean = residualInkEnergy > MIN_RESIDUAL_ENERGY
 
+    @VisibleForTesting
+    internal fun clearActiveDropsForTesting() {
+        drops.clear()
+    }
+
     private companion object {
         private const val MAX_DROPS = 160
         private const val MAX_RESIDUAL_DEPOSITS_PER_FRAME = 36
@@ -1010,8 +1019,9 @@ class SuminagashiInkView @JvmOverloads constructor(
         private const val RESIDUAL_DEPOSIT_ALPHA_SCALE = 0.12f
         private const val RESIDUAL_ENERGY_PER_DEPOSIT = 0.0065f
         private const val RESIDUAL_SCREEN_ALPHA = 218f
-        private const val RESIDUAL_ACTIVE_DECAY = 0.9975f
-        private const val RESIDUAL_IDLE_DECAY = 0.992f
+        private const val RESIDUAL_ACTIVE_DECAY = 1f
+        private const val RESIDUAL_IDLE_DECAY = 1f
+        private const val RESIDUAL_PERSISTENT_ENERGY_FLOOR = 0.18f
         private const val MIN_RESIDUAL_ENERGY = 0.012f
 
         @ColorInt
