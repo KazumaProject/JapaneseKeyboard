@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_legacy_setting_search"
+        android:icon="@drawable/baseline_search_24"
+        android:title="@string/setting_search_title"
+        app:showAsAction="ifRoom" />
+
+</menu>

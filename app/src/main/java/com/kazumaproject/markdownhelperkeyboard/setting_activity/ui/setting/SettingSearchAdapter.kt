@@ -38,14 +38,16 @@ class SettingSearchAdapter(
 
         fun bind(destination: SettingDestination) {
             val context = binding.root.context
-            val categoryTitle = SettingDestinations.categoryTitle(context, destination.category)
+            val categoryTitle = destination.location
+                ?: SettingDestinations.categoryTitle(context, destination.category)
             val summary = destination.summary.ifBlank { categoryTitle }
             val currentValue = editorController.currentValueLabel(destination)
             val managementLabel =
                 (destination.destination as? SettingDestinationType.ManagementDestination)
                     ?.let { context.getString(R.string.setting_frequent_type_management) }
             val switchTarget = destination.destination as? SettingDestinationType.SwitchPreference
-            val isDirectEditable = editorController.isDirectEditable(destination)
+            val isLegacyResult = destination.legacyTarget != null
+            val isDirectEditable = !isLegacyResult && editorController.isDirectEditable(destination)
 
             binding.settingSearchResultIcon.setImageResource(destination.iconRes)
             binding.settingSearchResultTitle.text = destination.title
@@ -61,8 +63,8 @@ class SettingSearchAdapter(
                 isVisible = currentValue != null || managementLabel != null
             }
             binding.settingSearchResultSwitch.apply {
-                isVisible = switchTarget != null
-                if (switchTarget != null) {
+                isVisible = switchTarget != null && !isLegacyResult
+                if (switchTarget != null && !isLegacyResult) {
                     isChecked = editorController.readSwitchPreference(switchTarget)
                     contentDescription = destination.title
                 }

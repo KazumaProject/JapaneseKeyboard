@@ -1064,6 +1064,7 @@
     <string name="setting_search_initial_empty">設定名や機能名を入力して検索できます</string>
     <string name="setting_search_empty">一致する設定がありません</string>
     <string name="setting_search_result_content_description">%1$s。%2$s。カテゴリ: %3$s</string>
+    <string name="setting_search_legacy_location">従来の設定 > %1$s</string>
     <string name="setting_frequent_edit_title">よく使う設定を編集</string>
     <string name="setting_frequent_edit_description">設定トップに表示するカードの追加・削除・並び替えができます。</string>
     <string name="setting_frequent_add_button">設定を追加</string>
