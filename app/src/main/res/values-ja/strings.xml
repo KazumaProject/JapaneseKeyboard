@@ -140,6 +140,11 @@
     <string name="password_compose_title">パスワード入力中の文字列の設定</string>
     <string name="password_compose_summary_on">パスワード入力中に未確定文字として扱います。</string>
     <string name="password_compose_summary_off">パスワード入力中に確定文字として扱います。</string>
+    <string name="type_null_input_behavior_title">TYPE_NULL 入力欄の動作</string>
+    <string name="type_null_input_behavior_summary">対象アプリが InputType.TYPE_NULL を指定した入力欄で、キー入力を直接送信するか、通常の ComposingText を使うかを選択します。通常はデフォルトのまま使用してください。</string>
+    <string name="type_null_input_behavior_default">デフォルト（直接入力）</string>
+    <string name="type_null_input_behavior_direct_commit">常に直接入力</string>
+    <string name="type_null_input_behavior_composing_text">ComposingText を使う</string>
     <string name="henkan_delete_key_action_title">候補ハイライト時の削除キー動作</string>
     <string name="henkan_delete_key_action_summary_on">削除キー長押し：ハイライト解除\n削除キータップ：選択位置を1つ前に戻す</string>
     <string name="henkan_delete_key_action_summary_off">削除キータップ：ハイライト解除</string>

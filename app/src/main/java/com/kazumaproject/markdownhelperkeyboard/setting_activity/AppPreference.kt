@@ -173,6 +173,8 @@ object AppPreference {
 
     private val CANDIDATE_IN_PASSWORD_COMPOSE = Pair("password_compose_preference", false)
 
+    private val TYPE_NULL_INPUT_BEHAVIOR = Pair("type_null_input_behavior_preference", "default")
+
     private val QWERTY_SHOW_KUTOUTEN_BUTTONS =
         Pair("qwerty_show_kutouten_buttons_preference", false)
 
@@ -996,6 +998,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(CANDIDATE_IN_PASSWORD_COMPOSE.first, value ?: false)
+        }
+
+    var type_null_input_behavior_preference: String?
+        get() = preferences.getString(
+            TYPE_NULL_INPUT_BEHAVIOR.first,
+            TYPE_NULL_INPUT_BEHAVIOR.second
+        )
+        set(value) = preferences.edit {
+            it.putString(TYPE_NULL_INPUT_BEHAVIOR.first, value ?: TYPE_NULL_INPUT_BEHAVIOR.second)
         }
 
     var qwerty_show_kutouten_buttons: Boolean?

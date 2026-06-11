@@ -15,6 +15,7 @@ fun InputTypeForIME.getQWERTYReturnTextInJp(): String {
         InputTypeForIME.TextPersonName,
         InputTypeForIME.TextPhonetic,
         InputTypeForIME.TextWebEditText,
+        InputTypeForIME.TypeNull,
             -> {
             "確定"
         }
@@ -85,6 +86,7 @@ fun InputTypeForIME.getQWERTYReturnTextInEn(): String {
         InputTypeForIME.TextPersonName,
         InputTypeForIME.TextPhonetic,
         InputTypeForIME.TextWebEditText,
+        InputTypeForIME.TypeNull,
             -> {
             "return"
         }
@@ -155,6 +157,7 @@ fun InputTypeForIME.getEnterKeyIndexSumire(): Int {
         InputTypeForIME.TextPersonName,
         InputTypeForIME.TextPhonetic,
         InputTypeForIME.TextWebEditText,
+        InputTypeForIME.TypeNull,
             -> {
             1
         }

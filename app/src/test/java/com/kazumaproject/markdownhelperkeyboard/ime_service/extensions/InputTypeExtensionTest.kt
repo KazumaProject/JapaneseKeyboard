@@ -45,17 +45,39 @@ class InputTypeExtensionTest {
     }
 
     @Test
-    fun typeNullReturnsTextPasswordOnlyWithPasswordLikeMetadata() {
+    fun typeNullReturnsTypeNullWithoutPasswordMetadataFallback() {
         assertEquals(
-            InputTypeForIME.TextPassword,
+            InputTypeForIME.TypeNull,
             editorInfo(
                 inputType = InputType.TYPE_NULL,
                 hintText = "Password"
             ).currentInputType()
         )
         assertEquals(
-            InputTypeForIME.Text,
+            InputTypeForIME.TypeNull,
             editorInfo(inputType = InputType.TYPE_NULL).currentInputType()
+        )
+    }
+
+    @Test
+    fun existingInputTypeClassificationsRemainUnchanged() {
+        assertEquals(
+            InputTypeForIME.Text,
+            editorInfo(inputType = InputType.TYPE_CLASS_TEXT).currentInputType()
+        )
+        assertEquals(
+            InputTypeForIME.TextPassword,
+            editorInfo(
+                inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            ).currentInputType()
+        )
+        assertEquals(
+            InputTypeForIME.Number,
+            editorInfo(inputType = InputType.TYPE_CLASS_NUMBER).currentInputType()
+        )
+        assertEquals(
+            InputTypeForIME.Phone,
+            editorInfo(inputType = InputType.TYPE_CLASS_PHONE).currentInputType()
         )
     }
 

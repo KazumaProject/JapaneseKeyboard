@@ -200,6 +200,11 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.Floati
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.DirectCommitHandler
+import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.InputBehaviorResolver
+import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.KeyInputBehaviorDispatcher
+import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.ResolvedInputBehavior
+import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.TypeNullInputBehaviorSetting
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.FloatingKeyboardLayoutEditSurface
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditConstraints
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditController
@@ -758,6 +763,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val physicalKeyboardEnable: SharedFlow<Boolean> = _physicalKeyboardEnable
 
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
+    private var currentInputBehavior: ResolvedInputBehavior = ResolvedInputBehavior.COMPOSING_TEXT
+    private val inputBehaviorResolver by lazy {
+        InputBehaviorResolver {
+            TypeNullInputBehaviorSetting.fromPreferenceValue(
+                appPreference.type_null_input_behavior_preference
+            )
+        }
+    }
+    private val directCommitHandler = DirectCommitHandler()
+    private val keyInputBehaviorDispatcher = KeyInputBehaviorDispatcher(directCommitHandler)
     private val lastFlickConvertedNextHiragana = AtomicBoolean(false)
     private val isContinuousTapInputEnabled = AtomicBoolean(false)
     private val englishSpaceKeyPressed = AtomicBoolean(false)
@@ -4588,6 +4603,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleJapaneseDeleteFloating(
         keyCode: Int, event: KeyEvent?, insertString: String
     ): Boolean {
+        if (dispatchDirectBackspaceIfNeeded()) return true
         if (insertString.isEmpty()) {
             return super.onKeyDown(keyCode, event)
         }
@@ -4640,6 +4656,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding, // mainViewの実際の型に置き換えてください
         insertString: String, suggestions: List<CandidateItem> // suggestionsの実際の型に置き換えてください
     ): Boolean {
+        if (dispatchDirectSpaceIfNeeded()) return true
         if (cycleFocusedBunsetsuCandidate(delta = 1)) {
             return true
         }
@@ -4769,6 +4786,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleJapaneseEnterFloating(
         mainView: MainLayoutBinding, insertString: String, suggestions: List<CandidateItem>
     ): Boolean {
+        if (dispatchDirectEnterIfNeeded()) {
+            romajiConverter?.clear()
+            return true
+        }
         if (commitBunsetsuConversionSession()) {
             romajiConverter?.clear()
             return true
@@ -4832,11 +4853,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             keyCode = keyCode,
                             isShift = e.isShiftPressed
                         )?.let { kana ->
+                            if (dispatchDirectTextIfNeeded(kana)) return@launch
                             _inputString.update { KanaDakutenComposer.append("", kana) }
                         }
                     } else {
                         handlePhysicalRomajiOrUnicodeKey(keyCode, e)?.let { romajiResult ->
                             Timber.d("KeyEvent Key Henkan: $e\n$insertString\n${romajiResult.first}")
+                            if (dispatchDirectTextIfNeeded(romajiResult.first)) return@launch
                             _inputString.update {
                                 romajiResult.first
                             }
@@ -4851,6 +4874,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     isShift = e.isShiftPressed
                 )
                 kana?.let {
+                    if (dispatchDirectTextIfNeeded(it)) return true
                     _inputString.update { current ->
                         KanaDakutenComposer.append(current, it)
                     }
@@ -4862,6 +4886,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val letterConverted = handlePhysicalRomajiOrUnicodeKey(keyCode, e)
                 ?: return super.onKeyDown(keyCode, e)
             Timber.d("onKeyDown: $letterConverted")
+            if (dispatchDirectTextIfNeeded(letterConverted.first)) return true
             if (insertString.isNotEmpty()) {
                 sb.append(
                     insertString.dropLast((letterConverted.second))
@@ -7061,6 +7086,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleTap(
         char: Char?, insertString: String, sb: StringBuilder, _mainView: MainLayoutBinding
     ) {
+        char?.let {
+            if (dispatchDirectTextIfNeeded(it.toString())) return
+        }
         if (isHenkan.get()) {
             commitCurrentHenkanForNewInput()
             char?.let {
@@ -10170,11 +10198,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         when (qwertyMode.value) {
                             TenKeyQWERTYMode.Custom -> {
                                 if (text.isEmpty()) return
+                                val shiftedText = applyCustomLayoutShiftAndCapLock(text)
+                                if (dispatchDirectTextIfNeeded(shiftedText)) {
+                                    if (isCustomLayoutShiftPressed) {
+                                        isCustomLayoutShiftPressed = false
+                                    }
+                                    return
+                                }
                                 if (isCustomLayoutDirectMode) {
-                                    val output = applyCustomLayoutShiftAndCapLock(text)
                                     finishComposingText()
                                     setComposingText("", 0)
-                                    commitText(output, 1)
+                                    commitText(shiftedText, 1)
                                     if (isCustomLayoutShiftPressed) {
                                         isCustomLayoutShiftPressed = false
                                     }
@@ -10223,7 +10257,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         }
                                     } else {
                                         handleOnKeyForSumire(
-                                            applyCustomLayoutShiftAndCapLock(text),
+                                            shiftedText,
                                             mainView,
                                             isFlick
                                         )
@@ -10307,6 +10341,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
 
                             ":", "-" -> {
+                                if (dispatchDirectTextIfNeeded(action.text)) return
                                 val insertString = inputString.value
                                 val sb = StringBuilder()
                                 sb.append(insertString).append(action.text)
@@ -10719,6 +10754,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleOnKeyForSumire(
         text: String, mainView: MainLayoutBinding, isFlick: Boolean
     ) {
+        if (dispatchDirectTextIfNeeded(text)) return
         val insertString = inputString.value
         val sb = StringBuilder()
         if (text.isNotEmpty()) {
@@ -15344,12 +15380,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setCurrentInputType(attribute: EditorInfo?) {
         attribute?.apply {
             currentInputType = getCurrentInputTypeForIME2(this)
+            currentInputBehavior = inputBehaviorResolver.resolve(currentInputType)
             currentInputModeForSession = defaultInputModeFor(currentInputType)
             Timber.d("setCurrentInputType: $currentInputType $inputType ${attribute.hintText} ${attribute.actionId} ${attribute.fieldName} ${attribute.inputType} ")
+            if (currentInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT) {
+                clearDirectCommitCompositionState("direct commit start input")
+            }
             if (isTabletGojuonSurface()) {
                 mainLayoutBinding?.tabletView?.apply {
                     when (currentInputType) {
                         InputTypeForIME.Text,
+                        InputTypeForIME.TypeNull,
                         InputTypeForIME.TextAutoComplete,
                         InputTypeForIME.TextAutoCorrect,
                         InputTypeForIME.TextCapCharacters,
@@ -15466,6 +15507,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainLayoutBinding?.keyboardView?.apply {
                     when (currentInputType) {
                         InputTypeForIME.Text,
+                        InputTypeForIME.TypeNull,
                         InputTypeForIME.TextAutoComplete,
                         InputTypeForIME.TextAutoCorrect,
                         InputTypeForIME.TextCapCharacters,
@@ -15580,6 +15622,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardBinding?.keyboardViewFloating?.apply {
                     when (currentInputType) {
                         InputTypeForIME.Text,
+                        InputTypeForIME.TypeNull,
                         InputTypeForIME.TextAutoComplete,
                         InputTypeForIME.TextAutoCorrect,
                         InputTypeForIME.TextCapCharacters,
@@ -17331,6 +17374,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 effectiveInsertString
                             }
+                            tap?.let {
+                                if (dispatchDirectTextIfNeeded(it.toString())) {
+                                    isContinuousTapInputEnabled.set(true)
+                                    lastFlickConvertedNextHiragana.set(true)
+                                    return
+                                }
+                            }
                             if (currentInputModeForSession == InputMode.ModeJapanese) {
                                 if (inputForAppend.isNotEmpty()) {
                                     Timber.d("QWERTY romaji not empty: $hardKeyboardShiftPressd $qwertyRomajiShiftConversionPreference")
@@ -18776,6 +18826,81 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearBunsetsuConversionSession()
         henkanPressedWithBunsetsuDetect = false
         bunsetusMultipleDetect = false
+    }
+
+    private fun clearDirectCommitCompositionState(reason: String) {
+        clearFunctionKeyConversionSource()
+        qwertyGlideInputCoordinator?.cancelPending()
+        currentQwertyGlideCompositionText = null
+        suppressNextQwertyGlideSuggestionRefresh = false
+        _inputString.update { "" }
+        stringInTail.set("")
+        isHenkan.set(false)
+        henkanPressedWithBunsetsuDetect = false
+        bunsetusMultipleDetect = false
+        suggestionClickNum = 0
+        filteredCandidateList = emptyList()
+        lastCandidate = ""
+        hasConvertedKatakana = false
+        bunsetsuPositionList = emptyList()
+        bunsetsuSplitPatterns = emptyList()
+        currentHighlightIndex = RecyclerView.NO_POSITION
+        clearZenzLiveSlot(reason)
+        clearBunsetsuConversionSession()
+        clearPendingReconversionEntry()
+        clearBunsetsuReconversionDraft()
+        cancelActiveCandidateTranslation()
+        clearSelectedTextGemmaSession(clearSuggestions = true)
+        setSuggestionAdaptersOnMain(emptyList())
+        updateSuggestionsForFloatingCandidate(emptyList())
+        suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
+        listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+        scope.launch {
+            _suggestionFlag.emit(CandidateShowFlag.Idle)
+        }
+        refreshReconversionUi()
+    }
+
+    private fun dispatchDirectTextIfNeeded(text: String): Boolean {
+        val handled = keyInputBehaviorDispatcher.dispatchText(
+            behavior = currentInputBehavior,
+            inputConnection = currentInputConnection,
+            text = text,
+            composingPipeline = {}
+        )
+        if (handled) {
+            clearDirectCommitCompositionState("direct commit text")
+        }
+        return handled
+    }
+
+    private fun dispatchDirectSpaceIfNeeded(): Boolean {
+        return dispatchDirectTextIfNeeded(" ")
+    }
+
+    private fun dispatchDirectEnterIfNeeded(): Boolean {
+        val handled = keyInputBehaviorDispatcher.dispatchEnter(
+            behavior = currentInputBehavior,
+            inputConnection = currentInputConnection,
+            composingPipeline = {}
+        )
+        if (handled) {
+            clearDirectCommitCompositionState("direct commit enter")
+        }
+        return handled
+    }
+
+    private fun dispatchDirectBackspaceIfNeeded(): Boolean {
+        val handled = keyInputBehaviorDispatcher.dispatchBackspace(
+            behavior = currentInputBehavior,
+            inputConnection = currentInputConnection,
+            composingPipeline = {}
+        )
+        if (handled) {
+            clearDirectCommitCompositionState("direct commit backspace")
+        }
+        return handled
     }
 
     private fun actionInDestroy() {
@@ -20298,6 +20423,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             InputTypeForIME.TextWebPassword,
             InputTypeForIME.TextNotCursorUpdate,
             InputTypeForIME.TextEditTextInWebView,
+            InputTypeForIME.TypeNull,
             InputTypeForIME.TextSend
                 -> {
                 Timber.d("Enter key: called 3\n")
@@ -20335,6 +20461,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleDeleteKeyTap(insertString: String, suggestions: List<Candidate>) {
+        if (dispatchDirectBackspaceIfNeeded()) {
+            stopDeleteLongPress()
+            return
+        }
         when {
             insertString.isNotEmpty() -> {
                 if (isHenkan.get()) {
@@ -20376,6 +20506,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         mainView: MainLayoutBinding
     ) {
+        if (dispatchDirectSpaceIfNeeded()) {
+            resetFlagsKeySpace()
+            return
+        }
         if (cycleFocusedBunsetsuCandidate(delta = 1)) {
             resetFlagsKeySpace()
             return
@@ -20426,6 +20560,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        if (dispatchDirectSpaceIfNeeded()) {
+            resetFlagsKeySpace()
+            return
+        }
         if (cycleFocusedBunsetsuCandidate(delta = 1, floatingKeyboardLayoutBinding)) {
             resetFlagsKeySpace()
             return
@@ -20461,6 +20599,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleSpaceKeyClickInQWERTY(
         insertString: String, mainView: MainLayoutBinding, suggestions: List<Candidate>
     ) {
+        if (dispatchDirectSpaceIfNeeded()) {
+            resetFlagsKeySpace()
+            return
+        }
         if (cycleFocusedBunsetsuCandidate(delta = 1)) {
             resetFlagsKeySpace()
             return
@@ -20552,6 +20694,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding?
     ) {
+        if (dispatchDirectSpaceIfNeeded()) {
+            resetFlagsKeySpace()
+            return
+        }
         val insertString = inputString.value
         val suggestions = suggestionAdapter?.suggestions ?: emptyList()
 
@@ -20790,6 +20936,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleNonEmptyInputEnterKey(
         suggestions: List<Candidate>, mainView: MainLayoutBinding, insertString: String
     ) {
+        if (dispatchDirectEnterIfNeeded()) return
         if (commitBunsetsuConversionSession()) {
             return
         }
@@ -20837,6 +20984,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding,
         insertString: String
     ) {
+        if (dispatchDirectEnterIfNeeded()) return
         if (commitBunsetsuConversionSession()) {
             return
         }
@@ -20928,6 +21076,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleEmptyInputEnterKey(mainView: MainLayoutBinding) {
+        if (dispatchDirectEnterIfNeeded()) {
+            updateCandidateStripPresentation(
+                mainView = mainView,
+                candidatesShown = false,
+                resetCandidateTabSelection = candidateTabVisibility == true
+            )
+            setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
+            return
+        }
         if (stringInTail.get().isNotEmpty()) {
             finishComposingText()
             setComposingText("", 0)
@@ -20949,6 +21106,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun forceNewLine(mainView: MainLayoutBinding) {
+        if (dispatchDirectEnterIfNeeded()) {
+            updateCandidateStripPresentation(
+                mainView = mainView,
+                candidatesShown = false,
+                resetCandidateTabSelection = candidateTabVisibility == true
+            )
+            setDrawableToEnterKeyCorrespondingToImeOptions(mainView)
+            return
+        }
         if (stringInTail.get().isNotEmpty()) {
             finishComposingText()
             setComposingText("", 0)
@@ -20970,6 +21136,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleEmptyInputEnterKeyFloating(floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding) {
+        if (dispatchDirectEnterIfNeeded()) {
+            setDrawableToEnterKeyCorrespondingToImeOptionsFloating(floatingKeyboardLayoutBinding)
+            return
+        }
         if (stringInTail.get().isNotEmpty()) {
             finishComposingText()
             setComposingText("", 0)
@@ -21437,6 +21607,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun sendCharTap(
         charToSend: Char, insertString: String, sb: StringBuilder
     ) {
+        if (dispatchDirectTextIfNeeded(charToSend.toString())) return
         when (currentInputType) {
             InputTypeForIME.None,
             InputTypeForIME.Number,
@@ -21484,6 +21655,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun sendCharFlick(
         charToSend: Char, insertString: String, sb: StringBuilder
     ) {
+        if (dispatchDirectTextIfNeeded(charToSend.toString())) return
         when (currentInputType) {
             InputTypeForIME.None,
             InputTypeForIME.Number,
