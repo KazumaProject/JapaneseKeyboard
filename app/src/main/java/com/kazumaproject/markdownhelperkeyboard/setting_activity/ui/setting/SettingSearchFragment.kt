@@ -15,12 +15,22 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSettingSearc
 
 class SettingSearchFragment : Fragment() {
 
+    companion object {
+        const val ARG_SEARCH_SCOPE = "setting_search_scope"
+    }
+
     private var _binding: FragmentSettingSearchBinding? = null
     private val binding get() = _binding!!
 
     private lateinit var searchableDestinations: List<SettingDestination>
     private lateinit var searchAdapter: SettingSearchAdapter
     private lateinit var settingCardEditorController: SettingCardEditorController
+    private val searchScope: SettingSearchScope by lazy {
+        arguments
+            ?.getString(ARG_SEARCH_SCOPE)
+            ?.let { runCatching { SettingSearchScope.valueOf(it) }.getOrNull() }
+            ?: SettingSearchScope.NEW_HOME
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -34,7 +44,7 @@ class SettingSearchFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         settingCardEditorController = SettingCardEditorController(requireContext())
-        searchableDestinations = SettingSearchIndex.searchable(requireContext())
+        searchableDestinations = SettingSearchIndex.searchable(requireContext(), searchScope)
         searchAdapter = SettingSearchAdapter(
             editorController = settingCardEditorController,
             onClick = ::handleSearchResultClick,
@@ -109,6 +119,11 @@ class SettingSearchFragment : Fragment() {
     }
 
     private fun navigateTo(destination: SettingDestination) {
+        val legacyTarget = destination.legacyTarget
+        if (legacyTarget != null) {
+            navigateToLegacyPreference(legacyTarget)
+            return
+        }
         val destinationId = SettingDestinations.destinationId(destination.destination) ?: return
         val args = SettingDestinations.highlightPreferenceKey(destination.destination)?.let { key ->
             bundleOf(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY to key)
@@ -116,7 +131,26 @@ class SettingSearchFragment : Fragment() {
         navigateSafely(destinationId, args)
     }
 
+    private fun navigateToLegacyPreference(target: LegacySettingTarget) {
+        val args = if (target.filterResultMode) {
+            bundleOf(
+                LegacyPreferenceResultFilter.ARG_LEGACY_SEARCH_RESULT_MODE to true,
+                LegacyPreferenceResultFilter.ARG_LEGACY_SEARCH_TARGET_KEY to target.preferenceKey,
+                LegacyPreferenceResultFilter.ARG_LEGACY_SEARCH_RELATED_KEYS to
+                    target.relatedPreferenceKeys.toTypedArray(),
+                CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY to target.preferenceKey,
+            )
+        } else {
+            null
+        }
+        navigateSafely(target.destinationId, args)
+    }
+
     private fun handleSearchResultClick(destination: SettingDestination) {
+        if (destination.legacyTarget != null) {
+            navigateTo(destination)
+            return
+        }
         val handled = settingCardEditorController.handleClick(destination) {
             searchAdapter.notifyDestinationChanged(destination)
         }

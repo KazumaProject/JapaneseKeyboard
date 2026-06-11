@@ -103,5 +103,7 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        applyLegacySearchResultFilterIfNeeded()
     }
 }
