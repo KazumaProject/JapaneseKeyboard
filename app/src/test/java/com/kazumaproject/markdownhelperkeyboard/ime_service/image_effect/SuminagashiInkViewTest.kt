@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.os.SystemClock
 import android.view.View
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -113,6 +114,39 @@ class SuminagashiInkViewTest {
         assertEquals(0, view.dropCountForTesting())
         assertTrue(view.hasResidualInkForTesting())
         bitmap.recycle()
+    }
+
+    @Test
+    fun residualSurfaceStopsAnimatingAfterIdleWindow() {
+        view.layout(0, 0, 240, 180)
+        view.configure(
+            enabled = true,
+            colorMode = "fixed",
+            fixedColor = Color.rgb(38, 70, 120)
+        )
+        view.onPointerDown(pointerId = 3, x = 20f, y = 30f)
+        val bitmap = Bitmap.createBitmap(240, 180, Bitmap.Config.ARGB_8888)
+        view.draw(Canvas(bitmap))
+        view.onPointerUp(pointerId = 3, x = 20f, y = 30f)
+        view.clearActiveDropsForTesting()
+        val now = SystemClock.uptimeMillis()
+
+        view.setLastActiveInkTimeForTesting(now - 2_000L)
+
+        assertTrue(view.hasResidualInkForTesting())
+        assertFalse(view.shouldAnimateResidualSurfaceForTesting(now))
+        bitmap.recycle()
+    }
+
+    @Test
+    fun residualTintKeepsDarkInkFromBecomingBlack() {
+        val color = view.waterTintColorForTesting(Color.rgb(17, 17, 17), phase = 0f)
+        val red = Color.red(color)
+        val green = Color.green(color)
+        val blue = Color.blue(color)
+
+        assertTrue(red + green + blue > 220)
+        assertTrue(maxOf(red, green, blue) - minOf(red, green, blue) > 20)
     }
 
     @Test
