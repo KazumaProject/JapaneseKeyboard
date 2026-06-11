@@ -65,6 +65,11 @@ class CrossFlickInputController(
         ) {
             onFlickUpAfterLongPress(action, isFlick)
         }
+
+        fun onFlickLongPressCanceled(
+            action: KeyAction,
+            direction: FlickDirection
+        ) {}
     }
 
     private enum class InputMode {
@@ -248,9 +253,12 @@ class CrossFlickInputController(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 view.isPressed = false
                 longPressJob?.cancel()
+                longPressJob = null
 
                 if (event.action == MotionEvent.ACTION_UP) {
                     commitAction()
+                } else {
+                    notifyLongPressCanceledIfNeeded()
                 }
 
                 restoreOriginalButtonText()
@@ -320,6 +328,20 @@ class CrossFlickInputController(
                 }
             }
         }
+    }
+
+    private fun notifyLongPressCanceledIfNeeded() {
+        if (!isLongPressTriggered || inputMode != InputMode.ACTION) {
+            isLongPressTriggered = false
+            isLongPressMode = false
+            return
+        }
+
+        val action = resolveCrossFlickAction(currentDirection, flickActionMap)?.toKeyAction()
+            ?: KeyAction.Cancel
+        listener?.onFlickLongPressCanceled(action, currentDirection)
+        isLongPressTriggered = false
+        isLongPressMode = false
     }
 
     // 通常フリック中（長押し前）に方向が変わったときのポップアップ更新。ACTION_MOVE から呼ばれる。

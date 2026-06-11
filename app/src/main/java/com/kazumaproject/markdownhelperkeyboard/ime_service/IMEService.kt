@@ -119,8 +119,11 @@ import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
 import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
+import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
 import com.kazumaproject.core.domain.physical_keyboard.FloatingCandidateTailResolver
 import com.kazumaproject.core.domain.physical_keyboard.KanaDakutenComposer
 import com.kazumaproject.core.domain.physical_keyboard.PhysicalKanaMapper
@@ -392,6 +395,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val rightContext: String
     )
 
+    private data class SuggestionLayoutKey(
+        val isPortrait: Boolean,
+        val columnNum: String,
+        val useSelectedTextGemmaActionLayout: Boolean,
+        val isKeyboardFloatingMode: Boolean
+    )
+
     @Inject
     lateinit var learnMultiple: LearnMultiple
 
@@ -590,6 +600,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var suggestionAdapter: SuggestionAdapter? = null
     private var suggestionAdapterFull: SuggestionAdapter? = null
+    private var lastSuggestionLayoutKey: SuggestionLayoutKey? = null
+    private var mainSuggestionGridSpacingDecoration: RecyclerView.ItemDecoration? = null
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -613,7 +625,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setSuggestionAdapterSuggestionsOnMain(candidates: List<Candidate>) {
         runOnMainThread {
-            suggestionAdapter?.suggestions = candidates
+            measureDebugSection("IMEService.setSuggestionAdapterSuggestionsOnMain") {
+                suggestionAdapter?.suggestions = candidates
+            }
         }
     }
 
@@ -622,8 +636,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         fullCandidates: List<Candidate> = candidates
     ) {
         runOnMainThread {
-            suggestionAdapter?.suggestions = candidates
-            suggestionAdapterFull?.suggestions = fullCandidates
+            measureDebugSection("IMEService.setSuggestionAdaptersOnMain") {
+                suggestionAdapter?.suggestions = candidates
+                suggestionAdapterFull?.suggestions = fullCandidates
+            }
         }
     }
 
@@ -631,7 +647,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidates: List<Candidate>,
         insertString: String,
         fullCandidates: List<Candidate> = candidates
-    ) {
+    ) = measureDebugStage("IMEService.updateSuggestionAdaptersOnMain") {
         withContext(Dispatchers.Main.immediate) {
             if (!shouldApplyCandidateResult(insertString)) return@withContext
             suggestionAdapter?.suggestions = candidates
@@ -1059,6 +1075,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     companion object {
         private const val LONG_DELAY_TIME = 64L
         private const val DEFAULT_DELAY_MS = 1000L
+        private const val DEFAULT_LIVE_CONVERSION_APPLY_DELAY_MS = 120L
         private const val PAGE_SIZE: Int = 5
         private const val ZENZ_LIVE_SLOT_EMPTY_TEXT = "..."
         private val ZENZ_LIVE_SLOT_TYPE = (33).toByte()
@@ -1352,6 +1369,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         observeDeleteKeyFlickTargets()
         observeSumireSpecialKeyOverrides()
+        observeCandidateOrderOverrideSnapshot()
 
         suggestionAdapter = SuggestionAdapter().apply {
             onListUpdated = {
@@ -1484,6 +1502,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         renderCurrentKeyboardStateOnActiveSurface()
                     }
                 }
+            }
+        }
+    }
+
+    private fun observeCandidateOrderOverrideSnapshot() {
+        ioScope.launch {
+            candidateOrderOverrideRepository.observeAll().collectLatest {
+                // Snapshot updates are handled inside the repository.
             }
         }
     }
@@ -2745,6 +2771,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
+        stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode()
         persistCurrentCustomKeyboardInputModeIfEnabled()
         persistCurrentTenkeyOrSumireInputModeIfEnabled()
@@ -2765,6 +2792,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
+        stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
         isInputViewActive = false
         releaseKeyboardBackgroundVideoPlayer()
@@ -3583,6 +3611,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                 )
             } else {
+                stopAllOngoingKeyLongPresses()
                 floatingKeyboardView?.dismiss()
                 floatingKeyboardView = null
 
@@ -3593,6 +3622,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
             floatingKeyboardView?.setOnDismissListener {
+                stopAllOngoingKeyLongPresses()
                 disableKeyboardLayoutEditMode(updateSurface = false)
             }
             updateFloatingKeyboardBackgroundBounds(floatingKeyboardLayoutBinding, heightPx)
@@ -4972,6 +5002,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val mainView = mainLayoutBinding ?: return
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
             disableKeyboardLayoutEditMode()
+            stopAllOngoingKeyLongPresses()
             floatingKeyboardView?.dismiss()
             releaseFloatingKeyboardBackgroundVideoPlayer()
             // 物理キーボード接続中は Floating UI を出さないため、isKeyboardFloatingMode は
@@ -5060,6 +5091,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             bindSuggestionAdaptersForFloatingMode(mainView, isFloatingMode = false)
             mainView.root.isVisible = true
             mainView.root.alpha = 1f
+            stopAllOngoingKeyLongPresses()
             floatingKeyboardView?.dismiss()
             releaseFloatingKeyboardBackgroundVideoPlayer()
             setKeyboardSizeSwitchKeyboard(mainView)
@@ -6053,6 +6085,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     Timber.d("Long Press: $key")
                 }
             })
+            setOnKeyTouchCancelListener(object : KeyTouchCancelListener {
+                override fun onKeyTouchCanceled(key: Key, reason: KeyTouchCancelReason) {
+                    cancelOngoingLongPressForKey(key)
+                }
+            })
         }
     }
 
@@ -6129,6 +6166,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setOnQwertyNumberModeRequestedListener {
                 switchTenkeyTwoStateNumberToQwertyNumber()
             }
+            setOnKeyTouchCancelListener(object : KeyTouchCancelListener {
+                override fun onKeyTouchCanceled(key: Key, reason: KeyTouchCancelReason) {
+                    cancelOngoingLongPressForKey(key)
+                }
+            })
             setOnFlickListener(object : FlickListener {
                 override fun onFlick(gestureType: GestureType, key: Key, char: Char?) {
                     if (isKeyboardLayoutEditModeActive()) return
@@ -6363,6 +6405,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     handleLongPress(key)
                 }
             })
+            setOnKeyTouchCancelListener(object : KeyTouchCancelListener {
+                override fun onKeyTouchCanceled(key: Key, reason: KeyTouchCancelReason) {
+                    cancelOngoingLongPressForKey(key)
+                }
+            })
             setOnInputModeChangedListener { inputMode ->
                 handleTenKeyInputModeChanged(inputMode, mainView)
             }
@@ -6418,10 +6465,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         handleLeftCursor(gestureType, insertString)
                     }
                 }
-                onLeftKeyLongPressUp.set(true)
-                leftCursorKeyLongKeyPressed.set(false)
-                leftLongPressJob?.cancel()
-                leftLongPressJob = null
+                cancelLeftLongPress()
             }
 
             Key.SideKeyCursorRight -> {
@@ -6435,10 +6479,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         actionInRightKeyPressed(gestureType, insertString)
                     }
                 }
-                onRightKeyLongPressUp.set(true)
-                rightCursorKeyLongKeyPressed.set(false)
-                rightLongPressJob?.cancel()
-                rightLongPressJob = null
+                cancelRightLongPress()
             }
 
             Key.SideKeyDelete -> {
@@ -6490,6 +6531,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeySpace -> {
                 if (shouldSuppressSpaceConvertTapAfterLongPress()) {
+                    finishTenKeyCursorMoveModeAfterLongPressRelease()
                     return
                 } else if (cursorMoveMode.value) {
                     _cursorMoveMode.update { false }
@@ -6624,10 +6666,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         handleLeftCursor(gestureType, insertString)
                     }
                 }
-                onLeftKeyLongPressUp.set(true)
-                leftCursorKeyLongKeyPressed.set(false)
-                leftLongPressJob?.cancel()
-                leftLongPressJob = null
+                cancelLeftLongPress()
             }
 
             Key.SideKeyCursorRight -> {
@@ -6641,10 +6680,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         actionInRightKeyPressed(gestureType, insertString)
                     }
                 }
-                onRightKeyLongPressUp.set(true)
-                rightCursorKeyLongKeyPressed.set(false)
-                rightLongPressJob?.cancel()
-                rightLongPressJob = null
+                cancelRightLongPress()
             }
 
             Key.SideKeyDelete -> {
@@ -6698,6 +6734,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeySpace -> {
                 if (shouldSuppressSpaceConvertTapAfterLongPress()) {
+                    finishTenKeyCursorMoveModeAfterLongPressRelease()
                     return
                 } else if (cursorMoveMode.value) {
                     _cursorMoveMode.update { false }
@@ -8012,6 +8049,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suppressSpaceConvertTapUntilUptimeMillis = SystemClock.uptimeMillis() + 700L
     }
 
+    private fun enterTenKeyCursorMoveMode() {
+        _cursorMoveMode.update { true }
+        mainLayoutBinding?.keyboardView?.setTextToMoveCursorMode(true)
+        floatingKeyboardBinding?.keyboardViewFloating?.setTextToMoveCursorMode(true)
+    }
+
+    private fun finishTenKeyCursorMoveModeAfterLongPressRelease() {
+        _cursorMoveMode.update { false }
+        mainLayoutBinding?.keyboardView?.setTextToMoveCursorMode(false)
+        floatingKeyboardBinding?.keyboardViewFloating?.setTextToMoveCursorMode(false)
+    }
+
+    private fun enterSpaceConvertCursorMoveMode(
+        source: SpaceConvertCursorMoveSource,
+        enterCursorMoveMode: () -> Unit
+    ): Boolean {
+        if (!SpaceConvertCursorMovePolicy.shouldEnterCursorMoveMode(
+                conversionKeySwipeCursorMovePreference = conversionKeySwipePreference,
+                hasInputString = inputString.value.isNotEmpty(),
+                source = source
+            )
+        ) {
+            return false
+        }
+        enterCursorMoveMode()
+        return true
+    }
+
     private fun shouldSuppressSpaceConvertTapAfterLongPress(): Boolean {
         if (suppressSpaceConvertTapUntilUptimeMillis <= 0L) return false
         val shouldSuppress = SystemClock.uptimeMillis() <= suppressSpaceConvertTapUntilUptimeMillis
@@ -8041,7 +8106,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             } else {
                 if (conversionKeySwipePreference == true) {
                     if (!isHenkan.get()) {
-                        _cursorMoveMode.update { true }
+                        enterTenKeyCursorMoveMode()
                     }
                 } else {
                     mainLayoutBinding?.let {
@@ -8095,12 +8160,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
         } else {
-            _cursorMoveMode.update { true }
+            enterTenKeyCursorMoveMode()
         }
         Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
 
-    private fun handleSpaceLongActionSumire() {
+    private fun handleSpaceLongActionSumire(source: SpaceConvertCursorMoveSource) {
         Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
         if (switchBunsetsuSplitPattern()) {
             markSpaceConvertLongPressConsumed()
@@ -8157,7 +8222,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-            _cursorMoveMode.update { true }
+            enterSpaceConvertCursorMoveMode(source) {
+                _cursorMoveMode.update { true }
+            }
         }
         Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
@@ -8219,7 +8286,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-            _cursorMoveMode.update { true }
+            enterTenKeyCursorMoveMode()
         }
         Timber.d("SideKeySpace LongPress Floating after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
@@ -9135,6 +9202,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 handleKeyPressFeedback(getKeySoundType(action))
             }
 
+            override fun onLongPressActionCanceled(action: KeyAction) {
+                cancelOngoingLongPressForAction(action)
+            }
+
             override fun onActionLongPress(action: KeyAction) {
                 if (isKeyboardLayoutEditModeActive()) return
                 if (action != KeyAction.DoNothing) {
@@ -9163,7 +9234,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                         markSpaceConvertLongPressConsumed()
                         if (insertString.isEmpty()) {
-                            flickView.setCursorMode(true)
+                            enterSpaceConvertCursorMoveMode(
+                                SpaceConvertCursorMoveSource.SumireCustomConvert
+                            ) {
+                                flickView.setCursorMode(true)
+                            }
                         } else {
                             if (zenzEnableLongPressConversionPreference == true) {
                                 scope.launch {
@@ -9175,10 +9250,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 if (conversionKeySwipePreference == true) {
                                     if (!isHenkan.get()) {
-                                        flickView.setCursorMode(true)
+                                        enterSpaceConvertCursorMoveMode(
+                                            SpaceConvertCursorMoveSource.SumireCustomConvert
+                                        ) {
+                                            flickView.setCursorMode(true)
+                                        }
                                     }
                                 } else {
-                                    handleSpaceLongActionSumire()
+                                    handleSpaceLongActionSumire(
+                                        SpaceConvertCursorMoveSource.SumireCustomConvert
+                                    )
                                 }
                             }
                         }
@@ -9189,7 +9270,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             markSpaceConvertLongPressConsumed()
                             return
                         }
-                        flickView.setCursorMode(true)
+                        enterSpaceConvertCursorMoveMode(
+                            SpaceConvertCursorMoveSource.SumireCustomSpace
+                        ) {
+                            flickView.setCursorMode(true)
+                        }
                         markSpaceConvertLongPressConsumed()
                     }
 
@@ -9461,10 +9546,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         } else {
                             if (conversionKeySwipePreference == true) {
                                 if (!isHenkan.get()) {
-                                    flickView.setCursorMode(true)
+                                    enterSpaceConvertCursorMoveMode(
+                                        SpaceConvertCursorMoveSource.SumireCustomFlickConvert
+                                    ) {
+                                        flickView.setCursorMode(true)
+                                    }
                                 }
                             } else {
-                                handleSpaceLongActionSumire()
+                                handleSpaceLongActionSumire(
+                                    SpaceConvertCursorMoveSource.SumireCustomFlickConvert
+                                )
                             }
                         }
                     }
@@ -9525,7 +9616,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             markSpaceConvertLongPressConsumed()
                             return
                         }
-                        flickView.setCursorMode(true)
+                        enterSpaceConvertCursorMoveMode(
+                            SpaceConvertCursorMoveSource.SumireCustomFlickSpace
+                        ) {
+                            flickView.setCursorMode(true)
+                        }
                         markSpaceConvertLongPressConsumed()
                     }
 
@@ -10476,6 +10571,84 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         rightCursorKeyLongKeyPressed.set(false)
         rightLongPressJob?.cancel()
         rightLongPressJob = null
+    }
+
+    private fun stopAllOngoingKeyLongPresses() {
+        stopDeleteLongPress()
+        cancelLeftLongPress()
+        cancelRightLongPress()
+        stopSpaceLongPressState()
+        onKeyboardSwitchLongPressUp = false
+    }
+
+    private fun stopSpaceLongPressState() {
+        isSpaceKeyLongPressed = false
+        _cursorMoveMode.update { false }
+
+        mainLayoutBinding?.keyboardView?.setTextToMoveCursorMode(false)
+        floatingKeyboardBinding?.keyboardViewFloating?.setTextToMoveCursorMode(false)
+        mainLayoutBinding?.qwertyView?.setCursorMode(false)
+        floatingKeyboardBinding?.qwertyViewFloating?.setCursorMode(false)
+        mainLayoutBinding?.customLayoutDefault?.setCursorMode(false)
+        floatingKeyboardBinding?.customLayoutFloating?.setCursorMode(false)
+    }
+
+    private fun cancelOngoingLongPressForKey(key: Key) {
+        when (key) {
+            Key.SideKeyDelete -> stopDeleteLongPress()
+            Key.SideKeyCursorLeft -> cancelLeftLongPress()
+            Key.SideKeyCursorRight -> cancelRightLongPress()
+            Key.SideKeySpace -> stopSpaceLongPressState()
+            Key.SideKeyInputMode,
+            Key.KeyDakutenSmall -> {
+                onKeyboardSwitchLongPressUp = false
+            }
+
+            Key.NotSelected -> Unit
+            else -> Unit
+        }
+    }
+
+    private fun cancelOngoingLongPressForQwertyKey(key: QWERTYKey) {
+        when (key) {
+            QWERTYKey.QWERTYKeyDelete -> stopDeleteLongPress()
+            QWERTYKey.QWERTYKeyCursorLeft -> cancelLeftLongPress()
+            QWERTYKey.QWERTYKeyCursorRight -> cancelRightLongPress()
+            QWERTYKey.QWERTYKeySpace -> stopSpaceLongPressState()
+            QWERTYKey.QWERTYKeySwitchDefaultLayout -> {
+                onKeyboardSwitchLongPressUp = false
+            }
+
+            else -> Unit
+        }
+    }
+
+    private fun cancelOngoingLongPressForAction(action: KeyAction) {
+        when (action) {
+            KeyAction.Delete,
+            KeyAction.Backspace,
+            KeyAction.DeleteUntilSymbol,
+            KeyAction.DeleteAfterCursorUntilSymbol,
+            KeyAction.UndoLastDelete -> {
+                stopDeleteLongPress()
+            }
+
+            KeyAction.MoveCursorLeft -> cancelLeftLongPress()
+            KeyAction.MoveCursorRight -> cancelRightLongPress()
+            KeyAction.Space,
+            KeyAction.Convert,
+            KeyAction.ForceHalfWidthSpace,
+            KeyAction.ForceFullWidthSpace -> {
+                stopSpaceLongPressState()
+            }
+
+            KeyAction.SwitchToNextIme -> {
+                onKeyboardSwitchLongPressUp = false
+            }
+
+            KeyAction.Cancel -> stopAllOngoingKeyLongPresses()
+            else -> Unit
+        }
     }
 
     private fun copyAction() {
@@ -12787,7 +12960,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             inputString.collectLatest { string ->
-                processInputString(string, mainView)
+                measureDebugStage("IMEService.input.total") {
+                    processInputString(string, mainView)
+                }
             }
         }
     }
@@ -12800,7 +12975,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun performZenzRequest(
         insertString: String,
         leftContextOverride: String? = null
-    ): List<ZenzCandidate> = withContext(Dispatchers.Default) {
+    ): List<ZenzCandidate> = measureDebugStage("IMEService.Zenz.liveRequest") {
+        withContext(Dispatchers.Default) {
 
         // 2. バリデーション (ひらがな以外や、1文字以下の場合はスキップなど)
         // ※元のロジック: insertString.length == 1 の場合は emptyList
@@ -12856,6 +13032,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } catch (e: Exception) {
             Timber.e(e, "Error in zenzEngine generation")
             emptyList()
+        }
         }
     }
 
@@ -13042,7 +13219,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         candidates: List<Candidate>,
         plan: ZenzRerankPlan
-    ): List<Candidate>? {
+    ): List<Candidate>? = measureDebugStage("IMEService.Zenz.rerank") {
         val rawScores = withContext(Dispatchers.Default) {
             zenzEngine?.scoreCandidatesV32(
                 profile = zenzProfilePreference ?: "",
@@ -13062,11 +13239,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 plan.rerankTargets.size,
                 rawScores.size
             )
-            return null
+            return@measureDebugStage null
         }
 
         if (rawScores.none { it.isFinite() }) {
-            return null
+            return@measureDebugStage null
         }
 
         val baseNorm = minMaxNormalize(plan.rerankTargets.map { -it.value.score.toFloat() })
@@ -13104,7 +13281,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             rawScores.toList()
         )
 
-        return reranked
+        reranked
     }
 
     private suspend fun getZenzContext(
@@ -14190,7 +14367,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         _suggestionFlag.emit(CandidateShowFlag.Updating)
         val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
-        delay(timeToDelay)
+        measureDebugStage("IMEService.handleDefaultInput.delay") {
+            delay(timeToDelay)
+        }
 
         if (inputString.value != string) {
             return
@@ -14236,6 +14415,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun shouldStartLiveConversion(input: String): Boolean {
         return isLiveConversionEnable == true && input.length >= liveConversionStartLength
+    }
+
+    private fun liveConversionApplyDelayMillis(): Long {
+        val originalDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
+
+        if (isFlickOnlyMode == true) {
+            return 0L
+        }
+
+        return if (requiresOriginalInputProtectionDelay()) {
+            originalDelay
+        } else {
+            minOf(originalDelay, DEFAULT_LIVE_CONVERSION_APPLY_DELAY_MS)
+        }
+    }
+
+    private fun requiresOriginalInputProtectionDelay(): Boolean {
+        if (stringInTail.get().isNotEmpty()) return true
+        if (hasConvertedKatakana) return true
+        if (isBunsetsuCursorMoveSessionActive()) return true
+        if (bunsetsuSeparation == true && (bunsetusMultipleDetect || henkanPressedWithBunsetsuDetect)) {
+            return true
+        }
+        if (zenzEnableStatePreference == true || zenzRerankPreference == true || zenzaiEnableStatePreference == true) {
+            return true
+        }
+        if (hasHardwareKeyboardConnected == true || physicalKeyboardEnable.replayCache.firstOrNull() == true) {
+            return true
+        }
+
+        return when (qwertyMode.value) {
+            TenKeyQWERTYMode.Default,
+            TenKeyQWERTYMode.Sumire,
+            TenKeyQWERTYMode.Custom,
+            TenKeyQWERTYMode.Number,
+            TenKeyQWERTYMode.TenKeyQWERTY,
+            TenKeyQWERTYMode.TenKeyQWERTYRomaji -> true
+        }
+    }
+
+    private suspend fun delayBeforeApplyingLiveConversion() {
+        val applyDelay = liveConversionApplyDelayMillis()
+        measureDebugStage("IMEService.liveConversionApplyDelay") {
+            if (applyDelay > 0L) {
+                delay(applyDelay)
+            }
+        }
     }
 
     private fun applyFirstSuggestion(
@@ -15638,75 +15864,94 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         assertMainThread("updateMainCandidateStripAfterListUpdated")
         if (isKeyboardFloatingMode == true) return
         val binding = mainLayoutBinding ?: return
-        setMainSuggestionColumn(binding)
-        binding.suggestionRecyclerView.scrollToPosition(0)
-        updateCandidateStripPresentation(binding)
+        measureDebugSection("IMEService.updateMainCandidateStripAfterListUpdated") {
+            setMainSuggestionColumn(binding)
+            measureDebugSection("IMEService.scrollToPosition0") {
+                binding.suggestionRecyclerView.scrollToPosition(0)
+            }
+            measureDebugSection("IMEService.updateCandidateStripPresentation.afterListUpdated") {
+                updateCandidateStripPresentation(binding)
+            }
+        }
     }
 
     private fun setMainSuggestionColumn(
         mainView: MainLayoutBinding
     ) {
         assertMainThread("setMainSuggestionColumn")
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        measureDebugSection("IMEService.setMainSuggestionColumn") {
+            val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
 
-        val columnNum = if (isPortrait) {
-            candidateColumns ?: "1"
-        } else {
-            candidateColumnsLandscape ?: "1"
-        }
-
-        val adapter = mainView.suggestionRecyclerView.adapter
-        mainView.suggestionRecyclerView.adapter = null
-
-        if (mainView.suggestionRecyclerView.itemDecorationCount > 0) {
-            mainView.suggestionRecyclerView.removeItemDecorationAt(0)
-        }
-
-        if (shouldUseSelectedTextGemmaActionLayout()) {
-            mainView.suggestionRecyclerView.layoutManager =
-                LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-            mainView.suggestionRecyclerView.adapter = adapter
-            return
-        }
-
-        when (columnNum) {
-            "1" -> {
-                mainView.suggestionRecyclerView.layoutManager =
-                    LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+            val columnNum = if (isPortrait) {
+                candidateColumns ?: "1"
+            } else {
+                candidateColumnsLandscape ?: "1"
             }
 
-            "2", "3" -> {
-                val spanCount = columnNum.toInt()
-                val gridLayoutManager = GridLayoutManager(
-                    this@IMEService, spanCount, GridLayoutManager.HORIZONTAL, false
-                )
+            val key = SuggestionLayoutKey(
+                isPortrait = isPortrait,
+                columnNum = columnNum,
+                useSelectedTextGemmaActionLayout = shouldUseSelectedTextGemmaActionLayout(),
+                isKeyboardFloatingMode = isKeyboardFloatingMode == true
+            )
+            val recyclerView = mainView.suggestionRecyclerView
+            if (lastSuggestionLayoutKey == key && recyclerView.layoutManager != null) {
+                return@measureDebugSection
+            }
 
-                gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
-                    override fun getSpanSize(position: Int): Int {
-                        return when (adapter?.getItemViewType(position)) {
-                            // If the item is the empty view or the custom layout picker,
-                            // make it span all columns.
-                            SuggestionAdapter.VIEW_TYPE_EMPTY,
-                            SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER,
-                            SuggestionAdapter.VIEW_TYPE_SHORTCUT -> spanCount
-                            // Otherwise (for regular suggestions), make it span just one column.
-                            else -> 1
-                        }
-                    }
+            lastSuggestionLayoutKey = key
+
+            val adapter = recyclerView.adapter
+            recyclerView.adapter = null
+
+            mainSuggestionGridSpacingDecoration?.let { decoration ->
+                recyclerView.removeItemDecoration(decoration)
+                mainSuggestionGridSpacingDecoration = null
+            }
+
+            if (key.useSelectedTextGemmaActionLayout) {
+                recyclerView.layoutManager =
+                    LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+                recyclerView.adapter = adapter
+                return@measureDebugSection
+            }
+
+            when (columnNum) {
+                "1" -> {
+                    recyclerView.layoutManager =
+                        LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
                 }
 
-                val spacingInPixels =
-                    resources.getDimensionPixelSize(com.kazumaproject.core.R.dimen.grid_spacing)
+                "2", "3" -> {
+                    val spanCount = columnNum.toInt()
+                    val gridLayoutManager = GridLayoutManager(
+                        this@IMEService, spanCount, GridLayoutManager.HORIZONTAL, false
+                    )
 
-                mainView.suggestionRecyclerView.layoutManager = gridLayoutManager
-                mainView.suggestionRecyclerView.addItemDecoration(
-                    GridSpacingItemDecoration(
+                    gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                        override fun getSpanSize(position: Int): Int {
+                            return when (adapter?.getItemViewType(position)) {
+                                SuggestionAdapter.VIEW_TYPE_EMPTY,
+                                SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER,
+                                SuggestionAdapter.VIEW_TYPE_SHORTCUT -> spanCount
+                                else -> 1
+                            }
+                        }
+                    }
+
+                    val spacingInPixels =
+                        resources.getDimensionPixelSize(com.kazumaproject.core.R.dimen.grid_spacing)
+                    val decoration = GridSpacingItemDecoration(
                         spanCount, spacingInPixels, true
                     )
-                )
+
+                    recyclerView.layoutManager = gridLayoutManager
+                    recyclerView.addItemDecoration(decoration)
+                    mainSuggestionGridSpacingDecoration = decoration
+                }
             }
+            recyclerView.adapter = adapter
         }
-        mainView.suggestionRecyclerView.adapter = adapter
     }
 
     private fun shouldUseSelectedTextGemmaActionLayout(): Boolean {
@@ -16676,13 +16921,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 specialTextSizeSp = qwertySpecialKeyTextSize ?: 12.0f,
                 specialIconSizeDp = qwertySpecialKeyIconSize ?: 18.0f
             )
+            setOnQwertyKeyTouchCancelListener(object : QwertyKeyTouchCancelListener {
+                override fun onQwertyKeyTouchCanceled(
+                    key: QWERTYKey,
+                    reason: KeyTouchCancelReason
+                ) {
+                    cancelOngoingLongPressForQwertyKey(key)
+                }
+            })
 
             setOnQWERTYKeyListener(object : QWERTYKeyListener {
                 override fun onPressedQWERTYKey(qwertyKey: QWERTYKey) {
                     if (isKeyboardLayoutEditModeActive()) return
                     Timber.d("Pressed Key: $qwertyKey")
                     handleKeyPressFeedback(getKeySoundType(qwertyKey))
-                    deleteLongPressJob?.cancel()
+                    if (qwertyKey != QWERTYKey.QWERTYKeyDelete) {
+                        stopDeleteLongPress()
+                    }
                 }
 
                 override fun onReleasedQWERTYKey(
@@ -16762,10 +17017,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     handleLeftCursor(GestureType.Tap, insertString)
                                 }
                             }
-                            onLeftKeyLongPressUp.set(true)
-                            leftCursorKeyLongKeyPressed.set(false)
-                            leftLongPressJob?.cancel()
-                            leftLongPressJob = null
+                            cancelLeftLongPress()
                             isSpaceKeyLongPressed = false
                         }
 
@@ -16783,10 +17035,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     actionInRightKeyPressed(GestureType.Tap, insertString)
                                 }
                             }
-                            onRightKeyLongPressUp.set(true)
-                            rightCursorKeyLongKeyPressed.set(false)
-                            rightLongPressJob?.cancel()
-                            rightLongPressJob = null
+                            cancelRightLongPress()
                             isSpaceKeyLongPressed = false
                         }
 
@@ -16794,10 +17043,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (!leftCursorKeyLongKeyPressed.get()) {
                                 handleLeftCursor(GestureType.FlickTop, insertString)
                             }
-                            onLeftKeyLongPressUp.set(true)
-                            leftCursorKeyLongKeyPressed.set(false)
-                            leftLongPressJob?.cancel()
-                            leftLongPressJob = null
+                            cancelLeftLongPress()
                             isSpaceKeyLongPressed = false
                         }
 
@@ -16805,10 +17051,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             if (!leftCursorKeyLongKeyPressed.get()) {
                                 handleLeftCursor(GestureType.FlickBottom, insertString)
                             }
-                            onLeftKeyLongPressUp.set(true)
-                            leftCursorKeyLongKeyPressed.set(false)
-                            leftLongPressJob?.cancel()
-                            leftLongPressJob = null
+                            cancelLeftLongPress()
                             isSpaceKeyLongPressed = false
                         }
 
@@ -17021,7 +17264,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             markSpaceConvertLongPressConsumed()
                             if (insertString.isEmpty() || !currentQwertyRomajiModeForSession) {
-                                setCursorMode(true)
+                                enterSpaceConvertCursorMoveMode(
+                                    SpaceConvertCursorMoveSource.QwertySpace
+                                ) {
+                                    setCursorMode(true)
+                                }
                             } else {
                                 if (zenzEnableLongPressConversionPreference == true) {
                                     scope.launch {
@@ -17031,12 +17278,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         )
                                     }
                                 } else {
-                                    if (conversionKeySwipePreference == true) {
-                                        if (!isHenkan.get()) {
+                                    if (!isHenkan.get()) {
+                                        enterSpaceConvertCursorMoveMode(
+                                            SpaceConvertCursorMoveSource.QwertySpace
+                                        ) {
                                             setCursorMode(true)
                                         }
-                                    } else {
-                                        setCursorMode(true)
                                     }
                                 }
                             }
@@ -18350,6 +18597,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             layoutManager = null
             adapter = null
         }
+        lastSuggestionLayoutKey = null
+        mainSuggestionGridSpacingDecoration = null
         releaseFloatingKeyboardBackgroundVideoPlayer()
         mainLayoutBinding = null
         floatingKeyboardBinding = null
@@ -18915,9 +19164,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateDisplayedCandidates(insertString, displayedCandidates)
 
         if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
-            if (isFlickOnlyMode != true) {
-                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
-            }
+            delayBeforeApplyingLiveConversion()
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
@@ -18981,9 +19228,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateDisplayedCandidates(insertString, displayedCandidates)
 
         if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
-            if (isFlickOnlyMode != true) {
-                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
-            }
+            delayBeforeApplyingLiveConversion()
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
@@ -19046,9 +19291,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         }
         if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
-            if (isFlickOnlyMode != true) {
-                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
-            }
+            delayBeforeApplyingLiveConversion()
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
@@ -19118,9 +19361,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         }
         if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
-            if (isFlickOnlyMode != true) {
-                delay(delayTime?.toLong() ?: DEFAULT_DELAY_MS)
-            }
+            delayBeforeApplyingLiveConversion()
             if (!shouldApplyCandidateResult(insertString)) {
                 return
             }
@@ -19266,8 +19507,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val orderedCandidates =
             if (appPreference.candidate_order_override_enable_preference == true) {
-                withContext(Dispatchers.IO) {
-                    candidateOrderOverrideRepository.applyOrder(
+                measureDebugStage("IMEService.candidateOrderOverride") {
+                    candidateOrderOverrideRepository.applyOrderFromSnapshot(
                         input = insertString,
                         candidates = filteredCandidates
                     )
@@ -19288,38 +19529,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun getSuggestionList(
         insertString: String,
         mainView: MainLayoutBinding
-    ): List<Candidate> {
+    ): List<Candidate> = measureDebugStage("IMEService.getSuggestionList") {
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
-            withContext(Dispatchers.IO) {
-                val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
-                if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
-                userDictionaryRepository.searchByReadingPrefixSuspend(
-                    prefix = insertString, limit = 4
-                ).map {
-                    Candidate(
-                        string = it.word,
-                        type = (28).toByte(),
-                        length = (it.reading.length).toUByte(),
-                        score = it.posScore
-                    )
-                }.sortedBy { it.score }
+            measureDebugStage("IMEService.getSuggestionList.userDictionary") {
+                withContext(Dispatchers.IO) {
+                    val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
+                    if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                    userDictionaryRepository.searchByReadingPrefixSuspend(
+                        prefix = insertString, limit = 4
+                    ).map {
+                        Candidate(
+                            string = it.word,
+                            type = (28).toByte(),
+                            length = (it.reading.length).toUByte(),
+                            score = it.posScore
+                        )
+                    }.sortedBy { it.score }
+                }
             }
         } else {
             emptyList()
         }
 
         val resultFromUserTemplate = if (isUserTemplateEnable == true) {
-            withContext(Dispatchers.IO) {
-                userTemplateRepository.searchByReading(
-                    reading = insertString, limit = 8
-                ).map {
-                    Candidate(
-                        string = it.word,
-                        type = (30).toByte(),
-                        length = (it.reading.length).toUByte(),
-                        score = it.posScore
-                    )
-                }.sortedBy { it.score }
+            measureDebugStage("IMEService.getSuggestionList.userTemplate") {
+                withContext(Dispatchers.IO) {
+                    userTemplateRepository.searchByReading(
+                        reading = insertString, limit = 8
+                    ).map {
+                        Candidate(
+                            string = it.word,
+                            type = (30).toByte(),
+                            length = (it.reading.length).toUByte(),
+                            score = it.posScore
+                        )
+                    }.sortedBy { it.score }
+                }
             }
         } else {
             emptyList()
@@ -19327,26 +19572,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val resultFromLearnDictionary =
             if (enablePredictionSearchLearnDictionaryPreference == true) {
-                withContext(Dispatchers.IO) {
-                    val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
-                    if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
-                    learnRepository.predictiveSearchByInput(
-                        prefix = insertString, limit = 4
-                    ).map {
-                        Candidate(
-                            string = it.out,
-                            type = (34).toByte(),
-                            length = (it.input.length).toUByte(),
-                            score = it.score.toInt()
-                        )
-                    }.sortedBy { it.score }
+                measureDebugStage("IMEService.getSuggestionList.learnDictionary") {
+                    withContext(Dispatchers.IO) {
+                        val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
+                        if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                        learnRepository.predictiveSearchByInput(
+                            prefix = insertString, limit = 4
+                        ).map {
+                            Candidate(
+                                string = it.out,
+                                type = (34).toByte(),
+                                length = (it.input.length).toUByte(),
+                                score = it.score.toInt()
+                            )
+                        }.sortedBy { it.score }
+                    }
                 }
             } else {
                 emptyList()
             }
 
-        val ngWords =
+        val ngWords = measureDebugStage("IMEService.getSuggestionList.ngWordSnapshot") {
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
+        }
 
         val enableFlickPref = (enableTypoCorrectionJapaneseFlickKeyboardPreference == true)
         val enableTypoCorrectionJapaneseFlick =
@@ -19357,71 +19605,78 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !currentQwertyRomajiModeForSession))
 
         var engineResult: BunsetsuCandidateResult? = null
-        val engineCandidates = withContext(Dispatchers.Default) {
-            if (bunsetsuSeparation == true) {
-                engineResult = kanaKanjiEngine.getCandidatesWithBunsetsuSeparation(
-                    input = insertString,
-                    n = nBest ?: 4,
-                    mozcUtPersonName = mozcUTPersonName,
-                    mozcUTPlaces = mozcUTPlaces,
-                    mozcUTWiki = mozcUTWiki,
-                    mozcUTNeologd = mozcUTNeologd,
-                    mozcUTWeb = mozcUTWeb,
-                    userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                    isOmissionSearchEnable = isOmissionSearchEnable ?: false,
-                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
-                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                        ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
-                )
-                engineResult?.let {
-                    Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: ${it.primarySplitPositions} ${isHenkan.get()} $ngWords $insertString ${it.splitPatterns}")
+        val engineCandidates = measureDebugStage("IMEService.getSuggestionList.kanaKanjiEngine") {
+            withContext(Dispatchers.Default) {
+                if (bunsetsuSeparation == true) {
+                    engineResult = kanaKanjiEngine.getCandidatesWithBunsetsuSeparation(
+                        input = insertString,
+                        n = nBest ?: 4,
+                        mozcUtPersonName = mozcUTPersonName,
+                        mozcUTPlaces = mozcUTPlaces,
+                        mozcUTWiki = mozcUTWiki,
+                        mozcUTNeologd = mozcUTNeologd,
+                        mozcUTWeb = mozcUTWeb,
+                        userDictionaryRepository = userDictionaryRepository,
+                        learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                        isOmissionSearchEnable = isOmissionSearchEnable ?: false,
+                        enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+                        enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+                        typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
+                            ?: 3000,
+                        omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
+                    )
+                    engineResult?.let {
+                        Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: ${it.primarySplitPositions} ${isHenkan.get()} $ngWords $insertString ${it.splitPatterns}")
+                    }
+                    engineResult?.candidates.orEmpty()
+                } else {
+                    kanaKanjiEngine.getCandidates(
+                        input = insertString,
+                        n = nBest ?: 4,
+                        mozcUtPersonName = mozcUTPersonName,
+                        mozcUTPlaces = mozcUTPlaces,
+                        mozcUTWiki = mozcUTWiki,
+                        mozcUTNeologd = mozcUTNeologd,
+                        mozcUTWeb = mozcUTWeb,
+                        userDictionaryRepository = userDictionaryRepository,
+                        learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                        isOmissionSearchEnable = isOmissionSearchEnable ?: false,
+                        enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+                        enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+                        typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
+                            ?: 3000,
+                        omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
+                    )
                 }
-                engineResult?.candidates.orEmpty()
-            } else {
-                kanaKanjiEngine.getCandidates(
-                    input = insertString,
-                    n = nBest ?: 4,
-                    mozcUtPersonName = mozcUTPersonName,
-                    mozcUTPlaces = mozcUTPlaces,
-                    mozcUTWiki = mozcUTWiki,
-                    mozcUTNeologd = mozcUTNeologd,
-                    mozcUTWeb = mozcUTWeb,
-                    userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
-                    isOmissionSearchEnable = isOmissionSearchEnable ?: false,
-                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
-                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                        ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
-                )
             }
         }
         val result = if (conversionCandidatesRomajiEnablePreference == true) {
-            val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
-                getRomajiCandidates(insertString = insertString)
-            }
+            val romajiConversionResultList: List<Candidate> =
+                measureDebugStage("IMEService.getSuggestionList.romajiCandidates") {
+                    withContext(Dispatchers.Default) {
+                        getRomajiCandidates(insertString = insertString)
+                    }
+                }
             resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates + romajiConversionResultList
         } else {
             resultFromLearnDictionary + resultFromUserTemplate + resultFromUserDictionary + engineCandidates
         }
-        val filteredCandidates = result.filter { candidate ->
-            if (ngWords.isEmpty()) {
-                true
-            } else {
-                ngPattern.value.let {
-                    !it.containsMatchIn(candidate.string)
+        val filteredCandidates = measureDebugStage("IMEService.getSuggestionList.ngWordFilterDistinct") {
+            result.filter { candidate ->
+                if (ngWords.isEmpty()) {
+                    true
+                } else {
+                    ngPattern.value.let {
+                        !it.containsMatchIn(candidate.string)
+                    }
                 }
-            }
-        }.distinctBy { it.string }
+            }.distinctBy { it.string }
+        }
 
         val orderedCandidates =
             if (appPreference.candidate_order_override_enable_preference == true) {
-                withContext(Dispatchers.IO) {
-                    candidateOrderOverrideRepository.applyOrder(
+                measureDebugStage("IMEService.candidateOrderOverride") {
+                    candidateOrderOverrideRepository.applyOrderFromSnapshot(
                         input = insertString,
                         candidates = filteredCandidates
                     )
@@ -19436,7 +19691,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             engineResult = engineResult
         )
 
-        return orderedCandidates
+        orderedCandidates
     }
 
     private fun getLeftContext(inputLength: Int): String {
@@ -19583,8 +19838,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val orderedCandidates =
             if (appPreference.candidate_order_override_enable_preference == true) {
-                withContext(Dispatchers.IO) {
-                    candidateOrderOverrideRepository.applyOrder(
+                measureDebugStage("IMEService.candidateOrderOverride") {
+                    candidateOrderOverrideRepository.applyOrderFromSnapshot(
                         input = insertString,
                         candidates = filteredCandidates
                     )

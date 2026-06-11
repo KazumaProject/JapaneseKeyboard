@@ -255,7 +255,7 @@ class CustomAngleFlickController(
                 return true
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 longPressJob?.cancel()
 
                 val finalDirection = calculateDirection(event.rawX, event.rawY)
@@ -283,6 +283,14 @@ class CustomAngleFlickController(
                     }
                 }
 
+                hidePopup()
+                return true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                longPressJob?.cancel()
+                isLongPressModeActive = false
+                previousDirection = CircularFlickDirection.TAP
                 hidePopup()
                 return true
             }
