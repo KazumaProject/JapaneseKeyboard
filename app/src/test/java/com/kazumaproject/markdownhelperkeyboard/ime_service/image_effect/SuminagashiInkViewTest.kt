@@ -95,6 +95,27 @@ class SuminagashiInkViewTest {
     }
 
     @Test
+    fun residualSurfacePersistsAfterActiveDropsAreGone() {
+        view.layout(0, 0, 240, 180)
+        view.configure(
+            enabled = true,
+            colorMode = "fixed",
+            fixedColor = Color.rgb(38, 70, 120)
+        )
+        view.onPointerDown(pointerId = 3, x = 20f, y = 30f)
+        val bitmap = Bitmap.createBitmap(240, 180, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+
+        view.draw(canvas)
+        view.clearActiveDropsForTesting()
+        view.draw(canvas)
+
+        assertEquals(0, view.dropCountForTesting())
+        assertTrue(view.hasResidualInkForTesting())
+        bitmap.recycle()
+    }
+
+    @Test
     fun pointerUpKeepsInkAndClearsPointerState() {
         view.configure(
             enabled = true,
