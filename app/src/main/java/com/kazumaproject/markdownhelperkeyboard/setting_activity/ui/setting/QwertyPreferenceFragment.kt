@@ -40,6 +40,8 @@ class QwertyPreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        applyLegacySearchResultFilterIfNeeded()
     }
 
     companion object {

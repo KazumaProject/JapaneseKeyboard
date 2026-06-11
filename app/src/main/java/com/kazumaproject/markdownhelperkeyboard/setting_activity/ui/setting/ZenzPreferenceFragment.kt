@@ -32,6 +32,7 @@ class ZenzPreferenceFragment : PreferenceFragmentCompat() {
         }
 
         updateModelPrefSummary()
+        applyLegacySearchResultFilterIfNeeded()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
