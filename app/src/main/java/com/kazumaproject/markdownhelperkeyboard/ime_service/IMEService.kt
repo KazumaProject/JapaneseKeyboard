@@ -6508,6 +6508,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeySpace -> {
                 if (shouldSuppressSpaceConvertTapAfterLongPress()) {
+                    finishTenKeyCursorMoveModeAfterLongPressRelease()
                     return
                 } else if (cursorMoveMode.value) {
                     _cursorMoveMode.update { false }
@@ -6710,6 +6711,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             Key.SideKeySpace -> {
                 if (shouldSuppressSpaceConvertTapAfterLongPress()) {
+                    finishTenKeyCursorMoveModeAfterLongPressRelease()
                     return
                 } else if (cursorMoveMode.value) {
                     _cursorMoveMode.update { false }
@@ -8024,6 +8026,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suppressSpaceConvertTapUntilUptimeMillis = SystemClock.uptimeMillis() + 700L
     }
 
+    private fun enterTenKeyCursorMoveMode() {
+        _cursorMoveMode.update { true }
+        mainLayoutBinding?.keyboardView?.setTextToMoveCursorMode(true)
+        floatingKeyboardBinding?.keyboardViewFloating?.setTextToMoveCursorMode(true)
+    }
+
+    private fun finishTenKeyCursorMoveModeAfterLongPressRelease() {
+        _cursorMoveMode.update { false }
+        mainLayoutBinding?.keyboardView?.setTextToMoveCursorMode(false)
+        floatingKeyboardBinding?.keyboardViewFloating?.setTextToMoveCursorMode(false)
+    }
+
+    private fun enterSpaceConvertCursorMoveMode(
+        source: SpaceConvertCursorMoveSource,
+        enterCursorMoveMode: () -> Unit
+    ): Boolean {
+        if (!SpaceConvertCursorMovePolicy.shouldEnterCursorMoveMode(
+                conversionKeySwipeCursorMovePreference = conversionKeySwipePreference,
+                hasInputString = inputString.value.isNotEmpty(),
+                source = source
+            )
+        ) {
+            return false
+        }
+        enterCursorMoveMode()
+        return true
+    }
+
     private fun shouldSuppressSpaceConvertTapAfterLongPress(): Boolean {
         if (suppressSpaceConvertTapUntilUptimeMillis <= 0L) return false
         val shouldSuppress = SystemClock.uptimeMillis() <= suppressSpaceConvertTapUntilUptimeMillis
@@ -8053,7 +8083,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             } else {
                 if (conversionKeySwipePreference == true) {
                     if (!isHenkan.get()) {
-                        _cursorMoveMode.update { true }
+                        enterTenKeyCursorMoveMode()
                     }
                 } else {
                     mainLayoutBinding?.let {
@@ -8107,12 +8137,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
         } else {
-            _cursorMoveMode.update { true }
+            enterTenKeyCursorMoveMode()
         }
         Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
 
-    private fun handleSpaceLongActionSumire() {
+    private fun handleSpaceLongActionSumire(source: SpaceConvertCursorMoveSource) {
         Timber.d("SideKeySpace LongPress: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
         if (switchBunsetsuSplitPattern()) {
             markSpaceConvertLongPressConsumed()
@@ -8169,7 +8199,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-            _cursorMoveMode.update { true }
+            enterSpaceConvertCursorMoveMode(source) {
+                _cursorMoveMode.update { true }
+            }
         }
         Timber.d("SideKeySpace LongPress after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
@@ -8231,7 +8263,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
-            _cursorMoveMode.update { true }
+            enterTenKeyCursorMoveMode()
         }
         Timber.d("SideKeySpace LongPress Floating after: ${cursorMoveMode.value} $isSpaceKeyLongPressed")
     }
@@ -9179,7 +9211,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                         markSpaceConvertLongPressConsumed()
                         if (insertString.isEmpty()) {
-                            flickView.setCursorMode(true)
+                            enterSpaceConvertCursorMoveMode(
+                                SpaceConvertCursorMoveSource.SumireCustomConvert
+                            ) {
+                                flickView.setCursorMode(true)
+                            }
                         } else {
                             if (zenzEnableLongPressConversionPreference == true) {
                                 scope.launch {
@@ -9191,10 +9227,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             } else {
                                 if (conversionKeySwipePreference == true) {
                                     if (!isHenkan.get()) {
-                                        flickView.setCursorMode(true)
+                                        enterSpaceConvertCursorMoveMode(
+                                            SpaceConvertCursorMoveSource.SumireCustomConvert
+                                        ) {
+                                            flickView.setCursorMode(true)
+                                        }
                                     }
                                 } else {
-                                    handleSpaceLongActionSumire()
+                                    handleSpaceLongActionSumire(
+                                        SpaceConvertCursorMoveSource.SumireCustomConvert
+                                    )
                                 }
                             }
                         }
@@ -9205,7 +9247,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             markSpaceConvertLongPressConsumed()
                             return
                         }
-                        flickView.setCursorMode(true)
+                        enterSpaceConvertCursorMoveMode(
+                            SpaceConvertCursorMoveSource.SumireCustomSpace
+                        ) {
+                            flickView.setCursorMode(true)
+                        }
                         markSpaceConvertLongPressConsumed()
                     }
 
@@ -9477,10 +9523,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         } else {
                             if (conversionKeySwipePreference == true) {
                                 if (!isHenkan.get()) {
-                                    flickView.setCursorMode(true)
+                                    enterSpaceConvertCursorMoveMode(
+                                        SpaceConvertCursorMoveSource.SumireCustomFlickConvert
+                                    ) {
+                                        flickView.setCursorMode(true)
+                                    }
                                 }
                             } else {
-                                handleSpaceLongActionSumire()
+                                handleSpaceLongActionSumire(
+                                    SpaceConvertCursorMoveSource.SumireCustomFlickConvert
+                                )
                             }
                         }
                     }
@@ -9541,7 +9593,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             markSpaceConvertLongPressConsumed()
                             return
                         }
-                        flickView.setCursorMode(true)
+                        enterSpaceConvertCursorMoveMode(
+                            SpaceConvertCursorMoveSource.SumireCustomFlickSpace
+                        ) {
+                            flickView.setCursorMode(true)
+                        }
                         markSpaceConvertLongPressConsumed()
                     }
 
@@ -17113,7 +17169,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             }
                             markSpaceConvertLongPressConsumed()
                             if (insertString.isEmpty() || !currentQwertyRomajiModeForSession) {
-                                setCursorMode(true)
+                                enterSpaceConvertCursorMoveMode(
+                                    SpaceConvertCursorMoveSource.QwertySpace
+                                ) {
+                                    setCursorMode(true)
+                                }
                             } else {
                                 if (zenzEnableLongPressConversionPreference == true) {
                                     scope.launch {
@@ -17123,12 +17183,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         )
                                     }
                                 } else {
-                                    if (conversionKeySwipePreference == true) {
-                                        if (!isHenkan.get()) {
+                                    if (!isHenkan.get()) {
+                                        enterSpaceConvertCursorMoveMode(
+                                            SpaceConvertCursorMoveSource.QwertySpace
+                                        ) {
                                             setCursorMode(true)
                                         }
-                                    } else {
-                                        setCursorMode(true)
                                     }
                                 }
                             }
