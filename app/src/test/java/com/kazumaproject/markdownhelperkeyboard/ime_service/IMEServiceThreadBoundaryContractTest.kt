@@ -44,6 +44,27 @@ class IMEServiceThreadBoundaryContractTest {
         assertTrue(text.contains("withContext(Dispatchers.Main.immediate)"))
     }
 
+    @Test
+    fun candidateStripLayoutUsesStableLayoutKey() {
+        val text = mainFile("java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt")
+            .readText()
+
+        assertTrue(text.contains("data class SuggestionLayoutKey"))
+        assertTrue(text.contains("lastSuggestionLayoutKey == key"))
+        assertTrue(text.contains("mainSuggestionGridSpacingDecoration"))
+        assertTrue(text.contains("removeItemDecoration(decoration)"))
+    }
+
+    @Test
+    fun suggestionAdapterDoesNotCallCalculateDiffDirectly() {
+        val text = mainFile(
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/adapters/SuggestionAdapter.kt"
+        ).readText()
+
+        assertTrue(text.contains("AsyncListDiffer"))
+        assertTrue(!text.contains("DiffUtil.calculateDiff("))
+    }
+
     private fun functionBodyLineRange(lines: List<String>, functionName: String): IntRange {
         val start = lines.indexOfFirst { it.contains("fun $functionName") }
         assertTrue("Missing function $functionName", start >= 0)
