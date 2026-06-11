@@ -80,6 +80,7 @@ class SuminagashiInkView @JvmOverloads constructor(
     private val strokePath = Path()
     private val random = Random()
     private val hsv = FloatArray(3)
+    private val residualHsv = FloatArray(3)
     private val drops = ArrayList<InkDrop>(MAX_DROPS)
     private val pointerStates = SparseArray<PointerInkState>()
 
@@ -95,6 +96,8 @@ class SuminagashiInkView @JvmOverloads constructor(
     @ColorInt
     private var fixedInkColor = DEFAULT_INK_COLOR
     private var frameScheduled = false
+    private var lastResidualDepositTimeMillis = 0L
+    private var lastActiveInkTimeMillis = 0L
 
     init {
         setWillNotDraw(false)
@@ -144,6 +147,7 @@ class SuminagashiInkView @JvmOverloads constructor(
             )
         )
         emitBurst(x, y, color, now)
+        lastActiveInkTimeMillis = now
         scheduleNextFrame()
     }
 
@@ -170,6 +174,7 @@ class SuminagashiInkView @JvmOverloads constructor(
         state.directionX = directionX
         state.directionY = directionY
         emitTrail(x, y, state.color, now, directionX, directionY, distance)
+        lastActiveInkTimeMillis = now
         scheduleNextFrame()
     }
 
@@ -188,6 +193,7 @@ class SuminagashiInkView @JvmOverloads constructor(
             directionX = state.directionX,
             directionY = state.directionY
         )
+        lastActiveInkTimeMillis = SystemClock.uptimeMillis()
         scheduleNextFrame()
     }
 
@@ -208,6 +214,7 @@ class SuminagashiInkView @JvmOverloads constructor(
             }
         }
         pointerStates.clear()
+        lastActiveInkTimeMillis = SystemClock.uptimeMillis()
         scheduleNextFrame()
     }
 
@@ -216,6 +223,8 @@ class SuminagashiInkView @JvmOverloads constructor(
         pointerStates.clear()
         clearResidualSurface()
         residualInkEnergy = 0f
+        lastResidualDepositTimeMillis = 0L
+        lastActiveInkTimeMillis = 0L
         frameScheduled = false
         invalidate()
     }
@@ -230,10 +239,15 @@ class SuminagashiInkView @JvmOverloads constructor(
         ensureResidualSurface()
 
         val now = SystemClock.uptimeMillis()
-        animateResidualSurface(now)
+        val shouldAnimateResidual = shouldAnimateResidualSurface(now)
+        if (shouldAnimateResidual) {
+            animateResidualSurface(now)
+        }
         drawResidualSurface(canvas)
 
         var residualDeposits = 0
+        val shouldDepositResidual =
+            now - lastResidualDepositTimeMillis >= RESIDUAL_DEPOSIT_INTERVAL_MS
         var index = drops.size - 1
         while (index >= 0) {
             val drop = drops[index]
@@ -246,7 +260,10 @@ class SuminagashiInkView @JvmOverloads constructor(
 
             drawDrop(canvas, drop, ageMillis, alphaScale = 1f, residualPass = false)
             val surfaceCanvas = residualCanvas
-            if (surfaceCanvas != null && residualDeposits < MAX_RESIDUAL_DEPOSITS_PER_FRAME) {
+            if (shouldDepositResidual &&
+                surfaceCanvas != null &&
+                residualDeposits < MAX_RESIDUAL_DEPOSITS_PER_FRAME
+            ) {
                 drawDrop(
                     canvas = surfaceCanvas,
                     drop = drop,
@@ -260,13 +277,16 @@ class SuminagashiInkView @JvmOverloads constructor(
         }
 
         if (residualDeposits > 0) {
+            lastResidualDepositTimeMillis = now
+            lastActiveInkTimeMillis = now
             residualInkEnergy = (residualInkEnergy + residualDeposits * RESIDUAL_ENERGY_PER_DEPOSIT)
                 .coerceAtMost(1f)
         }
 
-        if (hasRenderableInk()) {
-            scheduleNextFrame()
+        if (drops.isNotEmpty()) {
+            lastActiveInkTimeMillis = now
         }
+        scheduleNextFrame(now)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -304,7 +324,10 @@ class SuminagashiInkView @JvmOverloads constructor(
         val crossWave = cos(drop.wobblePhase * 0.7f + progress * drop.wobbleSpeed * 1.3f)
         val centerX = drop.x + drop.driftX * progress + wave * radius * 0.075f
         val centerY = drop.y + drop.driftY * progress + crossWave * radius * 0.055f
-        val alpha = (drop.baseAlpha * alphaFade(progress) * alphaScale).toInt().coerceIn(0, 255)
+        val residualFade = if (residualPass) residualDepositFade(progress) else 1f
+        val alpha = (drop.baseAlpha * alphaFade(progress) * alphaScale * residualFade)
+            .toInt()
+            .coerceIn(0, 255)
         if (alpha <= 0) return
 
         if (drop.type == InkDropType.Tendril) {
@@ -321,9 +344,10 @@ class SuminagashiInkView @JvmOverloads constructor(
         }
         val majorScale = drop.ovalScaleX + stretch
         val minorScale = drop.ovalScaleY * if (drop.type == InkDropType.MoveTrail) 0.68f else 1f
-        val red = Color.red(drop.color)
-        val green = Color.green(drop.color)
-        val blue = Color.blue(drop.color)
+        val drawColor = if (residualPass) waterTintColor(drop.color, drop.wobblePhase) else drop.color
+        val red = Color.red(drawColor)
+        val green = Color.green(drawColor)
+        val blue = Color.blue(drawColor)
 
         fillPaint.color = Color.argb(alpha, red, green, blue)
         buildOrganicBlobPath(
@@ -338,7 +362,7 @@ class SuminagashiInkView @JvmOverloads constructor(
         )
         canvas.drawPath(blobPath, fillPaint)
 
-        val innerAlpha = (alpha * if (residualPass) 0.44f else 0.68f).toInt().coerceIn(0, 255)
+        val innerAlpha = (alpha * if (residualPass) 0.16f else 0.68f).toInt().coerceIn(0, 255)
         if (innerAlpha > 0) {
             fillPaint.color = Color.argb(innerAlpha, red, green, blue)
             buildOrganicBlobPath(
@@ -386,11 +410,12 @@ class SuminagashiInkView @JvmOverloads constructor(
         val ringAlpha = (alpha * (1f - ringProgress) * ringAlphaScale).toInt().coerceIn(0, 255)
         if (ringAlpha <= 0) return
 
+        val drawColor = if (residualPass) waterTintColor(drop.color, drop.wobblePhase) else drop.color
         strokePaint.color = Color.argb(
             ringAlpha,
-            Color.red(drop.color),
-            Color.green(drop.color),
-            Color.blue(drop.color)
+            Color.red(drawColor),
+            Color.green(drawColor),
+            Color.blue(drawColor)
         )
         strokePaint.strokeWidth = max(1f, radius * if (residualPass) 0.012f else 0.018f)
         buildOrganicBlobPath(
@@ -422,11 +447,12 @@ class SuminagashiInkView @JvmOverloads constructor(
         val filamentAlpha = (alpha * if (residualPass) 0.34f else 0.48f).toInt().coerceIn(0, 255)
         if (filamentAlpha <= 0) return
 
+        val drawColor = if (residualPass) waterTintColor(drop.color, drop.wobblePhase) else drop.color
         strokePaint.color = Color.argb(
             filamentAlpha,
-            Color.red(drop.color),
-            Color.green(drop.color),
-            Color.blue(drop.color)
+            Color.red(drawColor),
+            Color.green(drawColor),
+            Color.blue(drawColor)
         )
         strokePaint.strokeWidth = max(0.8f, radius * if (residualPass) 0.012f else 0.018f)
 
@@ -483,12 +509,13 @@ class SuminagashiInkView @JvmOverloads constructor(
         val length = radius * (0.8f + progress * 0.62f)
         val startDistance = radius * 0.12f
         val width = max(0.9f, radius * if (residualPass) 0.018f else 0.03f)
+        val drawColor = if (residualPass) waterTintColor(drop.color, drop.wobblePhase) else drop.color
 
         strokePaint.color = Color.argb(
             alpha,
-            Color.red(drop.color),
-            Color.green(drop.color),
-            Color.blue(drop.color)
+            Color.red(drawColor),
+            Color.green(drawColor),
+            Color.blue(drawColor)
         )
         strokePaint.strokeWidth = width
         strokePath.reset()
@@ -511,9 +538,9 @@ class SuminagashiInkView @JvmOverloads constructor(
 
         fillPaint.color = Color.argb(
             beadAlpha,
-            Color.red(drop.color),
-            Color.green(drop.color),
-            Color.blue(drop.color)
+            Color.red(drawColor),
+            Color.green(drawColor),
+            Color.blue(drawColor)
         )
         buildOrganicBlobPath(
             path = blobPath,
@@ -571,6 +598,12 @@ class SuminagashiInkView @JvmOverloads constructor(
         return wetIn * inverse * (0.42f + inverse * 0.58f)
     }
 
+    private fun residualDepositFade(progress: Float): Float {
+        val earlyBloom = (1f - progress * 0.7f).coerceIn(0.18f, 1f)
+        val waterLift = 0.55f + sin(progress * PI).coerceAtLeast(0f) * 0.28f
+        return earlyBloom * waterLift
+    }
+
     private fun animateResidualSurface(now: Long) {
         if (residualInkEnergy <= MIN_RESIDUAL_ENERGY) {
             clearResidualSurface()
@@ -589,10 +622,10 @@ class SuminagashiInkView @JvmOverloads constructor(
         val driftY = cos(time * 0.17f) * 0.68f + sin(time * 0.13f) * 0.38f
 
         scratchCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-        bitmapPaint.alpha = 255
+        bitmapPaint.alpha = 248
         scratchCanvas.drawBitmap(bitmap, driftX, driftY, bitmapPaint)
 
-        bitmapPaint.alpha = 9
+        bitmapPaint.alpha = 4
         scratchCanvas.save()
         scratchCanvas.scale(
             1.0024f,
@@ -603,7 +636,7 @@ class SuminagashiInkView @JvmOverloads constructor(
         scratchCanvas.drawBitmap(bitmap, -driftY * 0.8f, driftX * 0.8f, bitmapPaint)
         scratchCanvas.restore()
 
-        bitmapPaint.alpha = 5
+        bitmapPaint.alpha = 2
         scratchCanvas.drawBitmap(bitmap, -driftX * 1.4f, -driftY * 1.2f, bitmapPaint)
 
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
@@ -624,7 +657,7 @@ class SuminagashiInkView @JvmOverloads constructor(
         val bitmap = residualBitmap ?: return
         if (residualInkEnergy <= MIN_RESIDUAL_ENERGY) return
 
-        bitmapPaint.alpha = (RESIDUAL_SCREEN_ALPHA * residualInkEnergy.coerceIn(0.35f, 1f))
+        bitmapPaint.alpha = (RESIDUAL_SCREEN_ALPHA * residualInkEnergy.coerceIn(0.42f, 1f))
             .toInt()
             .coerceIn(0, 255)
         canvas.drawBitmap(bitmap, 0f, 0f, bitmapPaint)
@@ -676,7 +709,7 @@ class SuminagashiInkView @JvmOverloads constructor(
     }
 
     private fun emitBurst(x: Float, y: Float, @ColorInt color: Int, now: Long) {
-        repeat(7) {
+        repeat(4) {
             emitDrop(
                 x = x,
                 y = y,
@@ -690,8 +723,8 @@ class SuminagashiInkView @JvmOverloads constructor(
                 endRadiusMax = 142f,
                 alphaMin = 34,
                 alphaMax = 84,
-                lifetimeMin = 2600L,
-                lifetimeMax = 4600L,
+                lifetimeMin = 2100L,
+                lifetimeMax = 3600L,
                 stretchMin = 0.1f,
                 stretchMax = 0.52f,
                 depositStrength = 1f,
@@ -699,7 +732,7 @@ class SuminagashiInkView @JvmOverloads constructor(
                 tendrilCountMax = 3
             )
         }
-        repeat(4) {
+        repeat(2) {
             emitDrop(
                 x = x,
                 y = y,
@@ -713,8 +746,8 @@ class SuminagashiInkView @JvmOverloads constructor(
                 endRadiusMax = 64f,
                 alphaMin = 72,
                 alphaMax = 132,
-                lifetimeMin = 2100L,
-                lifetimeMax = 3400L,
+                lifetimeMin = 1700L,
+                lifetimeMax = 2800L,
                 stretchMin = 0.05f,
                 stretchMax = 0.32f,
                 depositStrength = 1.12f,
@@ -722,7 +755,7 @@ class SuminagashiInkView @JvmOverloads constructor(
                 tendrilCountMax = 2
             )
         }
-        repeat(3) {
+        repeat(1) {
             val angle = random.nextFloat() * TWO_PI
             emitDrop(
                 x = x,
@@ -737,8 +770,8 @@ class SuminagashiInkView @JvmOverloads constructor(
                 endRadiusMax = 82f,
                 alphaMin = 38,
                 alphaMax = 82,
-                lifetimeMin = 1900L,
-                lifetimeMax = 3300L,
+                lifetimeMin = 1500L,
+                lifetimeMax = 2600L,
                 directionX = cos(angle),
                 directionY = sin(angle),
                 stretchMin = 0.6f,
@@ -760,31 +793,29 @@ class SuminagashiInkView @JvmOverloads constructor(
         distance: Float
     ) {
         val movementScale = (distance / 42f).coerceIn(0.65f, 1.6f)
-        repeat(2) {
-            emitDrop(
-                x = x,
-                y = y,
-                color = color,
-                now = now,
-                type = InkDropType.MoveTrail,
-                spreadPx = 7f,
-                startRadiusMin = 4f,
-                startRadiusMax = 9f,
-                endRadiusMin = 34f * movementScale,
-                endRadiusMax = 78f * movementScale,
-                alphaMin = 42,
-                alphaMax = 98,
-                lifetimeMin = 1700L,
-                lifetimeMax = 3100L,
-                directionX = directionX,
-                directionY = directionY,
-                stretchMin = 0.72f,
-                stretchMax = 1.48f,
-                depositStrength = 0.95f,
-                tendrilCountMin = 1,
-                tendrilCountMax = 3
-            )
-        }
+        emitDrop(
+            x = x,
+            y = y,
+            color = color,
+            now = now,
+            type = InkDropType.MoveTrail,
+            spreadPx = 7f,
+            startRadiusMin = 4f,
+            startRadiusMax = 9f,
+            endRadiusMin = 34f * movementScale,
+            endRadiusMax = 78f * movementScale,
+            alphaMin = 42,
+            alphaMax = 98,
+            lifetimeMin = 1400L,
+            lifetimeMax = 2400L,
+            directionX = directionX,
+            directionY = directionY,
+            stretchMin = 0.72f,
+            stretchMax = 1.48f,
+            depositStrength = 0.95f,
+            tendrilCountMin = 1,
+            tendrilCountMax = 2
+        )
         emitDrop(
             x = x,
             y = y,
@@ -798,8 +829,8 @@ class SuminagashiInkView @JvmOverloads constructor(
             endRadiusMax = 72f * movementScale,
             alphaMin = 34,
             alphaMax = 76,
-            lifetimeMin = 1500L,
-            lifetimeMax = 2700L,
+            lifetimeMin = 1200L,
+            lifetimeMax = 2100L,
             directionX = -directionX,
             directionY = -directionY,
             stretchMin = 0.8f,
@@ -820,7 +851,7 @@ class SuminagashiInkView @JvmOverloads constructor(
         isCancel: Boolean = false
     ) {
         val alphaOffset = if (isCancel) -18 else 0
-        repeat(if (isCancel) 3 else 5) {
+        repeat(if (isCancel) 2 else 3) {
             emitDrop(
                 x = x,
                 y = y,
@@ -834,8 +865,8 @@ class SuminagashiInkView @JvmOverloads constructor(
                 endRadiusMax = if (isCancel) 96f else 126f,
                 alphaMin = max(18, 42 + alphaOffset),
                 alphaMax = max(42, 102 + alphaOffset),
-                lifetimeMin = if (isCancel) 2100L else 2500L,
-                lifetimeMax = if (isCancel) 3600L else 4700L,
+                lifetimeMin = if (isCancel) 1700L else 2000L,
+                lifetimeMax = if (isCancel) 2800L else 3600L,
                 directionX = directionX,
                 directionY = directionY,
                 stretchMin = 0.18f,
@@ -845,7 +876,7 @@ class SuminagashiInkView @JvmOverloads constructor(
                 tendrilCountMax = 3
             )
         }
-        repeat(if (isCancel) 1 else 2) {
+        repeat(1) {
             emitDrop(
                 x = x,
                 y = y,
@@ -859,8 +890,8 @@ class SuminagashiInkView @JvmOverloads constructor(
                 endRadiusMax = 84f,
                 alphaMin = max(18, 32 + alphaOffset),
                 alphaMax = max(36, 72 + alphaOffset),
-                lifetimeMin = 1800L,
-                lifetimeMax = 3200L,
+                lifetimeMin = 1400L,
+                lifetimeMax = 2400L,
                 directionX = directionX,
                 directionY = directionY,
                 stretchMin = 0.6f,
@@ -939,7 +970,7 @@ class SuminagashiInkView @JvmOverloads constructor(
     }
 
     private fun hasRenderableInk(): Boolean {
-        return drops.isNotEmpty() || residualInkEnergy > MIN_RESIDUAL_ENERGY
+        return drops.isNotEmpty() || hasResidualInk()
     }
 
     @ColorInt
@@ -949,17 +980,52 @@ class SuminagashiInkView @JvmOverloads constructor(
         }
 
         hsv[0] = random.nextInt(360).toFloat()
-        hsv[1] = 0.52f + random.nextFloat() * 0.38f
-        hsv[2] = 0.28f + random.nextFloat() * 0.46f
+        hsv[1] = 0.58f + random.nextFloat() * 0.34f
+        hsv[2] = 0.46f + random.nextFloat() * 0.42f
         return withoutAlpha(Color.HSVToColor(hsv))
     }
 
-    private fun scheduleNextFrame() {
-        if (frameScheduled || !effectEnabled || visibility != VISIBLE || !hasRenderableInk()) {
+    @ColorInt
+    private fun waterTintColor(@ColorInt color: Int, phase: Float): Int {
+        Color.colorToHSV(color, residualHsv)
+        if (residualHsv[1] < 0.18f && residualHsv[2] < 0.24f) {
+            residualHsv[0] = ((phase / TWO_PI) * 360f + 185f) % 360f
+            residualHsv[1] = 0.46f
+            residualHsv[2] = 0.62f
+        } else {
+            residualHsv[1] = (residualHsv[1] * 0.78f + 0.18f).coerceIn(0.32f, 0.92f)
+            residualHsv[2] = (residualHsv[2] * 0.72f + 0.28f).coerceIn(0.48f, 0.9f)
+        }
+        return withoutAlpha(Color.HSVToColor(residualHsv))
+    }
+
+    private fun scheduleNextFrame(now: Long = SystemClock.uptimeMillis()) {
+        if (frameScheduled || !effectEnabled || visibility != VISIBLE) {
             return
         }
+        val delayMillis = nextFrameDelayMillis(now) ?: return
         frameScheduled = true
-        postInvalidateOnAnimation()
+        postInvalidateDelayed(delayMillis)
+    }
+
+    private fun nextFrameDelayMillis(now: Long): Long? {
+        if (drops.isNotEmpty() || pointerStates.size() > 0) {
+            return ACTIVE_FRAME_DELAY_MS
+        }
+        if (shouldAnimateResidualSurface(now)) {
+            return RESIDUAL_IDLE_FRAME_DELAY_MS
+        }
+        return null
+    }
+
+    private fun shouldAnimateResidualSurface(now: Long): Boolean {
+        if (!hasResidualInk()) return false
+        if (drops.isNotEmpty() || pointerStates.size() > 0) return true
+        return now - lastActiveInkTimeMillis <= RESIDUAL_IDLE_ANIMATION_MS
+    }
+
+    private fun hasResidualInk(): Boolean {
+        return residualInkEnergy > MIN_RESIDUAL_ENERGY
     }
 
     private fun normalizeDirection(x: Float, y: Float): Pair<Float, Float> {
@@ -1002,23 +1068,46 @@ class SuminagashiInkView @JvmOverloads constructor(
     internal fun hasResidualInkForTesting(): Boolean = residualInkEnergy > MIN_RESIDUAL_ENERGY
 
     @VisibleForTesting
+    internal fun frameScheduledForTesting(): Boolean = frameScheduled
+
+    @VisibleForTesting
+    internal fun setLastActiveInkTimeForTesting(timeMillis: Long) {
+        lastActiveInkTimeMillis = timeMillis
+    }
+
+    @VisibleForTesting
+    internal fun shouldAnimateResidualSurfaceForTesting(now: Long): Boolean {
+        return shouldAnimateResidualSurface(now)
+    }
+
+    @VisibleForTesting
     internal fun clearActiveDropsForTesting() {
         drops.clear()
     }
 
+    @VisibleForTesting
+    @ColorInt
+    internal fun waterTintColorForTesting(@ColorInt color: Int, phase: Float): Int {
+        return waterTintColor(color, phase)
+    }
+
     private companion object {
-        private const val MAX_DROPS = 160
-        private const val MAX_RESIDUAL_DEPOSITS_PER_FRAME = 36
-        private const val MOVE_EMIT_INTERVAL_MS = 24L
-        private const val MOVE_EMIT_DISTANCE_PX = 12f
+        private const val MAX_DROPS = 80
+        private const val MAX_RESIDUAL_DEPOSITS_PER_FRAME = 8
+        private const val RESIDUAL_DEPOSIT_INTERVAL_MS = 96L
+        private const val MOVE_EMIT_INTERVAL_MS = 40L
+        private const val MOVE_EMIT_DISTANCE_PX = 18f
+        private const val ACTIVE_FRAME_DELAY_MS = 32L
+        private const val RESIDUAL_IDLE_FRAME_DELAY_MS = 120L
+        private const val RESIDUAL_IDLE_ANIMATION_MS = 1400L
         private const val COLOR_MODE_RANDOM = "random"
         private const val COLOR_MODE_FIXED = "fixed"
         private const val TWO_PI = 6.2831855f
         private const val PI = 3.1415927f
-        private const val BLOB_SEGMENTS = 16
-        private const val RESIDUAL_DEPOSIT_ALPHA_SCALE = 0.12f
-        private const val RESIDUAL_ENERGY_PER_DEPOSIT = 0.0065f
-        private const val RESIDUAL_SCREEN_ALPHA = 218f
+        private const val BLOB_SEGMENTS = 12
+        private const val RESIDUAL_DEPOSIT_ALPHA_SCALE = 0.028f
+        private const val RESIDUAL_ENERGY_PER_DEPOSIT = 0.003f
+        private const val RESIDUAL_SCREEN_ALPHA = 188f
         private const val RESIDUAL_ACTIVE_DECAY = 1f
         private const val RESIDUAL_IDLE_DECAY = 1f
         private const val RESIDUAL_PERSISTENT_ENERGY_FLOOR = 0.18f
