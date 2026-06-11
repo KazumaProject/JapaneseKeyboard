@@ -16,7 +16,10 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
+import androidx.recyclerview.widget.AsyncDifferConfig
+import androidx.recyclerview.widget.AsyncListDiffer
 import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
@@ -30,14 +33,19 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
+import com.kazumaproject.markdownhelperkeyboard.ime_service.measureDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
+import com.kazumaproject.markdownhelperkeyboard.ime_service.traceDebugSection
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import timber.log.Timber
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 internal class CandidateItemColorState {
     var backgroundColor: Int? = null
@@ -103,6 +111,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
         const val VIEW_TYPE_GEMMA_ACTION = 3
         const val VIEW_TYPE_SHORTCUT = 4
+
+        private val diffThreadIndex = AtomicInteger(0)
+        private val diffExecutor: Executor = Executors.newFixedThreadPool(2) { runnable ->
+            Thread(runnable, "SuggestionAdapterDiff-${diffThreadIndex.incrementAndGet()}").apply {
+                isDaemon = true
+            }
+        }
     }
 
     enum class HelperIcon {
@@ -201,6 +216,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private var candidateEmptyDrawableColor: Int? = null
     private var candidateEmptyDrawableTextColor: Int? = null
+    private var released: Boolean = false
+    private var displayGeneration: Int = 0
 
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
@@ -231,6 +248,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     fun release() {
+        released = true
         onItemClickListener = null
         onItemLongClickListener = null
         onItemHelperIconClickListener = null
@@ -381,68 +399,111 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private var candidateSuggestions: List<Candidate> = emptyList()
-    private var displayItems: List<SuggestionDisplayItem> = buildDisplayItems()
+    private val displayItemCallback = object : DiffUtil.ItemCallback<SuggestionDisplayItem>() {
+        override fun areItemsTheSame(
+            oldItem: SuggestionDisplayItem,
+            newItem: SuggestionDisplayItem
+        ): Boolean {
+            return when {
+                oldItem is SuggestionDisplayItem.CandidateItem &&
+                    newItem is SuggestionDisplayItem.CandidateItem ->
+                    oldItem.candidateIndex == newItem.candidateIndex &&
+                        oldItem.candidate.string == newItem.candidate.string &&
+                        oldItem.candidate.type == newItem.candidate.type
+
+                oldItem is SuggestionDisplayItem.GemmaActionItem &&
+                    newItem is SuggestionDisplayItem.GemmaActionItem ->
+                    oldItem.candidateIndex == newItem.candidateIndex &&
+                        oldItem.candidate.string == newItem.candidate.string &&
+                        oldItem.candidate.type == newItem.candidate.type
+
+                oldItem is SuggestionDisplayItem.HelperActionsItem &&
+                    newItem is SuggestionDisplayItem.HelperActionsItem -> true
+
+                oldItem is SuggestionDisplayItem.ShortcutItem &&
+                    newItem is SuggestionDisplayItem.ShortcutItem ->
+                    oldItem.shortcutType == newItem.shortcutType
+
+                oldItem is SuggestionDisplayItem.CustomLayoutItem &&
+                    newItem is SuggestionDisplayItem.CustomLayoutItem ->
+                    oldItem.layout.stableId == newItem.layout.stableId
+
+                else -> false
+            }
+        }
+
+        override fun areContentsTheSame(
+            oldItem: SuggestionDisplayItem,
+            newItem: SuggestionDisplayItem
+        ): Boolean = oldItem == newItem
+    }
+
+    private val displayListUpdateCallback = object : ListUpdateCallback {
+        override fun onInserted(position: Int, count: Int) {
+            if (!released) notifyItemRangeInserted(position, count)
+        }
+
+        override fun onRemoved(position: Int, count: Int) {
+            if (!released) notifyItemRangeRemoved(position, count)
+        }
+
+        override fun onMoved(fromPosition: Int, toPosition: Int) {
+            if (!released) notifyItemMoved(fromPosition, toPosition)
+        }
+
+        override fun onChanged(position: Int, count: Int, payload: Any?) {
+            if (!released) notifyItemRangeChanged(position, count, payload)
+        }
+    }
+
+    private val differ = AsyncListDiffer(
+        displayListUpdateCallback,
+        AsyncDifferConfig.Builder(displayItemCallback)
+            .setBackgroundThreadExecutor { command ->
+                diffExecutor.execute {
+                    measureDebugSection("SuggestionAdapter.DiffUtil.calculateDiff") {
+                        command.run()
+                    }
+                }
+            }
+            .build()
+    )
+
+    private val displayItems: List<SuggestionDisplayItem>
+        get() = differ.currentList
 
     var suggestions: List<Candidate>
         get() = candidateSuggestions
         set(value) {
-            if (candidateSuggestions != value) {
+            traceDebugSection("SuggestionAdapter.suggestions.set") {
+                if (candidateSuggestions == value) return
+
                 candidateSuggestions = value
-                rebuildDisplayItems()
+                rebuildDisplayItems {
+                    onListUpdated?.invoke()
+                }
             }
-            onListUpdated?.invoke()
         }
 
     private var highlightedPosition: Int = RecyclerView.NO_POSITION
 
-    private fun rebuildDisplayItems() {
-        val oldItems = displayItems
-        val newItems = buildDisplayItems()
-        if (oldItems == newItems) return
-        val diffResult = DiffUtil.calculateDiff(
-            object : DiffUtil.Callback() {
-                override fun getOldListSize(): Int = oldItems.size
+    init {
+        differ.submitList(buildDisplayItems())
+    }
 
-                override fun getNewListSize(): Int = newItems.size
+    private fun rebuildDisplayItems(onCommitted: (() -> Unit)? = null) {
+        if (released) return
 
-                override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                    val oldItem = oldItems[oldItemPosition]
-                    val newItem = newItems[newItemPosition]
-                    return when {
-                        oldItem is SuggestionDisplayItem.CandidateItem &&
-                            newItem is SuggestionDisplayItem.CandidateItem ->
-                            oldItem.candidateIndex == newItem.candidateIndex &&
-                                oldItem.candidate.string == newItem.candidate.string &&
-                                oldItem.candidate.type == newItem.candidate.type
+        measureDebugSection("SuggestionAdapter.rebuildDisplayItems") {
+            val newItems = buildDisplayItems()
+            if (displayItems == newItems) return@measureDebugSection
 
-                        oldItem is SuggestionDisplayItem.GemmaActionItem &&
-                            newItem is SuggestionDisplayItem.GemmaActionItem ->
-                            oldItem.candidateIndex == newItem.candidateIndex &&
-                                oldItem.candidate.string == newItem.candidate.string &&
-                                oldItem.candidate.type == newItem.candidate.type
-
-                        oldItem is SuggestionDisplayItem.HelperActionsItem &&
-                            newItem is SuggestionDisplayItem.HelperActionsItem -> true
-
-                        oldItem is SuggestionDisplayItem.ShortcutItem &&
-                            newItem is SuggestionDisplayItem.ShortcutItem ->
-                            oldItem.shortcutType == newItem.shortcutType
-
-                        oldItem is SuggestionDisplayItem.CustomLayoutItem &&
-                            newItem is SuggestionDisplayItem.CustomLayoutItem ->
-                            oldItem.layout.stableId == newItem.layout.stableId
-
-                        else -> false
-                    }
-                }
-
-                override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                    return oldItems[oldItemPosition] == newItems[newItemPosition]
-                }
+            val generation = ++displayGeneration
+            differ.submitList(newItems) {
+                if (released || generation != displayGeneration) return@submitList
+                onCommitted?.invoke()
             }
-        )
-        displayItems = newItems
-        diffResult.dispatchUpdatesTo(this)
+        }
     }
 
     private fun buildDisplayItems(): List<SuggestionDisplayItem> {
