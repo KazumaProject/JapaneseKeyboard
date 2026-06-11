@@ -23,6 +23,14 @@ object SettingSearchIndex {
         val category: SettingCategory,
     )
 
+    private data class LegacyPreferenceXmlSource(
+        val tabKey: String,
+        val tabTitle: String,
+        @XmlRes val xmlRes: Int,
+        @IdRes val destinationId: Int,
+        val category: SettingCategory,
+    )
+
     private data class ParsedSearchQuery(
         val normalized: String,
         val tokens: List<String>,
@@ -57,6 +65,50 @@ object SettingSearchIndex {
         return (topLevel + xmlItems).distinctBy { destination ->
             val targetId = SettingDestinations.destinationId(destination.destination)
             "${destination.key}:${destination.category}:$targetId"
+        }
+    }
+
+    fun searchable(
+        context: Context,
+        scope: SettingSearchScope,
+    ): List<SettingDestination> =
+        when (scope) {
+            SettingSearchScope.NEW_HOME -> searchable(context)
+            SettingSearchScope.LEGACY_TABS -> legacySearchable(context)
+        }
+
+    fun legacySearchable(context: Context): List<SettingDestination> {
+        val themeItem = SettingTabRegistry.createTabs()
+            .firstOrNull { it.key == SettingTabRegistry.TAB_THEME }
+            ?.let { tab ->
+                val title = tab.title(context)
+                val location = context.getString(R.string.setting_search_legacy_location, title)
+                SettingDestinations.destination(
+                    key = "legacy_keyboard_theme",
+                    title = title,
+                    summary = "",
+                    category = SettingCategory.KEYBOARD_DISPLAY,
+                    keywords = listOf("theme", "color", "keyboard", "legacy"),
+                    destinationId = tab.destinationId,
+                    iconRes = SettingDestinations.defaultIconForCategory(SettingCategory.KEYBOARD_DISPLAY),
+                    destinationType = SettingDestinationType.NavDestination(tab.destinationId),
+                    legacyTarget = LegacySettingTarget(
+                        tabKey = tab.key,
+                        xmlRes = null,
+                        destinationId = tab.destinationId,
+                        preferenceKey = "legacy_keyboard_theme",
+                        filterResultMode = false,
+                    ),
+                    searchScope = SettingSearchScope.LEGACY_TABS,
+                    location = location,
+                )
+            }
+        val xmlItems = legacySources(context).flatMap { source ->
+            readLegacyPreferenceXml(context, source)
+        }
+        return (listOfNotNull(themeItem) + xmlItems).distinctBy { destination ->
+            val legacyTarget = destination.legacyTarget
+            "${legacyTarget?.tabKey}:${destination.key}:${legacyTarget?.destinationId}"
         }
     }
 
@@ -100,6 +152,18 @@ object SettingSearchIndex {
         val order = keys.withIndex().associate { it.value to it.index }
         return sources()
             .flatMap { source -> readPreferenceXml(context, source) }
+            .filter { it.key in keySet }
+            .distinctBy { it.key }
+            .sortedBy { order[it.key] ?: Int.MAX_VALUE }
+    }
+
+    fun legacyDestinationsForKeys(
+        context: Context,
+        keys: List<String>,
+    ): List<SettingDestination> {
+        val keySet = keys.toSet()
+        val order = keys.withIndex().associate { it.value to it.index }
+        return legacySearchable(context)
             .filter { it.key in keySet }
             .distinctBy { it.key }
             .sortedBy { order[it.key] ?: Int.MAX_VALUE }
@@ -222,6 +286,27 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_hardware_keyboard, R.id.hardwareKeyboardPreferenceFragment, SettingCategory.INPUT_METHOD))
     }
 
+    private fun legacySources(context: Context): List<LegacyPreferenceXmlSource> =
+        SettingTabRegistry.createTabs().mapNotNull { tab ->
+            val xmlRes = tab.xmlRes ?: return@mapNotNull null
+            LegacyPreferenceXmlSource(
+                tabKey = tab.key,
+                tabTitle = tab.title(context),
+                xmlRes = xmlRes,
+                destinationId = tab.destinationId,
+                category = legacyCategoryForTab(tab.key),
+            )
+        }
+
+    private fun legacyCategoryForTab(tabKey: String): SettingCategory =
+        when (tabKey) {
+            SettingTabRegistry.TAB_DICTIONARY -> SettingCategory.DICTIONARY
+            SettingTabRegistry.TAB_ZENZ,
+            SettingTabRegistry.TAB_GEMMA -> SettingCategory.AI_CONVERSION
+            SettingTabRegistry.TAB_COMMON -> SettingCategory.ADVANCED
+            else -> SettingCategory.INPUT_METHOD
+        }
+
     private fun readPreferenceXml(
         context: Context,
         source: PreferenceXmlSource,
@@ -274,6 +359,73 @@ object SettingSearchIndex {
             }
         }
     }
+
+    private fun readLegacyPreferenceXml(
+        context: Context,
+        source: LegacyPreferenceXmlSource,
+    ): List<SettingDestination> {
+        val parser = context.resources.getXml(source.xmlRes)
+        val location = context.getString(R.string.setting_search_legacy_location, source.tabTitle)
+        return parser.use {
+            buildList {
+                while (parser.eventType != XmlPullParser.END_DOCUMENT) {
+                    if (parser.eventType == XmlPullParser.START_TAG) {
+                        val key = parser.getAttributeValue(ANDROID_NS, "key")
+                        if (
+                            !key.isNullOrBlank() &&
+                            isVisibleInCurrentVariant(key) &&
+                            !key.startsWith("setting_route_") &&
+                            !parser.isPreferenceCategoryOrScreen()
+                        ) {
+                            val title = readTextAttribute(context, parser, "title")
+                                .ifBlank { key }
+                            val summary = readSummary(context, parser)
+                            val dependencyKey = readDependency(parser)
+                            val relatedKeys = legacyRelatedKeys(key, dependencyKey)
+                            val legacyTarget = LegacySettingTarget(
+                                tabKey = source.tabKey,
+                                xmlRes = source.xmlRes,
+                                destinationId = source.destinationId,
+                                preferenceKey = key,
+                                relatedPreferenceKeys = relatedKeys,
+                            )
+                            add(
+                                SettingDestinations.destination(
+                                    key = key,
+                                    title = title,
+                                    summary = summary,
+                                    category = source.category,
+                                    keywords = buildKeywords(key, title, summary),
+                                    destinationId = source.destinationId,
+                                    iconRes = readIcon(parser)
+                                        ?: SettingDestinations.defaultIconForCategory(source.category),
+                                    highlightPreferenceKey = key,
+                                    destinationType = SettingDestinationType.NavDestination(
+                                        destinationId = source.destinationId,
+                                        highlightPreferenceKey = key,
+                                    ),
+                                    legacyTarget = legacyTarget,
+                                    searchScope = SettingSearchScope.LEGACY_TABS,
+                                    location = location,
+                                )
+                            )
+                        }
+                    }
+                    parser.next()
+                }
+            }
+        }
+    }
+
+    private fun legacyRelatedKeys(key: String, dependencyKey: String?): List<String> =
+        buildList {
+            if (key == "shortcut_toolbar_integrated_in_suggestion_preference") {
+                add("shortcut_toolbar_visibility_preference")
+            }
+            if (!dependencyKey.isNullOrBlank()) {
+                add(dependencyKey)
+            }
+        }.distinct()
 
     private fun isVisibleInCurrentVariant(key: String): Boolean =
         when (key) {
@@ -475,6 +627,10 @@ object SettingSearchIndex {
         val resourceId = parser.getAttributeResourceValue(ANDROID_NS, "icon", 0)
         return resourceId.takeIf { it != 0 }
     }
+
+    private fun readDependency(parser: XmlResourceParser): String? =
+        parser.getAttributeValue(ANDROID_NS, "dependency")
+            ?: parser.getAttributeValue(APP_NS, "dependency")
 
     private fun XmlResourceParser.isPreferenceCategoryOrScreen(): Boolean =
         when (name.substringAfterLast('.')) {

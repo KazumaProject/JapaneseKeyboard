@@ -80,6 +80,15 @@ sealed class SettingDestinationType {
     ) : SettingDestinationType()
 }
 
+data class LegacySettingTarget(
+    val tabKey: String,
+    @androidx.annotation.XmlRes val xmlRes: Int?,
+    @IdRes val destinationId: Int,
+    val preferenceKey: String,
+    val relatedPreferenceKeys: List<String> = emptyList(),
+    val filterResultMode: Boolean = true,
+)
+
 data class SettingDestination(
     val key: String,
     val title: String,
@@ -88,6 +97,9 @@ data class SettingDestination(
     val keywords: List<String>,
     val destination: SettingDestinationType,
     @DrawableRes val iconRes: Int,
+    val legacyTarget: LegacySettingTarget? = null,
+    val searchScope: SettingSearchScope = SettingSearchScope.NEW_HOME,
+    val location: String? = null,
 )
 
 object SettingDestinations {
@@ -737,6 +749,9 @@ object SettingDestinations {
         @DrawableRes iconRes: Int,
         highlightPreferenceKey: String? = null,
         destinationType: SettingDestinationType? = null,
+        legacyTarget: LegacySettingTarget? = null,
+        searchScope: SettingSearchScope = SettingSearchScope.NEW_HOME,
+        location: String? = null,
     ): SettingDestination {
         val localizedKeywords = buildList {
             add(title)
@@ -755,6 +770,9 @@ object SettingDestinations {
                 highlightPreferenceKey = highlightPreferenceKey,
             ),
             iconRes = iconRes,
+            legacyTarget = legacyTarget,
+            searchScope = searchScope,
+            location = location,
         )
     }
 }

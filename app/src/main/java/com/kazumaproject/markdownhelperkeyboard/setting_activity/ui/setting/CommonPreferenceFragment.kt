@@ -577,6 +577,7 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
         setupRoutePreferences()
         onCommonPreferencesCreated()
+        applyLegacySearchResultFilterIfNeeded()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

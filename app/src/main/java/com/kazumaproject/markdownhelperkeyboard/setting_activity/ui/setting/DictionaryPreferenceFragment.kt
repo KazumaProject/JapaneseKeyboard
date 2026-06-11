@@ -101,6 +101,7 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        applyLegacySearchResultFilterIfNeeded()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
