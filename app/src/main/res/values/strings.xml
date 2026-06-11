@@ -980,6 +980,14 @@
     <string name="keyboard_background_video_saved">Keyboard background video has been set.</string>
     <string name="keyboard_background_video_cleared">Keyboard background video has been cleared.</string>
     <string name="keyboard_background_video_failed">Failed to set keyboard background video: %1$s</string>
+    <string name="suminagashi_ink_effect_title">Suminagashi Ink Background</string>
+    <string name="suminagashi_ink_effect_summary">Shows an ink-diffusion background effect from the touched position on the keyboard.</string>
+    <string name="suminagashi_ink_color_mode_title">Ink Color</string>
+    <string name="suminagashi_ink_color_mode_random">Random on each touch</string>
+    <string name="suminagashi_ink_color_mode_fixed">Fixed color</string>
+    <string name="suminagashi_ink_color_title">Fixed Ink Color</string>
+    <string name="suminagashi_ink_color_summary">Choose the ink color used in fixed color mode.</string>
+    <string name="suminagashi_ink_color_summary_current">Current: %1$s</string>
     <string name="donuts_flick">Donuts Flick</string>
     <string name="qwerty_button_size_preference_title">Key size</string>
     <string name="qwerty_button_size_preference_summary">Change the size of keys, text, and special key icons.</string>

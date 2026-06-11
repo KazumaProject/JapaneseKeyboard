@@ -578,6 +578,12 @@ object AppPreference {
         Pair("keyboard_background_video_uri_preference", "")
     private val KEYBOARD_BACKGROUND_VIDEO_QUALITY_PREFERENCE =
         Pair("keyboard_background_video_quality_preference", "high")
+    private val SUMINAGASHI_INK_EFFECT_ENABLE =
+        Pair("suminagashi_ink_effect_preference", false)
+    private val SUMINAGASHI_INK_COLOR_MODE =
+        Pair("suminagashi_ink_color_mode_preference", "random")
+    private val SUMINAGASHI_INK_COLOR =
+        Pair("suminagashi_ink_color_preference", Color.rgb(17, 17, 17))
 
     private val SAVE_LAST_USED_KEYBOARD = Pair("save_last_used_keyboard", false)
     private val SAVE_LAST_USED_KEYBOARD_POSITION = Pair("save_last_used_keyboard_int", 0)
@@ -2828,6 +2834,39 @@ object AppPreference {
         ) ?: "high"
         set(value) = preferences.edit {
             it.putString(KEYBOARD_BACKGROUND_VIDEO_QUALITY_PREFERENCE.first, value)
+        }
+
+    var suminagashi_ink_effect_preference: Boolean
+        get() = preferences.getBoolean(
+            SUMINAGASHI_INK_EFFECT_ENABLE.first,
+            SUMINAGASHI_INK_EFFECT_ENABLE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUMINAGASHI_INK_EFFECT_ENABLE.first, value)
+        }
+
+    var suminagashi_ink_color_mode_preference: String
+        get() {
+            val value = preferences.getString(
+                SUMINAGASHI_INK_COLOR_MODE.first,
+                SUMINAGASHI_INK_COLOR_MODE.second
+            ) ?: SUMINAGASHI_INK_COLOR_MODE.second
+            return if (value == "fixed") "fixed" else "random"
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                SUMINAGASHI_INK_COLOR_MODE.first,
+                if (value == "fixed") "fixed" else "random"
+            )
+        }
+
+    var suminagashi_ink_color_preference: Int
+        get() = preferences.getInt(
+            SUMINAGASHI_INK_COLOR.first,
+            SUMINAGASHI_INK_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(SUMINAGASHI_INK_COLOR.first, value)
         }
 
     var save_last_used_keyboard_enable_preference: Boolean
