@@ -56,6 +56,29 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
     }
 
     @Test
+    fun suminagashiInkEffectIsClassifiedAsSwitchPreference() {
+        val destination = destinationForKey("suminagashi_ink_effect_preference")
+        val target = destination.destination as SettingDestinationType.SwitchPreference
+
+        assertEquals("suminagashi_ink_effect_preference", target.preferenceKey)
+        assertFalse(target.defaultValue)
+        assertEquals(R.id.keyboardDisplayPreferenceFragment, target.destinationId)
+    }
+
+    @Test
+    fun suminagashiInkColorModeIsClassifiedAsListPreference() {
+        val destination = destinationForKey("suminagashi_ink_color_mode_preference")
+        val target = destination.destination as SettingDestinationType.ListPreference
+        val entries = context.resources.getStringArray(target.entriesResId)
+        val entryValues = context.resources.getStringArray(target.entryValuesResId)
+
+        assertEquals("suminagashi_ink_color_mode_preference", target.preferenceKey)
+        assertEquals("random", target.defaultValue)
+        assertEquals(entries.size, entryValues.size)
+        assertEquals(listOf("random", "fixed"), entryValues.toList())
+    }
+
+    @Test
     fun seekBarPreferenceXmlItemIsClassifiedWithBoundsAndDefaultValue() {
         val destination = destinationForKey("flick_sensitivity_preference")
         val target = destination.destination as SettingDestinationType.SeekBarPreference
