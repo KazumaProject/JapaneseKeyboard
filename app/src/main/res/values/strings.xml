@@ -139,6 +139,11 @@
     <string name="password_compose_title">Text settings during password input</string>
     <string name="password_compose_summary_on">Treat as pre-edit text during password input.</string>
     <string name="password_compose_summary_off">Treat as committed text during password input.</string>
+    <string name="type_null_input_behavior_title">TYPE_NULL input field behavior</string>
+    <string name="type_null_input_behavior_summary">Choose whether key input is sent directly or handled with normal ComposingText when the target app uses InputType.TYPE_NULL. Usually keep the default.</string>
+    <string name="type_null_input_behavior_default">Default (direct input)</string>
+    <string name="type_null_input_behavior_direct_commit">Direct input</string>
+    <string name="type_null_input_behavior_composing_text">Use ComposingText</string>
     <string name="henkan_delete_key_action_title">Delete key action on highlighted candidate</string>
     <string name="henkan_delete_key_action_summary_on">Long press Delete: Unhighlight\nTap Delete: Move selection back one place</string>
     <string name="henkan_delete_key_action_summary_off">Tap Delete: Unhighlight</string>
