@@ -82,6 +82,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         fun onFlickDirectionChanged(direction: FlickDirection)
         fun onFlickActionLongPress(action: KeyAction)
         fun onFlickActionUpAfterLongPress(action: KeyAction, isFlick: Boolean)
+        fun onLongPressActionCanceled(action: KeyAction) {}
     }
 
     private companion object {
@@ -333,6 +334,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     @SuppressLint("ClickableViewAccessibility")
     fun setKeyboard(layout: KeyboardLayout) {
         Log.d("FlickKeyboardView", "setKeyboard (Full Rebuild)")
+
+        listener?.onLongPressActionCanceled(KeyAction.Cancel)
 
         removeAllViews()
 
@@ -1383,6 +1386,17 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     )
                                 }
                             }
+
+                            override fun onFlickLongPressCanceled(
+                                action: KeyAction,
+                                direction: FlickDirection
+                            ) {
+                                if (action !is KeyAction.Text) {
+                                    this@FlickKeyboardView.listener?.onLongPressActionCanceled(
+                                        action
+                                    )
+                                }
+                            }
                         }
 
                         attach(keyView, displayFlickActionMap)
@@ -1718,6 +1732,17 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     )
                                 }
                             }
+
+                            override fun onFlickLongPressCanceled(
+                                action: KeyAction,
+                                direction: FlickDirection
+                            ) {
+                                if (action !is KeyAction.Text) {
+                                    this@FlickKeyboardView.listener?.onLongPressActionCanceled(
+                                        action
+                                    )
+                                }
+                            }
                         }
 
                         val stringMap = extractInputMap(flickActionMap)
@@ -1795,11 +1820,20 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     )
                             }
                         }
-                        if (event.action == MotionEvent.ACTION_UP || event.action == MotionEvent.ACTION_CANCEL) {
+                        if (event.action == MotionEvent.ACTION_UP) {
                             if (isLongPressTriggered) {
                                 val currentAction =
                                     dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
                                 this@FlickKeyboardView.listener?.onActionUpAfterLongPress(
+                                    currentAction
+                                )
+                                isLongPressTriggered = false
+                            }
+                        } else if (event.action == MotionEvent.ACTION_CANCEL) {
+                            if (isLongPressTriggered) {
+                                val currentAction =
+                                    dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
+                                this@FlickKeyboardView.listener?.onLongPressActionCanceled(
                                     currentAction
                                 )
                                 isLongPressTriggered = false
@@ -2219,6 +2253,10 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     dispatchEndEventToTrackedTargets(event, actionToDispatch)
 
+                    if (event.actionMasked == MotionEvent.ACTION_CANCEL) {
+                        listener?.onLongPressActionCanceled(KeyAction.Cancel)
+                    }
+
                     setCursorMode(false)
                     crossFlickControllers.forEach { it.dismissAllPopups() }
                     clearSpaceKeyPressedState()
@@ -2282,17 +2320,20 @@ class FlickKeyboardView @JvmOverloads constructor(
                             val x = event.getX(existingPointerIndex)
                             val y = event.getY(existingPointerIndex)
 
-                            val upEvent = MotionEvent.obtain(
+                            val cancelEvent = MotionEvent.obtain(
                                 downTime,
                                 event.eventTime,
-                                MotionEvent.ACTION_UP,
+                                MotionEvent.ACTION_CANCEL,
                                 x,
                                 y,
                                 event.metaState
                             )
-                            upEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
-                            target.dispatchTouchEvent(upEvent)
-                            upEvent.recycle()
+                            cancelEvent.offsetLocation(
+                                -target.left.toFloat(),
+                                -target.top.toFloat()
+                            )
+                            target.dispatchTouchEvent(cancelEvent)
+                            cancelEvent.recycle()
                         }
                     }
 
@@ -2445,6 +2486,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                     newEvent.recycle()
                 }
 
+                if (action == MotionEvent.ACTION_CANCEL) {
+                    listener?.onLongPressActionCanceled(KeyAction.Cancel)
+                }
+
                 motionTargets.clear()
                 pointerDownTime.clear()
                 return true
@@ -2456,12 +2501,20 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
+        listener?.onLongPressActionCanceled(KeyAction.Cancel)
         flickControllers.forEach { it.cancel() }
         crossFlickControllers.forEach { it.cancel() }
         standardFlickControllers.forEach { it.cancel() }
         tfbiControllers.forEach { it.cancel() }
         stickyTfbiControllers.forEach { it.cancel() }
         hierarchicalTfbiControllers.forEach { it.cancel() }
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (changedView == this && visibility != View.VISIBLE) {
+            listener?.onLongPressActionCanceled(KeyAction.Cancel)
+        }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration?) {

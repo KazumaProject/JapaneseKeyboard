@@ -123,6 +123,11 @@
         android:label="@string/category_common" />
 
     <fragment
+        android:id="@+id/legacyCommonPreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.LegacyCommonPreferenceFragment"
+        android:label="@string/category_common" />
+
+    <fragment
         android:id="@+id/keyboardDisplayPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.KeyboardDisplayPreferenceFragment"
         android:label="@string/setting_category_keyboard_display_title" />

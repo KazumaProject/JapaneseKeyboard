@@ -27,5 +27,7 @@ class KanaPreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        applyLegacySearchResultFilterIfNeeded()
     }
 }

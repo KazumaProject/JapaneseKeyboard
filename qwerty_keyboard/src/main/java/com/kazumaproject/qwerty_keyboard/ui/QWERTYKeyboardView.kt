@@ -56,6 +56,8 @@ import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setMarginStart
 import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
+import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
@@ -123,6 +125,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val hitRect = Rect()
 
     private var qwertyKeyListener: QWERTYKeyListener? = null
+    private var qwertyKeyTouchCancelListener: QwertyKeyTouchCancelListener? = null
     private var qwertyKeyMap: QWERTYKeyMap
 
     // ① Track the last time Shift was tapped (to detect double‐tap)
@@ -306,9 +309,20 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.DetachedFromWindow)
         stopStateCollectors()
         stopTouchScope()
         super.onDetachedFromWindow()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (changedView == this && visibility != View.VISIBLE) {
+            notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.ViewHidden)
+            setCursorMode(false)
+            clearAllPressed()
+            cancelQwertyGlideCandidate(notify = true)
+        }
     }
 
     private fun startStateCollectors() {
@@ -1296,6 +1310,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.qwertyKeyListener = listener
     }
 
+    fun setOnQwertyKeyTouchCancelListener(listener: QwertyKeyTouchCancelListener?) {
+        qwertyKeyTouchCancelListener = listener
+    }
+
     fun setQwertyGlideInputMode(enabled: Boolean) {
         if (qwertyGlideInputMode == enabled) return
         qwertyGlideInputMode = enabled
@@ -1394,7 +1412,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     }
                 }
 
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                MotionEvent.ACTION_UP -> {
+                    setCursorMode(false)
+                    clearAllPressed()
+                }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.ActionCancel)
                     setCursorMode(false)
                     clearAllPressed()
                 }
@@ -1423,6 +1447,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     firstView?.let { view ->
                         view.isPressed = false
                         dismissKeyPreview()
+                        notifyQwertyTouchCanceledForPointer(
+                            firstPointerId,
+                            KeyTouchCancelReason.PointerInterrupted
+                        )
                         cancelLongPressForPointer(firstPointerId)
                         pointerStartCoords.remove(firstPointerId)
                         flickLockedPointers.remove(firstPointerId)
@@ -1581,6 +1609,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_CANCEL -> {
+                notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.ActionCancel)
                 variationPopup?.dismiss()
                 variationPopup = null
                 variationPopupView = null
@@ -1710,6 +1739,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val pressedView = pointerButtonMap[pointerId]
         pressedView?.isPressed = false
         dismissKeyPreview()
+        notifyQwertyTouchCanceledForPointer(pointerId, KeyTouchCancelReason.PointerInterrupted)
         cancelLongPressForPointer(pointerId)
         variationPopup?.dismiss()
         variationPopup = null
@@ -1753,6 +1783,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun releasePressedKeyForGlideMove(pointerId: Int) {
         pointerButtonMap[pointerId]?.isPressed = false
         dismissKeyPreview()
+        notifyQwertyTouchCanceledForPointer(pointerId, KeyTouchCancelReason.PointerInterrupted)
         cancelLongPressForPointer(pointerId)
     }
 
@@ -2201,6 +2232,25 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         variationPopupView = null
         longPressedPointerId = null
         lockedPointerId = null
+    }
+
+    private fun notifyQwertyTouchCanceledForActivePointers(
+        reason: KeyTouchCancelReason
+    ) {
+        for (i in 0 until pointerButtonMap.size()) {
+            val view = pointerButtonMap.valueAt(i) ?: continue
+            val key = qwertyButtonMap[view] ?: continue
+            qwertyKeyTouchCancelListener?.onQwertyKeyTouchCanceled(key, reason)
+        }
+    }
+
+    private fun notifyQwertyTouchCanceledForPointer(
+        pointerId: Int,
+        reason: KeyTouchCancelReason
+    ) {
+        val view = pointerButtonMap[pointerId] ?: return
+        val key = qwertyButtonMap[view] ?: return
+        qwertyKeyTouchCancelListener?.onQwertyKeyTouchCanceled(key, reason)
     }
 
     private fun showKeyPreview(view: View) {

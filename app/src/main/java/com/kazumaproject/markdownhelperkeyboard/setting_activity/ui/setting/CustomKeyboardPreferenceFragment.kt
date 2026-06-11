@@ -28,5 +28,7 @@ class CustomKeyboardPreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        applyLegacySearchResultFilterIfNeeded()
     }
 }

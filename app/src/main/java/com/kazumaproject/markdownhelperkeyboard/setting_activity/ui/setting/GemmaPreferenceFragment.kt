@@ -107,6 +107,7 @@ class GemmaPreferenceFragment : PreferenceFragmentCompat() {
         }
 
         updateGemmaModelSummary()
+        applyLegacySearchResultFilterIfNeeded()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {

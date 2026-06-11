@@ -29,6 +29,14 @@ interface CandidateOrderOverrideDao {
 
     @Query(
         """
+        SELECT * FROM candidate_order_override
+        ORDER BY input ASC, rank ASC
+        """
+    )
+    suspend fun getAll(): List<CandidateOrderOverrideEntity>
+
+    @Query(
+        """
         DELETE FROM candidate_order_override
         WHERE input = :input
         """

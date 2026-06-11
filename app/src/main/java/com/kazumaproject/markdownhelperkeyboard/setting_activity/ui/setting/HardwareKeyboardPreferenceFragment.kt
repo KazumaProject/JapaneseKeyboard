@@ -20,5 +20,6 @@ class HardwareKeyboardPreferenceFragment : PreferenceFragmentCompat() {
                 navigateSafely(R.id.physicalKeyboardShortcutListFragment)
                 true
             }
+        applyLegacySearchResultFilterIfNeeded()
     }
 }

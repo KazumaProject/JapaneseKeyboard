@@ -1066,6 +1066,7 @@
     <string name="setting_search_initial_empty">Type a setting name or feature to search</string>
     <string name="setting_search_empty">No matching settings</string>
     <string name="setting_search_result_content_description">%1$s. %2$s. Category: %3$s</string>
+    <string name="setting_search_legacy_location">Legacy Settings > %1$s</string>
     <string name="setting_frequent_edit_title">Customize Frequently Used</string>
     <string name="setting_frequent_edit_description">Add, remove, and reorder the cards shown on the settings top screen.</string>
     <string name="setting_frequent_add_button">Add setting</string>
