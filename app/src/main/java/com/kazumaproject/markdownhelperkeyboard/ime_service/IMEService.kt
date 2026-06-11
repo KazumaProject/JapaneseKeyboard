@@ -198,6 +198,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTi
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.FloatingKeyboardLayoutEditSurface
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditConstraints
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditController
@@ -524,6 +526,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var keyboardBackgroundPlayer: ExoPlayer? = null
     private var floatingKeyboardBackgroundPlayer: ExoPlayer? = null
     private var floatingKeyboardBackgroundVideoConfig: KeyboardBackgroundVideoConfig? = null
+    private val inkRootLocation = IntArray(2)
+    private val inkTargetLocation = IntArray(2)
+    private val inkMappedPoint = FloatArray(2)
     private var isKeyboardFloatingMode: Boolean? = false
     private var isKeyboardRounded: Boolean? = false
     private var keyboardCornerRadiusDp: Int = 32
@@ -904,6 +909,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var liquidGlassThemePreference: Boolean? = false
     private var liquidGlassBlurRadiousPreference: Int? = 220
     private var liquidGlassKeyBlurRadiousPreference: Int? = 255
+
+    private var suminagashiInkEffectPreference: Boolean = false
+    private var suminagashiInkColorModePreference: String = "random"
+
+    @ColorInt
+    private var suminagashiInkColorPreference: Int = Color.rgb(17, 17, 17)
 
     private var customKeyBorderEnablePreference: Boolean? = false
     private var customKeyBorderEnableColor: Int? = Color.BLACK
@@ -1820,6 +1831,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         liquidGlassThemePreference = preferences.liquidGlassThemePreference
         liquidGlassBlurRadiousPreference = preferences.liquidGlassBlurRadiousPreference
         liquidGlassKeyBlurRadiousPreference = preferences.liquidGlassKeyBlurRadiousPreference
+        suminagashiInkEffectPreference = preferences.suminagashiInkEffectPreference
+        suminagashiInkColorModePreference =
+            if (preferences.suminagashiInkColorModePreference == "fixed") "fixed" else "random"
+        suminagashiInkColorPreference = preferences.suminagashiInkColorPreference
         customKeyBorderEnablePreference = preferences.customKeyBorderEnablePreference
         customKeyBorderEnableColor = preferences.customKeyBorderEnableColor
         customComposingTextPreference = preferences.customComposingTextPreference
@@ -2097,6 +2112,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun prepareNormalRootAsFloatingHost(mainView: MainLayoutBinding) {
         releaseKeyboardBackgroundVideoPlayer()
         clearKeyboardBackgroundImage(mainView.keyboardBackgroundImage)
+        mainView.suminagashiInkView.clearInk()
+        mainView.suminagashiInkView.configure(
+            enabled = false,
+            colorMode = suminagashiInkColorModePreference,
+            fixedColor = suminagashiInkColorPreference
+        )
+        (mainView.root as? InkTouchDispatchFrameLayout)?.inkMotionEventListener = null
 
         mainView.keyboardBackgroundVideo.isVisible = false
         mainView.keyboardBackgroundImage.isVisible = false
@@ -2151,6 +2173,142 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 enabled = isBackgroundImageApplied
             )
         }
+    }
+
+    private fun setupSuminagashiInkEffect(
+        mainView: MainLayoutBinding,
+        floatingView: FloatingKeyboardLayoutBinding?
+    ) {
+        setupMainSuminagashiInkEffect(mainView)
+        floatingView?.let { setupFloatingSuminagashiInkEffect(it) }
+    }
+
+    private fun setupMainSuminagashiInkEffect(mainView: MainLayoutBinding) {
+        val enabled = suminagashiInkEffectPreference && isKeyboardFloatingMode != true
+
+        mainView.suminagashiInkView.configure(
+            enabled = enabled,
+            colorMode = suminagashiInkColorModePreference,
+            fixedColor = suminagashiInkColorPreference
+        )
+
+        val root = mainView.root as? InkTouchDispatchFrameLayout
+        root?.inkMotionEventListener = if (enabled) {
+            { event ->
+                dispatchInkMotionEvent(
+                    event = event,
+                    sourceRoot = mainView.root,
+                    targetContainer = mainView.keyboardBackgroundContainer,
+                    inkView = mainView.suminagashiInkView
+                )
+            }
+        } else {
+            null
+        }
+    }
+
+    private fun setupFloatingSuminagashiInkEffect(
+        floatingView: FloatingKeyboardLayoutBinding
+    ) {
+        val enabled = suminagashiInkEffectPreference && isKeyboardFloatingMode == true
+
+        floatingView.floatingSuminagashiInkView.configure(
+            enabled = enabled,
+            colorMode = suminagashiInkColorModePreference,
+            fixedColor = suminagashiInkColorPreference
+        )
+
+        val root = floatingView.root as? InkTouchDispatchFrameLayout
+        root?.inkMotionEventListener = if (enabled) {
+            { event ->
+                dispatchInkMotionEvent(
+                    event = event,
+                    sourceRoot = floatingView.root,
+                    targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                    inkView = floatingView.floatingSuminagashiInkView
+                )
+            }
+        } else {
+            null
+        }
+    }
+
+    private fun dispatchInkMotionEvent(
+        event: MotionEvent,
+        sourceRoot: View,
+        targetContainer: View,
+        inkView: SuminagashiInkView
+    ) {
+        if (!inkView.isShown) return
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN,
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                val index = event.actionIndex
+                if (!mapMotionEventToTarget(event, index, sourceRoot, targetContainer, inkMappedPoint)) {
+                    return
+                }
+                inkView.onPointerDown(
+                    pointerId = event.getPointerId(index),
+                    x = inkMappedPoint[0],
+                    y = inkMappedPoint[1]
+                )
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                for (index in 0 until event.pointerCount) {
+                    if (!mapMotionEventToTarget(
+                            event,
+                            index,
+                            sourceRoot,
+                            targetContainer,
+                            inkMappedPoint
+                        )
+                    ) {
+                        continue
+                    }
+                    inkView.onPointerMove(
+                        pointerId = event.getPointerId(index),
+                        x = inkMappedPoint[0],
+                        y = inkMappedPoint[1]
+                    )
+                }
+            }
+
+            MotionEvent.ACTION_UP,
+            MotionEvent.ACTION_POINTER_UP -> {
+                val index = event.actionIndex
+                inkView.onPointerUp(event.getPointerId(index))
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                inkView.onCancel()
+            }
+        }
+    }
+
+    private fun mapMotionEventToTarget(
+        event: MotionEvent,
+        pointerIndex: Int,
+        sourceRoot: View,
+        target: View,
+        outPoint: FloatArray
+    ): Boolean {
+        if (target.width <= 0 || target.height <= 0) return false
+
+        sourceRoot.getLocationInWindow(inkRootLocation)
+        target.getLocationInWindow(inkTargetLocation)
+
+        val x = event.getX(pointerIndex) + inkRootLocation[0] - inkTargetLocation[0]
+        val y = event.getY(pointerIndex) + inkRootLocation[1] - inkTargetLocation[1]
+
+        if (x < 0f || y < 0f || x > target.width || y > target.height) {
+            return false
+        }
+
+        outPoint[0] = x
+        outPoint[1] = y
+        return true
     }
 
     private fun applyFloatingKeyboardRoundedClipping(floatingView: FloatingKeyboardLayoutBinding) {
@@ -2642,6 +2800,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     applyNormalKeyboardChrome(mainView)
                     applyKeyboardBackgroundIfNeeded(mainView)
                 }
+                setupSuminagashiInkEffect(mainView, floatingKeyboardBinding)
 
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
@@ -3011,6 +3170,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         liquidGlassThemePreference = null
         liquidGlassBlurRadiousPreference = null
         liquidGlassKeyBlurRadiousPreference = null
+        suminagashiInkEffectPreference = false
+        suminagashiInkColorModePreference = "random"
+        suminagashiInkColorPreference = Color.rgb(17, 17, 17)
         customKeyBorderEnablePreference = null
         customKeyBorderEnableColor = null
 
@@ -3736,6 +3898,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     if (isKeyboardFloatingMode == true) {
                         floatingKeyboardBinding?.let { applyFloatingKeyboardBackgroundIfNeeded(it) }
                     }
+                    setupSuminagashiInkEffect(mainView, floatingKeyboardBinding)
                     ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
                         val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
                         systemBottomInset = insets.bottom
@@ -5057,6 +5220,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingKeyboardBinding?.let { floatingView ->
                 applyFloatingKeyboardBackgroundIfNeeded(floatingView)
             }
+            setupSuminagashiInkEffect(mainView, floatingKeyboardBinding)
             syncFloatingKeyboardContentForMode(qwertyMode.value)
             // Floating mode ON に切り替えた直後は、通常 QWERTY が持っている
             // QWERTYMode / Shift / CapsLock / Romaji 等の現在状態を Floating 側に反映する。
@@ -5097,6 +5261,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setKeyboardSizeSwitchKeyboard(mainView)
             applyNormalKeyboardChrome(mainView)
             applyKeyboardBackgroundIfNeeded(mainView, skipForFloatingMode = false)
+            setupSuminagashiInkEffect(mainView, floatingKeyboardBinding)
             // isKeyboardFloatingMode は既に false にセット済みなので、
             // renderCurrentKeyboardStateOnActiveSurface() は main surface に対して動作する。
             // renderKeyboardMode 単体ではなく、本関数を呼ぶことで:
@@ -12892,6 +13057,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         applyNormalKeyboardChrome(mainView)
                         applyKeyboardBackgroundIfNeeded(mainView)
                     }
+                    setupSuminagashiInkEffect(mainView, floatingKeyboardBinding)
                 }
                 updateShortcutActiveStates()
                 Timber.d("isPhysicalKeyboardEnable: $isPhysicalKeyboardEnable")

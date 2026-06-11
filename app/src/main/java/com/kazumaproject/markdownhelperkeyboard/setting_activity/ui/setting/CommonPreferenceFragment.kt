@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -228,6 +229,25 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
         }
     }
 
+    private fun updateSuminagashiInkColorPreferenceState(
+        colorMode: String = appPreference.suminagashi_ink_color_mode_preference
+    ) {
+        val fixedColorPreference =
+            findPreference<Preference>("suminagashi_ink_color_preference")
+
+        val isFixed = colorMode == "fixed"
+        fixedColorPreference?.isVisible = isFixed
+
+        fixedColorPreference?.summary = if (isFixed) {
+            getString(
+                R.string.suminagashi_ink_color_summary_current,
+                String.format("#%08X", appPreference.suminagashi_ink_color_preference)
+            )
+        } else {
+            getString(R.string.suminagashi_ink_color_summary)
+        }
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(preferencesXmlRes, rootKey)
 
@@ -389,8 +409,30 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<ListPreference>("suminagashi_ink_color_mode_preference")?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            val normalizedMode = appPreference.suminagashi_ink_color_mode_preference
+            if (value != normalizedMode) {
+                value = normalizedMode
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextMode = if (newValue == "fixed") "fixed" else "random"
+                appPreference.suminagashi_ink_color_mode_preference = nextMode
+                updateSuminagashiInkColorPreferenceState(nextMode)
+                true
+            }
+        }
+
+        findPreference<Preference>("suminagashi_ink_color_preference")?.apply {
+            setOnPreferenceClickListener {
+                showSuminagashiInkColorPickerDialog()
+                true
+            }
+        }
+
         updateKeyboardBackgroundImagePreferenceState()
         updateKeyboardBackgroundVideoPreferenceState()
+        updateSuminagashiInkColorPreferenceState()
 
         val keyboardSizeLandscapePreference =
             findPreference<Preference>("keyboard_screen_landscape_preference")
@@ -717,6 +759,29 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             ) { _, color ->
                 appPreference.seedColor = color
                 requireActivity().recreate()
+            }
+            positiveButton(android.R.string.ok)
+            negativeButton(android.R.string.cancel)
+        }
+    }
+
+    @SuppressLint("CheckResult")
+    private fun showSuminagashiInkColorPickerDialog() {
+        MaterialDialog(requireContext()).show {
+            title(text = getString(R.string.suminagashi_ink_color_title))
+            colorChooser(
+                colors = intArrayOf(
+                    Color.rgb(17, 17, 17),
+                    Color.rgb(38, 70, 120),
+                    Color.rgb(180, 48, 42),
+                    Color.rgb(50, 110, 78),
+                    Color.rgb(120, 70, 150)
+                ),
+                initialSelection = appPreference.suminagashi_ink_color_preference,
+                allowCustomArgb = true
+            ) { _, color ->
+                appPreference.suminagashi_ink_color_preference = color
+                updateSuminagashiInkColorPreferenceState("fixed")
             }
             positiveButton(android.R.string.ok)
             negativeButton(android.R.string.cancel)

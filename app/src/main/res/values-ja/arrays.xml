@@ -22,6 +22,16 @@
         <item>low</item>
     </string-array>
 
+    <string-array name="suminagashi_ink_color_mode_entries">
+        <item>@string/suminagashi_ink_color_mode_random</item>
+        <item>@string/suminagashi_ink_color_mode_fixed</item>
+    </string-array>
+
+    <string-array name="suminagashi_ink_color_mode_values">
+        <item>random</item>
+        <item>fixed</item>
+    </string-array>
+
     <string-array name="default_emoji_skin_tone_entries">
         <item>@string/default_emoji_skin_tone_default</item>
         <item>@string/default_emoji_skin_tone_light</item>

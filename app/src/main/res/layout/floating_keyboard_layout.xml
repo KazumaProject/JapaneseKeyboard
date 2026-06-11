@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -34,6 +34,15 @@
             android:contentDescription="@null"
             android:focusable="false"
             android:scaleType="fitCenter"
+            android:visibility="gone" />
+
+        <com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
+            android:id="@+id/floating_suminagashi_ink_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
+            android:importantForAccessibility="no"
             android:visibility="gone" />
     </FrameLayout>
 
@@ -153,4 +162,4 @@
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-</FrameLayout>
+</com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout>
