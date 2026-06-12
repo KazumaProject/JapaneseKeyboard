@@ -1190,6 +1190,7 @@
     <string name="shortcut_toolbar_summary_keyboard_picker">キーボードを切り替えます</string>
     <string name="shortcut_toolbar_summary_keyboard_layout_edit">キーボードレイアウトを編集します</string>
     <string name="shortcut_toolbar_summary_keyboard_floating_toggle">フローティングモードを切り替えます</string>
+    <string name="shortcut_toolbar_summary_input_behavior_toggle">直接入力と未確定入力を一時的に切り替えます</string>
     <string name="shortcut_toolbar_summary_select_all">テキストをすべて選択します</string>
     <string name="shortcut_toolbar_summary_copy">選択中の内容をコピーします</string>
     <string name="shortcut_toolbar_summary_paste">クリップボードから貼り付けます</string>
