@@ -204,6 +204,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.Direc
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.InputBehaviorResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.KeyInputBehaviorDispatcher
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.ResolvedInputBehavior
+import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.RuntimeInputBehaviorPolicy
+import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.RuntimeInputBehaviorSafetyState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.TypeNullInputBehaviorSetting
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.FloatingKeyboardLayoutEditSurface
 import com.kazumaproject.markdownhelperkeyboard.ime_service.keyboard_layout_edit.KeyboardLayoutEditConstraints
@@ -763,6 +765,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val physicalKeyboardEnable: SharedFlow<Boolean> = _physicalKeyboardEnable
 
     private var currentInputType: InputTypeForIME = InputTypeForIME.Text
+    private var baselineInputBehavior: ResolvedInputBehavior = ResolvedInputBehavior.COMPOSING_TEXT
+    private var shortcutInputBehaviorOverride: ResolvedInputBehavior? = null
     private var currentInputBehavior: ResolvedInputBehavior = ResolvedInputBehavior.COMPOSING_TEXT
     private val inputBehaviorResolver by lazy {
         InputBehaviorResolver {
@@ -2601,6 +2605,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         isInputViewActive = true
+        shortcutInputBehaviorOverride = null
         keyboardSelectionPopupWindow?.dismiss()
         addUserDictionaryPopup?.dismiss()
         _keyboardSymbolViewState.update { SymbolKeyboardState() }
@@ -2953,6 +2958,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingDockView.setText("あ")
             ensurePhysicalKeyboardPopupWindows()
         }
+        refreshBaselineInputBehaviorForCurrentKeyboard("start input keyboard layout settled")
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -6063,6 +6069,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 setKeyboardWithDeleteKeyFlickPreferences(flickView, finalLayout)
                 syncCustomKeyboardToggleKeyIcons(flickView)
+                refreshBaselineInputBehaviorForCurrentKeyboard("custom layout input mode loaded")
             }
         }
     }
@@ -8763,6 +8770,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionRecyclerView.isVisible = true
             syncFloatingKeyboardContentForMode(qwertyMode.value)
             renderCurrentKeyboardStateOnActiveSurface()
+            refreshBaselineInputBehaviorForCurrentKeyboard("keyboard layout change")
         }
     }
 
@@ -9133,6 +9141,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 setCustomLayoutOnAvailableSurfaces(finalLayout)
                 syncCustomKeyboardToggleKeyIconsOnAvailableSurfaces()
+                refreshBaselineInputBehaviorForCurrentKeyboard("custom layout input mode loaded")
             }
         }
     }
@@ -10134,6 +10143,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchDirectMode -> {
                         isCustomLayoutDirectMode = !isCustomLayoutDirectMode
                         persistCurrentCustomKeyboardInputModeIfEnabled()
+                        shortcutInputBehaviorOverride = null
+                        baselineInputBehavior = resolveBaselineInputBehavior()
+                        applyEffectiveInputBehavior("custom direct mode key")
 
                         Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
@@ -10597,6 +10609,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     KeyAction.SwitchDirectMode -> {
                         isCustomLayoutDirectMode = !isCustomLayoutDirectMode
                         persistCurrentCustomKeyboardInputModeIfEnabled()
+                        shortcutInputBehaviorOverride = null
+                        baselineInputBehavior = resolveBaselineInputBehavior()
+                        applyEffectiveInputBehavior("custom direct mode key")
 
                         Handler(mainLooper).post {
                             getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
@@ -15377,15 +15392,84 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun resolveBaselineInputBehavior(): ResolvedInputBehavior {
+        return RuntimeInputBehaviorPolicy.resolveBaseline(
+            qwertyMode = qwertyMode.value,
+            isCustomLayoutDirectMode = isCustomLayoutDirectMode,
+            resolvedInputBehavior = inputBehaviorResolver.resolve(currentInputType),
+        )
+    }
+
+    private fun applyEffectiveInputBehavior(reason: String) {
+        val previousInputBehavior = currentInputBehavior
+        currentInputBehavior = RuntimeInputBehaviorPolicy.effective(
+            baseline = baselineInputBehavior,
+            shortcutOverride = shortcutInputBehaviorOverride,
+        )
+        Timber.d(
+            "applyEffectiveInputBehavior: reason=$reason baseline=$baselineInputBehavior " +
+                    "override=$shortcutInputBehaviorOverride current=$currentInputBehavior"
+        )
+
+        if (
+            currentInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT &&
+            shouldClearDirectCommitCompositionState(previousInputBehavior, reason)
+        ) {
+            clearDirectCommitCompositionState("direct commit $reason")
+        }
+        updateShortcutActiveStates()
+    }
+
+    private fun shouldClearDirectCommitCompositionState(
+        previousInputBehavior: ResolvedInputBehavior,
+        reason: String,
+    ): Boolean {
+        if (reason == "start input") return true
+        if (previousInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT) return false
+        return canToggleRuntimeInputBehaviorSafely()
+    }
+
+    private fun resetRuntimeInputBehaviorForCurrentInput() {
+        shortcutInputBehaviorOverride = null
+        baselineInputBehavior = resolveBaselineInputBehavior()
+        applyEffectiveInputBehavior("start input")
+    }
+
+    private fun refreshBaselineInputBehaviorForCurrentKeyboard(reason: String) {
+        baselineInputBehavior = resolveBaselineInputBehavior()
+        applyEffectiveInputBehavior(reason)
+    }
+
+    private fun toggleRuntimeInputBehaviorFromShortcut() {
+        if (!canToggleRuntimeInputBehaviorSafely()) {
+            return
+        }
+
+        shortcutInputBehaviorOverride =
+            RuntimeInputBehaviorPolicy.toggledOverride(currentInputBehavior)
+        applyEffectiveInputBehavior("shortcut input behavior toggle")
+    }
+
+    private fun canToggleRuntimeInputBehaviorSafely(): Boolean {
+        return RuntimeInputBehaviorPolicy.canToggle(
+            RuntimeInputBehaviorSafetyState(
+                inputStringEmpty = inputString.value.isEmpty(),
+                tailEmpty = stringInTail.get().isEmpty(),
+                henkanActive = isHenkan.get(),
+                bunsetsuMultipleDetect = bunsetusMultipleDetect,
+                henkanPressedWithBunsetsuDetect = henkanPressedWithBunsetsuDetect,
+                bunsetsuConversionSessionActive = bunsetsuConversionSession != null,
+                bunsetsuCursorMoveSessionActive = isBunsetsuCursorMoveSessionActive(),
+                candidateHighlightActive = currentHighlightIndex != RecyclerView.NO_POSITION,
+            )
+        )
+    }
+
     private fun setCurrentInputType(attribute: EditorInfo?) {
         attribute?.apply {
             currentInputType = getCurrentInputTypeForIME2(this)
-            currentInputBehavior = inputBehaviorResolver.resolve(currentInputType)
             currentInputModeForSession = defaultInputModeFor(currentInputType)
             Timber.d("setCurrentInputType: $currentInputType $inputType ${attribute.hintText} ${attribute.actionId} ${attribute.fieldName} ${attribute.inputType} ")
-            if (currentInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT) {
-                clearDirectCommitCompositionState("direct commit start input")
-            }
             if (isTabletGojuonSurface()) {
                 mainLayoutBinding?.tabletView?.apply {
                     when (currentInputType) {
@@ -15728,6 +15812,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
             }
+            resetRuntimeInputBehaviorForCurrentInput()
         }
     }
 
@@ -16352,15 +16437,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun updateShortcutActiveStates() {
-        val activeTypes = buildSet {
-            if (keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled) {
-                add(ShortcutType.KEYBOARD_LAYOUT_EDIT)
-            }
-
-            if (isKeyboardFloatingMode == true) {
-                add(ShortcutType.KEYBOARD_FLOATING_TOGGLE)
-            }
-        }
+        val activeTypes = resolveShortcutActiveTypes(
+            keyboardLayoutEditActive = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled,
+            keyboardFloatingActive = isKeyboardFloatingMode == true,
+            inputBehavior = currentInputBehavior,
+        )
 
         shortcutAdapter?.setActiveShortcutTypes(activeTypes)
         suggestionAdapter?.setActiveShortcutTypes(activeTypes)
@@ -16856,6 +16937,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             ShortcutType.KEYBOARD_FLOATING_TOGGLE -> {
                 toggleKeyboardFloatingModeFromShortcut()
+            }
+
+            ShortcutType.INPUT_BEHAVIOR_TOGGLE -> {
+                toggleRuntimeInputBehaviorFromShortcut()
             }
 
             ShortcutType.SELECT_ALL -> {
