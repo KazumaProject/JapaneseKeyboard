@@ -1,10 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
 import android.graphics.Color
-import android.os.SystemClock
+import android.graphics.SurfaceTexture
 import android.view.View
 import androidx.test.core.app.ApplicationProvider
 import org.junit.Assert.assertEquals
@@ -21,185 +19,194 @@ import org.robolectric.annotation.Config
 class SuminagashiInkViewTest {
 
     private lateinit var view: SuminagashiInkView
+    private lateinit var rendererFactory: RecordingRendererFactory
 
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<Context>()
-        view = SuminagashiInkView(context)
+        rendererFactory = RecordingRendererFactory()
+        view = SuminagashiInkView(context).apply {
+            rendererFactory = this@SuminagashiInkViewTest.rendererFactory
+        }
     }
 
     @Test
-    fun pointerDownDoesNotCreateDropsWhenDisabled() {
+    fun settingOffDoesNotCreateRenderer() {
         view.configure(
             enabled = false,
             colorMode = "random",
             fixedColor = Color.rgb(17, 17, 17)
         )
 
-        view.onPointerDown(pointerId = 0, x = 20f, y = 30f)
-
         assertEquals(View.GONE, view.visibility)
-        assertEquals(0, view.dropCountForTesting())
+        assertFalse(view.hasRendererForTesting())
+        assertTrue(rendererFactory.renderers.isEmpty())
     }
 
     @Test
-    fun pointerDownCreatesDropsWhenEnabled() {
+    fun settingOnCreatesRendererAndShowsView() {
         view.configure(
             enabled = true,
-            colorMode = "random",
-            fixedColor = Color.rgb(17, 17, 17)
+            colorMode = "fixed",
+            fixedColor = Color.rgb(40, 80, 120)
         )
 
-        view.onPointerDown(pointerId = 0, x = 20f, y = 30f)
-
+        val renderer = rendererFactory.renderers.single()
         assertEquals(View.VISIBLE, view.visibility)
-        assertTrue(view.dropCountForTesting() > 0)
+        assertTrue(view.hasRendererForTesting())
+        assertEquals(
+            listOf("configure:true", "resume", "requestRender"),
+            renderer.calls
+        )
     }
 
     @Test
-    fun clearInkRemovesDropsAndPointerState() {
+    fun surfaceAvailableSendsAttachCommand() {
         view.configure(
             enabled = true,
             colorMode = "fixed",
-            fixedColor = Color.rgb(38, 70, 120)
+            fixedColor = Color.rgb(40, 80, 120)
         )
-        view.onPointerDown(pointerId = 3, x = 20f, y = 30f)
+        val renderer = rendererFactory.renderers.single()
+        val surfaceTexture = SurfaceTexture(0)
 
-        view.clearInk()
+        view.onSurfaceTextureAvailable(surfaceTexture, 300, 120)
 
-        assertEquals(0, view.dropCountForTesting())
-        assertEquals(0, view.pointerStateCountForTesting())
-        assertFalse(view.hasResidualInkForTesting())
+        assertTrue(renderer.calls.contains("attach:300x120"))
+        surfaceTexture.release()
     }
 
     @Test
-    fun clearInkRemovesResidualSurfaceState() {
-        view.layout(0, 0, 240, 180)
+    fun settingOffAfterOnClearsReleasesAndHidesView() {
         view.configure(
             enabled = true,
-            colorMode = "fixed",
-            fixedColor = Color.rgb(38, 70, 120)
+            colorMode = "random",
+            fixedColor = Color.rgb(17, 17, 17)
         )
-        view.onPointerDown(pointerId = 3, x = 20f, y = 30f)
-        val bitmap = Bitmap.createBitmap(240, 180, Bitmap.Config.ARGB_8888)
-
-        view.draw(Canvas(bitmap))
-
-        assertTrue(view.hasResidualInkForTesting())
-
-        view.clearInk()
-
-        assertEquals(0, view.dropCountForTesting())
-        assertEquals(0, view.pointerStateCountForTesting())
-        assertFalse(view.hasResidualInkForTesting())
-        bitmap.recycle()
-    }
-
-    @Test
-    fun residualSurfacePersistsAfterActiveDropsAreGone() {
-        view.layout(0, 0, 240, 180)
-        view.configure(
-            enabled = true,
-            colorMode = "fixed",
-            fixedColor = Color.rgb(38, 70, 120)
-        )
-        view.onPointerDown(pointerId = 3, x = 20f, y = 30f)
-        val bitmap = Bitmap.createBitmap(240, 180, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-
-        view.draw(canvas)
-        view.clearActiveDropsForTesting()
-        view.draw(canvas)
-
-        assertEquals(0, view.dropCountForTesting())
-        assertTrue(view.hasResidualInkForTesting())
-        bitmap.recycle()
-    }
-
-    @Test
-    fun residualSurfaceStopsAnimatingAfterIdleWindow() {
-        view.layout(0, 0, 240, 180)
-        view.configure(
-            enabled = true,
-            colorMode = "fixed",
-            fixedColor = Color.rgb(38, 70, 120)
-        )
-        view.onPointerDown(pointerId = 3, x = 20f, y = 30f)
-        val bitmap = Bitmap.createBitmap(240, 180, Bitmap.Config.ARGB_8888)
-        view.draw(Canvas(bitmap))
-        view.onPointerUp(pointerId = 3, x = 20f, y = 30f)
-        view.clearActiveDropsForTesting()
-        val now = SystemClock.uptimeMillis()
-
-        view.setLastActiveInkTimeForTesting(now - 2_000L)
-
-        assertTrue(view.hasResidualInkForTesting())
-        assertFalse(view.shouldAnimateResidualSurfaceForTesting(now))
-        bitmap.recycle()
-    }
-
-    @Test
-    fun residualTintKeepsDarkInkFromBecomingBlack() {
-        val color = view.waterTintColorForTesting(Color.rgb(17, 17, 17), phase = 0f)
-        val red = Color.red(color)
-        val green = Color.green(color)
-        val blue = Color.blue(color)
-
-        assertTrue(red + green + blue > 220)
-        assertTrue(maxOf(red, green, blue) - minOf(red, green, blue) > 20)
-    }
-
-    @Test
-    fun pointerUpKeepsInkAndClearsPointerState() {
-        view.configure(
-            enabled = true,
-            colorMode = "fixed",
-            fixedColor = Color.rgb(38, 70, 120)
-        )
-        view.onPointerDown(pointerId = 7, x = 20f, y = 30f)
-        val dropsBeforeUp = view.dropCountForTesting()
-        assertEquals(1, view.pointerStateCountForTesting())
-
-        view.onPointerUp(pointerId = 7, x = 24f, y = 34f)
-
-        assertEquals(0, view.pointerStateCountForTesting())
-        assertTrue(view.dropCountForTesting() > dropsBeforeUp)
-    }
-
-    @Test
-    fun cancelClearsPointerStateButKeepsInk() {
-        view.configure(
-            enabled = true,
-            colorMode = "fixed",
-            fixedColor = Color.rgb(38, 70, 120)
-        )
-        view.onPointerDown(pointerId = 4, x = 20f, y = 30f)
-        assertEquals(1, view.pointerStateCountForTesting())
-
-        view.onCancel()
-
-        assertEquals(0, view.pointerStateCountForTesting())
-        assertTrue(view.dropCountForTesting() > 0)
-    }
-
-    @Test
-    fun configureDisabledHidesViewAndClearsDrops() {
-        view.configure(
-            enabled = true,
-            colorMode = "fixed",
-            fixedColor = Color.rgb(38, 70, 120)
-        )
-        view.onPointerDown(pointerId = 5, x = 20f, y = 30f)
-        assertTrue(view.dropCountForTesting() > 0)
+        val renderer = rendererFactory.renderers.single()
 
         view.configure(
             enabled = false,
-            colorMode = "fixed",
-            fixedColor = Color.rgb(38, 70, 120)
+            colorMode = "random",
+            fixedColor = Color.rgb(17, 17, 17)
         )
 
         assertEquals(View.GONE, view.visibility)
-        assertEquals(0, view.dropCountForTesting())
+        assertFalse(view.hasRendererForTesting())
+        assertTrue(renderer.calls.contains("clear"))
+        assertTrue(renderer.calls.contains("release"))
+        assertFalse(renderer.isRendererThreadAliveForTesting())
+    }
+
+    @Test
+    fun clearPauseReleaseForwardLifecycleCommands() {
+        view.configure(
+            enabled = true,
+            colorMode = "fixed",
+            fixedColor = Color.rgb(40, 80, 120)
+        )
+        val renderer = rendererFactory.renderers.single()
+
+        view.clearInk()
+        view.pauseInk()
+        view.releaseInk()
+
+        assertTrue(renderer.calls.contains("clear"))
+        assertTrue(renderer.calls.contains("pause"))
+        assertTrue(renderer.calls.contains("release"))
+        assertEquals(View.GONE, view.visibility)
+    }
+
+    @Test
+    fun pointerInputQueuesCommandsWithoutRunningRendererWork() {
+        view.configure(
+            enabled = true,
+            colorMode = "fixed",
+            fixedColor = Color.rgb(40, 80, 120)
+        )
+
+        view.onPointerDown(pointerId = 7, x = 20f, y = 30f)
+        view.onPointerMove(pointerId = 7, x = 40f, y = 35f)
+        view.onPointerUp(pointerId = 7, x = 40f, y = 35f)
+
         assertEquals(0, view.pointerStateCountForTesting())
+        assertTrue(view.queuedInputCountForTesting() >= 2)
+        assertTrue(rendererFactory.renderers.single().calls.count { it == "requestRender" } >= 2)
+    }
+
+    @Test
+    fun rendererFailureDisablesOnlyEffect() {
+        view.configure(
+            enabled = true,
+            colorMode = "fixed",
+            fixedColor = Color.rgb(40, 80, 120)
+        )
+        val renderer = rendererFactory.renderers.single()
+
+        rendererFactory.callbacks.single().onRendererDisabled(
+            "shader compile",
+            IllegalStateException("boom")
+        )
+
+        assertEquals(View.GONE, view.visibility)
+        assertFalse(view.hasRendererForTesting())
+        assertTrue(renderer.calls.contains("release"))
+    }
+
+    private class RecordingRendererFactory : FluidInkRendererFactory {
+        val renderers = mutableListOf<RecordingRenderer>()
+        val callbacks = mutableListOf<FluidInkRendererCallback>()
+
+        override fun create(
+            inputQueue: FluidInputCommandQueue,
+            callback: FluidInkRendererCallback
+        ): FluidInkRendererController {
+            callbacks.add(callback)
+            return RecordingRenderer().also(renderers::add)
+        }
+    }
+
+    private class RecordingRenderer : FluidInkRendererController {
+        val calls = mutableListOf<String>()
+        private var alive = true
+
+        override fun configure(settings: FluidInkSettings) {
+            calls.add("configure:${settings.enabled}")
+        }
+
+        override fun attachSurface(surfaceTexture: SurfaceTexture, width: Int, height: Int) {
+            calls.add("attach:${width}x$height")
+        }
+
+        override fun resizeSurface(width: Int, height: Int) {
+            calls.add("resize:${width}x$height")
+        }
+
+        override fun detachSurface() {
+            calls.add("detach")
+        }
+
+        override fun resume() {
+            calls.add("resume")
+        }
+
+        override fun requestRender() {
+            calls.add("requestRender")
+        }
+
+        override fun clear() {
+            calls.add("clear")
+        }
+
+        override fun pause() {
+            calls.add("pause")
+        }
+
+        override fun release() {
+            alive = false
+            calls.add("release")
+        }
+
+        override fun isRendererThreadAliveForTesting(): Boolean = alive
     }
 }
