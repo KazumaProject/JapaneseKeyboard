@@ -38,6 +38,12 @@ enum class ShortcutType(
         activeIconResId = com.kazumaproject.core.R.drawable.keyboard_normal_24px,
         description = "フローティング切替"
     ),
+    INPUT_BEHAVIOR_TOGGLE(
+        "input_behavior_toggle",
+        com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px,
+        activeIconResId = com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px,
+        description = "入力方式切替"
+    ),
     SELECT_ALL(
         "select_all",
         com.kazumaproject.core.R.drawable.text_select_start_24dp,
