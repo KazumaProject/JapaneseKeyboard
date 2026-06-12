@@ -2202,9 +2202,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingView?.let { setupFloatingSuminagashiInkEffect(it) }
     }
 
-    private fun clearSuminagashiInkEffects() {
-        mainLayoutBinding?.suminagashiInkView?.clearInk()
-        floatingKeyboardBinding?.floatingSuminagashiInkView?.clearInk()
+    private fun clearAndPauseSuminagashiInkEffects() {
+        mainLayoutBinding?.suminagashiInkView?.apply {
+            clearInk()
+            pauseInk()
+        }
+        floatingKeyboardBinding?.floatingSuminagashiInkView?.apply {
+            clearInk()
+            pauseInk()
+        }
+    }
+
+    private fun releaseSuminagashiInkEffects() {
+        mainLayoutBinding?.suminagashiInkView?.releaseInk()
+        floatingKeyboardBinding?.floatingSuminagashiInkView?.releaseInk()
     }
 
     private fun setupMainSuminagashiInkEffect(mainView: MainLayoutBinding) {
@@ -2970,7 +2981,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         persistCurrentTenkeyOrSumireInputModeIfEnabled()
         isInputViewActive = false
         qwertyGlideInputCoordinator?.cancelPending()
-        clearSuminagashiInkEffects()
+        clearAndPauseSuminagashiInkEffects()
         releaseKeyboardBackgroundVideoPlayer()
         releaseFloatingKeyboardBackgroundVideoPlayer()
         stopVoiceInput()
@@ -2985,7 +2996,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
-        clearSuminagashiInkEffects()
+        clearAndPauseSuminagashiInkEffects()
         super.onWindowHidden()
     }
 
@@ -2994,7 +3005,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
         isInputViewActive = false
-        clearSuminagashiInkEffects()
+        releaseSuminagashiInkEffects()
         releaseKeyboardBackgroundVideoPlayer()
         releaseFloatingKeyboardBackgroundVideoPlayer()
         super.onDestroy()
