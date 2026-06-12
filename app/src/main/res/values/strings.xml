@@ -1192,6 +1192,7 @@
     <string name="shortcut_toolbar_summary_keyboard_picker">Switch keyboards.</string>
     <string name="shortcut_toolbar_summary_keyboard_layout_edit">Edit the keyboard layout.</string>
     <string name="shortcut_toolbar_summary_keyboard_floating_toggle">Toggle floating mode.</string>
+    <string name="shortcut_toolbar_summary_input_behavior_toggle">Temporarily switch between direct input and composing text.</string>
     <string name="shortcut_toolbar_summary_select_all">Select all text.</string>
     <string name="shortcut_toolbar_summary_copy">Copy the selected content.</string>
     <string name="shortcut_toolbar_summary_paste">Paste from the clipboard.</string>
