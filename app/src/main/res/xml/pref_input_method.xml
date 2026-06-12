@@ -10,6 +10,14 @@
             android:summary="@string/keyboard_selection_summary"
             android:title="@string/keyboard_selection_preference_title" />
 
+        <ListPreference
+            android:defaultValue="default"
+            android:entries="@array/type_null_input_behavior_entries"
+            android:entryValues="@array/type_null_input_behavior_values"
+            android:key="type_null_input_behavior_preference"
+            android:summary="@string/type_null_input_behavior_summary"
+            android:title="@string/type_null_input_behavior_title" />
+
         <Preference
             android:icon="@drawable/language_japanese_kana_24px"
             android:key="setting_route_sumire_preferences"

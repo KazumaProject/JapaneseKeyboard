@@ -24,10 +24,7 @@ fun getCurrentInputTypeForIME2(editorInfo: EditorInfo?): InputTypeForIME {
     }
 
     if (editorInfo.inputType == InputType.TYPE_NULL) {
-        if (hasPasswordLikeMetadata(editorInfo)) {
-            return InputTypeForIME.TextPassword
-        }
-        return InputTypeForIME.Text
+        return InputTypeForIME.TypeNull
     }
 
     val inputType = editorInfo.inputType

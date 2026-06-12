@@ -10,6 +10,18 @@
         <item>kana</item>
     </string-array>
 
+    <string-array name="type_null_input_behavior_entries">
+        <item>@string/type_null_input_behavior_default</item>
+        <item>@string/type_null_input_behavior_direct_commit</item>
+        <item>@string/type_null_input_behavior_composing_text</item>
+    </string-array>
+
+    <string-array name="type_null_input_behavior_values">
+        <item>default</item>
+        <item>direct_commit</item>
+        <item>composing_text</item>
+    </string-array>
+
     <string-array name="keyboard_background_image_display_mode_entries">
         <item>@string/keyboard_background_image_display_mode_fit</item>
         <item>@string/keyboard_background_image_display_mode_center_crop</item>

@@ -304,6 +304,14 @@
 
     <PreferenceCategory android:title="@string/category_function_title">
 
+        <ListPreference
+            android:defaultValue="default"
+            android:entries="@array/type_null_input_behavior_entries"
+            android:entryValues="@array/type_null_input_behavior_values"
+            android:key="type_null_input_behavior_preference"
+            android:summary="%s"
+            android:title="@string/type_null_input_behavior_title" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="flick_input_only_preference"
