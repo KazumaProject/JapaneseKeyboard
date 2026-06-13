@@ -5,6 +5,7 @@ import android.graphics.Color
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -35,7 +36,10 @@ class AppPreferenceSuminagashiInkTest {
         assertEquals(Color.rgb(17, 17, 17), AppPreference.suminagashi_ink_color_preference)
         assertEquals("random", AppPreference.keyboard_touch_effect_color_mode_preference)
         assertEquals(Color.rgb(17, 17, 17), AppPreference.keyboard_touch_effect_color_preference)
-        assertEquals("vivid_paint", AppPreference.keyboard_touch_effect_palette_preference)
+        assertEquals(
+            SprayPaintSettings.PALETTE_PAINT_SPLASH,
+            AppPreference.keyboard_touch_effect_palette_preference
+        )
     }
 
     @Test
@@ -160,16 +164,38 @@ class AppPreferenceSuminagashiInkTest {
     }
 
     @Test
-    fun keyboardTouchEffectPaletteNormalizesUnknownToVividPaint() {
+    fun keyboardTouchEffectPaletteNormalizesUnknownToPaintSplash() {
         AppPreference.keyboard_touch_effect_palette_preference = "unexpected"
 
-        assertEquals("vivid_paint", AppPreference.keyboard_touch_effect_palette_preference)
+        assertEquals(
+            SprayPaintSettings.PALETTE_PAINT_SPLASH,
+            AppPreference.keyboard_touch_effect_palette_preference
+        )
     }
 
     @Test
-    fun keyboardTouchEffectPaletteNormalizesRemovedMonochromeToVividPaint() {
+    fun keyboardTouchEffectPaletteNormalizesRemovedMonochromeToPaintSplash() {
         AppPreference.keyboard_touch_effect_palette_preference = "monochrome_ink"
 
-        assertEquals("vivid_paint", AppPreference.keyboard_touch_effect_palette_preference)
+        assertEquals(
+            SprayPaintSettings.PALETTE_PAINT_SPLASH,
+            AppPreference.keyboard_touch_effect_palette_preference
+        )
+    }
+
+    @Test
+    fun keyboardTouchEffectPaletteNormalizesLegacySprayPaintValues() {
+        val cases = mapOf(
+            "vivid_paint" to SprayPaintSettings.PALETTE_PAINT_SPLASH,
+            "neon_graffiti" to SprayPaintSettings.PALETTE_GRAFFITI,
+            "soft_pastel" to SprayPaintSettings.PALETTE_SPRAY,
+            "sumire" to SprayPaintSettings.PALETTE_FLOWER_PETALS
+        )
+
+        cases.forEach { (legacyValue, expectedValue) ->
+            AppPreference.keyboard_touch_effect_palette_preference = legacyValue
+
+            assertEquals(expectedValue, AppPreference.keyboard_touch_effect_palette_preference)
+        }
     }
 }

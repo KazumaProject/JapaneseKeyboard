@@ -6,6 +6,7 @@ import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,7 +42,10 @@ class ImePreferencesSnapshotSuminagashiInkTest {
         assertEquals(Color.rgb(17, 17, 17), snapshot.suminagashiInkColorPreference)
         assertEquals("random", snapshot.keyboardTouchEffectColorModePreference)
         assertEquals(Color.rgb(17, 17, 17), snapshot.keyboardTouchEffectColorPreference)
-        assertEquals("vivid_paint", snapshot.keyboardTouchEffectPalettePreference)
+        assertEquals(
+            SprayPaintSettings.PALETTE_PAINT_SPLASH,
+            snapshot.keyboardTouchEffectPalettePreference
+        )
     }
 
     @Test
@@ -88,7 +92,7 @@ class ImePreferencesSnapshotSuminagashiInkTest {
         AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.SPRAY_PAINT
         AppPreference.keyboard_touch_effect_color_mode_preference = "palette"
         AppPreference.keyboard_touch_effect_color_preference = fixedColor
-        AppPreference.keyboard_touch_effect_palette_preference = "neon_graffiti"
+        AppPreference.keyboard_touch_effect_palette_preference = SprayPaintSettings.PALETTE_GRAFFITI
 
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
 
@@ -98,7 +102,10 @@ class ImePreferencesSnapshotSuminagashiInkTest {
         )
         assertEquals("palette", snapshot.keyboardTouchEffectColorModePreference)
         assertEquals(fixedColor, snapshot.keyboardTouchEffectColorPreference)
-        assertEquals("neon_graffiti", snapshot.keyboardTouchEffectPalettePreference)
+        assertEquals(
+            SprayPaintSettings.PALETTE_GRAFFITI,
+            snapshot.keyboardTouchEffectPalettePreference
+        )
         assertFalse(snapshot.suminagashiInkEffectPreference)
     }
 }

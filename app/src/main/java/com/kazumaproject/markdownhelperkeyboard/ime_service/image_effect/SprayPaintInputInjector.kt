@@ -159,12 +159,7 @@ internal class SprayPaintInputInjector(
     fun pointerStateCountForTesting(): Int = pointerStates.size
 
     private fun resolvePaintChoice(): PaintChoice {
-        val palette = when (settings.normalizedColorMode) {
-            SprayPaintSettings.COLOR_MODE_FIXED -> settings.normalizedPalette
-            SprayPaintSettings.COLOR_MODE_PALETTE,
-            SprayPaintSettings.COLOR_MODE_THEME -> settings.normalizedPalette
-            else -> randomModePalette()
-        }
+        val palette = settings.normalizedPalette
         val color = when (settings.normalizedColorMode) {
             SprayPaintSettings.COLOR_MODE_FIXED -> settings.fixedColor
             else -> randomPaletteColor(palette)
@@ -175,31 +170,30 @@ internal class SprayPaintInputInjector(
         )
     }
 
-    private fun randomModePalette(): String {
-        return RANDOM_MODE_PALETTES[random.nextInt(RANDOM_MODE_PALETTES.size)]
-    }
-
     @ColorInt
     private fun randomPaletteColor(palette: String): Int {
         val colors = when (SprayPaintSettings.normalizePalette(palette)) {
-            SprayPaintSettings.PALETTE_NEON_GRAFFITI -> NEON_GRAFFITI
-            SprayPaintSettings.PALETTE_SOFT_PASTEL -> SOFT_PASTEL
-            SprayPaintSettings.PALETTE_SUMIRE -> SUMIRE
-            else -> VIVID_PAINT
+            SprayPaintSettings.PALETTE_SPRAY -> SPRAY
+            SprayPaintSettings.PALETTE_GRAFFITI -> GRAFFITI
+            SprayPaintSettings.PALETTE_LIQUID_PAINT -> LIQUID_PAINT
+            SprayPaintSettings.PALETTE_FLOWER_PETALS -> FLOWER_PETALS
+            else -> PAINT_SPLASH
         }
         val base = colors[random.nextInt(colors.size)]
         val normalizedPalette = SprayPaintSettings.normalizePalette(palette)
         val shade = when (normalizedPalette) {
-            SprayPaintSettings.PALETTE_NEON_GRAFFITI -> 0.9f + random.nextFloat() * 0.3f
-            SprayPaintSettings.PALETTE_SOFT_PASTEL -> 0.98f + random.nextFloat() * 0.11f
-            SprayPaintSettings.PALETTE_SUMIRE -> 0.94f + random.nextFloat() * 0.16f
-            else -> 0.92f + random.nextFloat() * 0.22f
+            SprayPaintSettings.PALETTE_SPRAY -> 0.96f + random.nextFloat() * 0.14f
+            SprayPaintSettings.PALETTE_GRAFFITI -> 0.9f + random.nextFloat() * 0.32f
+            SprayPaintSettings.PALETTE_LIQUID_PAINT -> 0.86f + random.nextFloat() * 0.2f
+            SprayPaintSettings.PALETTE_FLOWER_PETALS -> 0.98f + random.nextFloat() * 0.12f
+            else -> 0.9f + random.nextFloat() * 0.26f
         }
         val alpha = when (normalizedPalette) {
-            SprayPaintSettings.PALETTE_NEON_GRAFFITI -> 224 + random.nextInt(32)
-            SprayPaintSettings.PALETTE_SOFT_PASTEL -> 178 + random.nextInt(36)
-            SprayPaintSettings.PALETTE_SUMIRE -> 172 + random.nextInt(44)
-            else -> 214 + random.nextInt(40)
+            SprayPaintSettings.PALETTE_SPRAY -> 170 + random.nextInt(44)
+            SprayPaintSettings.PALETTE_GRAFFITI -> 224 + random.nextInt(32)
+            SprayPaintSettings.PALETTE_LIQUID_PAINT -> 232 + random.nextInt(24)
+            SprayPaintSettings.PALETTE_FLOWER_PETALS -> 180 + random.nextInt(48)
+            else -> 224 + random.nextInt(32)
         }
         return Color.argb(
             alpha,
@@ -212,14 +206,15 @@ internal class SprayPaintInputInjector(
     companion object {
         private const val MOVE_DISTANCE_EPSILON_PX = 0.9f
 
-        private val RANDOM_MODE_PALETTES = arrayOf(
-            SprayPaintSettings.PALETTE_VIVID_PAINT,
-            SprayPaintSettings.PALETTE_NEON_GRAFFITI,
-            SprayPaintSettings.PALETTE_SOFT_PASTEL,
-            SprayPaintSettings.PALETTE_SUMIRE
+        private val SPRAY = intArrayOf(
+            Color.rgb(112, 214, 255),
+            Color.rgb(255, 168, 218),
+            Color.rgb(255, 230, 109),
+            Color.rgb(157, 238, 143),
+            Color.rgb(177, 156, 255)
         )
 
-        private val VIVID_PAINT = intArrayOf(
+        private val PAINT_SPLASH = intArrayOf(
             Color.rgb(0, 199, 255),
             Color.rgb(255, 47, 154),
             Color.rgb(255, 214, 0),
@@ -228,26 +223,28 @@ internal class SprayPaintInputInjector(
             Color.rgb(134, 79, 255)
         )
 
-        private val NEON_GRAFFITI = intArrayOf(
+        private val GRAFFITI = intArrayOf(
             Color.rgb(255, 43, 191),
             Color.rgb(0, 132, 255),
             Color.rgb(116, 255, 33),
-            Color.rgb(158, 63, 255)
+            Color.rgb(158, 63, 255),
+            Color.rgb(255, 238, 0)
         )
 
-        private val SOFT_PASTEL = intArrayOf(
-            Color.rgb(255, 152, 190),
-            Color.rgb(126, 232, 191),
-            Color.rgb(188, 158, 255),
-            Color.rgb(118, 201, 255)
+        private val LIQUID_PAINT = intArrayOf(
+            Color.rgb(0, 117, 255),
+            Color.rgb(209, 35, 64),
+            Color.rgb(42, 168, 90),
+            Color.rgb(255, 184, 28),
+            Color.rgb(111, 58, 214)
         )
 
-        private val SUMIRE = intArrayOf(
-            Color.rgb(132, 94, 214),
-            Color.rgb(169, 96, 198),
-            Color.rgb(138, 174, 238),
-            Color.rgb(246, 174, 222),
-            Color.rgb(211, 196, 255)
+        private val FLOWER_PETALS = intArrayOf(
+            Color.rgb(255, 166, 196),
+            Color.rgb(255, 205, 226),
+            Color.rgb(214, 176, 255),
+            Color.rgb(255, 235, 176),
+            Color.rgb(238, 174, 222)
         )
     }
 }

@@ -28,6 +28,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import dagger.hilt.android.AndroidEntryPoint
@@ -508,12 +509,7 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
                 value = normalizedPalette
             }
             setOnPreferenceChangeListener { _, newValue ->
-                val nextPalette = when (newValue as? String) {
-                    "neon_graffiti" -> "neon_graffiti"
-                    "soft_pastel" -> "soft_pastel"
-                    "sumire" -> "sumire"
-                    else -> "vivid_paint"
-                }
+                val nextPalette = SprayPaintSettings.normalizePalette(newValue as? String)
                 appPreference.keyboard_touch_effect_palette_preference = nextPalette
                 true
             }
