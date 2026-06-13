@@ -26,6 +26,7 @@ import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
@@ -36,6 +37,7 @@ import java.io.OutputStreamWriter
 import javax.inject.Inject
 
 internal data class KeyboardTouchEffectPreferenceVisibility(
+    val showQuality: Boolean,
     val showSuminagashiColorMode: Boolean,
     val showFixedSuminagashiColor: Boolean
 )
@@ -45,7 +47,9 @@ internal fun resolveKeyboardTouchEffectPreferenceVisibility(
     colorMode: String
 ): KeyboardTouchEffectPreferenceVisibility {
     val isSuminagashi = KeyboardTouchEffectType.isSuminagashi(effectType)
+    val isEffectEnabled = KeyboardTouchEffectType.isEnabled(effectType)
     return KeyboardTouchEffectPreferenceVisibility(
+        showQuality = isEffectEnabled,
         showSuminagashiColorMode = isSuminagashi,
         showFixedSuminagashiColor = isSuminagashi && colorMode == "fixed"
     )
@@ -255,6 +259,8 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             effectType = normalizedEffect,
             colorMode = colorMode
         )
+        findPreference<ListPreference>("keyboard_touch_effect_quality_preference")?.isVisible =
+            visibility.showQuality
         findPreference<ListPreference>("suminagashi_ink_color_mode_preference")?.isVisible =
             visibility.showSuminagashiColorMode
 
@@ -434,6 +440,19 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
                 val nextEffect = KeyboardTouchEffectType.normalize(newValue as? String)
                 appPreference.keyboard_touch_effect_type_preference = nextEffect
                 updateKeyboardTouchEffectPreferenceState(effectType = nextEffect)
+                true
+            }
+        }
+
+        findPreference<ListPreference>("keyboard_touch_effect_quality_preference")?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            val normalizedQuality = appPreference.keyboard_touch_effect_quality_preference
+            if (value != normalizedQuality) {
+                value = normalizedQuality
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextQuality = KeyboardTouchEffectQuality.normalize(newValue as? String)
+                appPreference.keyboard_touch_effect_quality_preference = nextQuality
                 true
             }
         }

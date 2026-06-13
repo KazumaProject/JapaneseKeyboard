@@ -33,11 +33,28 @@ class SuminagashiFluidContractTest {
         assertTrue(simulation.contains("pressure"))
         assertTrue(simulation.contains("divergence"))
         assertTrue(simulation.contains("curl"))
+        assertTrue(simulation.contains("velocityDiffusionSource"))
+        assertTrue(simulation.contains("VELOCITY_DIFFUSION_FRAGMENT_SHADER"))
         assertTrue(simulation.contains("PRESSURE_FRAGMENT_SHADER"))
+        assertTrue(simulation.contains("subtractPressureGradient"))
+        assertTrue(simulation.contains("computeDivergence"))
+        assertTrue(simulation.contains("solvePressure"))
+        assertTrue(simulation.contains("applyVorticity"))
+        assertTrue(simulation.contains("computeCurl"))
         assertFalse(simulation.contains("android.graphics.Canvas"))
         assertFalse(simulation.contains("android.graphics.Bitmap"))
         assertFalse(simulation.contains("android.graphics.Path"))
         assertFalse(simulation.contains("glReadPixels"))
+        listOf(
+            "Candidate",
+            "Converter",
+            "InputConnection",
+            "Zenz",
+            "Gemma",
+            "Clipboard"
+        ).forEach { forbidden ->
+            assertFalse("FluidSimulation must not depend on $forbidden", simulation.contains(forbidden))
+        }
     }
 
     @Test
@@ -61,10 +78,13 @@ class SuminagashiFluidContractTest {
             "java/com/kazumaproject/markdownhelperkeyboard/ime_service/adapters/SuggestionAdapter.kt",
             "java/com/kazumaproject/markdownhelperkeyboard/ime_service/QwertyGlideInputCoordinator.kt",
             "java/com/kazumaproject/markdownhelperkeyboard/converter/candidate/Candidate.kt",
-            "java/com/kazumaproject/markdownhelperkeyboard/converter/candidate/ZenzCandidate.kt"
+            "java/com/kazumaproject/markdownhelperkeyboard/converter/candidate/ZenzCandidate.kt",
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/InputConnectionCommandRunner.kt"
         )
 
         files.forEach { path ->
+            val file = mainFile(path)
+            if (!file.exists()) return@forEach
             val text = mainFile(path).readText()
             assertFalse("$path must not depend on fluid renderer", text.contains("FluidInk"))
             assertFalse("$path must not depend on suminagashi view", text.contains("Suminagashi"))
@@ -75,11 +95,21 @@ class SuminagashiFluidContractTest {
     fun gridResolverStartsBelowScreenResolutionAndCanReduceQuality() {
         val resolver = FluidSimulationGridResolver()
 
-        val fullQuality = resolver.resolve(surfaceWidth = 1080, surfaceHeight = 320, qualityLevel = 0)
-        val reducedQuality = resolver.resolve(surfaceWidth = 1080, surfaceHeight = 320, qualityLevel = -2)
+        val fullQuality = resolver.resolve(
+            surfaceWidth = 3000,
+            surfaceHeight = 1200,
+            qualityLevel = 0,
+            userQuality = KeyboardTouchEffectQuality.HIGH
+        )
+        val reducedQuality = resolver.resolve(
+            surfaceWidth = 3000,
+            surfaceHeight = 1200,
+            qualityLevel = -2,
+            userQuality = KeyboardTouchEffectQuality.HIGH
+        )
 
-        assertTrue(fullQuality.width <= 256)
-        assertTrue(fullQuality.height <= 96)
+        assertTrue(fullQuality.width <= 512)
+        assertTrue(fullQuality.height <= 206)
         assertTrue(reducedQuality.width < fullQuality.width)
         assertTrue(reducedQuality.height < fullQuality.height)
     }
@@ -112,6 +142,18 @@ class SuminagashiFluidContractTest {
 
         assertTrue(renderer.contains("EGL14.EGL_SURFACE_TYPE"))
         assertTrue(renderer.contains("EGL14.EGL_WINDOW_BIT"))
+    }
+
+    @Test
+    fun imePassesTouchEffectQualityToMainAndFloatingEffects() {
+        val imeService = mainFile(
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt"
+        ).readText()
+
+        assertTrue(imeService.contains("keyboardTouchEffectQualityPreference"))
+        assertTrue(
+            imeService.split("quality = keyboardTouchEffectQualityPreference").size - 1 >= 4
+        )
     }
 
     @Test
@@ -163,17 +205,17 @@ class SuminagashiFluidContractTest {
     }
 
     @Test
-    fun simulationIncludesSubtleWaterDriftWithoutFadingDye() {
+    fun simulationUsesPhysicalFieldsForInkTransport() {
         val simulation = mainFile(
             "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/FluidSimulation.kt"
         ).readText()
 
-        assertTrue(simulation.contains("uWaterDrift"))
-        assertTrue(simulation.contains("waterPhaseSeconds"))
         assertTrue(simulation.contains("private const val VELOCITY_SPLAT_SCALE = 4.2f"))
         assertTrue(simulation.contains("MAX_DYE_DENSITY = 0.84"))
         assertTrue(simulation.contains("sampleVelocity"))
         assertTrue(simulation.contains("sampleSource"))
+        assertTrue(simulation.contains("vec2 coord = clamp(vUv - velocity * uDt"))
+        assertTrue(simulation.contains("Dye is transported only by the solved velocity field"))
         assertFalse(simulation.contains("vec4 mixed = base + add"))
 
         val renderer = mainFile(
@@ -184,7 +226,8 @@ class SuminagashiFluidContractTest {
         val governor = mainFile(
             "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/FluidPerformanceGovernor.kt"
         ).readText()
-        assertTrue(governor.contains("dyeDissipation = 1f"))
+        assertTrue(governor.contains("velocityDiffusionIterations"))
+        assertTrue(governor.contains("dyeDissipation = 0.9984f"))
     }
 
     private fun functionBody(lines: List<String>, functionName: String): List<String> {

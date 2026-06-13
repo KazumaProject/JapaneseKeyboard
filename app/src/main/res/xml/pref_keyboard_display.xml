@@ -100,6 +100,14 @@
             android:title="@string/keyboard_touch_effect_type_title" />
 
         <ListPreference
+            android:defaultValue="high"
+            android:entries="@array/keyboard_touch_effect_quality_entries"
+            android:entryValues="@array/keyboard_touch_effect_quality_values"
+            android:key="keyboard_touch_effect_quality_preference"
+            android:summary="@string/keyboard_touch_effect_quality_summary"
+            android:title="@string/keyboard_touch_effect_quality_title" />
+
+        <ListPreference
             android:defaultValue="random"
             android:entries="@array/suminagashi_ink_color_mode_entries"
             android:entryValues="@array/suminagashi_ink_color_mode_values"

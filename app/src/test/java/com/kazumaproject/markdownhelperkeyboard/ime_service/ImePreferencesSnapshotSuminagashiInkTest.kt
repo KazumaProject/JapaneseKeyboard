@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import org.junit.Assert.assertEquals
@@ -31,6 +32,10 @@ class ImePreferencesSnapshotSuminagashiInkTest {
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
 
         assertEquals(KeyboardTouchEffectType.NONE, snapshot.keyboardTouchEffectTypePreference)
+        assertEquals(
+            KeyboardTouchEffectQuality.HIGH,
+            snapshot.keyboardTouchEffectQualityPreference
+        )
         assertFalse(snapshot.suminagashiInkEffectPreference)
         assertEquals("random", snapshot.suminagashiInkColorModePreference)
         assertEquals(Color.rgb(17, 17, 17), snapshot.suminagashiInkColorPreference)
@@ -40,6 +45,7 @@ class ImePreferencesSnapshotSuminagashiInkTest {
     fun snapshotContainsSavedSuminagashiInkPreferences() {
         val fixedColor = Color.rgb(180, 48, 42)
         AppPreference.suminagashi_ink_effect_preference = true
+        AppPreference.keyboard_touch_effect_quality_preference = KeyboardTouchEffectQuality.EXTREME
         AppPreference.suminagashi_ink_color_mode_preference = "fixed"
         AppPreference.suminagashi_ink_color_preference = fixedColor
 
@@ -50,6 +56,10 @@ class ImePreferencesSnapshotSuminagashiInkTest {
             snapshot.keyboardTouchEffectTypePreference
         )
         assertTrue(snapshot.suminagashiInkEffectPreference)
+        assertEquals(
+            KeyboardTouchEffectQuality.EXTREME,
+            snapshot.keyboardTouchEffectQualityPreference
+        )
         assertEquals("fixed", snapshot.suminagashiInkColorModePreference)
         assertEquals(fixedColor, snapshot.suminagashiInkColorPreference)
     }

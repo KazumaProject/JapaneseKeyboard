@@ -23,6 +23,11 @@ class LiquidRippleInputInjectorTest {
 
         assertTrue(commands.any { it is LiquidRippleInputCommand.Impulse })
         assertTrue(commands.any { it is LiquidRippleInputCommand.PointerUp })
+        val move = commands
+            .filterIsInstance<LiquidRippleInputCommand.Impulse>()
+            .first { it.kind == LiquidRippleImpulseKind.Move }
+        assertTrue(move.directionX > 0f)
+        assertTrue(move.directionY < 0f)
         assertEquals(0, injector.pointerStateCountForTesting())
     }
 
