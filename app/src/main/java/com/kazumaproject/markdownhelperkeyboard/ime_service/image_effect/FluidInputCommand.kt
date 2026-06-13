@@ -6,10 +6,12 @@ import androidx.annotation.ColorInt
 internal data class FluidInkSettings(
     val enabled: Boolean,
     val colorMode: String,
-    @ColorInt val fixedColor: Int
+    @ColorInt val fixedColor: Int,
+    val quality: String = KeyboardTouchEffectQuality.HIGH
 ) {
     val normalizedColorMode: String =
         if (colorMode == COLOR_MODE_FIXED) COLOR_MODE_FIXED else COLOR_MODE_RANDOM
+    val normalizedQuality: String = KeyboardTouchEffectQuality.normalize(quality)
 
     companion object {
         const val COLOR_MODE_RANDOM = "random"
@@ -21,7 +23,8 @@ internal data class FluidInkSettings(
         val Disabled = FluidInkSettings(
             enabled = false,
             colorMode = COLOR_MODE_RANDOM,
-            fixedColor = DEFAULT_INK_COLOR
+            fixedColor = DEFAULT_INK_COLOR,
+            quality = KeyboardTouchEffectQuality.HIGH
         )
 
         @ColorInt

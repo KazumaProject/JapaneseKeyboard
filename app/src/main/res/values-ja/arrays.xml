@@ -46,6 +46,20 @@
         <item>liquid_ripple</item>
     </string-array>
 
+    <string-array name="keyboard_touch_effect_quality_entries">
+        <item>@string/keyboard_touch_effect_quality_balanced</item>
+        <item>@string/keyboard_touch_effect_quality_high</item>
+        <item>@string/keyboard_touch_effect_quality_ultra</item>
+        <item>@string/keyboard_touch_effect_quality_extreme</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_quality_values">
+        <item>balanced</item>
+        <item>high</item>
+        <item>ultra</item>
+        <item>extreme</item>
+    </string-array>
+
     <string-array name="suminagashi_ink_color_mode_entries">
         <item>@string/suminagashi_ink_color_mode_random</item>
         <item>@string/suminagashi_ink_color_mode_fixed</item>

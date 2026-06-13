@@ -1,10 +1,16 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect
 
 internal data class LiquidRippleSettings(
-    val enabled: Boolean
+    val enabled: Boolean,
+    val quality: String = KeyboardTouchEffectQuality.HIGH
 ) {
+    val normalizedQuality: String = KeyboardTouchEffectQuality.normalize(quality)
+
     companion object {
-        val Disabled = LiquidRippleSettings(enabled = false)
+        val Disabled = LiquidRippleSettings(
+            enabled = false,
+            quality = KeyboardTouchEffectQuality.HIGH
+        )
     }
 }
 
@@ -24,7 +30,9 @@ internal sealed class LiquidRippleInputCommand {
         val strength: Float,
         val radiusPx: Float,
         val kind: LiquidRippleImpulseKind,
-        override val eventTimeMillis: Long
+        override val eventTimeMillis: Long,
+        val directionX: Float = 0f,
+        val directionY: Float = 0f
     ) : LiquidRippleInputCommand()
 
     data class PointerUp(

@@ -12,6 +12,7 @@ import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
@@ -585,6 +586,8 @@ object AppPreference {
         Pair("suminagashi_ink_effect_preference", false)
     private val KEYBOARD_TOUCH_EFFECT_TYPE =
         Pair("keyboard_touch_effect_type_preference", KeyboardTouchEffectType.NONE)
+    private val KEYBOARD_TOUCH_EFFECT_QUALITY =
+        Pair("keyboard_touch_effect_quality_preference", KeyboardTouchEffectQuality.HIGH)
     private val SUMINAGASHI_INK_COLOR_MODE =
         Pair("suminagashi_ink_color_mode_preference", "random")
     private val SUMINAGASHI_INK_COLOR =
@@ -2880,6 +2883,21 @@ object AppPreference {
             it.putBoolean(
                 SUMINAGASHI_INK_EFFECT_ENABLE.first,
                 normalized == KeyboardTouchEffectType.SUMINAGASHI_INK
+            )
+        }
+
+    var keyboard_touch_effect_quality_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_QUALITY.first,
+                KEYBOARD_TOUCH_EFFECT_QUALITY.second
+            )
+            return KeyboardTouchEffectQuality.normalize(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_QUALITY.first,
+                KeyboardTouchEffectQuality.normalize(value)
             )
         }
 

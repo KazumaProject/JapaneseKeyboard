@@ -18,8 +18,10 @@ class KeyboardTouchEffectPreferenceVisibilityTest {
             colorMode = "fixed"
         )
 
+        assertTrue(random.showQuality)
         assertTrue(random.showSuminagashiColorMode)
         assertFalse(random.showFixedSuminagashiColor)
+        assertTrue(fixed.showQuality)
         assertTrue(fixed.showSuminagashiColorMode)
         assertTrue(fixed.showFixedSuminagashiColor)
     }
@@ -35,8 +37,10 @@ class KeyboardTouchEffectPreferenceVisibilityTest {
             colorMode = "fixed"
         )
 
+        assertTrue(liquid.showQuality)
         assertFalse(liquid.showSuminagashiColorMode)
         assertFalse(liquid.showFixedSuminagashiColor)
+        assertFalse(none.showQuality)
         assertFalse(none.showSuminagashiColorMode)
         assertFalse(none.showFixedSuminagashiColor)
     }

@@ -980,6 +980,12 @@
     <string name="keyboard_touch_effect_none">なし</string>
     <string name="keyboard_touch_effect_suminagashi_ink">墨流しインク</string>
     <string name="keyboard_touch_effect_liquid_ripple">水面の波紋</string>
+    <string name="keyboard_touch_effect_quality_title">タッチエフェクト品質</string>
+    <string name="keyboard_touch_effect_quality_summary">キーボードのタッチエフェクトの描画品質を選択します。</string>
+    <string name="keyboard_touch_effect_quality_balanced">標準</string>
+    <string name="keyboard_touch_effect_quality_high">高画質</string>
+    <string name="keyboard_touch_effect_quality_ultra">最高画質</string>
+    <string name="keyboard_touch_effect_quality_extreme">極限</string>
     <string name="keyboard_touch_effect_suminagashi_ink_summary">触れた位置から、墨流しのようにインクが広がり漂います。</string>
     <string name="keyboard_touch_effect_liquid_ripple_summary">触れた位置から、水面のようなやわらかい波紋が広がります。</string>
     <string name="suminagashi_ink_effect_title">タップ時のエフェクト</string>
