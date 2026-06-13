@@ -33,6 +33,9 @@ class AppPreferenceSuminagashiInkTest {
         assertEquals(KeyboardTouchEffectType.NONE, AppPreference.keyboard_touch_effect_type_preference)
         assertEquals("random", AppPreference.suminagashi_ink_color_mode_preference)
         assertEquals(Color.rgb(17, 17, 17), AppPreference.suminagashi_ink_color_preference)
+        assertEquals("random", AppPreference.keyboard_touch_effect_color_mode_preference)
+        assertEquals(Color.rgb(17, 17, 17), AppPreference.keyboard_touch_effect_color_preference)
+        assertEquals("vivid_paint", AppPreference.keyboard_touch_effect_palette_preference)
     }
 
     @Test
@@ -115,5 +118,51 @@ class AppPreferenceSuminagashiInkTest {
 
         assertEquals(KeyboardTouchEffectType.NONE, AppPreference.keyboard_touch_effect_type_preference)
         assertFalse(AppPreference.suminagashi_ink_effect_preference)
+    }
+
+    @Test
+    fun keyboardTouchEffectColorModeFallsBackToLegacySuminagashiKeyWhenUnset() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        preferences.edit()
+            .putString("suminagashi_ink_color_mode_preference", "fixed")
+            .remove("keyboard_touch_effect_color_mode_preference")
+            .commit()
+
+        assertEquals("fixed", AppPreference.keyboard_touch_effect_color_mode_preference)
+    }
+
+    @Test
+    fun keyboardTouchEffectColorFallsBackToLegacySuminagashiKeyWhenUnset() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val legacyColor = Color.rgb(50, 110, 78)
+        preferences.edit()
+            .putInt("suminagashi_ink_color_preference", legacyColor)
+            .remove("keyboard_touch_effect_color_preference")
+            .commit()
+
+        assertEquals(legacyColor, AppPreference.keyboard_touch_effect_color_preference)
+    }
+
+    @Test
+    fun keyboardTouchEffectColorKeysPreferNewValuesWhenSet() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val legacyColor = Color.rgb(50, 110, 78)
+        val newColor = Color.rgb(180, 48, 42)
+        preferences.edit()
+            .putString("suminagashi_ink_color_mode_preference", "fixed")
+            .putInt("suminagashi_ink_color_preference", legacyColor)
+            .putString("keyboard_touch_effect_color_mode_preference", "palette")
+            .putInt("keyboard_touch_effect_color_preference", newColor)
+            .commit()
+
+        assertEquals("palette", AppPreference.keyboard_touch_effect_color_mode_preference)
+        assertEquals(newColor, AppPreference.keyboard_touch_effect_color_preference)
+    }
+
+    @Test
+    fun keyboardTouchEffectPaletteNormalizesUnknownToVividPaint() {
+        AppPreference.keyboard_touch_effect_palette_preference = "unexpected"
+
+        assertEquals("vivid_paint", AppPreference.keyboard_touch_effect_palette_preference)
     }
 }

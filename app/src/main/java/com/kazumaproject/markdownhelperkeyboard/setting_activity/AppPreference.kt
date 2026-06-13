@@ -592,6 +592,12 @@ object AppPreference {
         Pair("suminagashi_ink_color_mode_preference", "random")
     private val SUMINAGASHI_INK_COLOR =
         Pair("suminagashi_ink_color_preference", Color.rgb(17, 17, 17))
+    private val KEYBOARD_TOUCH_EFFECT_COLOR_MODE =
+        Pair("keyboard_touch_effect_color_mode_preference", "random")
+    private val KEYBOARD_TOUCH_EFFECT_COLOR =
+        Pair("keyboard_touch_effect_color_preference", Color.rgb(17, 17, 17))
+    private val KEYBOARD_TOUCH_EFFECT_PALETTE =
+        Pair("keyboard_touch_effect_palette_preference", "vivid_paint")
 
     private val SAVE_LAST_USED_KEYBOARD = Pair("save_last_used_keyboard", false)
     private val SAVE_LAST_USED_KEYBOARD_POSITION = Pair("save_last_used_keyboard_int", 0)
@@ -2924,6 +2930,67 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putInt(SUMINAGASHI_INK_COLOR.first, value)
         }
+
+    var keyboard_touch_effect_color_mode_preference: String
+        get() {
+            val value = preferences.getString(KEYBOARD_TOUCH_EFFECT_COLOR_MODE.first, null)
+            if (value != null) return normalizeTouchEffectColorMode(value)
+            return suminagashi_ink_color_mode_preference
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_COLOR_MODE.first,
+                normalizeTouchEffectColorMode(value)
+            )
+        }
+
+    var keyboard_touch_effect_color_preference: Int
+        get() {
+            if (preferences.contains(KEYBOARD_TOUCH_EFFECT_COLOR.first)) {
+                return preferences.getInt(
+                    KEYBOARD_TOUCH_EFFECT_COLOR.first,
+                    KEYBOARD_TOUCH_EFFECT_COLOR.second
+                )
+            }
+            return suminagashi_ink_color_preference
+        }
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_TOUCH_EFFECT_COLOR.first, value)
+        }
+
+    var keyboard_touch_effect_palette_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_PALETTE.first,
+                KEYBOARD_TOUCH_EFFECT_PALETTE.second
+            )
+            return normalizeTouchEffectPalette(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_PALETTE.first,
+                normalizeTouchEffectPalette(value)
+            )
+        }
+
+    private fun normalizeTouchEffectColorMode(value: String?): String {
+        return when (value) {
+            "fixed" -> "fixed"
+            "palette" -> "palette"
+            "theme" -> "theme"
+            else -> "random"
+        }
+    }
+
+    private fun normalizeTouchEffectPalette(value: String?): String {
+        return when (value) {
+            "neon_graffiti" -> "neon_graffiti"
+            "soft_pastel" -> "soft_pastel"
+            "sumire" -> "sumire"
+            "monochrome_ink" -> "monochrome_ink"
+            else -> "vivid_paint"
+        }
+    }
 
     var save_last_used_keyboard_enable_preference: Boolean
         get() = preferences.getBoolean(

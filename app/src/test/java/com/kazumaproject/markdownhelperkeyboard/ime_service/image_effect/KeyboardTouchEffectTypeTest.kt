@@ -25,6 +25,10 @@ class KeyboardTouchEffectTypeTest {
             KeyboardTouchEffectType.LIQUID_RIPPLE,
             KeyboardTouchEffectType.normalize("liquid_ripple")
         )
+        assertEquals(
+            KeyboardTouchEffectType.SPRAY_PAINT,
+            KeyboardTouchEffectType.normalize("spray_paint")
+        )
     }
 
     @Test
@@ -32,5 +36,6 @@ class KeyboardTouchEffectTypeTest {
         assertFalse(KeyboardTouchEffectType.isEnabled("unknown"))
         assertTrue(KeyboardTouchEffectType.isSuminagashi("suminagashi_ink"))
         assertTrue(KeyboardTouchEffectType.isLiquidRipple("liquid_ripple"))
+        assertTrue(KeyboardTouchEffectType.isSprayPaint("spray_paint"))
     }
 }

@@ -202,6 +202,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouc
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LiquidRippleEffectView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintEffectView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.DirectCommitHandler
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.InputBehaviorResolver
@@ -934,10 +935,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var keyboardTouchEffectTypePreference: String = KeyboardTouchEffectType.NONE
     private var keyboardTouchEffectQualityPreference: String = KeyboardTouchEffectQuality.HIGH
-    private var suminagashiInkColorModePreference: String = "random"
+    private var keyboardTouchEffectColorModePreference: String = "random"
+    private var keyboardTouchEffectPalettePreference: String = "vivid_paint"
 
     @ColorInt
-    private var suminagashiInkColorPreference: Int = Color.rgb(17, 17, 17)
+    private var keyboardTouchEffectColorPreference: Int = Color.rgb(17, 17, 17)
 
     private var customKeyBorderEnablePreference: Boolean? = false
     private var customKeyBorderEnableColor: Int? = Color.BLACK
@@ -1858,9 +1860,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             KeyboardTouchEffectType.normalize(preferences.keyboardTouchEffectTypePreference)
         keyboardTouchEffectQualityPreference =
             KeyboardTouchEffectQuality.normalize(preferences.keyboardTouchEffectQualityPreference)
-        suminagashiInkColorModePreference =
-            if (preferences.suminagashiInkColorModePreference == "fixed") "fixed" else "random"
-        suminagashiInkColorPreference = preferences.suminagashiInkColorPreference
+        keyboardTouchEffectColorModePreference = preferences.keyboardTouchEffectColorModePreference
+        keyboardTouchEffectColorPreference = preferences.keyboardTouchEffectColorPreference
+        keyboardTouchEffectPalettePreference = preferences.keyboardTouchEffectPalettePreference
         customKeyBorderEnablePreference = preferences.customKeyBorderEnablePreference
         customKeyBorderEnableColor = preferences.customKeyBorderEnableColor
         customComposingTextPreference = preferences.customComposingTextPreference
@@ -2141,13 +2143,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.suminagashiInkView.clearInk()
         mainView.suminagashiInkView.configure(
             enabled = false,
-            colorMode = suminagashiInkColorModePreference,
-            fixedColor = suminagashiInkColorPreference,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = keyboardTouchEffectColorPreference,
             quality = keyboardTouchEffectQualityPreference
         )
         mainView.liquidRippleEffectView.clearRipple()
         mainView.liquidRippleEffectView.configure(
             enabled = false,
+            quality = keyboardTouchEffectQualityPreference
+        )
+        mainView.sprayPaintEffectView.clearSpray()
+        mainView.sprayPaintEffectView.configure(
+            enabled = false,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = keyboardTouchEffectColorPreference,
+            palette = keyboardTouchEffectPalettePreference,
             quality = keyboardTouchEffectQualityPreference
         )
         (mainView.root as? InkTouchDispatchFrameLayout)?.touchEffectMotionEventListener = null
@@ -2239,6 +2249,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearRipple()
             pauseRipple()
         }
+        mainLayoutBinding?.sprayPaintEffectView?.apply {
+            clearSpray()
+            pauseSpray()
+        }
         floatingKeyboardBinding?.floatingSuminagashiInkView?.apply {
             clearInk()
             pauseInk()
@@ -2247,13 +2261,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearRipple()
             pauseRipple()
         }
+        floatingKeyboardBinding?.floatingSprayPaintEffectView?.apply {
+            clearSpray()
+            pauseSpray()
+        }
     }
 
     private fun releaseKeyboardTouchEffects() {
         mainLayoutBinding?.suminagashiInkView?.releaseInk()
         mainLayoutBinding?.liquidRippleEffectView?.releaseRipple()
+        mainLayoutBinding?.sprayPaintEffectView?.releaseSpray()
         floatingKeyboardBinding?.floatingSuminagashiInkView?.releaseInk()
         floatingKeyboardBinding?.floatingLiquidRippleEffectView?.releaseRipple()
+        floatingKeyboardBinding?.floatingSprayPaintEffectView?.releaseSpray()
     }
 
     private fun setupMainKeyboardTouchEffect(mainView: MainLayoutBinding) {
@@ -2263,15 +2283,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainSurfaceActive && KeyboardTouchEffectType.isSuminagashi(effectType)
         val liquidRippleEnabled =
             mainSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
+        val sprayPaintEnabled =
+            mainSurfaceActive && KeyboardTouchEffectType.isSprayPaint(effectType)
 
         mainView.suminagashiInkView.configure(
             enabled = suminagashiEnabled,
-            colorMode = suminagashiInkColorModePreference,
-            fixedColor = suminagashiInkColorPreference,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = keyboardTouchEffectColorPreference,
             quality = keyboardTouchEffectQualityPreference
         )
         mainView.liquidRippleEffectView.configure(
             enabled = liquidRippleEnabled,
+            quality = keyboardTouchEffectQualityPreference
+        )
+        mainView.sprayPaintEffectView.configure(
+            enabled = sprayPaintEnabled,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = keyboardTouchEffectColorPreference,
+            palette = keyboardTouchEffectPalettePreference,
             quality = keyboardTouchEffectQualityPreference
         )
 
@@ -2299,6 +2328,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
+            sprayPaintEnabled -> {
+                { event ->
+                    dispatchSprayPaintMotionEvent(
+                        event = event,
+                        sourceRoot = mainView.root,
+                        targetContainer = mainView.keyboardBackgroundContainer,
+                        sprayView = mainView.sprayPaintEffectView
+                    )
+                }
+            }
+
             else -> null
         }
     }
@@ -2312,15 +2352,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingSurfaceActive && KeyboardTouchEffectType.isSuminagashi(effectType)
         val liquidRippleEnabled =
             floatingSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
+        val sprayPaintEnabled =
+            floatingSurfaceActive && KeyboardTouchEffectType.isSprayPaint(effectType)
 
         floatingView.floatingSuminagashiInkView.configure(
             enabled = suminagashiEnabled,
-            colorMode = suminagashiInkColorModePreference,
-            fixedColor = suminagashiInkColorPreference,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = keyboardTouchEffectColorPreference,
             quality = keyboardTouchEffectQualityPreference
         )
         floatingView.floatingLiquidRippleEffectView.configure(
             enabled = liquidRippleEnabled,
+            quality = keyboardTouchEffectQualityPreference
+        )
+        floatingView.floatingSprayPaintEffectView.configure(
+            enabled = sprayPaintEnabled,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = keyboardTouchEffectColorPreference,
+            palette = keyboardTouchEffectPalettePreference,
             quality = keyboardTouchEffectQualityPreference
         )
 
@@ -2344,6 +2393,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         sourceRoot = floatingView.root,
                         targetContainer = floatingView.floatingKeyboardBackgroundContainer,
                         rippleView = floatingView.floatingLiquidRippleEffectView
+                    )
+                }
+            }
+
+            sprayPaintEnabled -> {
+                { event ->
+                    dispatchSprayPaintMotionEvent(
+                        event = event,
+                        sourceRoot = floatingView.root,
+                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        sprayView = floatingView.floatingSprayPaintEffectView
                     )
                 }
             }
@@ -2403,6 +2463,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 rippleView.onPointerUp(pointerId)
             },
             onCancel = { rippleView.onCancel() }
+        )
+    }
+
+    private fun dispatchSprayPaintMotionEvent(
+        event: MotionEvent,
+        sourceRoot: View,
+        targetContainer: View,
+        sprayView: SprayPaintEffectView
+    ) {
+        dispatchTouchEffectMotionEvent(
+            event = event,
+            sourceRoot = sourceRoot,
+            targetContainer = targetContainer,
+            isEffectShown = { sprayView.isShown },
+            onPointerDown = { pointerId, x, y ->
+                sprayView.onPointerDown(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerMove = { pointerId, x, y ->
+                sprayView.onPointerMove(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerUp = { pointerId, x, y ->
+                sprayView.onPointerUp(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerUpOutside = { pointerId ->
+                sprayView.onPointerUp(pointerId)
+            },
+            onCancel = { sprayView.onCancel() }
         )
     }
 
@@ -3367,8 +3454,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         liquidGlassKeyBlurRadiousPreference = null
         keyboardTouchEffectTypePreference = KeyboardTouchEffectType.NONE
         keyboardTouchEffectQualityPreference = KeyboardTouchEffectQuality.HIGH
-        suminagashiInkColorModePreference = "random"
-        suminagashiInkColorPreference = Color.rgb(17, 17, 17)
+        keyboardTouchEffectColorModePreference = "random"
+        keyboardTouchEffectColorPreference = Color.rgb(17, 17, 17)
+        keyboardTouchEffectPalettePreference = "vivid_paint"
         customKeyBorderEnablePreference = null
         customKeyBorderEnableColor = null
 
