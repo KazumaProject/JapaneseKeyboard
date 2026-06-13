@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -29,6 +30,7 @@ class AppPreferenceSuminagashiInkTest {
     @Test
     fun suminagashiInkPreferences_useDefaultsWhenUnset() {
         assertFalse(AppPreference.suminagashi_ink_effect_preference)
+        assertEquals(KeyboardTouchEffectType.NONE, AppPreference.keyboard_touch_effect_type_preference)
         assertEquals("random", AppPreference.suminagashi_ink_color_mode_preference)
         assertEquals(Color.rgb(17, 17, 17), AppPreference.suminagashi_ink_color_preference)
     }
@@ -56,5 +58,62 @@ class AppPreferenceSuminagashiInkTest {
             PreferenceManager.getDefaultSharedPreferences(context)
                 .getString("suminagashi_ink_color_mode_preference", null)
         )
+    }
+
+    @Test
+    fun keyboardTouchEffectTypeUsesLegacySuminagashiBooleanWhenUnset() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+
+        preferences.edit()
+            .putBoolean("suminagashi_ink_effect_preference", true)
+            .remove("keyboard_touch_effect_type_preference")
+            .commit()
+
+        assertEquals(
+            KeyboardTouchEffectType.SUMINAGASHI_INK,
+            AppPreference.keyboard_touch_effect_type_preference
+        )
+
+        preferences.edit()
+            .putBoolean("suminagashi_ink_effect_preference", false)
+            .remove("keyboard_touch_effect_type_preference")
+            .commit()
+
+        assertEquals(
+            KeyboardTouchEffectType.NONE,
+            AppPreference.keyboard_touch_effect_type_preference
+        )
+    }
+
+    @Test
+    fun keyboardTouchEffectTypeSyncsLegacySuminagashiBoolean() {
+        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.SUMINAGASHI_INK
+
+        assertEquals(
+            KeyboardTouchEffectType.SUMINAGASHI_INK,
+            AppPreference.keyboard_touch_effect_type_preference
+        )
+        assertTrue(AppPreference.suminagashi_ink_effect_preference)
+
+        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.LIQUID_RIPPLE
+
+        assertEquals(
+            KeyboardTouchEffectType.LIQUID_RIPPLE,
+            AppPreference.keyboard_touch_effect_type_preference
+        )
+        assertFalse(AppPreference.suminagashi_ink_effect_preference)
+
+        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.NONE
+
+        assertEquals(KeyboardTouchEffectType.NONE, AppPreference.keyboard_touch_effect_type_preference)
+        assertFalse(AppPreference.suminagashi_ink_effect_preference)
+    }
+
+    @Test
+    fun keyboardTouchEffectTypeNormalizesUnknownValuesToNone() {
+        AppPreference.keyboard_touch_effect_type_preference = "unexpected"
+
+        assertEquals(KeyboardTouchEffectType.NONE, AppPreference.keyboard_touch_effect_type_preference)
+        assertFalse(AppPreference.suminagashi_ink_effect_preference)
     }
 }

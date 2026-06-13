@@ -199,6 +199,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.Bubble
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LiquidRippleEffectView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.DirectCommitHandler
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.InputBehaviorResolver
@@ -929,7 +931,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var liquidGlassBlurRadiousPreference: Int? = 220
     private var liquidGlassKeyBlurRadiousPreference: Int? = 255
 
-    private var suminagashiInkEffectPreference: Boolean = false
+    private var keyboardTouchEffectTypePreference: String = KeyboardTouchEffectType.NONE
     private var suminagashiInkColorModePreference: String = "random"
 
     @ColorInt
@@ -1850,7 +1852,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         liquidGlassThemePreference = preferences.liquidGlassThemePreference
         liquidGlassBlurRadiousPreference = preferences.liquidGlassBlurRadiousPreference
         liquidGlassKeyBlurRadiousPreference = preferences.liquidGlassKeyBlurRadiousPreference
-        suminagashiInkEffectPreference = preferences.suminagashiInkEffectPreference
+        keyboardTouchEffectTypePreference =
+            KeyboardTouchEffectType.normalize(preferences.keyboardTouchEffectTypePreference)
         suminagashiInkColorModePreference =
             if (preferences.suminagashiInkColorModePreference == "fixed") "fixed" else "random"
         suminagashiInkColorPreference = preferences.suminagashiInkColorPreference
@@ -2137,7 +2140,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             colorMode = suminagashiInkColorModePreference,
             fixedColor = suminagashiInkColorPreference
         )
-        (mainView.root as? InkTouchDispatchFrameLayout)?.inkMotionEventListener = null
+        mainView.liquidRippleEffectView.clearRipple()
+        mainView.liquidRippleEffectView.configure(enabled = false)
+        (mainView.root as? InkTouchDispatchFrameLayout)?.touchEffectMotionEventListener = null
 
         mainView.keyboardBackgroundVideo.isVisible = false
         mainView.keyboardBackgroundImage.isVisible = false
@@ -2198,73 +2203,136 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         floatingView: FloatingKeyboardLayoutBinding?
     ) {
-        setupMainSuminagashiInkEffect(mainView)
-        floatingView?.let { setupFloatingSuminagashiInkEffect(it) }
+        setupKeyboardTouchEffect(mainView, floatingView)
     }
 
     private fun clearAndPauseSuminagashiInkEffects() {
+        clearAndPauseKeyboardTouchEffects()
+    }
+
+    private fun releaseSuminagashiInkEffects() {
+        releaseKeyboardTouchEffects()
+    }
+
+    private fun setupKeyboardTouchEffect(
+        mainView: MainLayoutBinding,
+        floatingView: FloatingKeyboardLayoutBinding?
+    ) {
+        setupMainKeyboardTouchEffect(mainView)
+        floatingView?.let { setupFloatingKeyboardTouchEffect(it) }
+    }
+
+    private fun clearAndPauseKeyboardTouchEffects() {
         mainLayoutBinding?.suminagashiInkView?.apply {
             clearInk()
             pauseInk()
+        }
+        mainLayoutBinding?.liquidRippleEffectView?.apply {
+            clearRipple()
+            pauseRipple()
         }
         floatingKeyboardBinding?.floatingSuminagashiInkView?.apply {
             clearInk()
             pauseInk()
         }
-    }
-
-    private fun releaseSuminagashiInkEffects() {
-        mainLayoutBinding?.suminagashiInkView?.releaseInk()
-        floatingKeyboardBinding?.floatingSuminagashiInkView?.releaseInk()
-    }
-
-    private fun setupMainSuminagashiInkEffect(mainView: MainLayoutBinding) {
-        val enabled = suminagashiInkEffectPreference && isKeyboardFloatingMode != true
-
-        mainView.suminagashiInkView.configure(
-            enabled = enabled,
-            colorMode = suminagashiInkColorModePreference,
-            fixedColor = suminagashiInkColorPreference
-        )
-
-        val root = mainView.root as? InkTouchDispatchFrameLayout
-        root?.inkMotionEventListener = if (enabled) {
-            { event ->
-                dispatchInkMotionEvent(
-                    event = event,
-                    sourceRoot = mainView.root,
-                    targetContainer = mainView.keyboardBackgroundContainer,
-                    inkView = mainView.suminagashiInkView
-                )
-            }
-        } else {
-            null
+        floatingKeyboardBinding?.floatingLiquidRippleEffectView?.apply {
+            clearRipple()
+            pauseRipple()
         }
     }
 
-    private fun setupFloatingSuminagashiInkEffect(
-        floatingView: FloatingKeyboardLayoutBinding
-    ) {
-        val enabled = suminagashiInkEffectPreference && isKeyboardFloatingMode == true
+    private fun releaseKeyboardTouchEffects() {
+        mainLayoutBinding?.suminagashiInkView?.releaseInk()
+        mainLayoutBinding?.liquidRippleEffectView?.releaseRipple()
+        floatingKeyboardBinding?.floatingSuminagashiInkView?.releaseInk()
+        floatingKeyboardBinding?.floatingLiquidRippleEffectView?.releaseRipple()
+    }
 
-        floatingView.floatingSuminagashiInkView.configure(
-            enabled = enabled,
+    private fun setupMainKeyboardTouchEffect(mainView: MainLayoutBinding) {
+        val effectType = KeyboardTouchEffectType.normalize(keyboardTouchEffectTypePreference)
+        val mainSurfaceActive = isKeyboardFloatingMode != true
+        val suminagashiEnabled =
+            mainSurfaceActive && KeyboardTouchEffectType.isSuminagashi(effectType)
+        val liquidRippleEnabled =
+            mainSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
+
+        mainView.suminagashiInkView.configure(
+            enabled = suminagashiEnabled,
             colorMode = suminagashiInkColorModePreference,
             fixedColor = suminagashiInkColorPreference
         )
+        mainView.liquidRippleEffectView.configure(enabled = liquidRippleEnabled)
+
+        val root = mainView.root as? InkTouchDispatchFrameLayout
+        root?.touchEffectMotionEventListener = when {
+            suminagashiEnabled -> {
+                { event ->
+                    dispatchInkMotionEvent(
+                        event = event,
+                        sourceRoot = mainView.root,
+                        targetContainer = mainView.keyboardBackgroundContainer,
+                        inkView = mainView.suminagashiInkView
+                    )
+                }
+            }
+
+            liquidRippleEnabled -> {
+                { event ->
+                    dispatchLiquidRippleMotionEvent(
+                        event = event,
+                        sourceRoot = mainView.root,
+                        targetContainer = mainView.keyboardBackgroundContainer,
+                        rippleView = mainView.liquidRippleEffectView
+                    )
+                }
+            }
+
+            else -> null
+        }
+    }
+
+    private fun setupFloatingKeyboardTouchEffect(
+        floatingView: FloatingKeyboardLayoutBinding
+    ) {
+        val effectType = KeyboardTouchEffectType.normalize(keyboardTouchEffectTypePreference)
+        val floatingSurfaceActive = isKeyboardFloatingMode == true
+        val suminagashiEnabled =
+            floatingSurfaceActive && KeyboardTouchEffectType.isSuminagashi(effectType)
+        val liquidRippleEnabled =
+            floatingSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
+
+        floatingView.floatingSuminagashiInkView.configure(
+            enabled = suminagashiEnabled,
+            colorMode = suminagashiInkColorModePreference,
+            fixedColor = suminagashiInkColorPreference
+        )
+        floatingView.floatingLiquidRippleEffectView.configure(enabled = liquidRippleEnabled)
 
         val root = floatingView.root as? InkTouchDispatchFrameLayout
-        root?.inkMotionEventListener = if (enabled) {
-            { event ->
-                dispatchInkMotionEvent(
-                    event = event,
-                    sourceRoot = floatingView.root,
-                    targetContainer = floatingView.floatingKeyboardBackgroundContainer,
-                    inkView = floatingView.floatingSuminagashiInkView
-                )
+        root?.touchEffectMotionEventListener = when {
+            suminagashiEnabled -> {
+                { event ->
+                    dispatchInkMotionEvent(
+                        event = event,
+                        sourceRoot = floatingView.root,
+                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        inkView = floatingView.floatingSuminagashiInkView
+                    )
+                }
             }
-        } else {
-            null
+
+            liquidRippleEnabled -> {
+                { event ->
+                    dispatchLiquidRippleMotionEvent(
+                        event = event,
+                        sourceRoot = floatingView.root,
+                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        rippleView = floatingView.floatingLiquidRippleEffectView
+                    )
+                }
+            }
+
+            else -> null
         }
     }
 
@@ -2274,7 +2342,66 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         targetContainer: View,
         inkView: SuminagashiInkView
     ) {
-        if (!inkView.isShown) return
+        dispatchTouchEffectMotionEvent(
+            event = event,
+            sourceRoot = sourceRoot,
+            targetContainer = targetContainer,
+            isEffectShown = { inkView.isShown },
+            onPointerDown = { pointerId, x, y ->
+                inkView.onPointerDown(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerMove = { pointerId, x, y ->
+                inkView.onPointerMove(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerUp = { pointerId, x, y ->
+                inkView.onPointerUp(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerUpOutside = { pointerId ->
+                inkView.onPointerUp(pointerId)
+            },
+            onCancel = { inkView.onCancel() }
+        )
+    }
+
+    private fun dispatchLiquidRippleMotionEvent(
+        event: MotionEvent,
+        sourceRoot: View,
+        targetContainer: View,
+        rippleView: LiquidRippleEffectView
+    ) {
+        dispatchTouchEffectMotionEvent(
+            event = event,
+            sourceRoot = sourceRoot,
+            targetContainer = targetContainer,
+            isEffectShown = { rippleView.isShown },
+            onPointerDown = { pointerId, x, y ->
+                rippleView.onPointerDown(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerMove = { pointerId, x, y ->
+                rippleView.onPointerMove(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerUp = { pointerId, x, y ->
+                rippleView.onPointerUp(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerUpOutside = { pointerId ->
+                rippleView.onPointerUp(pointerId)
+            },
+            onCancel = { rippleView.onCancel() }
+        )
+    }
+
+    private fun dispatchTouchEffectMotionEvent(
+        event: MotionEvent,
+        sourceRoot: View,
+        targetContainer: View,
+        isEffectShown: () -> Boolean,
+        onPointerDown: (pointerId: Int, x: Float, y: Float) -> Unit,
+        onPointerMove: (pointerId: Int, x: Float, y: Float) -> Unit,
+        onPointerUp: (pointerId: Int, x: Float, y: Float) -> Unit,
+        onPointerUpOutside: (pointerId: Int) -> Unit,
+        onCancel: () -> Unit
+    ) {
+        if (!isEffectShown()) return
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN,
@@ -2283,10 +2410,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (!mapMotionEventToTarget(event, index, sourceRoot, targetContainer, inkMappedPoint)) {
                     return
                 }
-                inkView.onPointerDown(
-                    pointerId = event.getPointerId(index),
-                    x = inkMappedPoint[0],
-                    y = inkMappedPoint[1]
+                onPointerDown(
+                    event.getPointerId(index),
+                    inkMappedPoint[0],
+                    inkMappedPoint[1]
                 )
             }
 
@@ -2302,10 +2429,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ) {
                         continue
                     }
-                    inkView.onPointerMove(
-                        pointerId = event.getPointerId(index),
-                        x = inkMappedPoint[0],
-                        y = inkMappedPoint[1]
+                    onPointerMove(
+                        event.getPointerId(index),
+                        inkMappedPoint[0],
+                        inkMappedPoint[1]
                     )
                 }
             }
@@ -2314,18 +2441,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             MotionEvent.ACTION_POINTER_UP -> {
                 val index = event.actionIndex
                 if (mapMotionEventToTarget(event, index, sourceRoot, targetContainer, inkMappedPoint)) {
-                    inkView.onPointerUp(
-                        pointerId = event.getPointerId(index),
-                        x = inkMappedPoint[0],
-                        y = inkMappedPoint[1]
+                    onPointerUp(
+                        event.getPointerId(index),
+                        inkMappedPoint[0],
+                        inkMappedPoint[1]
                     )
                 } else {
-                    inkView.onPointerUp(event.getPointerId(index))
+                    onPointerUpOutside(event.getPointerId(index))
                 }
             }
 
             MotionEvent.ACTION_CANCEL -> {
-                inkView.onCancel()
+                onCancel()
             }
         }
     }
@@ -3222,7 +3349,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         liquidGlassThemePreference = null
         liquidGlassBlurRadiousPreference = null
         liquidGlassKeyBlurRadiousPreference = null
-        suminagashiInkEffectPreference = false
+        keyboardTouchEffectTypePreference = KeyboardTouchEffectType.NONE
         suminagashiInkColorModePreference = "random"
         suminagashiInkColorPreference = Color.rgb(17, 17, 17)
         customKeyBorderEnablePreference = null

@@ -12,6 +12,7 @@ import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
@@ -582,6 +583,8 @@ object AppPreference {
         Pair("keyboard_background_video_quality_preference", "high")
     private val SUMINAGASHI_INK_EFFECT_ENABLE =
         Pair("suminagashi_ink_effect_preference", false)
+    private val KEYBOARD_TOUCH_EFFECT_TYPE =
+        Pair("keyboard_touch_effect_type_preference", KeyboardTouchEffectType.NONE)
     private val SUMINAGASHI_INK_COLOR_MODE =
         Pair("suminagashi_ink_color_mode_preference", "random")
     private val SUMINAGASHI_INK_COLOR =
@@ -2854,6 +2857,30 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SUMINAGASHI_INK_EFFECT_ENABLE.first, value)
+        }
+
+    var keyboard_touch_effect_type_preference: String
+        get() {
+            if (!preferences.contains(KEYBOARD_TOUCH_EFFECT_TYPE.first)) {
+                return if (suminagashi_ink_effect_preference) {
+                    KeyboardTouchEffectType.SUMINAGASHI_INK
+                } else {
+                    KeyboardTouchEffectType.NONE
+                }
+            }
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_TYPE.first,
+                KEYBOARD_TOUCH_EFFECT_TYPE.second
+            )
+            return KeyboardTouchEffectType.normalize(value)
+        }
+        set(value) = preferences.edit {
+            val normalized = KeyboardTouchEffectType.normalize(value)
+            it.putString(KEYBOARD_TOUCH_EFFECT_TYPE.first, normalized)
+            it.putBoolean(
+                SUMINAGASHI_INK_EFFECT_ENABLE.first,
+                normalized == KeyboardTouchEffectType.SUMINAGASHI_INK
+            )
         }
 
     var suminagashi_ink_color_mode_preference: String

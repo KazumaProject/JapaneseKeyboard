@@ -974,6 +974,14 @@
     <string name="keyboard_background_video_saved">キーボード背景動画を設定しました。</string>
     <string name="keyboard_background_video_cleared">キーボード背景動画を解除しました。</string>
     <string name="keyboard_background_video_failed">キーボード背景動画の設定に失敗しました: %1$s</string>
+    <string name="keyboard_touch_effect_category_title">タッチエフェクト</string>
+    <string name="keyboard_touch_effect_type_title">タッチエフェクト</string>
+    <string name="keyboard_touch_effect_type_summary">キーボードに触れた時に表示する視覚エフェクトを選択します。</string>
+    <string name="keyboard_touch_effect_none">なし</string>
+    <string name="keyboard_touch_effect_suminagashi_ink">墨流しインク</string>
+    <string name="keyboard_touch_effect_liquid_ripple">水面の波紋</string>
+    <string name="keyboard_touch_effect_suminagashi_ink_summary">触れた位置から、墨流しのようにインクが広がり漂います。</string>
+    <string name="keyboard_touch_effect_liquid_ripple_summary">触れた位置から、水面のようなやわらかい波紋が広がります。</string>
     <string name="suminagashi_ink_effect_title">タップ時のエフェクト</string>
     <string name="suminagashi_ink_effect_summary">キーボードに触れた位置から、墨が水面に広がるような背景エフェクトを表示します。</string>
     <string name="suminagashi_ink_color_mode_title">インクの色</string>

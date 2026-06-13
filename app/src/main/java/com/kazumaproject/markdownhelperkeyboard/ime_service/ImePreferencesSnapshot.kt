@@ -175,6 +175,7 @@ data class ImePreferencesSnapshot(
     val liquidGlassThemePreference: Boolean,
     val liquidGlassBlurRadiousPreference: Int,
     val liquidGlassKeyBlurRadiousPreference: Int,
+    val keyboardTouchEffectTypePreference: String,
     val suminagashiInkEffectPreference: Boolean,
     val suminagashiInkColorModePreference: String,
     val suminagashiInkColorPreference: Int,
@@ -495,6 +496,8 @@ data class ImePreferencesSnapshot(
                 liquidGlassThemePreference = appPreference.liquid_glass_preference,
                 liquidGlassBlurRadiousPreference = appPreference.liquid_glass_blur_radius,
                 liquidGlassKeyBlurRadiousPreference = appPreference.liquid_glass_key_alpha,
+                keyboardTouchEffectTypePreference =
+                    appPreference.keyboard_touch_effect_type_preference,
                 suminagashiInkEffectPreference = appPreference.suminagashi_ink_effect_preference,
                 suminagashiInkColorModePreference =
                     appPreference.suminagashi_ink_color_mode_preference,

@@ -40,6 +40,15 @@
             android:focusable="false"
             android:importantForAccessibility="no"
             android:visibility="gone" />
+
+        <com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LiquidRippleEffectView
+            android:id="@+id/liquid_ripple_effect_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
     </FrameLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
