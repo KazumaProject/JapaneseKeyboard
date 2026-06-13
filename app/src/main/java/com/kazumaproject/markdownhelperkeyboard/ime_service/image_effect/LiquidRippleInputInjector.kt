@@ -68,7 +68,8 @@ internal class LiquidRippleInputInjector(
         state.lastEventTimeMillis = now
 
         val speed = (distance / dtMillis).coerceIn(0f, MAX_MOVE_SPEED_PX_PER_MS)
-        val strength = (MOVE_IMPULSE_BASE + speed * MOVE_IMPULSE_SPEED_GAIN)
+        val speedFactor = speed / (speed + MOVE_SPEED_SOFTNESS_PX_PER_MS)
+        val strength = (MOVE_IMPULSE_BASE + speedFactor * MOVE_IMPULSE_SPEED_GAIN)
             .coerceIn(MOVE_IMPULSE_MIN, MOVE_IMPULSE_MAX)
         return queue.offer(
             LiquidRippleInputCommand.Impulse(
@@ -136,16 +137,17 @@ internal class LiquidRippleInputInjector(
     fun pointerStateCountForTesting(): Int = pointerStates.size
 
     companion object {
-        private const val MOVE_DISTANCE_EPSILON_PX = 1.1f
-        private const val MAX_MOVE_SPEED_PX_PER_MS = 2.2f
-        private const val DOWN_IMPULSE_STRENGTH = 0.48f
-        private const val MOVE_IMPULSE_BASE = 0.08f
-        private const val MOVE_IMPULSE_SPEED_GAIN = 0.045f
-        private const val MOVE_IMPULSE_MIN = 0.08f
-        private const val MOVE_IMPULSE_MAX = 0.16f
-        private const val UP_IMPULSE_STRENGTH = 0.07f
-        private const val DOWN_RADIUS_PX = 44f
-        private const val MOVE_RADIUS_PX = 30f
-        private const val UP_RADIUS_PX = 34f
+        private const val MOVE_DISTANCE_EPSILON_PX = 1.6f
+        private const val MAX_MOVE_SPEED_PX_PER_MS = 1.6f
+        private const val MOVE_SPEED_SOFTNESS_PX_PER_MS = 0.9f
+        private const val DOWN_IMPULSE_STRENGTH = 0.34f
+        private const val MOVE_IMPULSE_BASE = 0.026f
+        private const val MOVE_IMPULSE_SPEED_GAIN = 0.052f
+        private const val MOVE_IMPULSE_MIN = 0.026f
+        private const val MOVE_IMPULSE_MAX = 0.078f
+        private const val UP_IMPULSE_STRENGTH = 0.045f
+        private const val DOWN_RADIUS_PX = 50f
+        private const val MOVE_RADIUS_PX = 38f
+        private const val UP_RADIUS_PX = 42f
     }
 }

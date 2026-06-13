@@ -16,7 +16,11 @@ class LiquidRipplePerformanceGovernorTest {
         assertTrue(balanced.damping < 0.99f)
 
         governor.configureQuality(KeyboardTouchEffectQuality.HIGH)
-        assertEquals(1, governor.stepParams(LiquidRippleRendererState.Active).normalSampleMode)
+        val highActive = governor.stepParams(LiquidRippleRendererState.Active)
+        val highSettling = governor.stepParams(LiquidRippleRendererState.Settling)
+        assertEquals(1, highActive.normalSampleMode)
+        assertTrue(highActive.waveSpeed < 0.15f)
+        assertTrue(highActive.damping < highSettling.damping)
 
         governor.configureQuality(KeyboardTouchEffectQuality.ULTRA)
         assertEquals(2, governor.stepParams(LiquidRippleRendererState.Active).normalSampleMode)

@@ -28,7 +28,27 @@ class LiquidRippleInputInjectorTest {
             .first { it.kind == LiquidRippleImpulseKind.Move }
         assertTrue(move.directionX > 0f)
         assertTrue(move.directionY < 0f)
+        assertTrue(move.strength <= 0.078f)
         assertEquals(0, injector.pointerStateCountForTesting())
+    }
+
+    @Test
+    fun fastMoveImpulseIsCompressedSoFlicksDoNotAccelerateWaterTooMuch() {
+        var now = 100L
+        val queue = LiquidRippleInputCommandQueue()
+        val injector = LiquidRippleInputInjector(queue, clock = { now })
+
+        injector.configure(enabled = true)
+        injector.onPointerDown(pointerId = 1, x = 0f, y = 0f)
+        now = 101L
+        injector.onPointerMove(pointerId = 1, x = 180f, y = 0f)
+
+        val move = queue.drain()
+            .filterIsInstance<LiquidRippleInputCommand.Impulse>()
+            .first { it.kind == LiquidRippleImpulseKind.Move }
+
+        assertTrue(move.strength <= 0.078f)
+        assertTrue(move.radiusPx >= 38f)
     }
 
     @Test

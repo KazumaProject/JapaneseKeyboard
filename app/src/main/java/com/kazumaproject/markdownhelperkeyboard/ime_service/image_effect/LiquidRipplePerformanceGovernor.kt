@@ -178,40 +178,40 @@ internal class LiquidRipplePerformanceGovernor {
         private fun qualityProfile(userQuality: String): QualityProfile {
             return when (KeyboardTouchEffectQuality.normalize(userQuality)) {
                 KeyboardTouchEffectQuality.BALANCED -> QualityProfile(
-                    waveSpeed = 0.225f,
-                    activeDamping = 0.988f,
-                    settlingDamping = 0.984f,
-                    idleDamping = 0.978f,
+                    waveSpeed = 0.118f,
+                    activeDamping = 0.986f,
+                    settlingDamping = 0.989f,
+                    idleDamping = 0.982f,
                     boundaryAbsorptionWidth = 0.055f,
                     normalSampleMode = 0,
                     qualityDropFrameThreshold = 8
                 )
 
                 KeyboardTouchEffectQuality.ULTRA -> QualityProfile(
-                    waveSpeed = 0.238f,
-                    activeDamping = 0.994f,
-                    settlingDamping = 0.990f,
-                    idleDamping = 0.984f,
+                    waveSpeed = 0.132f,
+                    activeDamping = 0.991f,
+                    settlingDamping = 0.994f,
+                    idleDamping = 0.987f,
                     boundaryAbsorptionWidth = 0.07f,
                     normalSampleMode = 2,
                     qualityDropFrameThreshold = 36
                 )
 
                 KeyboardTouchEffectQuality.EXTREME -> QualityProfile(
-                    waveSpeed = 0.24f,
-                    activeDamping = 0.995f,
-                    settlingDamping = 0.991f,
-                    idleDamping = 0.985f,
+                    waveSpeed = 0.136f,
+                    activeDamping = 0.992f,
+                    settlingDamping = 0.995f,
+                    idleDamping = 0.988f,
                     boundaryAbsorptionWidth = 0.085f,
                     normalSampleMode = 3,
                     qualityDropFrameThreshold = 60
                 )
 
                 else -> QualityProfile(
-                    waveSpeed = 0.235f,
-                    activeDamping = 0.992f,
-                    settlingDamping = 0.988f,
-                    idleDamping = 0.982f,
+                    waveSpeed = 0.126f,
+                    activeDamping = 0.989f,
+                    settlingDamping = 0.992f,
+                    idleDamping = 0.985f,
                     boundaryAbsorptionWidth = 0.06f,
                     normalSampleMode = 1,
                     qualityDropFrameThreshold = 20
