@@ -127,32 +127,32 @@ internal class SprayPaintSimulation(
     private val sprayProfile = StyleProfile(
         depositionModel = SprayPaintDepositionModel.AerosolGaussian,
         compositeModel = SprayPaintCompositeModel.AdditiveMist,
-        tapCountScale = 0.95f,
-        coreShare = 0.25f,
-        mistShare = 0.55f,
+        tapCountScale = 1.08f,
+        coreShare = 0.32f,
+        mistShare = 0.48f,
         speckleShare = 0.20f,
-        coreSigmaPx = 14f,
-        mistSigmaPx = 48f,
-        speckleSigmaPx = 70f,
-        coreMedianRadiusPx = 8.2f,
-        mistMedianRadiusPx = 4.4f,
-        speckleMedianRadiusPx = 1.8f,
-        coreAlpha = 0.022f,
-        mistAlpha = 0.010f,
-        speckleAlpha = 0.036f,
-        moveCountScale = 0.98f,
+        coreSigmaPx = 12f,
+        mistSigmaPx = 46f,
+        speckleSigmaPx = 74f,
+        coreMedianRadiusPx = 10.5f,
+        mistMedianRadiusPx = 5.8f,
+        speckleMedianRadiusPx = 2.4f,
+        coreAlpha = 0.060f,
+        mistAlpha = 0.024f,
+        speckleAlpha = 0.085f,
+        moveCountScale = 1.08f,
         moveAlongBasePx = 28f,
-        moveAlongSpeedPx = 74f,
-        moveMistSidePx = 24f,
-        moveCoreSidePx = 9f,
-        moveStretchBoost = 2.2f,
+        moveAlongSpeedPx = 86f,
+        moveMistSidePx = 28f,
+        moveCoreSidePx = 8f,
+        moveStretchBoost = 2.75f,
         popCountScale = 0.68f,
         popStartSpreadPx = 34f,
         popEndSpreadPx = 94f,
-        popAlphaScale = 0.62f,
+        popAlphaScale = 0.78f,
         longPressScale = 0.72f,
-        maxParticleAlpha = 0.13f,
-        maxDisplayAlpha = 0.45f,
+        maxParticleAlpha = 0.24f,
+        maxDisplayAlpha = 0.52f,
         decayScale = 0.92f,
         dripChance = 0f,
         dripLengthScale = 0f,
@@ -2236,6 +2236,10 @@ internal class SprayPaintSimulation(
                     uMaxDisplayAlpha,
                     smoothstep(0.0, response, a) * uMaxDisplayAlpha
                 );
+                if (uCompositeModel < 0.5) {
+                    float aerosolAlpha = (1.0 - exp(-a * 7.5)) * uMaxDisplayAlpha;
+                    displayAlpha = min(uMaxDisplayAlpha, aerosolAlpha);
+                }
 
                 float aL = texture(uPaint, vUv - vec2(uTexelSize.x, 0.0)).a;
                 float aR = texture(uPaint, vUv + vec2(uTexelSize.x, 0.0)).a;
