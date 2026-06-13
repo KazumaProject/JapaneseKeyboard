@@ -641,7 +641,13 @@ internal class LiquidRippleSimulation(
                 float laplacian = hL + hR + hD + hU - current * 4.0;
                 float nextHeight = (current * 2.0 - previous + laplacian * uWaveSpeed) * uDamping;
                 float edge = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
-                nextHeight *= smoothstep(0.0, max(uBoundaryAbsorptionWidth, 0.001), edge);
+                float absorptionWidth = max(
+                    uBoundaryAbsorptionWidth,
+                    max(uTexelSize.x, uTexelSize.y) * 2.0
+                );
+                float edgeMask = smoothstep(0.0, absorptionWidth, edge);
+                float boundaryDamping = mix(0.88, 1.0, edgeMask);
+                nextHeight *= boundaryDamping;
                 fragColor = encodeHeight(clamp(nextHeight, -1.6, 1.6), uOutputEncoded);
             }
         """

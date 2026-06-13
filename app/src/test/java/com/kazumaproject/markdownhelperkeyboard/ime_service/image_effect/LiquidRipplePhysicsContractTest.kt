@@ -21,6 +21,8 @@ class LiquidRipplePhysicsContractTest {
         assertTrue(simulation.contains("uCurrent"))
         assertTrue(simulation.contains("uDamping"))
         assertTrue(simulation.contains("uBoundaryAbsorptionWidth"))
+        assertTrue(simulation.contains("boundaryDamping"))
+        assertFalse(simulation.contains("nextHeight *= smoothstep"))
         assertTrue(simulation.contains("uNormalSampleMode"))
         assertTrue(simulation.contains("normal = normalize"))
         assertTrue(simulation.contains("sampleHeight"))
