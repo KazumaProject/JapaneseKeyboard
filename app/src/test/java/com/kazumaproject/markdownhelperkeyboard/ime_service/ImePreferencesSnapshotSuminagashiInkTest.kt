@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -29,6 +30,7 @@ class ImePreferencesSnapshotSuminagashiInkTest {
     fun snapshotContainsDefaultSuminagashiInkPreferences() {
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
 
+        assertEquals(KeyboardTouchEffectType.NONE, snapshot.keyboardTouchEffectTypePreference)
         assertFalse(snapshot.suminagashiInkEffectPreference)
         assertEquals("random", snapshot.suminagashiInkColorModePreference)
         assertEquals(Color.rgb(17, 17, 17), snapshot.suminagashiInkColorPreference)
@@ -43,8 +45,25 @@ class ImePreferencesSnapshotSuminagashiInkTest {
 
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
 
+        assertEquals(
+            KeyboardTouchEffectType.SUMINAGASHI_INK,
+            snapshot.keyboardTouchEffectTypePreference
+        )
         assertTrue(snapshot.suminagashiInkEffectPreference)
         assertEquals("fixed", snapshot.suminagashiInkColorModePreference)
         assertEquals(fixedColor, snapshot.suminagashiInkColorPreference)
+    }
+
+    @Test
+    fun snapshotContainsSavedLiquidRippleTouchEffect() {
+        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.LIQUID_RIPPLE
+
+        val snapshot = ImePreferencesSnapshot.from(AppPreference)
+
+        assertEquals(
+            KeyboardTouchEffectType.LIQUID_RIPPLE,
+            snapshot.keyboardTouchEffectTypePreference
+        )
+        assertFalse(snapshot.suminagashiInkEffectPreference)
     }
 }

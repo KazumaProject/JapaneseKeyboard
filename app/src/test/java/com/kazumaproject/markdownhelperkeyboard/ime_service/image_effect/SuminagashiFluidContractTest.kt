@@ -115,6 +115,29 @@ class SuminagashiFluidContractTest {
     }
 
     @Test
+    fun liquidRippleUsesOpenGlRendererThreadAndHeightFieldSimulation() {
+        val renderer = mainFile(
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/LiquidRippleRenderer.kt"
+        ).readText()
+        val simulation = mainFile(
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/LiquidRippleSimulation.kt"
+        ).readText()
+
+        assertTrue(renderer.contains("HandlerThread"))
+        assertTrue(renderer.contains("LiquidRippleRenderer"))
+        assertFalse(renderer.contains("Dispatchers."))
+        assertTrue(simulation.contains("uPrevious"))
+        assertTrue(simulation.contains("uCurrent"))
+        assertTrue(simulation.contains("uWaveSpeed"))
+        assertTrue(simulation.contains("normal = normalize"))
+        assertTrue(simulation.contains("R16F"))
+        assertTrue(simulation.contains("EncodedRgba8"))
+        assertFalse(simulation.contains("android.graphics.Canvas"))
+        assertFalse(simulation.contains("android.graphics.Bitmap"))
+        assertFalse(simulation.contains("glReadPixels"))
+    }
+
+    @Test
     fun simulationAvoidsHalfFloatLinearFilteringAndOutputsPremultipliedAlpha() {
         val simulation = mainFile(
             "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/FluidSimulation.kt"
@@ -132,6 +155,11 @@ class SuminagashiFluidContractTest {
         ).readText()
 
         assertTrue(simulation.contains("GLES30.glShaderSource(shader, source.trimIndent())"))
+
+        val liquidSimulation = mainFile(
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/LiquidRippleSimulation.kt"
+        ).readText()
+        assertTrue(liquidSimulation.contains("GLES30.glShaderSource(shader, source.trimIndent())"))
     }
 
     @Test
