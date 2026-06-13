@@ -25,6 +25,40 @@ class FluidInputCommandQueueTest {
     }
 
     @Test
+    fun dyeCarryingMovesForSamePointerAreNotCoalesced() {
+        val queue = FluidInputCommandQueue(maxSize = 8)
+
+        queue.offer(down(pointerId = 1))
+        queue.offer(dyeMove(pointerId = 1, x = 10f))
+        queue.offer(dyeMove(pointerId = 1, x = 20f))
+
+        val moves = queue.drain()
+            .filterIsInstance<FluidInputCommand.Splat>()
+            .filter { it.kind == FluidSplatKind.Move }
+
+        assertEquals(2, moves.size)
+        assertEquals(listOf(10f, 20f), moves.map { it.x })
+        assertTrue(moves.all { it.injectDye })
+        assertTrue(moves.none { it.canReplaceQueuedMove })
+    }
+
+    @Test
+    fun replaceableVelocityMoveDoesNotOverwriteQueuedDyeMove() {
+        val queue = FluidInputCommandQueue(maxSize = 8)
+
+        queue.offer(dyeMove(pointerId = 1, x = 10f))
+        queue.offer(move(pointerId = 1, x = 20f))
+
+        val commands = queue.drain().filterIsInstance<FluidInputCommand.Splat>()
+
+        assertEquals(2, commands.size)
+        assertEquals(10f, commands[0].x)
+        assertEquals(20f, commands[1].x)
+        assertTrue(commands[0].injectDye)
+        assertTrue(commands[1].injectVelocity)
+    }
+
+    @Test
     fun oldestMoveIsDroppedWhenQueueIsFull() {
         val queue = FluidInputCommandQueue(maxSize = 3)
 
@@ -89,7 +123,19 @@ class FluidInputCommandQueueTest {
             color = FluidInkColor(0.1f, 0.2f, 0.3f, 1f),
             radiusPx = 24f,
             kind = FluidSplatKind.Move,
-            eventTimeMillis = 1L
+            eventTimeMillis = 1L,
+            injectVelocity = true,
+            injectDye = false
+        )
+    }
+
+    private fun dyeMove(pointerId: Int, x: Float): FluidInputCommand.Splat {
+        return move(pointerId = pointerId, x = x).copy(
+            velocityX = 0f,
+            velocityY = 0f,
+            injectVelocity = false,
+            injectDye = true,
+            canReplaceQueuedMove = false
         )
     }
 }
