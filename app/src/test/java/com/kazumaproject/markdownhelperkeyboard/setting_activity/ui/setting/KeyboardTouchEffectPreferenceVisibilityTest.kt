@@ -19,15 +19,36 @@ class KeyboardTouchEffectPreferenceVisibilityTest {
         )
 
         assertTrue(random.showQuality)
-        assertTrue(random.showSuminagashiColorMode)
-        assertFalse(random.showFixedSuminagashiColor)
+        assertTrue(random.showColorMode)
+        assertFalse(random.showFixedColor)
+        assertFalse(random.showPalette)
         assertTrue(fixed.showQuality)
-        assertTrue(fixed.showSuminagashiColorMode)
-        assertTrue(fixed.showFixedSuminagashiColor)
+        assertTrue(fixed.showColorMode)
+        assertTrue(fixed.showFixedColor)
+        assertFalse(fixed.showPalette)
     }
 
     @Test
-    fun liquidRippleAndNoneHideSuminagashiColorPreferences() {
+    fun sprayPaintShowsColorControlsAndPalette() {
+        val random = resolveKeyboardTouchEffectPreferenceVisibility(
+            effectType = KeyboardTouchEffectType.SPRAY_PAINT,
+            colorMode = "random"
+        )
+        val fixed = resolveKeyboardTouchEffectPreferenceVisibility(
+            effectType = KeyboardTouchEffectType.SPRAY_PAINT,
+            colorMode = "fixed"
+        )
+
+        assertTrue(random.showQuality)
+        assertTrue(random.showColorMode)
+        assertFalse(random.showFixedColor)
+        assertTrue(random.showPalette)
+        assertTrue(fixed.showFixedColor)
+        assertTrue(fixed.showPalette)
+    }
+
+    @Test
+    fun liquidRippleAndNoneHideColorPreferences() {
         val liquid = resolveKeyboardTouchEffectPreferenceVisibility(
             effectType = KeyboardTouchEffectType.LIQUID_RIPPLE,
             colorMode = "fixed"
@@ -38,10 +59,12 @@ class KeyboardTouchEffectPreferenceVisibilityTest {
         )
 
         assertTrue(liquid.showQuality)
-        assertFalse(liquid.showSuminagashiColorMode)
-        assertFalse(liquid.showFixedSuminagashiColor)
+        assertFalse(liquid.showColorMode)
+        assertFalse(liquid.showFixedColor)
+        assertFalse(liquid.showPalette)
         assertFalse(none.showQuality)
-        assertFalse(none.showSuminagashiColorMode)
-        assertFalse(none.showFixedSuminagashiColor)
+        assertFalse(none.showColorMode)
+        assertFalse(none.showFixedColor)
+        assertFalse(none.showPalette)
     }
 }

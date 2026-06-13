@@ -180,6 +180,9 @@ data class ImePreferencesSnapshot(
     val suminagashiInkEffectPreference: Boolean,
     val suminagashiInkColorModePreference: String,
     val suminagashiInkColorPreference: Int,
+    val keyboardTouchEffectColorModePreference: String,
+    val keyboardTouchEffectColorPreference: Int,
+    val keyboardTouchEffectPalettePreference: String,
     val customKeyBorderEnablePreference: Boolean,
     val customKeyBorderEnableColor: Int,
     val customComposingTextPreference: Boolean,
@@ -503,8 +506,13 @@ data class ImePreferencesSnapshot(
                     appPreference.keyboard_touch_effect_quality_preference,
                 suminagashiInkEffectPreference = appPreference.suminagashi_ink_effect_preference,
                 suminagashiInkColorModePreference =
-                    appPreference.suminagashi_ink_color_mode_preference,
-                suminagashiInkColorPreference = appPreference.suminagashi_ink_color_preference,
+                    appPreference.keyboard_touch_effect_color_mode_preference,
+                suminagashiInkColorPreference = appPreference.keyboard_touch_effect_color_preference,
+                keyboardTouchEffectColorModePreference =
+                    appPreference.keyboard_touch_effect_color_mode_preference,
+                keyboardTouchEffectColorPreference = appPreference.keyboard_touch_effect_color_preference,
+                keyboardTouchEffectPalettePreference =
+                    appPreference.keyboard_touch_effect_palette_preference,
                 customKeyBorderEnablePreference = appPreference.custom_theme_border_enable,
                 customKeyBorderEnableColor = appPreference.custom_theme_border_color,
                 customComposingTextPreference = appPreference.custom_theme_input_color_enable,

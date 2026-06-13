@@ -48,12 +48,14 @@
         <item>@string/keyboard_touch_effect_none</item>
         <item>@string/keyboard_touch_effect_suminagashi_ink</item>
         <item>@string/keyboard_touch_effect_liquid_ripple</item>
+        <item>@string/keyboard_touch_effect_type_spray_paint</item>
     </string-array>
 
     <string-array name="keyboard_touch_effect_type_values">
         <item>none</item>
         <item>suminagashi_ink</item>
         <item>liquid_ripple</item>
+        <item>spray_paint</item>
     </string-array>
 
     <string-array name="keyboard_touch_effect_quality_entries">
@@ -78,6 +80,36 @@
     <string-array name="suminagashi_ink_color_mode_values">
         <item>random</item>
         <item>fixed</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_color_mode_entries">
+        <item>@string/keyboard_touch_effect_color_mode_random</item>
+        <item>@string/keyboard_touch_effect_color_mode_fixed</item>
+        <item>@string/keyboard_touch_effect_color_mode_palette</item>
+        <item>@string/keyboard_touch_effect_color_mode_theme</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_color_mode_values">
+        <item>random</item>
+        <item>fixed</item>
+        <item>palette</item>
+        <item>theme</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_palette_entries">
+        <item>@string/keyboard_touch_effect_palette_vivid_paint</item>
+        <item>@string/keyboard_touch_effect_palette_neon_graffiti</item>
+        <item>@string/keyboard_touch_effect_palette_soft_pastel</item>
+        <item>@string/keyboard_touch_effect_palette_sumire</item>
+        <item>@string/keyboard_touch_effect_palette_monochrome_ink</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_palette_values">
+        <item>vivid_paint</item>
+        <item>neon_graffiti</item>
+        <item>soft_pastel</item>
+        <item>sumire</item>
+        <item>monochrome_ink</item>
     </string-array>
 
     <string-array name="default_emoji_skin_tone_entries">
