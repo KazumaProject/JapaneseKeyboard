@@ -75,7 +75,10 @@ internal sealed class FluidInputCommand {
         val color: FluidInkColor,
         val radiusPx: Float,
         val kind: FluidSplatKind,
-        override val eventTimeMillis: Long
+        override val eventTimeMillis: Long,
+        val injectVelocity: Boolean = true,
+        val injectDye: Boolean = true,
+        val canReplaceQueuedMove: Boolean = kind == FluidSplatKind.Move && injectVelocity && !injectDye
     ) : FluidInputCommand()
 
     data class PointerUp(

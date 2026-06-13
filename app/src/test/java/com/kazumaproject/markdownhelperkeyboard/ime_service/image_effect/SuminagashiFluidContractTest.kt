@@ -212,6 +212,10 @@ class SuminagashiFluidContractTest {
 
         assertTrue(simulation.contains("private const val VELOCITY_SPLAT_SCALE = 4.2f"))
         assertTrue(simulation.contains("MAX_DYE_DENSITY = 0.84"))
+        assertTrue(simulation.contains("float radiusSquared = radius * radius;"))
+        assertTrue(simulation.contains("exp(-dot(delta, delta) / radiusSquared)"))
+        assertTrue(simulation.contains("if (command.injectVelocity)"))
+        assertTrue(simulation.contains("if (command.injectDye)"))
         assertTrue(simulation.contains("sampleVelocity"))
         assertTrue(simulation.contains("sampleSource"))
         assertTrue(simulation.contains("vec2 coord = clamp(vUv - velocity * uDt"))

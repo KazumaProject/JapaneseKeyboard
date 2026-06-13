@@ -329,35 +329,38 @@ internal class FluidSimulation(
             val pointY = if (surfaceHeight > 0) 1f - (command.y / surfaceHeight) else 0f
             val radius = (command.radiusPx / max(surfaceWidth, surfaceHeight).toFloat())
                 .coerceIn(0.008f, 0.08f)
-            val velocityScale = if (command.kind == FluidSplatKind.Down) 0f else VELOCITY_SPLAT_SCALE
 
-            splat(
-                source = velocityTarget.read,
-                destination = velocityTarget.write,
-                pointX = pointX,
-                pointY = pointY,
-                valueX = command.velocityX * velocityScale,
-                valueY = -command.velocityY * velocityScale,
-                valueZ = 0f,
-                alpha = 1f,
-                radius = radius * 1.3f,
-                isDye = false
-            )
-            velocityTarget.swap()
+            if (command.injectVelocity) {
+                splat(
+                    source = velocityTarget.read,
+                    destination = velocityTarget.write,
+                    pointX = pointX,
+                    pointY = pointY,
+                    valueX = command.velocityX * VELOCITY_SPLAT_SCALE,
+                    valueY = -command.velocityY * VELOCITY_SPLAT_SCALE,
+                    valueZ = 0f,
+                    alpha = 1f,
+                    radius = radius * 1.3f,
+                    isDye = false
+                )
+                velocityTarget.swap()
+            }
 
-            splat(
-                source = dyeTarget.read,
-                destination = dyeTarget.write,
-                pointX = pointX,
-                pointY = pointY,
-                valueX = command.color.red,
-                valueY = command.color.green,
-                valueZ = command.color.blue,
-                alpha = command.color.alpha,
-                radius = radius,
-                isDye = true
-            )
-            dyeTarget.swap()
+            if (command.injectDye) {
+                splat(
+                    source = dyeTarget.read,
+                    destination = dyeTarget.write,
+                    pointX = pointX,
+                    pointY = pointY,
+                    valueX = command.color.red,
+                    valueY = command.color.green,
+                    valueZ = command.color.blue,
+                    alpha = command.color.alpha,
+                    radius = radius,
+                    isDye = true
+                )
+                dyeTarget.swap()
+            }
         }
     }
 
@@ -785,7 +788,8 @@ internal class FluidSimulation(
                 vec2 delta = vUv - uPoint;
                 delta.x *= uAspect;
                 float radius = max(uRadius, 0.0001);
-                float falloff = exp(-dot(delta, delta) / radius);
+                float radiusSquared = radius * radius;
+                float falloff = exp(-dot(delta, delta) / radiusSquared);
                 if (uIsDye > 0.5) {
                     const float MAX_DYE_DENSITY = 0.84;
                     const float INK_DEPOSIT_STRENGTH = 0.52;
