@@ -199,6 +199,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.Bubble
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LiquidRippleEffectView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
@@ -932,6 +933,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var liquidGlassKeyBlurRadiousPreference: Int? = 255
 
     private var keyboardTouchEffectTypePreference: String = KeyboardTouchEffectType.NONE
+    private var keyboardTouchEffectQualityPreference: String = KeyboardTouchEffectQuality.HIGH
     private var suminagashiInkColorModePreference: String = "random"
 
     @ColorInt
@@ -1854,6 +1856,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         liquidGlassKeyBlurRadiousPreference = preferences.liquidGlassKeyBlurRadiousPreference
         keyboardTouchEffectTypePreference =
             KeyboardTouchEffectType.normalize(preferences.keyboardTouchEffectTypePreference)
+        keyboardTouchEffectQualityPreference =
+            KeyboardTouchEffectQuality.normalize(preferences.keyboardTouchEffectQualityPreference)
         suminagashiInkColorModePreference =
             if (preferences.suminagashiInkColorModePreference == "fixed") "fixed" else "random"
         suminagashiInkColorPreference = preferences.suminagashiInkColorPreference
@@ -2138,10 +2142,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.suminagashiInkView.configure(
             enabled = false,
             colorMode = suminagashiInkColorModePreference,
-            fixedColor = suminagashiInkColorPreference
+            fixedColor = suminagashiInkColorPreference,
+            quality = keyboardTouchEffectQualityPreference
         )
         mainView.liquidRippleEffectView.clearRipple()
-        mainView.liquidRippleEffectView.configure(enabled = false)
+        mainView.liquidRippleEffectView.configure(
+            enabled = false,
+            quality = keyboardTouchEffectQualityPreference
+        )
         (mainView.root as? InkTouchDispatchFrameLayout)?.touchEffectMotionEventListener = null
 
         mainView.keyboardBackgroundVideo.isVisible = false
@@ -2259,9 +2267,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView.suminagashiInkView.configure(
             enabled = suminagashiEnabled,
             colorMode = suminagashiInkColorModePreference,
-            fixedColor = suminagashiInkColorPreference
+            fixedColor = suminagashiInkColorPreference,
+            quality = keyboardTouchEffectQualityPreference
         )
-        mainView.liquidRippleEffectView.configure(enabled = liquidRippleEnabled)
+        mainView.liquidRippleEffectView.configure(
+            enabled = liquidRippleEnabled,
+            quality = keyboardTouchEffectQualityPreference
+        )
 
         val root = mainView.root as? InkTouchDispatchFrameLayout
         root?.touchEffectMotionEventListener = when {
@@ -2304,9 +2316,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingView.floatingSuminagashiInkView.configure(
             enabled = suminagashiEnabled,
             colorMode = suminagashiInkColorModePreference,
-            fixedColor = suminagashiInkColorPreference
+            fixedColor = suminagashiInkColorPreference,
+            quality = keyboardTouchEffectQualityPreference
         )
-        floatingView.floatingLiquidRippleEffectView.configure(enabled = liquidRippleEnabled)
+        floatingView.floatingLiquidRippleEffectView.configure(
+            enabled = liquidRippleEnabled,
+            quality = keyboardTouchEffectQualityPreference
+        )
 
         val root = floatingView.root as? InkTouchDispatchFrameLayout
         root?.touchEffectMotionEventListener = when {
@@ -3350,6 +3366,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         liquidGlassBlurRadiousPreference = null
         liquidGlassKeyBlurRadiousPreference = null
         keyboardTouchEffectTypePreference = KeyboardTouchEffectType.NONE
+        keyboardTouchEffectQualityPreference = KeyboardTouchEffectQuality.HIGH
         suminagashiInkColorModePreference = "random"
         suminagashiInkColorPreference = Color.rgb(17, 17, 17)
         customKeyBorderEnablePreference = null

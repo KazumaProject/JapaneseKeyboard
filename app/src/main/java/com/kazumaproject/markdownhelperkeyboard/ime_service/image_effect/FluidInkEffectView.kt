@@ -43,12 +43,14 @@ open class FluidInkEffectView @JvmOverloads constructor(
     fun configure(
         enabled: Boolean,
         colorMode: String,
-        @ColorInt fixedColor: Int
+        @ColorInt fixedColor: Int,
+        quality: String = KeyboardTouchEffectQuality.HIGH
     ) {
         currentSettings = FluidInkSettings(
             enabled = enabled,
             colorMode = colorMode,
-            fixedColor = FluidInkSettings.withoutTransparentAlpha(fixedColor)
+            fixedColor = FluidInkSettings.withoutTransparentAlpha(fixedColor),
+            quality = KeyboardTouchEffectQuality.normalize(quality)
         )
 
         if (!enabled) {

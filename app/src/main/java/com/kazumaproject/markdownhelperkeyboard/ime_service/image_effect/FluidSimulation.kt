@@ -78,12 +78,13 @@ internal class FluidSimulation(
     private var pressure: DoubleTarget? = null
     private var divergence: RenderTarget? = null
     private var curl: RenderTarget? = null
+    private var velocityDiffusionSource: RenderTarget? = null
     private var renderTargetFormat = FluidRenderTargetFormat.HalfFloat
-    private var waterPhaseSeconds = 0f
 
     private var copyProgram = 0
     private var splatProgram = 0
     private var advectProgram = 0
+    private var velocityDiffusionProgram = 0
     private var divergenceProgram = 0
     private var curlProgram = 0
     private var vorticityProgram = 0
@@ -100,7 +101,12 @@ internal class FluidSimulation(
             position(0)
         }
 
-    fun initialize(surfaceWidth: Int, surfaceHeight: Int, qualityLevel: Int) {
+    fun initialize(
+        surfaceWidth: Int,
+        surfaceHeight: Int,
+        qualityLevel: Int,
+        userQuality: String = KeyboardTouchEffectQuality.HIGH
+    ) {
         require(surfaceWidth > 0 && surfaceHeight > 0) {
             "Invalid fluid surface size ${surfaceWidth}x$surfaceHeight"
         }
@@ -110,7 +116,7 @@ internal class FluidSimulation(
         }
         this.surfaceWidth = surfaceWidth
         this.surfaceHeight = surfaceHeight
-        val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel)
+        val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel, userQuality)
         runCatching {
             resizeTargets(
                 nextGrid = nextGrid,
@@ -128,14 +134,19 @@ internal class FluidSimulation(
         clear()
     }
 
-    fun resizeSurface(surfaceWidth: Int, surfaceHeight: Int, qualityLevel: Int) {
+    fun resizeSurface(
+        surfaceWidth: Int,
+        surfaceHeight: Int,
+        qualityLevel: Int,
+        userQuality: String = KeyboardTouchEffectQuality.HIGH
+    ) {
         if (copyProgram == 0) {
-            initialize(surfaceWidth, surfaceHeight, qualityLevel)
+            initialize(surfaceWidth, surfaceHeight, qualityLevel, userQuality)
             return
         }
         this.surfaceWidth = surfaceWidth
         this.surfaceHeight = surfaceHeight
-        val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel)
+        val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel, userQuality)
         if (nextGrid == grid) return
         resizeTargets(nextGrid = nextGrid, preserveExistingDye = true)
     }
@@ -152,21 +163,28 @@ internal class FluidSimulation(
         val curlTarget = curl ?: return
 
         val clampedDt = dtSeconds.coerceIn(MIN_DT_SECONDS, MAX_DT_SECONDS)
-        waterPhaseSeconds = (waterPhaseSeconds + clampedDt).let {
-            if (it > WATER_PHASE_WRAP_SECONDS) it - WATER_PHASE_WRAP_SECONDS else it
-        }
         applySplatCommands(inputCommands, velocityTarget, dyeTarget)
 
+        // Stable Fluids step: advect velocity through the current velocity field.
         advect(
             velocity = velocityTarget.read,
             source = velocityTarget.read,
             destination = velocityTarget.write,
             dtSeconds = clampedDt,
-            dissipation = params.velocityDissipation,
-            waterDrift = params.waterDrift * VELOCITY_WATER_DRIFT_SCALE
+            dissipation = params.velocityDissipation
         )
         velocityTarget.swap()
 
+        // Viscosity is solved as Jacobi velocity diffusion, not as a screen-space effect.
+        diffuseVelocity(
+            velocityTarget = velocityTarget,
+            diffusionSource = velocityDiffusionSource,
+            viscosity = params.velocityViscosity,
+            dtSeconds = clampedDt,
+            iterations = params.velocityDiffusionIterations
+        )
+
+        // Vorticity confinement keeps thin ink swirls alive before pressure projection.
         computeCurl(velocityTarget.read, curlTarget)
         applyVorticity(
             velocity = velocityTarget.read,
@@ -177,6 +195,7 @@ internal class FluidSimulation(
         )
         velocityTarget.swap()
 
+        // Pressure projection: solve pressure from divergence and subtract its gradient.
         computeDivergence(velocityTarget.read, divergenceTarget)
         clearTarget(pressureTarget.read)
         clearTarget(pressureTarget.write)
@@ -196,13 +215,13 @@ internal class FluidSimulation(
         )
         velocityTarget.swap()
 
+        // Dye is transported only by the solved velocity field and then composited.
         advect(
             velocity = velocityTarget.read,
             source = dyeTarget.read,
             destination = dyeTarget.write,
             dtSeconds = clampedDt,
-            dissipation = params.dyeDissipation,
-            waterDrift = params.waterDrift
+            dissipation = params.dyeDissipation
         )
         dyeTarget.swap()
 
@@ -218,9 +237,9 @@ internal class FluidSimulation(
             pressure?.read,
             pressure?.write,
             divergence,
-            curl
+            curl,
+            velocityDiffusionSource
         ).forEach(::clearTarget)
-        waterPhaseSeconds = 0f
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
     }
 
@@ -231,6 +250,7 @@ internal class FluidSimulation(
             copyProgram,
             splatProgram,
             advectProgram,
+            velocityDiffusionProgram,
             divergenceProgram,
             curlProgram,
             vorticityProgram,
@@ -242,6 +262,7 @@ internal class FluidSimulation(
         copyProgram = 0
         splatProgram = 0
         advectProgram = 0
+        velocityDiffusionProgram = 0
         divergenceProgram = 0
         curlProgram = 0
         vorticityProgram = 0
@@ -256,11 +277,13 @@ internal class FluidSimulation(
         releaseDoubleTarget(pressure)
         releaseTarget(divergence)
         releaseTarget(curl)
+        releaseTarget(velocityDiffusionSource)
         velocity = null
         dye = null
         pressure = null
         divergence = null
         curl = null
+        velocityDiffusionSource = null
     }
 
     private fun resizeTargets(
@@ -272,6 +295,7 @@ internal class FluidSimulation(
         val oldPressure = pressure
         val oldDivergence = divergence
         val oldCurl = curl
+        val oldVelocityDiffusionSource = velocityDiffusionSource
 
         grid = nextGrid
         velocity = createDoubleTarget(grid.width, grid.height, signedField = true)
@@ -279,6 +303,7 @@ internal class FluidSimulation(
         pressure = createDoubleTarget(grid.width, grid.height, signedField = true)
         divergence = createTarget(grid.width, grid.height, signedField = true)
         curl = createTarget(grid.width, grid.height, signedField = true)
+        velocityDiffusionSource = createTarget(grid.width, grid.height, signedField = true)
 
         if (preserveExistingDye) {
             oldVelocity?.read?.let { copyTextureToTarget(it.texture, velocity?.read) }
@@ -290,6 +315,7 @@ internal class FluidSimulation(
         releaseDoubleTarget(oldPressure)
         releaseTarget(oldDivergence)
         releaseTarget(oldCurl)
+        releaseTarget(oldVelocityDiffusionSource)
     }
 
     private fun applySplatCommands(
@@ -366,8 +392,7 @@ internal class FluidSimulation(
         source: RenderTarget,
         destination: RenderTarget,
         dtSeconds: Float,
-        dissipation: Float,
-        waterDrift: Float
+        dissipation: Float
     ) {
         useProgram(advectProgram, destination)
         bindTexture(0, velocity.texture, advectProgram, "uVelocity")
@@ -375,12 +400,50 @@ internal class FluidSimulation(
         uniform2f(advectProgram, "uTexelSize", 1f / grid.width, 1f / grid.height)
         uniform1f(advectProgram, "uDt", dtSeconds)
         uniform1f(advectProgram, "uDissipation", dissipation)
-        uniform1f(advectProgram, "uWaterPhase", waterPhaseSeconds)
-        uniform1f(advectProgram, "uWaterDrift", waterDrift)
         uniformEncoding(advectProgram, "uVelocityEncoded", velocity)
         uniformEncoding(advectProgram, "uSourceEncoded", source)
         uniformEncoding(advectProgram, "uOutputEncoded", destination)
         uniform1f(advectProgram, "uSignedRange", SIGNED_FIELD_RANGE)
+        drawQuad()
+    }
+
+    private fun diffuseVelocity(
+        velocityTarget: DoubleTarget,
+        diffusionSource: RenderTarget?,
+        viscosity: Float,
+        dtSeconds: Float,
+        iterations: Int
+    ) {
+        if (diffusionSource == null || viscosity <= 0f || iterations <= 0) return
+        copyTextureToTarget(velocityTarget.read.texture, diffusionSource)
+        val gridScale = max(grid.width, grid.height).toFloat()
+        val alpha = (viscosity * dtSeconds * gridScale * gridScale).coerceIn(0.000001f, 4f)
+        repeat(iterations.coerceAtLeast(1)) {
+            solveVelocityDiffusion(
+                velocity = velocityTarget.read,
+                source = diffusionSource,
+                destination = velocityTarget.write,
+                viscosity = alpha
+            )
+            velocityTarget.swap()
+        }
+    }
+
+    private fun solveVelocityDiffusion(
+        velocity: RenderTarget,
+        source: RenderTarget,
+        destination: RenderTarget,
+        viscosity: Float
+    ) {
+        useProgram(velocityDiffusionProgram, destination)
+        bindTexture(0, velocity.texture, velocityDiffusionProgram, "uVelocity")
+        bindTexture(1, source.texture, velocityDiffusionProgram, "uSource")
+        uniform2f(velocityDiffusionProgram, "uTexelSize", 1f / grid.width, 1f / grid.height)
+        uniform1f(velocityDiffusionProgram, "uViscosity", viscosity)
+        uniformEncoding(velocityDiffusionProgram, "uVelocityEncoded", velocity)
+        uniformEncoding(velocityDiffusionProgram, "uSourceEncoded", source)
+        uniformEncoding(velocityDiffusionProgram, "uOutputEncoded", destination)
+        uniform1f(velocityDiffusionProgram, "uSignedRange", SIGNED_FIELD_RANGE)
         drawQuad()
     }
 
@@ -619,6 +682,7 @@ internal class FluidSimulation(
         copyProgram = createProgram(COPY_FRAGMENT_SHADER)
         splatProgram = createProgram(SPLAT_FRAGMENT_SHADER)
         advectProgram = createProgram(ADVECT_FRAGMENT_SHADER)
+        velocityDiffusionProgram = createProgram(VELOCITY_DIFFUSION_FRAGMENT_SHADER)
         divergenceProgram = createProgram(DIVERGENCE_FRAGMENT_SHADER)
         curlProgram = createProgram(CURL_FRAGMENT_SHADER)
         vorticityProgram = createProgram(VORTICITY_FRAGMENT_SHADER)
@@ -663,8 +727,6 @@ internal class FluidSimulation(
 
     companion object {
         private const val VELOCITY_SPLAT_SCALE = 4.2f
-        private const val VELOCITY_WATER_DRIFT_SCALE = 0.32f
-        private const val WATER_PHASE_WRAP_SECONDS = 240f
         private const val SIGNED_FIELD_RANGE = 4f
         private const val MIN_DT_SECONDS = 1f / 120f
         private const val MAX_DT_SECONDS = 1f / 24f
@@ -752,8 +814,6 @@ internal class FluidSimulation(
             uniform vec2 uTexelSize;
             uniform float uDt;
             uniform float uDissipation;
-            uniform float uWaterPhase;
-            uniform float uWaterDrift;
             uniform float uVelocityEncoded;
             uniform float uSourceEncoded;
             uniform float uOutputEncoded;
@@ -803,18 +863,56 @@ internal class FluidSimulation(
             }
             void main() {
                 vec2 velocity = sampleVelocity(vUv).xy;
-                float phase = uWaterPhase * 0.42;
-                float folded = sin((vUv.x * 2.4 + vUv.y * 9.5) + phase * 0.8);
-                float stream = sin(vUv.y * 7.0 + folded * 0.65 - phase * 1.15);
-                float braid = sin((vUv.y * 15.0 - vUv.x * 3.2) + phase * 0.7);
-                vec2 water = vec2(
-                    stream * 0.019 + braid * 0.007,
-                    cos(vUv.x * 6.2 - phase * 0.9 + folded * 0.35) * 0.011 +
-                        sin(vUv.y * 10.0 + phase * 0.6) * 0.006
-                ) * uWaterDrift;
-                vec2 coord = clamp(vUv - (velocity + water) * uDt, uTexelSize, 1.0 - uTexelSize);
+                vec2 coord = clamp(vUv - velocity * uDt, uTexelSize, 1.0 - uTexelSize);
                 vec4 value = sampleSource(coord) * uDissipation;
                 fragColor = encodeField(value, uOutputEncoded);
+            }
+        """
+
+        private const val VELOCITY_DIFFUSION_FRAGMENT_SHADER = """
+            #version 300 es
+            precision highp float;
+            in vec2 vUv;
+            uniform sampler2D uVelocity;
+            uniform sampler2D uSource;
+            uniform vec2 uTexelSize;
+            uniform float uViscosity;
+            uniform float uVelocityEncoded;
+            uniform float uSourceEncoded;
+            uniform float uOutputEncoded;
+            uniform float uSignedRange;
+            out vec4 fragColor;
+            vec4 decodeField(vec4 value, float encoded) {
+                return encoded > 0.5 ? (value * 2.0 - 1.0) * uSignedRange : value;
+            }
+            vec4 encodeField(vec4 value, float encoded) {
+                return encoded > 0.5 ? clamp(value / uSignedRange * 0.5 + 0.5, 0.0, 1.0) : value;
+            }
+            void main() {
+                vec2 uv = clamp(vUv, uTexelSize, 1.0 - uTexelSize);
+                vec2 left = decodeField(
+                    texture(uVelocity, uv - vec2(uTexelSize.x, 0.0)),
+                    uVelocityEncoded
+                ).xy;
+                vec2 right = decodeField(
+                    texture(uVelocity, uv + vec2(uTexelSize.x, 0.0)),
+                    uVelocityEncoded
+                ).xy;
+                vec2 bottom = decodeField(
+                    texture(uVelocity, uv - vec2(0.0, uTexelSize.y)),
+                    uVelocityEncoded
+                ).xy;
+                vec2 top = decodeField(
+                    texture(uVelocity, uv + vec2(0.0, uTexelSize.y)),
+                    uVelocityEncoded
+                ).xy;
+                vec2 source = decodeField(texture(uSource, uv), uSourceEncoded).xy;
+                float alpha = max(uViscosity, 0.000001);
+                vec2 velocity = (source + alpha * (left + right + bottom + top)) /
+                    (1.0 + 4.0 * alpha);
+                float edge = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
+                velocity *= smoothstep(0.0, max(uTexelSize.x, uTexelSize.y) * 2.0, edge);
+                fragColor = encodeField(vec4(clamp(velocity, vec2(-3.0), vec2(3.0)), 0.0, 0.0), uOutputEncoded);
             }
         """
 

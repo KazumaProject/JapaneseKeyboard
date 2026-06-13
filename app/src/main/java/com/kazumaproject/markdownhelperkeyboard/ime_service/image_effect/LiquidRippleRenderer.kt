@@ -51,10 +51,21 @@ internal class LiquidRippleRenderer(
 
     override fun configure(settings: LiquidRippleSettings) {
         postOnRenderer {
+            val qualityChanged = this.settings.normalizedQuality != settings.normalizedQuality
             this.settings = settings
+            performanceGovernor.configureQuality(settings.normalizedQuality)
             if (!settings.enabled) {
                 clearOnRendererThread()
                 paused = true
+                return@postOnRenderer
+            }
+            if (qualityChanged && surfaceWidth > 0 && surfaceHeight > 0 && simulation != null) {
+                simulation?.resizeSurface(
+                    surfaceWidth = surfaceWidth,
+                    surfaceHeight = surfaceHeight,
+                    qualityLevel = performanceGovernor.qualityLevel(),
+                    userQuality = settings.normalizedQuality
+                )
             }
         }
     }
@@ -71,13 +82,15 @@ internal class LiquidRippleRenderer(
                     simulation?.initialize(
                         surfaceWidth = width,
                         surfaceHeight = height,
-                        qualityLevel = performanceGovernor.qualityLevel()
+                        qualityLevel = performanceGovernor.qualityLevel(),
+                        userQuality = settings.normalizedQuality
                     )
                 } else {
                     simulation?.resizeSurface(
                         surfaceWidth = width,
                         surfaceHeight = height,
-                        qualityLevel = performanceGovernor.qualityLevel()
+                        qualityLevel = performanceGovernor.qualityLevel(),
+                        userQuality = settings.normalizedQuality
                     )
                 }
                 paused = false
@@ -95,7 +108,8 @@ internal class LiquidRippleRenderer(
                 simulation?.resizeSurface(
                     surfaceWidth = width,
                     surfaceHeight = height,
-                    qualityLevel = performanceGovernor.qualityLevel()
+                    qualityLevel = performanceGovernor.qualityLevel(),
+                    userQuality = settings.normalizedQuality
                 )
                 requestRenderOnRendererThread(forceSoon = true)
             }
@@ -195,7 +209,8 @@ internal class LiquidRippleRenderer(
                 activeSimulation.resizeSurface(
                     surfaceWidth = surfaceWidth,
                     surfaceHeight = surfaceHeight,
-                    qualityLevel = performanceGovernor.qualityLevel()
+                    qualityLevel = performanceGovernor.qualityLevel(),
+                    userQuality = settings.normalizedQuality
                 )
                 Timber.d(
                     "Reduced liquid ripple quality to %d",

@@ -41,8 +41,14 @@ class LiquidRippleEffectView @JvmOverloads constructor(
         visibility = View.GONE
     }
 
-    fun configure(enabled: Boolean) {
-        currentSettings = LiquidRippleSettings(enabled = enabled)
+    fun configure(
+        enabled: Boolean,
+        quality: String = KeyboardTouchEffectQuality.HIGH
+    ) {
+        currentSettings = LiquidRippleSettings(
+            enabled = enabled,
+            quality = KeyboardTouchEffectQuality.normalize(quality)
+        )
 
         if (!enabled) {
             effectEnabled = false

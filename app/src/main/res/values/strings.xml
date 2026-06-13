@@ -991,6 +991,12 @@
     <string name="keyboard_touch_effect_none">Off</string>
     <string name="keyboard_touch_effect_suminagashi_ink">Suminagashi Ink</string>
     <string name="keyboard_touch_effect_liquid_ripple">Liquid Ripple</string>
+    <string name="keyboard_touch_effect_quality_title">Touch effect quality</string>
+    <string name="keyboard_touch_effect_quality_summary">Choose the rendering quality for keyboard touch effects.</string>
+    <string name="keyboard_touch_effect_quality_balanced">Balanced</string>
+    <string name="keyboard_touch_effect_quality_high">High</string>
+    <string name="keyboard_touch_effect_quality_ultra">Ultra</string>
+    <string name="keyboard_touch_effect_quality_extreme">Extreme</string>
     <string name="keyboard_touch_effect_suminagashi_ink_summary">Ink spreads and drifts like suminagashi from the touched position.</string>
     <string name="keyboard_touch_effect_liquid_ripple_summary">Gentle water ripples spread from the touched position.</string>
     <string name="suminagashi_ink_effect_title">Suminagashi Ink Background</string>

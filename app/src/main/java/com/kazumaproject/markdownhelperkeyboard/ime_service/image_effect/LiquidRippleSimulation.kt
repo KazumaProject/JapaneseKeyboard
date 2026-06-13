@@ -117,7 +117,12 @@ internal class LiquidRippleSimulation(
             position(0)
         }
 
-    fun initialize(surfaceWidth: Int, surfaceHeight: Int, qualityLevel: Int) {
+    fun initialize(
+        surfaceWidth: Int,
+        surfaceHeight: Int,
+        qualityLevel: Int,
+        userQuality: String = KeyboardTouchEffectQuality.HIGH
+    ) {
         require(surfaceWidth > 0 && surfaceHeight > 0) {
             "Invalid liquid ripple surface size ${surfaceWidth}x$surfaceHeight"
         }
@@ -126,7 +131,7 @@ internal class LiquidRippleSimulation(
         }
         this.surfaceWidth = surfaceWidth
         this.surfaceHeight = surfaceHeight
-        val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel)
+        val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel, userQuality)
         val candidates = LiquidRippleRenderTargetFormat.candidatesFromCurrentContext()
         var lastFailure: Throwable? = null
         for (format in candidates) {
@@ -144,14 +149,19 @@ internal class LiquidRippleSimulation(
         throw IllegalStateException("Liquid ripple framebuffer creation failed", lastFailure)
     }
 
-    fun resizeSurface(surfaceWidth: Int, surfaceHeight: Int, qualityLevel: Int) {
+    fun resizeSurface(
+        surfaceWidth: Int,
+        surfaceHeight: Int,
+        qualityLevel: Int,
+        userQuality: String = KeyboardTouchEffectQuality.HIGH
+    ) {
         if (impulseProgram == 0) {
-            initialize(surfaceWidth, surfaceHeight, qualityLevel)
+            initialize(surfaceWidth, surfaceHeight, qualityLevel, userQuality)
             return
         }
         this.surfaceWidth = surfaceWidth
         this.surfaceHeight = surfaceHeight
-        val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel)
+        val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel, userQuality)
         if (nextGrid == grid) return
         resizeTargets(nextGrid)
         clear()
@@ -168,10 +178,12 @@ internal class LiquidRippleSimulation(
             if (it > TIME_WRAP_SECONDS) it - TIME_WRAP_SECONDS else it
         }
 
+        // Damped height-field wave step: impulses modify height, Laplacian propagates it.
         applyImpulseCommands(inputCommands, targets)
         stepWave(targets, params)
         targets.advanceWave()
-        composite(targets.current)
+        // Composite derives normals, highlights, and caustic-like accents from the height field.
+        composite(targets.current, params)
 
         energyEstimate *= params.energyDamping
         if (energyEstimate < params.idleEnergyThreshold && inputCommands.isEmpty()) {
@@ -256,6 +268,9 @@ internal class LiquidRippleSimulation(
                 radius = radius,
                 ringRadius = radius * 2.1f,
                 ringWidth = radius * 0.48f,
+                directionX = command.directionX,
+                directionY = command.directionY,
+                impulseKind = command.kind,
                 phase = (command.eventTimeMillis % 10_000L) / 1000f
             )
             targets.swapCurrentWithNext()
@@ -278,6 +293,9 @@ internal class LiquidRippleSimulation(
         radius: Float,
         ringRadius: Float,
         ringWidth: Float,
+        directionX: Float,
+        directionY: Float,
+        impulseKind: LiquidRippleImpulseKind,
         phase: Float
     ) {
         useProgram(impulseProgram, destination)
@@ -287,6 +305,16 @@ internal class LiquidRippleSimulation(
         uniform1f(impulseProgram, "uRadius", radius)
         uniform1f(impulseProgram, "uRingRadius", ringRadius)
         uniform1f(impulseProgram, "uRingWidth", ringWidth)
+        uniform2f(impulseProgram, "uDirection", directionX, directionY)
+        uniform1f(
+            impulseProgram,
+            "uImpulseType",
+            when (impulseKind) {
+                LiquidRippleImpulseKind.Down -> 0f
+                LiquidRippleImpulseKind.Move -> 1f
+                LiquidRippleImpulseKind.Up -> 2f
+            }
+        )
         uniform1f(impulseProgram, "uAspect", grid.width.toFloat() / grid.height.toFloat())
         uniform1f(impulseProgram, "uPhase", phase)
         uniformEncoding(impulseProgram, "uHeightEncoded", source)
@@ -302,6 +330,7 @@ internal class LiquidRippleSimulation(
         uniform2f(waveProgram, "uTexelSize", 1f / grid.width, 1f / grid.height)
         uniform1f(waveProgram, "uWaveSpeed", params.waveSpeed)
         uniform1f(waveProgram, "uDamping", params.damping)
+        uniform1f(waveProgram, "uBoundaryAbsorptionWidth", params.boundaryAbsorptionWidth)
         uniformEncoding(waveProgram, "uPreviousEncoded", targets.previous)
         uniformEncoding(waveProgram, "uCurrentEncoded", targets.current)
         uniformEncoding(waveProgram, "uOutputEncoded", targets.next)
@@ -309,7 +338,7 @@ internal class LiquidRippleSimulation(
         drawQuad()
     }
 
-    private fun composite(height: RenderTarget) {
+    private fun composite(height: RenderTarget, params: LiquidRippleStepParams) {
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
         GLES30.glViewport(0, 0, surfaceWidth, surfaceHeight)
         GLES30.glDisable(GLES30.GL_DEPTH_TEST)
@@ -320,6 +349,7 @@ internal class LiquidRippleSimulation(
         bindTexture(0, height.texture, compositeProgram, "uHeight")
         uniform2f(compositeProgram, "uTexelSize", 1f / grid.width, 1f / grid.height)
         uniform1f(compositeProgram, "uTime", timeSeconds)
+        uniform1f(compositeProgram, "uNormalSampleMode", params.normalSampleMode.toFloat())
         uniformEncoding(compositeProgram, "uHeightEncoded", height)
         uniform1f(compositeProgram, "uSignedRange", SIGNED_FIELD_RANGE)
         drawQuad()
@@ -527,6 +557,8 @@ internal class LiquidRippleSimulation(
             uniform float uRadius;
             uniform float uRingRadius;
             uniform float uRingWidth;
+            uniform vec2 uDirection;
+            uniform float uImpulseType;
             uniform float uAspect;
             uniform float uPhase;
             uniform float uHeightEncoded;
@@ -551,8 +583,24 @@ internal class LiquidRippleSimulation(
                 float radius = max(uRadius, 0.0001);
                 float gaussian = exp(-(d * d) / (radius * radius));
                 float ring = exp(-pow((d - uRingRadius) / max(uRingWidth, 0.0001), 2.0));
-                float shimmer = 0.94 + 0.06 * sin(d * 220.0 + uPhase * 8.0);
-                float impulse = uStrength * shimmer * (gaussian * 0.72 + ring * 0.54);
+                vec2 direction = normalize(uDirection + vec2(0.00001, 0.0));
+                float along = dot(delta, direction);
+                float side = delta.x * direction.y - delta.y * direction.x;
+                float trailing = smoothstep(radius * 1.8, -radius * 0.15, along);
+                float directionalWake =
+                    exp(-(side * side) / (radius * radius * 0.28)) *
+                    exp(-(along * along) / (radius * radius * 5.6)) *
+                    trailing;
+                float circularImpulse = gaussian * 0.72 + ring * 0.54;
+                float moveImpulse = directionalWake * 0.86 + gaussian * 0.18;
+                float upImpulse = gaussian * 0.58 + ring * 0.22;
+                float impulseShape = circularImpulse;
+                if (uImpulseType > 1.5) {
+                    impulseShape = upImpulse;
+                } else if (uImpulseType > 0.5) {
+                    impulseShape = moveImpulse;
+                }
+                float impulse = uStrength * impulseShape;
                 fragColor = encodeHeight(clamp(base + impulse, -1.6, 1.6), uOutputEncoded);
             }
         """
@@ -566,6 +614,7 @@ internal class LiquidRippleSimulation(
             uniform vec2 uTexelSize;
             uniform float uWaveSpeed;
             uniform float uDamping;
+            uniform float uBoundaryAbsorptionWidth;
             uniform float uPreviousEncoded;
             uniform float uCurrentEncoded;
             uniform float uOutputEncoded;
@@ -592,7 +641,7 @@ internal class LiquidRippleSimulation(
                 float laplacian = hL + hR + hD + hU - current * 4.0;
                 float nextHeight = (current * 2.0 - previous + laplacian * uWaveSpeed) * uDamping;
                 float edge = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
-                nextHeight *= smoothstep(0.0, 0.035, edge);
+                nextHeight *= smoothstep(0.0, max(uBoundaryAbsorptionWidth, 0.001), edge);
                 fragColor = encodeHeight(clamp(nextHeight, -1.6, 1.6), uOutputEncoded);
             }
         """
@@ -604,20 +653,58 @@ internal class LiquidRippleSimulation(
             uniform sampler2D uHeight;
             uniform vec2 uTexelSize;
             uniform float uTime;
+            uniform float uNormalSampleMode;
             uniform float uHeightEncoded;
             uniform float uSignedRange;
             out vec4 fragColor;
             float decodeHeight(vec4 value, float encoded) {
                 return encoded > 0.5 ? (value.r * 2.0 - 1.0) * uSignedRange : value.r;
             }
+            float sampleHeight(vec2 uv) {
+                return decodeHeight(texture(uHeight, clamp(uv, uTexelSize, 1.0 - uTexelSize)), uHeightEncoded);
+            }
             void main() {
-                float hC = decodeHeight(texture(uHeight, vUv), uHeightEncoded);
-                float hL = decodeHeight(texture(uHeight, vUv - vec2(uTexelSize.x, 0.0)), uHeightEncoded);
-                float hR = decodeHeight(texture(uHeight, vUv + vec2(uTexelSize.x, 0.0)), uHeightEncoded);
-                float hD = decodeHeight(texture(uHeight, vUv - vec2(0.0, uTexelSize.y)), uHeightEncoded);
-                float hU = decodeHeight(texture(uHeight, vUv + vec2(0.0, uTexelSize.y)), uHeightEncoded);
+                float hC = sampleHeight(vUv);
+                float hL = sampleHeight(vUv - vec2(uTexelSize.x, 0.0));
+                float hR = sampleHeight(vUv + vec2(uTexelSize.x, 0.0));
+                float hD = sampleHeight(vUv - vec2(0.0, uTexelSize.y));
+                float hU = sampleHeight(vUv + vec2(0.0, uTexelSize.y));
                 vec2 gradient = vec2(hL - hR, hD - hU);
                 float curvature = abs(hL + hR + hD + hU - hC * 4.0);
+                if (uNormalSampleMode > 0.5) {
+                    float hL2 = sampleHeight(vUv - vec2(uTexelSize.x * 2.0, 0.0));
+                    float hR2 = sampleHeight(vUv + vec2(uTexelSize.x * 2.0, 0.0));
+                    float hD2 = sampleHeight(vUv - vec2(0.0, uTexelSize.y * 2.0));
+                    float hU2 = sampleHeight(vUv + vec2(0.0, uTexelSize.y * 2.0));
+                    gradient = gradient * 0.72 + vec2(hL2 - hR2, hD2 - hU2) * 0.18;
+                    curvature = max(
+                        curvature,
+                        abs(hL2 + hR2 + hD2 + hU2 - hC * 4.0) * 0.55
+                    );
+                }
+                if (uNormalSampleMode > 1.5) {
+                    float hLD = sampleHeight(vUv + vec2(-uTexelSize.x, -uTexelSize.y));
+                    float hLU = sampleHeight(vUv + vec2(-uTexelSize.x, uTexelSize.y));
+                    float hRD = sampleHeight(vUv + vec2(uTexelSize.x, -uTexelSize.y));
+                    float hRU = sampleHeight(vUv + vec2(uTexelSize.x, uTexelSize.y));
+                    vec2 sobel = vec2(
+                        (hLD + 2.0 * hL + hLU) - (hRD + 2.0 * hR + hRU),
+                        (hLD + 2.0 * hD + hRD) - (hLU + 2.0 * hU + hRU)
+                    ) * 0.25;
+                    gradient = mix(gradient, sobel, 0.55);
+                    curvature = max(curvature, abs(hLD + hLU + hRD + hRU - hC * 4.0) * 0.42);
+                }
+                if (uNormalSampleMode > 2.5) {
+                    float hL3 = sampleHeight(vUv - vec2(uTexelSize.x * 3.0, 0.0));
+                    float hR3 = sampleHeight(vUv + vec2(uTexelSize.x * 3.0, 0.0));
+                    float hD3 = sampleHeight(vUv - vec2(0.0, uTexelSize.y * 3.0));
+                    float hU3 = sampleHeight(vUv + vec2(0.0, uTexelSize.y * 3.0));
+                    gradient = gradient * 0.82 + vec2(hL3 - hR3, hD3 - hU3) * 0.08;
+                    curvature = max(
+                        curvature,
+                        abs(hL3 + hR3 + hD3 + hU3 - hC * 4.0) * 0.32
+                    );
+                }
                 vec3 normal = normalize(vec3(gradient * 18.0, 1.0));
                 vec3 light = normalize(vec3(-0.34, -0.46, 0.82));
                 float diffuse = dot(normal, light);

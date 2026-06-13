@@ -46,6 +46,8 @@ internal class LiquidRippleInputInjector(
                 strength = DOWN_IMPULSE_STRENGTH,
                 radiusPx = DOWN_RADIUS_PX,
                 kind = LiquidRippleImpulseKind.Down,
+                directionX = 0f,
+                directionY = 0f,
                 eventTimeMillis = now
             )
         )
@@ -76,6 +78,8 @@ internal class LiquidRippleInputInjector(
                 strength = strength,
                 radiusPx = MOVE_RADIUS_PX,
                 kind = LiquidRippleImpulseKind.Move,
+                directionX = dx / distance,
+                directionY = -dy / distance,
                 eventTimeMillis = now
             )
         )
@@ -94,6 +98,8 @@ internal class LiquidRippleInputInjector(
                     strength = UP_IMPULSE_STRENGTH,
                     radiusPx = UP_RADIUS_PX,
                     kind = LiquidRippleImpulseKind.Up,
+                    directionX = 0f,
+                    directionY = 0f,
                     eventTimeMillis = now
                 )
             )
