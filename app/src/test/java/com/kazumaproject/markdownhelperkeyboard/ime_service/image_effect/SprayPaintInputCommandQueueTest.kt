@@ -7,14 +7,34 @@ import org.junit.Test
 class SprayPaintInputCommandQueueTest {
 
     @Test
-    fun removedMonochromePaletteFallsBackToLiquidSlimeStyle() {
+    fun unknownPaletteFallsBackToPaintSplashStyle() {
         assertEquals(
-            SprayPaintSettings.PALETTE_VIVID_PAINT,
+            SprayPaintSettings.PALETTE_PAINT_SPLASH,
             SprayPaintSettings.normalizePalette("monochrome_ink")
         )
         assertEquals(
-            SprayPaintPaletteStyle.LiquidSlime,
+            SprayPaintPaletteStyle.PaintSplash,
             SprayPaintSettings.styleForPalette("monochrome_ink")
+        )
+    }
+
+    @Test
+    fun legacyPaletteValuesNormalizeToNewSubEffects() {
+        assertEquals(
+            SprayPaintSettings.PALETTE_PAINT_SPLASH,
+            SprayPaintSettings.normalizePalette("vivid_paint")
+        )
+        assertEquals(
+            SprayPaintSettings.PALETTE_GRAFFITI,
+            SprayPaintSettings.normalizePalette("neon_graffiti")
+        )
+        assertEquals(
+            SprayPaintSettings.PALETTE_SPRAY,
+            SprayPaintSettings.normalizePalette("soft_pastel")
+        )
+        assertEquals(
+            SprayPaintSettings.PALETTE_FLOWER_PETALS,
+            SprayPaintSettings.normalizePalette("sumire")
         )
     }
 
@@ -76,7 +96,7 @@ class SprayPaintInputCommandQueueTest {
             velocityX = 0f,
             velocityY = 0f,
             color = SprayPaintColor(0.1f, 0.2f, 0.3f, 1f),
-            style = SprayPaintPaletteStyle.LiquidSlime,
+            style = SprayPaintPaletteStyle.PaintSplash,
             kind = SprayPaintEmissionKind.Down,
             eventTimeMillis = 1L
         )
@@ -96,7 +116,7 @@ class SprayPaintInputCommandQueueTest {
             velocityX = 1f,
             velocityY = 0f,
             color = SprayPaintColor(0.1f, 0.2f, 0.3f, 1f),
-            style = SprayPaintPaletteStyle.LiquidSlime,
+            style = SprayPaintPaletteStyle.PaintSplash,
             kind = SprayPaintEmissionKind.Move,
             eventTimeMillis = 1L
         )
