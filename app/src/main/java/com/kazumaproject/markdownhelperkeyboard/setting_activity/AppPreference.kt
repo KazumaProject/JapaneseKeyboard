@@ -2987,7 +2987,6 @@ object AppPreference {
             "neon_graffiti" -> "neon_graffiti"
             "soft_pastel" -> "soft_pastel"
             "sumire" -> "sumire"
-            "monochrome_ink" -> "monochrome_ink"
             else -> "vivid_paint"
         }
     }

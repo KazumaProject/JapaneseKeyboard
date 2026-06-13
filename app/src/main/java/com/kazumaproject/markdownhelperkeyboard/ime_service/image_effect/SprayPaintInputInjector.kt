@@ -13,10 +13,16 @@ internal class SprayPaintInputInjector(
 ) {
     private data class PointerState(
         val color: SprayPaintColor,
+        val style: SprayPaintPaletteStyle,
         val downTimeMillis: Long,
         var lastX: Float,
         var lastY: Float,
         var lastEventTimeMillis: Long
+    )
+
+    private data class PaintChoice(
+        val color: SprayPaintColor,
+        val style: SprayPaintPaletteStyle
     )
 
     private val pointerStates = HashMap<Int, PointerState>()
@@ -41,9 +47,10 @@ internal class SprayPaintInputInjector(
     fun onPointerDown(pointerId: Int, x: Float, y: Float): Boolean {
         if (!settings.enabled) return false
         val now = clock()
-        val color = resolveColor()
+        val paintChoice = resolvePaintChoice()
         pointerStates[pointerId] = PointerState(
-            color = color,
+            color = paintChoice.color,
+            style = paintChoice.style,
             downTimeMillis = now,
             lastX = x,
             lastY = y,
@@ -58,7 +65,8 @@ internal class SprayPaintInputInjector(
                 previousY = y,
                 velocityX = 0f,
                 velocityY = 0f,
-                color = color,
+                color = paintChoice.color,
+                style = paintChoice.style,
                 kind = SprayPaintEmissionKind.Down,
                 eventTimeMillis = now
             )
@@ -91,6 +99,7 @@ internal class SprayPaintInputInjector(
                 velocityX = dx / dtMillis,
                 velocityY = dy / dtMillis,
                 color = state.color,
+                style = state.style,
                 kind = SprayPaintEmissionKind.Move,
                 eventTimeMillis = now
             )
@@ -112,6 +121,7 @@ internal class SprayPaintInputInjector(
                     velocityX = 0f,
                     velocityY = 0f,
                     color = state.color,
+                    style = state.style,
                     kind = SprayPaintEmissionKind.Up,
                     eventTimeMillis = now
                 )
@@ -148,14 +158,21 @@ internal class SprayPaintInputInjector(
 
     fun pointerStateCountForTesting(): Int = pointerStates.size
 
-    private fun resolveColor(): SprayPaintColor {
+    private fun resolvePaintChoice(): PaintChoice {
+        val palette = when (settings.normalizedColorMode) {
+            SprayPaintSettings.COLOR_MODE_FIXED -> settings.normalizedPalette
+            SprayPaintSettings.COLOR_MODE_PALETTE,
+            SprayPaintSettings.COLOR_MODE_THEME -> settings.normalizedPalette
+            else -> randomModePalette()
+        }
         val color = when (settings.normalizedColorMode) {
             SprayPaintSettings.COLOR_MODE_FIXED -> settings.fixedColor
-            SprayPaintSettings.COLOR_MODE_PALETTE,
-            SprayPaintSettings.COLOR_MODE_THEME -> randomPaletteColor(settings.normalizedPalette)
-            else -> randomPaletteColor(randomModePalette())
+            else -> randomPaletteColor(palette)
         }
-        return SprayPaintColor.fromColorInt(color)
+        return PaintChoice(
+            color = SprayPaintColor.fromColorInt(color),
+            style = SprayPaintSettings.styleForPalette(palette)
+        )
     }
 
     private fun randomModePalette(): String {
@@ -168,12 +185,22 @@ internal class SprayPaintInputInjector(
             SprayPaintSettings.PALETTE_NEON_GRAFFITI -> NEON_GRAFFITI
             SprayPaintSettings.PALETTE_SOFT_PASTEL -> SOFT_PASTEL
             SprayPaintSettings.PALETTE_SUMIRE -> SUMIRE
-            SprayPaintSettings.PALETTE_MONOCHROME_INK -> MONOCHROME_INK
             else -> VIVID_PAINT
         }
         val base = colors[random.nextInt(colors.size)]
-        val shade = 0.92f + random.nextFloat() * 0.2f
-        val alpha = 210 + random.nextInt(38)
+        val normalizedPalette = SprayPaintSettings.normalizePalette(palette)
+        val shade = when (normalizedPalette) {
+            SprayPaintSettings.PALETTE_NEON_GRAFFITI -> 0.9f + random.nextFloat() * 0.3f
+            SprayPaintSettings.PALETTE_SOFT_PASTEL -> 0.98f + random.nextFloat() * 0.11f
+            SprayPaintSettings.PALETTE_SUMIRE -> 0.94f + random.nextFloat() * 0.16f
+            else -> 0.92f + random.nextFloat() * 0.22f
+        }
+        val alpha = when (normalizedPalette) {
+            SprayPaintSettings.PALETTE_NEON_GRAFFITI -> 224 + random.nextInt(32)
+            SprayPaintSettings.PALETTE_SOFT_PASTEL -> 178 + random.nextInt(36)
+            SprayPaintSettings.PALETTE_SUMIRE -> 172 + random.nextInt(44)
+            else -> 214 + random.nextInt(40)
+        }
         return Color.argb(
             alpha,
             (Color.red(base) * shade).toInt().coerceIn(0, 255),
@@ -216,16 +243,11 @@ internal class SprayPaintInputInjector(
         )
 
         private val SUMIRE = intArrayOf(
-            Color.rgb(116, 88, 206),
-            Color.rgb(150, 76, 184),
-            Color.rgb(114, 166, 232),
-            Color.rgb(240, 156, 210)
-        )
-
-        private val MONOCHROME_INK = intArrayOf(
-            Color.rgb(18, 18, 20),
-            Color.rgb(52, 54, 58),
-            Color.rgb(212, 216, 220)
+            Color.rgb(132, 94, 214),
+            Color.rgb(169, 96, 198),
+            Color.rgb(138, 174, 238),
+            Color.rgb(246, 174, 222),
+            Color.rgb(211, 196, 255)
         )
     }
 }

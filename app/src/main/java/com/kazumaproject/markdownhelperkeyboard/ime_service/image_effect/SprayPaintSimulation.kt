@@ -31,6 +31,7 @@ internal class SprayPaintSimulation(
         val x: Float,
         val y: Float,
         val color: SprayPaintColor,
+        val style: SprayPaintPaletteStyle,
         var ageSeconds: Float = 0f
     )
 
@@ -49,6 +50,39 @@ internal class SprayPaintSimulation(
         val seed: Float
     )
 
+    private data class StyleProfile(
+        val tapCountScale: Float,
+        val coreShare: Float,
+        val mistShare: Float,
+        val coreSigmaPx: Float,
+        val mistSigmaPx: Float,
+        val speckleSigmaPx: Float,
+        val coreMedianRadiusPx: Float,
+        val mistMedianRadiusPx: Float,
+        val speckleMedianRadiusPx: Float,
+        val coreAlpha: Float,
+        val mistAlpha: Float,
+        val speckleAlpha: Float,
+        val moveCountScale: Float,
+        val moveAlongBasePx: Float,
+        val moveAlongSpeedPx: Float,
+        val moveMistSidePx: Float,
+        val moveCoreSidePx: Float,
+        val moveStretchBoost: Float,
+        val popCountScale: Float,
+        val popStartSpreadPx: Float,
+        val popEndSpreadPx: Float,
+        val popAlphaScale: Float,
+        val longPressScale: Float,
+        val dripChance: Float,
+        val dripLengthScale: Float,
+        val dripIntervalScale: Float,
+        val graffitiAccentScale: Float,
+        val liquidGlobScale: Float,
+        val petalScale: Float,
+        val smokeScale: Float
+    )
+
     private var surfaceWidth = 0
     private var surfaceHeight = 0
     private var grid = SprayPaintSimulationGrid(32, 32)
@@ -62,6 +96,134 @@ internal class SprayPaintSimulation(
     private val popBursts = ArrayList<PopBurst>()
     private val longPressResidualByPointer = HashMap<Int, Float>()
     private val nextDripMillisByPointer = HashMap<Int, Long>()
+    private val liquidSlimeProfile = StyleProfile(
+        tapCountScale = 1.08f,
+        coreShare = 0.62f,
+        mistShare = 0.25f,
+        coreSigmaPx = 10f,
+        mistSigmaPx = 30f,
+        speckleSigmaPx = 44f,
+        coreMedianRadiusPx = 18.5f,
+        mistMedianRadiusPx = 7.2f,
+        speckleMedianRadiusPx = 3.3f,
+        coreAlpha = 0.035f,
+        mistAlpha = 0.012f,
+        speckleAlpha = 0.058f,
+        moveCountScale = 1.14f,
+        moveAlongBasePx = 25f,
+        moveAlongSpeedPx = 52f,
+        moveMistSidePx = 20f,
+        moveCoreSidePx = 11f,
+        moveStretchBoost = 2.35f,
+        popCountScale = 1.14f,
+        popStartSpreadPx = 20f,
+        popEndSpreadPx = 72f,
+        popAlphaScale = 1.18f,
+        longPressScale = 1.18f,
+        dripChance = 1f,
+        dripLengthScale = 1.12f,
+        dripIntervalScale = 0.74f,
+        graffitiAccentScale = 0f,
+        liquidGlobScale = 1f,
+        petalScale = 0f,
+        smokeScale = 0.18f
+    )
+    private val neonGraffitiProfile = StyleProfile(
+        tapCountScale = 1.18f,
+        coreShare = 0.36f,
+        mistShare = 0.44f,
+        coreSigmaPx = 15f,
+        mistSigmaPx = 46f,
+        speckleSigmaPx = 72f,
+        coreMedianRadiusPx = 10.5f,
+        mistMedianRadiusPx = 5.2f,
+        speckleMedianRadiusPx = 2.2f,
+        coreAlpha = 0.028f,
+        mistAlpha = 0.018f,
+        speckleAlpha = 0.092f,
+        moveCountScale = 1.28f,
+        moveAlongBasePx = 34f,
+        moveAlongSpeedPx = 72f,
+        moveMistSidePx = 27f,
+        moveCoreSidePx = 7f,
+        moveStretchBoost = 3.25f,
+        popCountScale = 1.24f,
+        popStartSpreadPx = 30f,
+        popEndSpreadPx = 92f,
+        popAlphaScale = 1.16f,
+        longPressScale = 1.02f,
+        dripChance = 0.42f,
+        dripLengthScale = 0.82f,
+        dripIntervalScale = 1.22f,
+        graffitiAccentScale = 1f,
+        liquidGlobScale = 0f,
+        petalScale = 0f,
+        smokeScale = 0.1f
+    )
+    private val softPastelProfile = StyleProfile(
+        tapCountScale = 0.92f,
+        coreShare = 0.39f,
+        mistShare = 0.49f,
+        coreSigmaPx = 14f,
+        mistSigmaPx = 42f,
+        speckleSigmaPx = 56f,
+        coreMedianRadiusPx = 12.4f,
+        mistMedianRadiusPx = 8.6f,
+        speckleMedianRadiusPx = 2.5f,
+        coreAlpha = 0.021f,
+        mistAlpha = 0.012f,
+        speckleAlpha = 0.046f,
+        moveCountScale = 0.94f,
+        moveAlongBasePx = 25f,
+        moveAlongSpeedPx = 40f,
+        moveMistSidePx = 24f,
+        moveCoreSidePx = 10f,
+        moveStretchBoost = 1.3f,
+        popCountScale = 0.96f,
+        popStartSpreadPx = 28f,
+        popEndSpreadPx = 78f,
+        popAlphaScale = 0.82f,
+        longPressScale = 0.82f,
+        dripChance = 0.16f,
+        dripLengthScale = 0.62f,
+        dripIntervalScale = 1.8f,
+        graffitiAccentScale = 0f,
+        liquidGlobScale = 0f,
+        petalScale = 0.18f,
+        smokeScale = 0.72f
+    )
+    private val sumireSmokeProfile = StyleProfile(
+        tapCountScale = 0.96f,
+        coreShare = 0.24f,
+        mistShare = 0.62f,
+        coreSigmaPx = 16f,
+        mistSigmaPx = 54f,
+        speckleSigmaPx = 76f,
+        coreMedianRadiusPx = 10.4f,
+        mistMedianRadiusPx = 9.4f,
+        speckleMedianRadiusPx = 2.3f,
+        coreAlpha = 0.019f,
+        mistAlpha = 0.01f,
+        speckleAlpha = 0.042f,
+        moveCountScale = 0.9f,
+        moveAlongBasePx = 28f,
+        moveAlongSpeedPx = 34f,
+        moveMistSidePx = 30f,
+        moveCoreSidePx = 12f,
+        moveStretchBoost = 1.05f,
+        popCountScale = 1.08f,
+        popStartSpreadPx = 38f,
+        popEndSpreadPx = 104f,
+        popAlphaScale = 0.78f,
+        longPressScale = 0.72f,
+        dripChance = 0f,
+        dripLengthScale = 0f,
+        dripIntervalScale = 1f,
+        graffitiAccentScale = 0f,
+        liquidGlobScale = 0f,
+        petalScale = 1f,
+        smokeScale = 1f
+    )
 
     private var depositionProgram = 0
     private var decayProgram = 0
@@ -211,7 +373,14 @@ internal class SprayPaintSimulation(
                     when (command.kind) {
                         SprayPaintEmissionKind.Down -> {
                             emitDown(command, params)
-                            popBursts.add(PopBurst(command.x, command.y, command.color))
+                            popBursts.add(
+                                PopBurst(
+                                    x = command.x,
+                                    y = command.y,
+                                    color = command.color,
+                                    style = command.style
+                                )
+                            )
                         }
 
                         SprayPaintEmissionKind.Move -> emitMove(command, params)
@@ -238,56 +407,70 @@ internal class SprayPaintSimulation(
     }
 
     private fun emitDown(command: SprayPaintInputCommand.Spray, params: SprayPaintStepParams) {
-        val count = poissonLike(params.tapParticleCount.toFloat())
-        val coreCount = (count * 0.52f).toInt()
-        val mistCount = (count * 0.36f).toInt()
+        val profile = styleProfile(command.style)
+        val count = poissonLike(params.tapParticleCount.toFloat() * profile.tapCountScale)
+        val coreCount = (count * profile.coreShare).toInt().coerceAtLeast(1)
+        val mistCount = (count * profile.mistShare).toInt().coerceAtLeast(1)
         val speckleCount = (count - coreCount - mistCount).coerceAtLeast(2)
 
         repeat(coreCount) {
             emitParticle(
                 centerX = command.x,
                 centerY = command.y,
-                sigmaAlong = 13f,
-                sigmaSide = 13f,
+                sigmaAlong = profile.coreSigmaPx,
+                sigmaSide = profile.coreSigmaPx,
                 directionX = 1f,
                 directionY = 0f,
                 color = command.color,
-                radiusPx = logNormal(median = 14.5f, sigma = 0.34f),
-                alpha = 0.028f * command.color.alpha,
+                radiusPx = logNormal(median = profile.coreMedianRadiusPx, sigma = 0.34f),
+                alpha = profile.coreAlpha * command.color.alpha,
                 stretch = 1f,
-                noiseScale = 42f
+                noiseScale = noiseScaleFor(command.style, 42f)
             )
         }
         repeat(mistCount) {
             emitParticle(
                 centerX = command.x,
                 centerY = command.y,
-                sigmaAlong = 34f * params.mistScale,
-                sigmaSide = 34f * params.mistScale,
+                sigmaAlong = profile.mistSigmaPx * params.mistScale,
+                sigmaSide = profile.mistSigmaPx * params.mistScale,
                 directionX = 1f,
                 directionY = 0f,
-                color = command.color,
-                radiusPx = logNormal(median = 7.5f, sigma = 0.48f),
-                alpha = 0.014f * command.color.alpha,
+                color = mistColorFor(command.color, command.style),
+                radiusPx = logNormal(median = profile.mistMedianRadiusPx, sigma = 0.48f),
+                alpha = profile.mistAlpha * command.color.alpha,
                 stretch = 1f,
-                noiseScale = 68f
+                noiseScale = noiseScaleFor(command.style, 68f)
             )
         }
         repeat(speckleCount) {
             emitParticle(
                 centerX = command.x,
                 centerY = command.y,
-                sigmaAlong = 48f * params.mistScale,
-                sigmaSide = 48f * params.mistScale,
+                sigmaAlong = profile.speckleSigmaPx * params.mistScale,
+                sigmaSide = profile.speckleSigmaPx * params.mistScale,
                 directionX = 1f,
                 directionY = 0f,
-                color = command.color,
-                radiusPx = logNormal(median = 2.6f, sigma = 0.55f),
-                alpha = 0.07f * command.color.alpha,
+                color = speckleColorFor(command.color, command.style),
+                radiusPx = logNormal(median = profile.speckleMedianRadiusPx, sigma = 0.55f),
+                alpha = profile.speckleAlpha * command.color.alpha,
                 stretch = 1f,
-                noiseScale = 96f
+                noiseScale = noiseScaleFor(command.style, 96f)
             )
         }
+
+        emitPaletteAccents(
+            centerX = command.x,
+            centerY = command.y,
+            directionX = 1f,
+            directionY = 0f,
+            color = command.color,
+            style = command.style,
+            profile = profile,
+            sourceCount = count,
+            speedFactor = 0f,
+            params = params
+        )
     }
 
     private fun emitMove(command: SprayPaintInputCommand.Spray, params: SprayPaintStepParams) {
@@ -300,10 +483,17 @@ internal class SprayPaintSimulation(
         val speed = sqrt(command.velocityX * command.velocityX + command.velocityY * command.velocityY)
             .coerceIn(0f, MAX_MOVE_SPEED_PX_PER_MS)
         val speedFactor = speed / (speed + MOVE_SPEED_SOFTNESS_PX_PER_MS)
-        val emitterCount = ceil(distance / MOVE_EMITTER_SPACING_PX)
+        val profile = styleProfile(command.style)
+        val emitterSpacing = (MOVE_EMITTER_SPACING_PX / profile.moveCountScale)
+            .coerceIn(10f, 28f)
+        val emitterCount = ceil(distance / emitterSpacing)
             .toInt()
             .coerceIn(1, MAX_MOVE_EMITTERS)
-        val totalCount = poissonLike(params.moveParticleCount * (0.72f + speedFactor * 1.25f))
+        val totalCount = poissonLike(
+            params.moveParticleCount *
+                profile.moveCountScale *
+                (0.72f + speedFactor * 1.25f)
+        )
         val countPerEmitter = (totalCount / emitterCount).coerceAtLeast(2)
 
         repeat(emitterCount) { index ->
@@ -311,45 +501,80 @@ internal class SprayPaintSimulation(
             val centerX = command.previousX + dx * t
             val centerY = command.previousY + dy * t
             repeat(countPerEmitter) {
-                val mist = random.nextFloat() < 0.38f
+                val mist = random.nextFloat() < profile.mistShare
                 emitParticle(
                     centerX = centerX,
                     centerY = centerY,
-                    sigmaAlong = (22f + speedFactor * 42f) * params.mistScale,
-                    sigmaSide = if (mist) 17f * params.mistScale else 9f,
+                    sigmaAlong = (profile.moveAlongBasePx + speedFactor * profile.moveAlongSpeedPx) *
+                        params.mistScale,
+                    sigmaSide = if (mist) {
+                        profile.moveMistSidePx * params.mistScale
+                    } else {
+                        profile.moveCoreSidePx
+                    },
                     directionX = directionX,
                     directionY = directionY,
-                    color = command.color,
-                    radiusPx = if (mist) {
-                        logNormal(median = 6.5f, sigma = 0.42f)
+                    color = if (mist) {
+                        mistColorFor(command.color, command.style)
                     } else {
-                        logNormal(median = 10.5f, sigma = 0.36f)
+                        command.color
                     },
-                    alpha = (if (mist) 0.012f else 0.022f) * command.color.alpha,
-                    stretch = 1f + speedFactor * 1.65f,
-                    noiseScale = if (mist) 72f else 50f
+                    radiusPx = if (mist) {
+                        logNormal(median = profile.mistMedianRadiusPx, sigma = 0.42f)
+                    } else {
+                        logNormal(median = profile.coreMedianRadiusPx * 0.74f, sigma = 0.36f)
+                    },
+                    alpha = (if (mist) profile.mistAlpha else profile.coreAlpha * 0.72f) *
+                        command.color.alpha,
+                    stretch = 1f + speedFactor * profile.moveStretchBoost,
+                    noiseScale = noiseScaleFor(command.style, if (mist) 72f else 50f)
                 )
             }
+            emitPaletteAccents(
+                centerX = centerX,
+                centerY = centerY,
+                directionX = directionX,
+                directionY = directionY,
+                color = command.color,
+                style = command.style,
+                profile = profile,
+                sourceCount = countPerEmitter,
+                speedFactor = speedFactor,
+                params = params
+            )
         }
     }
 
     private fun emitUp(command: SprayPaintInputCommand.Spray, params: SprayPaintStepParams) {
-        val count = poissonLike(params.upParticleCount.toFloat())
+        val profile = styleProfile(command.style)
+        val count = poissonLike(params.upParticleCount.toFloat() * profile.tapCountScale)
         repeat(count) {
             emitParticle(
                 centerX = command.x,
                 centerY = command.y,
-                sigmaAlong = 30f * params.mistScale,
-                sigmaSide = 30f * params.mistScale,
+                sigmaAlong = profile.speckleSigmaPx * 0.62f * params.mistScale,
+                sigmaSide = profile.speckleSigmaPx * 0.62f * params.mistScale,
                 directionX = 1f,
                 directionY = 0f,
-                color = command.color,
-                radiusPx = logNormal(median = 3.8f, sigma = 0.56f),
-                alpha = 0.047f * command.color.alpha,
+                color = speckleColorFor(command.color, command.style),
+                radiusPx = logNormal(median = profile.speckleMedianRadiusPx * 1.32f, sigma = 0.56f),
+                alpha = profile.speckleAlpha * 0.68f * command.color.alpha,
                 stretch = 1f,
-                noiseScale = 96f
+                noiseScale = noiseScaleFor(command.style, 96f)
             )
         }
+        emitPaletteAccents(
+            centerX = command.x,
+            centerY = command.y,
+            directionX = 1f,
+            directionY = 0f,
+            color = command.color,
+            style = command.style,
+            profile = profile,
+            sourceCount = count,
+            speedFactor = 0f,
+            params = params
+        )
     }
 
     private fun emitPopBursts(
@@ -365,8 +590,14 @@ internal class SprayPaintSimulation(
                 iterator.remove()
                 continue
             }
-            val count = poissonLike(params.popParticleCount * (1f - progress) * 0.72f)
-            val spread = 24f + progress * 58f
+            val profile = styleProfile(burst.style)
+            val count = poissonLike(
+                params.popParticleCount *
+                    profile.popCountScale *
+                    (1f - progress) *
+                    0.72f
+            )
+            val spread = profile.popStartSpreadPx + progress * profile.popEndSpreadPx
             repeat(count) {
                 emitParticle(
                     centerX = burst.x,
@@ -375,13 +606,34 @@ internal class SprayPaintSimulation(
                     sigmaSide = spread * params.mistScale,
                     directionX = 1f,
                     directionY = 0f,
-                    color = burst.color,
-                    radiusPx = logNormal(median = 5.5f + progress * 7f, sigma = 0.44f),
-                    alpha = (0.012f + 0.01f * (1f - progress)) * burst.color.alpha,
-                    stretch = 1f,
-                    noiseScale = 80f
+                    color = mistColorFor(burst.color, burst.style),
+                    radiusPx = logNormal(
+                        median = profile.mistMedianRadiusPx + progress * profile.coreMedianRadiusPx * 0.54f,
+                        sigma = 0.44f
+                    ),
+                    alpha = (0.012f + 0.01f * (1f - progress)) *
+                        profile.popAlphaScale *
+                        burst.color.alpha,
+                    stretch = if (burst.style == SprayPaintPaletteStyle.SumireSmoke) {
+                        1.4f + random.nextFloat() * 1.2f
+                    } else {
+                        1f
+                    },
+                    noiseScale = noiseScaleFor(burst.style, 80f)
                 )
             }
+            emitPaletteAccents(
+                centerX = burst.x,
+                centerY = burst.y,
+                directionX = 1f,
+                directionY = 0f,
+                color = burst.color,
+                style = burst.style,
+                profile = profile,
+                sourceCount = (count * (1f - progress)).toInt().coerceAtLeast(1),
+                speedFactor = progress,
+                params = params
+            )
         }
     }
 
@@ -395,45 +647,69 @@ internal class SprayPaintSimulation(
             val stationaryMillis = pointer.stationaryDurationMillis(nowMillis)
             if (stationaryMillis < LONG_PRESS_START_MILLIS) return@forEach
 
+            val profile = styleProfile(pointer.style)
             val residual = longPressResidualByPointer[pointer.pointerId] ?: 0f
-            val target = residual + params.longPressParticlesPerSecond * dtSeconds
+            val target = residual + params.longPressParticlesPerSecond * profile.longPressScale * dtSeconds
             val count = target.toInt()
             longPressResidualByPointer[pointer.pointerId] = target - count
             repeat(count.coerceAtMost(24)) {
-                val mist = random.nextFloat() < 0.44f
+                val mist = random.nextFloat() < profile.mistShare
                 emitParticle(
                     centerX = pointer.x,
                     centerY = pointer.y,
-                    sigmaAlong = if (mist) 28f * params.mistScale else 12f,
-                    sigmaSide = if (mist) 28f * params.mistScale else 12f,
+                    sigmaAlong = if (mist) {
+                        profile.mistSigmaPx * 0.82f * params.mistScale
+                    } else {
+                        profile.coreSigmaPx * 0.92f
+                    },
+                    sigmaSide = if (mist) {
+                        profile.mistSigmaPx * 0.82f * params.mistScale
+                    } else {
+                        profile.coreSigmaPx * 0.92f
+                    },
                     directionX = 1f,
                     directionY = 0f,
-                    color = pointer.color,
-                    radiusPx = if (mist) {
-                        logNormal(median = 6.2f, sigma = 0.42f)
+                    color = if (mist) {
+                        mistColorFor(pointer.color, pointer.style)
                     } else {
-                        logNormal(median = 13.5f, sigma = 0.34f)
+                        pointer.color
                     },
-                    alpha = (if (mist) 0.012f else 0.021f) * pointer.color.alpha,
-                    stretch = 1f,
-                    noiseScale = if (mist) 76f else 48f
+                    radiusPx = if (mist) {
+                        logNormal(median = profile.mistMedianRadiusPx, sigma = 0.42f)
+                    } else {
+                        logNormal(median = profile.coreMedianRadiusPx * 0.92f, sigma = 0.34f)
+                    },
+                    alpha = (if (mist) profile.mistAlpha else profile.coreAlpha * 0.62f) *
+                        pointer.color.alpha,
+                    stretch = if (pointer.style == SprayPaintPaletteStyle.SumireSmoke && mist) {
+                        1.3f + random.nextFloat()
+                    } else {
+                        1f
+                    },
+                    noiseScale = noiseScaleFor(pointer.style, if (mist) 76f else 48f)
                 )
             }
 
             if (
                 params.dripEnabled &&
+                profile.dripChance > 0f &&
                 stationaryMillis >= DRIP_START_MILLIS &&
-                nowMillis >= (nextDripMillisByPointer[pointer.pointerId] ?: 0L)
+                nowMillis >= (nextDripMillisByPointer[pointer.pointerId] ?: 0L) &&
+                random.nextFloat() <= profile.dripChance
             ) {
-                emitDrip(pointer, nowMillis)
+                emitDrip(pointer, nowMillis, profile)
             }
         }
     }
 
-    private fun emitDrip(pointer: SprayPaintActivePointer, nowMillis: Long) {
+    private fun emitDrip(
+        pointer: SprayPaintActivePointer,
+        nowMillis: Long,
+        profile: StyleProfile
+    ) {
         val dripCount = 1 + random.nextInt(3)
         repeat(dripCount) {
-            val length = 28f + random.nextFloat() * 62f
+            val length = (28f + random.nextFloat() * 62f) * profile.dripLengthScale
             val x = pointer.x + gaussian() * 10f
             val y = pointer.y + 10f + length * 0.45f
             emitParticleAt(
@@ -444,17 +720,310 @@ internal class SprayPaintSimulation(
                     red = pointer.color.red,
                     green = pointer.color.green,
                     blue = pointer.color.blue,
-                    alpha = 0.048f * pointer.color.alpha,
+                    alpha = profile.speckleAlpha * 0.74f * pointer.color.alpha,
                     directionX = 0f,
                     directionY = 1f,
                     stretch = 3.2f + length / 26f,
-                    noiseScale = 92f,
+                    noiseScale = noiseScaleFor(pointer.style, 92f),
                     seed = random.nextFloat() * 1000f
                 )
             )
         }
         nextDripMillisByPointer[pointer.pointerId] =
-            nowMillis + 360L + random.nextInt(420)
+            nowMillis + ((360L + random.nextInt(420)) * profile.dripIntervalScale).toLong()
+    }
+
+    private fun styleProfile(style: SprayPaintPaletteStyle): StyleProfile {
+        return when (style) {
+            SprayPaintPaletteStyle.NeonGraffiti -> neonGraffitiProfile
+            SprayPaintPaletteStyle.SoftPastel -> softPastelProfile
+            SprayPaintPaletteStyle.SumireSmoke -> sumireSmokeProfile
+            SprayPaintPaletteStyle.LiquidSlime -> liquidSlimeProfile
+        }
+    }
+
+    private fun mistColorFor(
+        color: SprayPaintColor,
+        style: SprayPaintPaletteStyle
+    ): SprayPaintColor {
+        return when (style) {
+            SprayPaintPaletteStyle.NeonGraffiti -> lighten(color, 0.16f)
+            SprayPaintPaletteStyle.SoftPastel -> lighten(color, 0.28f)
+            SprayPaintPaletteStyle.SumireSmoke -> mixToward(color, 0.92f, 0.82f, 1f, 0.34f)
+            SprayPaintPaletteStyle.LiquidSlime -> saturate(color, 1.12f)
+        }
+    }
+
+    private fun speckleColorFor(
+        color: SprayPaintColor,
+        style: SprayPaintPaletteStyle
+    ): SprayPaintColor {
+        return when (style) {
+            SprayPaintPaletteStyle.NeonGraffiti -> {
+                if (random.nextFloat() < 0.38f) darken(color, 0.76f) else saturate(color, 1.22f)
+            }
+
+            SprayPaintPaletteStyle.SoftPastel -> lighten(color, 0.2f)
+            SprayPaintPaletteStyle.SumireSmoke -> {
+                if (random.nextFloat() < 0.46f) {
+                    mixToward(color, 1f, 0.78f, 0.92f, 0.46f)
+                } else {
+                    lighten(color, 0.28f)
+                }
+            }
+
+            SprayPaintPaletteStyle.LiquidSlime -> saturate(color, 1.08f)
+        }
+    }
+
+    private fun emitPaletteAccents(
+        centerX: Float,
+        centerY: Float,
+        directionX: Float,
+        directionY: Float,
+        color: SprayPaintColor,
+        style: SprayPaintPaletteStyle,
+        profile: StyleProfile,
+        sourceCount: Int,
+        speedFactor: Float,
+        params: SprayPaintStepParams
+    ) {
+        if (profile.graffitiAccentScale > 0f) {
+            emitGraffitiAccents(
+                centerX = centerX,
+                centerY = centerY,
+                directionX = directionX,
+                directionY = directionY,
+                color = color,
+                count = (sourceCount * 0.34f * profile.graffitiAccentScale)
+                    .toInt()
+                    .coerceAtLeast(1),
+                speedFactor = speedFactor,
+                params = params
+            )
+        }
+        if (profile.liquidGlobScale > 0f) {
+            emitLiquidGlobules(
+                centerX = centerX,
+                centerY = centerY,
+                directionX = directionX,
+                directionY = directionY,
+                color = color,
+                count = (sourceCount * 0.14f * profile.liquidGlobScale)
+                    .toInt()
+                    .coerceAtLeast(1),
+                speedFactor = speedFactor,
+                params = params
+            )
+        }
+        if (profile.petalScale > 0f) {
+            emitSumirePetals(
+                centerX = centerX,
+                centerY = centerY,
+                color = color,
+                count = (sourceCount * 0.24f * profile.petalScale)
+                    .toInt()
+                    .coerceAtLeast(1),
+                params = params
+            )
+        }
+        if (profile.smokeScale > 0.45f) {
+            emitSoftSmoke(
+                centerX = centerX,
+                centerY = centerY,
+                color = color,
+                style = style,
+                count = (sourceCount * 0.16f * profile.smokeScale)
+                    .toInt()
+                    .coerceAtLeast(1),
+                params = params
+            )
+        }
+    }
+
+    private fun emitGraffitiAccents(
+        centerX: Float,
+        centerY: Float,
+        directionX: Float,
+        directionY: Float,
+        color: SprayPaintColor,
+        count: Int,
+        speedFactor: Float,
+        params: SprayPaintStepParams
+    ) {
+        val shadowColor = darken(color, 0.82f)
+        repeat(count) {
+            val shadow = random.nextFloat() < 0.42f
+            emitParticle(
+                centerX = centerX,
+                centerY = centerY,
+                sigmaAlong = (44f + speedFactor * 42f) * params.mistScale,
+                sigmaSide = (28f + speedFactor * 18f) * params.mistScale,
+                directionX = directionX,
+                directionY = directionY,
+                color = if (shadow) shadowColor else saturate(color, 1.28f),
+                radiusPx = if (shadow) {
+                    logNormal(median = 2.4f, sigma = 0.48f)
+                } else {
+                    logNormal(median = 1.9f, sigma = 0.58f)
+                },
+                alpha = (if (shadow) 0.046f else 0.082f) * color.alpha,
+                stretch = if (shadow) {
+                    1.7f + speedFactor * 3.4f
+                } else {
+                    1.1f + speedFactor * 2.2f
+                },
+                noiseScale = 142f
+            )
+        }
+        if (random.nextFloat() < 0.68f) {
+            repeat(1 + random.nextInt(2)) {
+                val verticalLean = 0.55f + random.nextFloat() * 0.42f
+                emitParticle(
+                    centerX = centerX + gaussian() * 8f,
+                    centerY = centerY + 14f + random.nextFloat() * 22f,
+                    sigmaAlong = 10f,
+                    sigmaSide = 6f,
+                    directionX = directionX * 0.32f,
+                    directionY = verticalLean,
+                    color = darken(color, 0.38f),
+                    radiusPx = logNormal(median = 3.4f, sigma = 0.34f),
+                    alpha = 0.038f * color.alpha,
+                    stretch = 3.4f + random.nextFloat() * 2.2f,
+                    noiseScale = 126f
+                )
+            }
+        }
+    }
+
+    private fun emitLiquidGlobules(
+        centerX: Float,
+        centerY: Float,
+        directionX: Float,
+        directionY: Float,
+        color: SprayPaintColor,
+        count: Int,
+        speedFactor: Float,
+        params: SprayPaintStepParams
+    ) {
+        repeat(count) {
+            emitParticle(
+                centerX = centerX,
+                centerY = centerY,
+                sigmaAlong = (22f + speedFactor * 28f) * params.mistScale,
+                sigmaSide = (18f + speedFactor * 10f) * params.mistScale,
+                directionX = directionX,
+                directionY = directionY,
+                color = if (random.nextFloat() < 0.44f) lighten(color, 0.18f) else saturate(color, 1.16f),
+                radiusPx = logNormal(median = 12.8f, sigma = 0.32f),
+                alpha = 0.025f * color.alpha,
+                stretch = 1.1f + speedFactor * 1.8f,
+                noiseScale = 46f
+            )
+        }
+    }
+
+    private fun emitSumirePetals(
+        centerX: Float,
+        centerY: Float,
+        color: SprayPaintColor,
+        count: Int,
+        params: SprayPaintStepParams
+    ) {
+        repeat(count) {
+            val angle = random.nextFloat() * TWO_PI
+            val petalColor = if (random.nextFloat() < 0.5f) {
+                mixToward(color, 1f, 0.72f, 0.9f, 0.42f)
+            } else {
+                mixToward(color, 0.72f, 0.68f, 1f, 0.38f)
+            }
+            emitParticle(
+                centerX = centerX,
+                centerY = centerY,
+                sigmaAlong = 48f * params.mistScale,
+                sigmaSide = 34f * params.mistScale,
+                directionX = cos(angle),
+                directionY = sin(angle),
+                color = petalColor,
+                radiusPx = logNormal(median = 4.6f + random.nextFloat() * 2.2f, sigma = 0.28f),
+                alpha = 0.028f * color.alpha,
+                stretch = 2.2f + random.nextFloat() * 2.4f,
+                noiseScale = 58f
+            )
+        }
+    }
+
+    private fun emitSoftSmoke(
+        centerX: Float,
+        centerY: Float,
+        color: SprayPaintColor,
+        style: SprayPaintPaletteStyle,
+        count: Int,
+        params: SprayPaintStepParams
+    ) {
+        repeat(count) {
+            emitParticle(
+                centerX = centerX,
+                centerY = centerY,
+                sigmaAlong = 66f * params.mistScale,
+                sigmaSide = 54f * params.mistScale,
+                directionX = 1f,
+                directionY = 0f,
+                color = mistColorFor(color, style),
+                radiusPx = logNormal(median = 10.2f, sigma = 0.4f),
+                alpha = 0.0068f * color.alpha,
+                stretch = 1.2f + random.nextFloat() * 0.8f,
+                noiseScale = noiseScaleFor(style, 52f)
+            )
+        }
+    }
+
+    private fun noiseScaleFor(style: SprayPaintPaletteStyle, base: Float): Float {
+        return when (style) {
+            SprayPaintPaletteStyle.NeonGraffiti -> base * 1.38f
+            SprayPaintPaletteStyle.SoftPastel -> base * 0.82f
+            SprayPaintPaletteStyle.SumireSmoke -> base * 0.72f
+            SprayPaintPaletteStyle.LiquidSlime -> base * 0.94f
+        }
+    }
+
+    private fun lighten(color: SprayPaintColor, amount: Float): SprayPaintColor {
+        return mixToward(color, 1f, 1f, 1f, amount)
+    }
+
+    private fun darken(color: SprayPaintColor, amount: Float): SprayPaintColor {
+        return SprayPaintColor(
+            red = (color.red * (1f - amount)).coerceIn(0f, 1f),
+            green = (color.green * (1f - amount)).coerceIn(0f, 1f),
+            blue = (color.blue * (1f - amount)).coerceIn(0f, 1f),
+            alpha = color.alpha
+        )
+    }
+
+    private fun saturate(color: SprayPaintColor, amount: Float): SprayPaintColor {
+        val luma = color.red * 0.2126f + color.green * 0.7152f + color.blue * 0.0722f
+        return SprayPaintColor(
+            red = (luma + (color.red - luma) * amount).coerceIn(0f, 1f),
+            green = (luma + (color.green - luma) * amount).coerceIn(0f, 1f),
+            blue = (luma + (color.blue - luma) * amount).coerceIn(0f, 1f),
+            alpha = color.alpha
+        )
+    }
+
+    private fun mixToward(
+        color: SprayPaintColor,
+        targetRed: Float,
+        targetGreen: Float,
+        targetBlue: Float,
+        amount: Float
+    ): SprayPaintColor {
+        val clamped = amount.coerceIn(0f, 1f)
+        return SprayPaintColor(
+            red = (color.red + (targetRed - color.red) * clamped).coerceIn(0f, 1f),
+            green = (color.green + (targetGreen - color.green) * clamped).coerceIn(0f, 1f),
+            blue = (color.blue + (targetBlue - color.blue) * clamped).coerceIn(0f, 1f),
+            alpha = color.alpha
+        )
     }
 
     private fun emitParticle(

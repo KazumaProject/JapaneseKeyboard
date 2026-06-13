@@ -1007,12 +1007,11 @@
     <string name="keyboard_touch_effect_color_summary">指定色モードで使用するエフェクト色を選択します。</string>
     <string name="keyboard_touch_effect_color_summary_current">現在: %1$s</string>
     <string name="keyboard_touch_effect_palette_title">エフェクトのパレット</string>
-    <string name="keyboard_touch_effect_palette_summary">スプレー系タッチエフェクトで使用する色のパレットを選択します。</string>
-    <string name="keyboard_touch_effect_palette_vivid_paint">鮮やかなペイント</string>
-    <string name="keyboard_touch_effect_palette_neon_graffiti">ネオングラフティ</string>
+    <string name="keyboard_touch_effect_palette_summary">スプレー系タッチエフェクトの色と見た目のスタイルを選択します。</string>
+    <string name="keyboard_touch_effect_palette_vivid_paint">液体スライムペイント</string>
+    <string name="keyboard_touch_effect_palette_neon_graffiti">ネオングラフィティウォール</string>
     <string name="keyboard_touch_effect_palette_soft_pastel">ソフトパステル</string>
-    <string name="keyboard_touch_effect_palette_sumire">スミレ</string>
-    <string name="keyboard_touch_effect_palette_monochrome_ink">モノクロインク</string>
+    <string name="keyboard_touch_effect_palette_sumire">スミレの花煙</string>
     <string name="donuts_flick">ドーナツフリック</string>
     <string name="hello_blank_fragment">空のフラグメント</string>
     <string name="label_key_type">キータイプ</string>

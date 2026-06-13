@@ -512,7 +512,6 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
                     "neon_graffiti" -> "neon_graffiti"
                     "soft_pastel" -> "soft_pastel"
                     "sumire" -> "sumire"
-                    "monochrome_ink" -> "monochrome_ink"
                     else -> "vivid_paint"
                 }
                 appPreference.keyboard_touch_effect_palette_preference = nextPalette

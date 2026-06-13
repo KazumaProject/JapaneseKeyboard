@@ -1018,12 +1018,11 @@
     <string name="keyboard_touch_effect_color_summary">Choose the color used when fixed color mode is selected.</string>
     <string name="keyboard_touch_effect_color_summary_current">Current: %1$s</string>
     <string name="keyboard_touch_effect_palette_title">Effect Palette</string>
-    <string name="keyboard_touch_effect_palette_summary">Choose the color palette used by spray-style touch effects.</string>
-    <string name="keyboard_touch_effect_palette_vivid_paint">Vivid paint</string>
-    <string name="keyboard_touch_effect_palette_neon_graffiti">Neon graffiti</string>
+    <string name="keyboard_touch_effect_palette_summary">Choose the visual style and colors used by spray-style touch effects.</string>
+    <string name="keyboard_touch_effect_palette_vivid_paint">Liquid slime paint</string>
+    <string name="keyboard_touch_effect_palette_neon_graffiti">Neon graffiti wall</string>
     <string name="keyboard_touch_effect_palette_soft_pastel">Soft pastel</string>
-    <string name="keyboard_touch_effect_palette_sumire">Sumire</string>
-    <string name="keyboard_touch_effect_palette_monochrome_ink">Monochrome ink</string>
+    <string name="keyboard_touch_effect_palette_sumire">Sumire flower smoke</string>
     <string name="donuts_flick">Donuts Flick</string>
     <string name="qwerty_button_size_preference_title">Key size</string>
     <string name="qwerty_button_size_preference_summary">Change the size of keys, text, and special key icons.</string>

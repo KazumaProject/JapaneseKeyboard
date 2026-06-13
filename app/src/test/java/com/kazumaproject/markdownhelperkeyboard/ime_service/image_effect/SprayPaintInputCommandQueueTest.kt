@@ -7,6 +7,18 @@ import org.junit.Test
 class SprayPaintInputCommandQueueTest {
 
     @Test
+    fun removedMonochromePaletteFallsBackToLiquidSlimeStyle() {
+        assertEquals(
+            SprayPaintSettings.PALETTE_VIVID_PAINT,
+            SprayPaintSettings.normalizePalette("monochrome_ink")
+        )
+        assertEquals(
+            SprayPaintPaletteStyle.LiquidSlime,
+            SprayPaintSettings.styleForPalette("monochrome_ink")
+        )
+    }
+
+    @Test
     fun latestMoveForSamePointerReplacesQueuedMoveAndPreservesSegmentStart() {
         val queue = SprayPaintInputCommandQueue(maxSize = 8)
 
@@ -64,6 +76,7 @@ class SprayPaintInputCommandQueueTest {
             velocityX = 0f,
             velocityY = 0f,
             color = SprayPaintColor(0.1f, 0.2f, 0.3f, 1f),
+            style = SprayPaintPaletteStyle.LiquidSlime,
             kind = SprayPaintEmissionKind.Down,
             eventTimeMillis = 1L
         )
@@ -83,6 +96,7 @@ class SprayPaintInputCommandQueueTest {
             velocityX = 1f,
             velocityY = 0f,
             color = SprayPaintColor(0.1f, 0.2f, 0.3f, 1f),
+            style = SprayPaintPaletteStyle.LiquidSlime,
             kind = SprayPaintEmissionKind.Move,
             eventTimeMillis = 1L
         )

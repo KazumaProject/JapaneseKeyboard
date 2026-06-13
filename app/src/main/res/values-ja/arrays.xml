@@ -91,7 +91,6 @@
         <item>@string/keyboard_touch_effect_palette_neon_graffiti</item>
         <item>@string/keyboard_touch_effect_palette_soft_pastel</item>
         <item>@string/keyboard_touch_effect_palette_sumire</item>
-        <item>@string/keyboard_touch_effect_palette_monochrome_ink</item>
     </string-array>
 
     <string-array name="keyboard_touch_effect_palette_values">
@@ -99,7 +98,6 @@
         <item>neon_graffiti</item>
         <item>soft_pastel</item>
         <item>sumire</item>
-        <item>monochrome_ink</item>
     </string-array>
 
     <string-array name="default_emoji_skin_tone_entries">
