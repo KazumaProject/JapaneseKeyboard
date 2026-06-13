@@ -39,6 +39,9 @@ class ImePreferencesSnapshotSuminagashiInkTest {
         assertFalse(snapshot.suminagashiInkEffectPreference)
         assertEquals("random", snapshot.suminagashiInkColorModePreference)
         assertEquals(Color.rgb(17, 17, 17), snapshot.suminagashiInkColorPreference)
+        assertEquals("random", snapshot.keyboardTouchEffectColorModePreference)
+        assertEquals(Color.rgb(17, 17, 17), snapshot.keyboardTouchEffectColorPreference)
+        assertEquals("vivid_paint", snapshot.keyboardTouchEffectPalettePreference)
     }
 
     @Test
@@ -62,6 +65,8 @@ class ImePreferencesSnapshotSuminagashiInkTest {
         )
         assertEquals("fixed", snapshot.suminagashiInkColorModePreference)
         assertEquals(fixedColor, snapshot.suminagashiInkColorPreference)
+        assertEquals("fixed", snapshot.keyboardTouchEffectColorModePreference)
+        assertEquals(fixedColor, snapshot.keyboardTouchEffectColorPreference)
     }
 
     @Test
@@ -74,6 +79,26 @@ class ImePreferencesSnapshotSuminagashiInkTest {
             KeyboardTouchEffectType.LIQUID_RIPPLE,
             snapshot.keyboardTouchEffectTypePreference
         )
+        assertFalse(snapshot.suminagashiInkEffectPreference)
+    }
+
+    @Test
+    fun snapshotContainsSavedSprayPaintTouchEffectPreferences() {
+        val fixedColor = Color.rgb(0, 199, 255)
+        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.SPRAY_PAINT
+        AppPreference.keyboard_touch_effect_color_mode_preference = "palette"
+        AppPreference.keyboard_touch_effect_color_preference = fixedColor
+        AppPreference.keyboard_touch_effect_palette_preference = "neon_graffiti"
+
+        val snapshot = ImePreferencesSnapshot.from(AppPreference)
+
+        assertEquals(
+            KeyboardTouchEffectType.SPRAY_PAINT,
+            snapshot.keyboardTouchEffectTypePreference
+        )
+        assertEquals("palette", snapshot.keyboardTouchEffectColorModePreference)
+        assertEquals(fixedColor, snapshot.keyboardTouchEffectColorPreference)
+        assertEquals("neon_graffiti", snapshot.keyboardTouchEffectPalettePreference)
         assertFalse(snapshot.suminagashiInkEffectPreference)
     }
 }
