@@ -203,6 +203,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.Keyboar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LiquidRippleEffectView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintEffectView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.DirectCommitHandler
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.InputBehaviorResolver
@@ -936,7 +937,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var keyboardTouchEffectTypePreference: String = KeyboardTouchEffectType.NONE
     private var keyboardTouchEffectQualityPreference: String = KeyboardTouchEffectQuality.HIGH
     private var keyboardTouchEffectColorModePreference: String = "random"
-    private var keyboardTouchEffectPalettePreference: String = "vivid_paint"
+    private var keyboardTouchEffectPalettePreference: String = SprayPaintSettings.PALETTE_PAINT_SPLASH
 
     @ColorInt
     private var keyboardTouchEffectColorPreference: Int = Color.rgb(17, 17, 17)
@@ -3456,7 +3457,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardTouchEffectQualityPreference = KeyboardTouchEffectQuality.HIGH
         keyboardTouchEffectColorModePreference = "random"
         keyboardTouchEffectColorPreference = Color.rgb(17, 17, 17)
-        keyboardTouchEffectPalettePreference = "vivid_paint"
+        keyboardTouchEffectPalettePreference = SprayPaintSettings.PALETTE_PAINT_SPLASH
         customKeyBorderEnablePreference = null
         customKeyBorderEnableColor = null
 

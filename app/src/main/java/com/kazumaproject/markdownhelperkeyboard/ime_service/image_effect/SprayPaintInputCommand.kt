@@ -20,10 +20,16 @@ internal data class SprayPaintSettings(
         const val COLOR_MODE_PALETTE = "palette"
         const val COLOR_MODE_THEME = "theme"
 
-        const val PALETTE_VIVID_PAINT = "vivid_paint"
-        const val PALETTE_NEON_GRAFFITI = "neon_graffiti"
-        const val PALETTE_SOFT_PASTEL = "soft_pastel"
-        const val PALETTE_SUMIRE = "sumire"
+        const val PALETTE_SPRAY = "spray"
+        const val PALETTE_PAINT_SPLASH = "paint_splash"
+        const val PALETTE_GRAFFITI = "graffiti"
+        const val PALETTE_LIQUID_PAINT = "liquid_paint"
+        const val PALETTE_FLOWER_PETALS = "flower_petals"
+
+        private const val LEGACY_PALETTE_VIVID_PAINT = "vivid_paint"
+        private const val LEGACY_PALETTE_NEON_GRAFFITI = "neon_graffiti"
+        private const val LEGACY_PALETTE_SOFT_PASTEL = "soft_pastel"
+        private const val LEGACY_PALETTE_SUMIRE = "sumire"
 
         @ColorInt
         const val DEFAULT_PAINT_COLOR: Int = 0xFF111111.toInt()
@@ -32,7 +38,7 @@ internal data class SprayPaintSettings(
             enabled = false,
             colorMode = COLOR_MODE_RANDOM,
             fixedColor = DEFAULT_PAINT_COLOR,
-            palette = PALETTE_VIVID_PAINT,
+            palette = PALETTE_PAINT_SPLASH,
             quality = KeyboardTouchEffectQuality.HIGH
         )
 
@@ -47,19 +53,26 @@ internal data class SprayPaintSettings(
 
         fun normalizePalette(value: String?): String {
             return when (value) {
-                PALETTE_NEON_GRAFFITI -> PALETTE_NEON_GRAFFITI
-                PALETTE_SOFT_PASTEL -> PALETTE_SOFT_PASTEL
-                PALETTE_SUMIRE -> PALETTE_SUMIRE
-                else -> PALETTE_VIVID_PAINT
+                PALETTE_SPRAY -> PALETTE_SPRAY
+                PALETTE_PAINT_SPLASH -> PALETTE_PAINT_SPLASH
+                PALETTE_GRAFFITI -> PALETTE_GRAFFITI
+                PALETTE_LIQUID_PAINT -> PALETTE_LIQUID_PAINT
+                PALETTE_FLOWER_PETALS -> PALETTE_FLOWER_PETALS
+                LEGACY_PALETTE_VIVID_PAINT -> PALETTE_PAINT_SPLASH
+                LEGACY_PALETTE_NEON_GRAFFITI -> PALETTE_GRAFFITI
+                LEGACY_PALETTE_SOFT_PASTEL -> PALETTE_SPRAY
+                LEGACY_PALETTE_SUMIRE -> PALETTE_FLOWER_PETALS
+                else -> PALETTE_PAINT_SPLASH
             }
         }
 
         fun styleForPalette(value: String?): SprayPaintPaletteStyle {
             return when (normalizePalette(value)) {
-                PALETTE_NEON_GRAFFITI -> SprayPaintPaletteStyle.NeonGraffiti
-                PALETTE_SOFT_PASTEL -> SprayPaintPaletteStyle.SoftPastel
-                PALETTE_SUMIRE -> SprayPaintPaletteStyle.SumireSmoke
-                else -> SprayPaintPaletteStyle.LiquidSlime
+                PALETTE_SPRAY -> SprayPaintPaletteStyle.Spray
+                PALETTE_GRAFFITI -> SprayPaintPaletteStyle.Graffiti
+                PALETTE_LIQUID_PAINT -> SprayPaintPaletteStyle.LiquidPaint
+                PALETTE_FLOWER_PETALS -> SprayPaintPaletteStyle.FlowerPetals
+                else -> SprayPaintPaletteStyle.PaintSplash
             }
         }
 
@@ -94,10 +107,26 @@ internal data class SprayPaintColor(
 }
 
 internal enum class SprayPaintPaletteStyle {
-    LiquidSlime,
-    NeonGraffiti,
-    SoftPastel,
-    SumireSmoke
+    Spray,
+    PaintSplash,
+    Graffiti,
+    LiquidPaint,
+    FlowerPetals
+}
+
+internal enum class SprayPaintDepositionModel {
+    AerosolGaussian,
+    NoisyPaintSplat,
+    DirectionalGraffiti,
+    ViscousLiquid,
+    PetalPrimitive
+}
+
+internal enum class SprayPaintCompositeModel {
+    AdditiveMist,
+    AlphaPaint,
+    WetHeightPaint,
+    PetalAlpha
 }
 
 internal enum class SprayPaintEmissionKind {

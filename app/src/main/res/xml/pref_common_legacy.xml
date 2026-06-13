@@ -138,7 +138,7 @@
                 android:title="@string/keyboard_touch_effect_color_title" />
 
             <ListPreference
-                android:defaultValue="vivid_paint"
+                android:defaultValue="paint_splash"
                 android:entries="@array/keyboard_touch_effect_palette_entries"
                 android:entryValues="@array/keyboard_touch_effect_palette_values"
                 android:key="keyboard_touch_effect_palette_preference"

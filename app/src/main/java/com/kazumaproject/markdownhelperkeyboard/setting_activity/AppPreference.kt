@@ -14,6 +14,7 @@ import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
@@ -597,7 +598,10 @@ object AppPreference {
     private val KEYBOARD_TOUCH_EFFECT_COLOR =
         Pair("keyboard_touch_effect_color_preference", Color.rgb(17, 17, 17))
     private val KEYBOARD_TOUCH_EFFECT_PALETTE =
-        Pair("keyboard_touch_effect_palette_preference", "vivid_paint")
+        Pair(
+            "keyboard_touch_effect_palette_preference",
+            SprayPaintSettings.PALETTE_PAINT_SPLASH
+        )
 
     private val SAVE_LAST_USED_KEYBOARD = Pair("save_last_used_keyboard", false)
     private val SAVE_LAST_USED_KEYBOARD_POSITION = Pair("save_last_used_keyboard_int", 0)
@@ -2983,12 +2987,7 @@ object AppPreference {
     }
 
     private fun normalizeTouchEffectPalette(value: String?): String {
-        return when (value) {
-            "neon_graffiti" -> "neon_graffiti"
-            "soft_pastel" -> "soft_pastel"
-            "sumire" -> "sumire"
-            else -> "vivid_paint"
-        }
+        return SprayPaintSettings.normalizePalette(value)
     }
 
     var save_last_used_keyboard_enable_preference: Boolean
