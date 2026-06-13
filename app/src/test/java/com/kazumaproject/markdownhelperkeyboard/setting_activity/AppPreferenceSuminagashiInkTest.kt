@@ -165,4 +165,11 @@ class AppPreferenceSuminagashiInkTest {
 
         assertEquals("vivid_paint", AppPreference.keyboard_touch_effect_palette_preference)
     }
+
+    @Test
+    fun keyboardTouchEffectPaletteNormalizesRemovedMonochromeToVividPaint() {
+        AppPreference.keyboard_touch_effect_palette_preference = "monochrome_ink"
+
+        assertEquals("vivid_paint", AppPreference.keyboard_touch_effect_palette_preference)
+    }
 }

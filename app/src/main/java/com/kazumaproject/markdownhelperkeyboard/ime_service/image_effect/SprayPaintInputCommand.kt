@@ -24,7 +24,6 @@ internal data class SprayPaintSettings(
         const val PALETTE_NEON_GRAFFITI = "neon_graffiti"
         const val PALETTE_SOFT_PASTEL = "soft_pastel"
         const val PALETTE_SUMIRE = "sumire"
-        const val PALETTE_MONOCHROME_INK = "monochrome_ink"
 
         @ColorInt
         const val DEFAULT_PAINT_COLOR: Int = 0xFF111111.toInt()
@@ -51,8 +50,16 @@ internal data class SprayPaintSettings(
                 PALETTE_NEON_GRAFFITI -> PALETTE_NEON_GRAFFITI
                 PALETTE_SOFT_PASTEL -> PALETTE_SOFT_PASTEL
                 PALETTE_SUMIRE -> PALETTE_SUMIRE
-                PALETTE_MONOCHROME_INK -> PALETTE_MONOCHROME_INK
                 else -> PALETTE_VIVID_PAINT
+            }
+        }
+
+        fun styleForPalette(value: String?): SprayPaintPaletteStyle {
+            return when (normalizePalette(value)) {
+                PALETTE_NEON_GRAFFITI -> SprayPaintPaletteStyle.NeonGraffiti
+                PALETTE_SOFT_PASTEL -> SprayPaintPaletteStyle.SoftPastel
+                PALETTE_SUMIRE -> SprayPaintPaletteStyle.SumireSmoke
+                else -> SprayPaintPaletteStyle.LiquidSlime
             }
         }
 
@@ -86,6 +93,13 @@ internal data class SprayPaintColor(
     }
 }
 
+internal enum class SprayPaintPaletteStyle {
+    LiquidSlime,
+    NeonGraffiti,
+    SoftPastel,
+    SumireSmoke
+}
+
 internal enum class SprayPaintEmissionKind {
     Down,
     Move,
@@ -97,6 +111,7 @@ internal data class SprayPaintActivePointer(
     val x: Float,
     val y: Float,
     val color: SprayPaintColor,
+    val style: SprayPaintPaletteStyle,
     val downTimeMillis: Long,
     val lastEventTimeMillis: Long,
     val stationarySinceMillis: Long
@@ -120,6 +135,7 @@ internal sealed class SprayPaintInputCommand {
         val velocityX: Float,
         val velocityY: Float,
         val color: SprayPaintColor,
+        val style: SprayPaintPaletteStyle,
         val kind: SprayPaintEmissionKind,
         override val eventTimeMillis: Long
     ) : SprayPaintInputCommand()

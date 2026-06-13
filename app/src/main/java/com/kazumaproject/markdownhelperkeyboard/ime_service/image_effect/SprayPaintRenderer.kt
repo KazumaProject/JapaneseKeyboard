@@ -234,6 +234,7 @@ internal class SprayPaintRenderer(
                             x = command.x,
                             y = command.y,
                             color = command.color,
+                            style = command.style,
                             downTimeMillis = command.eventTimeMillis,
                             lastEventTimeMillis = command.eventTimeMillis,
                             stationarySinceMillis = command.eventTimeMillis
