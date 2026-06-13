@@ -58,7 +58,10 @@ internal class FluidInputInjector(
                 color = color,
                 radiusPx = DOWN_SPLAT_RADIUS_PX,
                 kind = FluidSplatKind.Down,
-                eventTimeMillis = now
+                eventTimeMillis = now,
+                injectVelocity = false,
+                injectDye = true,
+                canReplaceQueuedMove = false
             )
         )
     }
@@ -79,7 +82,23 @@ internal class FluidInputInjector(
         state.lastY = y
         state.lastEventTimeMillis = now
 
-        return queue.offer(
+        val dyeQueued = queue.offer(
+            FluidInputCommand.Splat(
+                pointerId = pointerId,
+                x = x,
+                y = y,
+                velocityX = 0f,
+                velocityY = 0f,
+                color = state.color,
+                radiusPx = MOVE_SPLAT_RADIUS_PX,
+                kind = FluidSplatKind.Move,
+                eventTimeMillis = now,
+                injectVelocity = false,
+                injectDye = true,
+                canReplaceQueuedMove = false
+            )
+        )
+        val velocityQueued = queue.offer(
             FluidInputCommand.Splat(
                 pointerId = pointerId,
                 x = x,
@@ -89,9 +108,13 @@ internal class FluidInputInjector(
                 color = state.color,
                 radiusPx = MOVE_SPLAT_RADIUS_PX,
                 kind = FluidSplatKind.Move,
-                eventTimeMillis = now
+                eventTimeMillis = now,
+                injectVelocity = true,
+                injectDye = false,
+                canReplaceQueuedMove = true
             )
         )
+        return dyeQueued || velocityQueued
     }
 
     fun onPointerUp(pointerId: Int): Boolean {

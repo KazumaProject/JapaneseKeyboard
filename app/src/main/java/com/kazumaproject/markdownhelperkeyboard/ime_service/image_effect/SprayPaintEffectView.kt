@@ -9,26 +9,27 @@ import androidx.annotation.ColorInt
 import androidx.annotation.VisibleForTesting
 import timber.log.Timber
 
-open class FluidInkEffectView @JvmOverloads constructor(
+class SprayPaintEffectView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : TextureView(context, attrs, defStyleAttr), TextureView.SurfaceTextureListener {
 
-    private val inputQueue = FluidInputCommandQueue()
-    private val inputInjector = FluidInputInjector(inputQueue)
+    private val inputQueue = SprayPaintInputCommandQueue()
+    private val inputInjector = SprayPaintInputInjector(inputQueue)
 
     @VisibleForTesting
-    internal var rendererFactory: FluidInkRendererFactory = FluidInkRendererFactory { queue, callback ->
-        FluidInkRenderer(
-            inputQueue = queue,
-            callback = callback
-        )
-    }
+    internal var rendererFactory: SprayPaintRendererFactory =
+        SprayPaintRendererFactory { queue, callback ->
+            SprayPaintRenderer(
+                inputQueue = queue,
+                callback = callback
+            )
+        }
 
-    private var renderer: FluidInkRendererController? = null
+    private var renderer: SprayPaintRendererController? = null
     private var effectEnabled = false
-    private var currentSettings = FluidInkSettings.Disabled
+    private var currentSettings = SprayPaintSettings.Disabled
     private var attachedSurfaceTexture: SurfaceTexture? = null
 
     init {
@@ -44,12 +45,14 @@ open class FluidInkEffectView @JvmOverloads constructor(
         enabled: Boolean,
         colorMode: String,
         @ColorInt fixedColor: Int,
+        palette: String,
         quality: String = KeyboardTouchEffectQuality.HIGH
     ) {
-        currentSettings = FluidInkSettings(
+        currentSettings = SprayPaintSettings(
             enabled = enabled,
             colorMode = colorMode,
-            fixedColor = FluidInkSettings.withoutTransparentAlpha(fixedColor),
+            fixedColor = SprayPaintSettings.withoutTransparentAlpha(fixedColor),
+            palette = palette,
             quality = KeyboardTouchEffectQuality.normalize(quality)
         )
 
@@ -64,10 +67,7 @@ open class FluidInkEffectView @JvmOverloads constructor(
         }
 
         effectEnabled = true
-        inputInjector.configure(
-            colorMode = colorMode,
-            fixedColor = fixedColor
-        )
+        inputInjector.configure(currentSettings)
         visibility = View.VISIBLE
 
         val activeRenderer = ensureRenderer()
@@ -96,7 +96,7 @@ open class FluidInkEffectView @JvmOverloads constructor(
 
     fun onPointerUp(pointerId: Int, x: Float? = null, y: Float? = null) {
         if (!effectEnabled) return
-        if (inputInjector.onPointerUp(pointerId)) {
+        if (inputInjector.onPointerUp(pointerId, x, y)) {
             renderer?.requestRender()
         }
     }
@@ -108,18 +108,18 @@ open class FluidInkEffectView @JvmOverloads constructor(
         }
     }
 
-    fun clearInk() {
+    fun clearSpray() {
         inputInjector.clearActivePointers()
         inputQueue.clear()
         renderer?.clear()
     }
 
-    fun pauseInk() {
+    fun pauseSpray() {
         inputInjector.clearActivePointers()
         renderer?.pause()
     }
 
-    fun releaseInk() {
+    fun releaseSpray() {
         inputInjector.disable()
         renderer?.release()
         renderer = null
@@ -160,12 +160,12 @@ open class FluidInkEffectView @JvmOverloads constructor(
         return effectEnabled && visibility == View.VISIBLE
     }
 
-    private fun ensureRenderer(): FluidInkRendererController {
+    private fun ensureRenderer(): SprayPaintRendererController {
         renderer?.let { return it }
         return rendererFactory.create(
             inputQueue,
-            FluidInkRendererCallback { reason, throwable ->
-                Timber.w(throwable, "Suminagashi fluid effect disabled: %s", reason)
+            SprayPaintRendererCallback { reason, throwable ->
+                Timber.w(throwable, "Keyboard spray paint effect disabled: %s", reason)
                 disableAfterRendererFailure()
             }
         ).also { renderer = it }

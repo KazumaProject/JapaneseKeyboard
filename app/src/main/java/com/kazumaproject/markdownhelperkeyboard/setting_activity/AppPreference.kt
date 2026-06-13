@@ -12,6 +12,9 @@ import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
@@ -582,10 +585,23 @@ object AppPreference {
         Pair("keyboard_background_video_quality_preference", "high")
     private val SUMINAGASHI_INK_EFFECT_ENABLE =
         Pair("suminagashi_ink_effect_preference", false)
+    private val KEYBOARD_TOUCH_EFFECT_TYPE =
+        Pair("keyboard_touch_effect_type_preference", KeyboardTouchEffectType.NONE)
+    private val KEYBOARD_TOUCH_EFFECT_QUALITY =
+        Pair("keyboard_touch_effect_quality_preference", KeyboardTouchEffectQuality.HIGH)
     private val SUMINAGASHI_INK_COLOR_MODE =
         Pair("suminagashi_ink_color_mode_preference", "random")
     private val SUMINAGASHI_INK_COLOR =
         Pair("suminagashi_ink_color_preference", Color.rgb(17, 17, 17))
+    private val KEYBOARD_TOUCH_EFFECT_COLOR_MODE =
+        Pair("keyboard_touch_effect_color_mode_preference", "random")
+    private val KEYBOARD_TOUCH_EFFECT_COLOR =
+        Pair("keyboard_touch_effect_color_preference", Color.rgb(17, 17, 17))
+    private val KEYBOARD_TOUCH_EFFECT_PALETTE =
+        Pair(
+            "keyboard_touch_effect_palette_preference",
+            SprayPaintSettings.PALETTE_PAINT_SPLASH
+        )
 
     private val SAVE_LAST_USED_KEYBOARD = Pair("save_last_used_keyboard", false)
     private val SAVE_LAST_USED_KEYBOARD_POSITION = Pair("save_last_used_keyboard_int", 0)
@@ -2856,6 +2872,45 @@ object AppPreference {
             it.putBoolean(SUMINAGASHI_INK_EFFECT_ENABLE.first, value)
         }
 
+    var keyboard_touch_effect_type_preference: String
+        get() {
+            if (!preferences.contains(KEYBOARD_TOUCH_EFFECT_TYPE.first)) {
+                return if (suminagashi_ink_effect_preference) {
+                    KeyboardTouchEffectType.SUMINAGASHI_INK
+                } else {
+                    KeyboardTouchEffectType.NONE
+                }
+            }
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_TYPE.first,
+                KEYBOARD_TOUCH_EFFECT_TYPE.second
+            )
+            return KeyboardTouchEffectType.normalize(value)
+        }
+        set(value) = preferences.edit {
+            val normalized = KeyboardTouchEffectType.normalize(value)
+            it.putString(KEYBOARD_TOUCH_EFFECT_TYPE.first, normalized)
+            it.putBoolean(
+                SUMINAGASHI_INK_EFFECT_ENABLE.first,
+                normalized == KeyboardTouchEffectType.SUMINAGASHI_INK
+            )
+        }
+
+    var keyboard_touch_effect_quality_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_QUALITY.first,
+                KEYBOARD_TOUCH_EFFECT_QUALITY.second
+            )
+            return KeyboardTouchEffectQuality.normalize(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_QUALITY.first,
+                KeyboardTouchEffectQuality.normalize(value)
+            )
+        }
+
     var suminagashi_ink_color_mode_preference: String
         get() {
             val value = preferences.getString(
@@ -2879,6 +2934,61 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putInt(SUMINAGASHI_INK_COLOR.first, value)
         }
+
+    var keyboard_touch_effect_color_mode_preference: String
+        get() {
+            val value = preferences.getString(KEYBOARD_TOUCH_EFFECT_COLOR_MODE.first, null)
+            if (value != null) return normalizeTouchEffectColorMode(value)
+            return suminagashi_ink_color_mode_preference
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_COLOR_MODE.first,
+                normalizeTouchEffectColorMode(value)
+            )
+        }
+
+    var keyboard_touch_effect_color_preference: Int
+        get() {
+            if (preferences.contains(KEYBOARD_TOUCH_EFFECT_COLOR.first)) {
+                return preferences.getInt(
+                    KEYBOARD_TOUCH_EFFECT_COLOR.first,
+                    KEYBOARD_TOUCH_EFFECT_COLOR.second
+                )
+            }
+            return suminagashi_ink_color_preference
+        }
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_TOUCH_EFFECT_COLOR.first, value)
+        }
+
+    var keyboard_touch_effect_palette_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_PALETTE.first,
+                KEYBOARD_TOUCH_EFFECT_PALETTE.second
+            )
+            return normalizeTouchEffectPalette(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_PALETTE.first,
+                normalizeTouchEffectPalette(value)
+            )
+        }
+
+    private fun normalizeTouchEffectColorMode(value: String?): String {
+        return when (value) {
+            "fixed" -> "fixed"
+            "palette" -> "palette"
+            "theme" -> "theme"
+            else -> "random"
+        }
+    }
+
+    private fun normalizeTouchEffectPalette(value: String?): String {
+        return SprayPaintSettings.normalizePalette(value)
+    }
 
     var save_last_used_keyboard_enable_preference: Boolean
         get() = preferences.getBoolean(

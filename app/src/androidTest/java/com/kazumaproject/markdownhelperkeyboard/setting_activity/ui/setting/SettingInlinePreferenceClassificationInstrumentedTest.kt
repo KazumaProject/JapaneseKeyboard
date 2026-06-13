@@ -66,16 +66,16 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
     }
 
     @Test
-    fun suminagashiInkColorModeIsClassifiedAsListPreference() {
-        val destination = destinationForKey("suminagashi_ink_color_mode_preference")
+    fun keyboardTouchEffectColorModeIsClassifiedAsListPreference() {
+        val destination = destinationForKey("keyboard_touch_effect_color_mode_preference")
         val target = destination.destination as SettingDestinationType.ListPreference
         val entries = context.resources.getStringArray(target.entriesResId)
         val entryValues = context.resources.getStringArray(target.entryValuesResId)
 
-        assertEquals("suminagashi_ink_color_mode_preference", target.preferenceKey)
+        assertEquals("keyboard_touch_effect_color_mode_preference", target.preferenceKey)
         assertEquals("random", target.defaultValue)
         assertEquals(entries.size, entryValues.size)
-        assertEquals(listOf("random", "fixed"), entryValues.toList())
+        assertEquals(listOf("random", "fixed", "palette", "theme"), entryValues.toList())
     }
 
     @Test

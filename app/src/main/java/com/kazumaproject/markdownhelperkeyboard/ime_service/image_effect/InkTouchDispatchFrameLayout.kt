@@ -12,13 +12,25 @@ class InkTouchDispatchFrameLayout @JvmOverloads constructor(
     defStyleAttr: Int = 0
 ) : FrameLayout(context, attrs, defStyleAttr) {
 
-    var inkMotionEventListener: ((MotionEvent) -> Unit)? = null
+    private var keyboardTouchEffectMotionEventListener: ((MotionEvent) -> Unit)? = null
+
+    var touchEffectMotionEventListener: ((MotionEvent) -> Unit)?
+        get() = keyboardTouchEffectMotionEventListener
+        set(value) {
+            keyboardTouchEffectMotionEventListener = value
+        }
+
+    var inkMotionEventListener: ((MotionEvent) -> Unit)?
+        get() = keyboardTouchEffectMotionEventListener
+        set(value) {
+            keyboardTouchEffectMotionEventListener = value
+        }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         runCatching {
-            inkMotionEventListener?.invoke(ev)
+            keyboardTouchEffectMotionEventListener?.invoke(ev)
         }.onFailure {
-            Timber.w(it, "Suminagashi ink touch forwarding failed.")
+            Timber.w(it, "Keyboard touch effect forwarding failed.")
         }
         return super.dispatchTouchEvent(ev)
     }

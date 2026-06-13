@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect
 
 import android.graphics.Color
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -28,6 +29,9 @@ class FluidInputInjectorTest {
         assertEquals(96 / 255f, command.color.green, 0.001f)
         assertEquals(128 / 255f, command.color.blue, 0.001f)
         assertEquals(1f, command.color.alpha, 0.001f)
+        assertFalse(command.injectVelocity)
+        assertTrue(command.injectDye)
+        assertFalse(command.canReplaceQueuedMove)
     }
 
     @Test
@@ -80,6 +84,39 @@ class FluidInputInjectorTest {
         assertEquals(FluidSplatKind.Move, move.kind)
         assertEquals(1.5f, move.velocityX, 0.001f)
         assertEquals(0.5f, move.velocityY, 0.001f)
+        assertTrue(move.injectVelocity)
+        assertFalse(move.injectDye)
+        assertTrue(move.canReplaceQueuedMove)
+    }
+
+    @Test
+    fun moveCommandPreservesSeparateDyeDepositBeforeReplaceableVelocityForce() {
+        var now = 100L
+        val queue = FluidInputCommandQueue()
+        val injector = FluidInputInjector(queue, clock = { now }, random = Random(0))
+
+        injector.configure(colorMode = "fixed", fixedColor = Color.rgb(10, 20, 30))
+        injector.onPointerDown(pointerId = 1, x = 10f, y = 10f)
+        now = 110L
+        injector.onPointerMove(pointerId = 1, x = 25f, y = 15f)
+
+        val splats = queue.drain().filterIsInstance<FluidInputCommand.Splat>()
+        assertEquals(3, splats.size)
+
+        val dyeMove = splats[1]
+        val velocityMove = splats[2]
+
+        assertEquals(FluidSplatKind.Move, dyeMove.kind)
+        assertFalse(dyeMove.injectVelocity)
+        assertTrue(dyeMove.injectDye)
+        assertFalse(dyeMove.canReplaceQueuedMove)
+        assertEquals(0f, dyeMove.velocityX, 0.001f)
+        assertEquals(0f, dyeMove.velocityY, 0.001f)
+
+        assertEquals(FluidSplatKind.Move, velocityMove.kind)
+        assertTrue(velocityMove.injectVelocity)
+        assertFalse(velocityMove.injectDye)
+        assertTrue(velocityMove.canReplaceQueuedMove)
     }
 
     @Test

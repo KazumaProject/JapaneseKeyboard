@@ -16,13 +16,13 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class FluidInkRenderer(
-    private val inputQueue: FluidInputCommandQueue,
-    private val callback: FluidInkRendererCallback,
+internal class LiquidRippleRenderer(
+    private val inputQueue: LiquidRippleInputCommandQueue,
+    private val callback: LiquidRippleRendererCallback,
     private val mainHandler: Handler = Handler(Looper.getMainLooper()),
-    private val simulationFactory: () -> FluidSimulation = { FluidSimulation() },
+    private val simulationFactory: () -> LiquidRippleSimulation = { LiquidRippleSimulation() },
     private val clockNanos: () -> Long = { System.nanoTime() }
-) : FluidInkRendererController {
+) : LiquidRippleRendererController {
 
     private val rendererThread = HandlerThread(
         "$THREAD_NAME_PREFIX-${threadIds.incrementAndGet()}",
@@ -31,26 +31,25 @@ internal class FluidInkRenderer(
     private val handler: Handler
     private val frameRunnable = Runnable { renderFrameOnRendererThread() }
 
-    private var settings = FluidInkSettings.Disabled
+    private var settings = LiquidRippleSettings.Disabled
     private var egl: EglEnvironment? = null
-    private var simulation: FluidSimulation? = null
-    private val performanceGovernor = FluidPerformanceGovernor()
+    private var simulation: LiquidRippleSimulation? = null
+    private val performanceGovernor = LiquidRipplePerformanceGovernor()
     private var surfaceWidth = 0
     private var surfaceHeight = 0
     private var paused = true
     private var released = false
     private var frameScheduled = false
     private var activePointers = HashSet<Int>()
-    private var lastInputTimeNanos = 0L
     private var lastFrameTimeNanos = 0L
-    private var state = FluidRendererState.IdlePersistent
+    private var state = LiquidRippleRendererState.Idle
 
     init {
         rendererThread.start()
         handler = Handler(rendererThread.looper)
     }
 
-    override fun configure(settings: FluidInkSettings) {
+    override fun configure(settings: LiquidRippleSettings) {
         postOnRenderer {
             val qualityChanged = this.settings.normalizedQuality != settings.normalizedQuality
             this.settings = settings
@@ -103,7 +102,7 @@ internal class FluidInkRenderer(
     override fun resizeSurface(width: Int, height: Int) {
         postOnRenderer {
             if (released || egl == null || !settings.enabled) return@postOnRenderer
-            runRendererCatching("resize fluid surface") {
+            runRendererCatching("resize liquid ripple surface") {
                 surfaceWidth = width
                 surfaceHeight = height
                 simulation?.resizeSurface(
@@ -179,22 +178,25 @@ internal class FluidInkRenderer(
 
     private fun renderFrameOnRendererThread() {
         frameScheduled = false
-        if (released || paused || !settings.enabled || egl == null || simulation == null) return
+        val activeSimulation = simulation
+        if (released || paused || !settings.enabled || egl == null || activeSimulation == null) {
+            return
+        }
 
-        runRendererCatching("render fluid frame") {
+        runRendererCatching("render liquid ripple frame") {
             val frameStart = clockNanos()
             val dtSeconds = if (lastFrameTimeNanos == 0L) {
-                1f / 30f
+                1f / 60f
             } else {
                 ((frameStart - lastFrameTimeNanos) / NANOS_PER_SECOND_FLOAT)
-                    .coerceIn(1f / 120f, 1f / 15f)
+                    .coerceIn(1f / 120f, 1f / 20f)
             }
             lastFrameTimeNanos = frameStart
 
             val commands = inputQueue.drain(MAX_INPUT_COMMANDS_PER_FRAME)
-            updatePointerState(commands, frameStart)
-            state = resolveRendererState(frameStart)
-            simulation?.render(
+            updatePointerState(commands)
+            state = resolveRendererState(activeSimulation.hasVisibleEnergy())
+            val hasEnergy = activeSimulation.render(
                 inputCommands = commands,
                 dtSeconds = dtSeconds,
                 params = performanceGovernor.stepParams(state)
@@ -204,42 +206,44 @@ internal class FluidInkRenderer(
             val frameMillis = (clockNanos() - frameStart) / 1_000_000L
             val qualityChanged = performanceGovernor.reportFrameTime(frameMillis, state)
             if (qualityChanged) {
-                simulation?.resizeSurface(
+                activeSimulation.resizeSurface(
                     surfaceWidth = surfaceWidth,
                     surfaceHeight = surfaceHeight,
                     qualityLevel = performanceGovernor.qualityLevel(),
                     userQuality = settings.normalizedQuality
                 )
-                Timber.d("Reduced suminagashi fluid quality to %d", performanceGovernor.qualityLevel())
+                Timber.d(
+                    "Reduced liquid ripple quality to %d",
+                    performanceGovernor.qualityLevel()
+                )
             }
-            requestRenderOnRendererThread(forceSoon = false)
+            if (activePointers.isNotEmpty() || hasEnergy || inputQueue.sizeForTesting() > 0) {
+                requestRenderOnRendererThread(forceSoon = false)
+            }
         }
     }
 
-    private fun updatePointerState(commands: List<FluidInputCommand>, nowNanos: Long) {
+    private fun updatePointerState(commands: List<LiquidRippleInputCommand>) {
         commands.forEach { command ->
             when (command) {
-                is FluidInputCommand.Splat -> {
-                    if (command.kind == FluidSplatKind.Down) {
+                is LiquidRippleInputCommand.Impulse -> {
+                    if (command.kind == LiquidRippleImpulseKind.Down) {
                         activePointers.add(command.pointerId)
                     }
-                    lastInputTimeNanos = nowNanos
                 }
 
-                is FluidInputCommand.PointerUp -> activePointers.remove(command.pointerId)
-                is FluidInputCommand.PointerCancel -> activePointers.remove(command.pointerId)
-                is FluidInputCommand.CancelAll -> activePointers.clear()
+                is LiquidRippleInputCommand.PointerUp -> activePointers.remove(command.pointerId)
+                is LiquidRippleInputCommand.PointerCancel -> activePointers.remove(command.pointerId)
+                is LiquidRippleInputCommand.CancelAll -> activePointers.clear()
             }
         }
     }
 
-    private fun resolveRendererState(nowNanos: Long): FluidRendererState {
+    private fun resolveRendererState(hasEnergy: Boolean): LiquidRippleRendererState {
         return when {
-            activePointers.isNotEmpty() -> FluidRendererState.Active
-            lastInputTimeNanos != 0L &&
-                nowNanos - lastInputTimeNanos < SETTLING_NANOS -> FluidRendererState.Settling
-
-            else -> FluidRendererState.IdlePersistent
+            activePointers.isNotEmpty() -> LiquidRippleRendererState.Active
+            hasEnergy -> LiquidRippleRendererState.Settling
+            else -> LiquidRippleRendererState.Idle
         }
     }
 
@@ -257,7 +261,6 @@ internal class FluidInkRenderer(
     private fun clearOnRendererThread() {
         inputQueue.clear()
         activePointers.clear()
-        lastInputTimeNanos = 0L
         lastFrameTimeNanos = 0L
         simulation?.clear()
     }
@@ -280,7 +283,7 @@ internal class FluidInkRenderer(
         val latch = CountDownLatch(1)
         handler.post {
             runCatching(action).onFailure {
-                Timber.w(it, "Failed to run fluid renderer cleanup.")
+                Timber.w(it, "Failed to run liquid ripple renderer cleanup.")
             }
             latch.countDown()
         }
@@ -289,7 +292,7 @@ internal class FluidInkRenderer(
 
     private fun runRendererCatching(operation: String, action: () -> Unit) {
         runCatching(action).onFailure { throwable ->
-            Timber.w(throwable, "Suminagashi fluid renderer failed during %s", operation)
+            Timber.w(throwable, "Liquid ripple renderer failed during %s", operation)
             releaseAfterFailureOnRendererThread()
             mainHandler.post {
                 callback.onRendererDisabled(operation, throwable)
@@ -431,11 +434,10 @@ internal class FluidInkRenderer(
     }
 
     companion object {
-        const val THREAD_NAME_PREFIX = "SuminagashiFluidRenderer"
+        const val THREAD_NAME_PREFIX = "LiquidRippleRenderer"
         private const val EGL_OPENGL_ES3_BIT = 0x00000040
         private const val MAX_INPUT_COMMANDS_PER_FRAME = 64
         private const val NANOS_PER_SECOND_FLOAT = 1_000_000_000f
-        private const val SETTLING_NANOS = 8_000_000_000L
         private val threadIds = AtomicInteger(0)
     }
 }

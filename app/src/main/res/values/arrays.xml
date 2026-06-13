@@ -44,6 +44,34 @@
         <item>low</item>
     </string-array>
 
+    <string-array name="keyboard_touch_effect_type_entries">
+        <item>@string/keyboard_touch_effect_none</item>
+        <item>@string/keyboard_touch_effect_suminagashi_ink</item>
+        <item>@string/keyboard_touch_effect_liquid_ripple</item>
+        <item>@string/keyboard_touch_effect_type_spray_paint</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_type_values">
+        <item>none</item>
+        <item>suminagashi_ink</item>
+        <item>liquid_ripple</item>
+        <item>spray_paint</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_quality_entries">
+        <item>@string/keyboard_touch_effect_quality_balanced</item>
+        <item>@string/keyboard_touch_effect_quality_high</item>
+        <item>@string/keyboard_touch_effect_quality_ultra</item>
+        <item>@string/keyboard_touch_effect_quality_extreme</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_quality_values">
+        <item>balanced</item>
+        <item>high</item>
+        <item>ultra</item>
+        <item>extreme</item>
+    </string-array>
+
     <string-array name="suminagashi_ink_color_mode_entries">
         <item>@string/suminagashi_ink_color_mode_random</item>
         <item>@string/suminagashi_ink_color_mode_fixed</item>
@@ -52,6 +80,36 @@
     <string-array name="suminagashi_ink_color_mode_values">
         <item>random</item>
         <item>fixed</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_color_mode_entries">
+        <item>@string/keyboard_touch_effect_color_mode_random</item>
+        <item>@string/keyboard_touch_effect_color_mode_fixed</item>
+        <item>@string/keyboard_touch_effect_color_mode_palette</item>
+        <item>@string/keyboard_touch_effect_color_mode_theme</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_color_mode_values">
+        <item>random</item>
+        <item>fixed</item>
+        <item>palette</item>
+        <item>theme</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_palette_entries">
+        <item>@string/keyboard_touch_effect_palette_spray</item>
+        <item>@string/keyboard_touch_effect_palette_paint_splash</item>
+        <item>@string/keyboard_touch_effect_palette_graffiti</item>
+        <item>@string/keyboard_touch_effect_palette_liquid_paint</item>
+        <item>@string/keyboard_touch_effect_palette_flower_petals</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_palette_values">
+        <item>spray</item>
+        <item>paint_splash</item>
+        <item>graffiti</item>
+        <item>liquid_paint</item>
+        <item>flower_petals</item>
     </string-array>
 
     <string-array name="default_emoji_skin_tone_entries">

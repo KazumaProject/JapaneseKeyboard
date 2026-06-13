@@ -1,34 +1,35 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.SurfaceTexture
 import android.util.AttributeSet
 import android.view.TextureView
 import android.view.View
-import androidx.annotation.ColorInt
 import androidx.annotation.VisibleForTesting
 import timber.log.Timber
 
-open class FluidInkEffectView @JvmOverloads constructor(
+class LiquidRippleEffectView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
 ) : TextureView(context, attrs, defStyleAttr), TextureView.SurfaceTextureListener {
 
-    private val inputQueue = FluidInputCommandQueue()
-    private val inputInjector = FluidInputInjector(inputQueue)
+    private val inputQueue = LiquidRippleInputCommandQueue()
+    private val inputInjector = LiquidRippleInputInjector(inputQueue)
 
     @VisibleForTesting
-    internal var rendererFactory: FluidInkRendererFactory = FluidInkRendererFactory { queue, callback ->
-        FluidInkRenderer(
-            inputQueue = queue,
-            callback = callback
-        )
-    }
+    internal var rendererFactory: LiquidRippleRendererFactory =
+        LiquidRippleRendererFactory { queue, callback ->
+            LiquidRippleRenderer(
+                inputQueue = queue,
+                callback = callback
+            )
+        }
 
-    private var renderer: FluidInkRendererController? = null
+    private var renderer: LiquidRippleRendererController? = null
     private var effectEnabled = false
-    private var currentSettings = FluidInkSettings.Disabled
+    private var currentSettings = LiquidRippleSettings.Disabled
     private var attachedSurfaceTexture: SurfaceTexture? = null
 
     init {
@@ -42,14 +43,10 @@ open class FluidInkEffectView @JvmOverloads constructor(
 
     fun configure(
         enabled: Boolean,
-        colorMode: String,
-        @ColorInt fixedColor: Int,
         quality: String = KeyboardTouchEffectQuality.HIGH
     ) {
-        currentSettings = FluidInkSettings(
+        currentSettings = LiquidRippleSettings(
             enabled = enabled,
-            colorMode = colorMode,
-            fixedColor = FluidInkSettings.withoutTransparentAlpha(fixedColor),
             quality = KeyboardTouchEffectQuality.normalize(quality)
         )
 
@@ -64,10 +61,7 @@ open class FluidInkEffectView @JvmOverloads constructor(
         }
 
         effectEnabled = true
-        inputInjector.configure(
-            colorMode = colorMode,
-            fixedColor = fixedColor
-        )
+        inputInjector.configure(enabled = true)
         visibility = View.VISIBLE
 
         val activeRenderer = ensureRenderer()
@@ -96,7 +90,7 @@ open class FluidInkEffectView @JvmOverloads constructor(
 
     fun onPointerUp(pointerId: Int, x: Float? = null, y: Float? = null) {
         if (!effectEnabled) return
-        if (inputInjector.onPointerUp(pointerId)) {
+        if (inputInjector.onPointerUp(pointerId, x, y)) {
             renderer?.requestRender()
         }
     }
@@ -108,18 +102,18 @@ open class FluidInkEffectView @JvmOverloads constructor(
         }
     }
 
-    fun clearInk() {
+    fun clearRipple() {
         inputInjector.clearActivePointers()
         inputQueue.clear()
         renderer?.clear()
     }
 
-    fun pauseInk() {
+    fun pauseRipple() {
         inputInjector.clearActivePointers()
         renderer?.pause()
     }
 
-    fun releaseInk() {
+    fun releaseRipple() {
         inputInjector.disable()
         renderer?.release()
         renderer = null
@@ -156,16 +150,17 @@ open class FluidInkEffectView @JvmOverloads constructor(
     @VisibleForTesting
     internal fun hasRendererForTesting(): Boolean = renderer != null
 
+    @SuppressLint("UseKtx")
     private fun canForwardInput(): Boolean {
         return effectEnabled && visibility == View.VISIBLE
     }
 
-    private fun ensureRenderer(): FluidInkRendererController {
+    private fun ensureRenderer(): LiquidRippleRendererController {
         renderer?.let { return it }
         return rendererFactory.create(
             inputQueue,
-            FluidInkRendererCallback { reason, throwable ->
-                Timber.w(throwable, "Suminagashi fluid effect disabled: %s", reason)
+            LiquidRippleRendererCallback { reason, throwable ->
+                Timber.w(throwable, "Keyboard liquid ripple effect disabled: %s", reason)
                 disableAfterRendererFailure()
             }
         ).also { renderer = it }
