@@ -103,6 +103,7 @@ internal class LiquidRippleSimulation(
     private var renderTargetFormat = LiquidRippleRenderTargetFormat.R16F
     private var energyEstimate = 0f
     private var timeSeconds = 0f
+    private var accumulatedWaveTimeSeconds = 0f
 
     private var impulseProgram = 0
     private var waveProgram = 0
@@ -178,14 +179,15 @@ internal class LiquidRippleSimulation(
             if (it > TIME_WRAP_SECONDS) it - TIME_WRAP_SECONDS else it
         }
 
-        // Damped height-field wave step: impulses modify height, Laplacian propagates it.
+        // Damped height-field wave step: impulses modify height, fixed-rate Laplacian steps propagate it.
         applyImpulseCommands(inputCommands, targets)
-        stepWave(targets, params)
-        targets.advanceWave()
+        val waveSteps = stepWaveAtFixedRate(targets, clampedDt, params)
         // Composite derives normals, highlights, and caustic-like accents from the height field.
         composite(targets.current, params)
 
-        energyEstimate *= params.energyDamping
+        repeat(waveSteps) {
+            energyEstimate *= params.energyDamping
+        }
         if (energyEstimate < params.idleEnergyThreshold && inputCommands.isEmpty()) {
             clear()
             return false
@@ -204,6 +206,7 @@ internal class LiquidRippleSimulation(
             clearTarget(targets.next)
         }
         energyEstimate = 0f
+        accumulatedWaveTimeSeconds = 0f
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
         if (surfaceWidth > 0 && surfaceHeight > 0) {
             GLES30.glViewport(0, 0, surfaceWidth, surfaceHeight)
@@ -321,6 +324,28 @@ internal class LiquidRippleSimulation(
         uniformEncoding(impulseProgram, "uOutputEncoded", destination)
         uniform1f(impulseProgram, "uSignedRange", SIGNED_FIELD_RANGE)
         drawQuad()
+    }
+
+    private fun stepWaveAtFixedRate(
+        targets: RippleTargets,
+        dtSeconds: Float,
+        params: LiquidRippleStepParams
+    ): Int {
+        accumulatedWaveTimeSeconds = minOf(
+            accumulatedWaveTimeSeconds + dtSeconds,
+            FIXED_WAVE_STEP_SECONDS * MAX_WAVE_STEPS_PER_FRAME
+        )
+        var waveSteps = 0
+        while (
+            accumulatedWaveTimeSeconds >= FIXED_WAVE_STEP_SECONDS &&
+            waveSteps < MAX_WAVE_STEPS_PER_FRAME
+        ) {
+            stepWave(targets, params)
+            targets.advanceWave()
+            accumulatedWaveTimeSeconds -= FIXED_WAVE_STEP_SECONDS
+            waveSteps += 1
+        }
+        return waveSteps
     }
 
     private fun stepWave(targets: RippleTargets, params: LiquidRippleStepParams) {
@@ -527,6 +552,8 @@ internal class LiquidRippleSimulation(
         private const val DEFAULT_IDLE_ENERGY_THRESHOLD = 0.012f
         private const val MIN_DT_SECONDS = 1f / 120f
         private const val MAX_DT_SECONDS = 1f / 20f
+        private const val FIXED_WAVE_STEP_SECONDS = 1f / 60f
+        private const val MAX_WAVE_STEPS_PER_FRAME = 3
         private const val TIME_WRAP_SECONDS = 240f
 
         private val QUAD = floatArrayOf(
@@ -591,9 +618,9 @@ internal class LiquidRippleSimulation(
                     exp(-(side * side) / (radius * radius * 0.28)) *
                     exp(-(along * along) / (radius * radius * 5.6)) *
                     trailing;
-                float circularImpulse = gaussian * 0.72 + ring * 0.54;
-                float moveImpulse = directionalWake * 0.86 + gaussian * 0.18;
-                float upImpulse = gaussian * 0.58 + ring * 0.22;
+                float circularImpulse = gaussian * 0.56 + ring * 0.32;
+                float moveImpulse = directionalWake * 0.42 + gaussian * 0.12;
+                float upImpulse = gaussian * 0.38 + ring * 0.16;
                 float impulseShape = circularImpulse;
                 if (uImpulseType > 1.5) {
                     impulseShape = upImpulse;
@@ -711,27 +738,29 @@ internal class LiquidRippleSimulation(
                         abs(hL3 + hR3 + hD3 + hU3 - hC * 4.0) * 0.32
                     );
                 }
-                vec3 normal = normalize(vec3(gradient * 18.0, 1.0));
-                vec3 light = normalize(vec3(-0.34, -0.46, 0.82));
+                vec3 normal = normalize(vec3(gradient * 12.0, 1.0));
+                vec3 light = normalize(vec3(-0.28, -0.42, 0.86));
                 float diffuse = dot(normal, light);
-                float ridge = clamp(length(gradient) * 18.0 + curvature * 7.5, 0.0, 1.0);
-                float softHighlight = smoothstep(0.02, 0.58, diffuse) * ridge;
-                float subtleShadow = smoothstep(0.0, 0.46, -diffuse) * ridge;
+                float ridge = clamp(length(gradient) * 13.0 + curvature * 5.4, 0.0, 1.0);
+                float slowPulse = 0.86 + 0.14 * sin(uTime * 0.72);
+                float softHighlight = smoothstep(0.05, 0.62, diffuse) * ridge;
+                float subtleShadow = smoothstep(0.0, 0.42, -diffuse) * ridge;
                 vec3 reflected = reflect(-light, normal);
-                float specular = pow(max(dot(reflected, vec3(0.0, 0.0, 1.0)), 0.0), 30.0) * ridge;
-                float caustic = pow(ridge, 1.55) *
-                    (0.55 + 0.45 * sin((vUv.x * 62.0 + vUv.y * 74.0) + uTime * 3.0 + hC * 18.0));
+                float specular = pow(max(dot(reflected, vec3(0.0, 0.0, 1.0)), 0.0), 44.0) * ridge;
+                float caustic = pow(ridge, 1.7) *
+                    (0.58 + 0.42 * sin((vUv.x * 38.0 + vUv.y * 44.0) + uTime * 1.18 + hC * 12.0)) *
+                    slowPulse;
                 float alpha = clamp(
-                    ridge * 0.095 + softHighlight * 0.055 + specular * 0.20 +
-                        subtleShadow * 0.045 + caustic * 0.035,
+                    ridge * 0.072 + softHighlight * 0.052 + specular * 0.16 +
+                        subtleShadow * 0.035 + caustic * 0.028,
                     0.0,
-                    0.24
+                    0.20
                 );
-                vec3 highlightColor = vec3(0.78, 0.90, 1.0);
-                vec3 shadowColor = vec3(0.25, 0.32, 0.38);
-                float lightMix = clamp(softHighlight + specular * 1.4 + caustic * 0.35, 0.0, 1.0);
+                vec3 highlightColor = vec3(0.74, 0.89, 1.0);
+                vec3 shadowColor = vec3(0.18, 0.26, 0.33);
+                float lightMix = clamp(softHighlight + specular * 1.2 + caustic * 0.32, 0.0, 1.0);
                 vec3 color = mix(shadowColor, highlightColor, lightMix);
-                color = mix(color, vec3(0.92, 0.97, 1.0), specular * 0.55);
+                color = mix(color, vec3(0.90, 0.97, 1.0), specular * 0.48);
                 fragColor = vec4(color * alpha, alpha);
             }
         """
