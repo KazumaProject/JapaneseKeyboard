@@ -21,6 +21,31 @@ class FluidPerformanceGovernorTest {
         assertTrue(active.velocityDiffusionIterations > 0)
         assertTrue(active.velocityViscosity > 0f)
         assertEquals(0.9984f, active.dyeDissipation, 0.001f)
+        assertEquals(0f, active.waterDrift, 0.0f)
+    }
+
+    @Test
+    fun waterDriftIsEnabledOnlyForAuroraInkTransport() {
+        val governor = FluidPerformanceGovernor()
+
+        val liquidActive = governor.stepParams(
+            state = FluidRendererState.Active,
+            transportMode = FluidInkTransportMode.PHYSICAL
+        )
+        val auroraActive = governor.stepParams(
+            state = FluidRendererState.Active,
+            transportMode = FluidInkTransportMode.WATER_DRIFT
+        )
+        val auroraIdle = governor.stepParams(
+            state = FluidRendererState.IdlePersistent,
+            transportMode = FluidInkTransportMode.WATER_DRIFT
+        )
+
+        assertEquals(0f, liquidActive.waterDrift, 0.0f)
+        assertTrue(auroraActive.waterDrift > 0f)
+        assertTrue(auroraIdle.waterDrift > 0f)
+        assertTrue(auroraIdle.waterDrift < auroraActive.waterDrift)
+        assertTrue(auroraActive.dyeDissipation > liquidActive.dyeDissipation)
     }
 
     @Test
