@@ -623,6 +623,9 @@
     <string name="candidate_height_portrait_preference_title">変換欄の高さ(縦画面)</string>
     <string name="candidate_height_landscape_preference_title">変換欄の高さ(横画面)</string>
     <string name="candidate_height_preference_sumary">変換候補を表示するレイアウトの高さの設定ができます</string>
+    <string name="candidate_height_input_hint">変換欄の高さ（dp）</string>
+    <string name="candidate_height_range_helper">30-300 dp</string>
+    <string name="candidate_height_invalid_value">正しい高さを入力してください</string>
 
     <string name="pref_clipboard_preview_title">クリップボードの内容を変換欄に表示</string>
     <string name="pref_clipboard_preview_summary">クリップボードにコピーした文字や画像を検知したとき、変換欄に表示します。</string>
