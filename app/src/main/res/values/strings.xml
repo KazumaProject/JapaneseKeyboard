@@ -626,6 +626,9 @@
     <string name="candidate_height_preference_title">Candidate Height</string>
     <string name="candidate_height_portrait_preference_title">Candidate Height (Portrait)</string>
     <string name="candidate_height_preference_sumary">Adjust the height of the candidate bar</string>
+    <string name="candidate_height_input_hint">Candidate bar height (dp)</string>
+    <string name="candidate_height_range_helper">30-300 dp</string>
+    <string name="candidate_height_invalid_value">Enter a valid height.</string>
 
     <string name="pref_clipboard_preview_title">Show clipboard contents in the conversion bar</string>
     <string name="pref_clipboard_preview_summary">When text or images are copied to the clipboard, show them in the conversion bar.</string>

@@ -9,6 +9,7 @@ import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.SeekBar
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.fragment.app.Fragment
@@ -39,6 +40,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var isCandidateListVisible = false
+    private var isSyncingHeightControls = false
 
     private val minHeightDp = 30
     private val maxHeightDp = 300
@@ -89,7 +91,11 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             updateCandidateListAndHeight()
         }
 
+        setupHeightSeekBar()
+        setupHeightEditText()
+
         updateCandidateListAndHeight()
+        applyHeightDp(selectedHeightDp(), persist = false)
     }
 
 
@@ -136,7 +142,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             }
         }
         appPreference.candidate_view_empty_height_dp_landscape = defaultHeightDp
-        applyCurrentDimensions()
+        applyHeightDp(selectedHeightDp(), persist = false)
     }
 
     private fun updateCandidateListAndHeight() {
@@ -147,6 +153,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             suggestionAdapter.suggestions = emptyList()
             binding.toggleCandidateListButton.text = "未入力時"
         }
+        applyHeightDp(selectedHeightDp(), persist = false)
     }
 
     private fun setSuggestionView() {
@@ -179,19 +186,110 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     }
 
     private fun applyCurrentDimensions() {
-        // Apply landscape-specific preferences
-        val heightPrefDp = if (isCandidateListVisible) {
+        applyHeightDp(selectedHeightDp(), persist = false)
+    }
+
+    private fun selectedHeightDp(): Int {
+        return if (isCandidateListVisible) {
             appPreference.candidate_view_height_dp_landscape ?: defaultHeightDp
         } else {
             appPreference.candidate_view_empty_height_dp_landscape ?: defaultHeightDp
         }
+    }
 
-        val density = resources.displayMetrics.density
-        val heightInPx = (heightPrefDp * density).toInt()
+    private fun saveSelectedHeightDp(heightDp: Int) {
+        val clamped = heightDp.coerceIn(minHeightDp, maxHeightDp)
+        if (isCandidateListVisible) {
+            appPreference.candidate_view_height_dp_landscape = clamped
+        } else {
+            appPreference.candidate_view_empty_height_dp_landscape = clamped
+        }
+    }
 
-        val layoutParams = binding.candidateHeightSettingRecyclerview.layoutParams
-        layoutParams.height = heightInPx
-        binding.candidateHeightSettingRecyclerview.layoutParams = layoutParams
+    private fun applyHeightDp(heightDp: Int, persist: Boolean) {
+        val clamped = heightDp.coerceIn(minHeightDp, maxHeightDp)
+        val heightPx = (clamped * resources.displayMetrics.density).toInt()
+        updatePreviewHeightPx(heightPx)
+        if (persist) {
+            saveSelectedHeightDp(clamped)
+        }
+        syncHeightControls(clamped)
+    }
+
+    private fun updatePreviewHeightPx(candidateHeightPx: Int) {
+        binding.candidateHeightSettingRecyclerview.layoutParams =
+            binding.candidateHeightSettingRecyclerview.layoutParams.apply {
+                height = candidateHeightPx
+            }
+        binding.candidateHeightSettingContent.layoutParams =
+            binding.candidateHeightSettingContent.layoutParams.apply {
+                height = candidateHeightPx
+            }
+    }
+
+    private fun syncHeightControls(heightDp: Int) {
+        if (isSyncingHeightControls) return
+        isSyncingHeightControls = true
+        try {
+            val clamped = heightDp.coerceIn(minHeightDp, maxHeightDp)
+            binding.candidateHeightSeekbar.progress = clamped - minHeightDp
+            val text = clamped.toString()
+            if (binding.candidateHeightEditText.text?.toString() != text) {
+                binding.candidateHeightEditText.setText(text)
+                binding.candidateHeightEditText.setSelection(text.length)
+            }
+            binding.candidateHeightInputLayout.error = null
+        } finally {
+            isSyncingHeightControls = false
+        }
+    }
+
+    private fun setupHeightSeekBar() {
+        binding.candidateHeightSeekbar.max = maxHeightDp - minHeightDp
+        binding.candidateHeightSeekbar.progress =
+            selectedHeightDp().coerceIn(minHeightDp, maxHeightDp) - minHeightDp
+        binding.candidateHeightSeekbar.setOnSeekBarChangeListener(
+            object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: SeekBar?,
+                    progress: Int,
+                    fromUser: Boolean
+                ) {
+                    if (!fromUser || isSyncingHeightControls) return
+                    val heightDp = minHeightDp + progress
+                    applyHeightDp(heightDp, persist = true)
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+            }
+        )
+    }
+
+    private fun setupHeightEditText() {
+        binding.candidateHeightEditText.setOnEditorActionListener { _, _, _ ->
+            applyHeightFromEditText()
+            false
+        }
+        binding.candidateHeightEditText.setOnFocusChangeListener { _, hasFocus ->
+            if (!hasFocus) {
+                applyHeightFromEditText()
+            }
+        }
+    }
+
+    private fun applyHeightFromEditText() {
+        if (isSyncingHeightControls) return
+        val raw = binding.candidateHeightEditText.text?.toString()?.trim()
+        val value = raw?.toIntOrNull()
+        if (value == null) {
+            binding.candidateHeightInputLayout.error =
+                getString(R.string.candidate_height_invalid_value)
+            return
+        }
+        val clamped = value.coerceIn(minHeightDp, maxHeightDp)
+        applyHeightDp(clamped, persist = true)
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -213,14 +311,15 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
                 MotionEvent.ACTION_MOVE -> {
                     val deltaY = event.rawY - initialY
                     val newHeight = (initialHeight - deltaY).coerceIn(minHeightPx, maxHeightPx)
-                    binding.candidateHeightSettingRecyclerview.layoutParams.height =
-                        newHeight.toInt()
+                    updatePreviewHeightPx(newHeight.toInt())
                     binding.candidateHeightSettingRecyclerview.requestLayout()
+                    binding.candidateHeightSettingContent.requestLayout()
                     true
                 }
 
                 MotionEvent.ACTION_UP -> {
-                    saveHeightPreference()
+                    val finalHeightDp = saveHeightPreference()
+                    applyHeightDp(finalHeightDp, persist = false)
                     true
                 }
 
@@ -229,18 +328,22 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
         }
     }
 
-    private fun saveHeightPreference() {
+    private fun saveHeightPreference(): Int {
         val density = resources.displayMetrics.density
+        val heightPx = binding.candidateHeightSettingRecyclerview.layoutParams.height
+            .takeIf { it > 0 }
+            ?: binding.candidateHeightSettingRecyclerview.height
         val finalHeightDp =
-            (binding.candidateHeightSettingRecyclerview.height / density).roundToInt()
+            (heightPx / density).roundToInt().coerceIn(minHeightDp, maxHeightDp)
+
+        saveSelectedHeightDp(finalHeightDp)
 
         // Save to landscape-specific preferences
         if (isCandidateListVisible) {
-            appPreference.candidate_view_height_dp_landscape = finalHeightDp
             Timber.d("saveHeightPreference landscape (with candidates): $finalHeightDp dp")
         } else {
-            appPreference.candidate_view_empty_height_dp_landscape = finalHeightDp
             Timber.d("saveHeightPreference landscape (empty): $finalHeightDp dp")
         }
+        return finalHeightDp
     }
 }
