@@ -210,7 +210,7 @@ object AppPreference {
         Pair("qwerty_keyboard_position_landscape_preference", true)
 
     private val CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE =
-        Pair("candidate_view_height_dp_landscape_preference", 110)
+        Pair("candidate_view_height_dp_landscape_preference", 60)
     private val CANDIDATE_VIEW_EMPTY_HEIGHT_DP_LANDSCAPE =
         Pair("candidate_view_empty_height_dp_landscape_preference", 110)
 
@@ -409,9 +409,21 @@ object AppPreference {
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_1_DP =
         Pair("candidate_view_height_landscape_column_1_dp_preference", 60)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_2_DP =
-        Pair("candidate_view_height_landscape_column_2_dp_preference", 95)
+        Pair("candidate_view_height_landscape_column_2_dp_preference", 90)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_3_DP =
         Pair("candidate_view_height_landscape_column_3_dp_preference", 120)
+    private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_1_DP =
+        Pair("candidate_default_height_portrait_column_1_dp_preference", 110)
+    private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_2_DP =
+        Pair("candidate_default_height_portrait_column_2_dp_preference", 120)
+    private val CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_3_DP =
+        Pair("candidate_default_height_portrait_column_3_dp_preference", 160)
+    private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_1_DP =
+        Pair("candidate_default_height_landscape_column_1_dp_preference", 60)
+    private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_2_DP =
+        Pair("candidate_default_height_landscape_column_2_dp_preference", 90)
+    private val CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_3_DP =
+        Pair("candidate_default_height_landscape_column_3_dp_preference", 120)
     private val CANDIDATE_HEIGHT_PER_COLUMN_MIGRATED =
         Pair("candidate_height_per_column_migrated_preference", false)
 
@@ -708,6 +720,31 @@ object AppPreference {
                 CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_1_DP
             } else {
                 CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_1_DP
+            }
+        }
+    }
+
+    private fun candidateDefaultHeightPreferenceFor(
+        isLandscape: Boolean,
+        column: String
+    ): Pair<String, Int> {
+        return when (normalizeCandidateColumn(column)) {
+            "2" -> if (isLandscape) {
+                CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_2_DP
+            } else {
+                CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_2_DP
+            }
+
+            "3" -> if (isLandscape) {
+                CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_3_DP
+            } else {
+                CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_3_DP
+            }
+
+            else -> if (isLandscape) {
+                CANDIDATE_DEFAULT_HEIGHT_LANDSCAPE_COLUMN_1_DP
+            } else {
+                CANDIDATE_DEFAULT_HEIGHT_PORTRAIT_COLUMN_1_DP
             }
         }
     }
@@ -1744,6 +1781,81 @@ object AppPreference {
                         CANDIDATE_VIEW_HEIGHT_DP.first
                     },
                     clampedHeight
+                )
+            }
+        }
+    }
+
+    fun getCandidateDefaultVisibleHeightDp(
+        isLandscape: Boolean,
+        column: String
+    ): Int {
+        val preference = candidateDefaultHeightPreferenceFor(
+            isLandscape,
+            normalizeCandidateColumn(column)
+        )
+        return readIntPreference(preference.first, preference.second)
+            .coerceIn(MIN_CANDIDATE_VISIBLE_HEIGHT_DP, MAX_CANDIDATE_VISIBLE_HEIGHT_DP)
+    }
+
+    fun setCandidateDefaultVisibleHeightDp(
+        isLandscape: Boolean,
+        column: String,
+        heightDp: Int
+    ) {
+        val preference = candidateDefaultHeightPreferenceFor(
+            isLandscape,
+            normalizeCandidateColumn(column)
+        )
+        preferences.edit { editor ->
+            editor.putInt(
+                preference.first,
+                heightDp.coerceIn(
+                    MIN_CANDIDATE_VISIBLE_HEIGHT_DP,
+                    MAX_CANDIDATE_VISIBLE_HEIGHT_DP
+                )
+            )
+        }
+    }
+
+    fun resetCandidateVisibleHeightsToUserDefaults(isLandscape: Boolean) {
+        migrateCandidateHeightPerColumnPreferencesIfNeeded()
+        val activeColumn = getCandidateColumn(isLandscape)
+        preferences.edit { editor ->
+            listOf("1", "2", "3").forEach { column ->
+                val heightDp = getCandidateDefaultVisibleHeightDp(isLandscape, column)
+                editor.putInt(candidateHeightPreferenceFor(isLandscape, column).first, heightDp)
+                if (column == activeColumn) {
+                    editor.putInt(
+                        if (isLandscape) {
+                            CANDIDATE_VIEW_HEIGHT_DP_LANDSCAPE.first
+                        } else {
+                            CANDIDATE_VIEW_HEIGHT_DP.first
+                        },
+                        heightDp
+                    )
+                }
+            }
+        }
+    }
+
+    fun resetCandidateDefaultVisibleHeightsToFactoryDefaults(isLandscape: Boolean) {
+        preferences.edit { editor ->
+            listOf("1", "2", "3").forEach { column ->
+                val preference = candidateDefaultHeightPreferenceFor(isLandscape, column)
+                editor.putInt(preference.first, preference.second)
+            }
+        }
+    }
+
+    fun copyCandidateVisibleHeightsToUserDefaults(isLandscape: Boolean) {
+        migrateCandidateHeightPerColumnPreferencesIfNeeded()
+        preferences.edit { editor ->
+            listOf("1", "2", "3").forEach { column ->
+                val heightDp = getCandidateVisibleHeightDp(isLandscape, column)
+                editor.putInt(
+                    candidateDefaultHeightPreferenceFor(isLandscape, column).first,
+                    heightDp
                 )
             }
         }
