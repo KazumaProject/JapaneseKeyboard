@@ -24,6 +24,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.window.layout.WindowMetricsCalculator
 import com.google.android.material.R as MaterialR
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -273,16 +274,11 @@ class CandidateViewHeightSettingFragment : Fragment() {
     }
 
     private fun keyboardPreviewHeightPx(): Int {
-        val previewHeight = binding.keyboardPreviewContainer.layoutParams.height
-        return if (previewHeight > 0) {
-            previewHeight
-        } else {
-            keyboardPreviewHeightDp().dpToPx()
-        }
-    }
-
-    private fun keyboardPreviewHeightDp(): Int {
-        return (appPreference.keyboard_height ?: 280).coerceIn(180, 420)
+        val layoutParams = binding.keyboardPreviewContainer.layoutParams
+        val marginParams = layoutParams as? ViewGroup.MarginLayoutParams
+        val previewHeight = layoutParams.height.takeIf { it > 0 }
+            ?: previewKeyboardLayoutConfig().heightDp.coerceIn(100, 420).dpToPx()
+        return previewHeight + (marginParams?.topMargin ?: 0) + (marginParams?.bottomMargin ?: 0)
     }
 
     private fun syncHeightControls(heightDp: Int) {
@@ -431,21 +427,31 @@ class CandidateViewHeightSettingFragment : Fragment() {
         binding.handleTop.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    binding.handleTop.parent?.requestDisallowInterceptTouchEvent(true)
+                    binding.candidateControlsScroll.requestDisallowInterceptTouchEvent(true)
                     initialY = event.rawY
                     initialHeight = binding.candidatePreviewFrame.height
                     true
                 }
 
                 MotionEvent.ACTION_MOVE -> {
+                    binding.handleTop.parent?.requestDisallowInterceptTouchEvent(true)
+                    binding.candidateControlsScroll.requestDisallowInterceptTouchEvent(true)
                     val deltaY = event.rawY - initialY
                     val newHeight = (initialHeight - deltaY).coerceIn(minHeightPx, maxHeightPx)
-                    updatePreviewHeightPx(newHeight.toInt())
+                    val currentHeightDp =
+                        (newHeight / density).roundToInt().coerceIn(minHeightDp, maxHeightDp)
+                    updatePreviewHeightPx(currentHeightDp.dpToPx())
+                    syncHeightControls(currentHeightDp)
                     binding.candidatePreviewFrame.requestLayout()
                     binding.candidateHeightSettingContent.requestLayout()
                     true
                 }
 
-                MotionEvent.ACTION_UP -> {
+                MotionEvent.ACTION_UP,
+                MotionEvent.ACTION_CANCEL -> {
+                    binding.handleTop.parent?.requestDisallowInterceptTouchEvent(false)
+                    binding.candidateControlsScroll.requestDisallowInterceptTouchEvent(false)
                     val finalHeightDp = saveHeightPreference()
                     applyHeightDp(finalHeightDp, persist = false)
                     true
@@ -590,31 +596,120 @@ class CandidateViewHeightSettingFragment : Fragment() {
         }
     }
 
-    private fun setupKeyboardPreview() {
-        val heightPx = keyboardPreviewHeightPx()
-        binding.keyboardPreviewContainer.layoutParams =
-            binding.keyboardPreviewContainer.layoutParams.apply {
-                height = heightPx
-            }
-        binding.candidateHeightSettingTenkeyPreview.setOnTouchListener { _, _ -> true }
-        val previewKeyboardType = appPreference.keyboard_order.firstOrNull() ?: KeyboardType.TENKEY
-        if (previewKeyboardType == KeyboardType.TENKEY) {
-            binding.candidateHeightSettingTenkeyPreview.isVisible = true
-            simpleKeyboardPreview?.isVisible = false
+    private data class PreviewKeyboardLayoutConfig(
+        val heightDp: Int,
+        val widthPercent: Int,
+        val bottomMarginDp: Int,
+        val positionIsEnd: Boolean,
+        val startMarginDp: Int,
+        val endMarginDp: Int
+    )
+
+    private fun previewKeyboardType(): KeyboardType =
+        appPreference.keyboard_order.firstOrNull() ?: KeyboardType.TENKEY
+
+    private fun previewKeyboardLayoutConfig(
+        type: KeyboardType = previewKeyboardType()
+    ): PreviewKeyboardLayoutConfig {
+        val useQwertySize = type == KeyboardType.QWERTY || type == KeyboardType.ROMAJI
+        return if (useQwertySize) {
+            PreviewKeyboardLayoutConfig(
+                heightDp = appPreference.qwerty_keyboard_height ?: 220,
+                widthPercent = appPreference.qwerty_keyboard_width ?: 100,
+                bottomMarginDp = appPreference.qwerty_keyboard_vertical_margin_bottom ?: 0,
+                positionIsEnd = appPreference.qwerty_keyboard_position ?: true,
+                startMarginDp = appPreference.qwerty_keyboard_margin_start_dp ?: 0,
+                endMarginDp = appPreference.qwerty_keyboard_margin_end_dp ?: 0
+            )
         } else {
-            binding.candidateHeightSettingTenkeyPreview.isVisible = false
-            val simplePreview = simpleKeyboardPreview ?: createSimpleKeyboardPreview(previewKeyboardType).also {
-                it.tag = SIMPLE_KEYBOARD_PREVIEW_TAG
-                binding.keyboardPreviewContainer.addView(
-                    it,
-                    ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
-                    )
-                )
-                simpleKeyboardPreview = it
+            PreviewKeyboardLayoutConfig(
+                heightDp = appPreference.keyboard_height ?: 220,
+                widthPercent = appPreference.keyboard_width ?: 100,
+                bottomMarginDp = appPreference.keyboard_vertical_margin_bottom ?: 0,
+                positionIsEnd = appPreference.keyboard_position ?: true,
+                startMarginDp = appPreference.keyboard_margin_start_dp ?: 0,
+                endMarginDp = appPreference.keyboard_margin_end_dp ?: 0
+            )
+        }
+    }
+
+    private fun applyKeyboardPreviewLayout(type: KeyboardType = previewKeyboardType()) {
+        val config = previewKeyboardLayoutConfig(type)
+        val screenWidth = WindowMetricsCalculator.getOrCreate()
+            .computeCurrentWindowMetrics(requireActivity()).bounds.width()
+        val widthPercent = config.widthPercent.coerceIn(32, 100)
+        val widthPx = if (widthPercent >= 98) {
+            ViewGroup.LayoutParams.MATCH_PARENT
+        } else {
+            (screenWidth * (widthPercent / 100f)).roundToInt()
+        }
+        val layoutParams = binding.keyboardPreviewContainer.layoutParams as LinearLayout.LayoutParams
+        layoutParams.height = config.heightDp.coerceIn(100, 420).dpToPx()
+        layoutParams.width = widthPx
+        layoutParams.gravity = if (config.positionIsEnd) Gravity.END else Gravity.START
+        layoutParams.marginStart = if (config.positionIsEnd) 0 else config.startMarginDp.dpToPx()
+        layoutParams.marginEnd = if (config.positionIsEnd) config.endMarginDp.dpToPx() else 0
+        layoutParams.bottomMargin = config.bottomMarginDp.dpToPx()
+        binding.keyboardPreviewContainer.layoutParams = layoutParams
+    }
+
+    private fun setupKeyboardPreview() {
+        val previewKeyboardType = previewKeyboardType()
+        applyKeyboardPreviewLayout(previewKeyboardType)
+        binding.candidateHeightSettingTenkeyPreview.apply {
+            setKeySizeScale(
+                appPreference.tenkey_key_width_scale_percent ?: 100,
+                appPreference.tenkey_key_height_scale_percent ?: 100
+            )
+            setUseThreeStateKeyboard(appPreference.tenkey_use_three_state_keyboard_preference)
+            setUseQwertyNumberWhenThreeStateOff(
+                appPreference.tenkey_switch_number_to_qwerty_number_preference
+            )
+            isClickable = false
+            isFocusable = false
+            setOnTouchListener { _, _ -> true }
+        }
+        binding.candidateHeightSettingQwertyPreview.apply {
+            if (previewKeyboardType == KeyboardType.ROMAJI) {
+                setRomajiKeyboard(getString(com.kazumaproject.core.R.string.return_japanese))
+            } else {
+                resetQWERTYKeyboard()
             }
-            simplePreview.isVisible = true
+            isClickable = false
+            isFocusable = false
+            setOnTouchListener { _, _ -> true }
+        }
+        when (previewKeyboardType) {
+            KeyboardType.TENKEY -> {
+                binding.candidateHeightSettingTenkeyPreview.isVisible = true
+                binding.candidateHeightSettingQwertyPreview.isVisible = false
+                simpleKeyboardPreview?.isVisible = false
+            }
+
+            KeyboardType.QWERTY,
+            KeyboardType.ROMAJI -> {
+                binding.candidateHeightSettingTenkeyPreview.isVisible = false
+                binding.candidateHeightSettingQwertyPreview.isVisible = true
+                simpleKeyboardPreview?.isVisible = false
+            }
+
+            else -> {
+                binding.candidateHeightSettingTenkeyPreview.isVisible = false
+                binding.candidateHeightSettingQwertyPreview.isVisible = false
+                val simplePreview =
+                    simpleKeyboardPreview ?: createSimpleKeyboardPreview(previewKeyboardType).also {
+                        it.tag = SIMPLE_KEYBOARD_PREVIEW_TAG
+                        binding.keyboardPreviewContainer.addView(
+                            it,
+                            ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                        )
+                        simpleKeyboardPreview = it
+                    }
+                simplePreview.isVisible = true
+            }
         }
     }
 
