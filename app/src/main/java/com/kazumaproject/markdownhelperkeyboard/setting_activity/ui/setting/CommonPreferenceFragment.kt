@@ -26,6 +26,9 @@ import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import dagger.hilt.android.AndroidEntryPoint
@@ -33,6 +36,31 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 import javax.inject.Inject
+
+internal data class KeyboardTouchEffectPreferenceVisibility(
+    val showQuality: Boolean,
+    val showColorMode: Boolean,
+    val showFixedColor: Boolean,
+    val showPalette: Boolean
+)
+
+internal fun resolveKeyboardTouchEffectPreferenceVisibility(
+    effectType: String,
+    colorMode: String
+): KeyboardTouchEffectPreferenceVisibility {
+    val normalizedEffect = KeyboardTouchEffectType.normalize(effectType)
+    val isInk = KeyboardTouchEffectType.isLiquidInk(normalizedEffect) ||
+        KeyboardTouchEffectType.isAuroraInk(normalizedEffect)
+    val isSprayPaint = KeyboardTouchEffectType.isSprayPaint(normalizedEffect)
+    val isEffectEnabled = KeyboardTouchEffectType.isEnabled(normalizedEffect)
+    val supportsColor = isInk || isSprayPaint
+    return KeyboardTouchEffectPreferenceVisibility(
+        showQuality = isEffectEnabled,
+        showColorMode = supportsColor,
+        showFixedColor = supportsColor && colorMode == "fixed",
+        showPalette = isSprayPaint
+    )
+}
 
 @AndroidEntryPoint
 open class CommonPreferenceFragment : PreferenceFragmentCompat() {
@@ -229,23 +257,36 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
         }
     }
 
-    private fun updateSuminagashiInkColorPreferenceState(
-        colorMode: String = appPreference.suminagashi_ink_color_mode_preference
+    private fun updateKeyboardTouchEffectPreferenceState(
+        effectType: String = appPreference.keyboard_touch_effect_type_preference,
+        colorMode: String = appPreference.keyboard_touch_effect_color_mode_preference
     ) {
+        val normalizedEffect = KeyboardTouchEffectType.normalize(effectType)
+        val visibility = resolveKeyboardTouchEffectPreferenceVisibility(
+            effectType = normalizedEffect,
+            colorMode = colorMode
+        )
+        findPreference<ListPreference>("keyboard_touch_effect_quality_preference")?.isVisible =
+            visibility.showQuality
+        findPreference<ListPreference>("keyboard_touch_effect_color_mode_preference")?.isVisible =
+            visibility.showColorMode
+
         val fixedColorPreference =
-            findPreference<Preference>("suminagashi_ink_color_preference")
+            findPreference<Preference>("keyboard_touch_effect_color_preference")
 
-        val isFixed = colorMode == "fixed"
-        fixedColorPreference?.isVisible = isFixed
+        fixedColorPreference?.isVisible = visibility.showFixedColor
 
-        fixedColorPreference?.summary = if (isFixed) {
+        fixedColorPreference?.summary = if (visibility.showFixedColor) {
             getString(
-                R.string.suminagashi_ink_color_summary_current,
-                String.format("#%08X", appPreference.suminagashi_ink_color_preference)
+                R.string.keyboard_touch_effect_color_summary_current,
+                String.format("#%08X", appPreference.keyboard_touch_effect_color_preference)
             )
         } else {
-            getString(R.string.suminagashi_ink_color_summary)
+            getString(R.string.keyboard_touch_effect_color_summary)
         }
+
+        findPreference<ListPreference>("keyboard_touch_effect_palette_preference")?.isVisible =
+            visibility.showPalette
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -399,6 +440,33 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
         }
 
+        findPreference<ListPreference>("keyboard_touch_effect_type_preference")?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            val normalizedEffect = appPreference.keyboard_touch_effect_type_preference
+            if (value != normalizedEffect) {
+                value = normalizedEffect
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextEffect = KeyboardTouchEffectType.normalize(newValue as? String)
+                appPreference.keyboard_touch_effect_type_preference = nextEffect
+                updateKeyboardTouchEffectPreferenceState(effectType = nextEffect)
+                true
+            }
+        }
+
+        findPreference<ListPreference>("keyboard_touch_effect_quality_preference")?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            val normalizedQuality = appPreference.keyboard_touch_effect_quality_preference
+            if (value != normalizedQuality) {
+                value = normalizedQuality
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextQuality = KeyboardTouchEffectQuality.normalize(newValue as? String)
+                appPreference.keyboard_touch_effect_quality_preference = nextQuality
+                true
+            }
+        }
+
         findPreference<Preference>("keyboard_background_video_clear_preference")?.apply {
             setOnPreferenceClickListener {
                 releaseKeyboardBackgroundVideoUriPermissionIfNeeded()
@@ -409,30 +477,48 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-        findPreference<ListPreference>("suminagashi_ink_color_mode_preference")?.apply {
+        findPreference<ListPreference>("keyboard_touch_effect_color_mode_preference")?.apply {
             summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-            val normalizedMode = appPreference.suminagashi_ink_color_mode_preference
+            val normalizedMode = appPreference.keyboard_touch_effect_color_mode_preference
             if (value != normalizedMode) {
                 value = normalizedMode
             }
             setOnPreferenceChangeListener { _, newValue ->
-                val nextMode = if (newValue == "fixed") "fixed" else "random"
-                appPreference.suminagashi_ink_color_mode_preference = nextMode
-                updateSuminagashiInkColorPreferenceState(nextMode)
+                val nextMode = when (newValue as? String) {
+                    "fixed" -> "fixed"
+                    "palette" -> "palette"
+                    "theme" -> "theme"
+                    else -> "random"
+                }
+                appPreference.keyboard_touch_effect_color_mode_preference = nextMode
+                updateKeyboardTouchEffectPreferenceState(colorMode = nextMode)
                 true
             }
         }
 
-        findPreference<Preference>("suminagashi_ink_color_preference")?.apply {
+        findPreference<Preference>("keyboard_touch_effect_color_preference")?.apply {
             setOnPreferenceClickListener {
-                showSuminagashiInkColorPickerDialog()
+                showKeyboardTouchEffectColorPickerDialog()
+                true
+            }
+        }
+
+        findPreference<ListPreference>("keyboard_touch_effect_palette_preference")?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            val normalizedPalette = appPreference.keyboard_touch_effect_palette_preference
+            if (value != normalizedPalette) {
+                value = normalizedPalette
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextPalette = SprayPaintSettings.normalizePalette(newValue as? String)
+                appPreference.keyboard_touch_effect_palette_preference = nextPalette
                 true
             }
         }
 
         updateKeyboardBackgroundImagePreferenceState()
         updateKeyboardBackgroundVideoPreferenceState()
-        updateSuminagashiInkColorPreferenceState()
+        updateKeyboardTouchEffectPreferenceState()
 
         val keyboardSizeLandscapePreference =
             findPreference<Preference>("keyboard_screen_landscape_preference")
@@ -766,9 +852,9 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
     }
 
     @SuppressLint("CheckResult")
-    private fun showSuminagashiInkColorPickerDialog() {
+    private fun showKeyboardTouchEffectColorPickerDialog() {
         MaterialDialog(requireContext()).show {
-            title(text = getString(R.string.suminagashi_ink_color_title))
+            title(text = getString(R.string.keyboard_touch_effect_color_title))
             colorChooser(
                 colors = intArrayOf(
                     Color.rgb(17, 17, 17),
@@ -777,11 +863,11 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
                     Color.rgb(50, 110, 78),
                     Color.rgb(120, 70, 150)
                 ),
-                initialSelection = appPreference.suminagashi_ink_color_preference,
+                initialSelection = appPreference.keyboard_touch_effect_color_preference,
                 allowCustomArgb = true
             ) { _, color ->
-                appPreference.suminagashi_ink_color_preference = color
-                updateSuminagashiInkColorPreferenceState("fixed")
+                appPreference.keyboard_touch_effect_color_preference = color
+                updateKeyboardTouchEffectPreferenceState(colorMode = "fixed")
             }
             positiveButton(android.R.string.ok)
             negativeButton(android.R.string.cancel)
