@@ -3,9 +3,15 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <item
+        android:id="@+id/action_candidate_default_height"
+        android:icon="@drawable/baseline_settings_24"
+        android:title="@string/candidate_default_height_menu_title"
+        app:showAsAction="ifRoom" />
+
+    <item
         android:id="@+id/action_reset"
         android:icon="@drawable/undo_24px"
-        android:title="Reset"
+        android:title="@string/reset_to_default"
         app:showAsAction="ifRoom" />
 
 </menu>

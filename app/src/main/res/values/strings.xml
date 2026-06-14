@@ -629,6 +629,16 @@
     <string name="candidate_height_input_hint">Candidate bar height (dp)</string>
     <string name="candidate_height_range_helper">30-300 dp</string>
     <string name="candidate_height_invalid_value">Enter a valid height.</string>
+    <string name="candidate_default_height_menu_title">Reset height defaults</string>
+    <string name="candidate_height_tab_height">Height</string>
+    <string name="candidate_height_tab_text">Text</string>
+    <string name="candidate_height_tab_default">Defaults</string>
+    <string name="candidate_default_height_title">Reset heights</string>
+    <string name="candidate_default_height_description">Set the heights restored by the reset button.</string>
+    <string name="candidate_default_height_use_current">Use current heights as defaults</string>
+    <string name="candidate_default_height_restore_factory">Restore app defaults</string>
+    <string name="candidate_default_height_save">Save</string>
+    <string name="candidate_height_sheet_summary_format">%1$s col / %2$sdp / %3$ssp</string>
     <string name="candidate_preview_input_mode">Input preview</string>
     <string name="candidate_preview_empty_mode">Empty preview</string>
     <string name="candidate_column_count_label">Candidate columns</string>
