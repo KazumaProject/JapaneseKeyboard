@@ -158,7 +158,28 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
                 applyCurrentDimensions()
             }
         }
+        applyCandidateAdapterPresentation()
         binding.candidateHeightSettingRecyclerview.adapter = suggestionAdapter
+    }
+
+    private fun applyCandidateAdapterPresentation() {
+        suggestionAdapter.setShowCandidateYomiForLiveConversion(
+            (appPreference.live_conversion_preference ?: false) &&
+                (appPreference.live_conversion_candidate_yomi_preference ?: false)
+        )
+        if (appPreference.theme_mode == "custom") {
+            suggestionAdapter.setCandidateTextColor(appPreference.custom_theme_candidate_text_color)
+            suggestionAdapter.setCandidateItemColors(
+                backgroundColor = appPreference.custom_theme_candidate_item_bg_color,
+                pressedColor = appPreference.custom_theme_candidate_item_pressed_bg_color
+            )
+            suggestionAdapter.setCandidateEmptyPopupColors(
+                backgroundColor = appPreference.custom_theme_candidate_empty_popup_bg_color,
+                textColor = appPreference.custom_theme_candidate_empty_popup_text_color
+            )
+        } else {
+            suggestionAdapter.clearCandidateEmptyPopupColors()
+        }
     }
 
     private fun setupColumnControls() {
