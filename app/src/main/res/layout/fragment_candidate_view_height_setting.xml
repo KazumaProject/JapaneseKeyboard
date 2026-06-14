@@ -251,6 +251,14 @@
                     android:clickable="false"
                     android:focusable="false"
                     android:visibility="gone" />
+
+                <com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+                    android:id="@+id/candidate_height_setting_flick_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:visibility="gone" />
             </FrameLayout>
         </LinearLayout>
     </FrameLayout>
