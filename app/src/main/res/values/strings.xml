@@ -991,8 +991,10 @@
     <string name="keyboard_touch_effect_category_title">Touch Effects</string>
     <string name="keyboard_touch_effect_type_title">Touch Effect</string>
     <string name="keyboard_touch_effect_type_summary">Choose the visual effect shown when touching the keyboard.</string>
-    <string name="keyboard_touch_effect_none">Off</string>
-    <string name="keyboard_touch_effect_suminagashi_ink">Suminagashi Ink</string>
+    <string name="keyboard_touch_effect_none">None</string>
+    <string name="keyboard_touch_effect_suminagashi_ink">Liquid Ink</string>
+    <string name="keyboard_touch_effect_liquid_ink">Liquid Ink</string>
+    <string name="keyboard_touch_effect_aurora_ink">Aurora Ink</string>
     <string name="keyboard_touch_effect_liquid_ripple">Liquid Ripple</string>
     <string name="keyboard_touch_effect_type_spray_paint">Spray Paint</string>
     <string name="keyboard_touch_effect_quality_title">Touch effect quality</string>
@@ -1001,9 +1003,11 @@
     <string name="keyboard_touch_effect_quality_high">High</string>
     <string name="keyboard_touch_effect_quality_ultra">Ultra</string>
     <string name="keyboard_touch_effect_quality_extreme">Extreme</string>
-    <string name="keyboard_touch_effect_suminagashi_ink_summary">Ink spreads and drifts like suminagashi from the touched position.</string>
+    <string name="keyboard_touch_effect_suminagashi_ink_summary">Liquid ink spreads from the touched position.</string>
+    <string name="keyboard_touch_effect_liquid_ink_summary">Liquid ink spreads from the touched position.</string>
+    <string name="keyboard_touch_effect_aurora_ink_summary">Soft aurora ink keeps drifting after touch and lightly tints the keyboard.</string>
     <string name="keyboard_touch_effect_liquid_ripple_summary">Gentle water ripples spread from the touched position.</string>
-    <string name="suminagashi_ink_effect_title">Suminagashi Ink Background</string>
+    <string name="suminagashi_ink_effect_title">Liquid Ink Background</string>
     <string name="suminagashi_ink_effect_summary">Shows an ink-diffusion background effect from the touched position on the keyboard.</string>
     <string name="suminagashi_ink_color_mode_title">Ink Color</string>
     <string name="suminagashi_ink_color_mode_random">Random on each touch</string>

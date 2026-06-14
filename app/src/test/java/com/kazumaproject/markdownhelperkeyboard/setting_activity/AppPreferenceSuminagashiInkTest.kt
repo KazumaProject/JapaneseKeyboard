@@ -77,7 +77,7 @@ class AppPreferenceSuminagashiInkTest {
             .commit()
 
         assertEquals(
-            KeyboardTouchEffectType.SUMINAGASHI_INK,
+            KeyboardTouchEffectType.LIQUID_INK,
             AppPreference.keyboard_touch_effect_type_preference
         )
 
@@ -94,10 +94,10 @@ class AppPreferenceSuminagashiInkTest {
 
     @Test
     fun keyboardTouchEffectTypeSyncsLegacySuminagashiBoolean() {
-        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.SUMINAGASHI_INK
+        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.LIQUID_INK
 
         assertEquals(
-            KeyboardTouchEffectType.SUMINAGASHI_INK,
+            KeyboardTouchEffectType.LIQUID_INK,
             AppPreference.keyboard_touch_effect_type_preference
         )
         assertTrue(AppPreference.suminagashi_ink_effect_preference)
@@ -113,6 +113,33 @@ class AppPreferenceSuminagashiInkTest {
         AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.NONE
 
         assertEquals(KeyboardTouchEffectType.NONE, AppPreference.keyboard_touch_effect_type_preference)
+        assertFalse(AppPreference.suminagashi_ink_effect_preference)
+    }
+
+    @Test
+    fun keyboardTouchEffectTypeReadsLegacyValuesAsLiquidInk() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+
+        listOf("suminagashi", "suminagashi_ink").forEach { legacyValue ->
+            preferences.edit()
+                .putString("keyboard_touch_effect_type_preference", legacyValue)
+                .commit()
+
+            assertEquals(
+                KeyboardTouchEffectType.LIQUID_INK,
+                AppPreference.keyboard_touch_effect_type_preference
+            )
+        }
+    }
+
+    @Test
+    fun keyboardTouchEffectTypeSavesAuroraInkWithoutEnablingLegacyBoolean() {
+        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.AURORA_INK
+
+        assertEquals(
+            KeyboardTouchEffectType.AURORA_INK,
+            AppPreference.keyboard_touch_effect_type_preference
+        )
         assertFalse(AppPreference.suminagashi_ink_effect_preference)
     }
 

@@ -2876,7 +2876,7 @@ object AppPreference {
         get() {
             if (!preferences.contains(KEYBOARD_TOUCH_EFFECT_TYPE.first)) {
                 return if (suminagashi_ink_effect_preference) {
-                    KeyboardTouchEffectType.SUMINAGASHI_INK
+                    KeyboardTouchEffectType.LIQUID_INK
                 } else {
                     KeyboardTouchEffectType.NONE
                 }
@@ -2892,7 +2892,7 @@ object AppPreference {
             it.putString(KEYBOARD_TOUCH_EFFECT_TYPE.first, normalized)
             it.putBoolean(
                 SUMINAGASHI_INK_EFFECT_ENABLE.first,
-                normalized == KeyboardTouchEffectType.SUMINAGASHI_INK
+                normalized == KeyboardTouchEffectType.LIQUID_INK
             )
         }
 
