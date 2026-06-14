@@ -52,24 +52,25 @@ import kotlin.math.roundToInt
 
 internal fun createCandidateHeightPreviewCandidates(): List<Candidate> {
     return listOf(
-        "へんかん",
-        "変換",
-        "変換候補",
-        "変換する",
-        "日本語",
-        "入力",
-        "候補欄",
-        "設定",
-        "予測",
-        "学習なし",
-        "オフライン",
-        "キーボード"
-    ).mapIndexed { index, text ->
+        "変換" to "へんかん",
+        "変換候補" to "へんかんこうほ",
+        "変換する" to "へんかんする",
+        "日本語" to "にほんご",
+        "入力" to "にゅうりょく",
+        "候補欄" to "こうほらん",
+        "設定" to "せってい",
+        "予測" to "よそく",
+        "学習なし" to "がくしゅうなし",
+        "オフライン" to "おふらいん",
+        "キーボード" to "きーぼーど",
+        "Markdown" to "まーくだうん"
+    ).mapIndexed { index, (text, yomi) ->
         Candidate(
             string = text,
-            type = 1.toByte(),
+            type = if (index == 0) 9.toByte() else 1.toByte(),
             length = text.length.toUByte(),
             score = 4000 - index,
+            yomi = yomi,
             leftId = 0.toShort(),
             rightId = 0.toShort()
         )
