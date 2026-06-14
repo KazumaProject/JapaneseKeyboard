@@ -108,6 +108,7 @@ internal class LiquidRippleSimulation(
     private var impulseProgram = 0
     private var waveProgram = 0
     private var compositeProgram = 0
+    private var copyProgram = 0
 
     private val quadVertices: FloatBuffer = ByteBuffer
         .allocateDirect(QUAD.size * Float.SIZE_BYTES)
@@ -139,7 +140,10 @@ internal class LiquidRippleSimulation(
             runCatching {
                 releaseTargets()
                 renderTargetFormat = format
-                resizeTargets(nextGrid)
+                resizeTargets(
+                    nextGrid = nextGrid,
+                    preserveExistingRipple = false
+                )
                 clear()
                 return
             }.onFailure {
@@ -164,8 +168,10 @@ internal class LiquidRippleSimulation(
         this.surfaceHeight = surfaceHeight
         val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel, userQuality)
         if (nextGrid == grid) return
-        resizeTargets(nextGrid)
-        clear()
+        resizeTargets(
+            nextGrid = nextGrid,
+            preserveExistingRipple = true
+        )
     }
 
     fun render(
@@ -199,6 +205,12 @@ internal class LiquidRippleSimulation(
         return energyEstimate >= DEFAULT_IDLE_ENERGY_THRESHOLD
     }
 
+    /**
+     * Clears visible simulation state.
+     *
+     * Do not call this from resizeSurface().
+     * resizeSurface() must preserve user-visible effect state.
+     */
     fun clear() {
         rippleTargets?.let { targets ->
             clearTarget(targets.previous)
@@ -220,12 +232,14 @@ internal class LiquidRippleSimulation(
         val programs = intArrayOf(
             impulseProgram,
             waveProgram,
-            compositeProgram
+            compositeProgram,
+            copyProgram
         ).filter { it != 0 }.toIntArray()
         programs.forEach(GLES30::glDeleteProgram)
         impulseProgram = 0
         waveProgram = 0
         compositeProgram = 0
+        copyProgram = 0
     }
 
     private fun releaseTargets() {
@@ -237,13 +251,50 @@ internal class LiquidRippleSimulation(
         rippleTargets = null
     }
 
-    private fun resizeTargets(nextGrid: LiquidRippleSimulationGrid) {
-        grid = nextGrid
-        rippleTargets = RippleTargets(
-            previous = createTarget(grid.width, grid.height, signedField = true),
-            current = createTarget(grid.width, grid.height, signedField = true),
-            next = createTarget(grid.width, grid.height, signedField = true)
-        )
+    private fun resizeTargets(
+        nextGrid: LiquidRippleSimulationGrid,
+        preserveExistingRipple: Boolean
+    ) {
+        val oldTargets = rippleTargets
+        var nextPrevious: RenderTarget? = null
+        var nextCurrent: RenderTarget? = null
+        var nextNext: RenderTarget? = null
+
+        try {
+            val createdPrevious = createTarget(nextGrid.width, nextGrid.height, signedField = true)
+                .also { nextPrevious = it }
+            val createdCurrent = createTarget(nextGrid.width, nextGrid.height, signedField = true)
+                .also { nextCurrent = it }
+            val createdNext = createTarget(nextGrid.width, nextGrid.height, signedField = true)
+                .also { nextNext = it }
+
+            if (preserveExistingRipple && oldTargets != null) {
+                copyTextureToTarget(oldTargets.previous.texture, createdPrevious)
+                copyTextureToTarget(oldTargets.current.texture, createdCurrent)
+                clearTarget(createdNext)
+            } else {
+                clearTarget(createdPrevious)
+                clearTarget(createdCurrent)
+                clearTarget(createdNext)
+                energyEstimate = 0f
+                accumulatedWaveTimeSeconds = 0f
+            }
+
+            grid = nextGrid
+            rippleTargets = RippleTargets(
+                previous = createdPrevious,
+                current = createdCurrent,
+                next = createdNext
+            )
+            releaseTarget(oldTargets?.previous)
+            releaseTarget(oldTargets?.current)
+            releaseTarget(oldTargets?.next)
+        } catch (throwable: Throwable) {
+            releaseTarget(nextPrevious)
+            releaseTarget(nextCurrent)
+            releaseTarget(nextNext)
+            throw throwable
+        }
     }
 
     private fun applyImpulseCommands(
@@ -380,6 +431,14 @@ internal class LiquidRippleSimulation(
         drawQuad()
     }
 
+    private fun copyTextureToTarget(texture: Int, target: RenderTarget?) {
+        if (target == null) return
+        useProgram(copyProgram, target)
+        GLES30.glDisable(GLES30.GL_BLEND)
+        bindTexture(0, texture, copyProgram, "uTexture")
+        drawQuad()
+    }
+
     private fun clearTarget(target: RenderTarget) {
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, target.framebuffer)
         GLES30.glViewport(0, 0, target.width, target.height)
@@ -510,6 +569,7 @@ internal class LiquidRippleSimulation(
         impulseProgram = createProgram(IMPULSE_FRAGMENT_SHADER)
         waveProgram = createProgram(WAVE_FRAGMENT_SHADER)
         compositeProgram = createProgram(COMPOSITE_FRAGMENT_SHADER)
+        copyProgram = createProgram(COPY_FRAGMENT_SHADER)
     }
 
     private fun createProgram(fragmentShaderSource: String): Int {
@@ -762,6 +822,17 @@ internal class LiquidRippleSimulation(
                 vec3 color = mix(shadowColor, highlightColor, lightMix);
                 color = mix(color, vec3(0.90, 0.97, 1.0), specular * 0.48);
                 fragColor = vec4(color * alpha, alpha);
+            }
+        """
+
+        private const val COPY_FRAGMENT_SHADER = """
+            #version 300 es
+            precision mediump float;
+            uniform sampler2D uTexture;
+            in vec2 vUv;
+            out vec4 fragColor;
+            void main() {
+                fragColor = texture(uTexture, vUv);
             }
         """
     }

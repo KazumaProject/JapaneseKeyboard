@@ -328,6 +328,7 @@ internal class SprayPaintSimulation(
     private var depositionProgram = 0
     private var decayProgram = 0
     private var compositeProgram = 0
+    private var copyProgram = 0
 
     private val quadVertices: FloatBuffer = ByteBuffer
         .allocateDirect(QUAD.size * Float.SIZE_BYTES)
@@ -356,7 +357,10 @@ internal class SprayPaintSimulation(
         this.surfaceWidth = surfaceWidth
         this.surfaceHeight = surfaceHeight
         val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel, userQuality)
-        resizeTargets(nextGrid)
+        resizeTargets(
+            nextGrid = nextGrid,
+            preserveExistingPaint = false
+        )
         clear()
     }
 
@@ -374,8 +378,10 @@ internal class SprayPaintSimulation(
         this.surfaceHeight = surfaceHeight
         val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel, userQuality)
         if (nextGrid == grid) return
-        resizeTargets(nextGrid)
-        clear()
+        resizeTargets(
+            nextGrid = nextGrid,
+            preserveExistingPaint = true
+        )
     }
 
     fun render(
@@ -428,6 +434,12 @@ internal class SprayPaintSimulation(
             petalSprites.isNotEmpty()
     }
 
+    /**
+     * Clears visible simulation state.
+     *
+     * Do not call this from resizeSurface().
+     * resizeSurface() must preserve user-visible effect state.
+     */
     fun clear() {
         clearTarget(paintAccumulationTexture)
         clearTarget(temporaryTexture)
@@ -457,20 +469,52 @@ internal class SprayPaintSimulation(
         val programs = intArrayOf(
             depositionProgram,
             decayProgram,
-            compositeProgram
+            compositeProgram,
+            copyProgram
         ).filter { it != 0 }.toIntArray()
         programs.forEach(GLES30::glDeleteProgram)
         depositionProgram = 0
         decayProgram = 0
         compositeProgram = 0
+        copyProgram = 0
     }
 
-    private fun resizeTargets(nextGrid: SprayPaintSimulationGrid) {
-        releaseTarget(paintAccumulationTexture)
-        releaseTarget(temporaryTexture)
-        grid = nextGrid
-        paintAccumulationTexture = createTarget(grid.width, grid.height)
-        temporaryTexture = createTarget(grid.width, grid.height)
+    private fun resizeTargets(
+        nextGrid: SprayPaintSimulationGrid,
+        preserveExistingPaint: Boolean
+    ) {
+        val oldPaint = paintAccumulationTexture
+        val oldTemporary = temporaryTexture
+        var nextPaint: RenderTarget? = null
+        var nextTemporary: RenderTarget? = null
+
+        try {
+            nextPaint = createTarget(nextGrid.width, nextGrid.height)
+            nextTemporary = createTarget(nextGrid.width, nextGrid.height)
+
+            if (preserveExistingPaint && oldPaint != null) {
+                copyTextureToTarget(oldPaint.texture, nextPaint)
+                clearTarget(nextTemporary)
+            } else {
+                clearTarget(nextPaint)
+                clearTarget(nextTemporary)
+                popBursts.clear()
+                petalSprites.clear()
+                longPressResidualByPointer.clear()
+                nextDripMillisByPointer.clear()
+                energyEstimate = 0f
+            }
+
+            grid = nextGrid
+            paintAccumulationTexture = nextPaint
+            temporaryTexture = nextTemporary
+            releaseTarget(oldPaint)
+            releaseTarget(oldTemporary)
+        } catch (throwable: Throwable) {
+            releaseTarget(nextPaint)
+            releaseTarget(nextTemporary)
+            throw throwable
+        }
     }
 
     private fun resolveFrameStyle(
@@ -1849,6 +1893,19 @@ internal class SprayPaintSimulation(
         }
     }
 
+    private fun copyTextureToTarget(texture: Int, target: RenderTarget?) {
+        if (target == null) return
+        GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, target.framebuffer)
+        GLES30.glViewport(0, 0, target.width, target.height)
+        GLES30.glDisable(GLES30.GL_DEPTH_TEST)
+        GLES30.glDisable(GLES30.GL_CULL_FACE)
+        GLES30.glDisable(GLES30.GL_BLEND)
+        GLES30.glDisable(GLES30.GL_SCISSOR_TEST)
+        GLES30.glUseProgram(copyProgram)
+        bindTexture(0, texture, copyProgram, "uTexture")
+        drawQuad()
+    }
+
     private fun clearTarget(target: RenderTarget?) {
         if (target == null) return
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, target.framebuffer)
@@ -2016,6 +2073,7 @@ internal class SprayPaintSimulation(
         depositionProgram = createProgram(DEPOSITION_VERTEX_SHADER, DEPOSITION_FRAGMENT_SHADER)
         decayProgram = createProgram(FULLSCREEN_VERTEX_SHADER, DECAY_FRAGMENT_SHADER)
         compositeProgram = createProgram(FULLSCREEN_VERTEX_SHADER, COMPOSITE_FRAGMENT_SHADER)
+        copyProgram = createProgram(FULLSCREEN_VERTEX_SHADER, COPY_FRAGMENT_SHADER)
     }
 
     private fun createProgram(vertexShaderSource: String, fragmentShaderSource: String): Int {
@@ -2202,6 +2260,17 @@ internal class SprayPaintSimulation(
                 float alpha = max(paint.a * uDecay - 0.00012, 0.0);
                 vec3 color = paint.rgb * uDecay;
                 fragColor = vec4(min(color, vec3(alpha + 0.18)), alpha);
+            }
+        """
+
+        private const val COPY_FRAGMENT_SHADER = """
+            #version 300 es
+            precision mediump float;
+            uniform sampler2D uTexture;
+            in vec2 vUv;
+            out vec4 fragColor;
+            void main() {
+                fragColor = texture(uTexture, vUv);
             }
         """
 
