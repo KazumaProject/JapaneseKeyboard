@@ -157,6 +157,18 @@ class SuminagashiFluidContractTest {
     }
 
     @Test
+    fun imeSelectsLiquidInkAndAuroraInkOnSharedInkView() {
+        val imeService = mainFile(
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt"
+        ).readText()
+
+        assertTrue(imeService.contains("KeyboardTouchEffectType.isLiquidInk(effectType)"))
+        assertTrue(imeService.contains("KeyboardTouchEffectType.isAuroraInk(effectType)"))
+        assertTrue(imeService.contains("FluidInkTransportMode.WATER_DRIFT"))
+        assertTrue(imeService.contains("transportMode = inkTransportMode"))
+    }
+
+    @Test
     fun liquidRippleUsesOpenGlRendererThreadAndHeightFieldSimulation() {
         val renderer = mainFile(
             "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/LiquidRippleRenderer.kt"
@@ -219,7 +231,9 @@ class SuminagashiFluidContractTest {
         assertTrue(simulation.contains("sampleVelocity"))
         assertTrue(simulation.contains("sampleSource"))
         assertTrue(simulation.contains("vec2 coord = clamp(vUv - velocity * uDt"))
-        assertTrue(simulation.contains("Dye is transported only by the solved velocity field"))
+        assertTrue(simulation.contains("Dye is transported by the solved velocity field plus optional water drift"))
+        assertTrue(simulation.contains("uniform float uWaterDrift;"))
+        assertTrue(simulation.contains("waterDriftVelocity"))
         assertFalse(simulation.contains("vec4 mixed = base + add"))
 
         val renderer = mainFile(

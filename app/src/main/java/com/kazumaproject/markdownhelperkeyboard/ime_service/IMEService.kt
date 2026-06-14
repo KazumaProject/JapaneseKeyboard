@@ -198,6 +198,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTi
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.FluidInkTransportMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
@@ -2280,18 +2281,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setupMainKeyboardTouchEffect(mainView: MainLayoutBinding) {
         val effectType = KeyboardTouchEffectType.normalize(keyboardTouchEffectTypePreference)
         val mainSurfaceActive = isKeyboardFloatingMode != true
-        val suminagashiEnabled =
-            mainSurfaceActive && KeyboardTouchEffectType.isSuminagashi(effectType)
+        val liquidInkEnabled =
+            mainSurfaceActive && KeyboardTouchEffectType.isLiquidInk(effectType)
+        val auroraInkEnabled =
+            mainSurfaceActive && KeyboardTouchEffectType.isAuroraInk(effectType)
+        val inkEnabled = liquidInkEnabled || auroraInkEnabled
+        val inkTransportMode = if (auroraInkEnabled) {
+            FluidInkTransportMode.WATER_DRIFT
+        } else {
+            FluidInkTransportMode.PHYSICAL
+        }
         val liquidRippleEnabled =
             mainSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
         val sprayPaintEnabled =
             mainSurfaceActive && KeyboardTouchEffectType.isSprayPaint(effectType)
 
         mainView.suminagashiInkView.configure(
-            enabled = suminagashiEnabled,
+            enabled = inkEnabled,
             colorMode = keyboardTouchEffectColorModePreference,
             fixedColor = keyboardTouchEffectColorPreference,
-            quality = keyboardTouchEffectQualityPreference
+            quality = keyboardTouchEffectQualityPreference,
+            transportMode = inkTransportMode
         )
         mainView.liquidRippleEffectView.configure(
             enabled = liquidRippleEnabled,
@@ -2307,7 +2317,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val root = mainView.root as? InkTouchDispatchFrameLayout
         root?.touchEffectMotionEventListener = when {
-            suminagashiEnabled -> {
+            inkEnabled -> {
                 { event ->
                     dispatchInkMotionEvent(
                         event = event,
@@ -2349,18 +2359,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         val effectType = KeyboardTouchEffectType.normalize(keyboardTouchEffectTypePreference)
         val floatingSurfaceActive = isKeyboardFloatingMode == true
-        val suminagashiEnabled =
-            floatingSurfaceActive && KeyboardTouchEffectType.isSuminagashi(effectType)
+        val liquidInkEnabled =
+            floatingSurfaceActive && KeyboardTouchEffectType.isLiquidInk(effectType)
+        val auroraInkEnabled =
+            floatingSurfaceActive && KeyboardTouchEffectType.isAuroraInk(effectType)
+        val inkEnabled = liquidInkEnabled || auroraInkEnabled
+        val inkTransportMode = if (auroraInkEnabled) {
+            FluidInkTransportMode.WATER_DRIFT
+        } else {
+            FluidInkTransportMode.PHYSICAL
+        }
         val liquidRippleEnabled =
             floatingSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
         val sprayPaintEnabled =
             floatingSurfaceActive && KeyboardTouchEffectType.isSprayPaint(effectType)
 
         floatingView.floatingSuminagashiInkView.configure(
-            enabled = suminagashiEnabled,
+            enabled = inkEnabled,
             colorMode = keyboardTouchEffectColorModePreference,
             fixedColor = keyboardTouchEffectColorPreference,
-            quality = keyboardTouchEffectQualityPreference
+            quality = keyboardTouchEffectQualityPreference,
+            transportMode = inkTransportMode
         )
         floatingView.floatingLiquidRippleEffectView.configure(
             enabled = liquidRippleEnabled,
@@ -2376,7 +2395,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val root = floatingView.root as? InkTouchDispatchFrameLayout
         root?.touchEffectMotionEventListener = when {
-            suminagashiEnabled -> {
+            inkEnabled -> {
                 { event ->
                     dispatchInkMotionEvent(
                         event = event,

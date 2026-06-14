@@ -197,7 +197,10 @@ internal class FluidInkRenderer(
             simulation?.render(
                 inputCommands = commands,
                 dtSeconds = dtSeconds,
-                params = performanceGovernor.stepParams(state)
+                params = performanceGovernor.stepParams(
+                    state = state,
+                    transportMode = settings.transportMode
+                )
             )
             egl?.swapBuffers()
 

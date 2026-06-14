@@ -18,8 +18,20 @@ class KeyboardTouchEffectTypeTest {
             KeyboardTouchEffectType.normalize("unknown")
         )
         assertEquals(
-            KeyboardTouchEffectType.SUMINAGASHI_INK,
+            KeyboardTouchEffectType.LIQUID_INK,
+            KeyboardTouchEffectType.normalize("liquid_ink")
+        )
+        assertEquals(
+            KeyboardTouchEffectType.LIQUID_INK,
+            KeyboardTouchEffectType.normalize("suminagashi")
+        )
+        assertEquals(
+            KeyboardTouchEffectType.LIQUID_INK,
             KeyboardTouchEffectType.normalize("suminagashi_ink")
+        )
+        assertEquals(
+            KeyboardTouchEffectType.AURORA_INK,
+            KeyboardTouchEffectType.normalize("aurora_ink")
         )
         assertEquals(
             KeyboardTouchEffectType.LIQUID_RIPPLE,
@@ -34,8 +46,14 @@ class KeyboardTouchEffectTypeTest {
     @Test
     fun typeChecksNormalizeValuesBeforeMatching() {
         assertFalse(KeyboardTouchEffectType.isEnabled("unknown"))
+        assertTrue(KeyboardTouchEffectType.isLiquidInk("liquid_ink"))
+        assertTrue(KeyboardTouchEffectType.isLiquidInk("suminagashi"))
+        assertTrue(KeyboardTouchEffectType.isLiquidInk("suminagashi_ink"))
+        assertTrue(KeyboardTouchEffectType.isAuroraInk("aurora_ink"))
         assertTrue(KeyboardTouchEffectType.isSuminagashi("suminagashi_ink"))
         assertTrue(KeyboardTouchEffectType.isLiquidRipple("liquid_ripple"))
         assertTrue(KeyboardTouchEffectType.isSprayPaint("spray_paint"))
+        assertFalse(KeyboardTouchEffectType.isLiquidRipple("aurora_ink"))
+        assertFalse(KeyboardTouchEffectType.isSprayPaint("aurora_ink"))
     }
 }

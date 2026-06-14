@@ -17,7 +17,8 @@ internal data class FluidStepParams(
     val velocityViscosity: Float,
     val velocityDissipation: Float,
     val dyeDissipation: Float,
-    val vorticity: Float
+    val vorticity: Float,
+    val waterDrift: Float
 )
 
 internal class FluidSimulationGridResolver {
@@ -120,20 +121,29 @@ internal class FluidPerformanceGovernor {
         underBudgetFrameCount = 0
     }
 
-    fun stepParams(state: FluidRendererState): FluidStepParams {
+    fun stepParams(
+        state: FluidRendererState,
+        transportMode: FluidInkTransportMode = FluidInkTransportMode.PHYSICAL
+    ): FluidStepParams {
         val profile = qualityProfile(userQuality)
         val velocityDissipation = when (state) {
             FluidRendererState.Active -> profile.velocityDissipation
             FluidRendererState.Settling -> (profile.velocityDissipation + 0.003f).coerceAtMost(0.996f)
             FluidRendererState.IdlePersistent -> (profile.velocityDissipation - 0.01f).coerceAtLeast(0.965f)
         }
+        val dyeDissipation = when (transportMode) {
+            FluidInkTransportMode.PHYSICAL -> profile.dyeDissipation
+            FluidInkTransportMode.WATER_DRIFT -> (profile.dyeDissipation + 0.0008f)
+                .coerceAtMost(0.9998f)
+        }
         return FluidStepParams(
             pressureIterations = pressureIterations,
             velocityDiffusionIterations = profile.velocityDiffusionIterations,
             velocityViscosity = profile.velocityViscosity,
             velocityDissipation = velocityDissipation,
-            dyeDissipation = profile.dyeDissipation,
-            vorticity = profile.vorticityFor(state)
+            dyeDissipation = dyeDissipation,
+            vorticity = profile.vorticityFor(state),
+            waterDrift = profile.waterDriftFor(state, transportMode)
         )
     }
 
@@ -186,13 +196,26 @@ internal class FluidPerformanceGovernor {
             val velocityDiffusionIterations: Int,
             val velocityViscosity: Float,
             val velocityDissipation: Float,
-            val dyeDissipation: Float
+            val dyeDissipation: Float,
+            val waterDrift: Float
         ) {
             fun vorticityFor(state: FluidRendererState): Float {
                 return when (state) {
                     FluidRendererState.Active -> vorticityActive
                     FluidRendererState.Settling -> vorticitySettling
                     FluidRendererState.IdlePersistent -> vorticityIdle
+                }
+            }
+
+            fun waterDriftFor(
+                state: FluidRendererState,
+                transportMode: FluidInkTransportMode
+            ): Float {
+                if (transportMode != FluidInkTransportMode.WATER_DRIFT) return 0f
+                return when (state) {
+                    FluidRendererState.Active -> waterDrift
+                    FluidRendererState.Settling -> waterDrift * 0.86f
+                    FluidRendererState.IdlePersistent -> waterDrift * 0.72f
                 }
             }
         }
@@ -209,7 +232,8 @@ internal class FluidPerformanceGovernor {
                     velocityDiffusionIterations = 4,
                     velocityViscosity = 0.000045f,
                     velocityDissipation = 0.984f,
-                    dyeDissipation = 0.9968f
+                    dyeDissipation = 0.9968f,
+                    waterDrift = 0.030f
                 )
 
                 KeyboardTouchEffectQuality.ULTRA -> QualityProfile(
@@ -222,7 +246,8 @@ internal class FluidPerformanceGovernor {
                     velocityDiffusionIterations = 8,
                     velocityViscosity = 0.000025f,
                     velocityDissipation = 0.991f,
-                    dyeDissipation = 0.9992f
+                    dyeDissipation = 0.9992f,
+                    waterDrift = 0.040f
                 )
 
                 KeyboardTouchEffectQuality.EXTREME -> QualityProfile(
@@ -235,7 +260,8 @@ internal class FluidPerformanceGovernor {
                     velocityDiffusionIterations = 10,
                     velocityViscosity = 0.000018f,
                     velocityDissipation = 0.993f,
-                    dyeDissipation = 0.99955f
+                    dyeDissipation = 0.99955f,
+                    waterDrift = 0.045f
                 )
 
                 else -> QualityProfile(
@@ -248,7 +274,8 @@ internal class FluidPerformanceGovernor {
                     velocityDiffusionIterations = 6,
                     velocityViscosity = 0.000035f,
                     velocityDissipation = 0.988f,
-                    dyeDissipation = 0.9984f
+                    dyeDissipation = 0.9984f,
+                    waterDrift = 0.035f
                 )
             }
         }

@@ -59,7 +59,7 @@ class ImePreferencesSnapshotSuminagashiInkTest {
         val snapshot = ImePreferencesSnapshot.from(AppPreference)
 
         assertEquals(
-            KeyboardTouchEffectType.SUMINAGASHI_INK,
+            KeyboardTouchEffectType.LIQUID_INK,
             snapshot.keyboardTouchEffectTypePreference
         )
         assertTrue(snapshot.suminagashiInkEffectPreference)
@@ -81,6 +81,19 @@ class ImePreferencesSnapshotSuminagashiInkTest {
 
         assertEquals(
             KeyboardTouchEffectType.LIQUID_RIPPLE,
+            snapshot.keyboardTouchEffectTypePreference
+        )
+        assertFalse(snapshot.suminagashiInkEffectPreference)
+    }
+
+    @Test
+    fun snapshotContainsSavedAuroraInkTouchEffect() {
+        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.AURORA_INK
+
+        val snapshot = ImePreferencesSnapshot.from(AppPreference)
+
+        assertEquals(
+            KeyboardTouchEffectType.AURORA_INK,
             snapshot.keyboardTouchEffectTypePreference
         )
         assertFalse(snapshot.suminagashiInkEffectPreference)

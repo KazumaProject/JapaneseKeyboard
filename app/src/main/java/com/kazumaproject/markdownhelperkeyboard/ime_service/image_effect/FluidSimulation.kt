@@ -80,6 +80,7 @@ internal class FluidSimulation(
     private var curl: RenderTarget? = null
     private var velocityDiffusionSource: RenderTarget? = null
     private var renderTargetFormat = FluidRenderTargetFormat.HalfFloat
+    private var waterPhaseSeconds = 0f
 
     private var copyProgram = 0
     private var splatProgram = 0
@@ -163,6 +164,13 @@ internal class FluidSimulation(
         val curlTarget = curl ?: return
 
         val clampedDt = dtSeconds.coerceIn(MIN_DT_SECONDS, MAX_DT_SECONDS)
+        waterPhaseSeconds = if (params.waterDrift > 0f) {
+            (waterPhaseSeconds + clampedDt).let { phase ->
+                if (phase > WATER_PHASE_WRAP_SECONDS) phase % WATER_PHASE_WRAP_SECONDS else phase
+            }
+        } else {
+            0f
+        }
         applySplatCommands(inputCommands, velocityTarget, dyeTarget)
 
         // Stable Fluids step: advect velocity through the current velocity field.
@@ -171,7 +179,8 @@ internal class FluidSimulation(
             source = velocityTarget.read,
             destination = velocityTarget.write,
             dtSeconds = clampedDt,
-            dissipation = params.velocityDissipation
+            dissipation = params.velocityDissipation,
+            waterDrift = params.waterDrift
         )
         velocityTarget.swap()
 
@@ -215,13 +224,14 @@ internal class FluidSimulation(
         )
         velocityTarget.swap()
 
-        // Dye is transported only by the solved velocity field and then composited.
+        // Dye is transported by the solved velocity field plus optional water drift.
         advect(
             velocity = velocityTarget.read,
             source = dyeTarget.read,
             destination = dyeTarget.write,
             dtSeconds = clampedDt,
-            dissipation = params.dyeDissipation
+            dissipation = params.dyeDissipation,
+            waterDrift = params.waterDrift
         )
         dyeTarget.swap()
 
@@ -241,6 +251,7 @@ internal class FluidSimulation(
             velocityDiffusionSource
         ).forEach(::clearTarget)
         GLES30.glBindFramebuffer(GLES30.GL_FRAMEBUFFER, 0)
+        waterPhaseSeconds = 0f
     }
 
     fun release() {
@@ -395,7 +406,8 @@ internal class FluidSimulation(
         source: RenderTarget,
         destination: RenderTarget,
         dtSeconds: Float,
-        dissipation: Float
+        dissipation: Float,
+        waterDrift: Float
     ) {
         useProgram(advectProgram, destination)
         bindTexture(0, velocity.texture, advectProgram, "uVelocity")
@@ -403,6 +415,8 @@ internal class FluidSimulation(
         uniform2f(advectProgram, "uTexelSize", 1f / grid.width, 1f / grid.height)
         uniform1f(advectProgram, "uDt", dtSeconds)
         uniform1f(advectProgram, "uDissipation", dissipation)
+        uniform1f(advectProgram, "uWaterDrift", waterDrift)
+        uniform1f(advectProgram, "uWaterPhase", waterPhaseSeconds)
         uniformEncoding(advectProgram, "uVelocityEncoded", velocity)
         uniformEncoding(advectProgram, "uSourceEncoded", source)
         uniformEncoding(advectProgram, "uOutputEncoded", destination)
@@ -733,6 +747,7 @@ internal class FluidSimulation(
         private const val SIGNED_FIELD_RANGE = 4f
         private const val MIN_DT_SECONDS = 1f / 120f
         private const val MAX_DT_SECONDS = 1f / 24f
+        private const val WATER_PHASE_WRAP_SECONDS = 10_000f
 
         private val QUAD = floatArrayOf(
             -1f, -1f,
@@ -818,6 +833,8 @@ internal class FluidSimulation(
             uniform vec2 uTexelSize;
             uniform float uDt;
             uniform float uDissipation;
+            uniform float uWaterDrift;
+            uniform float uWaterPhase;
             uniform float uVelocityEncoded;
             uniform float uSourceEncoded;
             uniform float uOutputEncoded;
@@ -865,8 +882,24 @@ internal class FluidSimulation(
                 vec4 c11 = decodeField(texture(uSource, uv11), uSourceEncoded);
                 return mix(mix(c00, c10, f.x), mix(c01, c11, f.x), f.y);
             }
+            vec2 waterDriftVelocity(vec2 uv) {
+                if (uWaterDrift <= 0.0) {
+                    return vec2(0.0);
+                }
+                const float TAU = 6.28318530718;
+                float phase = uWaterPhase;
+                vec2 flow = vec2(
+                    sin((uv.y * 2.7 + phase * 0.052) * TAU) +
+                        0.42 * sin(((uv.x + uv.y) * 1.6 - phase * 0.031) * TAU),
+                    cos((uv.x * 2.4 - phase * 0.046) * TAU) +
+                        0.36 * sin((uv.y * 1.9 + phase * 0.027) * TAU)
+                );
+                float edge = min(min(uv.x, 1.0 - uv.x), min(uv.y, 1.0 - uv.y));
+                float edgeFade = smoothstep(0.0, max(uTexelSize.x, uTexelSize.y) * 6.0, edge);
+                return flow * uWaterDrift * edgeFade;
+            }
             void main() {
-                vec2 velocity = sampleVelocity(vUv).xy;
+                vec2 velocity = sampleVelocity(vUv).xy + waterDriftVelocity(vUv);
                 vec2 coord = clamp(vUv - velocity * uDt, uTexelSize, 1.0 - uTexelSize);
                 vec4 value = sampleSource(coord) * uDissipation;
                 fragColor = encodeField(value, uOutputEncoded);

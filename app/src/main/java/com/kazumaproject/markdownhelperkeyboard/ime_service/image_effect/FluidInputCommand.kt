@@ -7,7 +7,8 @@ internal data class FluidInkSettings(
     val enabled: Boolean,
     val colorMode: String,
     @ColorInt val fixedColor: Int,
-    val quality: String = KeyboardTouchEffectQuality.HIGH
+    val quality: String = KeyboardTouchEffectQuality.HIGH,
+    val transportMode: FluidInkTransportMode = FluidInkTransportMode.PHYSICAL
 ) {
     val normalizedColorMode: String =
         if (colorMode == COLOR_MODE_FIXED) COLOR_MODE_FIXED else COLOR_MODE_RANDOM
@@ -24,7 +25,8 @@ internal data class FluidInkSettings(
             enabled = false,
             colorMode = COLOR_MODE_RANDOM,
             fixedColor = DEFAULT_INK_COLOR,
-            quality = KeyboardTouchEffectQuality.HIGH
+            quality = KeyboardTouchEffectQuality.HIGH,
+            transportMode = FluidInkTransportMode.PHYSICAL
         )
 
         @ColorInt

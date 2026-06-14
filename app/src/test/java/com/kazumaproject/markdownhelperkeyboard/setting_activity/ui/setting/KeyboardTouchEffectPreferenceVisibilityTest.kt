@@ -8,13 +8,13 @@ import org.junit.Test
 class KeyboardTouchEffectPreferenceVisibilityTest {
 
     @Test
-    fun suminagashiShowsColorModeAndFixedColorOnlyWhenFixed() {
+    fun inkEffectsShowColorModeAndFixedColorOnlyWhenFixed() {
         val random = resolveKeyboardTouchEffectPreferenceVisibility(
-            effectType = KeyboardTouchEffectType.SUMINAGASHI_INK,
+            effectType = KeyboardTouchEffectType.LIQUID_INK,
             colorMode = "random"
         )
         val fixed = resolveKeyboardTouchEffectPreferenceVisibility(
-            effectType = KeyboardTouchEffectType.SUMINAGASHI_INK,
+            effectType = KeyboardTouchEffectType.AURORA_INK,
             colorMode = "fixed"
         )
 
