@@ -403,15 +403,15 @@ object AppPreference {
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_1_DP =
         Pair("candidate_view_height_portrait_column_1_dp_preference", 110)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_2_DP =
-        Pair("candidate_view_height_portrait_column_2_dp_preference", 165)
+        Pair("candidate_view_height_portrait_column_2_dp_preference", 120)
     private val CANDIDATE_VIEW_HEIGHT_PORTRAIT_COLUMN_3_DP =
-        Pair("candidate_view_height_portrait_column_3_dp_preference", 230)
+        Pair("candidate_view_height_portrait_column_3_dp_preference", 160)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_1_DP =
-        Pair("candidate_view_height_landscape_column_1_dp_preference", 110)
+        Pair("candidate_view_height_landscape_column_1_dp_preference", 60)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_2_DP =
-        Pair("candidate_view_height_landscape_column_2_dp_preference", 165)
+        Pair("candidate_view_height_landscape_column_2_dp_preference", 95)
     private val CANDIDATE_VIEW_HEIGHT_LANDSCAPE_COLUMN_3_DP =
-        Pair("candidate_view_height_landscape_column_3_dp_preference", 230)
+        Pair("candidate_view_height_landscape_column_3_dp_preference", 120)
     private val CANDIDATE_HEIGHT_PER_COLUMN_MIGRATED =
         Pair("candidate_height_per_column_migrated_preference", false)
 
