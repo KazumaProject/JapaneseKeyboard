@@ -392,6 +392,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
 
         holder.text.textSize = candidateTextSize
+        holder.typeText.textSize = (candidateTextSize * 0.65f).coerceIn(8f, 16f)
 
         holder.typeText.text = when (suggestion.type) {
             (1).toByte() -> ""
