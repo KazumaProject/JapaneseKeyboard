@@ -7,15 +7,24 @@ internal class FluidInputCommandQueue(
     private val commands = ArrayDeque<FluidInputCommand>()
 
     fun offer(command: FluidInputCommand): Boolean = synchronized(lock) {
-        if (command is FluidInputCommand.Splat && command.kind == FluidSplatKind.Move) {
-            val replaced = replaceLatestMoveForPointerLocked(command)
-            if (replaced) return@synchronized true
+        if (
+            command is FluidInputCommand.Splat &&
+            command.kind == FluidSplatKind.Move &&
+            command.canReplaceQueuedMove
+        ) {
+            if (replaceLatestReplaceableMoveForPointerLocked(command)) {
+                return@synchronized true
+            }
         }
 
         while (commands.size >= maxSize) {
-            val removedMove = removeOldestMoveLocked()
+            val removedMove = removeOldestReplaceableMoveLocked()
             if (!removedMove) {
-                if (command is FluidInputCommand.Splat && command.kind == FluidSplatKind.Move) {
+                if (
+                    command is FluidInputCommand.Splat &&
+                    command.kind == FluidSplatKind.Move &&
+                    command.canReplaceQueuedMove
+                ) {
                     return@synchronized false
                 }
                 break
@@ -44,13 +53,14 @@ internal class FluidInputCommandQueue(
         commands.size
     }
 
-    private fun replaceLatestMoveForPointerLocked(command: FluidInputCommand.Splat): Boolean {
+    private fun replaceLatestReplaceableMoveForPointerLocked(command: FluidInputCommand.Splat): Boolean {
         for (index in commands.indices.reversed()) {
             val existing = commands[index]
             if (
                 existing is FluidInputCommand.Splat &&
                 existing.kind == FluidSplatKind.Move &&
-                existing.pointerId == command.pointerId
+                existing.pointerId == command.pointerId &&
+                existing.canReplaceQueuedMove
             ) {
                 commands[index] = command
                 return true
@@ -59,9 +69,11 @@ internal class FluidInputCommandQueue(
         return false
     }
 
-    private fun removeOldestMoveLocked(): Boolean {
+    private fun removeOldestReplaceableMoveLocked(): Boolean {
         val index = commands.indexOfFirst {
-            it is FluidInputCommand.Splat && it.kind == FluidSplatKind.Move
+            it is FluidInputCommand.Splat &&
+                it.kind == FluidSplatKind.Move &&
+                it.canReplaceQueuedMove
         }
         if (index < 0) return false
         commands.removeAt(index)

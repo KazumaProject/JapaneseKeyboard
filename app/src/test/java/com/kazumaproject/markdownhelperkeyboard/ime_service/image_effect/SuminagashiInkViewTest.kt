@@ -61,6 +61,19 @@ class SuminagashiInkViewTest {
     }
 
     @Test
+    fun configureForAuroraInkPassesWaterDriftTransportMode() {
+        view.configure(
+            enabled = true,
+            colorMode = "fixed",
+            fixedColor = Color.rgb(40, 80, 120),
+            transportMode = FluidInkTransportMode.WATER_DRIFT
+        )
+
+        val renderer = rendererFactory.renderers.single()
+        assertEquals(FluidInkTransportMode.WATER_DRIFT, renderer.settings.single().transportMode)
+    }
+
+    @Test
     fun surfaceAvailableSendsAttachCommand() {
         view.configure(
             enabled = true,
@@ -168,9 +181,11 @@ class SuminagashiInkViewTest {
 
     private class RecordingRenderer : FluidInkRendererController {
         val calls = mutableListOf<String>()
+        val settings = mutableListOf<FluidInkSettings>()
         private var alive = true
 
         override fun configure(settings: FluidInkSettings) {
+            this.settings.add(settings)
             calls.add("configure:${settings.enabled}")
         }
 

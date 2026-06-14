@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipChildren="false"
     tools:context=".setting_activity.ui.candidate_view_height_setting.CandidateViewHeightSettingFragment">
 
     <Button
@@ -16,39 +17,101 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-    <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/candidate_height_setting_content"
-        android:layout_width="match_parent"
+    <LinearLayout
+        android:id="@+id/candidate_height_numeric_controls"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="18dp"
-        android:background="@color/keyboard_bg"
-        app:layout_constraintBottom_toBottomOf="parent">
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="16dp"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/toggle_candidate_list_button">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/candidate_height_setting_recyclerview"
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/candidate_height_input_layout"
             android:layout_width="match_parent"
-            android:layout_height="58dp"
-            android:background="@color/keyboard_bg"
-            app:layout_constraintBottom_toTopOf="@+id/candidate_height_setting_tenkey_preview"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            android:layout_height="wrap_content"
+            android:hint="@string/candidate_height_input_hint"
+            app:helperText="@string/candidate_height_range_helper"
+            app:suffixText="dp">
 
-        <View
-            android:id="@+id/handle_top"
-            android:layout_width="156dp"
-            android:layout_height="40dp"
-            android:background="@drawable/resize_handle"
-            android:translationY="-12dp"
-            app:layout_constraintEnd_toEndOf="@id/candidate_height_setting_recyclerview"
-            app:layout_constraintStart_toStartOf="@id/candidate_height_setting_recyclerview"
-            app:layout_constraintTop_toTopOf="@id/candidate_height_setting_recyclerview" />
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/candidate_height_edit_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:imeOptions="actionDone"
+                android:inputType="number"
+                android:maxLength="3"
+                android:selectAllOnFocus="true"
+                android:singleLine="true" />
+        </com.google.android.material.textfield.TextInputLayout>
 
-        <com.kazumaproject.tenkey.TenKey
-            android:id="@+id/candidate_height_setting_tenkey_preview"
+        <SeekBar
+            android:id="@+id/candidate_height_seekbar"
             android:layout_width="match_parent"
-            android:layout_height="280dp"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            android:layout_height="56dp"
+            android:layout_marginTop="8dp" />
+    </LinearLayout>
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+    <ScrollView
+        android:id="@+id/candidate_height_preview_scroll"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="12dp"
+        android:clipChildren="false"
+        android:clipToPadding="false"
+        android:fillViewport="true"
+        android:overScrollMode="ifContentScrolls"
+        android:paddingTop="12dp"
+        android:paddingBottom="18dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/candidate_height_numeric_controls">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clipChildren="false">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:id="@+id/candidate_height_setting_content"
+                android:layout_width="match_parent"
+                android:layout_height="338dp"
+                android:layout_gravity="bottom"
+                android:background="@color/keyboard_bg"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/candidate_height_setting_recyclerview"
+                    android:layout_width="match_parent"
+                    android:layout_height="58dp"
+                    android:background="@color/keyboard_bg"
+                    app:layout_constraintBottom_toTopOf="@+id/candidate_height_setting_tenkey_preview"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent" />
+
+                <View
+                    android:id="@+id/handle_top"
+                    android:layout_width="156dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/resize_handle"
+                    android:translationY="-12dp"
+                    app:layout_constraintEnd_toEndOf="@id/candidate_height_setting_recyclerview"
+                    app:layout_constraintStart_toStartOf="@id/candidate_height_setting_recyclerview"
+                    app:layout_constraintTop_toTopOf="@id/candidate_height_setting_recyclerview" />
+
+                <com.kazumaproject.tenkey.TenKey
+                    android:id="@+id/candidate_height_setting_tenkey_preview"
+                    android:layout_width="match_parent"
+                    android:layout_height="280dp"
+                    app:layout_constraintBottom_toBottomOf="parent" />
+
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </FrameLayout>
+    </ScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
