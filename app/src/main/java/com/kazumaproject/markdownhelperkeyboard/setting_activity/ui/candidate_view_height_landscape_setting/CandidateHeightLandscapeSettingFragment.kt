@@ -18,25 +18,27 @@ import android.widget.SeekBar
 import androidx.annotation.AttrRes
 import androidx.appcompat.R as AppCompatR
 import androidx.appcompat.widget.AppCompatImageButton
-import androidx.core.content.ContextCompat
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.window.layout.WindowMetricsCalculator
 import com.google.android.material.R as MaterialR
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentCandidateHeightLandscapeSettingBinding
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
-import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
+import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting.CandidateKeyboardPreviewViews
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting.CandidateHeightPreviewGridSpacingDecoration
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting.SuggestionAdapter2
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting.candidateKeyboardPreviewHeightPx
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting.clearItemDecorations
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting.createCandidateHeightPreviewCandidates
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.candidate_view_height_setting.renderCandidateKeyboardPreview
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecialKeyRepository
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import java.util.Locale
@@ -49,6 +51,12 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     @Inject
     lateinit var appPreference: AppPreference
 
+    @Inject
+    lateinit var keyboardRepository: KeyboardRepository
+
+    @Inject
+    lateinit var sumireSpecialKeyRepository: SumireSpecialKeyRepository
+
     private lateinit var suggestionAdapter: SuggestionAdapter2
 
     private var _binding: FragmentCandidateHeightLandscapeSettingBinding? = null
@@ -58,7 +66,6 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     private var isSyncingHeightControls = false
     private var isSyncingLetterSizeControls = false
     private var isSyncingColumnControls = false
-    private var simpleKeyboardPreview: View? = null
 
     private val minHeightDp = 30
     private val maxHeightDp = 300
@@ -115,7 +122,6 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
         super.onDestroyView()
         binding.candidateHeightSettingRecyclerview.adapter = null
         suggestionAdapter.release()
-        simpleKeyboardPreview = null
         _binding = null
     }
 
@@ -279,11 +285,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     }
 
     private fun keyboardPreviewHeightPx(): Int {
-        val layoutParams = binding.keyboardPreviewContainer.layoutParams
-        val marginParams = layoutParams as? ViewGroup.MarginLayoutParams
-        val previewHeight = layoutParams.height.takeIf { it > 0 }
-            ?: previewKeyboardLayoutConfig().heightDp.coerceIn(100, 420).dpToPx()
-        return previewHeight + (marginParams?.topMargin ?: 0) + (marginParams?.bottomMargin ?: 0)
+        return candidateKeyboardPreviewHeightPx(binding.keyboardPreviewContainer)
     }
 
     private fun syncHeightControls(heightDp: Int) {
@@ -601,194 +603,21 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
         }
     }
 
-    private data class PreviewKeyboardLayoutConfig(
-        val heightDp: Int,
-        val widthPercent: Int,
-        val bottomMarginDp: Int,
-        val positionIsEnd: Boolean,
-        val startMarginDp: Int,
-        val endMarginDp: Int
-    )
-
-    private fun previewKeyboardType(): KeyboardType =
-        appPreference.keyboard_order.firstOrNull() ?: KeyboardType.TENKEY
-
-    private fun previewKeyboardLayoutConfig(
-        type: KeyboardType = previewKeyboardType()
-    ): PreviewKeyboardLayoutConfig {
-        val useQwertySize = type == KeyboardType.QWERTY || type == KeyboardType.ROMAJI
-        return if (useQwertySize) {
-            PreviewKeyboardLayoutConfig(
-                heightDp = appPreference.qwerty_keyboard_height_landscape ?: 220,
-                widthPercent = appPreference.qwerty_keyboard_width_landscape ?: 100,
-                bottomMarginDp = appPreference.qwerty_keyboard_vertical_margin_bottom_landscape ?: 0,
-                positionIsEnd = appPreference.qwerty_keyboard_position_landscape ?: true,
-                startMarginDp = appPreference.qwerty_keyboard_margin_start_dp_landscape ?: 0,
-                endMarginDp = appPreference.qwerty_keyboard_margin_end_dp_landscape ?: 0
-            )
-        } else {
-            PreviewKeyboardLayoutConfig(
-                heightDp = appPreference.keyboard_height_landscape ?: 220,
-                widthPercent = appPreference.keyboard_width_landscape ?: 100,
-                bottomMarginDp = appPreference.keyboard_vertical_margin_bottom_landscape ?: 0,
-                positionIsEnd = appPreference.keyboard_position_landscape ?: true,
-                startMarginDp = appPreference.keyboard_margin_start_dp_landscape ?: 0,
-                endMarginDp = appPreference.keyboard_margin_end_dp_landscape ?: 0
-            )
-        }
-    }
-
-    private fun applyKeyboardPreviewLayout(type: KeyboardType = previewKeyboardType()) {
-        val config = previewKeyboardLayoutConfig(type)
-        val screenWidth = WindowMetricsCalculator.getOrCreate()
-            .computeCurrentWindowMetrics(requireActivity()).bounds.width()
-        val widthPercent = config.widthPercent.coerceIn(32, 100)
-        val widthPx = if (widthPercent >= 98) {
-            ViewGroup.LayoutParams.MATCH_PARENT
-        } else {
-            (screenWidth * (widthPercent / 100f)).roundToInt()
-        }
-        val layoutParams = binding.keyboardPreviewContainer.layoutParams as LinearLayout.LayoutParams
-        layoutParams.height = config.heightDp.coerceIn(100, 420).dpToPx()
-        layoutParams.width = widthPx
-        layoutParams.gravity = if (config.positionIsEnd) Gravity.END else Gravity.START
-        layoutParams.marginStart = if (config.positionIsEnd) 0 else config.startMarginDp.dpToPx()
-        layoutParams.marginEnd = if (config.positionIsEnd) config.endMarginDp.dpToPx() else 0
-        layoutParams.bottomMargin = config.bottomMarginDp.dpToPx()
-        binding.keyboardPreviewContainer.layoutParams = layoutParams
-    }
-
     private fun setupKeyboardPreview() {
-        val previewKeyboardType = previewKeyboardType()
-        applyKeyboardPreviewLayout(previewKeyboardType)
-        binding.candidateHeightSettingTenkeyPreview.apply {
-            setKeySizeScale(
-                appPreference.tenkey_key_width_scale_percent ?: 100,
-                appPreference.tenkey_key_height_scale_percent ?: 100
-            )
-            setUseThreeStateKeyboard(appPreference.tenkey_use_three_state_keyboard_preference)
-            setUseQwertyNumberWhenThreeStateOff(
-                appPreference.tenkey_switch_number_to_qwerty_number_preference
-            )
-            isClickable = false
-            isFocusable = false
-            setOnTouchListener { _, _ -> true }
-        }
-        binding.candidateHeightSettingQwertyPreview.apply {
-            if (previewKeyboardType == KeyboardType.ROMAJI) {
-                setRomajiKeyboard(getString(com.kazumaproject.core.R.string.return_japanese))
-            } else {
-                resetQWERTYKeyboard()
-            }
-            isClickable = false
-            isFocusable = false
-            setOnTouchListener { _, _ -> true }
-        }
-        when (previewKeyboardType) {
-            KeyboardType.TENKEY -> {
-                binding.candidateHeightSettingTenkeyPreview.isVisible = true
-                binding.candidateHeightSettingQwertyPreview.isVisible = false
-                simpleKeyboardPreview?.isVisible = false
-            }
-
-            KeyboardType.QWERTY,
-            KeyboardType.ROMAJI -> {
-                binding.candidateHeightSettingTenkeyPreview.isVisible = false
-                binding.candidateHeightSettingQwertyPreview.isVisible = true
-                simpleKeyboardPreview?.isVisible = false
-            }
-
-            else -> {
-                binding.candidateHeightSettingTenkeyPreview.isVisible = false
-                binding.candidateHeightSettingQwertyPreview.isVisible = false
-                val simplePreview =
-                    simpleKeyboardPreview ?: createSimpleKeyboardPreview(previewKeyboardType).also {
-                        it.tag = SIMPLE_KEYBOARD_PREVIEW_TAG
-                        binding.keyboardPreviewContainer.addView(
-                            it,
-                            ViewGroup.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT,
-                                ViewGroup.LayoutParams.MATCH_PARENT
-                            )
-                        )
-                        simpleKeyboardPreview = it
-                    }
-                simplePreview.isVisible = true
-            }
-        }
-    }
-
-    private fun createSimpleKeyboardPreview(type: KeyboardType): View {
-        val rows = when (type) {
-            KeyboardType.QWERTY -> listOf(
-                listOf("Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"),
-                listOf("A", "S", "D", "F", "G", "H", "J", "K", "L"),
-                listOf("Z", "X", "C", "V", "B", "N", "M")
-            )
-
-            KeyboardType.ROMAJI -> listOf(
-                listOf("あ", "か", "さ", "た", "な", "は", "ま", "や", "ら", "わ"),
-                listOf("A", "I", "U", "E", "O", "K", "S", "T", "N"),
-                listOf("Shift", "Space", "Enter")
-            )
-
-            KeyboardType.SUMIRE -> listOf(
-                listOf("あ", "い", "う", "え", "お"),
-                listOf("か", "き", "く", "け", "こ"),
-                listOf("さ", "し", "す", "せ", "そ")
-            )
-
-            KeyboardType.CUSTOM -> listOf(
-                listOf("Custom", "Key", "Layout"),
-                listOf("かな", "英数", "記号"),
-                listOf("Space", "Enter")
-            )
-
-            KeyboardType.TENKEY -> emptyList()
-        }
-        return LinearLayout(requireContext()).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
-            setPadding(8.dpToPx(), 8.dpToPx(), 8.dpToPx(), 8.dpToPx())
-            rows.forEach { row ->
-                addView(
-                    LinearLayout(requireContext()).apply {
-                        orientation = LinearLayout.HORIZONTAL
-                        gravity = Gravity.CENTER
-                        row.forEach { label ->
-                            addView(
-                                MaterialTextView(requireContext()).apply {
-                                    text = label
-                                    gravity = Gravity.CENTER
-                                    setTextColor(
-                                        ContextCompat.getColor(
-                                            requireContext(),
-                                            com.kazumaproject.core.R.color.main_text_color
-                                        )
-                                    )
-                                    textSize = 13f
-                                    maxLines = 1
-                                    background = keyPreviewBackground()
-                                },
-                                LinearLayout.LayoutParams(0, 0, 1f).apply {
-                                    height = 42.dpToPx()
-                                    marginStart = 2.dpToPx()
-                                    marginEnd = 2.dpToPx()
-                                }
-                            )
-                        }
-                    },
-                    LinearLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        0,
-                        1f
-                    ).apply {
-                        topMargin = 2.dpToPx()
-                        bottomMargin = 2.dpToPx()
-                    }
-                )
-            }
-        }
+        renderCandidateKeyboardPreview(
+            fragment = this,
+            appPreference = appPreference,
+            keyboardRepository = keyboardRepository,
+            sumireSpecialKeyRepository = sumireSpecialKeyRepository,
+            views = CandidateKeyboardPreviewViews(
+                container = binding.keyboardPreviewContainer,
+                tenKey = binding.candidateHeightSettingTenkeyPreview,
+                qwerty = binding.candidateHeightSettingQwertyPreview,
+                flick = binding.candidateHeightSettingFlickPreview
+            ),
+            isLandscape = true,
+            onPreviewLayoutChanged = ::applyCurrentDimensions
+        )
     }
 
     private fun previewTabView(label: String, selected: Boolean): MaterialTextView {
@@ -809,13 +638,6 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             )
         }
     }
-
-    private fun keyPreviewBackground(): GradientDrawable =
-        roundedBackground(
-            fillColor = resolveThemeColor(MaterialR.attr.colorSurfaceVariant),
-            strokeColor = resolveThemeColor(MaterialR.attr.colorOutline),
-            radiusDp = 6
-        )
 
     private fun roundedBackground(
         fillColor: Int,
@@ -848,8 +670,4 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
 
     private fun Int.dpToPx(): Int =
         (this * resources.displayMetrics.density).roundToInt()
-
-    companion object {
-        private const val SIMPLE_KEYBOARD_PREVIEW_TAG = "simple_keyboard_preview"
-    }
 }
