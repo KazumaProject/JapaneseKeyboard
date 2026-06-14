@@ -7,9 +7,6 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -17,16 +14,23 @@ import android.widget.LinearLayout
 import android.widget.SeekBar
 import androidx.annotation.AttrRes
 import androidx.appcompat.R as AppCompatR
+import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.R as MaterialR
+import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.card.MaterialCardView
+import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentCandidateViewHeightSettingBinding
+import com.kazumaproject.markdownhelperkeyboard.ime_service.CandidateStripPresentationPolicy
+import com.kazumaproject.markdownhelperkeyboard.ime_service.CandidateStripPresentationState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
@@ -51,6 +55,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
     lateinit var sumireSpecialKeyRepository: SumireSpecialKeyRepository
 
     private lateinit var suggestionAdapter: SuggestionAdapter2
+    private lateinit var bottomSheetBehavior: BottomSheetBehavior<MaterialCardView>
 
     private var _binding: FragmentCandidateViewHeightSettingBinding? = null
     private val binding get() = _binding!!
@@ -59,6 +64,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
     private var isSyncingHeightControls = false
     private var isSyncingLetterSizeControls = false
     private var isSyncingColumnControls = false
+    private var isSyncingDefaultHeightControls = false
 
     private val minHeightDp = 30
     private val maxHeightDp = 300
@@ -91,12 +97,15 @@ class CandidateViewHeightSettingFragment : Fragment() {
 
         setupMenu()
         setupAdapter()
+        setupInspectorBottomSheet()
+        setupInspectorTabs()
         setupColumnControls()
         setupResizeHandle()
         setupHeightSeekBar()
         setupHeightEditText()
         setupCandidateLetterSizeSeekBar()
         setupCandidateLetterSizeEditText()
+        setupDefaultHeightControls()
         setupKeyboardPreview()
         setSuggestionView()
 
@@ -108,38 +117,103 @@ class CandidateViewHeightSettingFragment : Fragment() {
         applyCandidateTextSize(appPreference.candidate_letter_size ?: defaultCandidateTextSize, persist = false)
         updateCandidateListAndHeight()
         applyHeightDp(selectedHeightDp(), persist = false)
+        syncDefaultHeightControls()
+        updateInspectorSummary()
     }
 
     override fun onDestroyView() {
         super.onDestroyView()
+        (activity as? AppCompatActivity)?.supportActionBar?.show()
         binding.candidateHeightSettingRecyclerview.adapter = null
         suggestionAdapter.release()
         _binding = null
     }
 
     private fun setupMenu() {
-        val menuHost: androidx.core.view.MenuHost = requireActivity()
-        menuHost.addMenuProvider(object : androidx.core.view.MenuProvider {
-            override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
-                menuInflater.inflate(R.menu.fragment_reset_menu, menu)
-            }
-
-            override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
-                return when (menuItem.itemId) {
-                    R.id.action_reset -> {
-                        resetSettings()
-                        true
-                    }
-
-                    android.R.id.home -> {
-                        parentFragmentManager.popBackStack()
-                        true
-                    }
-
-                    else -> false
+        (activity as? AppCompatActivity)?.supportActionBar?.hide()
+        binding.toolbar.setNavigationIcon(AppCompatR.drawable.abc_ic_ab_back_material)
+        binding.toolbar.setNavigationOnClickListener {
+            parentFragmentManager.popBackStack()
+        }
+        binding.toolbar.inflateMenu(R.menu.fragment_reset_menu)
+        binding.toolbar.setOnMenuItemClickListener { menuItem ->
+            when (menuItem.itemId) {
+                R.id.action_candidate_default_height -> {
+                    openDefaultHeightInspector()
+                    true
                 }
+
+                R.id.action_reset -> {
+                    resetSettings()
+                    true
+                }
+
+                else -> false
             }
-        }, viewLifecycleOwner, Lifecycle.State.RESUMED)
+        }
+    }
+
+    private fun setupInspectorBottomSheet() {
+        bottomSheetBehavior = BottomSheetBehavior.from(binding.inspectorBottomSheet).apply {
+            peekHeight = 72.dpToPx()
+            isFitToContents = false
+            halfExpandedRatio = 0.4f
+            state = BottomSheetBehavior.STATE_HALF_EXPANDED
+            addBottomSheetCallback(
+                object : BottomSheetBehavior.BottomSheetCallback() {
+                    override fun onStateChanged(bottomSheet: View, newState: Int) {
+                        updatePreviewCanvasBottomPadding(visibleSheetHeightPx(bottomSheet))
+                    }
+
+                    override fun onSlide(bottomSheet: View, slideOffset: Float) {
+                        updatePreviewCanvasBottomPadding(visibleSheetHeightPx(bottomSheet))
+                    }
+                }
+            )
+        }
+        binding.inspectorBottomSheet.post {
+            updatePreviewCanvasBottomPadding(visibleSheetHeightPx(binding.inspectorBottomSheet))
+        }
+    }
+
+    private fun setupInspectorTabs() {
+        binding.candidateInspectorTabGroup.check(R.id.candidate_tab_height_button)
+        binding.candidateInspectorTabGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
+            if (!isChecked) return@addOnButtonCheckedListener
+            showInspectorTab(checkedId)
+        }
+        showInspectorTab(R.id.candidate_tab_height_button)
+    }
+
+    private fun openDefaultHeightInspector() {
+        binding.candidateInspectorTabGroup.check(R.id.candidate_tab_default_button)
+        syncDefaultHeightControls()
+        bottomSheetBehavior.state = BottomSheetBehavior.STATE_HALF_EXPANDED
+    }
+
+    private fun showInspectorTab(checkedId: Int) {
+        binding.heightControlsContainer.isVisible = checkedId == R.id.candidate_tab_height_button
+        binding.textControlsContainer.isVisible = checkedId == R.id.candidate_tab_text_button
+        binding.defaultControlsContainer.isVisible =
+            checkedId == R.id.candidate_tab_default_button
+        if (checkedId == R.id.candidate_tab_default_button) {
+            syncDefaultHeightControls()
+        }
+    }
+
+    private fun visibleSheetHeightPx(bottomSheet: View): Int {
+        val parentHeight = (binding.root as View).height
+        if (parentHeight <= 0) return 0
+        return (parentHeight - bottomSheet.top).coerceAtLeast(0)
+    }
+
+    private fun updatePreviewCanvasBottomPadding(sheetVisibleHeightPx: Int) {
+        binding.previewCanvas.setPadding(
+            binding.previewCanvas.paddingLeft,
+            binding.previewCanvas.paddingTop,
+            binding.previewCanvas.paddingRight,
+            sheetVisibleHeightPx
+        )
     }
 
     private fun setupAdapter() {
@@ -183,20 +257,19 @@ class CandidateViewHeightSettingFragment : Fragment() {
             setSuggestionView()
             syncColumnControls()
             applyHeightDp(selectedHeightDp(), persist = false)
+            updateInspectorSummary()
         }
     }
 
     private fun resetSettings() {
-        appPreference.setCandidateVisibleHeightDp(isLandscape = false, column = "1", heightDp = 110)
-        appPreference.setCandidateVisibleHeightDp(isLandscape = false, column = "2", heightDp = 165)
-        appPreference.setCandidateVisibleHeightDp(isLandscape = false, column = "3", heightDp = 230)
-        appPreference.candidate_view_empty_height_dp = 110
+        appPreference.resetCandidateVisibleHeightsToUserDefaults(isLandscape = false)
         appPreference.syncActiveCandidateVisibleHeightToImePreference(isLandscape = false)
         appPreference.candidate_letter_size = defaultCandidateTextSize
         applyCandidateTextSize(defaultCandidateTextSize, persist = false)
         syncColumnControls()
         updateCandidateListAndHeight()
         applyHeightDp(selectedHeightDp(), persist = false)
+        updateInspectorSummary()
     }
 
     private fun updateCandidateListAndHeight() {
@@ -210,6 +283,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
         updateCandidateTabPreview()
         updateShortcutToolbarPreview()
         applyHeightDp(selectedHeightDp(), persist = false)
+        updateInspectorSummary()
     }
 
     private fun setSuggestionView() {
@@ -267,6 +341,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
                 column = appPreference.getCandidateColumn(isLandscape = false),
                 heightDp = clamped
             )
+            appPreference.syncActiveCandidateVisibleHeightToImePreference(isLandscape = false)
         } else {
             appPreference.candidate_view_empty_height_dp = clamped
         }
@@ -280,21 +355,22 @@ class CandidateViewHeightSettingFragment : Fragment() {
             saveSelectedHeightDp(clamped)
         }
         syncHeightControls(clamped)
+        updateInspectorSummary()
     }
 
     private fun updatePreviewHeightPx(candidateHeightPx: Int) {
+        val presentation = resolveCandidateHeightPreviewPresentation()
         binding.candidatePreviewFrame.layoutParams =
             binding.candidatePreviewFrame.layoutParams.apply {
                 height = candidateHeightPx
             }
         binding.candidateHeightSettingContent.layoutParams =
             binding.candidateHeightSettingContent.layoutParams.apply {
-                height = candidateHeightPx + shortcutToolbarHeightPx() + keyboardPreviewHeightPx()
+                height = presentation.candidateTabOffsetPx +
+                    candidateHeightPx +
+                    presentation.independentShortcutToolbarHeightPx +
+                    keyboardPreviewHeightPx()
             }
-    }
-
-    private fun shortcutToolbarHeightPx(): Int {
-        return if (binding.independentShortcutToolbarPreviewContainer.isVisible) 36.dpToPx() else 0
     }
 
     private fun keyboardPreviewHeightPx(): Int {
@@ -415,6 +491,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
             appPreference.candidate_letter_size = clamped
         }
         syncCandidateLetterSizeControls(clamped)
+        updateInspectorSummary()
     }
 
     private fun syncCandidateLetterSizeControls(size: Float) {
@@ -433,6 +510,124 @@ class CandidateViewHeightSettingFragment : Fragment() {
         } finally {
             isSyncingLetterSizeControls = false
         }
+    }
+
+    private fun setupDefaultHeightControls() {
+        binding.saveDefaultsButton.setOnClickListener {
+            saveDefaultHeightsFromInputs()
+        }
+        binding.useCurrentDefaultsButton.setOnClickListener {
+            appPreference.copyCandidateVisibleHeightsToUserDefaults(isLandscape = false)
+            syncDefaultHeightControls()
+        }
+        binding.restoreFactoryDefaultsButton.setOnClickListener {
+            appPreference.resetCandidateDefaultVisibleHeightsToFactoryDefaults(isLandscape = false)
+            syncDefaultHeightControls()
+        }
+        listOf(
+            binding.defaultHeightOneEditText,
+            binding.defaultHeightTwoEditText,
+            binding.defaultHeightThreeEditText
+        ).forEach { editText ->
+            editText.setOnEditorActionListener { _, _, _ ->
+                saveDefaultHeightsFromInputs()
+                false
+            }
+        }
+    }
+
+    private fun saveDefaultHeightsFromInputs(): Boolean {
+        if (isSyncingDefaultHeightControls) return false
+        val one = readDefaultHeightInput(
+            binding.defaultHeightOneInputLayout,
+            binding.defaultHeightOneEditText
+        ) ?: return false
+        val two = readDefaultHeightInput(
+            binding.defaultHeightTwoInputLayout,
+            binding.defaultHeightTwoEditText
+        ) ?: return false
+        val three = readDefaultHeightInput(
+            binding.defaultHeightThreeInputLayout,
+            binding.defaultHeightThreeEditText
+        ) ?: return false
+
+        appPreference.setCandidateDefaultVisibleHeightDp(
+            isLandscape = false,
+            column = "1",
+            heightDp = one
+        )
+        appPreference.setCandidateDefaultVisibleHeightDp(
+            isLandscape = false,
+            column = "2",
+            heightDp = two
+        )
+        appPreference.setCandidateDefaultVisibleHeightDp(
+            isLandscape = false,
+            column = "3",
+            heightDp = three
+        )
+        syncDefaultHeightControls()
+        return true
+    }
+
+    private fun readDefaultHeightInput(
+        inputLayout: TextInputLayout,
+        editText: TextInputEditText
+    ): Int? {
+        val value = editText.text?.toString()?.trim()?.toIntOrNull()
+        if (value == null) {
+            inputLayout.error = getString(R.string.candidate_height_invalid_value)
+            return null
+        }
+        inputLayout.error = null
+        return value.coerceIn(minHeightDp, maxHeightDp)
+    }
+
+    private fun syncDefaultHeightControls() {
+        if (isSyncingDefaultHeightControls) return
+        isSyncingDefaultHeightControls = true
+        try {
+            setDefaultHeightText(
+                binding.defaultHeightOneInputLayout,
+                binding.defaultHeightOneEditText,
+                appPreference.getCandidateDefaultVisibleHeightDp(isLandscape = false, column = "1")
+            )
+            setDefaultHeightText(
+                binding.defaultHeightTwoInputLayout,
+                binding.defaultHeightTwoEditText,
+                appPreference.getCandidateDefaultVisibleHeightDp(isLandscape = false, column = "2")
+            )
+            setDefaultHeightText(
+                binding.defaultHeightThreeInputLayout,
+                binding.defaultHeightThreeEditText,
+                appPreference.getCandidateDefaultVisibleHeightDp(isLandscape = false, column = "3")
+            )
+        } finally {
+            isSyncingDefaultHeightControls = false
+        }
+    }
+
+    private fun setDefaultHeightText(
+        inputLayout: TextInputLayout,
+        editText: TextInputEditText,
+        heightDp: Int
+    ) {
+        val text = heightDp.coerceIn(minHeightDp, maxHeightDp).toString()
+        if (editText.text?.toString() != text) {
+            editText.setText(text)
+            editText.setSelection(text.length)
+        }
+        inputLayout.error = null
+    }
+
+    private fun updateInspectorSummary(heightDp: Int = selectedHeightDp()) {
+        val textSize = appPreference.candidate_letter_size ?: defaultCandidateTextSize
+        binding.inspectorSummaryText.text = getString(
+            R.string.candidate_height_sheet_summary_format,
+            appPreference.getCandidateColumn(isLandscape = false),
+            heightDp.coerceIn(minHeightDp, maxHeightDp).toString(),
+            String.format(Locale.US, "%.1f", textSize)
+        )
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -463,6 +658,7 @@ class CandidateViewHeightSettingFragment : Fragment() {
                         (newHeight / density).roundToInt().coerceIn(minHeightDp, maxHeightDp)
                     updatePreviewHeightPx(currentHeightDp.dpToPx())
                     syncHeightControls(currentHeightDp)
+                    updateInspectorSummary(currentHeightDp)
                     binding.candidatePreviewFrame.requestLayout()
                     binding.candidateHeightSettingContent.requestLayout()
                     true
@@ -525,9 +721,9 @@ class CandidateViewHeightSettingFragment : Fragment() {
         }
 
     private fun updateCandidateTabPreview() {
-        val showCandidateTab = appPreference.candidate_tab_preference && isCandidateListVisible
-        binding.candidateTabPreviewContainer.isVisible = showCandidateTab
-        if (!showCandidateTab) return
+        val presentation = resolveCandidateHeightPreviewPresentation()
+        binding.candidateTabPreviewContainer.isVisible = presentation.showCandidateTab
+        if (!presentation.showCandidateTab) return
 
         binding.candidateTabPreviewContainer.removeAllViews()
         val tabs = runCatching { appPreference.candidate_tab_order }
@@ -541,65 +737,91 @@ class CandidateViewHeightSettingFragment : Fragment() {
     }
 
     private fun updateShortcutToolbarPreview() {
-        val state = resolvePreviewShortcutToolbarState()
-        binding.independentShortcutToolbarPreviewContainer.isVisible = state.showIndependentToolbar
-        binding.integratedShortcutToolbarPreviewContainer.isVisible = state.showIntegratedShortcuts
-        if (state.showIndependentToolbar) {
-            populateShortcutToolbarPreview(binding.independentShortcutToolbarPreviewContainer)
+        val presentation = resolveCandidateHeightPreviewPresentation()
+        when {
+            presentation.showIndependentShortcutToolbar -> {
+                binding.independentShortcutToolbarPreviewContainer.isVisible = true
+                populateShortcutToolbarPreview(binding.independentShortcutToolbarPreviewContainer)
+            }
+
+            presentation.reserveIndependentShortcutToolbarSpace -> {
+                binding.independentShortcutToolbarPreviewContainer.isInvisible = true
+            }
+
+            else -> {
+                binding.independentShortcutToolbarPreviewContainer.isVisible = false
+            }
         }
-        if (state.showIntegratedShortcuts) {
-            populateShortcutToolbarPreview(binding.integratedShortcutToolbarPreviewContainer)
-        }
+        suggestionAdapter.setShortcutItems(previewShortcutItems())
+        suggestionAdapter.setIntegratedShortcutVisibility(presentation.showIntegratedShortcut)
     }
 
-    private data class PreviewShortcutToolbarState(
-        val showIndependentToolbar: Boolean,
-        val showIntegratedShortcuts: Boolean
+    private data class CandidateHeightPreviewPresentation(
+        val showCandidateTab: Boolean,
+        val showIndependentShortcutToolbar: Boolean,
+        val reserveIndependentShortcutToolbarSpace: Boolean,
+        val showIntegratedShortcut: Boolean,
+        val candidateTabOffsetPx: Int,
+        val independentShortcutToolbarHeightPx: Int
     )
 
-    private fun resolvePreviewShortcutToolbarState(): PreviewShortcutToolbarState {
-        val visible = appPreference.shortcut_toolbar_visibility_preference
-        val integrated = appPreference.shortcut_toolbar_integrated_in_suggestion_preference
-        if (!visible) {
-            return PreviewShortcutToolbarState(
-                showIndependentToolbar = false,
-                showIntegratedShortcuts = false
-            )
-        }
-        if (!integrated) {
-            return PreviewShortcutToolbarState(
-                showIndependentToolbar = true,
-                showIntegratedShortcuts = false
-            )
-        }
+    private fun resolveCandidateHeightPreviewPresentation(): CandidateHeightPreviewPresentation {
         val inputStringEmpty = !isCandidateListVisible
         val tailEmpty = true
         val clipboardPreviewShown = false
         val selectedTextGemmaActionsShown = false
         val suggestionsEmpty = !isCandidateListVisible
         val customLayoutPickerShown = false
-        val showIntegrated =
-            inputStringEmpty &&
-                tailEmpty &&
-                !clipboardPreviewShown &&
-                !selectedTextGemmaActionsShown &&
-                suggestionsEmpty &&
-                !customLayoutPickerShown
-        return PreviewShortcutToolbarState(
-            showIndependentToolbar = false,
-            showIntegratedShortcuts = showIntegrated
+        val presentation = CandidateStripPresentationPolicy.resolve(
+            CandidateStripPresentationState(
+                candidateTabVisible = appPreference.candidate_tab_preference,
+                candidatesShown = isCandidateListVisible,
+                resetCandidateTabSelection = false,
+                shortcutToolbarVisible = appPreference.shortcut_toolbar_visibility_preference,
+                shortcutToolbarIntegratedInSuggestion =
+                    appPreference.shortcut_toolbar_integrated_in_suggestion_preference,
+                inputStringEmpty = inputStringEmpty,
+                tailEmpty = tailEmpty,
+                clipboardPreviewShown = clipboardPreviewShown,
+                selectedTextGemmaActionsShown = selectedTextGemmaActionsShown,
+                suggestionsEmpty = suggestionsEmpty,
+                customLayoutPickerShown = customLayoutPickerShown,
+                symbolKeyboardShown = false,
+                shortcutToolbarHiddenForCandidates = false
+            )
+        )
+        val independentHeightPx =
+            if (
+                presentation.showIndependentShortcutToolbar ||
+                presentation.reserveIndependentShortcutToolbarSpace
+            ) {
+                36.dpToPx()
+            } else {
+                0
+            }
+        return CandidateHeightPreviewPresentation(
+            showCandidateTab = presentation.showCandidateTab,
+            showIndependentShortcutToolbar = presentation.showIndependentShortcutToolbar,
+            reserveIndependentShortcutToolbarSpace =
+                presentation.reserveIndependentShortcutToolbarSpace,
+            showIntegratedShortcut = presentation.showIntegratedShortcut,
+            candidateTabOffsetPx = if (presentation.showCandidateTab) 36.dpToPx() else 0,
+            independentShortcutToolbarHeightPx = independentHeightPx
         )
     }
 
-    private fun populateShortcutToolbarPreview(container: LinearLayout) {
-        container.removeAllViews()
+    private fun previewShortcutItems(): List<ShortcutType> =
         listOf(
             ShortcutType.SETTINGS,
             ShortcutType.EMOJI,
             ShortcutType.TEMPLATE,
             ShortcutType.KEYBOARD_PICKER,
             ShortcutType.PASTE
-        ).forEach { shortcut ->
+        )
+
+    private fun populateShortcutToolbarPreview(container: LinearLayout) {
+        container.removeAllViews()
+        previewShortcutItems().forEach { shortcut ->
             val button = AppCompatImageButton(requireContext()).apply {
                 setImageResource(shortcut.iconResId)
                 imageTintList = ColorStateList.valueOf(resolveThemeColor(MaterialR.attr.colorOnSurface))

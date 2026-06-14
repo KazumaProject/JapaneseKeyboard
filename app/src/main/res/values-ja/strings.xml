@@ -626,6 +626,16 @@
     <string name="candidate_height_input_hint">変換欄の高さ（dp）</string>
     <string name="candidate_height_range_helper">30-300 dp</string>
     <string name="candidate_height_invalid_value">正しい高さを入力してください</string>
+    <string name="candidate_default_height_menu_title">リセット時の高さ</string>
+    <string name="candidate_height_tab_height">高さ</string>
+    <string name="candidate_height_tab_text">文字</string>
+    <string name="candidate_height_tab_default">デフォルト</string>
+    <string name="candidate_default_height_title">リセット時の高さ</string>
+    <string name="candidate_default_height_description">リセットボタンを押した時に戻る高さを設定します。</string>
+    <string name="candidate_default_height_use_current">現在の高さをデフォルトにする</string>
+    <string name="candidate_default_height_restore_factory">アプリ初期値に戻す</string>
+    <string name="candidate_default_height_save">保存</string>
+    <string name="candidate_height_sheet_summary_format">%1$s列 / %2$sdp / %3$ssp</string>
     <string name="candidate_preview_input_mode">入力時プレビュー</string>
     <string name="candidate_preview_empty_mode">未入力時プレビュー</string>
     <string name="candidate_column_count_label">候補欄の列数</string>
