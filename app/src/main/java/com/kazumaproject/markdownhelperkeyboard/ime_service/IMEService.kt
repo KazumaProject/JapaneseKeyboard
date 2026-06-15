@@ -2357,7 +2357,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchInkMotionEvent(
                         event = event,
                         sourceRoot = mainView.root,
-                        targetContainer = mainView.keyboardBackgroundContainer,
+                        targetContainer = mainView.keyboardTouchEffectContainer,
                         inkView = mainView.suminagashiInkView
                     )
                 }
@@ -2368,7 +2368,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchLiquidRippleMotionEvent(
                         event = event,
                         sourceRoot = mainView.root,
-                        targetContainer = mainView.keyboardBackgroundContainer,
+                        targetContainer = mainView.keyboardTouchEffectContainer,
                         rippleView = mainView.liquidRippleEffectView
                     )
                 }
@@ -2379,7 +2379,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchSprayPaintMotionEvent(
                         event = event,
                         sourceRoot = mainView.root,
-                        targetContainer = mainView.keyboardBackgroundContainer,
+                        targetContainer = mainView.keyboardTouchEffectContainer,
                         sprayView = mainView.sprayPaintEffectView
                     )
                 }
@@ -2455,7 +2455,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchInkMotionEvent(
                         event = event,
                         sourceRoot = floatingView.root,
-                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        targetContainer = floatingView.floatingKeyboardTouchEffectContainer,
                         inkView = floatingView.floatingSuminagashiInkView
                     )
                 }
@@ -2466,7 +2466,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchLiquidRippleMotionEvent(
                         event = event,
                         sourceRoot = floatingView.root,
-                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        targetContainer = floatingView.floatingKeyboardTouchEffectContainer,
                         rippleView = floatingView.floatingLiquidRippleEffectView
                     )
                 }
@@ -2477,7 +2477,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchSprayPaintMotionEvent(
                         event = event,
                         sourceRoot = floatingView.root,
-                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        targetContainer = floatingView.floatingKeyboardTouchEffectContainer,
                         sprayView = floatingView.floatingSprayPaintEffectView
                     )
                 }
@@ -2772,8 +2772,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         applyHeight(floatingView.floatingKeyboardContent.height.takeIf { it > 0 } ?: fallbackHeight
         ?: 0)
+        updateFloatingKeyboardTouchEffectBounds(floatingView)
         floatingView.root.post {
             applyHeight(floatingView.floatingKeyboardContent.height)
+            updateFloatingKeyboardTouchEffectBounds(floatingView)
             updateLuminousBlobEffectBounds(
                 blobView = floatingView.floatingLuminousBlobEffectView,
                 heightPx = resolveFloatingLuminousBlobKeyboardAreaHeight(
@@ -2782,6 +2784,62 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             )
         }
+    }
+
+    private fun updateFloatingKeyboardTouchEffectBounds(
+        floatingView: FloatingKeyboardLayoutBinding
+    ) {
+        val target = when {
+            floatingView.floatingSymbolKeyboard.isVisible -> floatingView.floatingSymbolKeyboard
+            floatingView.candidatesRowView.isVisible -> floatingView.candidatesRowView
+            else -> floatingView.floatingKeyboardContainer
+        }
+
+        fun applyBounds() {
+            if (target.width <= 0 || target.height <= 0) return
+
+            val rootLocation = IntArray(2)
+            val targetLocation = IntArray(2)
+            floatingView.root.getLocationInWindow(rootLocation)
+            target.getLocationInWindow(targetLocation)
+
+            val params =
+                floatingView.floatingKeyboardTouchEffectContainer.layoutParams as? FrameLayout.LayoutParams
+                    ?: return
+            var changed = false
+            val left = targetLocation[0] - rootLocation[0]
+            val top = targetLocation[1] - rootLocation[1]
+
+            if (params.width != target.width) {
+                params.width = target.width
+                changed = true
+            }
+            if (params.height != target.height) {
+                params.height = target.height
+                changed = true
+            }
+            if (params.leftMargin != left) {
+                params.leftMargin = left
+                changed = true
+            }
+            if (params.topMargin != top) {
+                params.topMargin = top
+                changed = true
+            }
+
+            val expectedGravity = Gravity.TOP or Gravity.START
+            if (params.gravity != expectedGravity) {
+                params.gravity = expectedGravity
+                changed = true
+            }
+
+            if (changed) {
+                floatingView.floatingKeyboardTouchEffectContainer.layoutParams = params
+            }
+        }
+
+        applyBounds()
+        floatingView.root.post { applyBounds() }
     }
 
     private fun updateLuminousBlobEffectBounds(
@@ -4275,6 +4333,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             updateFloatingKeyboardBackgroundBounds(floatingKeyboardLayoutBinding, heightPx)
             updateFloatingFullCandidatesHeight(floatingKeyboardLayoutBinding, heightPx)
+            updateFloatingKeyboardTouchEffectBounds(floatingKeyboardLayoutBinding)
         }
 
         keyboardContainer?.let { container ->
@@ -13282,6 +13341,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = false
                             renderCurrentKeyboardStateOnActiveSurface()
                         }
+                        updateFloatingKeyboardTouchEffectBounds(floatingKeyboardLayoutBinding)
                     }
                 } else {
                     setKeyboardSizeForHeightSymbol(mainView, isSymbolKeyboardShow.isShown)
@@ -14410,6 +14470,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun updateNormalKeyboardTouchEffectBounds(
+        mainView: MainLayoutBinding,
+        keyboardBodyHeightPx: Int
+    ) {
+        if (keyboardBodyHeightPx <= 0) return
+
+        val container = mainView.keyboardTouchEffectContainer
+        val params = container.layoutParams as? FrameLayout.LayoutParams ?: return
+        var changed = false
+
+        if (params.height != keyboardBodyHeightPx) {
+            params.height = keyboardBodyHeightPx
+            changed = true
+        }
+
+        if (params.gravity != Gravity.BOTTOM) {
+            params.gravity = Gravity.BOTTOM
+            changed = true
+        }
+
+        if (changed) {
+            container.layoutParams = params
+        }
+    }
+
     private fun applyKeyboardLayoutParameters(
         mainView: MainLayoutBinding,
         heightPx: Int,
@@ -14459,6 +14544,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateNormalKeyboardBackgroundBounds(
             mainView = mainView,
             heightPx = backgroundSurfaceHeight
+        )
+        updateNormalKeyboardTouchEffectBounds(
+            mainView = mainView,
+            keyboardBodyHeightPx = heightPx
         )
         updateLuminousBlobEffectBounds(
             blobView = mainView.luminousBlobEffectView,
@@ -14633,6 +14722,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView = mainView,
             heightPx = backgroundSurfaceHeight
         )
+        updateNormalKeyboardTouchEffectBounds(
+            mainView = mainView,
+            keyboardBodyHeightPx = heightPx
+        )
         updateLuminousBlobEffectBounds(
             blobView = mainView.luminousBlobEffectView,
             heightPx = heightPx
@@ -14711,6 +14804,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.suggestionVisibility.apply {
                     this.setImageDrawable(if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable)
                 }
+                updateFloatingKeyboardTouchEffectBounds(floatingKeyboardLayoutBinding)
+                floatingKeyboardLayoutBinding.root.postDelayed(
+                    { updateFloatingKeyboardTouchEffectBounds(floatingKeyboardLayoutBinding) },
+                    240L
+                )
             }
         }
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
@@ -16917,7 +17015,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (keyboardSymbolViewState.value.isShown) {
             _keyboardSymbolViewState.value = SymbolKeyboardState()
         }
-        floatingKeyboardBinding?.floatingSymbolKeyboard?.isVisible = false
+        floatingKeyboardBinding?.let { floatingView ->
+            floatingView.floatingSymbolKeyboard.isVisible = false
+            updateFloatingKeyboardTouchEffectBounds(floatingView)
+        }
     }
 
     private fun currentKeyboardLayoutEditOrientation(): KeyboardLayoutEditOrientation {
