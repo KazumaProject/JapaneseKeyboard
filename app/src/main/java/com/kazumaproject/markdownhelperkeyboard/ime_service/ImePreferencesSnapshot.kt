@@ -108,6 +108,8 @@ data class ImePreferencesSnapshot(
     val landscapeForceQwertyRomajiPreference: Boolean,
     val shortcutTollbarVisibility: Boolean,
     val shortcutToolbarIntegratedInSuggestion: Boolean,
+    val shortcutToolbarHeightDp: Int,
+    val shortcutToolbarIconSizeDp: Int,
     val isDeleteLeftFlickPreference: Boolean,
     val isDeleteUpFlickPreference: Boolean,
     val isDeleteDownFlickPreference: Boolean,
@@ -387,6 +389,10 @@ data class ImePreferencesSnapshot(
                     appPreference.shortcut_toolbar_visibility_preference,
                 shortcutToolbarIntegratedInSuggestion =
                     appPreference.shortcut_toolbar_integrated_in_suggestion_preference,
+                shortcutToolbarHeightDp =
+                    appPreference.shortcut_toolbar_height_dp_preference,
+                shortcutToolbarIconSizeDp =
+                    appPreference.shortcut_toolbar_icon_size_dp_preference,
                 isDeleteLeftFlickPreference = appPreference.delete_key_left_flick_preference,
                 isDeleteUpFlickPreference = appPreference.delete_key_up_flick_preference,
                 isDeleteDownFlickPreference = appPreference.delete_key_down_flick_preference,

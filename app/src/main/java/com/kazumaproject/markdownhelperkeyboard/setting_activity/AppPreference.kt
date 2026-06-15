@@ -34,6 +34,12 @@ object AppPreference {
 
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR = 0x00000000
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR = 0xFFF0F0F3.toInt()
+    const val SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP = 36
+    const val SHORTCUT_TOOLBAR_HEIGHT_MIN_DP = 32
+    const val SHORTCUT_TOOLBAR_HEIGHT_MAX_DP = 72
+    const val SHORTCUT_TOOLBAR_ICON_SIZE_DEFAULT_DP = 28
+    const val SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP = 18
+    const val SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP = 56
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -299,6 +305,10 @@ object AppPreference {
         Pair("shortcut_toolbar_visibility_preference", false)
     private val SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE =
         Pair("shortcut_toolbar_integrated_in_suggestion_preference", false)
+    private val SHORTCUT_TOOLBAR_HEIGHT_DP_PREFERENCE =
+        Pair("shortcut_toolbar_height_dp_preference", SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP)
+    private val SHORTCUT_TOOLBAR_ICON_SIZE_DP_PREFERENCE =
+        Pair("shortcut_toolbar_icon_size_dp_preference", SHORTCUT_TOOLBAR_ICON_SIZE_DEFAULT_DP)
 
     private val APP_THEME_SEED_COLOR = Pair("app_theme_seed_color_preference", 0x00000000)
 
@@ -694,6 +704,28 @@ object AppPreference {
         return runCatching {
             preferences.getInt(key, defaultValue)
         }.getOrDefault(defaultValue)
+    }
+
+    fun resolveShortcutToolbarIconSizeDp(
+        toolbarHeightDp: Int = shortcut_toolbar_height_dp_preference,
+        iconSizeDp: Int = shortcut_toolbar_icon_size_dp_preference
+    ): Int {
+        val resolvedToolbarHeightDp = toolbarHeightDp.coerceIn(
+            SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+            SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+        )
+        val resolvedIconSizeDp = iconSizeDp.coerceIn(
+            SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP,
+            SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP
+        )
+        val maxIconSizeForHeightDp = (resolvedToolbarHeightDp - 8)
+            .coerceAtLeast(SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP)
+        return resolvedIconSizeDp
+            .coerceAtMost(maxIconSizeForHeightDp)
+            .coerceIn(
+                SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP,
+                SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP
+            )
     }
 
     private fun normalizeCandidateColumn(column: String): String =
@@ -1937,6 +1969,42 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE.first, value)
+        }
+
+    var shortcut_toolbar_height_dp_preference: Int
+        get() = preferences.getInt(
+            SHORTCUT_TOOLBAR_HEIGHT_DP_PREFERENCE.first,
+            SHORTCUT_TOOLBAR_HEIGHT_DP_PREFERENCE.second
+        ).coerceIn(
+            SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+            SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                SHORTCUT_TOOLBAR_HEIGHT_DP_PREFERENCE.first,
+                value.coerceIn(
+                    SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+                    SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+                )
+            )
+        }
+
+    var shortcut_toolbar_icon_size_dp_preference: Int
+        get() = preferences.getInt(
+            SHORTCUT_TOOLBAR_ICON_SIZE_DP_PREFERENCE.first,
+            SHORTCUT_TOOLBAR_ICON_SIZE_DP_PREFERENCE.second
+        ).coerceIn(
+            SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP,
+            SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                SHORTCUT_TOOLBAR_ICON_SIZE_DP_PREFERENCE.first,
+                value.coerceIn(
+                    SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP,
+                    SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP
+                )
+            )
         }
 
     var seedColor: Int

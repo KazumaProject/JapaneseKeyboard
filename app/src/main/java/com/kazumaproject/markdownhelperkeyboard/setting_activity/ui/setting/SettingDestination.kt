@@ -428,6 +428,7 @@ object SettingDestinations {
         "shortcut_toolbar_visibility_preference",
         "shortcut_toolbar_integrated_in_suggestion_preference",
         "shortcut_toolbar_item_preference",
+        "shortcut_toolbar_size_setting_fragment_preference",
         "symbol_mode_preference",
         "default_emoji_skin_tone_preference",
         "system_user_dictionary_builder_preference",
@@ -661,6 +662,8 @@ object SettingDestinations {
             "setting_route_gemma_preferences" -> R.id.gemmaPreferenceFragment.takeIf { AppVariantConfig.hasGemma }
             "custom_romaji_preference" -> R.id.romajiMapFragment
             "shortcut_toolbar_item_preference" -> R.id.shortcutSettingFragment
+            "shortcut_toolbar_size_setting_fragment_preference" ->
+                R.id.shortcutToolbarSizeSettingFragment
             "candidate_tab_order_preference" -> R.id.candidateTabOrderFragment
             "keyboard_selection_preference" -> R.id.keyboardSelectionFragment
             "keyboard_key_letter_size_fragment_preference" -> R.id.keyCandidateLetterSizeFragment
