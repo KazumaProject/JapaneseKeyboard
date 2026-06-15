@@ -103,6 +103,8 @@ internal class SprayPaintRenderer(
 
     override fun resizeSurface(width: Int, height: Int) {
         postOnRenderer {
+            if (width <= 0 || height <= 0) return@postOnRenderer
+            if (width == surfaceWidth && height == surfaceHeight) return@postOnRenderer
             if (released || egl == null || !settings.enabled) return@postOnRenderer
             runRendererCatching("resize spray paint surface") {
                 surfaceWidth = width

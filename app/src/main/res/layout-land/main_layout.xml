@@ -31,6 +31,16 @@
             android:contentDescription="@null"
             android:scaleType="fitCenter"
             android:visibility="gone" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/keyboard_touch_effect_container"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height"
+        android:layout_gravity="bottom"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no">
 
         <com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
             android:id="@+id/suminagashi_ink_view"
