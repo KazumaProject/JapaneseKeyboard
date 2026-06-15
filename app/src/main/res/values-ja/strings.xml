@@ -636,6 +636,8 @@
     <string name="candidate_default_height_restore_factory">アプリ初期値に戻す</string>
     <string name="candidate_default_height_save">保存</string>
     <string name="candidate_height_sheet_summary_format">%1$s列 / %2$sdp / %3$ssp</string>
+    <string name="candidate_height_open_inspector">高さを調整</string>
+    <string name="candidate_height_close_inspector">閉じる</string>
     <string name="candidate_preview_input_mode">入力時プレビュー</string>
     <string name="candidate_preview_empty_mode">未入力時プレビュー</string>
     <string name="candidate_column_count_label">候補欄の列数</string>

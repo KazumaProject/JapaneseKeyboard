@@ -34,7 +34,8 @@
             android:clipChildren="false"
             android:clipToPadding="false"
             app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/inspector_bottom_sheet"
+            app:layout_goneMarginEnd="0dp"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/toolbar">
 
@@ -64,21 +65,50 @@
                     android:layout_height="110dp"
                     android:clipChildren="false">
 
-                    <LinearLayout
+                    <androidx.constraintlayout.widget.ConstraintLayout
                         android:id="@+id/candidate_preview_area"
                         android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:background="@color/keyboard_bg"
-                        android:orientation="vertical">
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom"
+                        android:background="@color/keyboard_bg">
+
+                        <ProgressBar
+                            android:id="@+id/candidate_preview_progressbar"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:visibility="gone"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
 
                         <androidx.recyclerview.widget.RecyclerView
                             android:id="@+id/candidate_height_setting_recyclerview"
-                            android:layout_width="match_parent"
-                            android:layout_height="0dp"
-                            android:layout_weight="1"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
                             android:background="@color/keyboard_bg"
-                            android:clipToPadding="false" />
-                    </LinearLayout>
+                            android:clipToPadding="false"
+                            android:visibility="visible"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toStartOf="@+id/candidate_preview_visibility_button"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/candidate_preview_visibility_button"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:layout_marginTop="6dp"
+                            android:background="@drawable/recyclerview_size_button_bg"
+                            android:scaleType="center"
+                            android:src="@drawable/outline_arrow_drop_down_24"
+                            android:tint="@color/keyboard_icon_color"
+                            android:visibility="gone"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            tools:visibility="visible" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
 
                     <View
                         android:id="@+id/handle_top"
@@ -129,16 +159,32 @@
                 </FrameLayout>
             </LinearLayout>
         </FrameLayout>
-    </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <com.google.android.material.card.MaterialCardView
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/show_inspector_button"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp"
+            android:text="@string/candidate_height_open_inspector"
+            android:visibility="gone"
+            app:icon="@drawable/baseline_settings_24"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/toolbar"
+            tools:visibility="visible" />
+        <com.google.android.material.card.MaterialCardView
         android:id="@+id/inspector_bottom_sheet"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
+        android:layout_width="320dp"
+        android:layout_height="0dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginBottom="8dp"
         android:elevation="12dp"
         app:cardCornerRadius="8dp"
-        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior">
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/toolbar">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -155,16 +201,34 @@
                 android:layout_height="4dp"
                 android:layout_gravity="center_horizontal"
                 android:layout_marginBottom="10dp"
-                android:background="@drawable/shortcut_toolbar_sheet_handle" />
+                android:background="@drawable/shortcut_toolbar_sheet_handle"
+                android:visibility="gone" />
 
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/inspector_summary_text"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textAppearance="?attr/textAppearanceTitleSmall"
-                tools:text="2列 / 90dp / 14.0sp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/inspector_summary_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    tools:text="2列 / 90dp / 14.0sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/close_inspector_button"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/candidate_height_close_inspector"
+                    app:icon="@drawable/ic_close" />
+            </LinearLayout>
 
             <HorizontalScrollView
                 android:layout_width="match_parent"
@@ -209,10 +273,11 @@
             <androidx.core.widget.NestedScrollView
                 android:id="@+id/candidate_controls_scroll"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="0dp"
                 android:layout_marginTop="12dp"
                 android:fillViewport="false"
-                android:overScrollMode="ifContentScrolls">
+                android:overScrollMode="ifContentScrolls"
+                android:layout_weight="1">
 
                 <LinearLayout
                     android:layout_width="match_parent"
@@ -445,5 +510,6 @@
                 </LinearLayout>
             </androidx.core.widget.NestedScrollView>
         </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
+        </com.google.android.material.card.MaterialCardView>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
