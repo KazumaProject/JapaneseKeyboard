@@ -10,12 +10,15 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import androidx.annotation.AttrRes
 import androidx.appcompat.R as AppCompatR
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.AppCompatImageButton
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
@@ -70,6 +73,10 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     private var isSyncingColumnControls = false
     private var isSyncingDefaultHeightControls = false
     private var previousBottomNavigationVisibility: Int? = null
+    private var previousNavHostBottomToTop = ConstraintLayout.LayoutParams.UNSET
+    private var previousNavHostBottomToBottom = ConstraintLayout.LayoutParams.UNSET
+    private var previousNavHostBottomMargin = 0
+    private var hasPreviousNavHostBottomConstraint = false
 
     private val minHeightDp = 30
     private val maxHeightDp = 300
@@ -143,12 +150,73 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             previousBottomNavigationVisibility = bottomNavigation.visibility
         }
         bottomNavigation.visibility = View.GONE
+        extendNavHostToParentBottom()
     }
 
     private fun restoreBottomNavigationVisibility() {
         val visibility = previousBottomNavigationVisibility ?: return
+        restoreNavHostBottomConstraint()
         activity?.findViewById<View>(R.id.nav_view)?.visibility = visibility
         previousBottomNavigationVisibility = null
+    }
+
+    private fun extendNavHostToParentBottom() {
+        val container = activity?.findViewById<ConstraintLayout>(R.id.container) ?: return
+        val navHost = activity?.findViewById<View>(R.id.nav_host_fragment_activity_main) ?: return
+        val layoutParams = navHost.layoutParams as? ConstraintLayout.LayoutParams ?: return
+        if (!hasPreviousNavHostBottomConstraint) {
+            previousNavHostBottomToTop = layoutParams.bottomToTop
+            previousNavHostBottomToBottom = layoutParams.bottomToBottom
+            previousNavHostBottomMargin = layoutParams.bottomMargin
+            hasPreviousNavHostBottomConstraint = true
+        }
+        ConstraintSet().apply {
+            clone(container)
+            clear(R.id.nav_host_fragment_activity_main, ConstraintSet.BOTTOM)
+            connect(
+                R.id.nav_host_fragment_activity_main,
+                ConstraintSet.BOTTOM,
+                ConstraintSet.PARENT_ID,
+                ConstraintSet.BOTTOM
+            )
+            setMargin(R.id.nav_host_fragment_activity_main, ConstraintSet.BOTTOM, 0)
+            applyTo(container)
+        }
+    }
+
+    private fun restoreNavHostBottomConstraint() {
+        if (!hasPreviousNavHostBottomConstraint) return
+        val container = activity?.findViewById<ConstraintLayout>(R.id.container) ?: return
+        ConstraintSet().apply {
+            clone(container)
+            clear(R.id.nav_host_fragment_activity_main, ConstraintSet.BOTTOM)
+            when {
+                previousNavHostBottomToTop != ConstraintLayout.LayoutParams.UNSET -> {
+                    connect(
+                        R.id.nav_host_fragment_activity_main,
+                        ConstraintSet.BOTTOM,
+                        previousNavHostBottomToTop,
+                        ConstraintSet.TOP
+                    )
+                }
+
+                previousNavHostBottomToBottom != ConstraintLayout.LayoutParams.UNSET -> {
+                    connect(
+                        R.id.nav_host_fragment_activity_main,
+                        ConstraintSet.BOTTOM,
+                        previousNavHostBottomToBottom,
+                        ConstraintSet.BOTTOM
+                    )
+                }
+            }
+            setMargin(
+                R.id.nav_host_fragment_activity_main,
+                ConstraintSet.BOTTOM,
+                previousNavHostBottomMargin
+            )
+            applyTo(container)
+        }
+        hasPreviousNavHostBottomConstraint = false
     }
 
     private fun setupMenu() {
@@ -380,16 +448,37 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
 
     private fun updatePreviewHeightPx(candidateHeightPx: Int) {
         val presentation = resolveCandidateHeightPreviewPresentation()
+        val keyboardHeightPx = keyboardPreviewHeightPx()
+        val independentToolbarHeightPx = presentation.independentShortcutToolbarHeightPx
+        binding.keyboardPreviewContainer.layoutParams =
+            (binding.keyboardPreviewContainer.layoutParams as FrameLayout.LayoutParams).apply {
+                gravity = Gravity.BOTTOM
+                height = keyboardHeightPx
+                bottomMargin = 0
+            }
         binding.candidatePreviewFrame.layoutParams =
-            binding.candidatePreviewFrame.layoutParams.apply {
+            (binding.candidatePreviewFrame.layoutParams as FrameLayout.LayoutParams).apply {
+                gravity = Gravity.BOTTOM
                 height = candidateHeightPx
+                bottomMargin = keyboardHeightPx
+            }
+        binding.independentShortcutToolbarPreviewContainer.layoutParams =
+            (binding.independentShortcutToolbarPreviewContainer.layoutParams as FrameLayout.LayoutParams).apply {
+                gravity = Gravity.BOTTOM
+                height = independentToolbarHeightPx.coerceAtLeast(36.dpToPx())
+                bottomMargin = keyboardHeightPx + candidateHeightPx
+            }
+        binding.candidateTabPreviewContainer.layoutParams =
+            (binding.candidateTabPreviewContainer.layoutParams as FrameLayout.LayoutParams).apply {
+                gravity = Gravity.TOP
+                height = presentation.candidateTabOffsetPx.coerceAtLeast(36.dpToPx())
             }
         binding.candidateHeightSettingContent.layoutParams =
             binding.candidateHeightSettingContent.layoutParams.apply {
                 height = presentation.candidateTabOffsetPx +
                     candidateHeightPx +
-                    presentation.independentShortcutToolbarHeightPx +
-                    keyboardPreviewHeightPx()
+                    independentToolbarHeightPx +
+                    keyboardHeightPx
             }
     }
 
