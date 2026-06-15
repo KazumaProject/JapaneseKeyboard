@@ -715,6 +715,14 @@
     <string name="shortcutsettingfragment">ショートカットツールバー</string>
     <string name="shortcut_toolbar_preference_title">ショートカットツールバーのカスタマイズ</string>
     <string name="shortcut_toolbar_preference_summary">ツールバーに表示するアイコンを編集する画面を開きます</string>
+    <string name="shortcut_toolbar_size_title">ショートカットツールバーのサイズ</string>
+    <string name="shortcut_toolbar_size_summary">ショートカットツールバーの高さとアイコンサイズを調整します</string>
+    <string name="shortcut_toolbar_size_description">独立表示されるショートカットツールバーの高さとアイコンサイズを調整できます。</string>
+    <string name="shortcut_toolbar_size_preview">プレビュー</string>
+    <string name="shortcut_toolbar_height_title">ツールバーの高さ</string>
+    <string name="shortcut_toolbar_icon_size_title">アイコンサイズ</string>
+    <string name="shortcut_toolbar_size_reset">デフォルトに戻す</string>
+    <string name="shortcut_toolbar_size_integrated_note">この設定は独立表示のショートカットツールバーに適用されます。候補欄に統合されたショートカットの見た目は変更されません。</string>
     <string name="qwerty_romaji_zenkaku_space_preference_title">ローマ字キーボードの全角スペース</string>
     <string name="qwerty_romaji_zenkaku_space_preference_summary">オンにすると、ローマ字キーボードの空白キーで全角スペースを入力します。</string>
     <string name="qwerty_romaji_hankaku_number_preference_title">ローマ字入力時の半角数字</string>
