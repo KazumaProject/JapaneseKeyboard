@@ -50,6 +50,7 @@
         <item>@string/keyboard_touch_effect_aurora_ink</item>
         <item>@string/keyboard_touch_effect_liquid_ripple</item>
         <item>@string/keyboard_touch_effect_type_spray_paint</item>
+        <item>@string/keyboard_touch_effect_type_luminous_blob</item>
     </string-array>
 
     <string-array name="keyboard_touch_effect_type_values">
@@ -58,6 +59,7 @@
         <item>aurora_ink</item>
         <item>liquid_ripple</item>
         <item>spray_paint</item>
+        <item>luminous_blob</item>
     </string-array>
 
     <string-array name="keyboard_touch_effect_quality_entries">
