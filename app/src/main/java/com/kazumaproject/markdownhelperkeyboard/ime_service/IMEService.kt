@@ -3205,7 +3205,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setMainSuggestionColumn(mainView)
         }
         editorInfo?.let { info ->
-            if (info.imeOptions == 318767106) {
+            if ((info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0) {
                 isPrivateMode = true
                 suggestionAdapter?.setIncognitoIcon(
                     ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
