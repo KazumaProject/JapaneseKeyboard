@@ -282,9 +282,7 @@ private fun renderNonCustomKeyboardPreviewType(
 
 internal fun candidateKeyboardPreviewHeightPx(container: FrameLayout): Int {
     val layoutParams = container.layoutParams
-    val marginParams = layoutParams as? ViewGroup.MarginLayoutParams
-    val previewHeight = layoutParams.height.takeIf { it > 0 } ?: container.context.dpToPx(220)
-    return previewHeight + (marginParams?.topMargin ?: 0) + (marginParams?.bottomMargin ?: 0)
+    return layoutParams.height.takeIf { it > 0 } ?: container.context.dpToPx(220)
 }
 
 private data class PreviewKeyboardLayoutConfig(
@@ -322,13 +320,45 @@ private fun applyCandidateKeyboardPreviewLayout(
     } else {
         (screenWidth * (widthPercent / 100f)).roundToInt()
     }
-    val layoutParams = container.layoutParams as LinearLayout.LayoutParams
-    layoutParams.height = config.heightDp.coerceIn(100, 420).let(container.context::dpToPx)
-    layoutParams.width = widthPx
-    layoutParams.gravity = if (config.positionIsEnd) Gravity.END else Gravity.START
-    layoutParams.marginStart = if (config.positionIsEnd) 0 else container.context.dpToPx(config.startMarginDp)
-    layoutParams.marginEnd = if (config.positionIsEnd) container.context.dpToPx(config.endMarginDp) else 0
-    layoutParams.bottomMargin = container.context.dpToPx(config.bottomMarginDp)
+    val heightPx = config.heightDp.coerceIn(100, 420).let(container.context::dpToPx)
+    val horizontalGravity = if (config.positionIsEnd) Gravity.END else Gravity.START
+    val startMarginPx = if (config.positionIsEnd) 0 else container.context.dpToPx(config.startMarginDp)
+    val endMarginPx = if (config.positionIsEnd) container.context.dpToPx(config.endMarginDp) else 0
+    val bottomMarginPx = container.context.dpToPx(config.bottomMarginDp)
+    val layoutParams = when (val params = container.layoutParams) {
+        is FrameLayout.LayoutParams -> params.apply {
+            height = heightPx
+            width = widthPx
+            gravity = Gravity.BOTTOM or horizontalGravity
+            marginStart = startMarginPx
+            marginEnd = endMarginPx
+            bottomMargin = bottomMarginPx
+        }
+
+        is LinearLayout.LayoutParams -> params.apply {
+            height = heightPx
+            width = widthPx
+            gravity = horizontalGravity
+            marginStart = startMarginPx
+            marginEnd = endMarginPx
+            bottomMargin = bottomMarginPx
+        }
+
+        is ViewGroup.MarginLayoutParams -> FrameLayout.LayoutParams(params).apply {
+            height = heightPx
+            width = widthPx
+            gravity = Gravity.BOTTOM or horizontalGravity
+            marginStart = startMarginPx
+            marginEnd = endMarginPx
+            bottomMargin = bottomMarginPx
+        }
+
+        else -> FrameLayout.LayoutParams(widthPx, heightPx, Gravity.BOTTOM or horizontalGravity).apply {
+            marginStart = startMarginPx
+            marginEnd = endMarginPx
+            bottomMargin = bottomMarginPx
+        }
+    }
     container.layoutParams = layoutParams
 }
 

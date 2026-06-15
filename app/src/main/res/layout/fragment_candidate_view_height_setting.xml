@@ -38,14 +38,13 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-            <LinearLayout
+            <FrameLayout
                 android:id="@+id/candidate_height_setting_content"
                 android:layout_width="match_parent"
                 android:layout_height="390dp"
                 android:layout_gravity="bottom"
                 android:background="@color/keyboard_bg"
-                android:clipChildren="false"
-                android:orientation="vertical">
+                android:clipChildren="false">
 
                 <LinearLayout
                     android:id="@+id/candidate_tab_preview_container"
@@ -62,6 +61,7 @@
                     android:id="@+id/candidate_preview_frame"
                     android:layout_width="match_parent"
                     android:layout_height="110dp"
+                    android:layout_gravity="bottom"
                     android:clipChildren="false">
 
                     <androidx.constraintlayout.widget.ConstraintLayout
@@ -122,6 +122,7 @@
                     android:id="@+id/independent_shortcut_toolbar_preview_container"
                     android:layout_width="match_parent"
                     android:layout_height="36dp"
+                    android:layout_gravity="bottom"
                     android:background="@color/keyboard_bg"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
@@ -133,6 +134,7 @@
                     android:id="@+id/keyboard_preview_container"
                     android:layout_width="match_parent"
                     android:layout_height="280dp"
+                    android:layout_gravity="bottom"
                     android:background="@color/keyboard_bg">
 
                     <com.kazumaproject.tenkey.TenKey
@@ -156,7 +158,17 @@
                         android:focusable="false"
                         android:visibility="gone" />
                 </FrameLayout>
-            </LinearLayout>
+            </FrameLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/toggle_candidate_list_button"
+                style="?attr/materialButtonOutlinedStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|start"
+                android:layout_marginStart="12dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/candidate_preview_input_mode" />
         </FrameLayout>
 
         <com.google.android.material.button.MaterialButton
@@ -287,13 +299,6 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="vertical">
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/toggle_candidate_list_button"
-                            style="?attr/materialButtonOutlinedStyle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="@string/candidate_preview_input_mode" />
 
                         <com.google.android.material.textview.MaterialTextView
                             android:id="@+id/candidate_column_label"
