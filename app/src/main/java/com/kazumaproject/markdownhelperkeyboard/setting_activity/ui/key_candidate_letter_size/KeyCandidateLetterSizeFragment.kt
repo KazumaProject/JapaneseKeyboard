@@ -152,6 +152,7 @@ class KeyCandidateLetterSizeFragment : Fragment() {
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                 menuInflater.inflate(R.menu.fragment_reset_menu, menu)
+                menu.findItem(R.id.action_candidate_default_height)?.isVisible = false
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {

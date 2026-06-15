@@ -326,19 +326,22 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
         candidateColumnListPreference?.apply {
             setOnPreferenceChangeListener { _, newValue ->
                 if (newValue is String) {
-                    when (newValue) {
-                        "1" -> {
-                            appPreference.candidate_view_height_dp = 110
-                        }
+                    appPreference.setCandidateColumnAndSyncHeight(
+                        isLandscape = false,
+                        column = newValue
+                    )
+                }
+                true
+            }
+        }
 
-                        "2" -> {
-                            appPreference.candidate_view_height_dp = 165
-                        }
-
-                        "3" -> {
-                            appPreference.candidate_view_height_dp = 230
-                        }
-                    }
+        findPreference<ListPreference>("candidate_column_landscape_preference")?.apply {
+            setOnPreferenceChangeListener { _, newValue ->
+                if (newValue is String) {
+                    appPreference.setCandidateColumnAndSyncHeight(
+                        isLandscape = true,
+                        column = newValue
+                    )
                 }
                 true
             }
