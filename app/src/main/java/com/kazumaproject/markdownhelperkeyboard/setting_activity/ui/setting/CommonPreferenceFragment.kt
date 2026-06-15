@@ -380,6 +380,15 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<Preference>("shortcut_toolbar_size_setting_fragment_preference")?.apply {
+            setOnPreferenceClickListener {
+                navigateSafely(
+                    R.id.shortcutToolbarSizeSettingFragment
+                )
+                true
+            }
+        }
+
         val candidateTabOrderPreference =
             findPreference<Preference>("candidate_tab_order_preference")
         candidateTabOrderPreference?.apply {

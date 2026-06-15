@@ -16,6 +16,20 @@ object SettingSearchIndex {
     private const val APP_NS = "http://schemas.android.com/apk/res-auto"
     private const val SINGLE_CHARACTER_RESULT_LIMIT = 20
     private const val MULTI_CHARACTER_RESULT_LIMIT = 50
+    private val extraKeywordsByKey = mapOf(
+        "shortcut_toolbar_size_setting_fragment_preference" to listOf(
+            "shortcut",
+            "toolbar",
+            "height",
+            "icon",
+            "size",
+            "ショートカット",
+            "ツールバー",
+            "高さ",
+            "アイコン",
+            "サイズ",
+        )
+    )
 
     private data class PreferenceXmlSource(
         @XmlRes val xmlRes: Int,
@@ -649,5 +663,6 @@ object SettingSearchIndex {
             add(title)
             add(summary)
             addAll(key.split('_', '-', '.'))
+            addAll(extraKeywordsByKey[key].orEmpty())
         }
 }

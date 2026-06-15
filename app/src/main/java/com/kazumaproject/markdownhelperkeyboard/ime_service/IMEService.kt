@@ -846,6 +846,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var landscapeForceQwertyRomajiPreference: Boolean? = false
     private var shortcutTollbarVisibility: Boolean? = false
     private var shortcutToolbarIntegratedInSuggestion: Boolean? = false
+    private var shortcutToolbarHeightDp: Int = AppPreference.SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP
+    private var shortcutToolbarIconSizeDp: Int =
+        AppPreference.SHORTCUT_TOOLBAR_ICON_SIZE_DEFAULT_DP
     private var shortcutToolbarHiddenForCandidates: Boolean = false
     private var clipboardPreviewVisibility: Boolean? = true
     private var clipboardPreviewTapToDelete: Boolean? = false
@@ -1756,6 +1759,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         landscapeForceQwertyRomajiPreference = preferences.landscapeForceQwertyRomajiPreference
         shortcutTollbarVisibility = preferences.shortcutTollbarVisibility
         shortcutToolbarIntegratedInSuggestion = preferences.shortcutToolbarIntegratedInSuggestion
+        shortcutToolbarHeightDp = preferences.shortcutToolbarHeightDp
+        shortcutToolbarIconSizeDp = preferences.shortcutToolbarIconSizeDp
+        mainLayoutBinding?.let { applyShortcutToolbarSize(it) }
         isDeleteLeftFlickPreference = preferences.isDeleteLeftFlickPreference
         isDeleteUpFlickPreference = preferences.isDeleteUpFlickPreference
         isDeleteDownFlickPreference = preferences.isDeleteDownFlickPreference
@@ -3328,6 +3334,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         landscapeForceQwertyRomajiPreference = null
         shortcutTollbarVisibility = null
         shortcutToolbarIntegratedInSuggestion = null
+        shortcutToolbarHeightDp = AppPreference.SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP
+        shortcutToolbarIconSizeDp = AppPreference.SHORTCUT_TOOLBAR_ICON_SIZE_DEFAULT_DP
         shortcutToolbarHiddenForCandidates = false
         clipboardPreviewVisibility = null
         clipboardPreviewTapToDelete = null
@@ -14055,6 +14063,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isSymbol = isSymbolOverride ?: keyboardSymbolViewState.value.isShown
+        applyShortcutToolbarSize(mainView)
 
         // 2. ピクセル値の計算
         val heightPx = when {
@@ -14120,7 +14129,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 baseKeyboardHeight + candidateTabOffset
 
             !addCandidateTabHeight && presentation.showIndependentShortcutToolbar && !isSymbol ->
-                baseKeyboardHeight + shortcutToolbarHeightPx(mainView)
+                baseKeyboardHeight + shortcutToolbarHeightPx()
 
             else -> baseKeyboardHeight
         }
@@ -17099,8 +17108,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return resolvedFixedHeightPx(mainView.candidateTabLayout, fallbackDp = 36f)
     }
 
-    private fun shortcutToolbarHeightPx(mainView: MainLayoutBinding): Int {
-        return resolvedFixedHeightPx(mainView.shortcutToolbarRecyclerview, fallbackDp = 36f)
+    private fun shortcutToolbarHeightPx(): Int {
+        val toolbarHeightDp = shortcutToolbarHeightDp.coerceIn(
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+        )
+        return applicationContext.dpToPx(toolbarHeightDp)
+    }
+
+    private fun applyShortcutToolbarSize(mainView: MainLayoutBinding) {
+        val toolbarHeightDp = shortcutToolbarHeightDp.coerceIn(
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+        )
+        val iconSizeDp = appPreference.resolveShortcutToolbarIconSizeDp(
+            toolbarHeightDp = toolbarHeightDp,
+            iconSizeDp = shortcutToolbarIconSizeDp
+        )
+        val toolbarHeightPx = applicationContext.dpToPx(toolbarHeightDp)
+        val iconSizePx = applicationContext.dpToPx(iconSizeDp)
+        mainView.shortcutToolbarRecyclerview.layoutParams =
+            mainView.shortcutToolbarRecyclerview.layoutParams.apply {
+                height = toolbarHeightPx
+            }
+        shortcutAdapter?.setShortcutToolbarSize(
+            toolbarHeightPx = toolbarHeightPx,
+            iconSizePx = iconSizePx
+        )
     }
 
     private fun applyCandidateTabSuggestionOffset(

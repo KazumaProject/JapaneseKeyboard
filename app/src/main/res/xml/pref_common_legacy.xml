@@ -474,6 +474,12 @@
             android:key="shortcut_toolbar_item_preference"
             android:title="@string/shortcut_toolbar_preference_title"
             app:summary="@string/shortcut_toolbar_preference_summary" />
+
+        <Preference
+            android:icon="@drawable/outline_border_color_24"
+            android:key="shortcut_toolbar_size_setting_fragment_preference"
+            android:title="@string/shortcut_toolbar_size_title"
+            app:summary="@string/shortcut_toolbar_size_summary" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_symbol_keyboard_title">

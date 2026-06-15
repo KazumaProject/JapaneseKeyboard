@@ -723,6 +723,14 @@
     <string name="shortcutsettingfragment">Toolbar Setting</string>
     <string name="shortcut_toolbar_preference_title">Customize shortcut toolbar</string>
     <string name="shortcut_toolbar_preference_summary">Open the screen to edit the icons shown on the toolbar.</string>
+    <string name="shortcut_toolbar_size_title">Shortcut toolbar size</string>
+    <string name="shortcut_toolbar_size_summary">Adjust shortcut toolbar height and icon size</string>
+    <string name="shortcut_toolbar_size_description">Adjust the height and icon size of the independent shortcut toolbar.</string>
+    <string name="shortcut_toolbar_size_preview">Preview</string>
+    <string name="shortcut_toolbar_height_title">Toolbar height</string>
+    <string name="shortcut_toolbar_icon_size_title">Icon size</string>
+    <string name="shortcut_toolbar_size_reset">Reset to default</string>
+    <string name="shortcut_toolbar_size_integrated_note">This setting applies to the independent shortcut toolbar. Shortcuts integrated into the suggestion area are not changed.</string>
     <string name="qwerty_romaji_zenkaku_space_preference_title">Full-width space on QWERTY keyboard</string>
     <string name="qwerty_romaji_zenkaku_space_preference_summary">When enabled, the space key on the romaji (QWERTY) keyboard inserts a full-width space.</string>
     <string name="qwerty_romaji_hankaku_number_preference_title">Half-width numbers in Romaji input</string>
