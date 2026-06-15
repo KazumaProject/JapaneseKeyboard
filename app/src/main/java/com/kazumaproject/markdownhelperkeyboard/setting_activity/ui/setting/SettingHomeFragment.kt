@@ -394,15 +394,11 @@ class SettingHomeFragment : Fragment() {
                 appPreference.keyboard_width_landscape ?: 100,
             )
 
-            "candidate_view_height_setting_fragment_preference" -> getString(
-                R.string.setting_home_dp_summary,
-                appPreference.candidate_view_height_dp ?: 110,
-            )
+            "candidate_view_height_setting_fragment_preference" ->
+                candidateHeightSummary(isLandscape = false)
 
-            "candidate_view_height_landscape_setting_fragment_preference" -> getString(
-                R.string.setting_home_dp_summary,
-                appPreference.candidate_view_height_dp_landscape ?: 110,
-            )
+            "candidate_view_height_landscape_setting_fragment_preference" ->
+                candidateHeightSummary(isLandscape = true)
 
             "setting_route_keyboard_theme" -> getString(
                 R.string.setting_home_current_value,
@@ -445,6 +441,22 @@ class SettingHomeFragment : Fragment() {
 
             else -> destination.summary
         }
+    }
+
+    private fun candidateHeightSummary(isLandscape: Boolean): String {
+        appPreference.migrateCandidateHeightPerColumnPreferencesIfNeeded()
+        val currentColumn = appPreference.getCandidateColumn(isLandscape)
+        val activeHeight = appPreference.getCandidateVisibleHeightDp(isLandscape, currentColumn)
+        val candidateTextSize = appPreference.candidate_letter_size ?: 14.0f
+        return getString(
+            R.string.setting_home_candidate_height_summary,
+            appPreference.getCandidateVisibleHeightDp(isLandscape, "1"),
+            appPreference.getCandidateVisibleHeightDp(isLandscape, "2"),
+            appPreference.getCandidateVisibleHeightDp(isLandscape, "3"),
+            currentColumn.toIntOrNull() ?: 1,
+            activeHeight,
+            candidateTextSize,
+        )
     }
 
     private fun currentValueText(destination: SettingDestination): String? {

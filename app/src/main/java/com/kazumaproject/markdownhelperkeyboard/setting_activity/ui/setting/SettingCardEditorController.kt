@@ -336,17 +336,23 @@ class SettingCardEditorController(
         }.getOrDefault(defaultValue)
 
     private fun writeStringPreference(preferenceKey: String, value: String) {
+        if (preferenceKey == "candidate_column_preference") {
+            appPreference.setCandidateColumnAndSyncHeight(
+                isLandscape = false,
+                column = value
+            )
+            return
+        }
+        if (preferenceKey == "candidate_column_landscape_preference") {
+            appPreference.setCandidateColumnAndSyncHeight(
+                isLandscape = true,
+                column = value
+            )
+            return
+        }
         preferences.edit()
             .putString(preferenceKey, value)
             .apply()
-        if (preferenceKey == "candidate_column_preference") {
-            appPreference.candidate_view_height_dp = when (value) {
-                "1" -> 110
-                "2" -> 165
-                "3" -> 230
-                else -> appPreference.candidate_view_height_dp ?: 110
-            }
-        }
     }
 
     private fun readIntPreference(preferenceKey: String, defaultValue: Int): Int =
