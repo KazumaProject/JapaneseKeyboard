@@ -22,8 +22,6 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.R as MaterialR
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.card.MaterialCardView
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import com.google.android.material.textview.MaterialTextView
@@ -62,7 +60,6 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     lateinit var sumireSpecialKeyRepository: SumireSpecialKeyRepository
 
     private lateinit var suggestionAdapter: SuggestionAdapter2
-    private lateinit var bottomSheetBehavior: BottomSheetBehavior<MaterialCardView>
 
     private var _binding: FragmentCandidateHeightLandscapeSettingBinding? = null
     private val binding get() = _binding!!
@@ -72,6 +69,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     private var isSyncingLetterSizeControls = false
     private var isSyncingColumnControls = false
     private var isSyncingDefaultHeightControls = false
+    private var previousBottomNavigationVisibility: Int? = null
 
     private val minHeightDp = 30
     private val maxHeightDp = 300
@@ -100,6 +98,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        hideBottomNavigationForPreview()
         appPreference.migrateCandidateHeightPerColumnPreferencesIfNeeded()
         appPreference.syncActiveCandidateVisibleHeightToImePreference(isLandscape = true)
 
@@ -131,10 +130,25 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        restoreBottomNavigationVisibility()
         (activity as? AppCompatActivity)?.supportActionBar?.show()
         binding.candidateHeightSettingRecyclerview.adapter = null
         suggestionAdapter.release()
         _binding = null
+    }
+
+    private fun hideBottomNavigationForPreview() {
+        val bottomNavigation = activity?.findViewById<View>(R.id.nav_view) ?: return
+        if (previousBottomNavigationVisibility == null) {
+            previousBottomNavigationVisibility = bottomNavigation.visibility
+        }
+        bottomNavigation.visibility = View.GONE
+    }
+
+    private fun restoreBottomNavigationVisibility() {
+        val visibility = previousBottomNavigationVisibility ?: return
+        activity?.findViewById<View>(R.id.nav_view)?.visibility = visibility
+        previousBottomNavigationVisibility = null
     }
 
     private fun setupMenu() {
@@ -162,26 +176,13 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     }
 
     private fun setupInspectorBottomSheet() {
-        bottomSheetBehavior = BottomSheetBehavior.from(binding.inspectorBottomSheet).apply {
-            peekHeight = 72.dpToPx()
-            isFitToContents = false
-            halfExpandedRatio = 0.4f
-            state = BottomSheetBehavior.STATE_HALF_EXPANDED
-            addBottomSheetCallback(
-                object : BottomSheetBehavior.BottomSheetCallback() {
-                    override fun onStateChanged(bottomSheet: View, newState: Int) {
-                        updatePreviewCanvasBottomPadding(visibleSheetHeightPx(bottomSheet))
-                    }
-
-                    override fun onSlide(bottomSheet: View, slideOffset: Float) {
-                        updatePreviewCanvasBottomPadding(visibleSheetHeightPx(bottomSheet))
-                    }
-                }
-            )
+        binding.showInspectorButton.setOnClickListener {
+            showInspectorPanel()
         }
-        binding.inspectorBottomSheet.post {
-            updatePreviewCanvasBottomPadding(visibleSheetHeightPx(binding.inspectorBottomSheet))
+        binding.closeInspectorButton.setOnClickListener {
+            hideInspectorPanel()
         }
+        showInspectorPanel()
     }
 
     private fun setupInspectorTabs() {
@@ -196,7 +197,17 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
     private fun openDefaultHeightInspector() {
         binding.candidateInspectorTabGroup.check(R.id.candidate_tab_default_button)
         syncDefaultHeightControls()
-        bottomSheetBehavior.state = BottomSheetBehavior.STATE_HALF_EXPANDED
+        showInspectorPanel()
+    }
+
+    private fun showInspectorPanel() {
+        binding.inspectorBottomSheet.isVisible = true
+        binding.showInspectorButton.isVisible = false
+    }
+
+    private fun hideInspectorPanel() {
+        binding.inspectorBottomSheet.isVisible = false
+        binding.showInspectorButton.isVisible = true
     }
 
     private fun showInspectorTab(checkedId: Int) {
@@ -209,21 +220,6 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
         }
     }
 
-    private fun visibleSheetHeightPx(bottomSheet: View): Int {
-        val parentHeight = (binding.root as View).height
-        if (parentHeight <= 0) return 0
-        return (parentHeight - bottomSheet.top).coerceAtLeast(0)
-    }
-
-    private fun updatePreviewCanvasBottomPadding(sheetVisibleHeightPx: Int) {
-        binding.previewCanvas.setPadding(
-            binding.previewCanvas.paddingLeft,
-            binding.previewCanvas.paddingTop,
-            binding.previewCanvas.paddingRight,
-            sheetVisibleHeightPx
-        )
-    }
-
     private fun setupAdapter() {
         suggestionAdapter.apply {
             setUndoEnabled(false)
@@ -233,6 +229,10 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             }
         }
         applyCandidateAdapterPresentation()
+        binding.candidateHeightSettingRecyclerview.apply {
+            itemAnimator = null
+            isFocusable = false
+        }
         binding.candidateHeightSettingRecyclerview.adapter = suggestionAdapter
     }
 
@@ -288,6 +288,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             suggestionAdapter.suggestions = emptyList()
             binding.toggleCandidateListButton.text = getString(R.string.candidate_preview_empty_mode)
         }
+        binding.candidatePreviewVisibilityButton.isVisible = isCandidateListVisible
         updateCandidateTabPreview()
         updateShortcutToolbarPreview()
         applyHeightDp(selectedHeightDp(), persist = false)
@@ -305,13 +306,24 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
 
             "2", "3" -> {
                 val spanCount = columnNum.toInt()
-                binding.candidateHeightSettingRecyclerview.layoutManager =
+                val gridLayoutManager =
                     GridLayoutManager(
                         requireContext(),
                         spanCount,
                         GridLayoutManager.HORIZONTAL,
                         false
-                    )
+                    ).apply {
+                        spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+                            override fun getSpanSize(position: Int): Int {
+                                return if (suggestionAdapter.isFullSpanItem(position)) {
+                                    spanCount
+                                } else {
+                                    1
+                                }
+                            }
+                        }
+                    }
+                binding.candidateHeightSettingRecyclerview.layoutManager = gridLayoutManager
                 val spacingInPixels =
                     resources.getDimensionPixelSize(com.kazumaproject.core.R.dimen.grid_spacing)
                 binding.candidateHeightSettingRecyclerview.addItemDecoration(

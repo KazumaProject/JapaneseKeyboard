@@ -639,6 +639,8 @@
     <string name="candidate_default_height_restore_factory">Restore app defaults</string>
     <string name="candidate_default_height_save">Save</string>
     <string name="candidate_height_sheet_summary_format">%1$s col / %2$sdp / %3$ssp</string>
+    <string name="candidate_height_open_inspector">Adjust</string>
+    <string name="candidate_height_close_inspector">Close</string>
     <string name="candidate_preview_input_mode">Input preview</string>
     <string name="candidate_preview_empty_mode">Empty preview</string>
     <string name="candidate_column_count_label">Candidate columns</string>
