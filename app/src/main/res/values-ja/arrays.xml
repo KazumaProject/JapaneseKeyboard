@@ -177,4 +177,28 @@
         <item>nl</item>
         <item>uk</item>
     </string-array>
+
+    <string-array name="candidate_column_entries">
+        <item>@string/candidate_column_one</item>
+        <item>@string/candidate_column_two</item>
+        <item>@string/candidate_column_three</item>
+    </string-array>
+
+    <string-array name="candidate_column_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
+
+    <string-array name="candidate_column_entries_landscape">
+        <item>@string/candidate_column_one</item>
+        <item>@string/candidate_column_two</item>
+        <item>@string/candidate_column_three</item>
+    </string-array>
+
+    <string-array name="candidate_column_values_landscape">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
 </resources>
