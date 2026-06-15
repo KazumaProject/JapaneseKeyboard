@@ -555,6 +555,16 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
+    fun isFullSpanItem(position: Int): Boolean {
+        return when (getItemViewType(position)) {
+            VIEW_TYPE_EMPTY,
+            VIEW_TYPE_CUSTOM_LAYOUT_PICKER,
+            VIEW_TYPE_SHORTCUT -> true
+
+            else -> false
+        }
+    }
+
     override fun getItemCount(): Int {
         return displayItems.size
     }
