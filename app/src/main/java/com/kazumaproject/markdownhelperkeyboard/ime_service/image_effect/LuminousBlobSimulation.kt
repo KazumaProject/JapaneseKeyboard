@@ -6,7 +6,7 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.cos
 import kotlin.math.exp
-import kotlin.math.max
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
@@ -26,6 +26,7 @@ internal class LuminousBlobSimulation {
     private var pointerY = 0.5f
     private var pointerStrength = 0f
     private var pointerInitialized = false
+    private var stableBaseRadiusSurfacePx = 0f
     private var colorSet = LuminousBlobColorSet.Default
 
     private var blobProgram = 0
@@ -55,6 +56,7 @@ internal class LuminousBlobSimulation {
         configure(settings)
         this.surfaceWidth = surfaceWidth
         this.surfaceHeight = surfaceHeight
+        stableBaseRadiusSurfacePx = calculateContainedBaseRadius(surfaceWidth, surfaceHeight)
         resizeTarget(params.renderScale)
         clearSurface()
     }
@@ -69,8 +71,17 @@ internal class LuminousBlobSimulation {
         params: LuminousBlobStepParams
     ) {
         if (blobProgram == 0) return
+        val previousWidth = this.surfaceWidth
+        val previousHeight = this.surfaceHeight
         this.surfaceWidth = surfaceWidth
         this.surfaceHeight = surfaceHeight
+        stableBaseRadiusSurfacePx = resolveStableBaseRadiusAfterResize(
+            currentRadius = stableBaseRadiusSurfacePx,
+            previousWidth = previousWidth,
+            previousHeight = previousHeight,
+            newWidth = surfaceWidth,
+            newHeight = surfaceHeight
+        )
         resizeTarget(params.renderScale)
     }
 
@@ -111,6 +122,7 @@ internal class LuminousBlobSimulation {
     fun release() {
         releaseTarget(renderTarget)
         renderTarget = null
+        stableBaseRadiusSurfacePx = 0f
         val programs = intArrayOf(blobProgram, copyProgram).filter { it != 0 }.toIntArray()
         programs.forEach(GLES30::glDeleteProgram)
         blobProgram = 0
@@ -164,9 +176,9 @@ internal class LuminousBlobSimulation {
         GLES30.glClear(GLES30.GL_COLOR_BUFFER_BIT)
         GLES30.glUseProgram(blobProgram)
 
-        val baseRadius = minOf(target.width, target.height) * BASE_RADIUS_SCALE
+        val baseRadius = baseRadiusForTarget(target)
         val centerX = target.width * 0.5f
-        val centerY = target.height * 0.52f
+        val centerY = target.height * 0.5f
         val pointerPx = pointerX * target.width
         val pointerPy = pointerY * target.height
         val shadow1X = 0.22f + sin(timeSeconds * 0.23f) * 0.08f
@@ -190,12 +202,29 @@ internal class LuminousBlobSimulation {
             "uPointerGlowRadius",
             minOf(target.width, target.height) * params.pointerGlowRadiusScale
         )
+        uniform1f(blobProgram, "uOuterGlowReach", OUTER_GLOW_REACH)
         uniform1f(blobProgram, "uEdgeSharpness", params.edgeSharpness)
         uniform1f(blobProgram, "uInnerStrength", params.innerStrength)
         uniform1f(blobProgram, "uShadowStrength", params.shadowStrength)
         uniform1f(blobProgram, "uDriftSpeedScale", params.driftSpeedScale)
         uniform1f(blobProgram, "uMaxAlpha", params.maxAlpha * colorSet.base.alpha)
         drawQuad()
+    }
+
+    private fun baseRadiusForTarget(target: RenderTarget): Float {
+        val radiusSurfacePx = stableBaseRadiusSurfacePx.takeIf { it > 0f }
+            ?: calculateContainedBaseRadius(surfaceWidth, surfaceHeight)
+        val scaleX = if (surfaceWidth > 0) {
+            target.width / surfaceWidth.toFloat()
+        } else {
+            1f
+        }
+        val scaleY = if (surfaceHeight > 0) {
+            target.height / surfaceHeight.toFloat()
+        } else {
+            1f
+        }
+        return radiusSurfacePx * minOf(scaleX, scaleY)
     }
 
     private fun blitToSurface(target: RenderTarget) {
@@ -392,13 +421,66 @@ internal class LuminousBlobSimulation {
     }
 
     companion object {
-        private const val BASE_RADIUS_SCALE = 0.64f
+        private const val PREFERRED_BASE_RADIUS_SCALE = 0.34f
+        private const val MAX_BOUNDARY_WOBBLE = 0.23f
+        private const val MAX_POINTER_PULL = 0.28f
+        private const val OUTER_GLOW_REACH = 0.22f
+        private const val CENTER_SAFETY_SCALE = 0.94f
+        private const val STRUCTURAL_WIDTH_CHANGE_RATIO = 0.08f
+        private const val MIN_STRUCTURAL_WIDTH_CHANGE_PX = 12
         private const val MIN_DT_SECONDS = 1f / 120f
         private const val MAX_DT_SECONDS = 1f / 18f
         private const val TIME_WRAP_SECONDS = 600f
         private const val MIN_TARGET_SIDE = 16
         private const val MIN_POINTER_STRENGTH = 0.002f
         private const val POINTER_VELOCITY_LEAD_MS = 72f
+
+        internal fun calculateContainedBaseRadius(width: Int, height: Int): Float {
+            if (width <= 0 || height <= 0) return 0f
+            val shortSide = minOf(width, height).toFloat()
+            val preferredRadius = shortSide * PREFERRED_BASE_RADIUS_SCALE
+            val maxVisualExtent =
+                1f + MAX_BOUNDARY_WOBBLE + MAX_POINTER_PULL + OUTER_GLOW_REACH
+            val containedRadius = (shortSide * 0.5f * CENTER_SAFETY_SCALE) / maxVisualExtent
+            return minOf(preferredRadius, containedRadius).coerceAtLeast(1f)
+        }
+
+        internal fun resolveStableBaseRadiusAfterResize(
+            currentRadius: Float,
+            previousWidth: Int,
+            previousHeight: Int,
+            newWidth: Int,
+            newHeight: Int
+        ): Float {
+            return if (
+                currentRadius <= 0f ||
+                shouldRecalculateStableBaseRadius(previousWidth, previousHeight, newWidth, newHeight)
+            ) {
+                calculateContainedBaseRadius(newWidth, newHeight)
+            } else {
+                currentRadius
+            }
+        }
+
+        internal fun shouldRecalculateStableBaseRadius(
+            previousWidth: Int,
+            previousHeight: Int,
+            newWidth: Int,
+            newHeight: Int
+        ): Boolean {
+            if (previousWidth <= 0 || previousHeight <= 0 || newWidth <= 0 || newHeight <= 0) {
+                return true
+            }
+            val orientationChanged = (previousWidth >= previousHeight) != (newWidth >= newHeight)
+            if (orientationChanged) return true
+
+            val widthDelta = abs(newWidth - previousWidth)
+            val structuralWidthDelta = maxOf(
+                MIN_STRUCTURAL_WIDTH_CHANGE_PX,
+                (previousWidth * STRUCTURAL_WIDTH_CHANGE_RATIO).roundToInt()
+            )
+            return widthDelta >= structuralWidthDelta
+        }
 
         private val QUAD = floatArrayOf(
             -1f, -1f,
@@ -434,6 +516,7 @@ internal class LuminousBlobSimulation {
             uniform float uBaseRadius;
             uniform float uPointerStrength;
             uniform float uPointerGlowRadius;
+            uniform float uOuterGlowReach;
             uniform float uEdgeSharpness;
             uniform float uInnerStrength;
             uniform float uShadowStrength;
@@ -443,11 +526,7 @@ internal class LuminousBlobSimulation {
 
             void main() {
                 vec2 fragCoord = vUv * uResolution;
-                vec2 drift = vec2(
-                    sin(uTime * 0.17 * uDriftSpeedScale),
-                    cos(uTime * 0.13 * uDriftSpeedScale)
-                ) * uBaseRadius * 0.055;
-                vec2 center = uCenter + drift;
+                vec2 center = uCenter;
                 vec2 p = (fragCoord - center) / max(uBaseRadius, 1.0);
                 float angle = atan(p.y, p.x);
                 float radius = length(p);
@@ -466,7 +545,10 @@ internal class LuminousBlobSimulation {
 
                 float sdf = radius - boundary;
                 float edgeGlow = exp(-abs(sdf) * uEdgeSharpness);
-                float outerGlow = exp(-max(sdf, 0.0) * 4.8) * smoothstep(0.42, 0.0, abs(sdf));
+                float outerGlowMask = 1.0 - smoothstep(0.0, uOuterGlowReach, abs(sdf));
+                float outerGlow =
+                    exp(-max(sdf, 0.0) * 5.8) *
+                    outerGlowMask;
 
                 float inside = smoothstep(0.03, -0.18, sdf);
                 float cloud =
@@ -484,6 +566,8 @@ internal class LuminousBlobSimulation {
                 float pointerGlow =
                     exp(-distance(fragCoord, uPointer) / max(uPointerGlowRadius, 1.0)) *
                     uPointerStrength;
+                float pointerMembraneMask = 1.0 - smoothstep(-0.04, uOuterGlowReach, sdf);
+                pointerGlow *= pointerMembraneMask;
                 innerGlow += pointerGlow * 0.35;
 
                 float membrane = clamp(innerGlow, 0.0, 1.0);

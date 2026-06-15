@@ -2390,7 +2390,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchLuminousBlobMotionEvent(
                         event = event,
                         sourceRoot = mainView.root,
-                        targetContainer = mainView.keyboardBackgroundContainer,
+                        targetContainer = mainView.luminousBlobEffectView,
                         blobView = mainView.luminousBlobEffectView
                     )
                 }
@@ -2488,7 +2488,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchLuminousBlobMotionEvent(
                         event = event,
                         sourceRoot = floatingView.root,
-                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        targetContainer = floatingView.floatingLuminousBlobEffectView,
                         blobView = floatingView.floatingLuminousBlobEffectView
                     )
                 }
@@ -2763,11 +2763,83 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val chromeHeightPx = (106 * resources.displayMetrics.density).toInt()
             keyboardHeight + chromeHeightPx
         }
+        updateLuminousBlobEffectBounds(
+            blobView = floatingView.floatingLuminousBlobEffectView,
+            heightPx = resolveFloatingLuminousBlobKeyboardAreaHeight(
+                floatingView = floatingView,
+                fallbackKeyboardHeightPx = fallbackKeyboardHeightPx
+            )
+        )
         applyHeight(floatingView.floatingKeyboardContent.height.takeIf { it > 0 } ?: fallbackHeight
         ?: 0)
         floatingView.root.post {
             applyHeight(floatingView.floatingKeyboardContent.height)
+            updateLuminousBlobEffectBounds(
+                blobView = floatingView.floatingLuminousBlobEffectView,
+                heightPx = resolveFloatingLuminousBlobKeyboardAreaHeight(
+                    floatingView = floatingView,
+                    fallbackKeyboardHeightPx = fallbackKeyboardHeightPx
+                )
+            )
         }
+    }
+
+    private fun updateLuminousBlobEffectBounds(
+        blobView: LuminousBlobEffectView,
+        heightPx: Int
+    ) {
+        if (heightPx <= 0) return
+        val currentParams = blobView.layoutParams as? FrameLayout.LayoutParams
+        val params = currentParams ?: FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            heightPx,
+            Gravity.BOTTOM
+        )
+        var changed = currentParams == null
+
+        if (params.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+            params.width = ViewGroup.LayoutParams.MATCH_PARENT
+            changed = true
+        }
+        if (params.height != heightPx) {
+            params.height = heightPx
+            changed = true
+        }
+        if (params.gravity != Gravity.BOTTOM) {
+            params.gravity = Gravity.BOTTOM
+            changed = true
+        }
+        if (changed) {
+            blobView.layoutParams = params
+        }
+    }
+
+    private fun resolveFloatingLuminousBlobKeyboardAreaHeight(
+        floatingView: FloatingKeyboardLayoutBinding,
+        fallbackKeyboardHeightPx: Int?
+    ): Int {
+        fun fixedHeight(view: View): Int {
+            val layoutHeight = view.layoutParams?.height ?: 0
+            return when {
+                view.height > 0 -> view.height
+                view.measuredHeight > 0 -> view.measuredHeight
+                layoutHeight > 0 -> layoutHeight
+                else -> 0
+            }
+        }
+
+        return when {
+            floatingView.floatingSymbolKeyboard.isVisible ->
+                fixedHeight(floatingView.floatingSymbolKeyboard)
+
+            floatingView.candidatesRowView.isVisible ->
+                fixedHeight(floatingView.candidatesRowView)
+
+            else ->
+                fixedHeight(floatingView.floatingKeyboardContainer)
+        }.takeIf { it > 0 }
+            ?: fallbackKeyboardHeightPx
+            ?: applicationContext.dpToPx(200)
     }
 
     private fun updateFloatingFullCandidatesHeight(
@@ -14388,6 +14460,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView = mainView,
             heightPx = backgroundSurfaceHeight
         )
+        updateLuminousBlobEffectBounds(
+            blobView = mainView.luminousBlobEffectView,
+            heightPx = heightPx
+        )
 
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
     }
@@ -14556,6 +14632,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateNormalKeyboardBackgroundBounds(
             mainView = mainView,
             heightPx = backgroundSurfaceHeight
+        )
+        updateLuminousBlobEffectBounds(
+            blobView = mainView.luminousBlobEffectView,
+            heightPx = heightPx
         )
 
         // Adjust suggestion view constraints since it's no longer attached to the parent bottom
