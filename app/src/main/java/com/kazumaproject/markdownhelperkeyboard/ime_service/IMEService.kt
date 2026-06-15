@@ -203,6 +203,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouc
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LiquidRippleEffectView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LuminousBlobEffectView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LuminousBlobSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintEffectView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
@@ -322,6 +324,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.regex.Pattern
 import javax.inject.Inject
+import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
 
 @AndroidEntryPoint
@@ -2168,6 +2171,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             palette = keyboardTouchEffectPalettePreference,
             quality = keyboardTouchEffectQualityPreference
         )
+        mainView.luminousBlobEffectView.clearBlob()
+        mainView.luminousBlobEffectView.configure(
+            enabled = false,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = resolveKeyboardTouchEffectBaseColor(mainView.root),
+            quality = keyboardTouchEffectQualityPreference
+        )
         (mainView.root as? InkTouchDispatchFrameLayout)?.touchEffectMotionEventListener = null
 
         mainView.keyboardBackgroundVideo.isVisible = false
@@ -2261,6 +2271,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearSpray()
             pauseSpray()
         }
+        mainLayoutBinding?.luminousBlobEffectView?.apply {
+            clearBlob()
+            pauseBlob()
+        }
         floatingKeyboardBinding?.floatingSuminagashiInkView?.apply {
             clearInk()
             pauseInk()
@@ -2273,15 +2287,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearSpray()
             pauseSpray()
         }
+        floatingKeyboardBinding?.floatingLuminousBlobEffectView?.apply {
+            clearBlob()
+            pauseBlob()
+        }
     }
 
     private fun releaseKeyboardTouchEffects() {
         mainLayoutBinding?.suminagashiInkView?.releaseInk()
         mainLayoutBinding?.liquidRippleEffectView?.releaseRipple()
         mainLayoutBinding?.sprayPaintEffectView?.releaseSpray()
+        mainLayoutBinding?.luminousBlobEffectView?.releaseBlob()
         floatingKeyboardBinding?.floatingSuminagashiInkView?.releaseInk()
         floatingKeyboardBinding?.floatingLiquidRippleEffectView?.releaseRipple()
         floatingKeyboardBinding?.floatingSprayPaintEffectView?.releaseSpray()
+        floatingKeyboardBinding?.floatingLuminousBlobEffectView?.releaseBlob()
     }
 
     private fun setupMainKeyboardTouchEffect(mainView: MainLayoutBinding) {
@@ -2301,6 +2321,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
         val sprayPaintEnabled =
             mainSurfaceActive && KeyboardTouchEffectType.isSprayPaint(effectType)
+        val luminousBlobEnabled =
+            mainSurfaceActive && KeyboardTouchEffectType.isLuminousBlob(effectType)
+        val effectBaseColor = resolveKeyboardTouchEffectBaseColor(mainView.root)
 
         mainView.suminagashiInkView.configure(
             enabled = inkEnabled,
@@ -2318,6 +2341,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             colorMode = keyboardTouchEffectColorModePreference,
             fixedColor = keyboardTouchEffectColorPreference,
             palette = keyboardTouchEffectPalettePreference,
+            quality = keyboardTouchEffectQualityPreference
+        )
+        mainView.luminousBlobEffectView.configure(
+            enabled = luminousBlobEnabled,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = effectBaseColor,
             quality = keyboardTouchEffectQualityPreference
         )
 
@@ -2356,6 +2385,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
+            luminousBlobEnabled -> {
+                { event ->
+                    dispatchLuminousBlobMotionEvent(
+                        event = event,
+                        sourceRoot = mainView.root,
+                        targetContainer = mainView.keyboardBackgroundContainer,
+                        blobView = mainView.luminousBlobEffectView
+                    )
+                }
+            }
+
             else -> null
         }
     }
@@ -2379,6 +2419,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
         val sprayPaintEnabled =
             floatingSurfaceActive && KeyboardTouchEffectType.isSprayPaint(effectType)
+        val luminousBlobEnabled =
+            floatingSurfaceActive && KeyboardTouchEffectType.isLuminousBlob(effectType)
+        val effectBaseColor = resolveKeyboardTouchEffectBaseColor(floatingView.root)
 
         floatingView.floatingSuminagashiInkView.configure(
             enabled = inkEnabled,
@@ -2396,6 +2439,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             colorMode = keyboardTouchEffectColorModePreference,
             fixedColor = keyboardTouchEffectColorPreference,
             palette = keyboardTouchEffectPalettePreference,
+            quality = keyboardTouchEffectQualityPreference
+        )
+        floatingView.floatingLuminousBlobEffectView.configure(
+            enabled = luminousBlobEnabled,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = effectBaseColor,
             quality = keyboardTouchEffectQualityPreference
         )
 
@@ -2434,7 +2483,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
+            luminousBlobEnabled -> {
+                { event ->
+                    dispatchLuminousBlobMotionEvent(
+                        event = event,
+                        sourceRoot = floatingView.root,
+                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        blobView = floatingView.floatingLuminousBlobEffectView
+                    )
+                }
+            }
+
             else -> null
+        }
+    }
+
+    @ColorInt
+    private fun resolveKeyboardTouchEffectBaseColor(host: View): Int {
+        if (keyboardTouchEffectColorModePreference != LuminousBlobSettings.COLOR_MODE_THEME) {
+            return keyboardTouchEffectColorPreference
+        }
+        val fallbackColor = LuminousBlobSettings.DEFAULT_BASE_COLOR
+        return when (keyboardThemeMode) {
+            "custom" -> customThemeSpecialKeyColor ?: fallbackColor
+            else -> host.context.getThemeColorOrFallback(
+                attrRes = AppCompatR.attr.colorPrimary,
+                fallbackColor = fallbackColor
+            )
         }
     }
 
@@ -2516,6 +2591,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 sprayView.onPointerUp(pointerId)
             },
             onCancel = { sprayView.onCancel() }
+        )
+    }
+
+    private fun dispatchLuminousBlobMotionEvent(
+        event: MotionEvent,
+        sourceRoot: View,
+        targetContainer: View,
+        blobView: LuminousBlobEffectView
+    ) {
+        dispatchTouchEffectMotionEvent(
+            event = event,
+            sourceRoot = sourceRoot,
+            targetContainer = targetContainer,
+            isEffectShown = { blobView.isShown },
+            onPointerDown = { pointerId, x, y ->
+                blobView.onPointerDown(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerMove = { pointerId, x, y ->
+                blobView.onPointerMove(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerUp = { pointerId, x, y ->
+                blobView.onPointerUp(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerUpOutside = { pointerId ->
+                blobView.onPointerUp(pointerId)
+            },
+            onCancel = { blobView.onCancel() }
         )
     }
 

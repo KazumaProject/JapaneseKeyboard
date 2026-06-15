@@ -52,8 +52,9 @@ internal fun resolveKeyboardTouchEffectPreferenceVisibility(
     val isInk = KeyboardTouchEffectType.isLiquidInk(normalizedEffect) ||
         KeyboardTouchEffectType.isAuroraInk(normalizedEffect)
     val isSprayPaint = KeyboardTouchEffectType.isSprayPaint(normalizedEffect)
+    val isLuminousBlob = KeyboardTouchEffectType.isLuminousBlob(normalizedEffect)
     val isEffectEnabled = KeyboardTouchEffectType.isEnabled(normalizedEffect)
-    val supportsColor = isInk || isSprayPaint
+    val supportsColor = isInk || isSprayPaint || isLuminousBlob
     return KeyboardTouchEffectPreferenceVisibility(
         showQuality = isEffectEnabled,
         showColorMode = supportsColor,

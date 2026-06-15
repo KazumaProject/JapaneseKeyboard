@@ -67,4 +67,25 @@ class KeyboardTouchEffectPreferenceVisibilityTest {
         assertFalse(none.showFixedColor)
         assertFalse(none.showPalette)
     }
+
+    @Test
+    fun luminousBlobShowsColorModeAndFixedColorOnlyWhenFixedWithoutPalette() {
+        val random = resolveKeyboardTouchEffectPreferenceVisibility(
+            effectType = KeyboardTouchEffectType.LUMINOUS_BLOB,
+            colorMode = "random"
+        )
+        val fixed = resolveKeyboardTouchEffectPreferenceVisibility(
+            effectType = KeyboardTouchEffectType.LUMINOUS_BLOB,
+            colorMode = "fixed"
+        )
+
+        assertTrue(random.showQuality)
+        assertTrue(random.showColorMode)
+        assertFalse(random.showFixedColor)
+        assertFalse(random.showPalette)
+        assertTrue(fixed.showQuality)
+        assertTrue(fixed.showColorMode)
+        assertTrue(fixed.showFixedColor)
+        assertFalse(fixed.showPalette)
+    }
 }

@@ -30,7 +30,8 @@ class KeyboardTouchEffectResourceTest {
                 KeyboardTouchEffectType.LIQUID_INK,
                 KeyboardTouchEffectType.AURORA_INK,
                 KeyboardTouchEffectType.LIQUID_RIPPLE,
-                KeyboardTouchEffectType.SPRAY_PAINT
+                KeyboardTouchEffectType.SPRAY_PAINT,
+                KeyboardTouchEffectType.LUMINOUS_BLOB
             ),
             values.toList()
         )
@@ -54,8 +55,10 @@ class KeyboardTouchEffectResourceTest {
 
         assertTrue(englishEntries.contains("Liquid Ink"))
         assertTrue(englishEntries.contains("Aurora Ink"))
+        assertTrue(englishEntries.contains("Luminous Blob"))
         assertTrue(japaneseEntries.contains("リキッドインク"))
         assertTrue(japaneseEntries.contains("オーロラインク"))
+        assertTrue(japaneseEntries.contains("光の膜"))
 
         val legacyJapaneseLabel = "\u58a8\u6d41\u3057"
         (englishEntries + japaneseEntries).forEach { label ->

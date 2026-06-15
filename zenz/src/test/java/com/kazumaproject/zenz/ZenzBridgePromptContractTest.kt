@@ -12,15 +12,27 @@ class ZenzBridgePromptContractTest {
         val source = bridgeSource().readText()
         val builder = promptBuilder(source)
 
-        val leftIndex = builder.indexOf("prompt += leftContextTag + leftContext;")
-        val rightIndex = builder.indexOf("prompt += rightContextTag + rightContext;")
-        val inputIndex = builder.indexOf("prompt += inputTag + input + outputTag;")
+        val leftTagIndex = builder.indexOf("prompt += leftContextTag;")
+        val leftContextIndex = builder.indexOf("prompt += leftContext;")
+        val rightTagIndex = builder.indexOf("prompt += rightContextTag;")
+        val rightContextIndex = builder.indexOf("prompt += rightContext;")
+        val inputTagIndex = builder.indexOf("prompt += inputTag;")
+        val inputIndex = builder.indexOf("prompt += input;")
+        val outputTagIndex = builder.indexOf("prompt += outputTag;")
 
-        assertTrue("left context tag must be appended", leftIndex >= 0)
-        assertTrue("right context tag must be appended", rightIndex >= 0)
-        assertTrue("input/output tags must be appended", inputIndex >= 0)
-        assertTrue("left context must come before right context", leftIndex < rightIndex)
-        assertTrue("right context must come before input", rightIndex < inputIndex)
+        assertTrue("left context tag must be appended", leftTagIndex >= 0)
+        assertTrue("left context must be appended", leftContextIndex >= 0)
+        assertTrue("right context tag must be appended", rightTagIndex >= 0)
+        assertTrue("right context must be appended", rightContextIndex >= 0)
+        assertTrue("input tag must be appended", inputTagIndex >= 0)
+        assertTrue("input must be appended", inputIndex >= 0)
+        assertTrue("output tag must be appended", outputTagIndex >= 0)
+        assertTrue("left tag must come before left context", leftTagIndex < leftContextIndex)
+        assertTrue("left context must come before right tag", leftContextIndex < rightTagIndex)
+        assertTrue("right tag must come before right context", rightTagIndex < rightContextIndex)
+        assertTrue("right context must come before input tag", rightContextIndex < inputTagIndex)
+        assertTrue("input tag must come before input", inputTagIndex < inputIndex)
+        assertTrue("input must come before output tag", inputIndex < outputTagIndex)
     }
 
     @Test
@@ -28,9 +40,9 @@ class ZenzBridgePromptContractTest {
         val source = bridgeSource().readText()
         val builder = promptBuilder(source)
 
-        val tagIndex = source.indexOf("const std::string rightContextTag = u8\"\\uEE07\";")
+        val tagIndex = Regex("""rightContextTag\[\]\s*=\s*u8"\\uEE07"""").find(source)?.range?.first ?: -1
         val guardIndex = builder.indexOf("if (!rightContext.empty())")
-        val appendIndex = builder.indexOf("prompt += rightContextTag + rightContext;")
+        val appendIndex = builder.indexOf("prompt += rightContextTag;")
 
         assertTrue("right context tag must be U+EE07", tagIndex >= 0)
         assertTrue("right context append must be guarded", guardIndex >= 0)
