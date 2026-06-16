@@ -185,6 +185,15 @@ data class ImePreferencesSnapshot(
     val keyboardTouchEffectColorModePreference: String,
     val keyboardTouchEffectColorPreference: Int,
     val keyboardTouchEffectPalettePreference: String,
+    val cinematicWaveColorModePreference: String,
+    val cinematicWavePrimaryColorPreference: Int,
+    val cinematicWaveSecondaryColorPreference: Int,
+    val cinematicWaveSecondaryColorAutoPreference: Boolean,
+    val cinematicWaveOpacityPercentPreference: Int,
+    val cinematicWaveIntensityPercentPreference: Int,
+    val cinematicWaveMotionPreference: String,
+    val cinematicWaveTouchResponsePreference: String,
+    val cinematicWaveQualityPreference: String,
     val customKeyBorderEnablePreference: Boolean,
     val customKeyBorderEnableColor: Int,
     val customComposingTextPreference: Boolean,
@@ -519,6 +528,25 @@ data class ImePreferencesSnapshot(
                 keyboardTouchEffectColorPreference = appPreference.keyboard_touch_effect_color_preference,
                 keyboardTouchEffectPalettePreference =
                     appPreference.keyboard_touch_effect_palette_preference,
+                cinematicWaveColorModePreference =
+                    appPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference,
+                cinematicWavePrimaryColorPreference =
+                    appPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference,
+                cinematicWaveSecondaryColorPreference =
+                    appPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference,
+                cinematicWaveSecondaryColorAutoPreference =
+                    appPreference
+                        .keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference,
+                cinematicWaveOpacityPercentPreference =
+                    appPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference,
+                cinematicWaveIntensityPercentPreference =
+                    appPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference,
+                cinematicWaveMotionPreference =
+                    appPreference.keyboard_touch_effect_cinematic_wave_motion_preference,
+                cinematicWaveTouchResponsePreference =
+                    appPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference,
+                cinematicWaveQualityPreference =
+                    appPreference.keyboard_touch_effect_cinematic_wave_quality_preference,
                 customKeyBorderEnablePreference = appPreference.custom_theme_border_enable,
                 customKeyBorderEnableColor = appPreference.custom_theme_border_color,
                 customComposingTextPreference = appPreference.custom_theme_input_color_enable,

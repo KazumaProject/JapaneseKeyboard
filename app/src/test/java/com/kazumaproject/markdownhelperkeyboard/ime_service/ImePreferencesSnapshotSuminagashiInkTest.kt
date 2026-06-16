@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
@@ -45,6 +46,14 @@ class ImePreferencesSnapshotSuminagashiInkTest {
         assertEquals(
             SprayPaintSettings.PALETTE_PAINT_SPLASH,
             snapshot.keyboardTouchEffectPalettePreference
+        )
+        assertEquals(
+            CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM,
+            snapshot.cinematicWaveColorModePreference
+        )
+        assertEquals(
+            CinematicWaveSettings.QUALITY_BALANCED,
+            snapshot.cinematicWaveQualityPreference
         )
     }
 
@@ -120,5 +129,51 @@ class ImePreferencesSnapshotSuminagashiInkTest {
             snapshot.keyboardTouchEffectPalettePreference
         )
         assertFalse(snapshot.suminagashiInkEffectPreference)
+    }
+
+    @Test
+    fun snapshotContainsSavedCinematicWavePreferences() {
+        val primary = Color.rgb(70, 210, 255)
+        val secondary = Color.rgb(160, 90, 255)
+        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.CINEMATIC_WAVE
+        AppPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference =
+            CinematicWaveSettings.COLOR_MODE_CUSTOM
+        AppPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference = primary
+        AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference = secondary
+        AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference = false
+        AppPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference = 50
+        AppPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference = 120
+        AppPreference.keyboard_touch_effect_cinematic_wave_motion_preference =
+            CinematicWaveSettings.MOTION_DYNAMIC
+        AppPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference =
+            CinematicWaveSettings.TOUCH_RESPONSE_DEEP
+        AppPreference.keyboard_touch_effect_cinematic_wave_quality_preference =
+            CinematicWaveSettings.QUALITY_CINEMATIC
+
+        val snapshot = ImePreferencesSnapshot.from(AppPreference)
+
+        assertEquals(
+            KeyboardTouchEffectType.CINEMATIC_WAVE,
+            snapshot.keyboardTouchEffectTypePreference
+        )
+        assertFalse(snapshot.suminagashiInkEffectPreference)
+        assertEquals(
+            CinematicWaveSettings.COLOR_MODE_CUSTOM,
+            snapshot.cinematicWaveColorModePreference
+        )
+        assertEquals(primary, snapshot.cinematicWavePrimaryColorPreference)
+        assertEquals(secondary, snapshot.cinematicWaveSecondaryColorPreference)
+        assertFalse(snapshot.cinematicWaveSecondaryColorAutoPreference)
+        assertEquals(50, snapshot.cinematicWaveOpacityPercentPreference)
+        assertEquals(120, snapshot.cinematicWaveIntensityPercentPreference)
+        assertEquals(CinematicWaveSettings.MOTION_DYNAMIC, snapshot.cinematicWaveMotionPreference)
+        assertEquals(
+            CinematicWaveSettings.TOUCH_RESPONSE_DEEP,
+            snapshot.cinematicWaveTouchResponsePreference
+        )
+        assertEquals(
+            CinematicWaveSettings.QUALITY_CINEMATIC,
+            snapshot.cinematicWaveQualityPreference
+        )
     }
 }

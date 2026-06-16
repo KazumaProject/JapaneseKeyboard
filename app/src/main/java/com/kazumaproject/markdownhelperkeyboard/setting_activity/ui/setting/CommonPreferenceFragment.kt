@@ -26,6 +26,7 @@ import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
@@ -41,7 +42,10 @@ internal data class KeyboardTouchEffectPreferenceVisibility(
     val showQuality: Boolean,
     val showColorMode: Boolean,
     val showFixedColor: Boolean,
-    val showPalette: Boolean
+    val showPalette: Boolean,
+    val showCinematicWaveSettings: Boolean,
+    val showCinematicWaveCustomColors: Boolean,
+    val showCinematicWaveSecondaryColor: Boolean
 )
 
 internal fun resolveKeyboardTouchEffectPreferenceVisibility(
@@ -53,13 +57,19 @@ internal fun resolveKeyboardTouchEffectPreferenceVisibility(
         KeyboardTouchEffectType.isAuroraInk(normalizedEffect)
     val isSprayPaint = KeyboardTouchEffectType.isSprayPaint(normalizedEffect)
     val isLuminousBlob = KeyboardTouchEffectType.isLuminousBlob(normalizedEffect)
+    val isCinematicWave = KeyboardTouchEffectType.isCinematicWave(normalizedEffect)
     val isEffectEnabled = KeyboardTouchEffectType.isEnabled(normalizedEffect)
     val supportsColor = isInk || isSprayPaint || isLuminousBlob
+    val isCinematicCustom =
+        colorMode == CinematicWaveSettings.COLOR_MODE_CUSTOM || colorMode == "custom"
     return KeyboardTouchEffectPreferenceVisibility(
-        showQuality = isEffectEnabled,
+        showQuality = isEffectEnabled && !isCinematicWave,
         showColorMode = supportsColor,
         showFixedColor = supportsColor && colorMode == "fixed",
-        showPalette = isSprayPaint
+        showPalette = isSprayPaint,
+        showCinematicWaveSettings = isCinematicWave,
+        showCinematicWaveCustomColors = isCinematicWave && isCinematicCustom,
+        showCinematicWaveSecondaryColor = isCinematicWave && isCinematicCustom
     )
 }
 
@@ -260,12 +270,22 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
     private fun updateKeyboardTouchEffectPreferenceState(
         effectType: String = appPreference.keyboard_touch_effect_type_preference,
-        colorMode: String = appPreference.keyboard_touch_effect_color_mode_preference
+        colorMode: String = appPreference.keyboard_touch_effect_color_mode_preference,
+        cinematicWaveColorMode: String =
+            appPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference,
+        cinematicWaveSecondaryAuto: Boolean =
+            appPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference
     ) {
         val normalizedEffect = KeyboardTouchEffectType.normalize(effectType)
+        val normalizedCinematicColorMode =
+            CinematicWaveSettings.normalizeColorMode(cinematicWaveColorMode)
         val visibility = resolveKeyboardTouchEffectPreferenceVisibility(
             effectType = normalizedEffect,
-            colorMode = colorMode
+            colorMode = if (KeyboardTouchEffectType.isCinematicWave(normalizedEffect)) {
+                normalizedCinematicColorMode
+            } else {
+                colorMode
+            }
         )
         findPreference<ListPreference>("keyboard_touch_effect_quality_preference")?.isVisible =
             visibility.showQuality
@@ -288,6 +308,66 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
         findPreference<ListPreference>("keyboard_touch_effect_palette_preference")?.isVisible =
             visibility.showPalette
+
+        findPreference<ListPreference>(
+            "keyboard_touch_effect_cinematic_wave_color_mode_preference"
+        )?.isVisible = visibility.showCinematicWaveSettings
+
+        val showCinematicCustomColors = visibility.showCinematicWaveCustomColors
+        val primaryPreference =
+            findPreference<Preference>(
+                "keyboard_touch_effect_cinematic_wave_primary_color_preference"
+            )
+        primaryPreference?.isVisible = showCinematicCustomColors
+        primaryPreference?.summary = if (showCinematicCustomColors) {
+            getString(
+                R.string.keyboard_touch_effect_cinematic_wave_primary_color_summary_current,
+                String.format(
+                    "#%08X",
+                    appPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference
+                )
+            )
+        } else {
+            getString(R.string.keyboard_touch_effect_cinematic_wave_primary_color_summary)
+        }
+
+        findPreference<SwitchPreferenceCompat>(
+            "keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference"
+        )?.isVisible = showCinematicCustomColors
+
+        val secondaryPreference =
+            findPreference<Preference>(
+                "keyboard_touch_effect_cinematic_wave_secondary_color_preference"
+            )
+        val showSecondaryColor = showCinematicCustomColors && !cinematicWaveSecondaryAuto
+        secondaryPreference?.isVisible = showSecondaryColor
+        secondaryPreference?.summary = if (showSecondaryColor) {
+            getString(
+                R.string.keyboard_touch_effect_cinematic_wave_secondary_color_summary_current,
+                String.format(
+                    "#%08X",
+                    appPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference
+                )
+            )
+        } else {
+            getString(R.string.keyboard_touch_effect_cinematic_wave_secondary_color_summary)
+        }
+
+        findPreference<SeekBarPreference>(
+            "keyboard_touch_effect_cinematic_wave_opacity_percent_preference"
+        )?.isVisible = visibility.showCinematicWaveSettings
+        findPreference<SeekBarPreference>(
+            "keyboard_touch_effect_cinematic_wave_intensity_percent_preference"
+        )?.isVisible = visibility.showCinematicWaveSettings
+        findPreference<ListPreference>(
+            "keyboard_touch_effect_cinematic_wave_motion_preference"
+        )?.isVisible = visibility.showCinematicWaveSettings
+        findPreference<ListPreference>(
+            "keyboard_touch_effect_cinematic_wave_touch_response_preference"
+        )?.isVisible = visibility.showCinematicWaveSettings
+        findPreference<ListPreference>(
+            "keyboard_touch_effect_cinematic_wave_quality_preference"
+        )?.isVisible = visibility.showCinematicWaveSettings
     }
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
@@ -525,6 +605,128 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             setOnPreferenceChangeListener { _, newValue ->
                 val nextPalette = SprayPaintSettings.normalizePalette(newValue as? String)
                 appPreference.keyboard_touch_effect_palette_preference = nextPalette
+                true
+            }
+        }
+
+        findPreference<ListPreference>(
+            "keyboard_touch_effect_cinematic_wave_color_mode_preference"
+        )?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            val normalizedMode =
+                appPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference
+            if (value != normalizedMode) {
+                value = normalizedMode
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextMode = CinematicWaveSettings.normalizeColorMode(newValue as? String)
+                appPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference =
+                    nextMode
+                updateKeyboardTouchEffectPreferenceState(cinematicWaveColorMode = nextMode)
+                true
+            }
+        }
+
+        findPreference<Preference>(
+            "keyboard_touch_effect_cinematic_wave_primary_color_preference"
+        )?.apply {
+            setOnPreferenceClickListener {
+                showCinematicWaveColorPickerDialog(primary = true)
+                true
+            }
+        }
+
+        findPreference<SwitchPreferenceCompat>(
+            "keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference"
+        )?.apply {
+            isChecked =
+                appPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference
+            setOnPreferenceChangeListener { _, newValue ->
+                val enabled = newValue as? Boolean ?: true
+                appPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference =
+                    enabled
+                updateKeyboardTouchEffectPreferenceState(cinematicWaveSecondaryAuto = enabled)
+                true
+            }
+        }
+
+        findPreference<Preference>(
+            "keyboard_touch_effect_cinematic_wave_secondary_color_preference"
+        )?.apply {
+            setOnPreferenceClickListener {
+                showCinematicWaveColorPickerDialog(primary = false)
+                true
+            }
+        }
+
+        findPreference<SeekBarPreference>(
+            "keyboard_touch_effect_cinematic_wave_opacity_percent_preference"
+        )?.apply {
+            value = appPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextValue = (newValue as? Int ?: value).coerceIn(18, 68)
+                appPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference =
+                    nextValue
+                true
+            }
+        }
+
+        findPreference<SeekBarPreference>(
+            "keyboard_touch_effect_cinematic_wave_intensity_percent_preference"
+        )?.apply {
+            value = appPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextValue = (newValue as? Int ?: value).coerceIn(35, 180)
+                appPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference =
+                    nextValue
+                true
+            }
+        }
+
+        findPreference<ListPreference>(
+            "keyboard_touch_effect_cinematic_wave_motion_preference"
+        )?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            val normalizedMotion =
+                appPreference.keyboard_touch_effect_cinematic_wave_motion_preference
+            if (value != normalizedMotion) {
+                value = normalizedMotion
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                appPreference.keyboard_touch_effect_cinematic_wave_motion_preference =
+                    CinematicWaveSettings.normalizeMotion(newValue as? String)
+                true
+            }
+        }
+
+        findPreference<ListPreference>(
+            "keyboard_touch_effect_cinematic_wave_touch_response_preference"
+        )?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            val normalizedResponse =
+                appPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference
+            if (value != normalizedResponse) {
+                value = normalizedResponse
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                appPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference =
+                    CinematicWaveSettings.normalizeTouchResponse(newValue as? String)
+                true
+            }
+        }
+
+        findPreference<ListPreference>(
+            "keyboard_touch_effect_cinematic_wave_quality_preference"
+        )?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            val normalizedQuality =
+                appPreference.keyboard_touch_effect_cinematic_wave_quality_preference
+            if (value != normalizedQuality) {
+                value = normalizedQuality
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                appPreference.keyboard_touch_effect_cinematic_wave_quality_preference =
+                    CinematicWaveSettings.normalizeQuality(newValue as? String)
                 true
             }
         }
@@ -881,6 +1083,53 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             ) { _, color ->
                 appPreference.keyboard_touch_effect_color_preference = color
                 updateKeyboardTouchEffectPreferenceState(colorMode = "fixed")
+            }
+            positiveButton(android.R.string.ok)
+            negativeButton(android.R.string.cancel)
+        }
+    }
+
+    @SuppressLint("CheckResult")
+    private fun showCinematicWaveColorPickerDialog(primary: Boolean) {
+        val titleRes = if (primary) {
+            R.string.keyboard_touch_effect_cinematic_wave_primary_color_title
+        } else {
+            R.string.keyboard_touch_effect_cinematic_wave_secondary_color_title
+        }
+        val initialColor = if (primary) {
+            appPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference
+        } else {
+            appPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference
+        }
+
+        MaterialDialog(requireContext()).show {
+            title(text = getString(titleRes))
+            colorChooser(
+                colors = intArrayOf(
+                    Color.rgb(65, 217, 255),
+                    Color.rgb(139, 92, 255),
+                    Color.rgb(210, 62, 134),
+                    Color.rgb(255, 174, 64),
+                    Color.rgb(140, 170, 190)
+                ),
+                initialSelection = initialColor,
+                allowCustomArgb = true
+            ) { _, color ->
+                if (primary) {
+                    appPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference =
+                        color
+                } else {
+                    appPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference =
+                        color
+                }
+                appPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference =
+                    CinematicWaveSettings.COLOR_MODE_CUSTOM
+                findPreference<ListPreference>(
+                    "keyboard_touch_effect_cinematic_wave_color_mode_preference"
+                )?.value = CinematicWaveSettings.COLOR_MODE_CUSTOM
+                updateKeyboardTouchEffectPreferenceState(
+                    cinematicWaveColorMode = CinematicWaveSettings.COLOR_MODE_CUSTOM
+                )
             }
             positiveButton(android.R.string.ok)
             negativeButton(android.R.string.cancel)

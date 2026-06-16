@@ -88,4 +88,26 @@ class KeyboardTouchEffectPreferenceVisibilityTest {
         assertTrue(fixed.showFixedColor)
         assertFalse(fixed.showPalette)
     }
+
+    @Test
+    fun cinematicWaveUsesDedicatedSettingsInsteadOfSharedColorControls() {
+        val random = resolveKeyboardTouchEffectPreferenceVisibility(
+            effectType = KeyboardTouchEffectType.CINEMATIC_WAVE,
+            colorMode = "cinematic_random"
+        )
+        val custom = resolveKeyboardTouchEffectPreferenceVisibility(
+            effectType = KeyboardTouchEffectType.CINEMATIC_WAVE,
+            colorMode = "custom"
+        )
+
+        assertFalse(random.showQuality)
+        assertFalse(random.showColorMode)
+        assertFalse(random.showFixedColor)
+        assertFalse(random.showPalette)
+        assertTrue(random.showCinematicWaveSettings)
+        assertFalse(random.showCinematicWaveCustomColors)
+
+        assertTrue(custom.showCinematicWaveSettings)
+        assertTrue(custom.showCinematicWaveCustomColors)
+    }
 }

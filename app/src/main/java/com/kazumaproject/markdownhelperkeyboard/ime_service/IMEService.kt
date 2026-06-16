@@ -198,6 +198,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTi
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveEffectView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.FluidInkTransportMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
@@ -948,6 +950,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @ColorInt
     private var keyboardTouchEffectColorPreference: Int = Color.rgb(17, 17, 17)
+    private var cinematicWaveColorModePreference: String =
+        CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM
+
+    @ColorInt
+    private var cinematicWavePrimaryColorPreference: Int =
+        CinematicWaveSettings.DEFAULT_PRIMARY_COLOR
+
+    @ColorInt
+    private var cinematicWaveSecondaryColorPreference: Int =
+        CinematicWaveSettings.DEFAULT_SECONDARY_COLOR
+
+    private var cinematicWaveSecondaryColorAutoPreference: Boolean = true
+    private var cinematicWaveOpacityPercentPreference: Int = 46
+    private var cinematicWaveIntensityPercentPreference: Int = 100
+    private var cinematicWaveMotionPreference: String = CinematicWaveSettings.MOTION_ELEGANT
+    private var cinematicWaveTouchResponsePreference: String =
+        CinematicWaveSettings.TOUCH_RESPONSE_NORMAL
+    private var cinematicWaveQualityPreference: String = CinematicWaveSettings.QUALITY_BALANCED
 
     private var customKeyBorderEnablePreference: Boolean? = false
     private var customKeyBorderEnableColor: Int? = Color.BLACK
@@ -1874,6 +1894,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardTouchEffectColorModePreference = preferences.keyboardTouchEffectColorModePreference
         keyboardTouchEffectColorPreference = preferences.keyboardTouchEffectColorPreference
         keyboardTouchEffectPalettePreference = preferences.keyboardTouchEffectPalettePreference
+        cinematicWaveColorModePreference =
+            CinematicWaveSettings.normalizeColorMode(preferences.cinematicWaveColorModePreference)
+        cinematicWavePrimaryColorPreference = preferences.cinematicWavePrimaryColorPreference
+        cinematicWaveSecondaryColorPreference = preferences.cinematicWaveSecondaryColorPreference
+        cinematicWaveSecondaryColorAutoPreference =
+            preferences.cinematicWaveSecondaryColorAutoPreference
+        cinematicWaveOpacityPercentPreference = preferences.cinematicWaveOpacityPercentPreference
+        cinematicWaveIntensityPercentPreference = preferences.cinematicWaveIntensityPercentPreference
+        cinematicWaveMotionPreference =
+            CinematicWaveSettings.normalizeMotion(preferences.cinematicWaveMotionPreference)
+        cinematicWaveTouchResponsePreference =
+            CinematicWaveSettings.normalizeTouchResponse(
+                preferences.cinematicWaveTouchResponsePreference
+            )
+        cinematicWaveQualityPreference =
+            CinematicWaveSettings.normalizeQuality(preferences.cinematicWaveQualityPreference)
         customKeyBorderEnablePreference = preferences.customKeyBorderEnablePreference
         customKeyBorderEnableColor = preferences.customKeyBorderEnableColor
         customComposingTextPreference = preferences.customComposingTextPreference
@@ -2178,6 +2214,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             fixedColor = resolveKeyboardTouchEffectBaseColor(mainView.root),
             quality = keyboardTouchEffectQualityPreference
         )
+        mainView.cinematicWaveEffectView.clearWave()
+        mainView.cinematicWaveEffectView.configure(
+            enabled = false,
+            colorMode = cinematicWaveColorModePreference,
+            primaryColor = cinematicWavePrimaryColorPreference,
+            secondaryColor = cinematicWaveSecondaryColorPreference,
+            secondaryColorAuto = cinematicWaveSecondaryColorAutoPreference,
+            opacityPercent = cinematicWaveOpacityPercentPreference,
+            intensityPercent = cinematicWaveIntensityPercentPreference,
+            motion = cinematicWaveMotionPreference,
+            touchResponse = cinematicWaveTouchResponsePreference,
+            quality = cinematicWaveQualityPreference
+        )
         (mainView.root as? InkTouchDispatchFrameLayout)?.touchEffectMotionEventListener = null
 
         mainView.keyboardBackgroundVideo.isVisible = false
@@ -2275,6 +2324,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearBlob()
             pauseBlob()
         }
+        mainLayoutBinding?.cinematicWaveEffectView?.apply {
+            clearWave()
+            pauseWave()
+        }
         floatingKeyboardBinding?.floatingSuminagashiInkView?.apply {
             clearInk()
             pauseInk()
@@ -2291,6 +2344,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearBlob()
             pauseBlob()
         }
+        floatingKeyboardBinding?.floatingCinematicWaveEffectView?.apply {
+            clearWave()
+            pauseWave()
+        }
     }
 
     private fun releaseKeyboardTouchEffects() {
@@ -2298,10 +2355,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainLayoutBinding?.liquidRippleEffectView?.releaseRipple()
         mainLayoutBinding?.sprayPaintEffectView?.releaseSpray()
         mainLayoutBinding?.luminousBlobEffectView?.releaseBlob()
+        mainLayoutBinding?.cinematicWaveEffectView?.releaseWave()
         floatingKeyboardBinding?.floatingSuminagashiInkView?.releaseInk()
         floatingKeyboardBinding?.floatingLiquidRippleEffectView?.releaseRipple()
         floatingKeyboardBinding?.floatingSprayPaintEffectView?.releaseSpray()
         floatingKeyboardBinding?.floatingLuminousBlobEffectView?.releaseBlob()
+        floatingKeyboardBinding?.floatingCinematicWaveEffectView?.releaseWave()
     }
 
     private fun setupMainKeyboardTouchEffect(mainView: MainLayoutBinding) {
@@ -2323,6 +2382,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainSurfaceActive && KeyboardTouchEffectType.isSprayPaint(effectType)
         val luminousBlobEnabled =
             mainSurfaceActive && KeyboardTouchEffectType.isLuminousBlob(effectType)
+        val cinematicWaveEnabled =
+            mainSurfaceActive && KeyboardTouchEffectType.isCinematicWave(effectType)
         val effectBaseColor = resolveKeyboardTouchEffectBaseColor(mainView.root)
 
         mainView.suminagashiInkView.configure(
@@ -2348,6 +2409,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             colorMode = keyboardTouchEffectColorModePreference,
             fixedColor = effectBaseColor,
             quality = keyboardTouchEffectQualityPreference
+        )
+        mainView.cinematicWaveEffectView.configure(
+            enabled = cinematicWaveEnabled,
+            colorMode = cinematicWaveColorModePreference,
+            primaryColor = cinematicWavePrimaryColorPreference,
+            secondaryColor = cinematicWaveSecondaryColorPreference,
+            secondaryColorAuto = cinematicWaveSecondaryColorAutoPreference,
+            opacityPercent = cinematicWaveOpacityPercentPreference,
+            intensityPercent = cinematicWaveIntensityPercentPreference,
+            motion = cinematicWaveMotionPreference,
+            touchResponse = cinematicWaveTouchResponsePreference,
+            quality = cinematicWaveQualityPreference
         )
 
         val root = mainView.root as? InkTouchDispatchFrameLayout
@@ -2396,6 +2469,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
 
+            cinematicWaveEnabled -> {
+                { event ->
+                    dispatchCinematicWaveMotionEvent(
+                        event = event,
+                        sourceRoot = mainView.root,
+                        targetContainer = mainView.keyboardTouchEffectContainer,
+                        waveView = mainView.cinematicWaveEffectView
+                    )
+                }
+            }
+
             else -> null
         }
     }
@@ -2421,6 +2505,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingSurfaceActive && KeyboardTouchEffectType.isSprayPaint(effectType)
         val luminousBlobEnabled =
             floatingSurfaceActive && KeyboardTouchEffectType.isLuminousBlob(effectType)
+        val cinematicWaveEnabled =
+            floatingSurfaceActive && KeyboardTouchEffectType.isCinematicWave(effectType)
         val effectBaseColor = resolveKeyboardTouchEffectBaseColor(floatingView.root)
 
         floatingView.floatingSuminagashiInkView.configure(
@@ -2446,6 +2532,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             colorMode = keyboardTouchEffectColorModePreference,
             fixedColor = effectBaseColor,
             quality = keyboardTouchEffectQualityPreference
+        )
+        floatingView.floatingCinematicWaveEffectView.configure(
+            enabled = cinematicWaveEnabled,
+            colorMode = cinematicWaveColorModePreference,
+            primaryColor = cinematicWavePrimaryColorPreference,
+            secondaryColor = cinematicWaveSecondaryColorPreference,
+            secondaryColorAuto = cinematicWaveSecondaryColorAutoPreference,
+            opacityPercent = cinematicWaveOpacityPercentPreference,
+            intensityPercent = cinematicWaveIntensityPercentPreference,
+            motion = cinematicWaveMotionPreference,
+            touchResponse = cinematicWaveTouchResponsePreference,
+            quality = cinematicWaveQualityPreference
         )
 
         val root = floatingView.root as? InkTouchDispatchFrameLayout
@@ -2490,6 +2588,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         sourceRoot = floatingView.root,
                         targetContainer = floatingView.floatingLuminousBlobEffectView,
                         blobView = floatingView.floatingLuminousBlobEffectView
+                    )
+                }
+            }
+
+            cinematicWaveEnabled -> {
+                { event ->
+                    dispatchCinematicWaveMotionEvent(
+                        event = event,
+                        sourceRoot = floatingView.root,
+                        targetContainer = floatingView.floatingKeyboardTouchEffectContainer,
+                        waveView = floatingView.floatingCinematicWaveEffectView
                     )
                 }
             }
@@ -2619,6 +2728,71 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             },
             onCancel = { blobView.onCancel() }
         )
+    }
+
+    private fun dispatchCinematicWaveMotionEvent(
+        event: MotionEvent,
+        sourceRoot: View,
+        targetContainer: View,
+        waveView: CinematicWaveEffectView
+    ) {
+        if (!waveView.isShown) return
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN,
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                val index = event.actionIndex
+                if (!mapMotionEventToTarget(event, index, sourceRoot, targetContainer, inkMappedPoint)) {
+                    return
+                }
+                waveView.onPointerDown(
+                    pointerId = event.getPointerId(index),
+                    x = inkMappedPoint[0],
+                    y = inkMappedPoint[1],
+                    pressure = event.getPressure(index)
+                )
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                for (index in 0 until event.pointerCount) {
+                    if (!mapMotionEventToTarget(
+                            event,
+                            index,
+                            sourceRoot,
+                            targetContainer,
+                            inkMappedPoint
+                        )
+                    ) {
+                        continue
+                    }
+                    waveView.onPointerMove(
+                        pointerId = event.getPointerId(index),
+                        x = inkMappedPoint[0],
+                        y = inkMappedPoint[1],
+                        pressure = event.getPressure(index)
+                    )
+                }
+            }
+
+            MotionEvent.ACTION_UP,
+            MotionEvent.ACTION_POINTER_UP -> {
+                val index = event.actionIndex
+                if (mapMotionEventToTarget(event, index, sourceRoot, targetContainer, inkMappedPoint)) {
+                    waveView.onPointerUp(
+                        pointerId = event.getPointerId(index),
+                        x = inkMappedPoint[0],
+                        y = inkMappedPoint[1],
+                        pressure = event.getPressure(index)
+                    )
+                } else {
+                    waveView.onPointerUp(event.getPointerId(index))
+                }
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                waveView.onCancel()
+            }
+        }
     }
 
     private fun dispatchTouchEffectMotionEvent(
@@ -3717,6 +3891,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardTouchEffectColorModePreference = "random"
         keyboardTouchEffectColorPreference = Color.rgb(17, 17, 17)
         keyboardTouchEffectPalettePreference = SprayPaintSettings.PALETTE_PAINT_SPLASH
+        cinematicWaveColorModePreference = CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM
+        cinematicWavePrimaryColorPreference = CinematicWaveSettings.DEFAULT_PRIMARY_COLOR
+        cinematicWaveSecondaryColorPreference = CinematicWaveSettings.DEFAULT_SECONDARY_COLOR
+        cinematicWaveSecondaryColorAutoPreference = true
+        cinematicWaveOpacityPercentPreference = 46
+        cinematicWaveIntensityPercentPreference = 100
+        cinematicWaveMotionPreference = CinematicWaveSettings.MOTION_ELEGANT
+        cinematicWaveTouchResponsePreference = CinematicWaveSettings.TOUCH_RESPONSE_NORMAL
+        cinematicWaveQualityPreference = CinematicWaveSettings.QUALITY_BALANCED
         customKeyBorderEnablePreference = null
         customKeyBorderEnableColor = null
 
