@@ -13,7 +13,8 @@ class ShortcutToolbarPresentationPolicyTest {
         )
 
         assertFalse(presentation.showIndependentToolbar)
-        assertFalse(presentation.showIntegratedShortcuts)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
@@ -23,15 +24,17 @@ class ShortcutToolbarPresentationPolicyTest {
         )
 
         assertTrue(presentation.showIndependentToolbar)
-        assertFalse(presentation.showIntegratedShortcuts)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
-    fun shortcutToolbarVisibleAndIntegrationOnWithEmptyInputShowsIntegratedShortcuts() {
+    fun integratedOnShowsShortcutItemsForNormalEmptyState() {
         val presentation = ShortcutToolbarPresentationPolicy.resolve(baseState())
 
         assertFalse(presentation.showIndependentToolbar)
-        assertTrue(presentation.showIntegratedShortcuts)
+        assertTrue(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
@@ -41,7 +44,8 @@ class ShortcutToolbarPresentationPolicyTest {
         )
 
         assertFalse(presentation.showIndependentToolbar)
-        assertFalse(presentation.showIntegratedShortcuts)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
@@ -51,27 +55,56 @@ class ShortcutToolbarPresentationPolicyTest {
         )
 
         assertFalse(presentation.showIndependentToolbar)
-        assertFalse(presentation.showIntegratedShortcuts)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
-    fun clipboardPreviewDisablesIntegratedShortcuts() {
+    fun integratedOnClipboardPreviewShowsShortcutEntryOnly() {
         val presentation = ShortcutToolbarPresentationPolicy.resolve(
             baseState(clipboardPreviewShown = true)
         )
 
         assertFalse(presentation.showIndependentToolbar)
-        assertFalse(presentation.showIntegratedShortcuts)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertTrue(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
-    fun selectedTextGemmaActionsDisableIntegratedShortcuts() {
+    fun integratedOnGemmaActionsShowShortcutEntryOnly() {
         val presentation = ShortcutToolbarPresentationPolicy.resolve(
-            baseState(selectedTextGemmaActionsShown = true)
+            baseState(selectedTextGemmaActionsShown = true, suggestionsEmpty = false)
         )
 
         assertFalse(presentation.showIndependentToolbar)
-        assertFalse(presentation.showIntegratedShortcuts)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertTrue(presentation.showIntegratedShortcutEntry)
+    }
+
+    @Test
+    fun integratedOffClipboardPreviewDoesNotShowShortcutEntry() {
+        val presentation = ShortcutToolbarPresentationPolicy.resolve(
+            baseState(integratedInSuggestion = false, clipboardPreviewShown = true)
+        )
+
+        assertTrue(presentation.showIndependentToolbar)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
+    }
+
+    @Test
+    fun integratedOffGemmaActionsDoNotShowShortcutEntry() {
+        val presentation = ShortcutToolbarPresentationPolicy.resolve(
+            baseState(
+                integratedInSuggestion = false,
+                selectedTextGemmaActionsShown = true,
+                suggestionsEmpty = false
+            )
+        )
+
+        assertTrue(presentation.showIndependentToolbar)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
@@ -81,17 +114,30 @@ class ShortcutToolbarPresentationPolicyTest {
         )
 
         assertFalse(presentation.showIndependentToolbar)
-        assertFalse(presentation.showIntegratedShortcuts)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
     fun customLayoutPickerDisablesIntegratedShortcuts() {
         val presentation = ShortcutToolbarPresentationPolicy.resolve(
-            baseState(customLayoutPickerShown = true)
+            baseState(customLayoutPickerShown = true, clipboardPreviewShown = true)
         )
 
         assertFalse(presentation.showIndependentToolbar)
-        assertFalse(presentation.showIntegratedShortcuts)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
+    }
+
+    @Test
+    fun symbolKeyboardDoesNotShowShortcutEntry() {
+        val presentation = ShortcutToolbarPresentationPolicy.resolve(
+            baseState(symbolKeyboardShown = true, clipboardPreviewShown = true)
+        )
+
+        assertFalse(presentation.showIndependentToolbar)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     private fun baseState(
@@ -102,7 +148,8 @@ class ShortcutToolbarPresentationPolicyTest {
         clipboardPreviewShown: Boolean = false,
         selectedTextGemmaActionsShown: Boolean = false,
         suggestionsEmpty: Boolean = true,
-        customLayoutPickerShown: Boolean = false
+        customLayoutPickerShown: Boolean = false,
+        symbolKeyboardShown: Boolean = false
     ): ShortcutToolbarPresentationState {
         return ShortcutToolbarPresentationState(
             shortcutToolbarVisible = shortcutToolbarVisible,
@@ -112,7 +159,8 @@ class ShortcutToolbarPresentationPolicyTest {
             clipboardPreviewShown = clipboardPreviewShown,
             selectedTextGemmaActionsShown = selectedTextGemmaActionsShown,
             suggestionsEmpty = suggestionsEmpty,
-            customLayoutPickerShown = customLayoutPickerShown
+            customLayoutPickerShown = customLayoutPickerShown,
+            symbolKeyboardShown = symbolKeyboardShown
         )
     }
 }

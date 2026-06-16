@@ -862,14 +862,14 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             }
         }
         suggestionAdapter.setShortcutItems(previewShortcutItems())
-        suggestionAdapter.setIntegratedShortcutVisibility(presentation.showIntegratedShortcut)
+        suggestionAdapter.setIntegratedShortcutVisibility(presentation.showIntegratedShortcutItems)
     }
 
     private data class CandidateHeightPreviewPresentation(
         val showCandidateTab: Boolean,
         val showIndependentShortcutToolbar: Boolean,
         val reserveIndependentShortcutToolbarSpace: Boolean,
-        val showIntegratedShortcut: Boolean,
+        val showIntegratedShortcutItems: Boolean,
         val candidateTabOffsetPx: Int,
         val independentShortcutToolbarHeightPx: Int
     )
@@ -913,7 +913,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
             showIndependentShortcutToolbar = presentation.showIndependentShortcutToolbar,
             reserveIndependentShortcutToolbarSpace =
                 presentation.reserveIndependentShortcutToolbarSpace,
-            showIntegratedShortcut = presentation.showIntegratedShortcut,
+            showIntegratedShortcutItems = presentation.showIntegratedShortcutItems,
             candidateTabOffsetPx = if (presentation.showCandidateTab) 36.dpToPx() else 0,
             independentShortcutToolbarHeightPx = independentHeightPx
         )

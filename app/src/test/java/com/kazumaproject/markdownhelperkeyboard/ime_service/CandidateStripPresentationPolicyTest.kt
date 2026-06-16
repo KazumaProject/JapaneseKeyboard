@@ -14,7 +14,8 @@ class CandidateStripPresentationPolicyTest {
 
         assertFalse(presentation.showIndependentShortcutToolbar)
         assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
-        assertFalse(presentation.showIntegratedShortcut)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
@@ -25,15 +26,17 @@ class CandidateStripPresentationPolicyTest {
 
         assertTrue(presentation.showIndependentShortcutToolbar)
         assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
-        assertFalse(presentation.showIntegratedShortcut)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
-    fun shortcutToolbarVisibleAndIntegrationOnWithEmptyInputShowsIntegratedShortcut() {
+    fun integratedOnShowsShortcutItemsForNormalEmptyState() {
         val presentation = CandidateStripPresentationPolicy.resolve(baseState())
 
         assertFalse(presentation.showIndependentShortcutToolbar)
-        assertTrue(presentation.showIntegratedShortcut)
+        assertTrue(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
@@ -42,7 +45,8 @@ class CandidateStripPresentationPolicyTest {
             baseState(inputStringEmpty = false)
         )
 
-        assertFalse(presentation.showIntegratedShortcut)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
@@ -51,40 +55,75 @@ class CandidateStripPresentationPolicyTest {
             baseState(tailEmpty = false)
         )
 
-        assertFalse(presentation.showIntegratedShortcut)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
-    fun clipboardPreviewDisablesIntegratedShortcut() {
+    fun integratedOnClipboardPreviewShowsShortcutEntryOnly() {
         val presentation = CandidateStripPresentationPolicy.resolve(
             baseState(clipboardPreviewShown = true)
         )
 
         assertFalse(presentation.showIndependentShortcutToolbar)
         assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
-        assertFalse(presentation.showIntegratedShortcut)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertTrue(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
-    fun selectedTextGemmaActionsDisableIntegratedShortcut() {
+    fun integratedOnGemmaActionsShowShortcutEntryOnly() {
         val presentation = CandidateStripPresentationPolicy.resolve(
-            baseState(selectedTextGemmaActionsShown = true)
+            baseState(selectedTextGemmaActionsShown = true, suggestionsEmpty = false)
         )
 
         assertFalse(presentation.showIndependentShortcutToolbar)
         assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
-        assertFalse(presentation.showIntegratedShortcut)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertTrue(presentation.showIntegratedShortcutEntry)
+    }
+
+    @Test
+    fun integratedOffClipboardPreviewDoesNotShowShortcutEntry() {
+        val presentation = CandidateStripPresentationPolicy.resolve(
+            baseState(
+                shortcutToolbarIntegratedInSuggestion = false,
+                clipboardPreviewShown = true
+            )
+        )
+
+        assertTrue(presentation.showIndependentShortcutToolbar)
+        assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
+    }
+
+    @Test
+    fun integratedOffGemmaActionsDoNotShowShortcutEntry() {
+        val presentation = CandidateStripPresentationPolicy.resolve(
+            baseState(
+                shortcutToolbarIntegratedInSuggestion = false,
+                selectedTextGemmaActionsShown = true,
+                suggestionsEmpty = false
+            )
+        )
+
+        assertTrue(presentation.showIndependentShortcutToolbar)
+        assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
     fun customLayoutPickerDisablesIntegratedShortcut() {
         val presentation = CandidateStripPresentationPolicy.resolve(
-            baseState(customLayoutPickerShown = true)
+            baseState(customLayoutPickerShown = true, clipboardPreviewShown = true)
         )
 
         assertFalse(presentation.showIndependentShortcutToolbar)
         assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
-        assertFalse(presentation.showIntegratedShortcut)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
@@ -95,7 +134,8 @@ class CandidateStripPresentationPolicyTest {
 
         assertFalse(presentation.showIndependentShortcutToolbar)
         assertFalse(presentation.reserveIndependentShortcutToolbarSpace)
-        assertFalse(presentation.showIntegratedShortcut)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
@@ -104,7 +144,8 @@ class CandidateStripPresentationPolicyTest {
             baseState(suggestionsEmpty = false)
         )
 
-        assertFalse(presentation.showIntegratedShortcut)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     @Test
@@ -159,6 +200,8 @@ class CandidateStripPresentationPolicyTest {
 
         assertFalse(presentation.showIndependentShortcutToolbar)
         assertTrue(presentation.reserveIndependentShortcutToolbarSpace)
+        assertFalse(presentation.showIntegratedShortcutItems)
+        assertFalse(presentation.showIntegratedShortcutEntry)
     }
 
     private fun baseState(

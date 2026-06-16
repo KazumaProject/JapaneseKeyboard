@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.Matrix
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.hardware.input.InputManager
@@ -497,6 +498,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zenzEngine: ZenzEngine? = null
 
     private var shortcutAdapter: ShortcutAdapter? = null
+    private var shortcutEntryPopupWindow: PopupWindow? = null
+    private var shortcutEntryPopupAdapter: ShortcutAdapter? = null
+    private var shortcutEntryPopupAnchorView: View? = null
+    private var shortcutEntryPopupDetachListener: View.OnAttachStateChangeListener? = null
 
     private var romajiConverter: RomajiKanaConverter? = null
 
@@ -649,6 +654,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setSuggestionAdapterSuggestionsOnMain(candidates: List<Candidate>) {
         runOnMainThread {
             measureDebugSection("IMEService.setSuggestionAdapterSuggestionsOnMain") {
+                dismissShortcutEntryPopup()
                 suggestionAdapter?.suggestions = candidates
             }
         }
@@ -660,6 +666,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         runOnMainThread {
             measureDebugSection("IMEService.setSuggestionAdaptersOnMain") {
+                dismissShortcutEntryPopup()
                 suggestionAdapter?.suggestions = candidates
                 suggestionAdapterFull?.suggestions = fullCandidates
             }
@@ -673,6 +680,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) = measureDebugStage("IMEService.updateSuggestionAdaptersOnMain") {
         withContext(Dispatchers.Main.immediate) {
             if (!shouldApplyCandidateResult(insertString)) return@withContext
+            dismissShortcutEntryPopup()
             suggestionAdapter?.suggestions = candidates
             suggestionAdapterFull?.suggestions = fullCandidates
         }
@@ -3285,6 +3293,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         isInputViewActive = true
+        dismissShortcutEntryPopup()
         shortcutInputBehaviorOverride = null
         keyboardSelectionPopupWindow?.dismiss()
         addUserDictionaryPopup?.dismiss()
@@ -3654,6 +3663,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         releaseKeyboardBackgroundVideoPlayer()
         releaseFloatingKeyboardBackgroundVideoPlayer()
         stopVoiceInput()
+        dismissShortcutEntryPopup()
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
         floatingModeSwitchWindow?.dismiss()
@@ -3673,6 +3683,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onUpdate onDestroy")
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
+        dismissShortcutEntryPopup()
         isInputViewActive = false
         releaseSuminagashiInkEffects()
         releaseKeyboardBackgroundVideoPlayer()
@@ -4038,6 +4049,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        dismissShortcutEntryPopup()
         when (newConfig.orientation) {
             Configuration.ORIENTATION_PORTRAIT -> {
                 finishComposingText()
@@ -11910,6 +11922,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun updateClipboardPreview() {
         Timber.d("SuggestionAdapter Clipboard: updateClipboardPreview")
+        dismissShortcutEntryPopup()
         suggestionAdapter?.apply {
             when (val item = clipboardUtil.getPrimaryClipContent()) {
                 is ClipboardItem.Image -> {
@@ -16797,6 +16810,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnShortcutItemClickListener { type ->
                 handleShortcutAction(type, mainView)
             }
+            adapter.setOnShortcutEntryClickListener { anchorView ->
+                showShortcutEntryPopup(anchorView, mainView)
+            }
         }
         suggestionAdapterFull?.let { adapter ->
             adapter.setOnItemClickListener { candidate, position ->
@@ -16989,6 +17005,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         override fun getSpanSize(position: Int): Int {
                             return when (adapter?.getItemViewType(position)) {
                                 SuggestionAdapter.VIEW_TYPE_EMPTY,
+                                SuggestionAdapter.VIEW_TYPE_CLIPBOARD_PREVIEW,
+                                SuggestionAdapter.VIEW_TYPE_SHORTCUT_ENTRY,
                                 SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER,
                                 SuggestionAdapter.VIEW_TYPE_SHORTCUT -> spanCount
                                 else -> 1
@@ -17590,17 +17608,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return applicationContext.dpToPx(toolbarHeightDp)
     }
 
+    private fun shortcutToolbarIconSizePx(toolbarHeightDp: Int = shortcutToolbarHeightDp): Int {
+        val normalizedToolbarHeightDp = toolbarHeightDp.coerceIn(
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+        )
+        val iconSizeDp = appPreference.resolveShortcutToolbarIconSizeDp(
+            toolbarHeightDp = normalizedToolbarHeightDp,
+            iconSizeDp = shortcutToolbarIconSizeDp
+        )
+        return applicationContext.dpToPx(iconSizeDp)
+    }
+
     private fun applyShortcutToolbarSize(mainView: MainLayoutBinding) {
         val toolbarHeightDp = shortcutToolbarHeightDp.coerceIn(
             AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
             AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
         )
-        val iconSizeDp = appPreference.resolveShortcutToolbarIconSizeDp(
-            toolbarHeightDp = toolbarHeightDp,
-            iconSizeDp = shortcutToolbarIconSizeDp
-        )
         val toolbarHeightPx = applicationContext.dpToPx(toolbarHeightDp)
-        val iconSizePx = applicationContext.dpToPx(iconSizeDp)
+        val iconSizePx = shortcutToolbarIconSizePx(toolbarHeightDp)
         mainView.shortcutToolbarRecyclerview.layoutParams =
             mainView.shortcutToolbarRecyclerview.layoutParams.apply {
                 height = toolbarHeightPx
@@ -17662,7 +17688,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidatesShown = candidatesShown,
             resetCandidateTabSelection = resetCandidateTabSelection
         )
-        suggestionAdapter?.setIntegratedShortcutVisibility(presentation.showIntegratedShortcut)
+        dismissShortcutEntryPopup()
+        suggestionAdapter?.setIntegratedShortcutItemsVisibility(presentation.showIntegratedShortcutItems)
+        suggestionAdapter?.setIntegratedShortcutEntryVisibility(presentation.showIntegratedShortcutEntry)
         applyCandidateTabSuggestionOffset(mainView, presentation.showCandidateTab)
         mainView.candidateTabLayout.isVisible = presentation.showCandidateTab
         if (presentation.resetCandidateTabSelection) {
@@ -17676,6 +17704,127 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             mainView.shortcutToolbarRecyclerview.isVisible = false
         }
+    }
+
+    private fun showShortcutEntryPopup(anchorView: View, mainView: MainLayoutBinding) {
+        dismissShortcutEntryPopup()
+        val shortcutItems = shortcutAdapter?.currentList.orEmpty()
+        if (shortcutItems.isEmpty()) return
+        if (!canShowPopupWindow(anchorView)) return
+
+        val toolbarHeightPx = shortcutToolbarHeightPx()
+        val popupVerticalPaddingPx = applicationContext.dpToPx(4)
+        val popupHorizontalPaddingPx = applicationContext.dpToPx(8)
+        val popupWidth = mainView.root.width
+            .takeIf { it > 0 }
+            ?: resources.displayMetrics.widthPixels
+
+        val popupAdapter = ShortcutAdapter().apply {
+            setShortcutToolbarSize(
+                toolbarHeightPx = toolbarHeightPx,
+                iconSizePx = shortcutToolbarIconSizePx()
+            )
+            setActiveShortcutTypes(
+                resolveShortcutActiveTypes(
+                    keyboardLayoutEditActive = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled,
+                    keyboardFloatingActive = isKeyboardFloatingMode == true,
+                    inputBehavior = currentInputBehavior,
+                )
+            )
+            if (keyboardThemeMode == "custom") {
+                setIconColor(customThemeShortcutIconColor ?: Color.BLACK)
+            }
+            onItemClicked = { type ->
+                dismissShortcutEntryPopup()
+                handleShortcutAction(type, mainView)
+            }
+            submitList(shortcutItems)
+        }
+        val recyclerView = RecyclerView(this).apply {
+            layoutManager =
+                LinearLayoutManager(this@IMEService, LinearLayoutManager.HORIZONTAL, false)
+            adapter = popupAdapter
+            itemAnimator = null
+            isFocusable = false
+            overScrollMode = View.OVER_SCROLL_NEVER
+        }
+        val contentView = FrameLayout(this).apply {
+            setPadding(
+                popupHorizontalPaddingPx,
+                popupVerticalPaddingPx,
+                popupHorizontalPaddingPx,
+                popupVerticalPaddingPx
+            )
+            background = GradientDrawable().apply {
+                cornerRadius = resources.displayMetrics.density * 12f
+                setColor(
+                    customThemeSpecialKeyColor ?: ContextCompat.getColor(
+                        this@IMEService,
+                        com.kazumaproject.core.R.color.keyboard_bg
+                    )
+                )
+            }
+            addView(
+                recyclerView,
+                FrameLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    toolbarHeightPx
+                )
+            )
+        }
+        val popupHeight = toolbarHeightPx + popupVerticalPaddingPx * 2
+        val popupWindow = PopupWindow(
+            contentView,
+            popupWidth,
+            popupHeight,
+            false
+        ).apply {
+            isOutsideTouchable = true
+            isClippingEnabled = true
+            inputMethodMode = PopupWindow.INPUT_METHOD_NOT_NEEDED
+            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        }
+        val detachListener = object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) = Unit
+
+            override fun onViewDetachedFromWindow(v: View) {
+                dismissShortcutEntryPopup()
+            }
+        }
+        shortcutEntryPopupWindow = popupWindow
+        shortcutEntryPopupAdapter = popupAdapter
+        shortcutEntryPopupAnchorView = anchorView
+        shortcutEntryPopupDetachListener = detachListener
+        anchorView.addOnAttachStateChangeListener(detachListener)
+        popupWindow.setOnDismissListener {
+            clearShortcutEntryPopupReferences(popupWindow)
+        }
+        runCatching {
+            popupWindow.showAsDropDown(anchorView, 0, 0)
+        }.onFailure { throwable ->
+            Timber.w(throwable, "Shortcut entry popup show failed")
+            dismissShortcutEntryPopup()
+        }
+    }
+
+    private fun dismissShortcutEntryPopup() {
+        val popupWindow = shortcutEntryPopupWindow
+        clearShortcutEntryPopupReferences(popupWindow)
+        if (popupWindow?.isShowing == true) {
+            popupWindow.dismiss()
+        }
+    }
+
+    private fun clearShortcutEntryPopupReferences(popupWindow: PopupWindow?) {
+        if (popupWindow != null && shortcutEntryPopupWindow !== popupWindow) return
+        shortcutEntryPopupDetachListener?.let { listener ->
+            shortcutEntryPopupAnchorView?.removeOnAttachStateChangeListener(listener)
+        }
+        shortcutEntryPopupAdapter?.onItemClicked = null
+        shortcutEntryPopupWindow = null
+        shortcutEntryPopupAdapter = null
+        shortcutEntryPopupAnchorView = null
+        shortcutEntryPopupDetachListener = null
     }
 
     private fun handleShortcutAction(type: ShortcutType, mainView: MainLayoutBinding) {
