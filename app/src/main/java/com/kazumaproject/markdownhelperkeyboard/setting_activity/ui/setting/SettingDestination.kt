@@ -398,6 +398,17 @@ object SettingDestinations {
         "keyboard_key_letter_size_fragment_preference",
         "keyboard_background_image_select_preference",
         "keyboard_background_video_select_preference",
+        "keyboard_touch_effect_type_preference",
+        "keyboard_touch_effect_cinematic_wave_color_mode_preference",
+        "keyboard_touch_effect_cinematic_wave_type_preference",
+        "keyboard_touch_effect_cinematic_wave_primary_color_preference",
+        "keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference",
+        "keyboard_touch_effect_cinematic_wave_secondary_color_preference",
+        "keyboard_touch_effect_cinematic_wave_opacity_percent_preference",
+        "keyboard_touch_effect_cinematic_wave_intensity_percent_preference",
+        "keyboard_touch_effect_cinematic_wave_motion_preference",
+        "keyboard_touch_effect_cinematic_wave_touch_response_preference",
+        "keyboard_touch_effect_cinematic_wave_quality_preference",
         "round_corner_keyboard_preference",
         "keyboard_corner_radius_dp_preference",
         "candidate_column_preference",
@@ -428,6 +439,7 @@ object SettingDestinations {
         "shortcut_toolbar_visibility_preference",
         "shortcut_toolbar_integrated_in_suggestion_preference",
         "shortcut_toolbar_item_preference",
+        "shortcut_toolbar_size_setting_fragment_preference",
         "symbol_mode_preference",
         "default_emoji_skin_tone_preference",
         "system_user_dictionary_builder_preference",
@@ -661,6 +673,8 @@ object SettingDestinations {
             "setting_route_gemma_preferences" -> R.id.gemmaPreferenceFragment.takeIf { AppVariantConfig.hasGemma }
             "custom_romaji_preference" -> R.id.romajiMapFragment
             "shortcut_toolbar_item_preference" -> R.id.shortcutSettingFragment
+            "shortcut_toolbar_size_setting_fragment_preference" ->
+                R.id.shortcutToolbarSizeSettingFragment
             "candidate_tab_order_preference" -> R.id.candidateTabOrderFragment
             "keyboard_selection_preference" -> R.id.keyboardSelectionFragment
             "keyboard_key_letter_size_fragment_preference" -> R.id.keyCandidateLetterSizeFragment

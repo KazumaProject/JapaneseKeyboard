@@ -77,9 +77,9 @@ class SumireJapanese109AContractTest {
         assertKey(keys, "0", base = "0", shift = null)
         assertKey(keys, "MINUS", base = "-", shift = "=")
         assertKey(keys, "EQUALS", base = "^", shift = "~")
-        assertKey(keys, "LEFT_BRACKET", base = "@", shift = "`")
-        assertKey(keys, "RIGHT_BRACKET", base = "[", shift = "{")
-        assertKey(keys, "BACKSLASH", base = "]", shift = "}")
+        assertKey(keys, "AT", base = "@", shift = "`")
+        assertKey(keys, "LEFT_BRACKET", base = "[", shift = "{")
+        assertKey(keys, "RIGHT_BRACKET", base = "]", shift = "}")
         assertKey(keys, "SEMICOLON", base = ";", shift = "+")
         assertKey(keys, "APOSTROPHE", base = ":", shift = "*")
         assertKey(keys, "COMMA", base = ",", shift = "<")
@@ -118,29 +118,41 @@ class SumireJapanese109AContractTest {
 
     private fun readKcmKeys(): Map<String, KcmKey> {
         val text = mainResFile("raw/keyboard_layout_japanese_109a.kcm").readText()
-        return text.lineSequence()
-            .mapNotNull { Regex("""^\s*key\s+([A-Z0-9_]+)\s*\{(.*)}\s*$""").find(it) }
+        return Regex("""(?ms)^\s*key\s+([A-Z0-9_]+)\s*\{(.*?)^\s*}\s*$""")
+            .findAll(text)
             .associate { match ->
                 val name = match.groupValues[1]
                 val body = match.groupValues[2]
                 val capslock = attribute(body, "capslock")
                 name to KcmKey(
                     base = attribute(body, "base"),
-                    shift = attribute(body, "shift") ?: capslock.takeIf {
-                        body.contains(Regex("""\bshift\s*,"""))
-                    },
+                    shift = attribute(body, "shift"),
                     capslock = capslock
                 )
             }
     }
 
     private fun attribute(body: String, name: String): String? {
-        return Regex("""\b$name\s*:\s*'((?:\\\\|\\'|[^'])*)'""")
-            .find(body)
+        val direct = Regex("""\b$name\s*:\s*'((?:\\\\|\\'|[^'])*)'""")
+        val combinedShiftCaps = Regex("""\b(?:shift,\s*capslock|capslock,\s*shift)\s*:\s*'((?:\\\\|\\'|[^'])*)'""")
+        val match = direct.find(body) ?: if (name == "shift" || name == "capslock") {
+            combinedShiftCaps.find(body)
+        } else {
+            null
+        }
+        return match
             ?.groupValues
             ?.get(1)
-            ?.replace("\\'", "'")
-            ?.replace("\\\\", "\\")
+            ?.let(::unescapeKcmString)
+    }
+
+    private fun unescapeKcmString(value: String): String {
+        return Regex("""\\u([0-9a-fA-F]{4})""")
+            .replace(value) { match ->
+                match.groupValues[1].toInt(16).toChar().toString()
+            }
+            .replace("\\'", "'")
+            .replace("\\\\", "\\")
     }
 
     private fun readXml(path: String) = DocumentBuilderFactory

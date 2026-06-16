@@ -41,6 +41,14 @@ class KeyboardTouchEffectTypeTest {
             KeyboardTouchEffectType.SPRAY_PAINT,
             KeyboardTouchEffectType.normalize("spray_paint")
         )
+        assertEquals(
+            KeyboardTouchEffectType.LUMINOUS_BLOB,
+            KeyboardTouchEffectType.normalize("luminous_blob")
+        )
+        assertEquals(
+            KeyboardTouchEffectType.CINEMATIC_WAVE,
+            KeyboardTouchEffectType.normalize("cinematic_wave")
+        )
     }
 
     @Test
@@ -53,7 +61,11 @@ class KeyboardTouchEffectTypeTest {
         assertTrue(KeyboardTouchEffectType.isSuminagashi("suminagashi_ink"))
         assertTrue(KeyboardTouchEffectType.isLiquidRipple("liquid_ripple"))
         assertTrue(KeyboardTouchEffectType.isSprayPaint("spray_paint"))
+        assertTrue(KeyboardTouchEffectType.isLuminousBlob("luminous_blob"))
+        assertTrue(KeyboardTouchEffectType.isCinematicWave("cinematic_wave"))
         assertFalse(KeyboardTouchEffectType.isLiquidRipple("aurora_ink"))
         assertFalse(KeyboardTouchEffectType.isSprayPaint("aurora_ink"))
+        assertFalse(KeyboardTouchEffectType.isLuminousBlob("aurora_ink"))
+        assertFalse(KeyboardTouchEffectType.isCinematicWave("aurora_ink"))
     }
 }

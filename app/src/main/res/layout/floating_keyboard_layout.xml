@@ -35,6 +35,15 @@
             android:focusable="false"
             android:scaleType="fitCenter"
             android:visibility="gone" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/floating_keyboard_touch_effect_container"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clickable="false"
+        android:focusable="false"
+        android:importantForAccessibility="no">
 
         <com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
             android:id="@+id/floating_suminagashi_ink_view"
@@ -56,6 +65,24 @@
 
         <com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintEffectView
             android:id="@+id/floating_spray_paint_effect_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
+        <com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LuminousBlobEffectView
+            android:id="@+id/floating_luminous_blob_effect_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clickable="false"
+            android:focusable="false"
+            android:importantForAccessibility="no"
+            android:visibility="gone" />
+
+        <com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveEffectView
+            android:id="@+id/floating_cinematic_wave_effect_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:clickable="false"

@@ -16,13 +16,13 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
-internal class LiquidRippleRenderer(
-    private val inputQueue: LiquidRippleInputCommandQueue,
-    private val callback: LiquidRippleRendererCallback,
+internal class LuminousBlobRenderer(
+    private val inputQueue: LuminousBlobInputCommandQueue,
+    private val callback: LuminousBlobRendererCallback,
     private val mainHandler: Handler = Handler(Looper.getMainLooper()),
-    private val simulationFactory: () -> LiquidRippleSimulation = { LiquidRippleSimulation() },
+    private val simulationFactory: () -> LuminousBlobSimulation = { LuminousBlobSimulation() },
     private val clockNanos: () -> Long = { System.nanoTime() }
-) : LiquidRippleRendererController {
+) : LuminousBlobRendererController {
 
     private val rendererThread = HandlerThread(
         "$THREAD_NAME_PREFIX-${threadIds.incrementAndGet()}",
@@ -31,40 +31,42 @@ internal class LiquidRippleRenderer(
     private val handler: Handler
     private val frameRunnable = Runnable { renderFrameOnRendererThread() }
 
-    private var settings = LiquidRippleSettings.Disabled
+    private var settings = LuminousBlobSettings.Disabled
     private var egl: EglEnvironment? = null
-    private var simulation: LiquidRippleSimulation? = null
-    private val performanceGovernor = LiquidRipplePerformanceGovernor()
+    private var simulation: LuminousBlobSimulation? = null
+    private val performanceGovernor = LuminousBlobPerformanceGovernor()
     private var surfaceWidth = 0
     private var surfaceHeight = 0
     private var paused = true
     private var released = false
     private var frameScheduled = false
-    private var activePointers = HashSet<Int>()
+    private val activePointers = HashMap<Int, LuminousBlobActivePointer>()
+    private var pendingReleasedPointer: LuminousBlobPointerSnapshot? = null
     private var lastFrameTimeNanos = 0L
-    private var state = LiquidRippleRendererState.Idle
+    private var state = LuminousBlobRendererState.Idle
 
     init {
         rendererThread.start()
         handler = Handler(rendererThread.looper)
     }
 
-    override fun configure(settings: LiquidRippleSettings) {
+    override fun configure(settings: LuminousBlobSettings) {
         postOnRenderer {
             val qualityChanged = this.settings.normalizedQuality != settings.normalizedQuality
             this.settings = settings
             performanceGovernor.configureQuality(settings.normalizedQuality)
+            simulation?.configure(settings)
             if (!settings.enabled) {
                 clearOnRendererThread()
                 paused = true
+                state = LuminousBlobRendererState.Idle
                 return@postOnRenderer
             }
             if (qualityChanged && surfaceWidth > 0 && surfaceHeight > 0 && simulation != null) {
                 simulation?.resizeSurface(
                     surfaceWidth = surfaceWidth,
                     surfaceHeight = surfaceHeight,
-                    qualityLevel = performanceGovernor.qualityLevel(),
-                    userQuality = settings.normalizedQuality
+                    params = performanceGovernor.stepParams(resolveRendererState())
                 )
             }
         }
@@ -76,21 +78,21 @@ internal class LiquidRippleRenderer(
             runRendererCatching("attach EGL surface") {
                 surfaceWidth = width
                 surfaceHeight = height
+                state = LuminousBlobRendererState.Ambient
                 if (egl == null) {
                     egl = EglEnvironment(surfaceTexture)
                     simulation = simulationFactory()
                     simulation?.initialize(
                         surfaceWidth = width,
                         surfaceHeight = height,
-                        qualityLevel = performanceGovernor.qualityLevel(),
-                        userQuality = settings.normalizedQuality
+                        params = performanceGovernor.stepParams(state),
+                        settings = settings
                     )
                 } else {
                     simulation?.resizeSurface(
                         surfaceWidth = width,
                         surfaceHeight = height,
-                        qualityLevel = performanceGovernor.qualityLevel(),
-                        userQuality = settings.normalizedQuality
+                        params = performanceGovernor.stepParams(state)
                     )
                 }
                 paused = false
@@ -101,17 +103,14 @@ internal class LiquidRippleRenderer(
 
     override fun resizeSurface(width: Int, height: Int) {
         postOnRenderer {
-            if (width <= 0 || height <= 0) return@postOnRenderer
-            if (width == surfaceWidth && height == surfaceHeight) return@postOnRenderer
             if (released || egl == null || !settings.enabled) return@postOnRenderer
-            runRendererCatching("resize liquid ripple surface") {
+            runRendererCatching("resize luminous blob surface") {
                 surfaceWidth = width
                 surfaceHeight = height
                 simulation?.resizeSurface(
                     surfaceWidth = width,
                     surfaceHeight = height,
-                    qualityLevel = performanceGovernor.qualityLevel(),
-                    userQuality = settings.normalizedQuality
+                    params = performanceGovernor.stepParams(resolveRendererState())
                 )
                 requestRenderOnRendererThread(forceSoon = true)
             }
@@ -123,6 +122,7 @@ internal class LiquidRippleRenderer(
             handler.removeCallbacks(frameRunnable)
             frameScheduled = false
             paused = true
+            state = LuminousBlobRendererState.Idle
             simulation?.release()
             simulation = null
             releaseEglSurfaceOnly()
@@ -155,6 +155,7 @@ internal class LiquidRippleRenderer(
             handler.removeCallbacks(frameRunnable)
             frameScheduled = false
             activePointers.clear()
+            pendingReleasedPointer = null
             inputQueue.clear()
         }
     }
@@ -167,6 +168,7 @@ internal class LiquidRippleRenderer(
             frameScheduled = false
             inputQueue.clear()
             activePointers.clear()
+            pendingReleasedPointer = null
             simulation?.release()
             simulation = null
             releaseEglSurfaceOnly()
@@ -185,23 +187,27 @@ internal class LiquidRippleRenderer(
             return
         }
 
-        runRendererCatching("render liquid ripple frame") {
+        runRendererCatching("render luminous blob frame") {
             val frameStart = clockNanos()
             val dtSeconds = if (lastFrameTimeNanos == 0L) {
                 1f / 60f
             } else {
                 ((frameStart - lastFrameTimeNanos) / NANOS_PER_SECOND_FLOAT)
-                    .coerceIn(1f / 120f, 1f / 20f)
+                    .coerceIn(1f / 120f, 1f / 18f)
             }
             lastFrameTimeNanos = frameStart
 
-            val commands = inputQueue.drain(MAX_INPUT_COMMANDS_PER_FRAME)
-            updatePointerState(commands)
-            state = resolveRendererState(activeSimulation.hasVisibleEnergy())
-            val hasEnergy = activeSimulation.render(
-                inputCommands = commands,
+            val commands = inputQueue.drain(performanceGovernor.maxCommandsPerFrame())
+            val cancelTouch = updatePointerState(commands)
+            if (cancelTouch) {
+                activeSimulation.cancelTouch()
+            }
+            state = resolveRendererState()
+            val params = performanceGovernor.stepParams(state)
+            activeSimulation.render(
+                pointer = resolvePointerSnapshotForFrame(),
                 dtSeconds = dtSeconds,
-                params = performanceGovernor.stepParams(state)
+                params = params
             )
             egl?.swapBuffers()
 
@@ -211,42 +217,131 @@ internal class LiquidRippleRenderer(
                 activeSimulation.resizeSurface(
                     surfaceWidth = surfaceWidth,
                     surfaceHeight = surfaceHeight,
-                    qualityLevel = performanceGovernor.qualityLevel(),
-                    userQuality = settings.normalizedQuality
+                    params = performanceGovernor.stepParams(state)
                 )
                 Timber.d(
-                    "Reduced liquid ripple quality to %d",
+                    "Reduced luminous blob quality to %d",
                     performanceGovernor.qualityLevel()
                 )
             }
-            if (activePointers.isNotEmpty() || hasEnergy || inputQueue.sizeForTesting() > 0) {
+            if (settings.enabled && egl != null && !paused) {
                 requestRenderOnRendererThread(forceSoon = false)
             }
         }
     }
 
-    private fun updatePointerState(commands: List<LiquidRippleInputCommand>) {
+    private fun updatePointerState(commands: List<LuminousBlobInputCommand>): Boolean {
+        var cancelTouch = false
         commands.forEach { command ->
             when (command) {
-                is LiquidRippleInputCommand.Impulse -> {
-                    if (command.kind == LiquidRippleImpulseKind.Down) {
-                        activePointers.add(command.pointerId)
+                is LuminousBlobInputCommand.Pointer -> {
+                    val nextPointer = LuminousBlobActivePointer(
+                        pointerId = command.pointerId,
+                        x = command.x,
+                        y = command.y,
+                        velocityX = command.velocityX,
+                        velocityY = command.velocityY,
+                        colorSet = command.colorSet,
+                        downTimeMillis = command.eventTimeMillis,
+                        lastEventTimeMillis = command.eventTimeMillis
+                    )
+                    activePointers[command.pointerId] = when (command.kind) {
+                        LuminousBlobInputKind.Down -> nextPointer
+                        LuminousBlobInputKind.Move,
+                        LuminousBlobInputKind.Up -> {
+                            val current = activePointers[command.pointerId]
+                            nextPointer.copy(
+                                downTimeMillis = current?.downTimeMillis
+                                    ?: command.eventTimeMillis
+                            )
+                        }
+                    }
+                    if (command.kind == LuminousBlobInputKind.Up) {
+                        pendingReleasedPointer = activePointers[command.pointerId]?.toSnapshot()
                     }
                 }
 
-                is LiquidRippleInputCommand.PointerUp -> activePointers.remove(command.pointerId)
-                is LiquidRippleInputCommand.PointerCancel -> activePointers.remove(command.pointerId)
-                is LiquidRippleInputCommand.CancelAll -> activePointers.clear()
+                is LuminousBlobInputCommand.PointerUp -> {
+                    val removed = activePointers.remove(command.pointerId)
+                    if (activePointers.isEmpty() && pendingReleasedPointer == null) {
+                        pendingReleasedPointer = removed?.toSnapshot()
+                    }
+                }
+
+                is LuminousBlobInputCommand.PointerCancel -> {
+                    activePointers.remove(command.pointerId)
+                    if (activePointers.isEmpty()) {
+                        pendingReleasedPointer = null
+                        cancelTouch = true
+                    }
+                }
+
+                is LuminousBlobInputCommand.CancelAll -> {
+                    activePointers.clear()
+                    pendingReleasedPointer = null
+                    cancelTouch = true
+                }
             }
+        }
+        return cancelTouch
+    }
+
+    private fun resolveRendererState(): LuminousBlobRendererState {
+        val residual = simulation?.hasResidualTouch(
+            performanceGovernor.stepParams(state).idleStrengthThreshold
+        ) ?: false
+        return when {
+            !settings.enabled || egl == null -> LuminousBlobRendererState.Idle
+            activePointers.isNotEmpty() -> LuminousBlobRendererState.Active
+            residual -> LuminousBlobRendererState.Settling
+            else -> LuminousBlobRendererState.Ambient
         }
     }
 
-    private fun resolveRendererState(hasEnergy: Boolean): LiquidRippleRendererState {
-        return when {
-            activePointers.isNotEmpty() -> LiquidRippleRendererState.Active
-            hasEnergy -> LiquidRippleRendererState.Settling
-            else -> LiquidRippleRendererState.Idle
+    private fun resolvePointerSnapshotForFrame(): LuminousBlobPointerSnapshot? {
+        val activeSnapshot = resolveActivePointerSnapshot()
+        if (activeSnapshot != null) return activeSnapshot
+        return pendingReleasedPointer.also {
+            pendingReleasedPointer = null
         }
+    }
+
+    private fun resolveActivePointerSnapshot(): LuminousBlobPointerSnapshot? {
+        if (activePointers.isEmpty()) return null
+        var x = 0f
+        var y = 0f
+        var velocityX = 0f
+        var velocityY = 0f
+        var newest: LuminousBlobActivePointer? = null
+        activePointers.values.forEach { pointer ->
+            x += pointer.x
+            y += pointer.y
+            velocityX += pointer.velocityX
+            velocityY += pointer.velocityY
+            val currentNewest = newest
+            if (currentNewest == null || pointer.lastEventTimeMillis >= currentNewest.lastEventTimeMillis) {
+                newest = pointer
+            }
+        }
+        val count = activePointers.size.toFloat()
+        val colorSet = newest?.colorSet ?: LuminousBlobColorSet.Default
+        return LuminousBlobPointerSnapshot(
+            x = x / count,
+            y = y / count,
+            velocityX = velocityX / count,
+            velocityY = velocityY / count,
+            colorSet = colorSet
+        )
+    }
+
+    private fun LuminousBlobActivePointer.toSnapshot(): LuminousBlobPointerSnapshot {
+        return LuminousBlobPointerSnapshot(
+            x = x,
+            y = y,
+            velocityX = velocityX,
+            velocityY = velocityY,
+            colorSet = colorSet
+        )
     }
 
     private fun requestRenderOnRendererThread(forceSoon: Boolean) {
@@ -263,6 +358,7 @@ internal class LiquidRippleRenderer(
     private fun clearOnRendererThread() {
         inputQueue.clear()
         activePointers.clear()
+        pendingReleasedPointer = null
         lastFrameTimeNanos = 0L
         simulation?.clear()
     }
@@ -285,7 +381,7 @@ internal class LiquidRippleRenderer(
         val latch = CountDownLatch(1)
         handler.post {
             runCatching(action).onFailure {
-                Timber.w(it, "Failed to run liquid ripple renderer cleanup.")
+                Timber.w(it, "Failed to run luminous blob renderer cleanup.")
             }
             latch.countDown()
         }
@@ -294,7 +390,7 @@ internal class LiquidRippleRenderer(
 
     private fun runRendererCatching(operation: String, action: () -> Unit) {
         runCatching(action).onFailure { throwable ->
-            Timber.w(throwable, "Liquid ripple renderer failed during %s", operation)
+            Timber.w(throwable, "Luminous blob renderer failed during %s", operation)
             releaseAfterFailureOnRendererThread()
             mainHandler.post {
                 callback.onRendererDisabled(operation, throwable)
@@ -306,8 +402,10 @@ internal class LiquidRippleRenderer(
         handler.removeCallbacks(frameRunnable)
         frameScheduled = false
         paused = true
+        state = LuminousBlobRendererState.Idle
         inputQueue.clear()
         activePointers.clear()
+        pendingReleasedPointer = null
         runCatching {
             simulation?.release()
         }
@@ -436,9 +534,8 @@ internal class LiquidRippleRenderer(
     }
 
     companion object {
-        const val THREAD_NAME_PREFIX = "LiquidRippleRenderer"
+        const val THREAD_NAME_PREFIX = "LuminousBlobRenderer"
         private const val EGL_OPENGL_ES3_BIT = 0x00000040
-        private const val MAX_INPUT_COMMANDS_PER_FRAME = 64
         private const val NANOS_PER_SECOND_FLOAT = 1_000_000_000f
         private val threadIds = AtomicInteger(0)
     }

@@ -16,7 +16,7 @@ import android.widget.SeekBar
 import androidx.annotation.AttrRes
 import androidx.appcompat.R as AppCompatR
 import androidx.appcompat.app.AppCompatActivity
-import androidx.appcompat.widget.AppCompatImageButton
+import androidx.appcompat.widget.AppCompatImageView
 import androidx.constraintlayout.widget.ConstraintLayout
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.isInvisible
@@ -465,7 +465,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
         binding.independentShortcutToolbarPreviewContainer.layoutParams =
             (binding.independentShortcutToolbarPreviewContainer.layoutParams as FrameLayout.LayoutParams).apply {
                 gravity = Gravity.BOTTOM
-                height = independentToolbarHeightPx.coerceAtLeast(36.dpToPx())
+                height = independentToolbarHeightPx
                 bottomMargin = keyboardHeightPx + candidateHeightPx
             }
         binding.candidateTabPreviewContainer.layoutParams =
@@ -904,7 +904,7 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
                 presentation.showIndependentShortcutToolbar ||
                 presentation.reserveIndependentShortcutToolbarSpace
             ) {
-                36.dpToPx()
+                appPreference.shortcut_toolbar_height_dp_preference.dpToPx()
             } else {
                 0
             }
@@ -930,19 +930,30 @@ class CandidateHeightLandscapeSettingFragment : Fragment() {
 
     private fun populateShortcutToolbarPreview(container: LinearLayout) {
         container.removeAllViews()
+        val toolbarHeightPx = appPreference.shortcut_toolbar_height_dp_preference.dpToPx()
+        val iconSizePx = appPreference.resolveShortcutToolbarIconSizeDp().dpToPx()
+        val itemWidthPx = maxOf(64.dpToPx(), iconSizePx + 36.dpToPx())
+        container.layoutParams = container.layoutParams.apply {
+            height = toolbarHeightPx
+        }
         previewShortcutItems().forEach { shortcut ->
-            val button = AppCompatImageButton(requireContext()).apply {
-                setImageResource(shortcut.iconResId)
-                imageTintList = ColorStateList.valueOf(resolveThemeColor(MaterialR.attr.colorOnSurface))
-                background = null
-                contentDescription = shortcut.description
+            val itemView = FrameLayout(requireContext()).apply {
                 isClickable = false
                 isFocusable = false
-                setPadding(8.dpToPx(), 6.dpToPx(), 8.dpToPx(), 6.dpToPx())
             }
+            val iconView = AppCompatImageView(requireContext()).apply {
+                setImageResource(shortcut.iconResId)
+                imageTintList = ColorStateList.valueOf(resolveThemeColor(MaterialR.attr.colorOnSurface))
+                scaleType = android.widget.ImageView.ScaleType.CENTER_INSIDE
+                contentDescription = shortcut.description
+            }
+            itemView.addView(
+                iconView,
+                FrameLayout.LayoutParams(iconSizePx, iconSizePx, Gravity.CENTER)
+            )
             container.addView(
-                button,
-                LinearLayout.LayoutParams(42.dpToPx(), ViewGroup.LayoutParams.MATCH_PARENT)
+                itemView,
+                LinearLayout.LayoutParams(itemWidthPx, toolbarHeightPx)
             )
         }
     }

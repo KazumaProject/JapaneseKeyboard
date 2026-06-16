@@ -371,6 +371,11 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.short_cut.ui.ShortcutSettingFragment"
         android:label="@string/shortcutsettingfragment" />
     <fragment
+        android:id="@+id/shortcutToolbarSizeSettingFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.shortcut_toolbar_size.ShortcutToolbarSizeSettingFragment"
+        android:label="@string/shortcut_toolbar_size_title"
+        tools:layout="@layout/fragment_shortcut_toolbar_size_setting" />
+    <fragment
         android:id="@+id/qwertyMarginSettingFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.qwerty_button_size.QwertyMarginSettingFragment"
         android:label="@string/qwertymarginsettingfragment" />

@@ -198,11 +198,15 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTi
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveEffectView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.FluidInkTransportMode
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.InkTouchDispatchFrameLayout
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LiquidRippleEffectView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LuminousBlobEffectView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.LuminousBlobSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintEffectView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SuminagashiInkView
@@ -322,6 +326,7 @@ import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import java.util.regex.Pattern
 import javax.inject.Inject
+import androidx.appcompat.R as AppCompatR
 import com.google.android.material.R as MaterialR
 
 @AndroidEntryPoint
@@ -846,6 +851,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var landscapeForceQwertyRomajiPreference: Boolean? = false
     private var shortcutTollbarVisibility: Boolean? = false
     private var shortcutToolbarIntegratedInSuggestion: Boolean? = false
+    private var shortcutToolbarHeightDp: Int = AppPreference.SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP
+    private var shortcutToolbarIconSizeDp: Int =
+        AppPreference.SHORTCUT_TOOLBAR_ICON_SIZE_DEFAULT_DP
     private var shortcutToolbarHiddenForCandidates: Boolean = false
     private var clipboardPreviewVisibility: Boolean? = true
     private var clipboardPreviewTapToDelete: Boolean? = false
@@ -942,6 +950,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @ColorInt
     private var keyboardTouchEffectColorPreference: Int = Color.rgb(17, 17, 17)
+    private var cinematicWaveColorModePreference: String =
+        CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM
+
+    @ColorInt
+    private var cinematicWavePrimaryColorPreference: Int =
+        CinematicWaveSettings.DEFAULT_PRIMARY_COLOR
+
+    @ColorInt
+    private var cinematicWaveSecondaryColorPreference: Int =
+        CinematicWaveSettings.DEFAULT_SECONDARY_COLOR
+
+    private var cinematicWaveSecondaryColorAutoPreference: Boolean = true
+    private var cinematicWaveTypePreference: String =
+        CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE
+    private var cinematicWaveOpacityPercentPreference: Int = 46
+    private var cinematicWaveIntensityPercentPreference: Int = 100
+    private var cinematicWaveMotionPreference: String = CinematicWaveSettings.MOTION_ELEGANT
+    private var cinematicWaveTouchResponsePreference: String =
+        CinematicWaveSettings.TOUCH_RESPONSE_NORMAL
+    private var cinematicWaveQualityPreference: String = CinematicWaveSettings.QUALITY_BALANCED
 
     private var customKeyBorderEnablePreference: Boolean? = false
     private var customKeyBorderEnableColor: Int? = Color.BLACK
@@ -1756,6 +1784,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         landscapeForceQwertyRomajiPreference = preferences.landscapeForceQwertyRomajiPreference
         shortcutTollbarVisibility = preferences.shortcutTollbarVisibility
         shortcutToolbarIntegratedInSuggestion = preferences.shortcutToolbarIntegratedInSuggestion
+        shortcutToolbarHeightDp = preferences.shortcutToolbarHeightDp
+        shortcutToolbarIconSizeDp = preferences.shortcutToolbarIconSizeDp
+        mainLayoutBinding?.let { applyShortcutToolbarSize(it) }
         isDeleteLeftFlickPreference = preferences.isDeleteLeftFlickPreference
         isDeleteUpFlickPreference = preferences.isDeleteUpFlickPreference
         isDeleteDownFlickPreference = preferences.isDeleteDownFlickPreference
@@ -1865,6 +1896,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardTouchEffectColorModePreference = preferences.keyboardTouchEffectColorModePreference
         keyboardTouchEffectColorPreference = preferences.keyboardTouchEffectColorPreference
         keyboardTouchEffectPalettePreference = preferences.keyboardTouchEffectPalettePreference
+        cinematicWaveColorModePreference =
+            CinematicWaveSettings.normalizeColorMode(preferences.cinematicWaveColorModePreference)
+        cinematicWavePrimaryColorPreference = preferences.cinematicWavePrimaryColorPreference
+        cinematicWaveSecondaryColorPreference = preferences.cinematicWaveSecondaryColorPreference
+        cinematicWaveSecondaryColorAutoPreference =
+            preferences.cinematicWaveSecondaryColorAutoPreference
+        cinematicWaveTypePreference =
+            CinematicWaveSettings.normalizeWaveType(preferences.cinematicWaveTypePreference)
+        cinematicWaveOpacityPercentPreference = preferences.cinematicWaveOpacityPercentPreference
+        cinematicWaveIntensityPercentPreference = preferences.cinematicWaveIntensityPercentPreference
+        cinematicWaveMotionPreference =
+            CinematicWaveSettings.normalizeMotion(preferences.cinematicWaveMotionPreference)
+        cinematicWaveTouchResponsePreference =
+            CinematicWaveSettings.normalizeTouchResponse(
+                preferences.cinematicWaveTouchResponsePreference
+            )
+        cinematicWaveQualityPreference =
+            CinematicWaveSettings.normalizeQuality(preferences.cinematicWaveQualityPreference)
         customKeyBorderEnablePreference = preferences.customKeyBorderEnablePreference
         customKeyBorderEnableColor = preferences.customKeyBorderEnableColor
         customComposingTextPreference = preferences.customComposingTextPreference
@@ -2162,6 +2211,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             palette = keyboardTouchEffectPalettePreference,
             quality = keyboardTouchEffectQualityPreference
         )
+        mainView.luminousBlobEffectView.clearBlob()
+        mainView.luminousBlobEffectView.configure(
+            enabled = false,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = resolveKeyboardTouchEffectBaseColor(mainView.root),
+            quality = keyboardTouchEffectQualityPreference
+        )
+        mainView.cinematicWaveEffectView.clearWave()
+        mainView.cinematicWaveEffectView.configure(
+            enabled = false,
+            colorMode = cinematicWaveColorModePreference,
+            primaryColor = cinematicWavePrimaryColorPreference,
+            secondaryColor = cinematicWaveSecondaryColorPreference,
+            secondaryColorAuto = cinematicWaveSecondaryColorAutoPreference,
+            waveType = cinematicWaveTypePreference,
+            opacityPercent = cinematicWaveOpacityPercentPreference,
+            intensityPercent = cinematicWaveIntensityPercentPreference,
+            motion = cinematicWaveMotionPreference,
+            touchResponse = cinematicWaveTouchResponsePreference,
+            quality = cinematicWaveQualityPreference
+        )
         (mainView.root as? InkTouchDispatchFrameLayout)?.touchEffectMotionEventListener = null
 
         mainView.keyboardBackgroundVideo.isVisible = false
@@ -2255,6 +2325,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearSpray()
             pauseSpray()
         }
+        mainLayoutBinding?.luminousBlobEffectView?.apply {
+            clearBlob()
+            pauseBlob()
+        }
+        mainLayoutBinding?.cinematicWaveEffectView?.apply {
+            clearWave()
+            pauseWave()
+        }
         floatingKeyboardBinding?.floatingSuminagashiInkView?.apply {
             clearInk()
             pauseInk()
@@ -2267,15 +2345,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             clearSpray()
             pauseSpray()
         }
+        floatingKeyboardBinding?.floatingLuminousBlobEffectView?.apply {
+            clearBlob()
+            pauseBlob()
+        }
+        floatingKeyboardBinding?.floatingCinematicWaveEffectView?.apply {
+            clearWave()
+            pauseWave()
+        }
     }
 
     private fun releaseKeyboardTouchEffects() {
         mainLayoutBinding?.suminagashiInkView?.releaseInk()
         mainLayoutBinding?.liquidRippleEffectView?.releaseRipple()
         mainLayoutBinding?.sprayPaintEffectView?.releaseSpray()
+        mainLayoutBinding?.luminousBlobEffectView?.releaseBlob()
+        mainLayoutBinding?.cinematicWaveEffectView?.releaseWave()
         floatingKeyboardBinding?.floatingSuminagashiInkView?.releaseInk()
         floatingKeyboardBinding?.floatingLiquidRippleEffectView?.releaseRipple()
         floatingKeyboardBinding?.floatingSprayPaintEffectView?.releaseSpray()
+        floatingKeyboardBinding?.floatingLuminousBlobEffectView?.releaseBlob()
+        floatingKeyboardBinding?.floatingCinematicWaveEffectView?.releaseWave()
     }
 
     private fun setupMainKeyboardTouchEffect(mainView: MainLayoutBinding) {
@@ -2295,6 +2385,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
         val sprayPaintEnabled =
             mainSurfaceActive && KeyboardTouchEffectType.isSprayPaint(effectType)
+        val luminousBlobEnabled =
+            mainSurfaceActive && KeyboardTouchEffectType.isLuminousBlob(effectType)
+        val cinematicWaveEnabled =
+            mainSurfaceActive && KeyboardTouchEffectType.isCinematicWave(effectType)
+        val effectBaseColor = resolveKeyboardTouchEffectBaseColor(mainView.root)
 
         mainView.suminagashiInkView.configure(
             enabled = inkEnabled,
@@ -2314,6 +2409,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             palette = keyboardTouchEffectPalettePreference,
             quality = keyboardTouchEffectQualityPreference
         )
+        mainView.luminousBlobEffectView.configure(
+            enabled = luminousBlobEnabled,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = effectBaseColor,
+            quality = keyboardTouchEffectQualityPreference
+        )
+        mainView.cinematicWaveEffectView.configure(
+            enabled = cinematicWaveEnabled,
+            colorMode = cinematicWaveColorModePreference,
+            primaryColor = cinematicWavePrimaryColorPreference,
+            secondaryColor = cinematicWaveSecondaryColorPreference,
+            secondaryColorAuto = cinematicWaveSecondaryColorAutoPreference,
+            waveType = cinematicWaveTypePreference,
+            opacityPercent = cinematicWaveOpacityPercentPreference,
+            intensityPercent = cinematicWaveIntensityPercentPreference,
+            motion = cinematicWaveMotionPreference,
+            touchResponse = cinematicWaveTouchResponsePreference,
+            quality = cinematicWaveQualityPreference
+        )
 
         val root = mainView.root as? InkTouchDispatchFrameLayout
         root?.touchEffectMotionEventListener = when {
@@ -2322,7 +2436,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchInkMotionEvent(
                         event = event,
                         sourceRoot = mainView.root,
-                        targetContainer = mainView.keyboardBackgroundContainer,
+                        targetContainer = mainView.keyboardTouchEffectContainer,
                         inkView = mainView.suminagashiInkView
                     )
                 }
@@ -2333,7 +2447,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchLiquidRippleMotionEvent(
                         event = event,
                         sourceRoot = mainView.root,
-                        targetContainer = mainView.keyboardBackgroundContainer,
+                        targetContainer = mainView.keyboardTouchEffectContainer,
                         rippleView = mainView.liquidRippleEffectView
                     )
                 }
@@ -2344,8 +2458,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchSprayPaintMotionEvent(
                         event = event,
                         sourceRoot = mainView.root,
-                        targetContainer = mainView.keyboardBackgroundContainer,
+                        targetContainer = mainView.keyboardTouchEffectContainer,
                         sprayView = mainView.sprayPaintEffectView
+                    )
+                }
+            }
+
+            luminousBlobEnabled -> {
+                { event ->
+                    dispatchLuminousBlobMotionEvent(
+                        event = event,
+                        sourceRoot = mainView.root,
+                        targetContainer = mainView.luminousBlobEffectView,
+                        blobView = mainView.luminousBlobEffectView
+                    )
+                }
+            }
+
+            cinematicWaveEnabled -> {
+                { event ->
+                    dispatchCinematicWaveMotionEvent(
+                        event = event,
+                        sourceRoot = mainView.root,
+                        targetContainer = mainView.keyboardTouchEffectContainer,
+                        waveView = mainView.cinematicWaveEffectView
                     )
                 }
             }
@@ -2373,6 +2509,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             floatingSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
         val sprayPaintEnabled =
             floatingSurfaceActive && KeyboardTouchEffectType.isSprayPaint(effectType)
+        val luminousBlobEnabled =
+            floatingSurfaceActive && KeyboardTouchEffectType.isLuminousBlob(effectType)
+        val cinematicWaveEnabled =
+            floatingSurfaceActive && KeyboardTouchEffectType.isCinematicWave(effectType)
+        val effectBaseColor = resolveKeyboardTouchEffectBaseColor(floatingView.root)
 
         floatingView.floatingSuminagashiInkView.configure(
             enabled = inkEnabled,
@@ -2392,6 +2533,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             palette = keyboardTouchEffectPalettePreference,
             quality = keyboardTouchEffectQualityPreference
         )
+        floatingView.floatingLuminousBlobEffectView.configure(
+            enabled = luminousBlobEnabled,
+            colorMode = keyboardTouchEffectColorModePreference,
+            fixedColor = effectBaseColor,
+            quality = keyboardTouchEffectQualityPreference
+        )
+        floatingView.floatingCinematicWaveEffectView.configure(
+            enabled = cinematicWaveEnabled,
+            colorMode = cinematicWaveColorModePreference,
+            primaryColor = cinematicWavePrimaryColorPreference,
+            secondaryColor = cinematicWaveSecondaryColorPreference,
+            secondaryColorAuto = cinematicWaveSecondaryColorAutoPreference,
+            waveType = cinematicWaveTypePreference,
+            opacityPercent = cinematicWaveOpacityPercentPreference,
+            intensityPercent = cinematicWaveIntensityPercentPreference,
+            motion = cinematicWaveMotionPreference,
+            touchResponse = cinematicWaveTouchResponsePreference,
+            quality = cinematicWaveQualityPreference
+        )
 
         val root = floatingView.root as? InkTouchDispatchFrameLayout
         root?.touchEffectMotionEventListener = when {
@@ -2400,7 +2560,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchInkMotionEvent(
                         event = event,
                         sourceRoot = floatingView.root,
-                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        targetContainer = floatingView.floatingKeyboardTouchEffectContainer,
                         inkView = floatingView.floatingSuminagashiInkView
                     )
                 }
@@ -2411,7 +2571,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchLiquidRippleMotionEvent(
                         event = event,
                         sourceRoot = floatingView.root,
-                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        targetContainer = floatingView.floatingKeyboardTouchEffectContainer,
                         rippleView = floatingView.floatingLiquidRippleEffectView
                     )
                 }
@@ -2422,13 +2582,50 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     dispatchSprayPaintMotionEvent(
                         event = event,
                         sourceRoot = floatingView.root,
-                        targetContainer = floatingView.floatingKeyboardBackgroundContainer,
+                        targetContainer = floatingView.floatingKeyboardTouchEffectContainer,
                         sprayView = floatingView.floatingSprayPaintEffectView
                     )
                 }
             }
 
+            luminousBlobEnabled -> {
+                { event ->
+                    dispatchLuminousBlobMotionEvent(
+                        event = event,
+                        sourceRoot = floatingView.root,
+                        targetContainer = floatingView.floatingLuminousBlobEffectView,
+                        blobView = floatingView.floatingLuminousBlobEffectView
+                    )
+                }
+            }
+
+            cinematicWaveEnabled -> {
+                { event ->
+                    dispatchCinematicWaveMotionEvent(
+                        event = event,
+                        sourceRoot = floatingView.root,
+                        targetContainer = floatingView.floatingKeyboardTouchEffectContainer,
+                        waveView = floatingView.floatingCinematicWaveEffectView
+                    )
+                }
+            }
+
             else -> null
+        }
+    }
+
+    @ColorInt
+    private fun resolveKeyboardTouchEffectBaseColor(host: View): Int {
+        if (keyboardTouchEffectColorModePreference != LuminousBlobSettings.COLOR_MODE_THEME) {
+            return keyboardTouchEffectColorPreference
+        }
+        val fallbackColor = LuminousBlobSettings.DEFAULT_BASE_COLOR
+        return when (keyboardThemeMode) {
+            "custom" -> customThemeSpecialKeyColor ?: fallbackColor
+            else -> host.context.getThemeColorOrFallback(
+                attrRes = AppCompatR.attr.colorPrimary,
+                fallbackColor = fallbackColor
+            )
         }
     }
 
@@ -2511,6 +2708,98 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             },
             onCancel = { sprayView.onCancel() }
         )
+    }
+
+    private fun dispatchLuminousBlobMotionEvent(
+        event: MotionEvent,
+        sourceRoot: View,
+        targetContainer: View,
+        blobView: LuminousBlobEffectView
+    ) {
+        dispatchTouchEffectMotionEvent(
+            event = event,
+            sourceRoot = sourceRoot,
+            targetContainer = targetContainer,
+            isEffectShown = { blobView.isShown },
+            onPointerDown = { pointerId, x, y ->
+                blobView.onPointerDown(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerMove = { pointerId, x, y ->
+                blobView.onPointerMove(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerUp = { pointerId, x, y ->
+                blobView.onPointerUp(pointerId = pointerId, x = x, y = y)
+            },
+            onPointerUpOutside = { pointerId ->
+                blobView.onPointerUp(pointerId)
+            },
+            onCancel = { blobView.onCancel() }
+        )
+    }
+
+    private fun dispatchCinematicWaveMotionEvent(
+        event: MotionEvent,
+        sourceRoot: View,
+        targetContainer: View,
+        waveView: CinematicWaveEffectView
+    ) {
+        if (!waveView.isShown) return
+
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN,
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                val index = event.actionIndex
+                if (!mapMotionEventToTarget(event, index, sourceRoot, targetContainer, inkMappedPoint)) {
+                    return
+                }
+                waveView.onPointerDown(
+                    pointerId = event.getPointerId(index),
+                    x = inkMappedPoint[0],
+                    y = inkMappedPoint[1],
+                    pressure = event.getPressure(index)
+                )
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                for (index in 0 until event.pointerCount) {
+                    if (!mapMotionEventToTarget(
+                            event,
+                            index,
+                            sourceRoot,
+                            targetContainer,
+                            inkMappedPoint
+                        )
+                    ) {
+                        continue
+                    }
+                    waveView.onPointerMove(
+                        pointerId = event.getPointerId(index),
+                        x = inkMappedPoint[0],
+                        y = inkMappedPoint[1],
+                        pressure = event.getPressure(index)
+                    )
+                }
+            }
+
+            MotionEvent.ACTION_UP,
+            MotionEvent.ACTION_POINTER_UP -> {
+                val index = event.actionIndex
+                if (mapMotionEventToTarget(event, index, sourceRoot, targetContainer, inkMappedPoint)) {
+                    waveView.onPointerUp(
+                        pointerId = event.getPointerId(index),
+                        x = inkMappedPoint[0],
+                        y = inkMappedPoint[1],
+                        pressure = event.getPressure(index)
+                    )
+                } else {
+                    waveView.onPointerUp(event.getPointerId(index))
+                }
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                waveView.onCancel()
+            }
+        }
     }
 
     private fun dispatchTouchEffectMotionEvent(
@@ -2655,11 +2944,141 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val chromeHeightPx = (106 * resources.displayMetrics.density).toInt()
             keyboardHeight + chromeHeightPx
         }
+        updateLuminousBlobEffectBounds(
+            blobView = floatingView.floatingLuminousBlobEffectView,
+            heightPx = resolveFloatingLuminousBlobKeyboardAreaHeight(
+                floatingView = floatingView,
+                fallbackKeyboardHeightPx = fallbackKeyboardHeightPx
+            )
+        )
         applyHeight(floatingView.floatingKeyboardContent.height.takeIf { it > 0 } ?: fallbackHeight
         ?: 0)
+        updateFloatingKeyboardTouchEffectBounds(floatingView)
         floatingView.root.post {
             applyHeight(floatingView.floatingKeyboardContent.height)
+            updateFloatingKeyboardTouchEffectBounds(floatingView)
+            updateLuminousBlobEffectBounds(
+                blobView = floatingView.floatingLuminousBlobEffectView,
+                heightPx = resolveFloatingLuminousBlobKeyboardAreaHeight(
+                    floatingView = floatingView,
+                    fallbackKeyboardHeightPx = fallbackKeyboardHeightPx
+                )
+            )
         }
+    }
+
+    private fun updateFloatingKeyboardTouchEffectBounds(
+        floatingView: FloatingKeyboardLayoutBinding
+    ) {
+        val target = when {
+            floatingView.floatingSymbolKeyboard.isVisible -> floatingView.floatingSymbolKeyboard
+            floatingView.candidatesRowView.isVisible -> floatingView.candidatesRowView
+            else -> floatingView.floatingKeyboardContainer
+        }
+
+        fun applyBounds() {
+            if (target.width <= 0 || target.height <= 0) return
+
+            val rootLocation = IntArray(2)
+            val targetLocation = IntArray(2)
+            floatingView.root.getLocationInWindow(rootLocation)
+            target.getLocationInWindow(targetLocation)
+
+            val params =
+                floatingView.floatingKeyboardTouchEffectContainer.layoutParams as? FrameLayout.LayoutParams
+                    ?: return
+            var changed = false
+            val left = targetLocation[0] - rootLocation[0]
+            val top = targetLocation[1] - rootLocation[1]
+
+            if (params.width != target.width) {
+                params.width = target.width
+                changed = true
+            }
+            if (params.height != target.height) {
+                params.height = target.height
+                changed = true
+            }
+            if (params.leftMargin != left) {
+                params.leftMargin = left
+                changed = true
+            }
+            if (params.topMargin != top) {
+                params.topMargin = top
+                changed = true
+            }
+
+            val expectedGravity = Gravity.TOP or Gravity.START
+            if (params.gravity != expectedGravity) {
+                params.gravity = expectedGravity
+                changed = true
+            }
+
+            if (changed) {
+                floatingView.floatingKeyboardTouchEffectContainer.layoutParams = params
+            }
+        }
+
+        applyBounds()
+        floatingView.root.post { applyBounds() }
+    }
+
+    private fun updateLuminousBlobEffectBounds(
+        blobView: LuminousBlobEffectView,
+        heightPx: Int
+    ) {
+        if (heightPx <= 0) return
+        val currentParams = blobView.layoutParams as? FrameLayout.LayoutParams
+        val params = currentParams ?: FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            heightPx,
+            Gravity.BOTTOM
+        )
+        var changed = currentParams == null
+
+        if (params.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+            params.width = ViewGroup.LayoutParams.MATCH_PARENT
+            changed = true
+        }
+        if (params.height != heightPx) {
+            params.height = heightPx
+            changed = true
+        }
+        if (params.gravity != Gravity.BOTTOM) {
+            params.gravity = Gravity.BOTTOM
+            changed = true
+        }
+        if (changed) {
+            blobView.layoutParams = params
+        }
+    }
+
+    private fun resolveFloatingLuminousBlobKeyboardAreaHeight(
+        floatingView: FloatingKeyboardLayoutBinding,
+        fallbackKeyboardHeightPx: Int?
+    ): Int {
+        fun fixedHeight(view: View): Int {
+            val layoutHeight = view.layoutParams?.height ?: 0
+            return when {
+                view.height > 0 -> view.height
+                view.measuredHeight > 0 -> view.measuredHeight
+                layoutHeight > 0 -> layoutHeight
+                else -> 0
+            }
+        }
+
+        return when {
+            floatingView.floatingSymbolKeyboard.isVisible ->
+                fixedHeight(floatingView.floatingSymbolKeyboard)
+
+            floatingView.candidatesRowView.isVisible ->
+                fixedHeight(floatingView.candidatesRowView)
+
+            else ->
+                fixedHeight(floatingView.floatingKeyboardContainer)
+        }.takeIf { it > 0 }
+            ?: fallbackKeyboardHeightPx
+            ?: applicationContext.dpToPx(200)
     }
 
     private fun updateFloatingFullCandidatesHeight(
@@ -3328,6 +3747,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         landscapeForceQwertyRomajiPreference = null
         shortcutTollbarVisibility = null
         shortcutToolbarIntegratedInSuggestion = null
+        shortcutToolbarHeightDp = AppPreference.SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP
+        shortcutToolbarIconSizeDp = AppPreference.SHORTCUT_TOOLBAR_ICON_SIZE_DEFAULT_DP
         shortcutToolbarHiddenForCandidates = false
         clipboardPreviewVisibility = null
         clipboardPreviewTapToDelete = null
@@ -3477,6 +3898,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardTouchEffectColorModePreference = "random"
         keyboardTouchEffectColorPreference = Color.rgb(17, 17, 17)
         keyboardTouchEffectPalettePreference = SprayPaintSettings.PALETTE_PAINT_SPLASH
+        cinematicWaveColorModePreference = CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM
+        cinematicWavePrimaryColorPreference = CinematicWaveSettings.DEFAULT_PRIMARY_COLOR
+        cinematicWaveSecondaryColorPreference = CinematicWaveSettings.DEFAULT_SECONDARY_COLOR
+        cinematicWaveSecondaryColorAutoPreference = true
+        cinematicWaveTypePreference = CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE
+        cinematicWaveOpacityPercentPreference = 46
+        cinematicWaveIntensityPercentPreference = 100
+        cinematicWaveMotionPreference = CinematicWaveSettings.MOTION_ELEGANT
+        cinematicWaveTouchResponsePreference = CinematicWaveSettings.TOUCH_RESPONSE_NORMAL
+        cinematicWaveQualityPreference = CinematicWaveSettings.QUALITY_BALANCED
         customKeyBorderEnablePreference = null
         customKeyBorderEnableColor = null
 
@@ -4093,6 +4524,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             updateFloatingKeyboardBackgroundBounds(floatingKeyboardLayoutBinding, heightPx)
             updateFloatingFullCandidatesHeight(floatingKeyboardLayoutBinding, heightPx)
+            updateFloatingKeyboardTouchEffectBounds(floatingKeyboardLayoutBinding)
         }
 
         keyboardContainer?.let { container ->
@@ -13100,6 +13532,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             floatingKeyboardLayoutBinding.floatingSymbolKeyboard.isVisible = false
                             renderCurrentKeyboardStateOnActiveSurface()
                         }
+                        updateFloatingKeyboardTouchEffectBounds(floatingKeyboardLayoutBinding)
                     }
                 } else {
                     setKeyboardSizeForHeightSymbol(mainView, isSymbolKeyboardShow.isShown)
@@ -14055,6 +14488,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isSymbol = isSymbolOverride ?: keyboardSymbolViewState.value.isShown
+        applyShortcutToolbarSize(mainView)
 
         // 2. ピクセル値の計算
         val heightPx = when {
@@ -14120,7 +14554,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 baseKeyboardHeight + candidateTabOffset
 
             !addCandidateTabHeight && presentation.showIndependentShortcutToolbar && !isSymbol ->
-                baseKeyboardHeight + shortcutToolbarHeightPx(mainView)
+                baseKeyboardHeight + shortcutToolbarHeightPx()
 
             else -> baseKeyboardHeight
         }
@@ -14227,6 +14661,31 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun updateNormalKeyboardTouchEffectBounds(
+        mainView: MainLayoutBinding,
+        keyboardBodyHeightPx: Int
+    ) {
+        if (keyboardBodyHeightPx <= 0) return
+
+        val container = mainView.keyboardTouchEffectContainer
+        val params = container.layoutParams as? FrameLayout.LayoutParams ?: return
+        var changed = false
+
+        if (params.height != keyboardBodyHeightPx) {
+            params.height = keyboardBodyHeightPx
+            changed = true
+        }
+
+        if (params.gravity != Gravity.BOTTOM) {
+            params.gravity = Gravity.BOTTOM
+            changed = true
+        }
+
+        if (changed) {
+            container.layoutParams = params
+        }
+    }
+
     private fun applyKeyboardLayoutParameters(
         mainView: MainLayoutBinding,
         heightPx: Int,
@@ -14276,6 +14735,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateNormalKeyboardBackgroundBounds(
             mainView = mainView,
             heightPx = backgroundSurfaceHeight
+        )
+        updateNormalKeyboardTouchEffectBounds(
+            mainView = mainView,
+            keyboardBodyHeightPx = heightPx
+        )
+        updateLuminousBlobEffectBounds(
+            blobView = mainView.luminousBlobEffectView,
+            heightPx = heightPx
         )
 
         mainView.root.setPadding(0, 0, 0, systemBottomInset)
@@ -14446,6 +14913,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView = mainView,
             heightPx = backgroundSurfaceHeight
         )
+        updateNormalKeyboardTouchEffectBounds(
+            mainView = mainView,
+            keyboardBodyHeightPx = heightPx
+        )
+        updateLuminousBlobEffectBounds(
+            blobView = mainView.luminousBlobEffectView,
+            heightPx = heightPx
+        )
 
         // Adjust suggestion view constraints since it's no longer attached to the parent bottom
         val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
@@ -14520,6 +14995,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 floatingKeyboardLayoutBinding.suggestionVisibility.apply {
                     this.setImageDrawable(if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable)
                 }
+                updateFloatingKeyboardTouchEffectBounds(floatingKeyboardLayoutBinding)
+                floatingKeyboardLayoutBinding.root.postDelayed(
+                    { updateFloatingKeyboardTouchEffectBounds(floatingKeyboardLayoutBinding) },
+                    240L
+                )
             }
         }
         animateViewVisibility(mainView.candidatesRowView, !isVisible)
@@ -16726,7 +17206,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (keyboardSymbolViewState.value.isShown) {
             _keyboardSymbolViewState.value = SymbolKeyboardState()
         }
-        floatingKeyboardBinding?.floatingSymbolKeyboard?.isVisible = false
+        floatingKeyboardBinding?.let { floatingView ->
+            floatingView.floatingSymbolKeyboard.isVisible = false
+            updateFloatingKeyboardTouchEffectBounds(floatingView)
+        }
     }
 
     private fun currentKeyboardLayoutEditOrientation(): KeyboardLayoutEditOrientation {
@@ -17099,8 +17582,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return resolvedFixedHeightPx(mainView.candidateTabLayout, fallbackDp = 36f)
     }
 
-    private fun shortcutToolbarHeightPx(mainView: MainLayoutBinding): Int {
-        return resolvedFixedHeightPx(mainView.shortcutToolbarRecyclerview, fallbackDp = 36f)
+    private fun shortcutToolbarHeightPx(): Int {
+        val toolbarHeightDp = shortcutToolbarHeightDp.coerceIn(
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+        )
+        return applicationContext.dpToPx(toolbarHeightDp)
+    }
+
+    private fun applyShortcutToolbarSize(mainView: MainLayoutBinding) {
+        val toolbarHeightDp = shortcutToolbarHeightDp.coerceIn(
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+        )
+        val iconSizeDp = appPreference.resolveShortcutToolbarIconSizeDp(
+            toolbarHeightDp = toolbarHeightDp,
+            iconSizeDp = shortcutToolbarIconSizeDp
+        )
+        val toolbarHeightPx = applicationContext.dpToPx(toolbarHeightDp)
+        val iconSizePx = applicationContext.dpToPx(iconSizeDp)
+        mainView.shortcutToolbarRecyclerview.layoutParams =
+            mainView.shortcutToolbarRecyclerview.layoutParams.apply {
+                height = toolbarHeightPx
+            }
+        shortcutAdapter?.setShortcutToolbarSize(
+            toolbarHeightPx = toolbarHeightPx,
+            iconSizePx = iconSizePx
+        )
     }
 
     private fun applyCandidateTabSuggestionOffset(
