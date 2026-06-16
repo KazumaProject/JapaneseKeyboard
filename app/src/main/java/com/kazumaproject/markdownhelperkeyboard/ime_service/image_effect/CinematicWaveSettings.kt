@@ -34,8 +34,9 @@ internal data class CinematicWaveSettings(
         const val WAVE_TYPE_AURORA_MEMBRANE = "aurora_membrane"
         const val WAVE_TYPE_SILK_SINE = "silk_sine"
         const val WAVE_TYPE_PRISMATIC_SINE = "prismatic_sine"
-        const val WAVE_TYPE_LUMINOUS_STACK = "luminous_stack"
-        const val WAVE_TYPE_AURORA_FLOW = "aurora_flow"
+        const val WAVE_TYPE_SPECTRUM_SINE = "spectrum_sine"
+        const val WAVE_TYPE_CHROMA_FOLD = "chroma_fold"
+        private const val LEGACY_CHROMA_FOLD_VALUE = "oled_ribbon"
 
         const val MOTION_CALM = "calm"
         const val MOTION_ELEGANT = "elegant"
@@ -80,8 +81,8 @@ internal data class CinematicWaveSettings(
             return when (value) {
                 WAVE_TYPE_SILK_SINE -> WAVE_TYPE_SILK_SINE
                 WAVE_TYPE_PRISMATIC_SINE -> WAVE_TYPE_PRISMATIC_SINE
-                WAVE_TYPE_LUMINOUS_STACK -> WAVE_TYPE_LUMINOUS_STACK
-                WAVE_TYPE_AURORA_FLOW -> WAVE_TYPE_AURORA_FLOW
+                WAVE_TYPE_SPECTRUM_SINE -> WAVE_TYPE_SPECTRUM_SINE
+                WAVE_TYPE_CHROMA_FOLD, LEGACY_CHROMA_FOLD_VALUE -> WAVE_TYPE_CHROMA_FOLD
                 else -> WAVE_TYPE_AURORA_MEMBRANE
             }
         }

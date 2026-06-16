@@ -168,8 +168,8 @@ internal class CinematicWaveSimulation {
         return when (settings.normalizedWaveType) {
             CinematicWaveSettings.WAVE_TYPE_SILK_SINE -> 1
             CinematicWaveSettings.WAVE_TYPE_PRISMATIC_SINE -> 2
-            CinematicWaveSettings.WAVE_TYPE_LUMINOUS_STACK -> 3
-            CinematicWaveSettings.WAVE_TYPE_AURORA_FLOW -> 4
+            CinematicWaveSettings.WAVE_TYPE_SPECTRUM_SINE -> 3
+            CinematicWaveSettings.WAVE_TYPE_CHROMA_FOLD -> 4
             else -> 0
         }
     }
@@ -425,61 +425,105 @@ internal class CinematicWaveSimulation {
                 }
 
                 if (uWaveType == 3) {
-                    vec2 stackUv = drift;
-                    float x = stackUv.x;
-                    float y = stackUv.y;
-                    float waveA = sin(x * 6.20 + slowTime * 0.22) * 0.18 +
-                        sin(x * 11.10 - slowTime * 0.14 + 1.42) * 0.055;
-                    float waveB = sin(x * 5.15 - slowTime * 0.19 + 2.45) * 0.16 +
-                        sin(x * 9.70 + slowTime * 0.11 + 0.76) * 0.050;
-                    float waveC = sin(x * 7.05 + slowTime * 0.16 + 4.20) * 0.13 +
-                        sin(x * 12.40 - slowTime * 0.10 + 3.30) * 0.044;
-                    float centerA = 0.52 + waveA;
-                    float centerB = 0.42 + waveB;
-                    float centerC = 0.63 + waveC;
-                    float centerD = 0.34 + sin(x * 4.55 + slowTime * 0.13 + 5.52) * 0.12;
+                    vec2 spectrumSheetUv = uv + (warpedUv - uv) * 0.58;
+                    float x = spectrumSheetUv.x;
+                    float y = spectrumSheetUv.y;
+                    float horizon = smoothstep(0.06, 0.92, x) * (1.0 - smoothstep(0.82, 1.04, x));
 
-                    float sheetA = ribbon(y, centerA, 0.155);
-                    float sheetB = ribbon(y, centerB, 0.136);
-                    float sheetC = ribbon(y, centerC, 0.118);
-                    float sheetD = ribbon(y, centerD, 0.130);
-                    float rimA = ribbon(y, centerA, 0.034);
-                    float rimB = ribbon(y, centerB, 0.030);
-                    float rimC = ribbon(y, centerC, 0.028);
-                    float rimD = ribbon(y, centerD, 0.032);
+                    float blueAxis = 0.62 + sin(x * 5.02 - slowTime * 0.20 + 0.05) * 0.255;
+                    float cyanAxis = 0.55 + sin(x * 5.82 + slowTime * 0.16 + 1.16) * 0.225;
+                    float greenAxis = 0.36 + sin(x * 4.72 - slowTime * 0.13 + 2.54) * 0.238;
+                    float roseAxis = 0.46 + sin(x * 5.30 + slowTime * 0.18 + 4.04) * 0.205;
+                    float goldAxis = 0.29 + sin(x * 6.18 - slowTime * 0.11 + 5.64) * 0.112;
 
-                    float luminousStackBody = clamp(
-                        sheetA * 0.44 + sheetB * 0.39 + sheetC * 0.34 + sheetD * 0.30,
+                    float blueD = y - blueAxis;
+                    float cyanD = y - cyanAxis;
+                    float greenD = y - greenAxis;
+                    float roseD = y - roseAxis;
+                    float goldD = y - goldAxis;
+                    float blueAbs = abs(blueD);
+                    float cyanAbs = abs(cyanD);
+                    float greenAbs = abs(greenD);
+                    float roseAbs = abs(roseD);
+                    float goldAbs = abs(goldD);
+
+                    float blueWidth = 0.136 + 0.026 * sin(x * 3.4 + slowTime * 0.08);
+                    float cyanWidth = 0.118 + 0.018 * sin(x * 3.8 - slowTime * 0.07 + 1.2);
+                    float greenWidth = 0.132 + 0.020 * sin(x * 3.1 + slowTime * 0.05 + 2.1);
+                    float roseWidth = 0.113 + 0.016 * sin(x * 4.0 - slowTime * 0.06 + 3.7);
+                    float goldWidth = 0.054 + 0.010 * sin(x * 4.6 + slowTime * 0.05 + 1.7);
+
+                    float blueBody = (1.0 - smoothstep(blueWidth, blueWidth + 0.082, blueAbs)) * horizon;
+                    float cyanBody = (1.0 - smoothstep(cyanWidth, cyanWidth + 0.072, cyanAbs)) * horizon;
+                    float greenBody = (1.0 - smoothstep(greenWidth, greenWidth + 0.075, greenAbs)) * horizon;
+                    float roseBody = (1.0 - smoothstep(roseWidth, roseWidth + 0.070, roseAbs)) * horizon;
+                    float goldBody = (1.0 - smoothstep(goldWidth, goldWidth + 0.040, goldAbs)) * horizon;
+
+                    float blueEdgeD = (blueAbs - blueWidth) * 28.0;
+                    float cyanEdgeD = (cyanAbs - cyanWidth) * 31.0;
+                    float greenEdgeD = (greenAbs - greenWidth) * 29.0;
+                    float roseEdgeD = (roseAbs - roseWidth) * 32.0;
+                    float goldEdgeD = (goldAbs - goldWidth) * 42.0;
+                    float spectrumFilmEdge = clamp(
+                        exp(-(blueEdgeD * blueEdgeD)) * 0.50 +
+                            exp(-(cyanEdgeD * cyanEdgeD)) * 0.56 +
+                            exp(-(greenEdgeD * greenEdgeD)) * 0.42 +
+                            exp(-(roseEdgeD * roseEdgeD)) * 0.46 +
+                            exp(-(goldEdgeD * goldEdgeD)) * 0.44,
                         0.0,
                         1.0
                     );
-                    float luminousStackRim = clamp(
-                        rimA * 0.64 + rimB * 0.56 + rimC * 0.48 + rimD * 0.40,
+                    float spectrumSheetField = clamp(
+                        blueBody * 0.44 + cyanBody * 0.42 + greenBody * 0.40 +
+                            roseBody * 0.38 + goldBody * 0.26,
                         0.0,
                         1.0
                     );
-                    float stackCrossing = smoothstep(
-                        0.04,
-                        0.70,
-                        sheetA * sheetB + sheetA * sheetC + sheetB * sheetD
+                    float spectrumIntersectionGlow = smoothstep(
+                        0.020,
+                        0.46,
+                        blueBody * cyanBody + cyanBody * greenBody +
+                            greenBody * roseBody + roseBody * blueBody +
+                            goldBody * roseBody
                     );
-                    float vignette = 1.0 - smoothstep(0.24, 1.02, length(centered));
-                    vec3 base = mix(uBaseColor * 0.34, uBaseColor * 1.12, smoothstep(0.0, 1.0, uv.y));
-                    base += vec3(0.020, 0.024, 0.032) * vignette;
+                    float spectrumWhiteWindow = smoothstep(
+                        0.08,
+                        0.66,
+                        cyanBody * greenBody + blueBody * roseBody
+                    ) * smoothstep(0.16, 0.86, y);
+                    float upperLight = clamp(
+                        smoothstep(-0.02, blueWidth, blueD) * blueBody * 0.25 +
+                            smoothstep(-0.02, cyanWidth, cyanD) * cyanBody * 0.30 +
+                            smoothstep(-0.02, greenWidth, greenD) * greenBody * 0.22 +
+                            smoothstep(-0.02, roseWidth, roseD) * roseBody * 0.20,
+                        0.0,
+                        1.0
+                    );
 
-                    vec3 color = base;
-                    color += uPrimaryColor * sheetA * 0.36 * uIntensity;
-                    color += mix(uSecondaryColor, uPrimaryColor, 0.28) * sheetB * 0.34 * uIntensity;
-                    color += mix(uHighlightColor, uPrimaryColor, 0.52) * sheetC * 0.25 * uIntensity;
-                    color += mix(uSecondaryColor, uHighlightColor, 0.25) * sheetD * 0.24 * uIntensity;
-                    color += uHighlightColor * pow(luminousStackRim, 2.05) * 0.58 * uGlowStrength;
-                    color += uHighlightColor * stackCrossing * 0.34 * uGlowStrength;
-                    color += uHighlightColor * touchGlow * 0.14 * uIntensity;
-                    color -= uBaseColor * touchShadow * 0.036;
+                    vec3 glassBase = mix(
+                        uBaseColor * 0.22,
+                        vec3(0.18, 0.18, 0.17),
+                        smoothstep(0.34, 1.0, uv.y)
+                    );
+                    glassBase *= 0.72 + 0.20 * (1.0 - smoothstep(0.20, 1.12, length(centered)));
 
-                    float alpha = 0.060 + luminousStackBody * 0.29 * uIntensity +
-                        luminousStackRim * 0.22 * uGlowStrength + stackCrossing * 0.13 +
-                        vignette * 0.035 + touchGlow * 0.082;
+                    vec3 color = glassBase;
+                    color += mix(uPrimaryColor, vec3(0.22, 0.50, 1.00), 0.72) * blueBody * 0.48 * uIntensity;
+                    color += mix(uHighlightColor, vec3(0.42, 1.00, 0.94), 0.68) * cyanBody * 0.43 * uIntensity;
+                    color += mix(uSecondaryColor, vec3(0.20, 0.93, 0.28), 0.66) * greenBody * 0.40 * uIntensity;
+                    color += mix(uSecondaryColor, vec3(1.00, 0.24, 0.46), 0.62) * roseBody * 0.42 * uIntensity;
+                    color += mix(uHighlightColor, vec3(1.00, 0.58, 0.20), 0.46) * goldBody * 0.28 * uIntensity;
+                    color += vec3(0.88, 0.98, 1.00) * spectrumWhiteWindow * 0.50 * uGlowStrength;
+                    color += uHighlightColor * spectrumFilmEdge * 0.30 * uGlowStrength;
+                    color += vec3(0.96, 0.99, 1.00) * spectrumIntersectionGlow * 0.42 * uGlowStrength;
+                    color += vec3(0.90, 0.96, 1.00) * upperLight * 0.18 * uGlowStrength;
+                    color += uHighlightColor * touchGlow * 0.12 * uIntensity;
+                    color -= uBaseColor * touchShadow * 0.032;
+
+                    float alpha = 0.044 + spectrumSheetField * 0.31 * uIntensity +
+                        spectrumFilmEdge * 0.15 * uGlowStrength +
+                        spectrumIntersectionGlow * 0.15 + spectrumWhiteWindow * 0.11 +
+                        touchGlow * 0.070;
                     alpha = clamp(alpha * uOpacity, 0.0, 0.64);
                     color = clamp(color, vec3(0.0), vec3(1.0));
                     fragColor = vec4(color * alpha, alpha);
@@ -487,63 +531,130 @@ internal class CinematicWaveSimulation {
                 }
 
                 if (uWaveType == 4) {
-                    vec2 flowUv = drift + vec2(
-                        fbm(drift * 1.55 + vec2(slowTime * 0.030, 2.10)),
-                        fbm(drift * 1.90 - vec2(1.60, slowTime * 0.026))
-                    ) * 0.070 * uWarpStrength;
-                    float flowNoiseA = fbm(flowUv * vec2(2.1, 3.2) + slowTime * 0.030);
-                    float flowNoiseB = fbm(flowUv * vec2(3.4, 2.4) - slowTime * 0.025);
-                    float centerA = 0.50 + sin(flowUv.x * 4.25 + flowUv.y * 1.20 + flowNoiseA * 2.75 + slowTime * 0.16) * 0.205;
-                    float centerB = 0.42 + sin(flowUv.x * 5.65 - flowUv.y * 1.55 + flowNoiseB * 2.25 - slowTime * 0.13 + 2.35) * 0.175;
-                    float centerC = 0.61 + sin(flowUv.x * 3.55 + flowUv.y * 2.05 + flowNoiseA * 2.10 + slowTime * 0.11 + 4.15) * 0.150;
-                    float centerD = 0.36 + sin(flowUv.x * 6.05 - flowUv.y * 0.90 + flowNoiseB * 1.80 + slowTime * 0.09 + 5.20) * 0.130;
+                    vec2 vividUv = uv + (warpedUv - uv) * 0.66;
+                    float x = vividUv.x;
+                    float y = vividUv.y;
+                    float vividTime = slowTime * 0.17;
+                    float visibleSpan = smoothstep(0.03, 0.13, x) *
+                        (1.0 - smoothstep(0.88, 1.04, x));
 
-                    float auroraCurtainA = ribbon(flowUv.y, centerA, 0.178);
-                    float auroraCurtainB = ribbon(flowUv.y, centerB, 0.145);
-                    float auroraCurtainC = ribbon(flowUv.y, centerC, 0.126);
-                    float auroraCurtainD = ribbon(flowUv.y, centerD, 0.154);
-                    float auroraRidge = clamp(
-                        ribbon(flowUv.y, centerA, 0.040) * 0.60 +
-                            ribbon(flowUv.y, centerB, 0.034) * 0.52 +
-                            ribbon(flowUv.y, centerC, 0.030) * 0.46,
+                    float cobaltAxis = 0.66 +
+                        sin(x * 4.72 - vividTime * 1.08 + 0.18) * 0.244 +
+                        sin(x * 9.15 + vividTime * 0.36 + 1.42) * 0.026;
+                    float cyanAxis = 0.57 +
+                        sin(x * 5.44 + vividTime * 0.92 + 1.02) * 0.218 +
+                        sin(x * 10.20 - vividTime * 0.31 + 2.70) * 0.024;
+                    float emeraldAxis = 0.43 +
+                        sin(x * 4.98 - vividTime * 0.72 + 2.28) * 0.230 +
+                        sin(x * 8.70 + vividTime * 0.28 + 0.64) * 0.028;
+                    float limeAxis = 0.35 +
+                        sin(x * 6.22 + vividTime * 0.64 + 3.35) * 0.172;
+                    float coralAxis = 0.48 +
+                        sin(x * 5.88 + vividTime * 1.02 + 4.18) * 0.198 +
+                        sin(x * 11.35 - vividTime * 0.25 + 1.80) * 0.023;
+                    float magentaAxis = 0.54 +
+                        sin(x * 6.64 - vividTime * 0.86 + 5.05) * 0.177;
+                    float amberAxis = 0.30 +
+                        sin(x * 7.18 - vividTime * 0.54 + 5.82) * 0.118;
+
+                    float cobaltD = y - cobaltAxis;
+                    float cyanD = y - cyanAxis;
+                    float emeraldD = y - emeraldAxis;
+                    float limeD = y - limeAxis;
+                    float coralD = y - coralAxis;
+                    float magentaD = y - magentaAxis;
+                    float amberD = y - amberAxis;
+
+                    float cobaltW = 0.118 + sin(x * 3.7 + vividTime * 0.32) * 0.020;
+                    float cyanW = 0.106 + sin(x * 4.0 - vividTime * 0.28 + 1.1) * 0.017;
+                    float emeraldW = 0.111 + sin(x * 3.3 + vividTime * 0.24 + 2.0) * 0.018;
+                    float limeW = 0.074 + sin(x * 4.9 - vividTime * 0.22 + 0.8) * 0.012;
+                    float coralW = 0.102 + sin(x * 4.2 + vividTime * 0.25 + 3.3) * 0.016;
+                    float magentaW = 0.082 + sin(x * 5.0 - vividTime * 0.21 + 2.4) * 0.014;
+                    float amberW = 0.055 + sin(x * 5.6 + vividTime * 0.18 + 1.9) * 0.010;
+
+                    float cobaltBody = (1.0 - smoothstep(cobaltW, cobaltW + 0.058, abs(cobaltD))) * visibleSpan;
+                    float cyanBody = (1.0 - smoothstep(cyanW, cyanW + 0.052, abs(cyanD))) * visibleSpan;
+                    float emeraldBody = (1.0 - smoothstep(emeraldW, emeraldW + 0.054, abs(emeraldD))) * visibleSpan;
+                    float limeBody = (1.0 - smoothstep(limeW, limeW + 0.038, abs(limeD))) * visibleSpan;
+                    float coralBody = (1.0 - smoothstep(coralW, coralW + 0.050, abs(coralD))) * visibleSpan;
+                    float magentaBody = (1.0 - smoothstep(magentaW, magentaW + 0.042, abs(magentaD))) * visibleSpan;
+                    float amberBody = (1.0 - smoothstep(amberW, amberW + 0.034, abs(amberD))) * visibleSpan;
+
+                    float vividCobaltEdgeD = (abs(cobaltD) - cobaltW) * 34.0;
+                    float vividCyanEdgeD = (abs(cyanD) - cyanW) * 36.0;
+                    float vividEmeraldEdgeD = (abs(emeraldD) - emeraldW) * 35.0;
+                    float vividLimeEdgeD = (abs(limeD) - limeW) * 44.0;
+                    float vividCoralEdgeD = (abs(coralD) - coralW) * 37.0;
+                    float vividMagentaEdgeD = (abs(magentaD) - magentaW) * 42.0;
+                    float vividAmberEdgeD = (abs(amberD) - amberW) * 48.0;
+                    float vividSpectrumEdge = clamp(
+                        exp(-(vividCobaltEdgeD * vividCobaltEdgeD)) * 0.48 +
+                            exp(-(vividCyanEdgeD * vividCyanEdgeD)) * 0.54 +
+                            exp(-(vividEmeraldEdgeD * vividEmeraldEdgeD)) * 0.48 +
+                            exp(-(vividLimeEdgeD * vividLimeEdgeD)) * 0.36 +
+                            exp(-(vividCoralEdgeD * vividCoralEdgeD)) * 0.46 +
+                            exp(-(vividMagentaEdgeD * vividMagentaEdgeD)) * 0.38 +
+                            exp(-(vividAmberEdgeD * vividAmberEdgeD)) * 0.30,
                         0.0,
                         1.0
                     );
-                    float auroraInterference = smoothstep(
+                    float vividSpectrumField = clamp(
+                        cobaltBody * 0.36 + cyanBody * 0.36 + emeraldBody * 0.35 +
+                            limeBody * 0.24 + coralBody * 0.35 + magentaBody * 0.27 +
+                            amberBody * 0.20,
+                        0.0,
+                        1.0
+                    );
+                    float vividSpectrumCrossGlow = smoothstep(
+                        0.030,
+                        0.58,
+                        cobaltBody * cyanBody + cyanBody * emeraldBody +
+                            emeraldBody * coralBody + coralBody * magentaBody +
+                            cobaltBody * coralBody + limeBody * amberBody
+                    );
+                    float vividSpectrumWhite = smoothstep(
                         0.06,
-                        0.76,
-                        auroraCurtainA * auroraCurtainB + auroraCurtainA * auroraCurtainC +
-                            auroraCurtainB * auroraCurtainD
+                        0.48,
+                        cyanBody * emeraldBody + cobaltBody * coralBody + magentaBody * cyanBody
+                    ) * smoothstep(0.14, 0.82, y);
+                    float vividSpectrumClarity = clamp(
+                        smoothstep(-0.01, cobaltW, cobaltD) * cobaltBody * 0.20 +
+                            smoothstep(-0.01, cyanW, cyanD) * cyanBody * 0.26 +
+                            smoothstep(-0.01, emeraldW, emeraldD) * emeraldBody * 0.22 +
+                            smoothstep(-0.01, coralW, coralD) * coralBody * 0.22 +
+                            vividSpectrumEdge * 0.34,
+                        0.0,
+                        1.0
                     );
-                    float shimmer = smoothstep(
-                        0.35,
-                        0.95,
-                        fbm(flowUv * vec2(8.0, 2.2) + vec2(slowTime * 0.045, -slowTime * 0.020))
+
+                    vec3 base = mix(
+                        uBaseColor * 0.18,
+                        vec3(0.12, 0.12, 0.125),
+                        smoothstep(0.24, 1.0, uv.y)
                     );
-                    float vignette = 1.0 - smoothstep(0.20, 1.08, length(centered));
-                    vec3 base = mix(uBaseColor * 0.42, uBaseColor * 1.26, smoothstep(0.0, 1.0, uv.y));
-                    base += vec3(0.012, 0.020, 0.030) * vignette;
+                    base *= 0.70 + 0.24 * (1.0 - smoothstep(0.18, 1.08, length(centered)));
 
                     vec3 color = base;
-                    color += uPrimaryColor * auroraCurtainA * 0.38 * uIntensity;
-                    color += mix(uPrimaryColor, uSecondaryColor, 0.60) * auroraCurtainB * 0.33 * uIntensity;
-                    color += mix(uSecondaryColor, uHighlightColor, 0.38) * auroraCurtainC * 0.27 * uIntensity;
-                    color += mix(uPrimaryColor, uHighlightColor, 0.30) * auroraCurtainD * 0.22 * uIntensity;
-                    color += uHighlightColor * auroraRidge * (0.36 + shimmer * 0.22) * uGlowStrength;
-                    color += uHighlightColor * auroraInterference * 0.28 * uGlowStrength;
-                    color += uHighlightColor * touchGlow * 0.14 * uIntensity;
-                    color -= uBaseColor * touchShadow * 0.038;
+                    color += mix(uPrimaryColor, vec3(0.12, 0.38, 1.00), 0.76) * cobaltBody * 0.52 * uIntensity;
+                    color += mix(uHighlightColor, vec3(0.20, 0.96, 1.00), 0.76) * cyanBody * 0.50 * uIntensity;
+                    color += mix(uSecondaryColor, vec3(0.10, 0.95, 0.38), 0.72) * emeraldBody * 0.46 * uIntensity;
+                    color += vec3(0.72, 1.00, 0.24) * limeBody * 0.30 * uIntensity;
+                    color += vec3(1.00, 0.23, 0.24) * coralBody * 0.48 * uIntensity;
+                    color += vec3(1.00, 0.16, 0.82) * magentaBody * 0.36 * uIntensity;
+                    color += vec3(1.00, 0.66, 0.16) * amberBody * 0.28 * uIntensity;
+                    color += vec3(0.96, 1.00, 1.00) * vividSpectrumWhite * 0.54 * uGlowStrength;
+                    color += uHighlightColor * vividSpectrumEdge * 0.34 * uGlowStrength;
+                    color += vec3(0.92, 0.98, 1.00) * vividSpectrumCrossGlow * 0.44 * uGlowStrength;
+                    color += vec3(0.90, 0.98, 1.00) * vividSpectrumClarity * 0.14 * uGlowStrength;
+                    color += uHighlightColor * touchGlow * 0.12 * uIntensity;
+                    color -= uBaseColor * touchShadow * 0.030;
 
-                    float auroraBody = clamp(
-                        auroraCurtainA * 0.42 + auroraCurtainB * 0.36 +
-                            auroraCurtainC * 0.30 + auroraCurtainD * 0.28,
-                        0.0,
-                        1.0
-                    );
-                    float alpha = 0.065 + auroraBody * 0.27 * uIntensity +
-                        auroraRidge * 0.20 * uGlowStrength + auroraInterference * 0.12 +
-                        shimmer * auroraBody * 0.055 + touchGlow * 0.078;
-                    alpha = clamp(alpha * uOpacity, 0.0, 0.63);
+                    float alpha = 0.046 + vividSpectrumField * 0.34 * uIntensity +
+                        vividSpectrumEdge * 0.17 * uGlowStrength +
+                        vividSpectrumCrossGlow * 0.15 + vividSpectrumWhite * 0.11 +
+                        touchGlow * 0.070;
+                    alpha = clamp(alpha * uOpacity, 0.0, 0.68);
                     color = clamp(color, vec3(0.0), vec3(1.0));
                     fragColor = vec4(color * alpha, alpha);
                     return;
