@@ -436,6 +436,10 @@ object SettingSearchIndex {
             if (key == "shortcut_toolbar_integrated_in_suggestion_preference") {
                 add("shortcut_toolbar_visibility_preference")
             }
+            if (key.startsWith("keyboard_touch_effect_cinematic_wave_")) {
+                add("keyboard_touch_effect_type_preference")
+                add("keyboard_touch_effect_cinematic_wave_color_mode_preference")
+            }
             if (!dependencyKey.isNullOrBlank()) {
                 add(dependencyKey)
             }

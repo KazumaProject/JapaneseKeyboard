@@ -58,7 +58,8 @@ class TouchEffectSimulationResizeContractTest {
         listOf(
             "LiquidRippleRenderer.kt",
             "SprayPaintRenderer.kt",
-            "LuminousBlobRenderer.kt"
+            "LuminousBlobRenderer.kt",
+            "CinematicWaveRenderer.kt"
         ).forEach { fileName ->
             val lines = mainFile(
                 "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/$fileName"
@@ -77,7 +78,8 @@ class TouchEffectSimulationResizeContractTest {
         listOf(
             "LiquidRippleEffectView.kt",
             "SprayPaintEffectView.kt",
-            "LuminousBlobEffectView.kt"
+            "LuminousBlobEffectView.kt",
+            "CinematicWaveEffectView.kt"
         ).forEach { fileName ->
             val lines = mainFile(
                 "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/$fileName"

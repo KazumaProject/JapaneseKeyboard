@@ -17,7 +17,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.exp
-import kotlin.math.roundToInt
 
 internal class CinematicWaveRenderer(
     private val inputQueue: CinematicWaveInputCommandQueue,
@@ -78,7 +77,7 @@ internal class CinematicWaveRenderer(
                 viewWidth > 0 &&
                 viewHeight > 0
             ) {
-                recreateSurfaceForCurrentSettings()
+                resizeSurfaceForCurrentSettings()
             }
             requestRenderOnRendererThread(forceSoon = true)
         }
@@ -92,7 +91,7 @@ internal class CinematicWaveRenderer(
             viewHeight = height
             state = CinematicWaveRendererState.Ambient
             runRendererCatching("attach cinematic wave EGL surface") {
-                recreateSurfaceForCurrentSettings()
+                ensureSurfaceForCurrentSize()
                 paused = false
                 requestRenderOnRendererThread(forceSoon = true)
             }
@@ -107,7 +106,7 @@ internal class CinematicWaveRenderer(
             viewWidth = width
             viewHeight = height
             runRendererCatching("resize cinematic wave surface") {
-                recreateSurfaceForCurrentSettings()
+                ensureSurfaceForCurrentSize()
                 requestRenderOnRendererThread(forceSoon = true)
             }
         }
@@ -183,11 +182,10 @@ internal class CinematicWaveRenderer(
         return rendererThread.isAlive && !released
     }
 
-    private fun recreateSurfaceForCurrentSettings() {
+    private fun ensureSurfaceForCurrentSize() {
         val texture = surfaceTexture ?: return
-        val params = performanceGovernor.stepParams(settings, resolveRendererState())
-        val nextRenderWidth = (viewWidth * params.renderScale).roundToInt().coerceAtLeast(1)
-        val nextRenderHeight = (viewHeight * params.renderScale).roundToInt().coerceAtLeast(1)
+        val nextRenderWidth = viewWidth.coerceAtLeast(1)
+        val nextRenderHeight = viewHeight.coerceAtLeast(1)
         if (
             egl != null &&
             simulation != null &&
@@ -197,21 +195,26 @@ internal class CinematicWaveRenderer(
             return
         }
 
-        simulation?.release()
-        simulation = null
-        releaseEglSurfaceOnly()
-
-        texture.setDefaultBufferSize(nextRenderWidth, nextRenderHeight)
         renderWidth = nextRenderWidth
         renderHeight = nextRenderHeight
-        egl = EglEnvironment(texture)
-        simulation = simulationFactory().also {
-            it.initialize(
-                surfaceWidth = renderWidth,
-                surfaceHeight = renderHeight,
-                settings = settings
-            )
+        if (egl == null || simulation == null) {
+            if (egl == null) {
+                egl = EglEnvironment(texture)
+            }
+            simulation = simulationFactory().also {
+                it.initialize(
+                    surfaceWidth = renderWidth,
+                    surfaceHeight = renderHeight,
+                    settings = settings
+                )
+            }
+        } else {
+            simulation?.resizeSurface(renderWidth, renderHeight)
         }
+    }
+
+    private fun resizeSurfaceForCurrentSettings() {
+        ensureSurfaceForCurrentSize()
     }
 
     private fun renderFrameOnRendererThread() {

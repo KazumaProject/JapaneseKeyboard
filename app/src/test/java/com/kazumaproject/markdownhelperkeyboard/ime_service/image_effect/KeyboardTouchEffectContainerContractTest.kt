@@ -65,6 +65,28 @@ class KeyboardTouchEffectContainerContractTest {
     }
 
     @Test
+    fun touchEffectBoundsStayOnKeyboardBodyToAvoidCandidateHeightResizeFlicker() {
+        val lines = mainFile(
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt"
+        ).readLines()
+        val source = lines.joinToString("\n")
+        val normalBounds =
+            functionBody(lines, "updateNormalKeyboardTouchEffectBounds").joinToString("\n")
+        val floatingBounds =
+            functionBody(lines, "updateFloatingKeyboardTouchEffectBounds").joinToString("\n")
+
+        assertTrue(normalBounds.contains("keyboardBodyHeightPx: Int"))
+        assertTrue(source.contains("keyboardBodyHeightPx = heightPx"))
+        assertFalse(source.contains("touchEffectHeightPx = backgroundSurfaceHeight"))
+        assertFalse(source.contains("keyboardBodyHeightPx = backgroundSurfaceHeight"))
+
+        assertTrue(floatingBounds.contains("floatingView.floatingSymbolKeyboard"))
+        assertTrue(floatingBounds.contains("floatingView.candidatesRowView"))
+        assertTrue(floatingBounds.contains("floatingView.floatingKeyboardContainer"))
+        assertFalse(floatingBounds.contains("floatingView.floatingKeyboardBackgroundContainer"))
+    }
+
+    @Test
     fun rendererResizeSurfaceHasNoOpGuards() {
         listOf(
             "FluidInkRenderer.kt",

@@ -658,6 +658,11 @@ object AppPreference {
         )
     private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR_AUTO =
         Pair("keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference", true)
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TYPE =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_type_preference",
+            CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE
+        )
     private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_OPACITY =
         Pair("keyboard_touch_effect_cinematic_wave_opacity_percent_preference", 46)
     private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_INTENSITY =
@@ -3402,6 +3407,21 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR_AUTO.first, value)
+        }
+
+    var keyboard_touch_effect_cinematic_wave_type_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TYPE.first,
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TYPE.second
+            )
+            return CinematicWaveSettings.normalizeWaveType(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TYPE.first,
+                CinematicWaveSettings.normalizeWaveType(value)
+            )
         }
 
     var keyboard_touch_effect_cinematic_wave_opacity_percent_preference: Int

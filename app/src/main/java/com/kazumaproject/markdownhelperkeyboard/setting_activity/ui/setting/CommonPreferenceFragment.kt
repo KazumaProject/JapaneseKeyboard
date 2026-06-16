@@ -335,6 +335,10 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             "keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference"
         )?.isVisible = showCinematicCustomColors
 
+        findPreference<ListPreference>(
+            "keyboard_touch_effect_cinematic_wave_type_preference"
+        )?.isVisible = visibility.showCinematicWaveSettings
+
         val secondaryPreference =
             findPreference<Preference>(
                 "keyboard_touch_effect_cinematic_wave_secondary_color_preference"
@@ -646,6 +650,22 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
                 appPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference =
                     enabled
                 updateKeyboardTouchEffectPreferenceState(cinematicWaveSecondaryAuto = enabled)
+                true
+            }
+        }
+
+        findPreference<ListPreference>(
+            "keyboard_touch_effect_cinematic_wave_type_preference"
+        )?.apply {
+            summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+            val normalizedType =
+                appPreference.keyboard_touch_effect_cinematic_wave_type_preference
+            if (value != normalizedType) {
+                value = normalizedType
+            }
+            setOnPreferenceChangeListener { _, newValue ->
+                appPreference.keyboard_touch_effect_cinematic_wave_type_preference =
+                    CinematicWaveSettings.normalizeWaveType(newValue as? String)
                 true
             }
         }
