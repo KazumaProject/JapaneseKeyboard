@@ -266,6 +266,12 @@
     <string name="learn_dictionary_title">学習辞書</string>
     <string name="learn_dictionary_summary_on">学習辞書を有効化\n学習した変換候補を表示します</string>
     <string name="learn_dictionary_summary_off">学習辞書を無効化\n学習した変換候補を表示しません</string>
+    <string name="incognito_mode_detection_title">シークレットモードの検知</string>
+    <string name="incognito_mode_detection_summary_on">入力先が個人用学習の無効化を要求したとき、アイコンを表示し、新しい学習を保存しません。</string>
+    <string name="incognito_mode_detection_summary_off">入力先からの個人用学習無効化要求を無視します。</string>
+    <string name="show_learned_candidates_in_incognito_title">シークレットモード中の学習済み候補</string>
+    <string name="show_learned_candidates_in_incognito_summary_on">シークレットモードを検知している間も、保存済みの学習候補を使用します。</string>
+    <string name="show_learned_candidates_in_incognito_summary_off">シークレットモードを検知している間は、保存済みの学習候補を使用しません。</string>
 
     <string name="user_dictionary_summary_on">ユーザー辞書の予測変換を有効化\n登録した単語を予測変換として変換候補を表示します</string>
     <string name="user_dictionary_summary_off">ユーザー辞書の予測変換を無効化</string>
