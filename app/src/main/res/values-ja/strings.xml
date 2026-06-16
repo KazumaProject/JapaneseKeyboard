@@ -1065,8 +1065,8 @@
     <string name="keyboard_touch_effect_cinematic_wave_type_aurora_membrane">オーロラ膜</string>
     <string name="keyboard_touch_effect_cinematic_wave_type_silk_sine">シルキーサインウェーブ</string>
     <string name="keyboard_touch_effect_cinematic_wave_type_prismatic_sine">プリズムサインウェーブ</string>
-    <string name="keyboard_touch_effect_cinematic_wave_type_luminous_stack">光のウェーブレイヤー</string>
-    <string name="keyboard_touch_effect_cinematic_wave_type_aurora_flow">オーロラフロー</string>
+    <string name="keyboard_touch_effect_cinematic_wave_type_spectrum_sine">スペクトラムサインウェーブ</string>
+    <string name="keyboard_touch_effect_cinematic_wave_type_chroma_fold">ビビッドスペクトラム</string>
     <string name="keyboard_touch_effect_cinematic_wave_primary_color_title">メインカラー</string>
     <string name="keyboard_touch_effect_cinematic_wave_primary_color_summary">メインの発光色を選択します。</string>
     <string name="keyboard_touch_effect_cinematic_wave_primary_color_summary_current">現在: %1$s</string>

@@ -94,20 +94,24 @@ class KeyboardTouchEffectResourceTest {
                 CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE,
                 CinematicWaveSettings.WAVE_TYPE_SILK_SINE,
                 CinematicWaveSettings.WAVE_TYPE_PRISMATIC_SINE,
-                CinematicWaveSettings.WAVE_TYPE_LUMINOUS_STACK,
-                CinematicWaveSettings.WAVE_TYPE_AURORA_FLOW
+                CinematicWaveSettings.WAVE_TYPE_SPECTRUM_SINE,
+                CinematicWaveSettings.WAVE_TYPE_CHROMA_FOLD
             ),
             values
         )
         assertTrue(englishEntries.contains("Aurora Membrane"))
         assertTrue(englishEntries.contains("Silk Sine"))
         assertTrue(englishEntries.contains("Prismatic Sine"))
-        assertTrue(englishEntries.contains("Luminous Wave Stack"))
-        assertTrue(englishEntries.contains("Aurora Flow"))
+        assertTrue(englishEntries.contains("Spectrum Sine"))
+        assertTrue(englishEntries.contains("Vivid Spectrum"))
         assertTrue(japaneseEntries.contains("オーロラ膜"))
         assertTrue(japaneseEntries.contains("シルキーサインウェーブ"))
         assertTrue(japaneseEntries.contains("プリズムサインウェーブ"))
-        assertTrue(japaneseEntries.contains("光のウェーブレイヤー"))
-        assertTrue(japaneseEntries.contains("オーロラフロー"))
+        assertTrue(japaneseEntries.contains("スペクトラムサインウェーブ"))
+        assertTrue(japaneseEntries.contains("ビビッドスペクトラム"))
+        assertFalse(englishEntries.contains("OLED Ribbon"))
+        assertFalse(englishEntries.contains("Chroma Fold"))
+        assertFalse(japaneseEntries.contains("OLEDリボンウェーブ"))
+        assertFalse(japaneseEntries.contains("クロマフォールド"))
     }
 }
