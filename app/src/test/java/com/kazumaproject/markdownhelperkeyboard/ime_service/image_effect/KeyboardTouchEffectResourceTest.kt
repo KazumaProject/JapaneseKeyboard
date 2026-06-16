@@ -92,13 +92,22 @@ class KeyboardTouchEffectResourceTest {
         assertEquals(
             listOf(
                 CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE,
-                CinematicWaveSettings.WAVE_TYPE_SILK_SINE
+                CinematicWaveSettings.WAVE_TYPE_SILK_SINE,
+                CinematicWaveSettings.WAVE_TYPE_PRISMATIC_SINE,
+                CinematicWaveSettings.WAVE_TYPE_LUMINOUS_STACK,
+                CinematicWaveSettings.WAVE_TYPE_AURORA_FLOW
             ),
             values
         )
         assertTrue(englishEntries.contains("Aurora Membrane"))
         assertTrue(englishEntries.contains("Silk Sine"))
+        assertTrue(englishEntries.contains("Prismatic Sine"))
+        assertTrue(englishEntries.contains("Luminous Wave Stack"))
+        assertTrue(englishEntries.contains("Aurora Flow"))
         assertTrue(japaneseEntries.contains("オーロラ膜"))
         assertTrue(japaneseEntries.contains("シルキーサインウェーブ"))
+        assertTrue(japaneseEntries.contains("プリズムサインウェーブ"))
+        assertTrue(japaneseEntries.contains("光のウェーブレイヤー"))
+        assertTrue(japaneseEntries.contains("オーロラフロー"))
     }
 }

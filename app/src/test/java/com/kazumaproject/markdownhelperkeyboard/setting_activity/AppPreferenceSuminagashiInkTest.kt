@@ -314,6 +314,24 @@ class AppPreferenceSuminagashiInkTest {
     }
 
     @Test
+    fun cinematicWavePreferencesAcceptAllSupportedWaveTypes() {
+        listOf(
+            CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE,
+            CinematicWaveSettings.WAVE_TYPE_SILK_SINE,
+            CinematicWaveSettings.WAVE_TYPE_PRISMATIC_SINE,
+            CinematicWaveSettings.WAVE_TYPE_LUMINOUS_STACK,
+            CinematicWaveSettings.WAVE_TYPE_AURORA_FLOW
+        ).forEach { waveType ->
+            AppPreference.keyboard_touch_effect_cinematic_wave_type_preference = waveType
+
+            assertEquals(
+                waveType,
+                AppPreference.keyboard_touch_effect_cinematic_wave_type_preference
+            )
+        }
+    }
+
+    @Test
     fun cinematicWavePreferencesNormalizeUnexpectedValuesToDefaults() {
         AppPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference = "surprise"
         AppPreference.keyboard_touch_effect_cinematic_wave_type_preference = "visualizer"

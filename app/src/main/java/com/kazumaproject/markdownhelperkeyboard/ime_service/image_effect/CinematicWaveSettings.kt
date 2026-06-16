@@ -33,6 +33,9 @@ internal data class CinematicWaveSettings(
 
         const val WAVE_TYPE_AURORA_MEMBRANE = "aurora_membrane"
         const val WAVE_TYPE_SILK_SINE = "silk_sine"
+        const val WAVE_TYPE_PRISMATIC_SINE = "prismatic_sine"
+        const val WAVE_TYPE_LUMINOUS_STACK = "luminous_stack"
+        const val WAVE_TYPE_AURORA_FLOW = "aurora_flow"
 
         const val MOTION_CALM = "calm"
         const val MOTION_ELEGANT = "elegant"
@@ -76,6 +79,9 @@ internal data class CinematicWaveSettings(
         fun normalizeWaveType(value: String?): String {
             return when (value) {
                 WAVE_TYPE_SILK_SINE -> WAVE_TYPE_SILK_SINE
+                WAVE_TYPE_PRISMATIC_SINE -> WAVE_TYPE_PRISMATIC_SINE
+                WAVE_TYPE_LUMINOUS_STACK -> WAVE_TYPE_LUMINOUS_STACK
+                WAVE_TYPE_AURORA_FLOW -> WAVE_TYPE_AURORA_FLOW
                 else -> WAVE_TYPE_AURORA_MEMBRANE
             }
         }
