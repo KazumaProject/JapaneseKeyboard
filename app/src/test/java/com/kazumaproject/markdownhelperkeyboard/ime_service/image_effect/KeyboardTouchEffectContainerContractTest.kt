@@ -143,12 +143,16 @@ class KeyboardTouchEffectContainerContractTest {
         val normalEffectIds = listOf(
             "suminagashi_ink_view",
             "liquid_ripple_effect_view",
-            "spray_paint_effect_view"
+            "spray_paint_effect_view",
+            "luminous_blob_effect_view",
+            "cinematic_wave_effect_view"
         )
         val floatingEffectIds = listOf(
             "floating_suminagashi_ink_view",
             "floating_liquid_ripple_effect_view",
-            "floating_spray_paint_effect_view"
+            "floating_spray_paint_effect_view",
+            "floating_luminous_blob_effect_view",
+            "floating_cinematic_wave_effect_view"
         )
     }
 }

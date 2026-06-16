@@ -14,6 +14,7 @@ import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
@@ -639,6 +640,42 @@ object AppPreference {
         Pair(
             "keyboard_touch_effect_palette_preference",
             SprayPaintSettings.PALETTE_PAINT_SPLASH
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_COLOR_MODE =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_color_mode_preference",
+            CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_PRIMARY_COLOR =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_primary_color_preference",
+            CinematicWaveSettings.DEFAULT_PRIMARY_COLOR
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_secondary_color_preference",
+            CinematicWaveSettings.DEFAULT_SECONDARY_COLOR
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR_AUTO =
+        Pair("keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference", true)
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_OPACITY =
+        Pair("keyboard_touch_effect_cinematic_wave_opacity_percent_preference", 46)
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_INTENSITY =
+        Pair("keyboard_touch_effect_cinematic_wave_intensity_percent_preference", 100)
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_MOTION =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_motion_preference",
+            CinematicWaveSettings.MOTION_ELEGANT
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TOUCH_RESPONSE =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_touch_response_preference",
+            CinematicWaveSettings.TOUCH_RESPONSE_NORMAL
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_QUALITY =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_quality_preference",
+            CinematicWaveSettings.QUALITY_BALANCED
         )
 
     private val SAVE_LAST_USED_KEYBOARD = Pair("save_last_used_keyboard", false)
@@ -3316,6 +3353,120 @@ object AppPreference {
             it.putString(
                 KEYBOARD_TOUCH_EFFECT_PALETTE.first,
                 normalizeTouchEffectPalette(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_color_mode_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_COLOR_MODE.first,
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_COLOR_MODE.second
+            )
+            return CinematicWaveSettings.normalizeColorMode(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_COLOR_MODE.first,
+                CinematicWaveSettings.normalizeColorMode(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_primary_color_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_PRIMARY_COLOR.first,
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_PRIMARY_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_PRIMARY_COLOR.first,
+                CinematicWaveSettings.withoutTransparentAlpha(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_secondary_color_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR.first,
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR.first,
+                CinematicWaveSettings.withoutTransparentAlpha(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference: Boolean
+        get() = preferences.getBoolean(
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR_AUTO.first,
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR_AUTO.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR_AUTO.first, value)
+        }
+
+    var keyboard_touch_effect_cinematic_wave_opacity_percent_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_OPACITY.first,
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_OPACITY.second
+        ).coerceIn(18, 68)
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_OPACITY.first, value.coerceIn(18, 68))
+        }
+
+    var keyboard_touch_effect_cinematic_wave_intensity_percent_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_INTENSITY.first,
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_INTENSITY.second
+        ).coerceIn(35, 180)
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_INTENSITY.first,
+                value.coerceIn(35, 180)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_motion_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_MOTION.first,
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_MOTION.second
+            )
+            return CinematicWaveSettings.normalizeMotion(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_MOTION.first,
+                CinematicWaveSettings.normalizeMotion(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_touch_response_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TOUCH_RESPONSE.first,
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TOUCH_RESPONSE.second
+            )
+            return CinematicWaveSettings.normalizeTouchResponse(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TOUCH_RESPONSE.first,
+                CinematicWaveSettings.normalizeTouchResponse(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_quality_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_QUALITY.first,
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_QUALITY.second
+            )
+            return CinematicWaveSettings.normalizeQuality(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_QUALITY.first,
+                CinematicWaveSettings.normalizeQuality(value)
             )
         }
 

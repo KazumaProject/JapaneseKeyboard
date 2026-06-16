@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import org.junit.Assert.assertEquals
@@ -39,6 +40,33 @@ class AppPreferenceSuminagashiInkTest {
         assertEquals(
             SprayPaintSettings.PALETTE_PAINT_SPLASH,
             AppPreference.keyboard_touch_effect_palette_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM,
+            AppPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.DEFAULT_PRIMARY_COLOR,
+            AppPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.DEFAULT_SECONDARY_COLOR,
+            AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference
+        )
+        assertTrue(AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference)
+        assertEquals(46, AppPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference)
+        assertEquals(100, AppPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference)
+        assertEquals(
+            CinematicWaveSettings.MOTION_ELEGANT,
+            AppPreference.keyboard_touch_effect_cinematic_wave_motion_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.TOUCH_RESPONSE_NORMAL,
+            AppPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.QUALITY_BALANCED,
+            AppPreference.keyboard_touch_effect_cinematic_wave_quality_preference
         )
     }
 
@@ -224,5 +252,80 @@ class AppPreferenceSuminagashiInkTest {
 
             assertEquals(expectedValue, AppPreference.keyboard_touch_effect_palette_preference)
         }
+    }
+
+    @Test
+    fun cinematicWavePreferencesSaveAndNormalizeValues() {
+        val primary = Color.argb(0, 255, 32, 64)
+        val secondary = Color.rgb(80, 120, 220)
+
+        AppPreference.keyboard_touch_effect_type_preference = KeyboardTouchEffectType.CINEMATIC_WAVE
+        AppPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference = "custom"
+        AppPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference = primary
+        AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference = secondary
+        AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference = false
+        AppPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference = 200
+        AppPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference = 1
+        AppPreference.keyboard_touch_effect_cinematic_wave_motion_preference = "dynamic"
+        AppPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference = "deep"
+        AppPreference.keyboard_touch_effect_cinematic_wave_quality_preference = "cinematic"
+
+        assertEquals(
+            KeyboardTouchEffectType.CINEMATIC_WAVE,
+            AppPreference.keyboard_touch_effect_type_preference
+        )
+        assertFalse(AppPreference.suminagashi_ink_effect_preference)
+        assertEquals(
+            CinematicWaveSettings.COLOR_MODE_CUSTOM,
+            AppPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference
+        )
+        assertEquals(
+            Color.rgb(255, 32, 64),
+            AppPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference
+        )
+        assertEquals(
+            secondary,
+            AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference
+        )
+        assertFalse(AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference)
+        assertEquals(68, AppPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference)
+        assertEquals(35, AppPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference)
+        assertEquals(
+            CinematicWaveSettings.MOTION_DYNAMIC,
+            AppPreference.keyboard_touch_effect_cinematic_wave_motion_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.TOUCH_RESPONSE_DEEP,
+            AppPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.QUALITY_CINEMATIC,
+            AppPreference.keyboard_touch_effect_cinematic_wave_quality_preference
+        )
+    }
+
+    @Test
+    fun cinematicWavePreferencesNormalizeUnexpectedValuesToDefaults() {
+        AppPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference = "surprise"
+        AppPreference.keyboard_touch_effect_cinematic_wave_motion_preference = "fast"
+        AppPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference = "massive"
+        AppPreference.keyboard_touch_effect_cinematic_wave_quality_preference = "ultra"
+
+        assertEquals(
+            CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM,
+            AppPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.MOTION_ELEGANT,
+            AppPreference.keyboard_touch_effect_cinematic_wave_motion_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.TOUCH_RESPONSE_NORMAL,
+            AppPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.QUALITY_BALANCED,
+            AppPreference.keyboard_touch_effect_cinematic_wave_quality_preference
+        )
     }
 }
