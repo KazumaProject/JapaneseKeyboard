@@ -79,6 +79,35 @@ class SuggestionAdapterDisplayItemTest {
     }
 
     @Test
+    fun expandedShortcutEntryReplacesClipboardPreviewWithShortcutItems() {
+        val adapter = SuggestionAdapter()
+        adapter.setShortcutItems(shortcuts())
+        adapter.setIntegratedShortcutEntryVisibility(true)
+        adapter.setClipboardPreview("clip")
+        adapter.setIntegratedShortcutEntryExpanded(true)
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutEntryItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting()
+        )
+
+        adapter.setIntegratedShortcutEntryExpanded(false)
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutEntryItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ClipboardPreviewItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting()
+        )
+        adapter.release()
+    }
+
+    @Test
     fun integratedOffGemmaActionsDoNotShowShortcutEntry() {
         val adapter = SuggestionAdapter()
         adapter.setShortcutItems(shortcuts())
@@ -101,6 +130,36 @@ class SuggestionAdapterDisplayItemTest {
         adapter.setShortcutItems(shortcuts())
         adapter.setIntegratedShortcutEntryVisibility(true)
         adapter.suggestions = gemmaActions()
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutEntryItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.GemmaActionItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.GemmaActionItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting()
+        )
+        adapter.release()
+    }
+
+    @Test
+    fun expandedShortcutEntryReplacesGemmaActionsWithShortcutItems() {
+        val adapter = SuggestionAdapter()
+        adapter.setShortcutItems(shortcuts())
+        adapter.setIntegratedShortcutEntryVisibility(true)
+        adapter.suggestions = gemmaActions()
+        adapter.setIntegratedShortcutEntryExpanded(true)
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutEntryItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting()
+        )
+
+        adapter.setIntegratedShortcutEntryExpanded(false)
 
         assertEquals(
             listOf(
