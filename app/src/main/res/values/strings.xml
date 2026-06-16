@@ -270,6 +270,12 @@
     <string name="learn_dictionary_title">Learning Dictionary</string>
     <string name="learn_dictionary_summary_on">Enable learning dictionary\nShows learned conversion candidates</string>
     <string name="learn_dictionary_summary_off">Disable learning dictionary\nDoes not show learned conversion candidates</string>
+    <string name="incognito_mode_detection_title">Detect incognito mode</string>
+    <string name="incognito_mode_detection_summary_on">When an app requests no personalized learning, show the incognito icon and do not save new learning data.</string>
+    <string name="incognito_mode_detection_summary_off">Ignore no-personalized-learning requests from the input field.</string>
+    <string name="show_learned_candidates_in_incognito_title">Show learned candidates in incognito mode</string>
+    <string name="show_learned_candidates_in_incognito_summary_on">Use already learned candidates even when incognito mode is detected.</string>
+    <string name="show_learned_candidates_in_incognito_summary_off">Do not use already learned candidates while incognito mode is detected.</string>
 
     <string name="user_dictionary_summary_on">Enable predictive conversion for user dictionary\nShows registered words as predictive candidates</string>
     <string name="user_dictionary_summary_off">Disable predictive conversion for user dictionary</string>

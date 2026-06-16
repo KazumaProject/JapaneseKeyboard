@@ -1038,6 +1038,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _ngPattern = MutableStateFlow("".toRegex())
     private val ngPattern: StateFlow<Regex> = _ngPattern
     private var isPrivateMode = false
+    private var incognitoModeDetectionPreference: Boolean = true
+    private var showLearnedCandidatesInIncognitoPreference: Boolean = true
 
     private val _keyboardFloatingMode = MutableStateFlow(false)
     private val keyboardFloatingMode = _keyboardFloatingMode.asStateFlow()
@@ -1663,6 +1665,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isOmissionSearchEnable = preferences.isOmissionSearchEnable
         delayTime = preferences.delayTime
         isLearnDictionaryMode = preferences.isLearnDictionaryMode
+        incognitoModeDetectionPreference = preferences.incognitoModeDetectionPreference
+        showLearnedCandidatesInIncognitoPreference =
+            preferences.showLearnedCandidatesInIncognitoPreference
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
         hankakuPreference = preferences.hankakuPreference
@@ -1962,6 +1967,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 kanaKanjiEngine.loadSystemUserDictionaryFromFiles(applicationContext)
             }
         }
+    }
+
+    private fun updateIncognitoModeState(editorInfo: EditorInfo?) {
+        val detected = incognitoModeDetectionPreference &&
+                editorInfo != null &&
+                (editorInfo.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0
+        isPrivateMode = detected
+        suggestionAdapter?.setIncognitoIcon(
+            if (detected) {
+                ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
+            } else {
+                null
+            }
+        )
+    }
+
+    private fun learnedRepositoryForSuggestion(): LearnRepository? {
+        if (isLearnDictionaryMode != true) return null
+        if (isPrivateMode && !showLearnedCandidatesInIncognitoPreference) return null
+        return learnRepository
     }
 
     private fun applyDictionaryOverrideRevisionIfNeeded() {
@@ -3627,17 +3652,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             setMainSuggestionColumn(mainView)
         }
-        editorInfo?.let { info ->
-            if ((info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0) {
-                isPrivateMode = true
-                suggestionAdapter?.setIncognitoIcon(
-                    ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
-                )
-            } else {
-                isPrivateMode = false
-                suggestionAdapter?.setIncognitoIcon(null)
-            }
-        }
+        updateIncognitoModeState(editorInfo)
         if (hasPhysicalKeyboard) {
             floatingDockView.setText("あ")
             ensurePhysicalKeyboardPopupWindows()
@@ -3722,6 +3737,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isOmissionSearchEnable = null
         delayTime = null
         isLearnDictionaryMode = null
+        incognitoModeDetectionPreference = true
+        showLearnedCandidatesInIncognitoPreference = true
         isUserDictionaryEnable = null
         isUserTemplateEnable = null
         hankakuPreference = null
@@ -19498,22 +19515,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handlePartialOrExcessLength(
-        insertString: String, candidate: Candidate
+        insertString: String, candidate: Candidate, currentInputMode: InputMode
     ) {
         val candidateLength = candidate.length.toInt()
         val candidateString = candidate.string
         if (insertString.length > candidateLength) {
             stringInTail.set(insertString.substring(candidateLength))
-            ioScope.launch {
-                learnRepository.upsertLearnedData(
-                    LearnEntity(
-                        input = insertString.substring(0, candidateLength),
-                        out = candidateString,
-                        score = candidate.score.toShort(),
-                        leftId = candidate.leftId,
-                        rightId = candidate.rightId
+            if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode) {
+                ioScope.launch {
+                    learnRepository.upsertLearnedData(
+                        LearnEntity(
+                            input = insertString.substring(0, candidateLength),
+                            out = candidateString,
+                            score = candidate.score.toShort(),
+                            leftId = candidate.leftId,
+                            rightId = candidate.rightId
+                        )
                     )
-                )
+                }
             }
         }
         commitAndClearInput(candidateString)
@@ -19574,7 +19593,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
                 } else {
                     handlePartialOrExcessLength(
-                        insertString = insertString, candidate = candidate
+                        insertString = insertString,
+                        candidate = candidate,
+                        currentInputMode = currentInputMode
                     )
                 }
             }
@@ -19665,6 +19686,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
         clearZenzLiveSlot("resetAllFlags")
         setSuggestionAdapterSuggestionsOnMain(emptyList())
+        isPrivateMode = false
+        suggestionAdapter?.setIncognitoIcon(null)
         stringInTail.set("")
         suggestionClickNum = 0
         currentCustomKeyboardPosition = 0
@@ -20607,12 +20630,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
+        val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
-            if (enablePredictionSearchLearnDictionaryPreference == true) {
+            if (enablePredictionSearchLearnDictionaryPreference == true &&
+                suggestionLearnRepository != null
+            ) {
                 withContext(Dispatchers.IO) {
                     val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
                     if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
-                    learnRepository.predictiveSearchByInput(
+                    suggestionLearnRepository.predictiveSearchByInput(
                         prefix = insertString, limit = 4
                     ).map {
                         Candidate(
@@ -20649,7 +20675,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTNeologd = mozcUTNeologd,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    learnRepository = suggestionLearnRepository,
                     isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                     enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
                     enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
@@ -20668,7 +20694,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTNeologd = mozcUTNeologd,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    learnRepository = suggestionLearnRepository,
                     isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                     enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
                     enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
@@ -20763,13 +20789,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
+        val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
-            if (enablePredictionSearchLearnDictionaryPreference == true) {
+            if (enablePredictionSearchLearnDictionaryPreference == true &&
+                suggestionLearnRepository != null
+            ) {
                 measureDebugStage("IMEService.getSuggestionList.learnDictionary") {
                     withContext(Dispatchers.IO) {
                         val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
                         if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
-                        learnRepository.predictiveSearchByInput(
+                        suggestionLearnRepository.predictiveSearchByInput(
                             prefix = insertString, limit = 4
                         ).map {
                             Candidate(
@@ -20810,7 +20839,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mozcUTNeologd = mozcUTNeologd,
                         mozcUTWeb = mozcUTWeb,
                         userDictionaryRepository = userDictionaryRepository,
-                        learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                        learnRepository = suggestionLearnRepository,
                         isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                         enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
                         enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
@@ -20832,7 +20861,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mozcUTNeologd = mozcUTNeologd,
                         mozcUTWeb = mozcUTWeb,
                         userDictionaryRepository = userDictionaryRepository,
-                        learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                        learnRepository = suggestionLearnRepository,
                         isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                         enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
                         enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
@@ -20952,12 +20981,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
+        val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
-            if (enablePredictionSearchLearnDictionaryPreference == true) {
+            if (enablePredictionSearchLearnDictionaryPreference == true &&
+                suggestionLearnRepository != null
+            ) {
                 withContext(Dispatchers.IO) {
                     val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
                     if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
-                    learnRepository.predictiveSearchByInput(
+                    suggestionLearnRepository.predictiveSearchByInput(
                         prefix = insertString, limit = 4
                     ).map {
                         Candidate(
@@ -20986,7 +21018,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTNeologd = mozcUTNeologd,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    learnRepository = suggestionLearnRepository,
                     typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
                         ?: 3000,
                     omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
@@ -21002,7 +21034,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTNeologd = mozcUTNeologd,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    learnRepository = suggestionLearnRepository,
                     typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
                         ?: 3000,
                     omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900

@@ -62,6 +62,10 @@ object AppPreference {
     private val KEY_SOUND_VOLUME_PERCENT_PREFERENCE =
         Pair("key_sound_volume_percent_preference", 0)
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
+    private val INCOGNITO_MODE_DETECTION_PREFERENCE =
+        Pair("incognito_mode_detection_preference", true)
+    private val SHOW_LEARNED_CANDIDATES_IN_INCOGNITO_PREFERENCE =
+        Pair("show_learned_candidates_in_incognito_preference", true)
     private val USER_DICTIONARY_PREFERENCE = Pair("user_dictionary_preference", true)
     private val USER_DICTIONARY_PREFIX_PREFERENCE = Pair("user_dictionary_prefix_match_number", 2)
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
@@ -1362,6 +1366,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(LEARN_DICTIONARY_PREFERENCE.first, value ?: true)
+        }
+
+    var incognito_mode_detection_preference: Boolean
+        get() = preferences.getBoolean(
+            INCOGNITO_MODE_DETECTION_PREFERENCE.first,
+            INCOGNITO_MODE_DETECTION_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(INCOGNITO_MODE_DETECTION_PREFERENCE.first, value)
+        }
+
+    var show_learned_candidates_in_incognito_preference: Boolean
+        get() = preferences.getBoolean(
+            SHOW_LEARNED_CANDIDATES_IN_INCOGNITO_PREFERENCE.first,
+            SHOW_LEARNED_CANDIDATES_IN_INCOGNITO_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SHOW_LEARNED_CANDIDATES_IN_INCOGNITO_PREFERENCE.first, value)
         }
 
     var user_dictionary_preference: Boolean?
