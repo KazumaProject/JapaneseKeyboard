@@ -2320,20 +2320,22 @@ class FlickKeyboardView @JvmOverloads constructor(
                             val x = event.getX(existingPointerIndex)
                             val y = event.getY(existingPointerIndex)
 
-                            val cancelEvent = MotionEvent.obtain(
+                            // A second finger starts a new key gesture; the first finger should be
+                            // committed at its current position, not canceled.
+                            val upEvent = MotionEvent.obtain(
                                 downTime,
                                 event.eventTime,
-                                MotionEvent.ACTION_CANCEL,
+                                MotionEvent.ACTION_UP,
                                 x,
                                 y,
                                 event.metaState
                             )
-                            cancelEvent.offsetLocation(
+                            upEvent.offsetLocation(
                                 -target.left.toFloat(),
                                 -target.top.toFloat()
                             )
-                            target.dispatchTouchEvent(cancelEvent)
-                            cancelEvent.recycle()
+                            target.dispatchTouchEvent(upEvent)
+                            upEvent.recycle()
                         }
                     }
 
