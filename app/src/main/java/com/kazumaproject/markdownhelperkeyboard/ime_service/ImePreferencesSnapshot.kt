@@ -189,6 +189,7 @@ data class ImePreferencesSnapshot(
     val cinematicWavePrimaryColorPreference: Int,
     val cinematicWaveSecondaryColorPreference: Int,
     val cinematicWaveSecondaryColorAutoPreference: Boolean,
+    val cinematicWaveTypePreference: String,
     val cinematicWaveOpacityPercentPreference: Int,
     val cinematicWaveIntensityPercentPreference: Int,
     val cinematicWaveMotionPreference: String,
@@ -537,6 +538,8 @@ data class ImePreferencesSnapshot(
                 cinematicWaveSecondaryColorAutoPreference =
                     appPreference
                         .keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference,
+                cinematicWaveTypePreference =
+                    appPreference.keyboard_touch_effect_cinematic_wave_type_preference,
                 cinematicWaveOpacityPercentPreference =
                     appPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference,
                 cinematicWaveIntensityPercentPreference =

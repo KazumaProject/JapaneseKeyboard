@@ -54,6 +54,10 @@ class AppPreferenceSuminagashiInkTest {
             AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference
         )
         assertTrue(AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference)
+        assertEquals(
+            CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE,
+            AppPreference.keyboard_touch_effect_cinematic_wave_type_preference
+        )
         assertEquals(46, AppPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference)
         assertEquals(100, AppPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference)
         assertEquals(
@@ -264,6 +268,7 @@ class AppPreferenceSuminagashiInkTest {
         AppPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference = primary
         AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference = secondary
         AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference = false
+        AppPreference.keyboard_touch_effect_cinematic_wave_type_preference = "silk_sine"
         AppPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference = 200
         AppPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference = 1
         AppPreference.keyboard_touch_effect_cinematic_wave_motion_preference = "dynamic"
@@ -288,6 +293,10 @@ class AppPreferenceSuminagashiInkTest {
             AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference
         )
         assertFalse(AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference)
+        assertEquals(
+            CinematicWaveSettings.WAVE_TYPE_SILK_SINE,
+            AppPreference.keyboard_touch_effect_cinematic_wave_type_preference
+        )
         assertEquals(68, AppPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference)
         assertEquals(35, AppPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference)
         assertEquals(
@@ -307,6 +316,7 @@ class AppPreferenceSuminagashiInkTest {
     @Test
     fun cinematicWavePreferencesNormalizeUnexpectedValuesToDefaults() {
         AppPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference = "surprise"
+        AppPreference.keyboard_touch_effect_cinematic_wave_type_preference = "visualizer"
         AppPreference.keyboard_touch_effect_cinematic_wave_motion_preference = "fast"
         AppPreference.keyboard_touch_effect_cinematic_wave_touch_response_preference = "massive"
         AppPreference.keyboard_touch_effect_cinematic_wave_quality_preference = "ultra"
@@ -314,6 +324,10 @@ class AppPreferenceSuminagashiInkTest {
         assertEquals(
             CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM,
             AppPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference
+        )
+        assertEquals(
+            CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE,
+            AppPreference.keyboard_touch_effect_cinematic_wave_type_preference
         )
         assertEquals(
             CinematicWaveSettings.MOTION_ELEGANT,

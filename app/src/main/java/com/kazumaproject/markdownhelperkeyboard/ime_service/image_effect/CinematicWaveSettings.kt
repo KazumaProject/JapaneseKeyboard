@@ -12,6 +12,7 @@ internal data class CinematicWaveSettings(
     @ColorInt val primaryColor: Int,
     @ColorInt val secondaryColor: Int,
     val secondaryColorAuto: Boolean,
+    val waveType: String,
     val opacityPercent: Int,
     val intensityPercent: Int,
     val motion: String,
@@ -19,6 +20,7 @@ internal data class CinematicWaveSettings(
     val quality: String
 ) {
     val normalizedColorMode: String = normalizeColorMode(colorMode)
+    val normalizedWaveType: String = normalizeWaveType(waveType)
     val normalizedMotion: String = normalizeMotion(motion)
     val normalizedTouchResponse: String = normalizeTouchResponse(touchResponse)
     val normalizedQuality: String = normalizeQuality(quality)
@@ -28,6 +30,9 @@ internal data class CinematicWaveSettings(
     companion object {
         const val COLOR_MODE_CINEMATIC_RANDOM = "cinematic_random"
         const val COLOR_MODE_CUSTOM = "custom"
+
+        const val WAVE_TYPE_AURORA_MEMBRANE = "aurora_membrane"
+        const val WAVE_TYPE_SILK_SINE = "silk_sine"
 
         const val MOTION_CALM = "calm"
         const val MOTION_ELEGANT = "elegant"
@@ -53,6 +58,7 @@ internal data class CinematicWaveSettings(
             primaryColor = DEFAULT_PRIMARY_COLOR,
             secondaryColor = DEFAULT_SECONDARY_COLOR,
             secondaryColorAuto = true,
+            waveType = WAVE_TYPE_AURORA_MEMBRANE,
             opacityPercent = 46,
             intensityPercent = 100,
             motion = MOTION_ELEGANT,
@@ -64,6 +70,13 @@ internal data class CinematicWaveSettings(
             return when (value) {
                 COLOR_MODE_CUSTOM -> COLOR_MODE_CUSTOM
                 else -> COLOR_MODE_CINEMATIC_RANDOM
+            }
+        }
+
+        fun normalizeWaveType(value: String?): String {
+            return when (value) {
+                WAVE_TYPE_SILK_SINE -> WAVE_TYPE_SILK_SINE
+                else -> WAVE_TYPE_AURORA_MEMBRANE
             }
         }
 

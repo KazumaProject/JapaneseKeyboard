@@ -35,6 +35,9 @@ class CinematicWaveContractTest {
         assertTrue(simulation.contains("ridge"))
         assertTrue(simulation.contains("uTouchPositions[5]"))
         assertTrue(simulation.contains("uTouchStrengths[5]"))
+        assertTrue(simulation.contains("uniform int uWaveType"))
+        assertTrue(simulation.contains("if (uWaveType == 1)"))
+        assertTrue(simulation.contains("float ribbon"))
         assertTrue(simulation.contains("lens"))
         assertTrue(simulation.contains("fragColor = vec4(color * alpha, alpha);"))
         assertFalse(simulation.contains("android.graphics.Canvas"))
@@ -57,8 +60,49 @@ class CinematicWaveContractTest {
         assertTrue(imeService.contains("releaseWave()"))
     }
 
+    @Test
+    fun rendererResizesWithoutRecreatingEglSurfaceToAvoidKeyboardHeightFlicker() {
+        val lines = mainFile(
+            "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/CinematicWaveRenderer.kt"
+        ).readLines()
+        val resizeSurface = functionBody(lines, "resizeSurface").joinToString("\n")
+        val ensureSurfaceForCurrentSize =
+            functionBody(lines, "ensureSurfaceForCurrentSize").joinToString("\n")
+
+        assertTrue(resizeSurface.contains("ensureSurfaceForCurrentSize()"))
+        assertFalse(resizeSurface.contains("recreateSurfaceForCurrentSettings()"))
+        assertTrue(ensureSurfaceForCurrentSize.contains("simulation?.resizeSurface"))
+        assertFalse(ensureSurfaceForCurrentSize.contains("setDefaultBufferSize"))
+        assertFalse(ensureSurfaceForCurrentSize.contains("simulation?.release()"))
+        assertFalse(ensureSurfaceForCurrentSize.contains("releaseEglSurfaceOnly()"))
+    }
+
     private fun mainFile(path: String): File {
         val moduleFile = File("src/main/$path")
         return if (moduleFile.exists()) moduleFile else File("app/src/main/$path")
+    }
+
+    private fun functionBody(lines: List<String>, functionName: String): List<String> {
+        val start = lines.indexOfFirst { it.contains("fun $functionName") }
+        require(start >= 0) { "Missing function $functionName" }
+        var depth = 0
+        var seenOpen = false
+        val body = mutableListOf<String>()
+        for (index in start until lines.size) {
+            val line = lines[index]
+            body += line
+            line.forEach { char ->
+                when (char) {
+                    '{' -> {
+                        depth++
+                        seenOpen = true
+                    }
+
+                    '}' -> depth--
+                }
+            }
+            if (seenOpen && depth == 0) break
+        }
+        return body
     }
 }

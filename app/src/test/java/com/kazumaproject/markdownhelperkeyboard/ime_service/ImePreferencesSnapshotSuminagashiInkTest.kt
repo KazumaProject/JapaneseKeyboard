@@ -52,6 +52,10 @@ class ImePreferencesSnapshotSuminagashiInkTest {
             snapshot.cinematicWaveColorModePreference
         )
         assertEquals(
+            CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE,
+            snapshot.cinematicWaveTypePreference
+        )
+        assertEquals(
             CinematicWaveSettings.QUALITY_BALANCED,
             snapshot.cinematicWaveQualityPreference
         )
@@ -141,6 +145,8 @@ class ImePreferencesSnapshotSuminagashiInkTest {
         AppPreference.keyboard_touch_effect_cinematic_wave_primary_color_preference = primary
         AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_preference = secondary
         AppPreference.keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference = false
+        AppPreference.keyboard_touch_effect_cinematic_wave_type_preference =
+            CinematicWaveSettings.WAVE_TYPE_SILK_SINE
         AppPreference.keyboard_touch_effect_cinematic_wave_opacity_percent_preference = 50
         AppPreference.keyboard_touch_effect_cinematic_wave_intensity_percent_preference = 120
         AppPreference.keyboard_touch_effect_cinematic_wave_motion_preference =
@@ -164,6 +170,10 @@ class ImePreferencesSnapshotSuminagashiInkTest {
         assertEquals(primary, snapshot.cinematicWavePrimaryColorPreference)
         assertEquals(secondary, snapshot.cinematicWaveSecondaryColorPreference)
         assertFalse(snapshot.cinematicWaveSecondaryColorAutoPreference)
+        assertEquals(
+            CinematicWaveSettings.WAVE_TYPE_SILK_SINE,
+            snapshot.cinematicWaveTypePreference
+        )
         assertEquals(50, snapshot.cinematicWaveOpacityPercentPreference)
         assertEquals(120, snapshot.cinematicWaveIntensityPercentPreference)
         assertEquals(CinematicWaveSettings.MOTION_DYNAMIC, snapshot.cinematicWaveMotionPreference)
