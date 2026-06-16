@@ -121,11 +121,17 @@
     <string-array name="keyboard_touch_effect_cinematic_wave_type_entries">
         <item>@string/keyboard_touch_effect_cinematic_wave_type_aurora_membrane</item>
         <item>@string/keyboard_touch_effect_cinematic_wave_type_silk_sine</item>
+        <item>@string/keyboard_touch_effect_cinematic_wave_type_prismatic_sine</item>
+        <item>@string/keyboard_touch_effect_cinematic_wave_type_luminous_stack</item>
+        <item>@string/keyboard_touch_effect_cinematic_wave_type_aurora_flow</item>
     </string-array>
 
     <string-array name="keyboard_touch_effect_cinematic_wave_type_values">
         <item>aurora_membrane</item>
         <item>silk_sine</item>
+        <item>prismatic_sine</item>
+        <item>luminous_stack</item>
+        <item>aurora_flow</item>
     </string-array>
 
     <string-array name="keyboard_touch_effect_cinematic_wave_motion_entries">
