@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 import android.content.Context
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.ime_service.ImePreferencesSnapshot
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import org.junit.Assert.assertFalse
@@ -12,6 +13,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.xmlpull.v1.XmlPullParser
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -59,6 +61,17 @@ class IncognitoModeSettingsEntryPointTest {
     }
 
     @Test
+    fun incognitoSettingsLiveInCommonLegacyXml() {
+        val commonKeys = preferenceKeys(R.xml.pref_common_legacy)
+        val dictionaryKeys = preferenceKeys(R.xml.pref_dictionary)
+
+        requiredIncognitoSettingKeys.forEach { key ->
+            assertTrue("Missing $key from common settings XML", key in commonKeys)
+            assertFalse("Unexpected $key in dictionary settings XML", key in dictionaryKeys)
+        }
+    }
+
+    @Test
     fun incognitoSettingsAreSearchableInNewAndLegacySettings() {
         val newHomeKeys = SettingSearchIndex.searchable(context, SettingSearchScope.NEW_HOME)
             .map { it.key }
@@ -89,5 +102,20 @@ class IncognitoModeSettingsEntryPointTest {
             "incognito_mode_detection_preference",
             "show_learned_candidates_in_incognito_preference",
         )
+    }
+
+    private fun preferenceKeys(xmlRes: Int): Set<String> {
+        val androidNamespace = "http://schemas.android.com/apk/res/android"
+        val parser = context.resources.getXml(xmlRes)
+        return parser.use {
+            buildSet {
+                while (parser.eventType != XmlPullParser.END_DOCUMENT) {
+                    if (parser.eventType == XmlPullParser.START_TAG) {
+                        parser.getAttributeValue(androidNamespace, "key")?.let(::add)
+                    }
+                    parser.next()
+                }
+            }
+        }
     }
 }

@@ -74,22 +74,6 @@
             android:title="@string/learn_dictionary_title" />
 
         <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="incognito_mode_detection_preference"
-            android:summaryOff="@string/incognito_mode_detection_summary_off"
-            android:summaryOn="@string/incognito_mode_detection_summary_on"
-            android:title="@string/incognito_mode_detection_title"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="true"
-            android:key="show_learned_candidates_in_incognito_preference"
-            android:summaryOff="@string/show_learned_candidates_in_incognito_summary_off"
-            android:summaryOn="@string/show_learned_candidates_in_incognito_summary_on"
-            android:title="@string/show_learned_candidates_in_incognito_title"
-            app:iconSpaceReserved="false" />
-
-        <SwitchPreferenceCompat
             android:dependency="learn_dictionary_preference"
             android:key="learn_first_candidate_dictionary_preference"
             android:title="@string/learn_dictionary_preference_title"
