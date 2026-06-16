@@ -21,7 +21,8 @@ data class CandidateStripPresentation(
     val resetCandidateTabSelection: Boolean,
     val showIndependentShortcutToolbar: Boolean,
     val reserveIndependentShortcutToolbarSpace: Boolean,
-    val showIntegratedShortcut: Boolean
+    val showIntegratedShortcutItems: Boolean,
+    val showIntegratedShortcutEntry: Boolean
 )
 
 object CandidateStripPresentationPolicy {
@@ -49,8 +50,10 @@ object CandidateStripPresentationPolicy {
                 shortcutPresentation.showIndependentToolbar && !hideShortcutForCandidates,
             reserveIndependentShortcutToolbarSpace =
                 shortcutPresentation.showIndependentToolbar && hideShortcutForCandidates,
-            showIntegratedShortcut =
-                shortcutPresentation.showIntegratedShortcuts && !hideShortcutForCandidates
+            showIntegratedShortcutItems =
+                shortcutPresentation.showIntegratedShortcutItems && !hideShortcutForCandidates,
+            showIntegratedShortcutEntry =
+                shortcutPresentation.showIntegratedShortcutEntry && !hideShortcutForCandidates
         )
     }
 }

@@ -111,6 +111,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         const val VIEW_TYPE_CUSTOM_LAYOUT_PICKER = 2
         const val VIEW_TYPE_GEMMA_ACTION = 3
         const val VIEW_TYPE_SHORTCUT = 4
+        const val VIEW_TYPE_CLIPBOARD_PREVIEW = 5
+        const val VIEW_TYPE_SHORTCUT_ENTRY = 6
 
         private val diffThreadIndex = AtomicInteger(0)
         private val diffExecutor: Executor = Executors.newFixedThreadPool(2) { runnable ->
@@ -124,6 +126,16 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         UNDO, REDO, RECONVERT, PASTE
     }
 
+    internal enum class SuggestionDisplayItemKind {
+        CandidateItem,
+        GemmaActionItem,
+        QuickActionsItem,
+        ClipboardPreviewItem,
+        ShortcutEntryItem,
+        ShortcutItem,
+        CustomLayoutItem
+    }
+
     private sealed class SuggestionDisplayItem {
         data class CandidateItem(
             val candidate: Candidate,
@@ -135,9 +147,15 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             val candidateIndex: Int,
         ) : SuggestionDisplayItem()
 
-        data class HelperActionsItem(
-            val state: HelperActionsState,
+        data class QuickActionsItem(
+            val state: QuickActionsState,
         ) : SuggestionDisplayItem()
+
+        data class ClipboardPreviewItem(
+            val state: ClipboardPreviewState,
+        ) : SuggestionDisplayItem()
+
+        object ShortcutEntryItem : SuggestionDisplayItem()
 
         data class ShortcutItem(
             val shortcutType: ShortcutType,
@@ -149,27 +167,30 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         ) : SuggestionDisplayItem()
     }
 
-    private data class HelperActionsState(
+    private data class QuickActionsState(
         val undoEnabled: Boolean,
         val redoEnabled: Boolean,
         val reconvertEnabled: Boolean,
-        val pasteEnabled: Boolean,
-        val clipboardDescriptionShown: Boolean,
-        val clipboardText: String,
-        val clipboardBitmap: Bitmap?,
         val undoText: String,
         val redoText: String,
         val incognitoIconDrawable: android.graphics.drawable.Drawable?,
     ) {
-        val hasClipboardPreview: Boolean
-            get() = pasteEnabled && (clipboardBitmap != null || clipboardText.isNotBlank())
-
         val hasVisibleAction: Boolean
             get() = undoEnabled ||
                 redoEnabled ||
                 reconvertEnabled ||
-                pasteEnabled ||
                 incognitoIconDrawable != null
+    }
+
+    private data class ClipboardPreviewState(
+        val pasteEnabled: Boolean,
+        val clipboardDescriptionShown: Boolean,
+        val clipboardText: String,
+        val clipboardBitmap: Bitmap?,
+        val hasLeadingShortcutEntry: Boolean
+    ) {
+        val hasClipboardPreview: Boolean
+            get() = pasteEnabled && (clipboardBitmap != null || clipboardText.isNotBlank())
     }
 
     // Listeners for clicks
@@ -179,6 +200,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var onItemHelperIconLongClickListener: ((HelperIcon) -> Unit)? = null
     private var onCustomLayoutItemClickListener: ((Int) -> Unit)? = null
     private var onShortcutItemClickListener: ((ShortcutType) -> Unit)? = null
+    private var onShortcutEntryClickListener: ((View) -> Unit)? = null
     private var onShowSoftKeyboardClick: (() -> Unit)? = null
 
     private val adapterScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -203,7 +225,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var showCustomTab: Boolean = true
 
     private var shortcutItems: List<ShortcutType> = emptyList()
-    private var showIntegratedShortcuts: Boolean = false
+    private var showIntegratedShortcutItems: Boolean = false
+    private var showIntegratedShortcutEntry: Boolean = false
     private var shortcutIconColor: Int? = null
     private var activeShortcutTypes: Set<ShortcutType> = emptySet()
 
@@ -243,6 +266,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         this.onShortcutItemClickListener = listener
     }
 
+    fun setOnShortcutEntryClickListener(listener: (View) -> Unit) {
+        this.onShortcutEntryClickListener = listener
+    }
+
     fun setOnPhysicalKeyboardListener(listener: () -> Unit) {
         this.onShowSoftKeyboardClick = listener
     }
@@ -255,6 +282,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onItemHelperIconLongClickListener = null
         onCustomLayoutItemClickListener = null
         onShortcutItemClickListener = null
+        onShortcutEntryClickListener = null
         onShowSoftKeyboardClick = null
         onListUpdated = null
         incognitoIconDrawable = null
@@ -324,7 +352,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     fun isShowingClipboardPreviewForEmptyState(): Boolean {
-        return currentHelperActionsState().hasClipboardPreview
+        return currentClipboardPreviewState(hasLeadingShortcutEntry = false).hasClipboardPreview
     }
 
     fun isShowingCustomLayoutPicker(): Boolean {
@@ -337,16 +365,22 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         rebuildDisplayItems()
     }
 
-    fun setIntegratedShortcutVisibility(visible: Boolean) {
-        if (showIntegratedShortcuts == visible) return
-        showIntegratedShortcuts = visible
+    fun setIntegratedShortcutItemsVisibility(visible: Boolean) {
+        if (showIntegratedShortcutItems == visible) return
+        showIntegratedShortcutItems = visible
+        rebuildDisplayItems()
+    }
+
+    fun setIntegratedShortcutEntryVisibility(visible: Boolean) {
+        if (showIntegratedShortcutEntry == visible) return
+        showIntegratedShortcutEntry = visible
         rebuildDisplayItems()
     }
 
     fun setShortcutIconColor(color: Int) {
         if (shortcutIconColor == color) return
         shortcutIconColor = color
-        if (showIntegratedShortcuts && suggestions.isEmpty()) {
+        if (showIntegratedShortcutItems || showIntegratedShortcutEntry) {
             notifyItemRangeChanged(0, itemCount)
         }
     }
@@ -417,8 +451,14 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         oldItem.candidate.string == newItem.candidate.string &&
                         oldItem.candidate.type == newItem.candidate.type
 
-                oldItem is SuggestionDisplayItem.HelperActionsItem &&
-                    newItem is SuggestionDisplayItem.HelperActionsItem -> true
+                oldItem is SuggestionDisplayItem.QuickActionsItem &&
+                    newItem is SuggestionDisplayItem.QuickActionsItem -> true
+
+                oldItem is SuggestionDisplayItem.ClipboardPreviewItem &&
+                    newItem is SuggestionDisplayItem.ClipboardPreviewItem -> true
+
+                oldItem is SuggestionDisplayItem.ShortcutEntryItem &&
+                    newItem is SuggestionDisplayItem.ShortcutEntryItem -> true
 
                 oldItem is SuggestionDisplayItem.ShortcutItem &&
                     newItem is SuggestionDisplayItem.ShortcutItem ->
@@ -508,11 +548,16 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private fun buildDisplayItems(): List<SuggestionDisplayItem> {
         if (candidateSuggestions.isNotEmpty()) {
-            return candidateSuggestions.mapIndexed { index, candidate ->
-                if (candidate.isSelectedTextGemmaActionCandidate()) {
-                    SuggestionDisplayItem.GemmaActionItem(candidate, index)
-                } else {
-                    SuggestionDisplayItem.CandidateItem(candidate, index)
+            return buildList {
+                if (isShowingSelectedTextGemmaActions() && shouldShowIntegratedShortcutEntry()) {
+                    add(SuggestionDisplayItem.ShortcutEntryItem)
+                }
+                candidateSuggestions.forEachIndexed { index, candidate ->
+                    if (candidate.isSelectedTextGemmaActionCandidate()) {
+                        add(SuggestionDisplayItem.GemmaActionItem(candidate, index))
+                    } else {
+                        add(SuggestionDisplayItem.CandidateItem(candidate, index))
+                    }
                 }
             }
         }
@@ -524,11 +569,23 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
 
         return buildList {
-            val helperState = currentHelperActionsState()
-            if (helperState.hasVisibleAction) {
-                add(SuggestionDisplayItem.HelperActionsItem(helperState))
+            val showShortcutEntry = shouldShowIntegratedShortcutEntry()
+            val clipboardPreviewState = currentClipboardPreviewState(
+                hasLeadingShortcutEntry = showShortcutEntry
+            )
+            if (clipboardPreviewState.hasClipboardPreview) {
+                if (showShortcutEntry) {
+                    add(SuggestionDisplayItem.ShortcutEntryItem)
+                }
+                add(SuggestionDisplayItem.ClipboardPreviewItem(clipboardPreviewState))
+                return@buildList
             }
-            if (shouldShowIntegratedShortcuts()) {
+
+            val quickActionsState = currentQuickActionsState()
+            if (quickActionsState.hasVisibleAction) {
+                add(SuggestionDisplayItem.QuickActionsItem(quickActionsState))
+            }
+            if (shouldShowIntegratedShortcutItems()) {
                 shortcutItems.forEach { shortcutType ->
                     add(SuggestionDisplayItem.ShortcutItem(shortcutType))
                 }
@@ -536,19 +593,48 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    private fun currentHelperActionsState(): HelperActionsState =
-        HelperActionsState(
+    internal fun buildDisplayItemKindsForTesting(): List<SuggestionDisplayItemKind> {
+        return buildDisplayItems().map { it.kind() }
+    }
+
+    private fun currentQuickActionsState(): QuickActionsState =
+        QuickActionsState(
             undoEnabled = isUndoEnabled,
             redoEnabled = isRedoEnabled,
             reconvertEnabled = isReconvertEnabled,
-            pasteEnabled = isPasteEnabled,
-            clipboardDescriptionShown = isClipboardDescriptionShow,
-            clipboardText = clipboardText,
-            clipboardBitmap = clipboardBitmap,
             undoText = undoText,
             redoText = redoText,
             incognitoIconDrawable = incognitoIconDrawable,
         )
+
+    private fun currentClipboardPreviewState(
+        hasLeadingShortcutEntry: Boolean
+    ): ClipboardPreviewState =
+        ClipboardPreviewState(
+            pasteEnabled = isPasteEnabled,
+            clipboardDescriptionShown = isClipboardDescriptionShow,
+            clipboardText = clipboardText,
+            clipboardBitmap = clipboardBitmap,
+            hasLeadingShortcutEntry = hasLeadingShortcutEntry,
+        )
+
+    private fun SuggestionDisplayItem.kind(): SuggestionDisplayItemKind =
+        when (this) {
+            is SuggestionDisplayItem.CandidateItem ->
+                SuggestionDisplayItemKind.CandidateItem
+            is SuggestionDisplayItem.GemmaActionItem ->
+                SuggestionDisplayItemKind.GemmaActionItem
+            is SuggestionDisplayItem.QuickActionsItem ->
+                SuggestionDisplayItemKind.QuickActionsItem
+            is SuggestionDisplayItem.ClipboardPreviewItem ->
+                SuggestionDisplayItemKind.ClipboardPreviewItem
+            SuggestionDisplayItem.ShortcutEntryItem ->
+                SuggestionDisplayItemKind.ShortcutEntryItem
+            is SuggestionDisplayItem.ShortcutItem ->
+                SuggestionDisplayItemKind.ShortcutItem
+            is SuggestionDisplayItem.CustomLayoutItem ->
+                SuggestionDisplayItemKind.CustomLayoutItem
+        }
 
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
@@ -561,7 +647,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val actionText: MaterialTextView = itemView.findViewById(R.id.suggestion_gemma_action_text)
     }
 
-    inner class EmptyViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+    inner class QuickActionsViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val undoIconParent: ConstraintLayout? = itemView.findViewById(R.id.undo_icon_parent)
         val undoImageView: ImageView? = itemView.findViewById(R.id.imageView)
         val undoIcon: MaterialTextView? = itemView.findViewById(R.id.undo_icon)
@@ -571,13 +657,16 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val reconvertIconParent: ConstraintLayout? = itemView.findViewById(R.id.reconvert_icon_parent)
         val reconvertIcon: MaterialTextView? = itemView.findViewById(R.id.reconvert_icon)
         val reconvertImageView: ImageView? = itemView.findViewById(R.id.reconvert_image_view)
+        val incognitoIcon: AppCompatImageButton? = itemView.findViewById(R.id.incognito_icon)
+    }
+
+    inner class ClipboardPreviewViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val pasteIconParent: ConstraintLayout? = itemView.findViewById(R.id.paste_icon_patent)
         val pasteIcon: ImageView? = itemView.findViewById(R.id.paste_icon)
         val clipboardPreviewText: MaterialTextView? =
             itemView.findViewById(R.id.clipboard_text_preview)
         val clipboardPreviewTextDescription: MaterialTextView? =
             itemView.findViewById(R.id.clipboard_preview_text_description)
-        val incognitoIcon: AppCompatImageButton? = itemView.findViewById(R.id.incognito_icon)
     }
 
     inner class CustomLayoutViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -588,11 +677,17 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val imageView: ImageView = itemView.findViewById(R.id.item_image)
     }
 
+    inner class ShortcutEntryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val imageView: ImageView = itemView.findViewById(R.id.shortcut_entry_image)
+    }
+
     override fun getItemViewType(position: Int): Int {
         return when (displayItems[position]) {
             is SuggestionDisplayItem.CandidateItem -> VIEW_TYPE_SUGGESTION
             is SuggestionDisplayItem.GemmaActionItem -> VIEW_TYPE_GEMMA_ACTION
-            is SuggestionDisplayItem.HelperActionsItem -> VIEW_TYPE_EMPTY
+            is SuggestionDisplayItem.QuickActionsItem -> VIEW_TYPE_EMPTY
+            is SuggestionDisplayItem.ClipboardPreviewItem -> VIEW_TYPE_CLIPBOARD_PREVIEW
+            SuggestionDisplayItem.ShortcutEntryItem -> VIEW_TYPE_SHORTCUT_ENTRY
             is SuggestionDisplayItem.ShortcutItem -> VIEW_TYPE_SHORTCUT
             is SuggestionDisplayItem.CustomLayoutItem -> VIEW_TYPE_CUSTOM_LAYOUT_PICKER
         }
@@ -607,8 +702,14 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         return when (viewType) {
             VIEW_TYPE_EMPTY -> {
                 val emptyView = LayoutInflater.from(parent.context)
-                    .inflate(R.layout.suggestion_empty_layout, parent, false)
-                EmptyViewHolder(emptyView)
+                    .inflate(R.layout.suggestion_quick_actions_item, parent, false)
+                QuickActionsViewHolder(emptyView)
+            }
+
+            VIEW_TYPE_CLIPBOARD_PREVIEW -> {
+                val clipboardPreviewView = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.suggestion_clipboard_preview_item, parent, false)
+                ClipboardPreviewViewHolder(clipboardPreviewView)
             }
 
             VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> {
@@ -641,16 +742,26 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 ShortcutViewHolder(itemView)
             }
 
+            VIEW_TYPE_SHORTCUT_ENTRY -> {
+                val itemView = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.suggestion_shortcut_entry_item, parent, false)
+                ShortcutEntryViewHolder(itemView)
+            }
+
             else -> throw IllegalArgumentException("Unknown view type: $viewType")
         }
     }
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         val item = displayItems.getOrNull(position) ?: return
-        when (holder.itemViewType) {
-            VIEW_TYPE_EMPTY -> onBindEmptyViewHolder(
-                holder as EmptyViewHolder,
-                (item as SuggestionDisplayItem.HelperActionsItem).state,
+        when (getItemViewType(position)) {
+            VIEW_TYPE_EMPTY -> onBindQuickActionsViewHolder(
+                holder as QuickActionsViewHolder,
+                (item as SuggestionDisplayItem.QuickActionsItem).state,
+            )
+            VIEW_TYPE_CLIPBOARD_PREVIEW -> onBindClipboardPreviewViewHolder(
+                holder as ClipboardPreviewViewHolder,
+                (item as SuggestionDisplayItem.ClipboardPreviewItem).state,
             )
             VIEW_TYPE_SUGGESTION -> onBindSuggestionViewHolder(
                 holder as SuggestionViewHolder,
@@ -666,6 +777,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 item as SuggestionDisplayItem.ShortcutItem,
             )
 
+            VIEW_TYPE_SHORTCUT_ENTRY -> onBindShortcutEntryViewHolder(
+                holder as ShortcutEntryViewHolder,
+            )
+
             VIEW_TYPE_CUSTOM_LAYOUT_PICKER -> onBindCustomLayoutViewHolder(
                 holder as CustomLayoutViewHolder,
                 item as SuggestionDisplayItem.CustomLayoutItem,
@@ -673,9 +788,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    private fun onBindEmptyViewHolder(holder: EmptyViewHolder, state: HelperActionsState) {
+    private fun onBindQuickActionsViewHolder(holder: QuickActionsViewHolder, state: QuickActionsState) {
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
-        Timber.d("SuggestionAdapter onBindEmptyViewHolder: ${state.clipboardText} ${state.pasteEnabled}")
         holder.apply {
             incognitoIcon?.apply {
                 if (state.incognitoIconDrawable != null) {
@@ -702,25 +816,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 isVisible = state.reconvertEnabled
                 isFocusable = false
             }
-            pasteIconParent?.apply {
-                isEnabled = state.pasteEnabled
-                visibility = if (state.pasteEnabled) View.VISIBLE else View.GONE
-                isFocusable = false
-            }
-
-            pasteIcon?.apply {
-                if (state.clipboardBitmap != null) {
-                    setImageBitmap(state.clipboardBitmap)
-                    clearColorFilter()
-                    scaleType = ImageView.ScaleType.CENTER_CROP
-                } else {
-                    setImageResource(com.kazumaproject.core.R.drawable.content_paste_24px)
-                    scaleType = ImageView.ScaleType.CENTER_INSIDE
-                }
-            }
-
-            clipboardPreviewText?.text =
-                if (state.clipboardBitmap == null) state.clipboardText else ""
 
             applyEmptyHelperButtonStyle(
                 parent = undoIconParent,
@@ -740,13 +835,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 icon = reconvertImageView,
                 isDynamicColorEnable = isDynamicColorEnable,
             )
-            applyEmptyHelperButtonStyle(
-                parent = pasteIconParent,
-                text = clipboardPreviewText,
-                icon = if (state.clipboardBitmap == null) pasteIcon else null,
-                isDynamicColorEnable = isDynamicColorEnable,
-            )
-            applyEmptyHelperTextColor(clipboardPreviewTextDescription)
 
             undoIconParent?.apply {
                 isVisible = state.undoEnabled
@@ -779,9 +867,49 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     false
                 }
             }
+        }
+    }
 
+    private fun onBindClipboardPreviewViewHolder(
+        holder: ClipboardPreviewViewHolder,
+        state: ClipboardPreviewState
+    ) {
+        val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
+        Timber.d("SuggestionAdapter onBindClipboardPreviewViewHolder: ${state.clipboardText} ${state.pasteEnabled}")
+        holder.itemView.translationX = if (state.hasLeadingShortcutEntry) {
+            -holder.itemView.resources.displayMetrics.density * 28f
+        } else {
+            0f
+        }
+        holder.apply {
+            pasteIconParent?.apply {
+                isEnabled = state.pasteEnabled
+                visibility = if (state.pasteEnabled) View.VISIBLE else View.GONE
+                isFocusable = false
+            }
+
+            pasteIcon?.apply {
+                if (state.clipboardBitmap != null) {
+                    setImageBitmap(state.clipboardBitmap)
+                    clearColorFilter()
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                } else {
+                    setImageResource(com.kazumaproject.core.R.drawable.content_paste_24px)
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                }
+            }
+
+            clipboardPreviewText?.text =
+                if (state.clipboardBitmap == null) state.clipboardText else ""
+
+            applyEmptyHelperButtonStyle(
+                parent = pasteIconParent,
+                text = clipboardPreviewText,
+                icon = if (state.clipboardBitmap == null) pasteIcon else null,
+                isDynamicColorEnable = isDynamicColorEnable,
+            )
+            applyEmptyHelperTextColor(clipboardPreviewTextDescription)
             clipboardPreviewTextDescription?.isVisible = false
-
             pasteIconParent?.apply {
                 setOnClickListener {
                     onItemHelperIconClickListener?.invoke(HelperIcon.PASTE)
@@ -841,11 +969,23 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    private fun shouldShowIntegratedShortcuts(): Boolean {
-        return showIntegratedShortcuts &&
+    private fun shouldShowIntegratedShortcutItems(): Boolean {
+        return showIntegratedShortcutItems &&
             shortcutItems.isNotEmpty() &&
+            candidateSuggestions.isEmpty() &&
             !isShowingCustomLayoutPicker() &&
             !isShowingClipboardPreviewForEmptyState()
+    }
+
+    private fun shouldShowIntegratedShortcutEntry(): Boolean {
+        return showIntegratedShortcutEntry &&
+            shortcutItems.isNotEmpty() &&
+            !isShowingCustomLayoutPicker()
+    }
+
+    private fun isShowingSelectedTextGemmaActions(): Boolean {
+        return candidateSuggestions.isNotEmpty() &&
+            candidateSuggestions.all { it.isSelectedTextGemmaActionCandidate() }
     }
 
     private fun onBindShortcutViewHolder(
@@ -869,6 +1009,23 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     onShortcutItemClickListener?.invoke(currentItem.shortcutType)
                 }
             }
+        }
+    }
+
+    private fun onBindShortcutEntryViewHolder(
+        holder: ShortcutEntryViewHolder,
+    ) {
+        holder.imageView.apply {
+            setImageResource(R.drawable.more_horiz_24px)
+            contentDescription = context.getString(R.string.shortcut_entry_content_description)
+            shortcutIconColor?.let { color ->
+                setColorFilter(color, PorterDuff.Mode.SRC_IN)
+            } ?: clearColorFilter()
+        }
+        holder.itemView.contentDescription =
+            holder.itemView.context.getString(R.string.shortcut_entry_content_description)
+        holder.itemView.setOnClickListener {
+            onShortcutEntryClickListener?.invoke(holder.itemView)
         }
     }
 

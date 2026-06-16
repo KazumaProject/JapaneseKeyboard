@@ -567,6 +567,7 @@
     <string name="candidate_tab_summary">Display tabs at the top of the candidate view to switch between "Prediction", "Conversion", and "Alphanumeric/Kana".</string>
     <string name="shortcut_toolbar_title">Shortcut Toolbar</string>
     <string name="shortcut_toolbar_summary">Show a toolbar with useful shortcuts like switching Emoji keyboard</string>
+    <string name="shortcut_entry_content_description">Show shortcuts</string>
     <string name="shortcut_toolbar_integrated_in_suggestion_title">Integrate shortcuts into candidate bar</string>
     <string name="shortcut_toolbar_integrated_in_suggestion_summary">When there is no composing text and no clipboard preview or selected-text AI actions are shown, display shortcut icons inside the candidate bar.</string>
     <string name="qwerty_romaji_english_visibility_title">Romaji/English Switch Key</string>
