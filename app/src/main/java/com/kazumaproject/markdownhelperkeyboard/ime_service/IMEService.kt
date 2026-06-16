@@ -962,6 +962,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         CinematicWaveSettings.DEFAULT_SECONDARY_COLOR
 
     private var cinematicWaveSecondaryColorAutoPreference: Boolean = true
+    private var cinematicWaveTypePreference: String =
+        CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE
     private var cinematicWaveOpacityPercentPreference: Int = 46
     private var cinematicWaveIntensityPercentPreference: Int = 100
     private var cinematicWaveMotionPreference: String = CinematicWaveSettings.MOTION_ELEGANT
@@ -1900,6 +1902,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cinematicWaveSecondaryColorPreference = preferences.cinematicWaveSecondaryColorPreference
         cinematicWaveSecondaryColorAutoPreference =
             preferences.cinematicWaveSecondaryColorAutoPreference
+        cinematicWaveTypePreference =
+            CinematicWaveSettings.normalizeWaveType(preferences.cinematicWaveTypePreference)
         cinematicWaveOpacityPercentPreference = preferences.cinematicWaveOpacityPercentPreference
         cinematicWaveIntensityPercentPreference = preferences.cinematicWaveIntensityPercentPreference
         cinematicWaveMotionPreference =
@@ -2221,6 +2225,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             primaryColor = cinematicWavePrimaryColorPreference,
             secondaryColor = cinematicWaveSecondaryColorPreference,
             secondaryColorAuto = cinematicWaveSecondaryColorAutoPreference,
+            waveType = cinematicWaveTypePreference,
             opacityPercent = cinematicWaveOpacityPercentPreference,
             intensityPercent = cinematicWaveIntensityPercentPreference,
             motion = cinematicWaveMotionPreference,
@@ -2416,6 +2421,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             primaryColor = cinematicWavePrimaryColorPreference,
             secondaryColor = cinematicWaveSecondaryColorPreference,
             secondaryColorAuto = cinematicWaveSecondaryColorAutoPreference,
+            waveType = cinematicWaveTypePreference,
             opacityPercent = cinematicWaveOpacityPercentPreference,
             intensityPercent = cinematicWaveIntensityPercentPreference,
             motion = cinematicWaveMotionPreference,
@@ -2539,6 +2545,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             primaryColor = cinematicWavePrimaryColorPreference,
             secondaryColor = cinematicWaveSecondaryColorPreference,
             secondaryColorAuto = cinematicWaveSecondaryColorAutoPreference,
+            waveType = cinematicWaveTypePreference,
             opacityPercent = cinematicWaveOpacityPercentPreference,
             intensityPercent = cinematicWaveIntensityPercentPreference,
             motion = cinematicWaveMotionPreference,
@@ -3895,6 +3902,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         cinematicWavePrimaryColorPreference = CinematicWaveSettings.DEFAULT_PRIMARY_COLOR
         cinematicWaveSecondaryColorPreference = CinematicWaveSettings.DEFAULT_SECONDARY_COLOR
         cinematicWaveSecondaryColorAutoPreference = true
+        cinematicWaveTypePreference = CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE
         cinematicWaveOpacityPercentPreference = 46
         cinematicWaveIntensityPercentPreference = 100
         cinematicWaveMotionPreference = CinematicWaveSettings.MOTION_ELEGANT

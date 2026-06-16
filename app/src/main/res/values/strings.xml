@@ -1071,6 +1071,10 @@
     <string name="keyboard_touch_effect_cinematic_wave_color_mode_summary">Choose the palette source for Cinematic Wave.</string>
     <string name="keyboard_touch_effect_cinematic_wave_color_mode_random">Cinematic Random</string>
     <string name="keyboard_touch_effect_cinematic_wave_color_mode_custom">Custom</string>
+    <string name="keyboard_touch_effect_cinematic_wave_type_title">Wave Type</string>
+    <string name="keyboard_touch_effect_cinematic_wave_type_summary">Choose the visual wave model.</string>
+    <string name="keyboard_touch_effect_cinematic_wave_type_aurora_membrane">Aurora Membrane</string>
+    <string name="keyboard_touch_effect_cinematic_wave_type_silk_sine">Silk Sine</string>
     <string name="keyboard_touch_effect_cinematic_wave_primary_color_title">Primary Color</string>
     <string name="keyboard_touch_effect_cinematic_wave_primary_color_summary">Choose the main glow color.</string>
     <string name="keyboard_touch_effect_cinematic_wave_primary_color_summary_current">Current: %1$s</string>

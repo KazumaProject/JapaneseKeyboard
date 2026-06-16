@@ -14,6 +14,7 @@ internal class CinematicWaveSimulation {
 
     private var uResolution = -1
     private var uTime = -1
+    private var uWaveType = -1
     private var uOpacity = -1
     private var uIntensity = -1
     private var uMotion = -1
@@ -94,6 +95,10 @@ internal class CinematicWaveSimulation {
 
         GLES30.glUniform2f(uResolution, surfaceWidth.toFloat(), surfaceHeight.toFloat())
         GLES30.glUniform1f(uTime, timeSeconds)
+        GLES30.glUniform1i(
+            uWaveType,
+            if (settings.normalizedWaveType == CinematicWaveSettings.WAVE_TYPE_SILK_SINE) 1 else 0
+        )
         GLES30.glUniform1f(uOpacity, settings.opacity)
         GLES30.glUniform1f(uIntensity, settings.intensity)
         GLES30.glUniform1f(uMotion, params.motionSpeed)
@@ -166,6 +171,7 @@ internal class CinematicWaveSimulation {
         program = linkProgram(VERTEX_SHADER, FRAGMENT_SHADER)
         uResolution = GLES30.glGetUniformLocation(program, "uResolution")
         uTime = GLES30.glGetUniformLocation(program, "uTime")
+        uWaveType = GLES30.glGetUniformLocation(program, "uWaveType")
         uOpacity = GLES30.glGetUniformLocation(program, "uOpacity")
         uIntensity = GLES30.glGetUniformLocation(program, "uIntensity")
         uMotion = GLES30.glGetUniformLocation(program, "uMotion")
@@ -255,6 +261,7 @@ internal class CinematicWaveSimulation {
 
             uniform vec2 uResolution;
             uniform float uTime;
+            uniform int uWaveType;
             uniform float uOpacity;
             uniform float uIntensity;
             uniform float uMotion;
@@ -307,6 +314,11 @@ internal class CinematicWaveSimulation {
                 return smoothstep(0.08, 0.96, v);
             }
 
+            float ribbon(float y, float center, float width) {
+                float d = (y - center) / max(width, 0.0001);
+                return exp(-d * d);
+            }
+
             void main() {
                 vec2 uv = gl_FragCoord.xy / max(uResolution, vec2(1.0));
                 vec2 centered = uv - 0.5;
@@ -344,6 +356,60 @@ internal class CinematicWaveSimulation {
                     fbm(warpedUv * 4.2 + slowTime * 0.045),
                     fbm(warpedUv * 3.6 - slowTime * 0.052)
                 ) * 0.060 * uWarpStrength;
+
+                if (uWaveType == 1) {
+                    vec2 ribbonUv = drift;
+                    float aspect = uResolution.x / max(uResolution.y, 1.0);
+                    float silkNoise = fbm(
+                        ribbonUv * vec2(2.2, 3.4) + vec2(slowTime * 0.035, -slowTime * 0.021)
+                    );
+                    float phase = ribbonUv.x * (2.35 + aspect * 0.16) + silkNoise * 1.8;
+                    float centerA = 0.56 + sin(phase * 3.15 + slowTime * 0.20) * 0.20;
+                    float centerB = 0.45 + sin(phase * 2.52 - slowTime * 0.17 + 1.72) * 0.17;
+                    float centerC = 0.64 + sin(phase * 3.86 + slowTime * 0.13 + 3.38) * 0.14;
+                    float centerD = 0.36 + sin(phase * 2.04 + slowTime * 0.11 + 4.95) * 0.18;
+
+                    float bandA = ribbon(uv.y, centerA, 0.115);
+                    float bandB = ribbon(uv.y, centerB, 0.092);
+                    float bandC = ribbon(uv.y, centerC, 0.076);
+                    float bandD = ribbon(uv.y, centerD, 0.104);
+                    float coreA = ribbon(uv.y, centerA, 0.030);
+                    float coreB = ribbon(uv.y, centerB, 0.026);
+                    float coreC = ribbon(uv.y, centerC, 0.022);
+
+                    float crossing = smoothstep(0.05, 0.92, bandA * bandB + bandA * bandC + bandB * bandD);
+                    float haze = clamp(bandA * 0.48 + bandB * 0.42 + bandC * 0.34 + bandD * 0.30, 0.0, 1.0);
+                    float core = clamp(coreA * 0.70 + coreB * 0.58 + coreC * 0.46, 0.0, 1.0);
+                    float depth = smoothstep(0.0, 1.0, uv.y);
+                    vec3 base = mix(uBaseColor * 0.46, uBaseColor * 1.22, depth);
+                    base += vec3(0.018, 0.020, 0.026) * (1.0 - smoothstep(0.08, 0.92, length(centered)));
+
+                    vec3 tertiary = clamp(
+                        vec3(
+                            uSecondaryColor.b * 0.72 + uHighlightColor.r * 0.28,
+                            uPrimaryColor.g * 0.58 + uSecondaryColor.g * 0.24 + 0.10,
+                            uPrimaryColor.r * 0.34 + uHighlightColor.b * 0.48
+                        ),
+                        vec3(0.0),
+                        vec3(1.0)
+                    );
+                    vec3 color = base;
+                    color += uPrimaryColor * bandA * 0.44 * uIntensity;
+                    color += uSecondaryColor * bandB * 0.38 * uIntensity;
+                    color += tertiary * bandD * 0.32 * uIntensity;
+                    color += mix(uPrimaryColor, uHighlightColor, 0.68) * bandC * 0.28 * uIntensity;
+                    color += uHighlightColor * pow(core, 2.0) * 0.62 * uGlowStrength;
+                    color += uHighlightColor * crossing * 0.20 * uGlowStrength;
+                    color += uHighlightColor * touchGlow * 0.15 * uIntensity;
+                    color -= uBaseColor * touchShadow * 0.035;
+
+                    float glass = 0.075 + (1.0 - smoothstep(0.0, 0.96, length(centered))) * 0.050;
+                    float alpha = glass + haze * 0.25 * uIntensity + core * 0.30 * uGlowStrength + crossing * 0.11 + touchGlow * 0.085;
+                    alpha = clamp(alpha * uOpacity, 0.0, 0.64);
+                    color = clamp(color, vec3(0.0), vec3(1.0));
+                    fragColor = vec4(color * alpha, alpha);
+                    return;
+                }
 
                 float w1 = sin(drift.x * 8.0 + drift.y * 3.0 + slowTime * 0.35);
                 float w2 = sin(drift.x * 14.0 - drift.y * 2.0 - slowTime * 0.22);
