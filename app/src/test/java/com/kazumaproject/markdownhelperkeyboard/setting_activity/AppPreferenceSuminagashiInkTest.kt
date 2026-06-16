@@ -319,8 +319,8 @@ class AppPreferenceSuminagashiInkTest {
             CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE,
             CinematicWaveSettings.WAVE_TYPE_SILK_SINE,
             CinematicWaveSettings.WAVE_TYPE_PRISMATIC_SINE,
-            CinematicWaveSettings.WAVE_TYPE_LUMINOUS_STACK,
-            CinematicWaveSettings.WAVE_TYPE_AURORA_FLOW
+            CinematicWaveSettings.WAVE_TYPE_SPECTRUM_SINE,
+            CinematicWaveSettings.WAVE_TYPE_CHROMA_FOLD
         ).forEach { waveType ->
             AppPreference.keyboard_touch_effect_cinematic_wave_type_preference = waveType
 

@@ -42,14 +42,35 @@ class CinematicWaveContractTest {
         assertTrue(simulation.contains("if (uWaveType == 4)"))
         assertTrue(simulation.contains("float ribbon"))
         assertTrue(simulation.contains("prismaticCrossing"))
-        assertTrue(simulation.contains("luminousStackBody"))
-        assertTrue(simulation.contains("auroraCurtainA"))
+        assertTrue(simulation.contains("spectrumSheetField"))
+        assertTrue(simulation.contains("spectrumIntersectionGlow"))
+        assertTrue(simulation.contains("vividSpectrumField"))
+        assertTrue(simulation.contains("vividSpectrumEdge"))
+        assertTrue(simulation.contains("vividSpectrumCrossGlow"))
         assertTrue(simulation.contains("lens"))
         assertTrue(simulation.contains("fragColor = vec4(color * alpha, alpha);"))
         assertFalse(simulation.contains("android.graphics.Canvas"))
         assertFalse(simulation.contains("android.graphics.Bitmap"))
         assertFalse(simulation.contains("drawCircle"))
         assertFalse(simulation.contains("drawLine"))
+
+        val spectrumBranch = shaderBranch(
+            simulation = simulation,
+            startMarker = "if (uWaveType == 3)",
+            endMarker = "if (uWaveType == 4)"
+        )
+        val vividSpectrumBranch = shaderBranch(
+            simulation = simulation,
+            startMarker = "if (uWaveType == 4)",
+            endMarker = "if (uWaveType == 1)"
+        )
+        assertFalse(spectrumBranch.contains("ribbon("))
+        assertFalse(vividSpectrumBranch.contains("ribbon("))
+        assertFalse(spectrumBranch.contains("prismatic"))
+        assertFalse(vividSpectrumBranch.contains("prismatic"))
+        assertFalse(vividSpectrumBranch.contains("oledRibbon"))
+        assertFalse(vividSpectrumBranch.contains("fold"))
+        assertFalse(vividSpectrumBranch.contains("Fold"))
     }
 
     @Test
@@ -110,5 +131,17 @@ class CinematicWaveContractTest {
             if (seenOpen && depth == 0) break
         }
         return body
+    }
+
+    private fun shaderBranch(
+        simulation: String,
+        startMarker: String,
+        endMarker: String
+    ): String {
+        val start = simulation.indexOf(startMarker)
+        require(start >= 0) { "Missing shader branch $startMarker" }
+        val end = simulation.indexOf(endMarker, start + startMarker.length)
+        require(end > start) { "Missing shader branch end $endMarker" }
+        return simulation.substring(start, end)
     }
 }
