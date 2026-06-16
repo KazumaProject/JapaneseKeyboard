@@ -128,6 +128,72 @@
             android:summary="@string/keyboard_touch_effect_palette_summary"
             android:title="@string/keyboard_touch_effect_palette_title" />
 
+        <ListPreference
+            android:defaultValue="cinematic_random"
+            android:entries="@array/keyboard_touch_effect_cinematic_wave_color_mode_entries"
+            android:entryValues="@array/keyboard_touch_effect_cinematic_wave_color_mode_values"
+            android:key="keyboard_touch_effect_cinematic_wave_color_mode_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_color_mode_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_color_mode_title" />
+
+        <Preference
+            android:key="keyboard_touch_effect_cinematic_wave_primary_color_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_primary_color_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_primary_color_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_secondary_auto_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_secondary_auto_title" />
+
+        <Preference
+            android:key="keyboard_touch_effect_cinematic_wave_secondary_color_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_secondary_color_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_secondary_color_title" />
+
+        <SeekBarPreference
+            android:defaultValue="46"
+            android:key="keyboard_touch_effect_cinematic_wave_opacity_percent_preference"
+            android:max="68"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_opacity_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_opacity_title"
+            app:min="18"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
+            android:defaultValue="100"
+            android:key="keyboard_touch_effect_cinematic_wave_intensity_percent_preference"
+            android:max="180"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_intensity_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_intensity_title"
+            app:min="35"
+            app:showSeekBarValue="true" />
+
+        <ListPreference
+            android:defaultValue="elegant"
+            android:entries="@array/keyboard_touch_effect_cinematic_wave_motion_entries"
+            android:entryValues="@array/keyboard_touch_effect_cinematic_wave_motion_values"
+            android:key="keyboard_touch_effect_cinematic_wave_motion_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_motion_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_motion_title" />
+
+        <ListPreference
+            android:defaultValue="normal"
+            android:entries="@array/keyboard_touch_effect_cinematic_wave_touch_response_entries"
+            android:entryValues="@array/keyboard_touch_effect_cinematic_wave_touch_response_values"
+            android:key="keyboard_touch_effect_cinematic_wave_touch_response_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_touch_response_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_touch_response_title" />
+
+        <ListPreference
+            android:defaultValue="balanced"
+            android:entries="@array/keyboard_touch_effect_cinematic_wave_quality_entries"
+            android:entryValues="@array/keyboard_touch_effect_cinematic_wave_quality_values"
+            android:key="keyboard_touch_effect_cinematic_wave_quality_preference"
+            android:summary="@string/keyboard_touch_effect_cinematic_wave_quality_summary"
+            android:title="@string/keyboard_touch_effect_cinematic_wave_quality_title" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/setting_category_keyboard_shape_title">

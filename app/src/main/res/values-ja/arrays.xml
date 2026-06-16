@@ -41,6 +41,7 @@
         <item>@string/keyboard_touch_effect_liquid_ripple</item>
         <item>@string/keyboard_touch_effect_type_spray_paint</item>
         <item>@string/keyboard_touch_effect_type_luminous_blob</item>
+        <item>@string/keyboard_touch_effect_type_cinematic_wave</item>
     </string-array>
 
     <string-array name="keyboard_touch_effect_type_values">
@@ -50,6 +51,7 @@
         <item>liquid_ripple</item>
         <item>spray_paint</item>
         <item>luminous_blob</item>
+        <item>cinematic_wave</item>
     </string-array>
 
     <string-array name="keyboard_touch_effect_quality_entries">
@@ -104,6 +106,52 @@
         <item>graffiti</item>
         <item>liquid_paint</item>
         <item>flower_petals</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_cinematic_wave_color_mode_entries">
+        <item>@string/keyboard_touch_effect_cinematic_wave_color_mode_random</item>
+        <item>@string/keyboard_touch_effect_cinematic_wave_color_mode_custom</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_cinematic_wave_color_mode_values">
+        <item>cinematic_random</item>
+        <item>custom</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_cinematic_wave_motion_entries">
+        <item>@string/keyboard_touch_effect_cinematic_wave_motion_calm</item>
+        <item>@string/keyboard_touch_effect_cinematic_wave_motion_elegant</item>
+        <item>@string/keyboard_touch_effect_cinematic_wave_motion_dynamic</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_cinematic_wave_motion_values">
+        <item>calm</item>
+        <item>elegant</item>
+        <item>dynamic</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_cinematic_wave_touch_response_entries">
+        <item>@string/keyboard_touch_effect_cinematic_wave_touch_response_subtle</item>
+        <item>@string/keyboard_touch_effect_cinematic_wave_touch_response_normal</item>
+        <item>@string/keyboard_touch_effect_cinematic_wave_touch_response_deep</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_cinematic_wave_touch_response_values">
+        <item>subtle</item>
+        <item>normal</item>
+        <item>deep</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_cinematic_wave_quality_entries">
+        <item>@string/keyboard_touch_effect_cinematic_wave_quality_battery_saver</item>
+        <item>@string/keyboard_touch_effect_cinematic_wave_quality_balanced</item>
+        <item>@string/keyboard_touch_effect_cinematic_wave_quality_cinematic</item>
+    </string-array>
+
+    <string-array name="keyboard_touch_effect_cinematic_wave_quality_values">
+        <item>battery_saver</item>
+        <item>balanced</item>
+        <item>cinematic</item>
     </string-array>
 
     <string-array name="default_emoji_skin_tone_entries">

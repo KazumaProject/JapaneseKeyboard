@@ -13,6 +13,7 @@ object KeyboardTouchEffectType {
     const val LIQUID_RIPPLE = "liquid_ripple"
     const val SPRAY_PAINT = "spray_paint"
     const val LUMINOUS_BLOB = "luminous_blob"
+    const val CINEMATIC_WAVE = "cinematic_wave"
 
     fun normalize(value: String?): String {
         return when (value) {
@@ -24,6 +25,7 @@ object KeyboardTouchEffectType {
             LIQUID_RIPPLE -> LIQUID_RIPPLE
             SPRAY_PAINT -> SPRAY_PAINT
             LUMINOUS_BLOB -> LUMINOUS_BLOB
+            CINEMATIC_WAVE -> CINEMATIC_WAVE
             else -> NONE
         }
     }
@@ -54,5 +56,9 @@ object KeyboardTouchEffectType {
 
     fun isLuminousBlob(value: String): Boolean {
         return normalize(value) == LUMINOUS_BLOB
+    }
+
+    fun isCinematicWave(value: String): Boolean {
+        return normalize(value) == CINEMATIC_WAVE
     }
 }
