@@ -227,6 +227,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var shortcutItems: List<ShortcutType> = emptyList()
     private var showIntegratedShortcutItems: Boolean = false
     private var showIntegratedShortcutEntry: Boolean = false
+    private var integratedShortcutEntryExpanded: Boolean = false
     private var shortcutIconColor: Int? = null
     private var activeShortcutTypes: Set<ShortcutType> = emptySet()
 
@@ -360,21 +361,48 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     fun setShortcutItems(items: List<ShortcutType>) {
-        if (shortcutItems == items) return
+        val shouldCollapseExpandedEntry = items.isEmpty() && integratedShortcutEntryExpanded
+        if (shortcutItems == items && !shouldCollapseExpandedEntry) return
         shortcutItems = items
+        if (items.isEmpty()) {
+            integratedShortcutEntryExpanded = false
+        }
         rebuildDisplayItems()
     }
 
     fun setIntegratedShortcutItemsVisibility(visible: Boolean) {
-        if (showIntegratedShortcutItems == visible) return
+        val shouldCollapseExpandedEntry = visible && integratedShortcutEntryExpanded
+        if (showIntegratedShortcutItems == visible && !shouldCollapseExpandedEntry) return
         showIntegratedShortcutItems = visible
+        if (visible) {
+            integratedShortcutEntryExpanded = false
+        }
         rebuildDisplayItems()
     }
 
     fun setIntegratedShortcutEntryVisibility(visible: Boolean) {
-        if (showIntegratedShortcutEntry == visible) return
+        val shouldCollapseExpandedEntry = !visible && integratedShortcutEntryExpanded
+        if (showIntegratedShortcutEntry == visible && !shouldCollapseExpandedEntry) return
         showIntegratedShortcutEntry = visible
+        if (!visible) {
+            integratedShortcutEntryExpanded = false
+        }
         rebuildDisplayItems()
+    }
+
+    fun setIntegratedShortcutEntryExpanded(expanded: Boolean) {
+        val normalizedExpanded =
+            expanded &&
+                showIntegratedShortcutEntry &&
+                shortcutItems.isNotEmpty() &&
+                hasSwitchableShortcutEntryContent()
+        if (integratedShortcutEntryExpanded == normalizedExpanded) return
+        integratedShortcutEntryExpanded = normalizedExpanded
+        rebuildDisplayItems()
+    }
+
+    fun toggleIntegratedShortcutEntryExpansion() {
+        setIntegratedShortcutEntryExpanded(!integratedShortcutEntryExpanded)
     }
 
     fun setShortcutIconColor(color: Int) {
@@ -547,6 +575,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private fun buildDisplayItems(): List<SuggestionDisplayItem> {
+        if (shouldShowExpandedShortcutEntryItems()) {
+            return buildExpandedShortcutEntryItems()
+        }
+
         if (candidateSuggestions.isNotEmpty()) {
             return buildList {
                 if (isShowingSelectedTextGemmaActions() && shouldShowIntegratedShortcutEntry()) {
@@ -592,6 +624,14 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             }
         }
     }
+
+    private fun buildExpandedShortcutEntryItems(): List<SuggestionDisplayItem> =
+        buildList {
+            add(SuggestionDisplayItem.ShortcutEntryItem)
+            shortcutItems.forEach { shortcutType ->
+                add(SuggestionDisplayItem.ShortcutItem(shortcutType))
+            }
+        }
 
     internal fun buildDisplayItemKindsForTesting(): List<SuggestionDisplayItemKind> {
         return buildDisplayItems().map { it.kind() }
@@ -981,6 +1021,16 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         return showIntegratedShortcutEntry &&
             shortcutItems.isNotEmpty() &&
             !isShowingCustomLayoutPicker()
+    }
+
+    private fun shouldShowExpandedShortcutEntryItems(): Boolean {
+        if (!integratedShortcutEntryExpanded || !shouldShowIntegratedShortcutEntry()) return false
+        return hasSwitchableShortcutEntryContent()
+    }
+
+    private fun hasSwitchableShortcutEntryContent(): Boolean {
+        return isShowingSelectedTextGemmaActions() ||
+            currentClipboardPreviewState(hasLeadingShortcutEntry = false).hasClipboardPreview
     }
 
     private fun isShowingSelectedTextGemmaActions(): Boolean {
