@@ -30,7 +30,9 @@ class KeyboardTouchEffectResourceTest {
                 KeyboardTouchEffectType.LIQUID_INK,
                 KeyboardTouchEffectType.AURORA_INK,
                 KeyboardTouchEffectType.LIQUID_RIPPLE,
-                KeyboardTouchEffectType.SPRAY_PAINT
+                KeyboardTouchEffectType.SPRAY_PAINT,
+                KeyboardTouchEffectType.LUMINOUS_BLOB,
+                KeyboardTouchEffectType.CINEMATIC_WAVE
             ),
             values.toList()
         )
@@ -54,13 +56,62 @@ class KeyboardTouchEffectResourceTest {
 
         assertTrue(englishEntries.contains("Liquid Ink"))
         assertTrue(englishEntries.contains("Aurora Ink"))
+        assertTrue(englishEntries.contains("Luminous Blob"))
+        assertTrue(englishEntries.contains("Cinematic Wave"))
         assertTrue(japaneseEntries.contains("リキッドインク"))
         assertTrue(japaneseEntries.contains("オーロラインク"))
+        assertTrue(japaneseEntries.contains("光の膜"))
+        assertTrue(japaneseEntries.contains("シネマティックウェーブ"))
 
         val legacyJapaneseLabel = "\u58a8\u6d41\u3057"
         (englishEntries + japaneseEntries).forEach { label ->
             assertFalse(label.contains("Suminagashi"))
             assertFalse(label.contains(legacyJapaneseLabel))
         }
+    }
+
+    @Test
+    fun cinematicWaveTypeEntriesAndJapaneseLabelsStayAvailable() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val values =
+            context.resources.getStringArray(R.array.keyboard_touch_effect_cinematic_wave_type_values)
+                .toList()
+        val englishEntries =
+            context.resources.getStringArray(R.array.keyboard_touch_effect_cinematic_wave_type_entries)
+                .toList()
+        val japaneseContext = context.createConfigurationContext(
+            Configuration(context.resources.configuration).apply {
+                setLocale(Locale.JAPANESE)
+            }
+        )
+        val japaneseEntries =
+            japaneseContext.resources.getStringArray(
+                R.array.keyboard_touch_effect_cinematic_wave_type_entries
+            ).toList()
+
+        assertEquals(
+            listOf(
+                CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE,
+                CinematicWaveSettings.WAVE_TYPE_SILK_SINE,
+                CinematicWaveSettings.WAVE_TYPE_PRISMATIC_SINE,
+                CinematicWaveSettings.WAVE_TYPE_SPECTRUM_SINE,
+                CinematicWaveSettings.WAVE_TYPE_CHROMA_FOLD
+            ),
+            values
+        )
+        assertTrue(englishEntries.contains("Aurora Membrane"))
+        assertTrue(englishEntries.contains("Silk Sine"))
+        assertTrue(englishEntries.contains("Prismatic Sine"))
+        assertTrue(englishEntries.contains("Spectrum Sine"))
+        assertTrue(englishEntries.contains("Vivid Spectrum"))
+        assertTrue(japaneseEntries.contains("オーロラ膜"))
+        assertTrue(japaneseEntries.contains("シルキーサインウェーブ"))
+        assertTrue(japaneseEntries.contains("プリズムサインウェーブ"))
+        assertTrue(japaneseEntries.contains("スペクトラムサインウェーブ"))
+        assertTrue(japaneseEntries.contains("ビビッドスペクトラム"))
+        assertFalse(englishEntries.contains("OLED Ribbon"))
+        assertFalse(englishEntries.contains("Chroma Fold"))
+        assertFalse(japaneseEntries.contains("OLEDリボンウェーブ"))
+        assertFalse(japaneseEntries.contains("クロマフォールド"))
     }
 }
