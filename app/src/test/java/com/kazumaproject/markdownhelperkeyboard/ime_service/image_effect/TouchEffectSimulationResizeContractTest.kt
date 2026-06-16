@@ -57,7 +57,9 @@ class TouchEffectSimulationResizeContractTest {
     fun rendererResizeAndPauseDoNotClearVisibleSimulationState() {
         listOf(
             "LiquidRippleRenderer.kt",
-            "SprayPaintRenderer.kt"
+            "SprayPaintRenderer.kt",
+            "LuminousBlobRenderer.kt",
+            "CinematicWaveRenderer.kt"
         ).forEach { fileName ->
             val lines = mainFile(
                 "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/$fileName"
@@ -75,7 +77,9 @@ class TouchEffectSimulationResizeContractTest {
     fun effectViewSizeChangedOnlyResizesRenderer() {
         listOf(
             "LiquidRippleEffectView.kt",
-            "SprayPaintEffectView.kt"
+            "SprayPaintEffectView.kt",
+            "LuminousBlobEffectView.kt",
+            "CinematicWaveEffectView.kt"
         ).forEach { fileName ->
             val lines = mainFile(
                 "java/com/kazumaproject/markdownhelperkeyboard/ime_service/image_effect/$fileName"

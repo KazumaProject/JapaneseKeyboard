@@ -14,6 +14,7 @@ import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
@@ -34,6 +35,12 @@ object AppPreference {
 
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR = 0x00000000
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR = 0xFFF0F0F3.toInt()
+    const val SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP = 36
+    const val SHORTCUT_TOOLBAR_HEIGHT_MIN_DP = 32
+    const val SHORTCUT_TOOLBAR_HEIGHT_MAX_DP = 72
+    const val SHORTCUT_TOOLBAR_ICON_SIZE_DEFAULT_DP = 28
+    const val SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP = 18
+    const val SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP = 56
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -299,6 +306,10 @@ object AppPreference {
         Pair("shortcut_toolbar_visibility_preference", false)
     private val SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE =
         Pair("shortcut_toolbar_integrated_in_suggestion_preference", false)
+    private val SHORTCUT_TOOLBAR_HEIGHT_DP_PREFERENCE =
+        Pair("shortcut_toolbar_height_dp_preference", SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP)
+    private val SHORTCUT_TOOLBAR_ICON_SIZE_DP_PREFERENCE =
+        Pair("shortcut_toolbar_icon_size_dp_preference", SHORTCUT_TOOLBAR_ICON_SIZE_DEFAULT_DP)
 
     private val APP_THEME_SEED_COLOR = Pair("app_theme_seed_color_preference", 0x00000000)
 
@@ -630,6 +641,47 @@ object AppPreference {
             "keyboard_touch_effect_palette_preference",
             SprayPaintSettings.PALETTE_PAINT_SPLASH
         )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_COLOR_MODE =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_color_mode_preference",
+            CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_PRIMARY_COLOR =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_primary_color_preference",
+            CinematicWaveSettings.DEFAULT_PRIMARY_COLOR
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_secondary_color_preference",
+            CinematicWaveSettings.DEFAULT_SECONDARY_COLOR
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR_AUTO =
+        Pair("keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference", true)
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TYPE =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_type_preference",
+            CinematicWaveSettings.WAVE_TYPE_AURORA_MEMBRANE
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_OPACITY =
+        Pair("keyboard_touch_effect_cinematic_wave_opacity_percent_preference", 46)
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_INTENSITY =
+        Pair("keyboard_touch_effect_cinematic_wave_intensity_percent_preference", 100)
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_MOTION =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_motion_preference",
+            CinematicWaveSettings.MOTION_ELEGANT
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TOUCH_RESPONSE =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_touch_response_preference",
+            CinematicWaveSettings.TOUCH_RESPONSE_NORMAL
+        )
+    private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_QUALITY =
+        Pair(
+            "keyboard_touch_effect_cinematic_wave_quality_preference",
+            CinematicWaveSettings.QUALITY_BALANCED
+        )
 
     private val SAVE_LAST_USED_KEYBOARD = Pair("save_last_used_keyboard", false)
     private val SAVE_LAST_USED_KEYBOARD_POSITION = Pair("save_last_used_keyboard_int", 0)
@@ -694,6 +746,28 @@ object AppPreference {
         return runCatching {
             preferences.getInt(key, defaultValue)
         }.getOrDefault(defaultValue)
+    }
+
+    fun resolveShortcutToolbarIconSizeDp(
+        toolbarHeightDp: Int = shortcut_toolbar_height_dp_preference,
+        iconSizeDp: Int = shortcut_toolbar_icon_size_dp_preference
+    ): Int {
+        val resolvedToolbarHeightDp = toolbarHeightDp.coerceIn(
+            SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+            SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+        )
+        val resolvedIconSizeDp = iconSizeDp.coerceIn(
+            SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP,
+            SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP
+        )
+        val maxIconSizeForHeightDp = (resolvedToolbarHeightDp - 8)
+            .coerceAtLeast(SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP)
+        return resolvedIconSizeDp
+            .coerceAtMost(maxIconSizeForHeightDp)
+            .coerceIn(
+                SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP,
+                SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP
+            )
     }
 
     private fun normalizeCandidateColumn(column: String): String =
@@ -1937,6 +2011,42 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SHORTCUT_TOOLBAR_INTEGRATED_IN_SUGGESTION_PREFERENCE.first, value)
+        }
+
+    var shortcut_toolbar_height_dp_preference: Int
+        get() = preferences.getInt(
+            SHORTCUT_TOOLBAR_HEIGHT_DP_PREFERENCE.first,
+            SHORTCUT_TOOLBAR_HEIGHT_DP_PREFERENCE.second
+        ).coerceIn(
+            SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+            SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                SHORTCUT_TOOLBAR_HEIGHT_DP_PREFERENCE.first,
+                value.coerceIn(
+                    SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+                    SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+                )
+            )
+        }
+
+    var shortcut_toolbar_icon_size_dp_preference: Int
+        get() = preferences.getInt(
+            SHORTCUT_TOOLBAR_ICON_SIZE_DP_PREFERENCE.first,
+            SHORTCUT_TOOLBAR_ICON_SIZE_DP_PREFERENCE.second
+        ).coerceIn(
+            SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP,
+            SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                SHORTCUT_TOOLBAR_ICON_SIZE_DP_PREFERENCE.first,
+                value.coerceIn(
+                    SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP,
+                    SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP
+                )
+            )
         }
 
     var seedColor: Int
@@ -3248,6 +3358,135 @@ object AppPreference {
             it.putString(
                 KEYBOARD_TOUCH_EFFECT_PALETTE.first,
                 normalizeTouchEffectPalette(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_color_mode_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_COLOR_MODE.first,
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_COLOR_MODE.second
+            )
+            return CinematicWaveSettings.normalizeColorMode(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_COLOR_MODE.first,
+                CinematicWaveSettings.normalizeColorMode(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_primary_color_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_PRIMARY_COLOR.first,
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_PRIMARY_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_PRIMARY_COLOR.first,
+                CinematicWaveSettings.withoutTransparentAlpha(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_secondary_color_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR.first,
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR.first,
+                CinematicWaveSettings.withoutTransparentAlpha(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_secondary_color_auto_preference: Boolean
+        get() = preferences.getBoolean(
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR_AUTO.first,
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR_AUTO.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_SECONDARY_COLOR_AUTO.first, value)
+        }
+
+    var keyboard_touch_effect_cinematic_wave_type_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TYPE.first,
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TYPE.second
+            )
+            return CinematicWaveSettings.normalizeWaveType(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TYPE.first,
+                CinematicWaveSettings.normalizeWaveType(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_opacity_percent_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_OPACITY.first,
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_OPACITY.second
+        ).coerceIn(18, 68)
+        set(value) = preferences.edit {
+            it.putInt(KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_OPACITY.first, value.coerceIn(18, 68))
+        }
+
+    var keyboard_touch_effect_cinematic_wave_intensity_percent_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_INTENSITY.first,
+            KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_INTENSITY.second
+        ).coerceIn(35, 180)
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_INTENSITY.first,
+                value.coerceIn(35, 180)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_motion_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_MOTION.first,
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_MOTION.second
+            )
+            return CinematicWaveSettings.normalizeMotion(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_MOTION.first,
+                CinematicWaveSettings.normalizeMotion(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_touch_response_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TOUCH_RESPONSE.first,
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TOUCH_RESPONSE.second
+            )
+            return CinematicWaveSettings.normalizeTouchResponse(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_TOUCH_RESPONSE.first,
+                CinematicWaveSettings.normalizeTouchResponse(value)
+            )
+        }
+
+    var keyboard_touch_effect_cinematic_wave_quality_preference: String
+        get() {
+            val value = preferences.getString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_QUALITY.first,
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_QUALITY.second
+            )
+            return CinematicWaveSettings.normalizeQuality(value)
+        }
+        set(value) = preferences.edit {
+            it.putString(
+                KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_QUALITY.first,
+                CinematicWaveSettings.normalizeQuality(value)
             )
         }
 
