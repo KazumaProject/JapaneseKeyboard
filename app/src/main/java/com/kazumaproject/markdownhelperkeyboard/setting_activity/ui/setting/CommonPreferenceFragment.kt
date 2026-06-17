@@ -613,6 +613,28 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
+        findPreference<SeekBarPreference>(
+            "keyboard_touch_effect_liquid_ink_density_preference"
+        )?.apply {
+            value = appPreference.keyboard_touch_effect_liquid_ink_density_preference
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextValue = (newValue as? Int ?: value).coerceIn(50, 300)
+                appPreference.keyboard_touch_effect_liquid_ink_density_preference = nextValue
+                true
+            }
+        }
+
+        findPreference<SeekBarPreference>(
+            "keyboard_touch_effect_aurora_ink_density_preference"
+        )?.apply {
+            value = appPreference.keyboard_touch_effect_aurora_ink_density_preference
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextValue = (newValue as? Int ?: value).coerceIn(50, 300)
+                appPreference.keyboard_touch_effect_aurora_ink_density_preference = nextValue
+                true
+            }
+        }
+
         findPreference<ListPreference>(
             "keyboard_touch_effect_cinematic_wave_color_mode_preference"
         )?.apply {

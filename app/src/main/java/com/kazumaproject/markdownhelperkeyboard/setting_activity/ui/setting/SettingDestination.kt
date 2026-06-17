@@ -399,6 +399,8 @@ object SettingDestinations {
         "keyboard_background_image_select_preference",
         "keyboard_background_video_select_preference",
         "keyboard_touch_effect_type_preference",
+        "keyboard_touch_effect_liquid_ink_density_preference",
+        "keyboard_touch_effect_aurora_ink_density_preference",
         "keyboard_touch_effect_cinematic_wave_color_mode_preference",
         "keyboard_touch_effect_cinematic_wave_type_preference",
         "keyboard_touch_effect_cinematic_wave_primary_color_preference",

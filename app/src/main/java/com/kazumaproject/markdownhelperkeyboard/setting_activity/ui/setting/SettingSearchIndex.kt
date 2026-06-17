@@ -442,6 +442,12 @@ object SettingSearchIndex {
                 add("keyboard_touch_effect_type_preference")
                 add("keyboard_touch_effect_cinematic_wave_color_mode_preference")
             }
+            if (
+                key == "keyboard_touch_effect_liquid_ink_density_preference" ||
+                key == "keyboard_touch_effect_aurora_ink_density_preference"
+            ) {
+                add("keyboard_touch_effect_type_preference")
+            }
             if (!dependencyKey.isNullOrBlank()) {
                 add(dependencyKey)
             }

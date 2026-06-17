@@ -426,6 +426,9 @@ class SettingCardEditorController(
                     context.getString(R.string.key_sound_volume_percent, value)
                 }
 
+            "keyboard_touch_effect_liquid_ink_density_preference",
+            "keyboard_touch_effect_aurora_ink_density_preference" -> "$value%"
+
             "zenz_debounce_time_preference" -> "$value ms"
 
             else -> if (unit.isBlank()) {

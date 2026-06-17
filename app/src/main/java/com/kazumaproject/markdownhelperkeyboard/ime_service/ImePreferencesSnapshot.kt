@@ -187,6 +187,8 @@ data class ImePreferencesSnapshot(
     val keyboardTouchEffectColorModePreference: String,
     val keyboardTouchEffectColorPreference: Int,
     val keyboardTouchEffectPalettePreference: String,
+    val liquidInkDensityPreference: Int,
+    val auroraInkDensityPreference: Int,
     val cinematicWaveColorModePreference: String,
     val cinematicWavePrimaryColorPreference: Int,
     val cinematicWaveSecondaryColorPreference: Int,
@@ -535,6 +537,10 @@ data class ImePreferencesSnapshot(
                 keyboardTouchEffectColorPreference = appPreference.keyboard_touch_effect_color_preference,
                 keyboardTouchEffectPalettePreference =
                     appPreference.keyboard_touch_effect_palette_preference,
+                liquidInkDensityPreference =
+                    appPreference.keyboard_touch_effect_liquid_ink_density_preference,
+                auroraInkDensityPreference =
+                    appPreference.keyboard_touch_effect_aurora_ink_density_preference,
                 cinematicWaveColorModePreference =
                     appPreference.keyboard_touch_effect_cinematic_wave_color_mode_preference,
                 cinematicWavePrimaryColorPreference =
