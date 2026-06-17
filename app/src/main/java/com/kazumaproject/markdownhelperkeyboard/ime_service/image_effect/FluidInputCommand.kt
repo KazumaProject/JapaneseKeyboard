@@ -8,15 +8,21 @@ internal data class FluidInkSettings(
     val colorMode: String,
     @ColorInt val fixedColor: Int,
     val quality: String = KeyboardTouchEffectQuality.HIGH,
-    val transportMode: FluidInkTransportMode = FluidInkTransportMode.PHYSICAL
+    val transportMode: FluidInkTransportMode = FluidInkTransportMode.PHYSICAL,
+    val densityPercent: Int = DEFAULT_DENSITY_PERCENT
 ) {
     val normalizedColorMode: String =
         if (colorMode == COLOR_MODE_FIXED) COLOR_MODE_FIXED else COLOR_MODE_RANDOM
     val normalizedQuality: String = KeyboardTouchEffectQuality.normalize(quality)
+    val normalizedDensityPercent: Int =
+        densityPercent.coerceIn(MIN_DENSITY_PERCENT, MAX_DENSITY_PERCENT)
 
     companion object {
         const val COLOR_MODE_RANDOM = "random"
         const val COLOR_MODE_FIXED = "fixed"
+        const val MIN_DENSITY_PERCENT = 50
+        const val MAX_DENSITY_PERCENT = 300
+        const val DEFAULT_DENSITY_PERCENT = 100
 
         @ColorInt
         const val DEFAULT_INK_COLOR: Int = 0xFF111111.toInt()

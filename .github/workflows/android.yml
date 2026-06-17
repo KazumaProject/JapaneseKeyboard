@@ -60,12 +60,20 @@ jobs:
       - name: Build Release Variants
         run: |
           ./gradlew clean \
-            assembleFullStandardRelease \
-            assembleLiteStandardRelease \
+            :app:assembleFullStandardRelease \
             -PsplitApks \
-            --stacktrace
-          ./gradlew assembleLiteFdroidRelease \
-            --stacktrace
+            --stacktrace \
+            --no-daemon \
+            --max-workers=1
+          ./gradlew :app:assembleLiteStandardRelease \
+            -PsplitApks \
+            --stacktrace \
+            --no-daemon \
+            --max-workers=1
+          ./gradlew :app:assembleLiteFdroidRelease \
+            --stacktrace \
+            --no-daemon \
+            --max-workers=1
 
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2
