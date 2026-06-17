@@ -448,6 +448,8 @@ object SettingDestinations {
         "candidate_order_override_preference",
         "ng_word_preference",
         "learn_dictionary_preference",
+        "incognito_mode_detection_preference",
+        "show_learned_candidates_in_incognito_preference",
         "user_dictionary_preference",
         "user_template_preference",
         "enable_ai_conversion_zenz_preference",

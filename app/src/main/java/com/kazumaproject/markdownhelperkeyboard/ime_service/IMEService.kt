@@ -649,6 +649,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setSuggestionAdapterSuggestionsOnMain(candidates: List<Candidate>) {
         runOnMainThread {
             measureDebugSection("IMEService.setSuggestionAdapterSuggestionsOnMain") {
+                collapseShortcutEntryExpansion()
                 suggestionAdapter?.suggestions = candidates
             }
         }
@@ -660,6 +661,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         runOnMainThread {
             measureDebugSection("IMEService.setSuggestionAdaptersOnMain") {
+                collapseShortcutEntryExpansion()
                 suggestionAdapter?.suggestions = candidates
                 suggestionAdapterFull?.suggestions = fullCandidates
             }
@@ -673,6 +675,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) = measureDebugStage("IMEService.updateSuggestionAdaptersOnMain") {
         withContext(Dispatchers.Main.immediate) {
             if (!shouldApplyCandidateResult(insertString)) return@withContext
+            collapseShortcutEntryExpansion()
             suggestionAdapter?.suggestions = candidates
             suggestionAdapterFull?.suggestions = fullCandidates
         }
@@ -1035,6 +1038,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val _ngPattern = MutableStateFlow("".toRegex())
     private val ngPattern: StateFlow<Regex> = _ngPattern
     private var isPrivateMode = false
+    private var incognitoModeDetectionPreference: Boolean = true
+    private var showLearnedCandidatesInIncognitoPreference: Boolean = true
 
     private val _keyboardFloatingMode = MutableStateFlow(false)
     private val keyboardFloatingMode = _keyboardFloatingMode.asStateFlow()
@@ -1447,6 +1452,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
             }
+            onStartAnchoredContentCommitted = {
+                if (Looper.myLooper() == Looper.getMainLooper()) {
+                    anchorActiveSuggestionStripStartForLeadingContent()
+                } else {
+                    mainHandler.post {
+                        anchorActiveSuggestionStripStartForLeadingContent()
+                    }
+                }
+            }
         }
         suggestionAdapterFull = SuggestionAdapter()
         shortcutAdapter = ShortcutAdapter()
@@ -1660,6 +1674,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isOmissionSearchEnable = preferences.isOmissionSearchEnable
         delayTime = preferences.delayTime
         isLearnDictionaryMode = preferences.isLearnDictionaryMode
+        incognitoModeDetectionPreference = preferences.incognitoModeDetectionPreference
+        showLearnedCandidatesInIncognitoPreference =
+            preferences.showLearnedCandidatesInIncognitoPreference
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
         hankakuPreference = preferences.hankakuPreference
@@ -1959,6 +1976,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 kanaKanjiEngine.loadSystemUserDictionaryFromFiles(applicationContext)
             }
         }
+    }
+
+    private fun updateIncognitoModeState(editorInfo: EditorInfo?) {
+        val detected = incognitoModeDetectionPreference &&
+                editorInfo != null &&
+                (editorInfo.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0
+        isPrivateMode = detected
+        suggestionAdapter?.setIncognitoIcon(
+            if (detected) {
+                ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
+            } else {
+                null
+            }
+        )
+    }
+
+    private fun learnedRepositoryForSuggestion(): LearnRepository? {
+        if (isLearnDictionaryMode != true) return null
+        if (isPrivateMode && !showLearnedCandidatesInIncognitoPreference) return null
+        return learnRepository
     }
 
     private fun applyDictionaryOverrideRevisionIfNeeded() {
@@ -3285,6 +3322,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         isInputViewActive = true
+        collapseShortcutEntryExpansion()
         shortcutInputBehaviorOverride = null
         keyboardSelectionPopupWindow?.dismiss()
         addUserDictionaryPopup?.dismiss()
@@ -3623,17 +3661,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             setMainSuggestionColumn(mainView)
         }
-        editorInfo?.let { info ->
-            if ((info.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0) {
-                isPrivateMode = true
-                suggestionAdapter?.setIncognitoIcon(
-                    ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
-                )
-            } else {
-                isPrivateMode = false
-                suggestionAdapter?.setIncognitoIcon(null)
-            }
-        }
+        updateIncognitoModeState(editorInfo)
+        anchorActiveSuggestionStripStartIfLeadingContentExpected()
         if (hasPhysicalKeyboard) {
             floatingDockView.setText("あ")
             ensurePhysicalKeyboardPopupWindows()
@@ -3654,6 +3683,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         releaseKeyboardBackgroundVideoPlayer()
         releaseFloatingKeyboardBackgroundVideoPlayer()
         stopVoiceInput()
+        collapseShortcutEntryExpansion()
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
         floatingModeSwitchWindow?.dismiss()
@@ -3673,6 +3703,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onUpdate onDestroy")
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
+        collapseShortcutEntryExpansion()
         isInputViewActive = false
         releaseSuminagashiInkEffects()
         releaseKeyboardBackgroundVideoPlayer()
@@ -3716,6 +3747,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isOmissionSearchEnable = null
         delayTime = null
         isLearnDictionaryMode = null
+        incognitoModeDetectionPreference = true
+        showLearnedCandidatesInIncognitoPreference = true
         isUserDictionaryEnable = null
         isUserTemplateEnable = null
         hankakuPreference = null
@@ -4038,6 +4071,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        collapseShortcutEntryExpansion()
         when (newConfig.orientation) {
             Configuration.ORIENTATION_PORTRAIT -> {
                 finishComposingText()
@@ -11910,6 +11944,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun updateClipboardPreview() {
         Timber.d("SuggestionAdapter Clipboard: updateClipboardPreview")
+        collapseShortcutEntryExpansion()
         suggestionAdapter?.apply {
             when (val item = clipboardUtil.getPrimaryClipContent()) {
                 is ClipboardItem.Image -> {
@@ -16797,6 +16832,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             adapter.setOnShortcutItemClickListener { type ->
                 handleShortcutAction(type, mainView)
             }
+            adapter.setOnShortcutEntryClickListener {
+                adapter.toggleIntegratedShortcutEntryExpansion()
+            }
         }
         suggestionAdapterFull?.let { adapter ->
             adapter.setOnItemClickListener { candidate, position ->
@@ -16932,6 +16970,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun anchorActiveSuggestionStripStartForLeadingContent() {
+        assertMainThread("anchorActiveSuggestionStripStartForLeadingContent")
+        measureDebugSection("IMEService.anchorActiveSuggestionStripStartForLeadingContent") {
+            if (isKeyboardFloatingMode == true) {
+                floatingKeyboardBinding?.suggestionRecyclerView?.scrollToPosition(0)
+                return@measureDebugSection
+            }
+            val binding = mainLayoutBinding ?: return@measureDebugSection
+            setMainSuggestionColumn(binding)
+            binding.suggestionRecyclerView.scrollToPosition(0)
+        }
+    }
+
+    private fun anchorActiveSuggestionStripStartIfLeadingContentExpected() {
+        assertMainThread("anchorActiveSuggestionStripStartIfLeadingContentExpected")
+        if (suggestionAdapter?.isStartAnchoredContentExpected() != true) return
+        anchorActiveSuggestionStripStartForLeadingContent()
+    }
+
     private fun setMainSuggestionColumn(
         mainView: MainLayoutBinding
     ) {
@@ -16989,6 +17046,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         override fun getSpanSize(position: Int): Int {
                             return when (adapter?.getItemViewType(position)) {
                                 SuggestionAdapter.VIEW_TYPE_EMPTY,
+                                SuggestionAdapter.VIEW_TYPE_CLIPBOARD_PREVIEW,
+                                SuggestionAdapter.VIEW_TYPE_SHORTCUT_ENTRY,
                                 SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER,
                                 SuggestionAdapter.VIEW_TYPE_SHORTCUT -> spanCount
                                 else -> 1
@@ -17590,17 +17649,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return applicationContext.dpToPx(toolbarHeightDp)
     }
 
+    private fun shortcutToolbarIconSizePx(toolbarHeightDp: Int = shortcutToolbarHeightDp): Int {
+        val normalizedToolbarHeightDp = toolbarHeightDp.coerceIn(
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
+            AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
+        )
+        val iconSizeDp = appPreference.resolveShortcutToolbarIconSizeDp(
+            toolbarHeightDp = normalizedToolbarHeightDp,
+            iconSizeDp = shortcutToolbarIconSizeDp
+        )
+        return applicationContext.dpToPx(iconSizeDp)
+    }
+
     private fun applyShortcutToolbarSize(mainView: MainLayoutBinding) {
         val toolbarHeightDp = shortcutToolbarHeightDp.coerceIn(
             AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
             AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
         )
-        val iconSizeDp = appPreference.resolveShortcutToolbarIconSizeDp(
-            toolbarHeightDp = toolbarHeightDp,
-            iconSizeDp = shortcutToolbarIconSizeDp
-        )
         val toolbarHeightPx = applicationContext.dpToPx(toolbarHeightDp)
-        val iconSizePx = applicationContext.dpToPx(iconSizeDp)
+        val iconSizePx = shortcutToolbarIconSizePx(toolbarHeightDp)
         mainView.shortcutToolbarRecyclerview.layoutParams =
             mainView.shortcutToolbarRecyclerview.layoutParams.apply {
                 height = toolbarHeightPx
@@ -17662,7 +17729,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             candidatesShown = candidatesShown,
             resetCandidateTabSelection = resetCandidateTabSelection
         )
-        suggestionAdapter?.setIntegratedShortcutVisibility(presentation.showIntegratedShortcut)
+        suggestionAdapter?.setIntegratedShortcutItemsVisibility(presentation.showIntegratedShortcutItems)
+        suggestionAdapter?.setIntegratedShortcutEntryVisibility(presentation.showIntegratedShortcutEntry)
         applyCandidateTabSuggestionOffset(mainView, presentation.showCandidateTab)
         mainView.candidateTabLayout.isVisible = presentation.showCandidateTab
         if (presentation.resetCandidateTabSelection) {
@@ -17676,6 +17744,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             mainView.shortcutToolbarRecyclerview.isVisible = false
         }
+    }
+
+    private fun collapseShortcutEntryExpansion() {
+        suggestionAdapter?.setIntegratedShortcutEntryExpanded(false)
     }
 
     private fun handleShortcutAction(type: ShortcutType, mainView: MainLayoutBinding) {
@@ -19472,22 +19544,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handlePartialOrExcessLength(
-        insertString: String, candidate: Candidate
+        insertString: String, candidate: Candidate, currentInputMode: InputMode
     ) {
         val candidateLength = candidate.length.toInt()
         val candidateString = candidate.string
         if (insertString.length > candidateLength) {
             stringInTail.set(insertString.substring(candidateLength))
-            ioScope.launch {
-                learnRepository.upsertLearnedData(
-                    LearnEntity(
-                        input = insertString.substring(0, candidateLength),
-                        out = candidateString,
-                        score = candidate.score.toShort(),
-                        leftId = candidate.leftId,
-                        rightId = candidate.rightId
+            if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode) {
+                ioScope.launch {
+                    learnRepository.upsertLearnedData(
+                        LearnEntity(
+                            input = insertString.substring(0, candidateLength),
+                            out = candidateString,
+                            score = candidate.score.toShort(),
+                            leftId = candidate.leftId,
+                            rightId = candidate.rightId
+                        )
                     )
-                )
+                }
             }
         }
         commitAndClearInput(candidateString)
@@ -19548,7 +19622,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
                 } else {
                     handlePartialOrExcessLength(
-                        insertString = insertString, candidate = candidate
+                        insertString = insertString,
+                        candidate = candidate,
+                        currentInputMode = currentInputMode
                     )
                 }
             }
@@ -19639,6 +19715,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         _tenKeyQWERTYMode.update { TenKeyQWERTYMode.Default }
         clearZenzLiveSlot("resetAllFlags")
         setSuggestionAdapterSuggestionsOnMain(emptyList())
+        isPrivateMode = false
+        suggestionAdapter?.setIncognitoIcon(null)
         stringInTail.set("")
         suggestionClickNum = 0
         currentCustomKeyboardPosition = 0
@@ -20581,12 +20659,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
+        val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
-            if (enablePredictionSearchLearnDictionaryPreference == true) {
+            if (enablePredictionSearchLearnDictionaryPreference == true &&
+                suggestionLearnRepository != null
+            ) {
                 withContext(Dispatchers.IO) {
                     val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
                     if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
-                    learnRepository.predictiveSearchByInput(
+                    suggestionLearnRepository.predictiveSearchByInput(
                         prefix = insertString, limit = 4
                     ).map {
                         Candidate(
@@ -20623,7 +20704,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTNeologd = mozcUTNeologd,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    learnRepository = suggestionLearnRepository,
                     isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                     enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
                     enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
@@ -20642,7 +20723,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTNeologd = mozcUTNeologd,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    learnRepository = suggestionLearnRepository,
                     isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                     enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
                     enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
@@ -20737,13 +20818,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
+        val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
-            if (enablePredictionSearchLearnDictionaryPreference == true) {
+            if (enablePredictionSearchLearnDictionaryPreference == true &&
+                suggestionLearnRepository != null
+            ) {
                 measureDebugStage("IMEService.getSuggestionList.learnDictionary") {
                     withContext(Dispatchers.IO) {
                         val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
                         if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
-                        learnRepository.predictiveSearchByInput(
+                        suggestionLearnRepository.predictiveSearchByInput(
                             prefix = insertString, limit = 4
                         ).map {
                             Candidate(
@@ -20784,7 +20868,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mozcUTNeologd = mozcUTNeologd,
                         mozcUTWeb = mozcUTWeb,
                         userDictionaryRepository = userDictionaryRepository,
-                        learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                        learnRepository = suggestionLearnRepository,
                         isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                         enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
                         enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
@@ -20806,7 +20890,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         mozcUTNeologd = mozcUTNeologd,
                         mozcUTWeb = mozcUTWeb,
                         userDictionaryRepository = userDictionaryRepository,
-                        learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                        learnRepository = suggestionLearnRepository,
                         isOmissionSearchEnable = isOmissionSearchEnable ?: false,
                         enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
                         enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
@@ -20926,12 +21010,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
+        val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
-            if (enablePredictionSearchLearnDictionaryPreference == true) {
+            if (enablePredictionSearchLearnDictionaryPreference == true &&
+                suggestionLearnRepository != null
+            ) {
                 withContext(Dispatchers.IO) {
                     val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
                     if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
-                    learnRepository.predictiveSearchByInput(
+                    suggestionLearnRepository.predictiveSearchByInput(
                         prefix = insertString, limit = 4
                     ).map {
                         Candidate(
@@ -20960,7 +21047,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTNeologd = mozcUTNeologd,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    learnRepository = suggestionLearnRepository,
                     typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
                         ?: 3000,
                     omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
@@ -20976,7 +21063,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mozcUTNeologd = mozcUTNeologd,
                     mozcUTWeb = mozcUTWeb,
                     userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = if (isLearnDictionaryMode == true) learnRepository else null,
+                    learnRepository = suggestionLearnRepository,
                     typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
                         ?: 3000,
                     omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900

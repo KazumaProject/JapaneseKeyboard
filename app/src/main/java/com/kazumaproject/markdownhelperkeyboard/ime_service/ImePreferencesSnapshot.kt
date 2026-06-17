@@ -21,6 +21,8 @@ data class ImePreferencesSnapshot(
     val isOmissionSearchEnable: Boolean,
     val delayTime: Int,
     val isLearnDictionaryMode: Boolean,
+    val incognitoModeDetectionPreference: Boolean,
+    val showLearnedCandidatesInIncognitoPreference: Boolean,
     val isUserDictionaryEnable: Boolean,
     val isUserTemplateEnable: Boolean,
     val hankakuPreference: Boolean,
@@ -265,6 +267,10 @@ data class ImePreferencesSnapshot(
                 isOmissionSearchEnable = appPreference.omission_search_preference ?: false,
                 delayTime = appPreference.time_same_pronounce_typing_preference ?: 1000,
                 isLearnDictionaryMode = appPreference.learn_dictionary_preference ?: true,
+                incognitoModeDetectionPreference =
+                    appPreference.incognito_mode_detection_preference,
+                showLearnedCandidatesInIncognitoPreference =
+                    appPreference.show_learned_candidates_in_incognito_preference,
                 isUserDictionaryEnable = appPreference.user_dictionary_preference ?: true,
                 isUserTemplateEnable = appPreference.user_template_preference ?: true,
                 hankakuPreference = appPreference.space_hankaku_preference ?: false,

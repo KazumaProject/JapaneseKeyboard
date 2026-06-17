@@ -67,6 +67,7 @@ object SettingSearchIndex {
         R.id.advancedPreferenceFragment,
         R.id.zenzPreferenceFragment,
         R.id.gemmaPreferenceFragment,
+        R.id.legacyCommonPreferenceFragment,
     )
 
     fun searchable(context: Context): List<SettingDestination> {
@@ -277,6 +278,7 @@ object SettingSearchIndex {
         }
 
     private fun sources(): List<PreferenceXmlSource> = buildList {
+        add(PreferenceXmlSource(R.xml.pref_common_legacy, R.id.legacyCommonPreferenceFragment, SettingCategory.ADVANCED))
         add(PreferenceXmlSource(R.xml.pref_keyboard_display, R.id.keyboardDisplayPreferenceFragment, SettingCategory.KEYBOARD_DISPLAY))
         add(PreferenceXmlSource(R.xml.pref_input_method, R.id.inputMethodPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_candidate_conversion, R.id.candidateConversionPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))

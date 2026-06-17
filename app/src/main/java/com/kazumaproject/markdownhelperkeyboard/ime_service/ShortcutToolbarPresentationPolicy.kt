@@ -14,7 +14,8 @@ data class ShortcutToolbarPresentationState(
 
 data class ShortcutToolbarPresentation(
     val showIndependentToolbar: Boolean,
-    val showIntegratedShortcuts: Boolean
+    val showIntegratedShortcutItems: Boolean,
+    val showIntegratedShortcutEntry: Boolean
 )
 
 object ShortcutToolbarPresentationPolicy {
@@ -23,25 +24,35 @@ object ShortcutToolbarPresentationPolicy {
         if (!state.shortcutToolbarVisible || state.symbolKeyboardShown) {
             return ShortcutToolbarPresentation(
                 showIndependentToolbar = false,
-                showIntegratedShortcuts = false
+                showIntegratedShortcutItems = false,
+                showIntegratedShortcutEntry = false
             )
         }
         if (!state.integratedInSuggestion) {
             return ShortcutToolbarPresentation(
                 showIndependentToolbar = true,
-                showIntegratedShortcuts = false
+                showIntegratedShortcutItems = false,
+                showIntegratedShortcutEntry = false
             )
         }
-        val showIntegratedShortcuts =
+        val showIntegratedShortcutItems =
             state.inputStringEmpty &&
                 state.tailEmpty &&
                 !state.clipboardPreviewShown &&
                 !state.selectedTextGemmaActionsShown &&
                 state.suggestionsEmpty &&
                 !state.customLayoutPickerShown
+        val isCentralSpecialContentShown =
+            state.clipboardPreviewShown || state.selectedTextGemmaActionsShown
+        val showIntegratedShortcutEntry =
+            state.inputStringEmpty &&
+                state.tailEmpty &&
+                isCentralSpecialContentShown &&
+                !state.customLayoutPickerShown
         return ShortcutToolbarPresentation(
             showIndependentToolbar = false,
-            showIntegratedShortcuts = showIntegratedShortcuts
+            showIntegratedShortcutItems = showIntegratedShortcutItems,
+            showIntegratedShortcutEntry = showIntegratedShortcutEntry
         )
     }
 }
