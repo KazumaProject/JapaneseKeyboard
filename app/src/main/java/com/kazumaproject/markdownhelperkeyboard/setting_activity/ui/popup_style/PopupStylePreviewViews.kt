@@ -19,11 +19,13 @@ class PopupStylePreviewView @JvmOverloads constructor(
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(245, 247, 250)
     }
+    private val defaultBubbleColor = Color.rgb(55, 71, 79)
+    private val defaultTextColor = Color.WHITE
     private val bubblePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(55, 71, 79)
+        color = defaultBubbleColor
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = defaultTextColor
         textAlign = Paint.Align.CENTER
         typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
@@ -37,7 +39,9 @@ class PopupStylePreviewView @JvmOverloads constructor(
     fun applyStyle(style: PopupViewStyle) {
         this.style = PopupViewStyle(
             style.sizeScalePercent.coerceIn(50, 200),
-            style.textSizeSp.coerceIn(8f, 48f)
+            style.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = style.backgroundColor,
+            textColor = style.textColor
         )
         invalidate()
     }
@@ -61,8 +65,10 @@ class PopupStylePreviewView @JvmOverloads constructor(
         val left = width / 2f - w / 2f
         val top = height / 2f - h / 2f
         val rect = RectF(left, top, left + w, top + h)
+        bubblePaint.color = style.backgroundColor ?: defaultBubbleColor
         canvas.drawRoundRect(rect, dpToPx(18f), dpToPx(18f), bubblePaint)
 
+        textPaint.color = style.textColor ?: defaultTextColor
         textPaint.textSize = spToPx(style.textSizeSp)
         val textY = rect.centerY() - (textPaint.descent() + textPaint.ascent()) / 2f
         canvas.drawText(previewText, rect.centerX(), textY, textPaint)
@@ -92,19 +98,22 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(245, 247, 250)
     }
+    private val defaultPopupColor = Color.rgb(69, 90, 100)
+    private val defaultHighlightColor = Color.rgb(96, 125, 139)
+    private val defaultTextColor = Color.WHITE
     private val popupPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(69, 90, 100)
+        color = defaultPopupColor
     }
     private val highlightPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(96, 125, 139)
+        color = defaultHighlightColor
     }
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = defaultTextColor
         style = Paint.Style.STROKE
         strokeWidth = dpToPx(1f)
     }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE
+        color = defaultTextColor
         textAlign = Paint.Align.CENTER
         typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
@@ -116,7 +125,9 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
         this.target = target
         this.style = PopupViewStyle(
             style.sizeScalePercent.coerceIn(50, 200),
-            style.textSizeSp.coerceIn(8f, 48f)
+            style.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = style.backgroundColor,
+            textColor = style.textColor
         )
         invalidate()
     }
@@ -132,6 +143,11 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         canvas.drawColor(bgPaint.color)
+        popupPaint.color = style.backgroundColor ?: defaultPopupColor
+        highlightPaint.color = style.backgroundColor ?: defaultHighlightColor
+        val resolvedTextColor = style.textColor ?: defaultTextColor
+        textPaint.color = resolvedTextColor
+        strokePaint.color = resolvedTextColor
         textPaint.textSize = spToPx(style.textSizeSp)
         when (target) {
             Target.DIRECTIONAL -> drawDirectionalPreview(canvas)

@@ -145,6 +145,26 @@
                 android:summary="@string/keyboard_touch_effect_palette_summary"
                 android:title="@string/keyboard_touch_effect_palette_title" />
 
+            <SeekBarPreference
+                android:defaultValue="100"
+                android:key="keyboard_touch_effect_liquid_ink_density_preference"
+                android:max="300"
+                android:summary="@string/liquid_ink_density_summary"
+                android:title="@string/liquid_ink_density_title"
+                app:min="50"
+                app:seekBarIncrement="5"
+                app:showSeekBarValue="true" />
+
+            <SeekBarPreference
+                android:defaultValue="100"
+                android:key="keyboard_touch_effect_aurora_ink_density_preference"
+                android:max="300"
+                android:summary="@string/aurora_ink_density_summary"
+                android:title="@string/aurora_ink_density_title"
+                app:min="50"
+                app:seekBarIncrement="5"
+                app:showSeekBarValue="true" />
+
             <ListPreference
                 android:defaultValue="cinematic_random"
                 android:entries="@array/keyboard_touch_effect_cinematic_wave_color_mode_entries"

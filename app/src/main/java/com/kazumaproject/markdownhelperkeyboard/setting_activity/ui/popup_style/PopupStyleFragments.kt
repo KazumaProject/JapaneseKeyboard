@@ -349,7 +349,9 @@ private fun Fragment.styleEditorSection(
     fun currentStyle(): PopupViewStyle {
         return PopupViewStyle(
             MIN_SIZE + sizeSeek.progress,
-            MIN_TEXT + textSeek.progress
+            MIN_TEXT + textSeek.progress,
+            backgroundColor = initialStyle.backgroundColor,
+            textColor = initialStyle.textColor
         )
     }
 

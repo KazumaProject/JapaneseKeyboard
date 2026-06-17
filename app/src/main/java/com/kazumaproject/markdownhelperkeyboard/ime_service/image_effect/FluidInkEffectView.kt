@@ -45,14 +45,16 @@ open class FluidInkEffectView @JvmOverloads constructor(
         colorMode: String,
         @ColorInt fixedColor: Int,
         quality: String = KeyboardTouchEffectQuality.HIGH,
-        transportMode: FluidInkTransportMode = FluidInkTransportMode.PHYSICAL
+        transportMode: FluidInkTransportMode = FluidInkTransportMode.PHYSICAL,
+        densityPercent: Int = FluidInkSettings.DEFAULT_DENSITY_PERCENT
     ) {
         currentSettings = FluidInkSettings(
             enabled = enabled,
             colorMode = colorMode,
             fixedColor = FluidInkSettings.withoutTransparentAlpha(fixedColor),
             quality = KeyboardTouchEffectQuality.normalize(quality),
-            transportMode = transportMode
+            transportMode = transportMode,
+            densityPercent = densityPercent
         )
 
         if (!enabled) {
