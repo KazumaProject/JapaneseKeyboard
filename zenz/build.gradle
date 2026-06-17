@@ -24,6 +24,9 @@ def zenzModelAssetName = providers.gradleProperty("zenzModelAssetName")
 def zenzModelHfToken = providers.gradleProperty("zenzModelHfToken")
         .orElse(localProperties.getProperty("zenzModelHfToken") ?: System.getenv("HF_TOKEN") ?: "")
         .get()
+def zenzModelCacheDir = providers.gradleProperty("zenzModelCacheDir")
+        .orElse(localProperties.getProperty("zenzModelCacheDir") ?: System.getenv("ZENZ_MODEL_CACHE_DIR") ?: "")
+        .get()
 def generatedZenzAssetsDir = layout.buildDirectory.dir("generated/assets/zenzModel/main")
 
 android {
@@ -100,6 +103,9 @@ def prepareZenzModel = tasks.register("prepareZenzModel", Exec) {
     environment "ZENZ_MODEL_WORK_DIR", layout.buildDirectory.dir("intermediates/zenzModel").get().asFile.absolutePath
     environment "ZENZ_MODEL_HF_TOKEN", zenzModelHfToken
     environment "ZENZ_LLAMA_CPP_DIR", file("src/main/cpp/llama.cpp").absolutePath
+    if (zenzModelCacheDir) {
+        environment "ZENZ_MODEL_CACHE_DIR", zenzModelCacheDir
+    }
 }
 
 tasks.named("preBuild").configure {
