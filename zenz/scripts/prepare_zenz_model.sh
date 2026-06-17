@@ -35,12 +35,30 @@ F16_FILE="${WORK_DIR}/ggml-model-f16.gguf"
 OUTPUT_FILE="${OUTPUT_DIR}/${ZENZ_MODEL_ASSET_NAME}"
 STAMP_FILE="${WORK_DIR}/build-stamp.txt"
 EXPECTED_STAMP="${ZENZ_MODEL_REPO}|${ZENZ_MODEL_REVISION}|${ZENZ_MODEL_QUANTIZATION}|${ZENZ_MODEL_ASSET_NAME}"
+CACHE_DIR="${ZENZ_MODEL_CACHE_DIR:-}"
+CACHE_FILE=""
+CACHE_STAMP_FILE=""
 export MODEL_DIR
 
+if [[ -n "${CACHE_DIR}" ]]; then
+  CACHE_FILE="${CACHE_DIR}/${ZENZ_MODEL_ASSET_NAME}"
+  CACHE_STAMP_FILE="${CACHE_DIR}/build-stamp.txt"
+fi
+
 mkdir -p "${OUTPUT_DIR}" "${WORK_DIR}"
+if [[ -n "${CACHE_DIR}" ]]; then
+  mkdir -p "${CACHE_DIR}"
+fi
 
 if [[ -f "${OUTPUT_FILE}" && -f "${STAMP_FILE}" ]] && grep -qx "${EXPECTED_STAMP}" "${STAMP_FILE}"; then
   echo "Zenz model already prepared at ${OUTPUT_FILE}"
+  exit 0
+fi
+
+if [[ -n "${CACHE_FILE}" && -f "${CACHE_FILE}" && -f "${CACHE_STAMP_FILE}" ]] && grep -qx "${EXPECTED_STAMP}" "${CACHE_STAMP_FILE}"; then
+  cp "${CACHE_FILE}" "${OUTPUT_FILE}"
+  cp "${CACHE_STAMP_FILE}" "${STAMP_FILE}"
+  echo "Restored Zenz model from cache at ${CACHE_FILE}"
   exit 0
 fi
 
@@ -55,7 +73,8 @@ PIP_BIN="${VENV_DIR}/bin/pip"
 rm -rf "${MODEL_DIR}"
 mkdir -p "${MODEL_DIR}"
 
-HF_TOKEN="${ZENZ_MODEL_HF_TOKEN:-}" "${PYTHON_BIN}" - <<'PY'
+download_model() {
+  HF_TOKEN="${ZENZ_MODEL_HF_TOKEN:-}" "${PYTHON_BIN}" - <<'PY'
 import os
 from huggingface_hub import snapshot_download
 
@@ -72,6 +91,21 @@ snapshot_download(
     token=token,
 )
 PY
+}
+
+max_attempts=6
+for attempt in $(seq 1 "${max_attempts}"); do
+  if download_model; then
+    break
+  fi
+  if [[ "${attempt}" -eq "${max_attempts}" ]]; then
+    echo "Failed to download Zenz model after ${max_attempts} attempts." >&2
+    exit 1
+  fi
+  sleep_seconds=$((attempt * 15))
+  echo "Zenz model download failed; retrying in ${sleep_seconds}s (${attempt}/${max_attempts})..." >&2
+  sleep "${sleep_seconds}"
+done
 
 cmake -S "${LLAMA_CPP_DIR}" -B "${HOST_BUILD_DIR}" \
   -DCMAKE_BUILD_TYPE=Release \
@@ -93,4 +127,8 @@ cmake --build "${HOST_BUILD_DIR}" --config Release --target llama-quantize -j >/
   "${ZENZ_MODEL_QUANTIZATION}" >/dev/null
 
 printf '%s\n' "${EXPECTED_STAMP}" > "${STAMP_FILE}"
+if [[ -n "${CACHE_FILE}" ]]; then
+  cp "${OUTPUT_FILE}" "${CACHE_FILE}"
+  cp "${STAMP_FILE}" "${CACHE_STAMP_FILE}"
+fi
 echo "Prepared ${OUTPUT_FILE}"

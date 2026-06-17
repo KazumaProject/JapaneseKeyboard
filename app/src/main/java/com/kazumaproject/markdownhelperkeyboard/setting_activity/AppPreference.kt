@@ -12,9 +12,9 @@ import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
+import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
-import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
@@ -171,6 +171,13 @@ object AppPreference {
         Pair("qwerty_romaji_hankaku_symbol_preference", false)
 
     private val QWERTY_SHOW_POPUP_WINDOW = Pair("qwerty_show_popup_window_preference", true)
+
+    private val KEY_POPUP_USE_CUSTOM_COLOR =
+        Pair("key_popup_use_custom_color_preference", false)
+    private val KEY_POPUP_BACKGROUND_COLOR =
+        Pair("key_popup_background_color_preference", Color.WHITE)
+    private val KEY_POPUP_TEXT_COLOR =
+        Pair("key_popup_text_color_preference", Color.BLACK)
 
     private val TENKEY_POPUP_SIZE_SCALE_PERCENT =
         Pair("tenkey_popup_size_scale_percent_preference", 100)
@@ -645,6 +652,10 @@ object AppPreference {
             "keyboard_touch_effect_palette_preference",
             SprayPaintSettings.PALETTE_PAINT_SPLASH
         )
+    private val KEYBOARD_TOUCH_EFFECT_LIQUID_INK_DENSITY =
+        Pair("keyboard_touch_effect_liquid_ink_density_preference", 100)
+    private val KEYBOARD_TOUCH_EFFECT_AURORA_INK_DENSITY =
+        Pair("keyboard_touch_effect_aurora_ink_density_preference", 100)
     private val KEYBOARD_TOUCH_EFFECT_CINEMATIC_WAVE_COLOR_MODE =
         Pair(
             "keyboard_touch_effect_cinematic_wave_color_mode_preference",
@@ -1157,6 +1168,30 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_POPUP_WINDOW.first, value ?: true)
+        }
+
+    var key_popup_use_custom_color: Boolean
+        get() = preferences.getBoolean(
+            KEY_POPUP_USE_CUSTOM_COLOR.first,
+            KEY_POPUP_USE_CUSTOM_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEY_POPUP_USE_CUSTOM_COLOR.first, value)
+        }
+
+    var key_popup_background_color: Int
+        get() = readIntPreference(
+            KEY_POPUP_BACKGROUND_COLOR.first,
+            KEY_POPUP_BACKGROUND_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEY_POPUP_BACKGROUND_COLOR.first, value)
+        }
+
+    var key_popup_text_color: Int
+        get() = readIntPreference(KEY_POPUP_TEXT_COLOR.first, KEY_POPUP_TEXT_COLOR.second)
+        set(value) = preferences.edit {
+            it.putInt(KEY_POPUP_TEXT_COLOR.first, value)
         }
 
     var show_candidates_password: Boolean?
@@ -3380,6 +3415,30 @@ object AppPreference {
             it.putString(
                 KEYBOARD_TOUCH_EFFECT_PALETTE.first,
                 normalizeTouchEffectPalette(value)
+            )
+        }
+
+    var keyboard_touch_effect_liquid_ink_density_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_TOUCH_EFFECT_LIQUID_INK_DENSITY.first,
+            KEYBOARD_TOUCH_EFFECT_LIQUID_INK_DENSITY.second
+        ).coerceIn(50, 300)
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_TOUCH_EFFECT_LIQUID_INK_DENSITY.first,
+                value.coerceIn(50, 300)
+            )
+        }
+
+    var keyboard_touch_effect_aurora_ink_density_preference: Int
+        get() = preferences.getInt(
+            KEYBOARD_TOUCH_EFFECT_AURORA_INK_DENSITY.first,
+            KEYBOARD_TOUCH_EFFECT_AURORA_INK_DENSITY.second
+        ).coerceIn(50, 300)
+        set(value) = preferences.edit {
+            it.putInt(
+                KEYBOARD_TOUCH_EFFECT_AURORA_INK_DENSITY.first,
+                value.coerceIn(50, 300)
             )
         }
 

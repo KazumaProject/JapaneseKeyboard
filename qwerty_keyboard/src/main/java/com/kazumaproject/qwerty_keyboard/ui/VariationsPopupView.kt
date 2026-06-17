@@ -34,6 +34,8 @@ class VariationsPopupView(context: Context) : View(context) {
     private var itemHeight = 0f
     private var numColumns = 1
     private var numRows = 1
+    private var popupBackgroundColor: Int? = null
+    private var popupTextColor: Int? = null
 
     // ■■■ FLATモード用 (元のコードの変数) ■■■
     private val flatTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -71,6 +73,8 @@ class VariationsPopupView(context: Context) : View(context) {
     private val itemCornerRadius = 15f
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupBackgroundColor = style.backgroundColor
+        popupTextColor = style.textColor
         val textSizePx = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP,
             style.textSizeSp.coerceIn(8f, 48f),
@@ -78,6 +82,14 @@ class VariationsPopupView(context: Context) : View(context) {
         )
         flatTextPaint.textSize = textSizePx
         neuTextPaint.textSize = textSizePx
+        style.backgroundColor?.let { backgroundColor ->
+            flatBackgroundPaint.color = backgroundColor
+            neuBackgroundPaint.color = backgroundColor
+        }
+        style.textColor?.let { textColor ->
+            flatTextPaint.color = textColor
+            neuTextPaint.color = textColor
+        }
         invalidate()
     }
 
@@ -90,8 +102,8 @@ class VariationsPopupView(context: Context) : View(context) {
         // モードを自動的にニューモーフィズムに切り替え
         currentStyle = PopupStyle.NEUMORPHISM
 
-        neuBackgroundPaint.color = bgColor
-        neuTextPaint.color = textColor
+        neuBackgroundPaint.color = popupBackgroundColor ?: bgColor
+        neuTextPaint.color = popupTextColor ?: textColor
         neuSelectedFillPaint.color = selectedColor
 
         // 影の色を計算

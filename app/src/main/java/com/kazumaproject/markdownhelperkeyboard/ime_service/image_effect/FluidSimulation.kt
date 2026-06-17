@@ -81,6 +81,8 @@ internal class FluidSimulation(
     private var velocityDiffusionSource: RenderTarget? = null
     private var renderTargetFormat = FluidRenderTargetFormat.HalfFloat
     private var waterPhaseSeconds = 0f
+    private var inkDensityMultiplier = 1f
+    private var maxDyeDensity = DEFAULT_MAX_DYE_DENSITY
 
     private var copyProgram = 0
     private var splatProgram = 0
@@ -150,6 +152,21 @@ internal class FluidSimulation(
         val nextGrid = gridResolver.resolve(surfaceWidth, surfaceHeight, qualityLevel, userQuality)
         if (nextGrid == grid) return
         resizeTargets(nextGrid = nextGrid, preserveExistingDye = true)
+    }
+
+    fun setInkDensityPercent(percent: Int) {
+        val clamped = percent.coerceIn(
+            FluidInkSettings.MIN_DENSITY_PERCENT,
+            FluidInkSettings.MAX_DENSITY_PERCENT
+        )
+        inkDensityMultiplier = clamped / 100f
+        maxDyeDensity = if (clamped <= FluidInkSettings.DEFAULT_DENSITY_PERCENT) {
+            DEFAULT_MAX_DYE_DENSITY
+        } else {
+            val t = ((clamped - FluidInkSettings.DEFAULT_DENSITY_PERCENT).toFloat() / 200f)
+                .coerceIn(0f, 1f)
+            DEFAULT_MAX_DYE_DENSITY + (1f - DEFAULT_MAX_DYE_DENSITY) * t
+        }
     }
 
     fun render(
@@ -395,6 +412,8 @@ internal class FluidSimulation(
         uniform1f(splatProgram, "uRadius", radius)
         uniform1f(splatProgram, "uAspect", grid.width.toFloat() / grid.height.toFloat())
         uniform1f(splatProgram, "uIsDye", if (isDye) 1f else 0f)
+        uniform1f(splatProgram, "uInkDensity", inkDensityMultiplier)
+        uniform1f(splatProgram, "uMaxDyeDensity", maxDyeDensity)
         uniformEncoding(splatProgram, "uTargetEncoded", source)
         uniformEncoding(splatProgram, "uOutputEncoded", destination)
         uniform1f(splatProgram, "uSignedRange", SIGNED_FIELD_RANGE)
@@ -748,6 +767,7 @@ internal class FluidSimulation(
         private const val MIN_DT_SECONDS = 1f / 120f
         private const val MAX_DT_SECONDS = 1f / 24f
         private const val WATER_PHASE_WRAP_SECONDS = 10_000f
+        private const val DEFAULT_MAX_DYE_DENSITY = 0.84f
 
         private val QUAD = floatArrayOf(
             -1f, -1f,
@@ -789,6 +809,8 @@ internal class FluidSimulation(
             uniform float uRadius;
             uniform float uAspect;
             uniform float uIsDye;
+            uniform float uInkDensity;
+            uniform float uMaxDyeDensity;
             uniform float uTargetEncoded;
             uniform float uOutputEncoded;
             uniform float uSignedRange;
@@ -806,12 +828,16 @@ internal class FluidSimulation(
                 float radiusSquared = radius * radius;
                 float falloff = exp(-dot(delta, delta) / radiusSquared);
                 if (uIsDye > 0.5) {
-                    const float MAX_DYE_DENSITY = 0.84;
                     const float INK_DEPOSIT_STRENGTH = 0.52;
                     vec4 base = texture(uTarget, vUv);
                     vec3 baseColor = base.a > 0.0001 ? base.rgb / base.a : uValue;
-                    float deposit = clamp(uAlpha * falloff * INK_DEPOSIT_STRENGTH, 0.0, 0.42);
-                    float remainingCapacity = max(MAX_DYE_DENSITY - base.a, 0.0);
+                    float depositLimit = min(1.0, 0.42 * uInkDensity);
+                    float deposit = clamp(
+                        uAlpha * falloff * INK_DEPOSIT_STRENGTH * uInkDensity,
+                        0.0,
+                        depositLimit
+                    );
+                    float remainingCapacity = max(uMaxDyeDensity - base.a, 0.0);
                     float nextAlpha = base.a + min(deposit, remainingCapacity);
                     float colorWeight = clamp(deposit / (base.a + deposit + 0.0001), 0.0, 0.24);
                     vec3 mixedColor = mix(baseColor, uValue, colorWeight);

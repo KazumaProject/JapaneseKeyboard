@@ -42,6 +42,8 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
 
     // ▼▼▼ 追加: 枠線用の色を保持するプロパティ ▼▼▼
     private var separatorColor = Color.LTGRAY
+    private var popupBackgroundColor: Int? = null
+    private var popupTextColor: Int? = null
 
     init {
         // init時のテキスト色はテーマで上書きされる前提
@@ -59,7 +61,7 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         this.highlightColor = theme.centerGradientStartColor
         this.separatorColor = theme.separatorColor
         // Viewのテキストカラー状態を更新する
-        setTextColor(theme.textColor)
+        setTextColor(popupTextColor ?: theme.textColor)
     }
 
     fun setFlickDirection(direction: FlickDirection) {
@@ -75,7 +77,11 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupBackgroundColor = style.backgroundColor
+        popupTextColor = style.textColor
         setTextSize(TypedValue.COMPLEX_UNIT_SP, style.textSizeSp.coerceIn(8f, 48f))
+        style.textColor?.let { setTextColor(it) }
+        invalidate()
     }
 
     /**
@@ -86,7 +92,7 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         val h = height.toFloat()
         if (w == 0f || h == 0f) return
 
-        backgroundPaint.color = if (currentDirection == FlickDirection.TAP) {
+        backgroundPaint.color = popupBackgroundColor ?: if (currentDirection == FlickDirection.TAP) {
             this.highlightColor
         } else {
             this.highlightColor
