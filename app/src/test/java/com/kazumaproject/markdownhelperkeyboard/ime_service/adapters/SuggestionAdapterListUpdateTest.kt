@@ -1,7 +1,10 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Looper
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -40,9 +43,43 @@ class SuggestionAdapterListUpdateTest {
         adapter.release()
     }
 
+    @Test
+    fun incognitoQuickActionRequestsStartAnchorWithoutSuggestionListUpdate() {
+        val adapter = SuggestionAdapter()
+        adapter.setShortcutItems(listOf(ShortcutType.SETTINGS, ShortcutType.EMOJI))
+        adapter.setIntegratedShortcutItemsVisibility(true)
+        drainMainUntil { adapter.itemCount == 2 }
+
+        val startAnchorCount = AtomicInteger(0)
+        val listUpdateCount = AtomicInteger(0)
+        val firstAnchor = CountDownLatch(1)
+        adapter.onStartAnchoredContentCommitted = {
+            startAnchorCount.incrementAndGet()
+            firstAnchor.countDown()
+        }
+        adapter.onListUpdated = {
+            listUpdateCount.incrementAndGet()
+        }
+
+        adapter.setIncognitoIcon(ColorDrawable(Color.BLACK))
+
+        drainMainUntil(firstAnchor)
+        assertTrue(
+            "incognito leading action should request a start anchor",
+            firstAnchor.await(0, TimeUnit.MILLISECONDS)
+        )
+        assertEquals(1, startAnchorCount.get())
+        assertEquals(0, listUpdateCount.get())
+        adapter.release()
+    }
+
     private fun drainMainUntil(latch: CountDownLatch) {
+        drainMainUntil { latch.count == 0L }
+    }
+
+    private fun drainMainUntil(condition: () -> Boolean) {
         val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(2)
-        while (latch.count > 0 && System.nanoTime() < deadline) {
+        while (!condition() && System.nanoTime() < deadline) {
             shadowOf(Looper.getMainLooper()).idle()
             Thread.sleep(10)
         }

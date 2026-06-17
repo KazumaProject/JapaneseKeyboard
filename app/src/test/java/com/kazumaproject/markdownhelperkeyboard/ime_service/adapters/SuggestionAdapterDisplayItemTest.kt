@@ -1,11 +1,15 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -44,6 +48,60 @@ class SuggestionAdapterDisplayItemTest {
             ),
             adapter.buildDisplayItemKindsForTesting()
         )
+        adapter.release()
+    }
+
+    @Test
+    fun integratedShortcutItemsUseStartAnchorSignature() {
+        val adapter = SuggestionAdapter()
+        adapter.setShortcutItems(shortcuts())
+        adapter.setIntegratedShortcutItemsVisibility(true)
+
+        assertEquals(
+            SuggestionAdapter.StartAnchorSignature(
+                role = SuggestionAdapter.StartAnchorRole.ShortcutItems
+            ),
+            adapter.buildStartAnchorSignatureForTesting()
+        )
+        assertTrue(adapter.isStartAnchoredContentExpected())
+        adapter.release()
+    }
+
+    @Test
+    fun incognitoQuickActionChangesStartAnchorSignature() {
+        val adapter = SuggestionAdapter()
+        adapter.setUndoEnabled(true)
+        adapter.setShortcutItems(shortcuts())
+        adapter.setIntegratedShortcutItemsVisibility(true)
+
+        assertEquals(
+            SuggestionAdapter.StartAnchorSignature(
+                role = SuggestionAdapter.StartAnchorRole.QuickActions,
+                quickActions = SuggestionAdapter.QuickActionsVisibilitySignature(
+                    incognitoVisible = false,
+                    undoVisible = true,
+                    redoVisible = false,
+                    reconvertVisible = false
+                )
+            ),
+            adapter.buildStartAnchorSignatureForTesting()
+        )
+
+        adapter.setIncognitoIcon(ColorDrawable(Color.BLACK))
+
+        assertEquals(
+            SuggestionAdapter.StartAnchorSignature(
+                role = SuggestionAdapter.StartAnchorRole.QuickActions,
+                quickActions = SuggestionAdapter.QuickActionsVisibilitySignature(
+                    incognitoVisible = true,
+                    undoVisible = true,
+                    redoVisible = false,
+                    reconvertVisible = false
+                )
+            ),
+            adapter.buildStartAnchorSignatureForTesting()
+        )
+        assertTrue(adapter.isStartAnchoredContentExpected())
         adapter.release()
     }
 
@@ -186,6 +244,7 @@ class SuggestionAdapterDisplayItemTest {
             ),
             adapter.buildDisplayItemKindsForTesting()
         )
+        assertFalse(adapter.isStartAnchoredContentExpected())
         adapter.release()
     }
 
