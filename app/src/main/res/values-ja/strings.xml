@@ -1039,6 +1039,10 @@
     <string name="keyboard_touch_effect_liquid_ripple_summary">触れた位置から、水面のようなやわらかい波紋が広がります。</string>
     <string name="keyboard_touch_effect_luminous_blob_summary">黄色い発光膜がゆっくり漂い、タッチ位置に反応して柔らかく歪みます。</string>
     <string name="keyboard_touch_effect_cinematic_wave_summary">キーの奥でオーロラのような光の波が流れ、タッチ位置で柔らかく歪みます。</string>
+    <string name="liquid_ink_density_title">リキッドインクの濃さ</string>
+    <string name="liquid_ink_density_summary">リキッドインクの表示濃度を調整します。100%で標準です。</string>
+    <string name="aurora_ink_density_title">オーロラインクの濃さ</string>
+    <string name="aurora_ink_density_summary">オーロラインクの表示濃度を調整します。100%で標準です。</string>
     <string name="suminagashi_ink_effect_title">タップ時のエフェクト</string>
     <string name="suminagashi_ink_effect_summary">キーボードに触れた位置から、インクが広がる背景エフェクトを表示します。</string>
     <string name="suminagashi_ink_color_mode_title">インクの色</string>
