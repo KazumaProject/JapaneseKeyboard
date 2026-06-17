@@ -41,6 +41,8 @@ class TfbiFlickPopupView(context: Context) : View(context) {
         textAlign = Paint.Align.CENTER
         textSize = spToPx(20f)
     }
+    private var popupBackgroundColor: Int? = null
+    private var popupTextColor: Int? = null
 
     private val rects = mutableMapOf<TfbiFlickDirection, RectF>()
     private var cornerRadius = 20f
@@ -68,6 +70,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
         highlightBgPaint.color = highlightedBackgroundColor
         strokePaint.color = textColor
         textPaint.color = textColor
+        applyPopupColorOverrides()
         invalidate()
     }
 
@@ -85,8 +88,19 @@ class TfbiFlickPopupView(context: Context) : View(context) {
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupBackgroundColor = style.backgroundColor
+        popupTextColor = style.textColor
         textPaint.textSize = spToPx(style.textSizeSp.coerceIn(8f, 48f))
+        applyPopupColorOverrides()
         invalidate()
+    }
+
+    private fun applyPopupColorOverrides() {
+        popupBackgroundColor?.let { bgPaint.color = it }
+        popupTextColor?.let { textColor ->
+            textPaint.color = textColor
+            strokePaint.color = textColor
+        }
     }
 
     // ===== Viewのライフサイクル =====

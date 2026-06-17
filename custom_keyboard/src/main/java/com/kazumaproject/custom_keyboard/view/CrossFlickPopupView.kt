@@ -92,12 +92,18 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
             imageView.visibility = View.GONE
         }
 
-        fun applyColors(theme: FlickPopupColorTheme, highlighted: Boolean) {
-            textView.setTextColor(theme.textColor)
-            imageView.setColorFilter(theme.textColor, PorterDuff.Mode.SRC_IN)
+        fun applyColors(
+            theme: FlickPopupColorTheme,
+            highlighted: Boolean,
+            backgroundColor: Int?,
+            textColor: Int?
+        ) {
+            val resolvedTextColor = textColor ?: theme.textColor
+            textView.setTextColor(resolvedTextColor)
+            imageView.setColorFilter(resolvedTextColor, PorterDuff.Mode.SRC_IN)
             backgroundShape.cornerRadius = 24f
             backgroundShape.setColor(
-                if (highlighted) theme.segmentHighlightGradientStartColor
+                backgroundColor ?: if (highlighted) theme.segmentHighlightGradientStartColor
                 else theme.centerGradientStartColor
             )
             backgroundShape.setStroke(
@@ -106,7 +112,12 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
             )
         }
 
-        fun applyFallbackColors(context: Context, highlighted: Boolean) {
+        fun applyFallbackColors(
+            context: Context,
+            highlighted: Boolean,
+            backgroundColor: Int?,
+            textColor: Int?
+        ) {
             val typedValue = TypedValue()
             val color = if (highlighted) {
                 context.theme.resolveAttribute(materialR.attr.colorSecondaryContainer, typedValue, true)
@@ -116,7 +127,11 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
                 context.getColor(typedValue.resourceId)
             }
             backgroundShape.cornerRadius = 24f
-            backgroundShape.setColor(color)
+            backgroundShape.setColor(backgroundColor ?: color)
+            textColor?.let { resolvedTextColor ->
+                textView.setTextColor(resolvedTextColor)
+                imageView.setColorFilter(resolvedTextColor, PorterDuff.Mode.SRC_IN)
+            }
         }
 
         fun applyTextSize(textSizeSp: Float) {
@@ -134,6 +149,8 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
     private var colorTheme: FlickPopupColorTheme? = null
     private var highlightedDirection: FlickDirection? = null
     private var popupTextSizeSp: Float = 18f
+    private var popupBackgroundColor: Int? = null
+    private var popupTextColor: Int? = null
 
     init {
         addView(gridLayout, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
@@ -141,14 +158,15 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
 
     fun setColors(theme: FlickPopupColorTheme) {
         colorTheme = theme
-        cells.forEach { (dir, cell) ->
-            cell.applyColors(theme, dir == highlightedDirection)
-        }
+        updateCellColors()
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
         popupTextSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+        popupBackgroundColor = style.backgroundColor
+        popupTextColor = style.textColor
         updateCellTextSizes()
+        updateCellColors()
         invalidate()
     }
 
@@ -174,9 +192,19 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
                 applyTextSize(popupTextSizeSp)
                 val theme = colorTheme
                 if (theme != null) {
-                    applyColors(theme, direction == highlightedDirection)
+                    applyColors(
+                        theme,
+                        direction == highlightedDirection,
+                        popupBackgroundColor,
+                        popupTextColor
+                    )
                 } else {
-                    applyFallbackColors(context, direction == highlightedDirection)
+                    applyFallbackColors(
+                        context,
+                        direction == highlightedDirection,
+                        popupBackgroundColor,
+                        popupTextColor
+                    )
                 }
             }
             cell.layoutParams = params
@@ -215,9 +243,19 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
                     applyTextSize(popupTextSizeSp)
                     val theme = colorTheme
                     if (theme != null) {
-                        applyColors(theme, direction == highlightedDirection)
+                        applyColors(
+                            theme,
+                            direction == highlightedDirection,
+                            popupBackgroundColor,
+                            popupTextColor
+                        )
                     } else {
-                        applyFallbackColors(context, direction == highlightedDirection)
+                        applyFallbackColors(
+                            context,
+                            direction == highlightedDirection,
+                            popupBackgroundColor,
+                            popupTextColor
+                        )
                     }
                 }
                 cell.layoutParams = params
@@ -233,17 +271,31 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
 
     fun highlightDirection(direction: FlickDirection?) {
         highlightedDirection = direction
-        val theme = colorTheme
-        cells.forEach { (dir, cell) ->
-            if (theme != null) {
-                cell.applyColors(theme, dir == direction)
-            } else {
-                cell.applyFallbackColors(context, dir == direction)
-            }
-        }
+        updateCellColors()
     }
 
     private fun updateCellTextSizes() {
         cells.values.forEach { it.applyTextSize(popupTextSizeSp) }
+    }
+
+    private fun updateCellColors() {
+        val theme = colorTheme
+        cells.forEach { (dir, cell) ->
+            if (theme != null) {
+                cell.applyColors(
+                    theme,
+                    dir == highlightedDirection,
+                    popupBackgroundColor,
+                    popupTextColor
+                )
+            } else {
+                cell.applyFallbackColors(
+                    context,
+                    dir == highlightedDirection,
+                    popupBackgroundColor,
+                    popupTextColor
+                )
+            }
+        }
     }
 }
