@@ -10070,10 +10070,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         configureFlickKeyboardView(mainView.customLayoutDefault, mainView, isFloatingView = false)
     }
 
+    private fun popupBackgroundColorOrNull(): Int? =
+        if (appPreference.key_popup_use_custom_color) appPreference.key_popup_background_color else null
+
+    private fun popupTextColorOrNull(): Int? =
+        if (appPreference.key_popup_use_custom_color) appPreference.key_popup_text_color else null
+
     private fun currentTenKeyPopupViewStyle(): PopupViewStyle {
         return PopupViewStyle(
             sizeScalePercent = appPreference.tenkey_popup_size_scale_percent ?: 100,
-            textSizeSp = appPreference.tenkey_popup_text_size_sp ?: 28.0f
+            textSizeSp = appPreference.tenkey_popup_text_size_sp ?: 28.0f,
+            backgroundColor = popupBackgroundColorOrNull(),
+            textColor = popupTextColorOrNull()
         )
     }
 
@@ -10081,11 +10089,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return QwertyPopupViewStyleSet(
             keyPreview = PopupViewStyle(
                 sizeScalePercent = appPreference.qwerty_key_preview_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.qwerty_key_preview_popup_text_size_sp ?: 28.0f
+                textSizeSp = appPreference.qwerty_key_preview_popup_text_size_sp ?: 28.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             ),
             variation = PopupViewStyle(
                 sizeScalePercent = appPreference.qwerty_variation_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.qwerty_variation_popup_text_size_sp ?: 28.0f
+                textSizeSp = appPreference.qwerty_variation_popup_text_size_sp ?: 28.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             )
         )
     }
@@ -10094,19 +10106,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return FlickPopupViewStyleSet(
             directional = PopupViewStyle(
                 sizeScalePercent = appPreference.flick_directional_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.flick_directional_popup_text_size_sp ?: 28.0f
+                textSizeSp = appPreference.flick_directional_popup_text_size_sp ?: 28.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             ),
             cross = PopupViewStyle(
                 sizeScalePercent = appPreference.flick_cross_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.flick_cross_popup_text_size_sp ?: 18.0f
+                textSizeSp = appPreference.flick_cross_popup_text_size_sp ?: 18.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             ),
             standard = PopupViewStyle(
                 sizeScalePercent = appPreference.flick_standard_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.flick_standard_popup_text_size_sp ?: 19.0f
+                textSizeSp = appPreference.flick_standard_popup_text_size_sp ?: 19.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             ),
             tfbi = PopupViewStyle(
                 sizeScalePercent = appPreference.flick_tfbi_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.flick_tfbi_popup_text_size_sp ?: 20.0f
+                textSizeSp = appPreference.flick_tfbi_popup_text_size_sp ?: 20.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             )
         )
     }

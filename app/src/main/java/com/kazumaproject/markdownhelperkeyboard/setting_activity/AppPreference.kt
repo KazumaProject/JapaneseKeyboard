@@ -172,6 +172,13 @@ object AppPreference {
 
     private val QWERTY_SHOW_POPUP_WINDOW = Pair("qwerty_show_popup_window_preference", true)
 
+    private val KEY_POPUP_USE_CUSTOM_COLOR =
+        Pair("key_popup_use_custom_color_preference", false)
+    private val KEY_POPUP_BACKGROUND_COLOR =
+        Pair("key_popup_background_color_preference", Color.WHITE)
+    private val KEY_POPUP_TEXT_COLOR =
+        Pair("key_popup_text_color_preference", Color.BLACK)
+
     private val TENKEY_POPUP_SIZE_SCALE_PERCENT =
         Pair("tenkey_popup_size_scale_percent_preference", 100)
     private val TENKEY_POPUP_TEXT_SIZE_SP = Pair("tenkey_popup_text_size_sp_preference", 28.0f)
@@ -1161,6 +1168,30 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(QWERTY_SHOW_POPUP_WINDOW.first, value ?: true)
+        }
+
+    var key_popup_use_custom_color: Boolean
+        get() = preferences.getBoolean(
+            KEY_POPUP_USE_CUSTOM_COLOR.first,
+            KEY_POPUP_USE_CUSTOM_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(KEY_POPUP_USE_CUSTOM_COLOR.first, value)
+        }
+
+    var key_popup_background_color: Int
+        get() = readIntPreference(
+            KEY_POPUP_BACKGROUND_COLOR.first,
+            KEY_POPUP_BACKGROUND_COLOR.second
+        )
+        set(value) = preferences.edit {
+            it.putInt(KEY_POPUP_BACKGROUND_COLOR.first, value)
+        }
+
+    var key_popup_text_color: Int
+        get() = readIntPreference(KEY_POPUP_TEXT_COLOR.first, KEY_POPUP_TEXT_COLOR.second)
+        set(value) = preferences.edit {
+            it.putInt(KEY_POPUP_TEXT_COLOR.first, value)
         }
 
     var show_candidates_password: Boolean?

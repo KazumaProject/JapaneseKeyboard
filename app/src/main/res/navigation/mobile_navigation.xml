@@ -395,15 +395,15 @@
     <fragment
         android:id="@+id/tenKeyPopupStyleSettingFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.TenKeyPopupStyleSettingFragment"
-        android:label="TenKey ポップアップ表示" />
+        android:label="@string/tenkey_popup_view_style_preference_title" />
     <fragment
         android:id="@+id/qwertyPopupStyleSettingFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.QwertyPopupStyleSettingFragment"
-        android:label="QWERTY ポップアップ表示" />
+        android:label="@string/qwerty_popup_view_style_preference_title" />
     <fragment
         android:id="@+id/flickKeyboardPopupStyleListFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style.FlickKeyboardPopupStyleListFragment"
-        android:label="FlickKeyboardView ポップアップ表示">
+        android:label="@string/flick_keyboard_popup_view_style_preference_title">
         <action
             android:id="@+id/action_flickKeyboardPopupStyleListFragment_to_flickKeyboardPopupStyleEditFragment"
             app:destination="@id/flickKeyboardPopupStyleEditFragment" />
