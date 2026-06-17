@@ -950,6 +950,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var keyboardTouchEffectQualityPreference: String = KeyboardTouchEffectQuality.HIGH
     private var keyboardTouchEffectColorModePreference: String = "random"
     private var keyboardTouchEffectPalettePreference: String = SprayPaintSettings.PALETTE_PAINT_SPLASH
+    private var liquidInkDensityPreference: Int = 100
+    private var auroraInkDensityPreference: Int = 100
 
     @ColorInt
     private var keyboardTouchEffectColorPreference: Int = Color.rgb(17, 17, 17)
@@ -1913,6 +1915,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardTouchEffectColorModePreference = preferences.keyboardTouchEffectColorModePreference
         keyboardTouchEffectColorPreference = preferences.keyboardTouchEffectColorPreference
         keyboardTouchEffectPalettePreference = preferences.keyboardTouchEffectPalettePreference
+        liquidInkDensityPreference = preferences.liquidInkDensityPreference
+        auroraInkDensityPreference = preferences.auroraInkDensityPreference
         cinematicWaveColorModePreference =
             CinematicWaveSettings.normalizeColorMode(preferences.cinematicWaveColorModePreference)
         cinematicWavePrimaryColorPreference = preferences.cinematicWavePrimaryColorPreference
@@ -2345,8 +2349,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         floatingView: FloatingKeyboardLayoutBinding?
     ) {
+        refreshFluidInkDensityPreferences()
         setupMainKeyboardTouchEffect(mainView)
         floatingView?.let { setupFloatingKeyboardTouchEffect(it) }
+    }
+
+    private fun refreshFluidInkDensityPreferences() {
+        liquidInkDensityPreference =
+            appPreference.keyboard_touch_effect_liquid_ink_density_preference
+        auroraInkDensityPreference =
+            appPreference.keyboard_touch_effect_aurora_ink_density_preference
+    }
+
+    private fun resolveFluidInkDensityPercent(effectType: String): Int {
+        return when {
+            KeyboardTouchEffectType.isLiquidInk(effectType) ->
+                liquidInkDensityPreference.coerceIn(50, 300)
+
+            KeyboardTouchEffectType.isAuroraInk(effectType) ->
+                auroraInkDensityPreference.coerceIn(50, 300)
+
+            else -> 100
+        }
     }
 
     private fun clearAndPauseKeyboardTouchEffects() {
@@ -2418,6 +2442,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             FluidInkTransportMode.PHYSICAL
         }
+        val inkDensityPercent = resolveFluidInkDensityPercent(effectType)
         val liquidRippleEnabled =
             mainSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
         val sprayPaintEnabled =
@@ -2433,7 +2458,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             colorMode = keyboardTouchEffectColorModePreference,
             fixedColor = keyboardTouchEffectColorPreference,
             quality = keyboardTouchEffectQualityPreference,
-            transportMode = inkTransportMode
+            transportMode = inkTransportMode,
+            densityPercent = inkDensityPercent
         )
         mainView.liquidRippleEffectView.configure(
             enabled = liquidRippleEnabled,
@@ -2542,6 +2568,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             FluidInkTransportMode.PHYSICAL
         }
+        val inkDensityPercent = resolveFluidInkDensityPercent(effectType)
         val liquidRippleEnabled =
             floatingSurfaceActive && KeyboardTouchEffectType.isLiquidRipple(effectType)
         val sprayPaintEnabled =
@@ -2557,7 +2584,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             colorMode = keyboardTouchEffectColorModePreference,
             fixedColor = keyboardTouchEffectColorPreference,
             quality = keyboardTouchEffectQualityPreference,
-            transportMode = inkTransportMode
+            transportMode = inkTransportMode,
+            densityPercent = inkDensityPercent
         )
         floatingView.floatingLiquidRippleEffectView.configure(
             enabled = liquidRippleEnabled,
@@ -3931,6 +3959,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardTouchEffectColorModePreference = "random"
         keyboardTouchEffectColorPreference = Color.rgb(17, 17, 17)
         keyboardTouchEffectPalettePreference = SprayPaintSettings.PALETTE_PAINT_SPLASH
+        liquidInkDensityPreference = 100
+        auroraInkDensityPreference = 100
         cinematicWaveColorModePreference = CinematicWaveSettings.COLOR_MODE_CINEMATIC_RANDOM
         cinematicWavePrimaryColorPreference = CinematicWaveSettings.DEFAULT_PRIMARY_COLOR
         cinematicWaveSecondaryColorPreference = CinematicWaveSettings.DEFAULT_SECONDARY_COLOR
@@ -10040,10 +10070,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         configureFlickKeyboardView(mainView.customLayoutDefault, mainView, isFloatingView = false)
     }
 
+    private fun popupBackgroundColorOrNull(): Int? =
+        if (appPreference.key_popup_use_custom_color) appPreference.key_popup_background_color else null
+
+    private fun popupTextColorOrNull(): Int? =
+        if (appPreference.key_popup_use_custom_color) appPreference.key_popup_text_color else null
+
     private fun currentTenKeyPopupViewStyle(): PopupViewStyle {
         return PopupViewStyle(
             sizeScalePercent = appPreference.tenkey_popup_size_scale_percent ?: 100,
-            textSizeSp = appPreference.tenkey_popup_text_size_sp ?: 28.0f
+            textSizeSp = appPreference.tenkey_popup_text_size_sp ?: 28.0f,
+            backgroundColor = popupBackgroundColorOrNull(),
+            textColor = popupTextColorOrNull()
         )
     }
 
@@ -10051,11 +10089,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return QwertyPopupViewStyleSet(
             keyPreview = PopupViewStyle(
                 sizeScalePercent = appPreference.qwerty_key_preview_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.qwerty_key_preview_popup_text_size_sp ?: 28.0f
+                textSizeSp = appPreference.qwerty_key_preview_popup_text_size_sp ?: 28.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             ),
             variation = PopupViewStyle(
                 sizeScalePercent = appPreference.qwerty_variation_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.qwerty_variation_popup_text_size_sp ?: 28.0f
+                textSizeSp = appPreference.qwerty_variation_popup_text_size_sp ?: 28.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             )
         )
     }
@@ -10064,19 +10106,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return FlickPopupViewStyleSet(
             directional = PopupViewStyle(
                 sizeScalePercent = appPreference.flick_directional_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.flick_directional_popup_text_size_sp ?: 28.0f
+                textSizeSp = appPreference.flick_directional_popup_text_size_sp ?: 28.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             ),
             cross = PopupViewStyle(
                 sizeScalePercent = appPreference.flick_cross_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.flick_cross_popup_text_size_sp ?: 18.0f
+                textSizeSp = appPreference.flick_cross_popup_text_size_sp ?: 18.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             ),
             standard = PopupViewStyle(
                 sizeScalePercent = appPreference.flick_standard_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.flick_standard_popup_text_size_sp ?: 19.0f
+                textSizeSp = appPreference.flick_standard_popup_text_size_sp ?: 19.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             ),
             tfbi = PopupViewStyle(
                 sizeScalePercent = appPreference.flick_tfbi_popup_size_scale_percent ?: 100,
-                textSizeSp = appPreference.flick_tfbi_popup_text_size_sp ?: 20.0f
+                textSizeSp = appPreference.flick_tfbi_popup_text_size_sp ?: 20.0f,
+                backgroundColor = popupBackgroundColorOrNull(),
+                textColor = popupTextColorOrNull()
             )
         )
     }

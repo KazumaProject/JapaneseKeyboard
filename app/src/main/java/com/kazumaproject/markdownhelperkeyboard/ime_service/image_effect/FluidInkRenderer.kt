@@ -60,6 +60,7 @@ internal class FluidInkRenderer(
                 paused = true
                 return@postOnRenderer
             }
+            simulation?.setInkDensityPercent(settings.normalizedDensityPercent)
             if (qualityChanged && surfaceWidth > 0 && surfaceHeight > 0 && simulation != null) {
                 simulation?.resizeSurface(
                     surfaceWidth = surfaceWidth,
@@ -80,6 +81,7 @@ internal class FluidInkRenderer(
                 if (egl == null) {
                     egl = EglEnvironment(surfaceTexture)
                     simulation = simulationFactory()
+                    simulation?.setInkDensityPercent(settings.normalizedDensityPercent)
                     simulation?.initialize(
                         surfaceWidth = width,
                         surfaceHeight = height,

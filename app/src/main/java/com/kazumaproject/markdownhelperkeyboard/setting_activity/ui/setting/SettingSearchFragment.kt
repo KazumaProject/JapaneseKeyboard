@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentSettingSearchBinding
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 
 class SettingSearchFragment : Fragment() {
 
@@ -74,9 +75,16 @@ class SettingSearchFragment : Fragment() {
 
     private fun renderResults(query: String) {
         val normalizedQuery = SettingSearchIndex.normalizeForSearch(query)
+        val touchEffectType = AppPreference.keyboard_touch_effect_type_preference
+        val visibleDestinations = searchableDestinations.filter { destination ->
+            KeyboardTouchEffectSettingVisibility.isVisibleForEffect(
+                destination = destination,
+                effectType = touchEffectType,
+            )
+        }
         val results = SettingSearchIndex.search(
             context = requireContext(),
-            destinations = searchableDestinations,
+            destinations = visibleDestinations,
             query = query,
         )
         searchAdapter.submitList(results)

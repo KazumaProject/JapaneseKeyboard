@@ -309,6 +309,13 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
         findPreference<ListPreference>("keyboard_touch_effect_palette_preference")?.isVisible =
             visibility.showPalette
 
+        findPreference<SeekBarPreference>(
+            KeyboardTouchEffectSettingVisibility.LIQUID_INK_DENSITY_KEY
+        )?.isVisible = KeyboardTouchEffectType.isLiquidInk(normalizedEffect)
+        findPreference<SeekBarPreference>(
+            KeyboardTouchEffectSettingVisibility.AURORA_INK_DENSITY_KEY
+        )?.isVisible = KeyboardTouchEffectType.isAuroraInk(normalizedEffect)
+
         findPreference<ListPreference>(
             "keyboard_touch_effect_cinematic_wave_color_mode_preference"
         )?.isVisible = visibility.showCinematicWaveSettings
@@ -609,6 +616,28 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             setOnPreferenceChangeListener { _, newValue ->
                 val nextPalette = SprayPaintSettings.normalizePalette(newValue as? String)
                 appPreference.keyboard_touch_effect_palette_preference = nextPalette
+                true
+            }
+        }
+
+        findPreference<SeekBarPreference>(
+            KeyboardTouchEffectSettingVisibility.LIQUID_INK_DENSITY_KEY
+        )?.apply {
+            value = appPreference.keyboard_touch_effect_liquid_ink_density_preference
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextValue = (newValue as? Int ?: value).coerceIn(50, 300)
+                appPreference.keyboard_touch_effect_liquid_ink_density_preference = nextValue
+                true
+            }
+        }
+
+        findPreference<SeekBarPreference>(
+            KeyboardTouchEffectSettingVisibility.AURORA_INK_DENSITY_KEY
+        )?.apply {
+            value = appPreference.keyboard_touch_effect_aurora_ink_density_preference
+            setOnPreferenceChangeListener { _, newValue ->
+                val nextValue = (newValue as? Int ?: value).coerceIn(50, 300)
+                appPreference.keyboard_touch_effect_aurora_ink_density_preference = nextValue
                 true
             }
         }

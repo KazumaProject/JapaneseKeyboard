@@ -11,8 +11,8 @@
 
         <Preference
             android:key="flick_keyboard_popup_view_style_preference"
-            android:title="ポップアップ表示"
-            android:summary="FlickKeyboardView の各 popup のサイズと文字サイズを設定します" />
+            android:title="@string/flick_keyboard_popup_view_style_preference_title"
+            android:summary="@string/flick_keyboard_popup_view_style_preference_summary" />
 
         <SwitchPreferenceCompat
             android:defaultValue="true"

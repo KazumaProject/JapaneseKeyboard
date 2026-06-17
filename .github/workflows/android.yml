@@ -11,6 +11,8 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      ZENZ_MODEL_CACHE_DIR: ${{ github.workspace }}/.zenz-model-cache
 
     steps:
       - name: Checkout code
@@ -40,6 +42,12 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Cache Zenz model
+        uses: actions/cache@v4
+        with:
+          path: .zenz-model-cache
+          key: ${{ runner.os }}-zenz-model-v1-a728931c8b4867a53ca33d1ff3fe7360b0f15cd5-Q5_K_M-ggml-model-Q5_K_M.gguf
+
       - name: Decode JKS from Base64
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-release-key.jks
@@ -58,14 +66,24 @@ jobs:
           echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> local.properties
 
       - name: Build Release Variants
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           ./gradlew clean \
-            assembleFullStandardRelease \
-            assembleLiteStandardRelease \
+            :app:assembleFullStandardRelease \
             -PsplitApks \
-            --stacktrace
-          ./gradlew assembleLiteFdroidRelease \
-            --stacktrace
+            --stacktrace \
+            --no-daemon \
+            --max-workers=1
+          ./gradlew :app:assembleLiteStandardRelease \
+            -PsplitApks \
+            --stacktrace \
+            --no-daemon \
+            --max-workers=1
+          ./gradlew :app:assembleLiteFdroidRelease \
+            --stacktrace \
+            --no-daemon \
+            --max-workers=1
 
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2

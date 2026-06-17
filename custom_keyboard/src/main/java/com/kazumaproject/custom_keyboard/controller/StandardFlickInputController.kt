@@ -66,7 +66,9 @@ class StandardFlickInputController(context: Context) {
     fun applyPopupViewStyle(style: PopupViewStyle) {
         popupStyle = PopupViewStyle(
             sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
-            textSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = style.backgroundColor,
+            textColor = style.textColor
         )
         popupView.applyPopupViewStyle(popupStyle)
     }

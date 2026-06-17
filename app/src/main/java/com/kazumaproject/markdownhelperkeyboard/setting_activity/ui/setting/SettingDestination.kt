@@ -239,6 +239,72 @@ object SettingDestinations {
         )
         add(
             destination(
+                key = "key_popup_use_custom_color_preference",
+                title = context.getString(R.string.key_popup_use_custom_color_title),
+                summary = context.getString(R.string.key_popup_use_custom_color_summary_off),
+                category = SettingCategory.KEYBOARD_DISPLAY,
+                keywords = listOf(
+                    "popup",
+                    "PopupView",
+                    "tap",
+                    "flick",
+                    "color",
+                    "theme",
+                    "タップ",
+                    "フリック",
+                    "色",
+                ),
+                destinationId = R.id.keyboardThemeFragment,
+                iconRes = CoreR.drawable.outline_border_color_24,
+                highlightPreferenceKey = "key_popup_use_custom_color_preference",
+            )
+        )
+        add(
+            destination(
+                key = "key_popup_background_color_preference",
+                title = context.getString(R.string.key_popup_background_color_title),
+                summary = context.getString(R.string.key_popup_use_custom_color_summary_on),
+                category = SettingCategory.KEYBOARD_DISPLAY,
+                keywords = listOf(
+                    "popup",
+                    "PopupView",
+                    "tap",
+                    "flick",
+                    "background",
+                    "color",
+                    "タップ",
+                    "フリック",
+                    "背景色",
+                ),
+                destinationId = R.id.keyboardThemeFragment,
+                iconRes = CoreR.drawable.outline_border_color_24,
+                highlightPreferenceKey = "key_popup_background_color_preference",
+            )
+        )
+        add(
+            destination(
+                key = "key_popup_text_color_preference",
+                title = context.getString(R.string.key_popup_text_color_title),
+                summary = context.getString(R.string.key_popup_use_custom_color_summary_on),
+                category = SettingCategory.KEYBOARD_DISPLAY,
+                keywords = listOf(
+                    "popup",
+                    "PopupView",
+                    "tap",
+                    "flick",
+                    "text",
+                    "color",
+                    "タップ",
+                    "フリック",
+                    "文字色",
+                ),
+                destinationId = R.id.keyboardThemeFragment,
+                iconRes = CoreR.drawable.outline_border_color_24,
+                highlightPreferenceKey = "key_popup_text_color_preference",
+            )
+        )
+        add(
+            destination(
                 key = "candidate_view_height_setting_fragment_preference",
                 title = context.getString(R.string.candidate_height_portrait_preference_title),
                 summary = context.getString(R.string.candidate_height_preference_sumary),
@@ -399,6 +465,8 @@ object SettingDestinations {
         "keyboard_background_image_select_preference",
         "keyboard_background_video_select_preference",
         "keyboard_touch_effect_type_preference",
+        "keyboard_touch_effect_liquid_ink_density_preference",
+        "keyboard_touch_effect_aurora_ink_density_preference",
         "keyboard_touch_effect_cinematic_wave_color_mode_preference",
         "keyboard_touch_effect_cinematic_wave_type_preference",
         "keyboard_touch_effect_cinematic_wave_primary_color_preference",
@@ -664,6 +732,9 @@ object SettingDestinations {
             "setting_route_keyboard_theme" -> R.id.keyboardThemeFragment
             "theme_custom_candidate_empty_popup_bg_color" -> R.id.keyboardThemeFragment
             "theme_custom_candidate_empty_popup_text_color" -> R.id.keyboardThemeFragment
+            "key_popup_use_custom_color_preference" -> R.id.keyboardThemeFragment
+            "key_popup_background_color_preference" -> R.id.keyboardThemeFragment
+            "key_popup_text_color_preference" -> R.id.keyboardThemeFragment
             "setting_route_kana_preferences" -> R.id.kanaPreferenceFragment
             "setting_route_qwerty_preferences" -> R.id.qwertyPreferenceFragment
             "setting_route_sumire_preferences" -> R.id.sumirePreferenceFragment

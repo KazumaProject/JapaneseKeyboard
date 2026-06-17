@@ -16,6 +16,7 @@ import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.bottomsheet.BottomSheetDialogFragment
 import com.google.android.material.chip.Chip
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentFrequentSettingsAddBottomSheetBinding
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 
 class FrequentSettingsAddBottomSheetFragment : BottomSheetDialogFragment() {
 
@@ -97,7 +98,7 @@ class FrequentSettingsAddBottomSheetFragment : BottomSheetDialogFragment() {
     }
 
     private fun setupCategoryChips() {
-        val filters = FrequentSettingFilters.filters(requireContext(), candidates)
+        val filters = FrequentSettingFilters.filters(requireContext(), visibleCandidates())
         val idMap = mutableMapOf<Int, FrequentCategoryFilter>()
         binding.frequentSettingsAddCategoryChipGroup.removeAllViews()
         filters.forEachIndexed { index, filter ->
@@ -132,7 +133,7 @@ class FrequentSettingsAddBottomSheetFragment : BottomSheetDialogFragment() {
     }
 
     private fun renderCandidates() {
-        val availableCandidates = candidates.filterNot { it.key in selectedKeys }
+        val availableCandidates = visibleCandidates().filterNot { it.key in selectedKeys }
         val filteredCandidates = FrequentSettingFilters.filter(
             context = requireContext(),
             candidates = availableCandidates,
@@ -142,6 +143,16 @@ class FrequentSettingsAddBottomSheetFragment : BottomSheetDialogFragment() {
         binding.frequentSettingsAddEmptyText.isVisible = filteredCandidates.isEmpty()
         binding.frequentSettingsAddRecyclerView.isVisible = filteredCandidates.isNotEmpty()
         adapter.submitList(filteredCandidates)
+    }
+
+    private fun visibleCandidates(): List<SettingDestination> {
+        val touchEffectType = AppPreference.keyboard_touch_effect_type_preference
+        return candidates.filter { destination ->
+            KeyboardTouchEffectSettingVisibility.isVisibleForEffect(
+                destination = destination,
+                effectType = touchEffectType,
+            )
+        }
     }
 
     private fun add(destination: SettingDestination) {
