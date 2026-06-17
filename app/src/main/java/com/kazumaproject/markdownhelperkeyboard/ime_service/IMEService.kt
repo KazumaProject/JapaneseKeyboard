@@ -1452,6 +1452,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
             }
+            onStartAnchoredContentCommitted = {
+                if (Looper.myLooper() == Looper.getMainLooper()) {
+                    anchorActiveSuggestionStripStartForLeadingContent()
+                } else {
+                    mainHandler.post {
+                        anchorActiveSuggestionStripStartForLeadingContent()
+                    }
+                }
+            }
         }
         suggestionAdapterFull = SuggestionAdapter()
         shortcutAdapter = ShortcutAdapter()
@@ -3653,6 +3662,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setMainSuggestionColumn(mainView)
         }
         updateIncognitoModeState(editorInfo)
+        anchorActiveSuggestionStripStartIfLeadingContentExpected()
         if (hasPhysicalKeyboard) {
             floatingDockView.setText("あ")
             ensurePhysicalKeyboardPopupWindows()
@@ -16958,6 +16968,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 updateCandidateStripPresentation(binding)
             }
         }
+    }
+
+    private fun anchorActiveSuggestionStripStartForLeadingContent() {
+        assertMainThread("anchorActiveSuggestionStripStartForLeadingContent")
+        measureDebugSection("IMEService.anchorActiveSuggestionStripStartForLeadingContent") {
+            if (isKeyboardFloatingMode == true) {
+                floatingKeyboardBinding?.suggestionRecyclerView?.scrollToPosition(0)
+                return@measureDebugSection
+            }
+            val binding = mainLayoutBinding ?: return@measureDebugSection
+            setMainSuggestionColumn(binding)
+            binding.suggestionRecyclerView.scrollToPosition(0)
+        }
+    }
+
+    private fun anchorActiveSuggestionStripStartIfLeadingContentExpected() {
+        assertMainThread("anchorActiveSuggestionStripStartIfLeadingContentExpected")
+        if (suggestionAdapter?.isStartAnchoredContentExpected() != true) return
+        anchorActiveSuggestionStripStartForLeadingContent()
     }
 
     private fun setMainSuggestionColumn(
