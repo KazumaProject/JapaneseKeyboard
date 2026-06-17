@@ -576,14 +576,18 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             popTextCenter = centerBinding.popupText
         }
         applyPopupTextSize()
+        applyPopupColors()
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
         popupViewStyle = PopupViewStyle(
             sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
-            textSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = style.backgroundColor,
+            textColor = style.textColor
         )
         applyPopupTextSize()
+        applyPopupColors()
     }
 
     private fun applyPopupTextSize() {
@@ -600,6 +604,34 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 TypedValue.COMPLEX_UNIT_SP,
                 popupViewStyle.textSizeSp.coerceIn(8f, 48f)
             )
+        }
+    }
+
+    private fun applyPopupColors() {
+        if (!::bubbleViewActive.isInitialized || !::popTextActive.isInitialized) return
+        popupViewStyle.backgroundColor?.let { backgroundColor ->
+            listOf(
+                bubbleViewActive,
+                bubbleViewLeft,
+                bubbleViewTop,
+                bubbleViewRight,
+                bubbleViewBottom,
+                bubbleViewCenter
+            ).forEach { bubbleView ->
+                bubbleView.setBubbleColor(backgroundColor)
+            }
+        }
+        popupViewStyle.textColor?.let { textColor ->
+            listOf(
+                popTextActive,
+                popTextLeft,
+                popTextTop,
+                popTextRight,
+                popTextBottom,
+                popTextCenter
+            ).forEach { textView ->
+                textView.setTextColor(textColor)
+            }
         }
     }
 
@@ -965,6 +997,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     specialKeyTextColor = customSpecialKeyTextColor,
                     borderWidth = borderWidth
                 )
+                applyPopupTextSize()
+                applyPopupColors()
             }
 
             else -> {

@@ -31,6 +31,12 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         // System Theme Keys
         private const val PREF_KEY_DEFAULT = "theme_default"
         private const val PREF_KEY_ROUND_CORNER = "round_corner_keyboard_preference"
+        private const val PREF_KEY_POPUP_USE_CUSTOM_COLOR =
+            "key_popup_use_custom_color_preference"
+        private const val PREF_KEY_POPUP_BACKGROUND_COLOR =
+            "key_popup_background_color_preference"
+        private const val PREF_KEY_POPUP_TEXT_COLOR =
+            "key_popup_text_color_preference"
 
         // Liquid Glass Keys
         private const val PREF_KEY_LIQUID_GLASS = "liquid_glass_preference"
@@ -162,7 +168,6 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         systemCategory.addPreference(defaultPref)
 
-
         // -------------------------------------------------------
         // Custom Category (Keyboard Appearance)
         // -------------------------------------------------------
@@ -221,6 +226,41 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             getString(R.string.theme_custom_special_key_text_color)
         ) { appPreference.custom_theme_special_key_text_color }
         customCategory.addPreference(customSpecialTextPref)
+
+        val popupUseCustomColorPref = SwitchPreferenceCompat(context).apply {
+            key = PREF_KEY_POPUP_USE_CUSTOM_COLOR
+            title = getString(R.string.key_popup_use_custom_color_title)
+            summaryOn = getString(R.string.key_popup_use_custom_color_summary_on)
+            summaryOff = getString(R.string.key_popup_use_custom_color_summary_off)
+            setDefaultValue(false)
+        }
+        customCategory.addPreference(popupUseCustomColorPref)
+
+        val popupBackgroundColorPref = createColorPreference(
+            context,
+            PREF_KEY_POPUP_BACKGROUND_COLOR,
+            getString(R.string.key_popup_background_color_title)
+        ) { appPreference.key_popup_background_color }
+        customCategory.addPreference(popupBackgroundColorPref)
+
+        val popupTextColorPref = createColorPreference(
+            context,
+            PREF_KEY_POPUP_TEXT_COLOR,
+            getString(R.string.key_popup_text_color_title)
+        ) { appPreference.key_popup_text_color }
+        customCategory.addPreference(popupTextColorPref)
+
+        fun updatePopupColorPrefsState(enabled: Boolean) {
+            popupBackgroundColorPref.isEnabled = enabled
+            popupTextColorPref.isEnabled = enabled
+        }
+
+        updatePopupColorPrefsState(appPreference.key_popup_use_custom_color)
+
+        popupUseCustomColorPref.setOnPreferenceChangeListener { _, newValue ->
+            updatePopupColorPrefsState(newValue as Boolean)
+            true
+        }
 
         val customCandidateTextPref = createColorPreference(
             context,
@@ -443,6 +483,9 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_KEY)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_TEXT)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_TEXT)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_POPUP_USE_CUSTOM_COLOR)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_POPUP_BACKGROUND_COLOR)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_POPUP_TEXT_COLOR)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_TEXT)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG)?.isVisible = isVisible
@@ -490,6 +533,10 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             PREF_KEY_CUSTOM_POST_EDIT_BG -> appPreference.custom_theme_post_edit_bg_color = color
             PREF_KEY_CUSTOM_POST_EDIT_TEXT -> appPreference.custom_theme_post_edit_text_color =
                 color
+
+            // Tap/Flick PopupView Colors
+            PREF_KEY_POPUP_BACKGROUND_COLOR -> appPreference.key_popup_background_color = color
+            PREF_KEY_POPUP_TEXT_COLOR -> appPreference.key_popup_text_color = color
         }
     }
 

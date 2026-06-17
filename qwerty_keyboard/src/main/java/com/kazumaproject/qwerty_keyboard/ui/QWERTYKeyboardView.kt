@@ -2298,6 +2298,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
             }
         }
+        keyPreviewPopupStyle.backgroundColor?.let { backgroundColor ->
+            iv.setDrawableSolidColor(backgroundColor)
+        }
+        keyPreviewPopupStyle.textColor?.let { textColor ->
+            tv.setTextColor(textColor)
+        }
         popupView.rootView.layoutParams.height = previewHeight
 
         when (view) {
@@ -2572,11 +2578,15 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun applyPopupViewStyleSet(styleSet: QwertyPopupViewStyleSet) {
         keyPreviewPopupStyle = PopupViewStyle(
             sizeScalePercent = styleSet.keyPreview.sizeScalePercent.coerceIn(50, 200),
-            textSizeSp = styleSet.keyPreview.textSizeSp.coerceIn(8f, 48f)
+            textSizeSp = styleSet.keyPreview.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = styleSet.keyPreview.backgroundColor,
+            textColor = styleSet.keyPreview.textColor
         )
         variationPopupStyle = PopupViewStyle(
             sizeScalePercent = styleSet.variation.sizeScalePercent.coerceIn(50, 200),
-            textSizeSp = styleSet.variation.textSizeSp.coerceIn(8f, 48f)
+            textSizeSp = styleSet.variation.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = styleSet.variation.backgroundColor,
+            textColor = styleSet.variation.textColor
         )
         variationPopupView?.applyPopupViewStyle(variationPopupStyle)
     }

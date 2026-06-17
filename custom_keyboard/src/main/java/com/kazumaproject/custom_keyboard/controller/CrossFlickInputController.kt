@@ -137,11 +137,15 @@ class CrossFlickInputController(
     ) {
         directionalPopupStyle = PopupViewStyle(
             sizeScalePercent = directional.sizeScalePercent.coerceIn(50, 200),
-            textSizeSp = directional.textSizeSp.coerceIn(8f, 48f)
+            textSizeSp = directional.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = directional.backgroundColor,
+            textColor = directional.textColor
         )
         crossPopupStyle = PopupViewStyle(
             sizeScalePercent = cross.sizeScalePercent.coerceIn(50, 200),
-            textSizeSp = cross.textSizeSp.coerceIn(8f, 48f)
+            textSizeSp = cross.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = cross.backgroundColor,
+            textColor = cross.textColor
         )
         actionPopupViews.values.forEach { it.applyPopupViewStyle(crossPopupStyle) }
         (gridPopup.contentView as? CrossFlickPopupView)?.applyPopupViewStyle(crossPopupStyle)

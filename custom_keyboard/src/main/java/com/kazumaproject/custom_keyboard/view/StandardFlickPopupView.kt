@@ -44,6 +44,8 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
     private var lastTextColor: Int = Color.BLACK
     private var lastStrokeColor: Int = Color.LTGRAY
     private var popupTextSizeSp: Float = 19f
+    private var popupBackgroundColor: Int? = null
+    private var popupTextColor: Int? = null
 
     private class YOffsetSpan(private val yOffset: Int) : ReplacementSpan() {
         override fun getSize(
@@ -89,9 +91,7 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         lastTextColor = textColor
         lastStrokeColor = strokeColor
 
-        setTextColor(textColor)
-        backgroundDrawable.setColor(backgroundColor)
-        backgroundDrawable.setStroke(dpToPx(1), strokeColor)
+        applyResolvedColors()
         invalidate()
     }
 
@@ -230,10 +230,19 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         val scale = style.sizeScalePercent.coerceIn(50, 200) / 100f
         viewSize = (dpToPx(72) * scale).toInt().coerceAtLeast(1)
         popupTextSizeSp = style.textSizeSp.coerceIn(8f, 48f)
+        popupBackgroundColor = style.backgroundColor
+        popupTextColor = style.textColor
+        applyResolvedColors()
         width = viewSize
         height = viewSize
         requestLayout()
         invalidate()
+    }
+
+    private fun applyResolvedColors() {
+        setTextColor(popupTextColor ?: lastTextColor)
+        backgroundDrawable.setColor(popupBackgroundColor ?: lastBackgroundColor)
+        backgroundDrawable.setStroke(dpToPx(1), lastStrokeColor)
     }
 
     private fun createBackground(): GradientDrawable {

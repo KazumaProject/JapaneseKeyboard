@@ -377,7 +377,15 @@ class SettingHomeFragment : Fragment() {
         } else {
             SettingDestinations.defaultFrequent(context).map { it.key }
         }
-        return selected.mapNotNull { candidates[it] }
+        val touchEffectType = appPreference.keyboard_touch_effect_type_preference
+        return selected
+            .mapNotNull { candidates[it] }
+            .filter { destination ->
+                KeyboardTouchEffectSettingVisibility.isVisibleForEffect(
+                    destination = destination,
+                    effectType = touchEffectType,
+                )
+            }
     }
 
     private fun currentSummary(destination: SettingDestination): String {
