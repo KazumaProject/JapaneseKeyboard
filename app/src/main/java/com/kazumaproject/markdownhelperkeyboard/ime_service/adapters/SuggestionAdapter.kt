@@ -136,6 +136,24 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         CustomLayoutItem
     }
 
+    internal enum class StartAnchorRole {
+        QuickActions,
+        ShortcutItems,
+        ShortcutEntry
+    }
+
+    internal data class QuickActionsVisibilitySignature(
+        val incognitoVisible: Boolean,
+        val undoVisible: Boolean,
+        val redoVisible: Boolean,
+        val reconvertVisible: Boolean
+    )
+
+    internal data class StartAnchorSignature(
+        val role: StartAnchorRole,
+        val quickActions: QuickActionsVisibilitySignature? = null
+    )
+
     private sealed class SuggestionDisplayItem {
         data class CandidateItem(
             val candidate: Candidate,
@@ -205,6 +223,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val adapterScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     var onListUpdated: (() -> Unit)? = null
+    var onStartAnchoredContentCommitted: (() -> Unit)? = null
 
     // Holds the preview content for the empty state.
     private var clipboardText: String = ""
@@ -242,6 +261,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var candidateEmptyDrawableTextColor: Int? = null
     private var released: Boolean = false
     private var displayGeneration: Int = 0
+    private var committedStartAnchorSignature: StartAnchorSignature? = null
 
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
@@ -286,6 +306,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onShortcutEntryClickListener = null
         onShowSoftKeyboardClick = null
         onListUpdated = null
+        onStartAnchoredContentCommitted = null
         incognitoIconDrawable = null
         adapterScope.cancel()
     }
@@ -566,10 +587,20 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             val newItems = buildDisplayItems()
             if (displayItems == newItems) return@measureDebugSection
 
+            val newStartAnchorSignature = startAnchorSignatureFor(newItems)
             val generation = ++displayGeneration
             differ.submitList(newItems) {
                 if (released || generation != displayGeneration) return@submitList
+                val previousStartAnchorSignature = committedStartAnchorSignature
+                committedStartAnchorSignature = newStartAnchorSignature
                 onCommitted?.invoke()
+                if (released || generation != displayGeneration) return@submitList
+                if (
+                    newStartAnchorSignature != null &&
+                    previousStartAnchorSignature != newStartAnchorSignature
+                ) {
+                    onStartAnchoredContentCommitted?.invoke()
+                }
             }
         }
     }
@@ -637,6 +668,14 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         return buildDisplayItems().map { it.kind() }
     }
 
+    internal fun buildStartAnchorSignatureForTesting(): StartAnchorSignature? {
+        return startAnchorSignatureFor(buildDisplayItems())
+    }
+
+    internal fun isStartAnchoredContentExpected(): Boolean {
+        return startAnchorSignatureFor(buildDisplayItems()) != null
+    }
+
     private fun currentQuickActionsState(): QuickActionsState =
         QuickActionsState(
             undoEnabled = isUndoEnabled,
@@ -675,6 +714,26 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             is SuggestionDisplayItem.CustomLayoutItem ->
                 SuggestionDisplayItemKind.CustomLayoutItem
         }
+
+    private fun startAnchorSignatureFor(items: List<SuggestionDisplayItem>): StartAnchorSignature? {
+        return when (val first = items.firstOrNull()) {
+            is SuggestionDisplayItem.QuickActionsItem ->
+                StartAnchorSignature(
+                    role = StartAnchorRole.QuickActions,
+                    quickActions = QuickActionsVisibilitySignature(
+                        incognitoVisible = first.state.incognitoIconDrawable != null,
+                        undoVisible = first.state.undoEnabled,
+                        redoVisible = first.state.redoEnabled,
+                        reconvertVisible = first.state.reconvertEnabled
+                    )
+                )
+            SuggestionDisplayItem.ShortcutEntryItem ->
+                StartAnchorSignature(role = StartAnchorRole.ShortcutEntry)
+            is SuggestionDisplayItem.ShortcutItem ->
+                StartAnchorSignature(role = StartAnchorRole.ShortcutItems)
+            else -> null
+        }
+    }
 
     inner class SuggestionViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val text: MaterialTextView = itemView.findViewById(R.id.suggestion_item_text_view)
