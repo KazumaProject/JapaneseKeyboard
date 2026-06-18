@@ -2,6 +2,8 @@ package com.kazumaproject.markdownhelperkeyboard.converter.mozc
 
 class MozcConverterTrace {
     var dictionaryNodeCount: Int = 0
+    var omissionLookupCount: Int = 0
+    var omissionNodeCount: Int = 0
     var unknownNodeCount: Int = 0
     var prefixPenaltyAppliedCount: Int = 0
     var suffixPenaltyAppliedCount: Int = 0

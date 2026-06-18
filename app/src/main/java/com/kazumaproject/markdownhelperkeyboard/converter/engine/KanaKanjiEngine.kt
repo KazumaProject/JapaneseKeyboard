@@ -277,12 +277,18 @@ class KanaKanjiEngine {
         enableMozcCompatibleConversion: Boolean,
         input: String,
         n: Int,
+        isOmissionSearchEnable: Boolean,
+        omissionSearchOffsetScore: Int,
     ): List<Candidate>? {
         if (!enableMozcCompatibleConversion) return null
         val result = try {
             getMozcCompatibleConverter().getCandidates(
                 input = input,
-                options = MozcConversionOptions(nBest = n),
+                options = MozcConversionOptions(
+                    nBest = n,
+                    isOmissionSearchEnabled = isOmissionSearchEnable,
+                    omissionSearchOffsetScore = omissionSearchOffsetScore,
+                ),
             )
         } catch (error: Throwable) {
             Timber.w(error, "Mozc compatible conversion failed. Falling back to legacy converter.")
@@ -948,6 +954,8 @@ class KanaKanjiEngine {
             enableMozcCompatibleConversion = enableMozcCompatibleConversion,
             input = input,
             n = n,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
         )?.let { return it }
 
         val graph = graphBuilder.constructGraph(
@@ -1433,6 +1441,8 @@ class KanaKanjiEngine {
             enableMozcCompatibleConversion = enableMozcCompatibleConversion,
             input = input,
             n = n,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
         )?.let { return BunsetsuCandidateResult(candidates = it, splitPatterns = emptyList()) }
 
         val graph = graphBuilder.constructGraph(
@@ -1944,6 +1954,8 @@ class KanaKanjiEngine {
             enableMozcCompatibleConversion = enableMozcCompatibleConversion,
             input = input,
             n = n,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
         )?.let { return BunsetsuCandidateResult(candidates = it, splitPatterns = emptyList()) }
 
         val graph = graphBuilder.constructGraph(
@@ -2400,6 +2412,8 @@ class KanaKanjiEngine {
             enableMozcCompatibleConversion = enableMozcCompatibleConversion,
             input = input,
             n = n,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
         )?.let { return it }
 
         val graph = graphBuilder.constructGraph(
@@ -2841,6 +2855,8 @@ class KanaKanjiEngine {
             enableMozcCompatibleConversion = enableMozcCompatibleConversion,
             input = input,
             n = n,
+            isOmissionSearchEnable = false,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
         )?.let { return it }
 
         val graph = graphBuilder.constructGraph(
@@ -3310,6 +3326,8 @@ class KanaKanjiEngine {
             enableMozcCompatibleConversion = enableMozcCompatibleConversion,
             input = input,
             n = n,
+            isOmissionSearchEnable = false,
+            omissionSearchOffsetScore = omissionSearchOffsetScore,
         )?.let { return BunsetsuCandidateResult(candidates = it, splitPatterns = emptyList()) }
 
         val graph = graphBuilder.constructGraph(

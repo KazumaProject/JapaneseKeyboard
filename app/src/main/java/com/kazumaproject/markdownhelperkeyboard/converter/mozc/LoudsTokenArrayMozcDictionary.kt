@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter.mozc
 
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.core.domain.extensions.hasNConsecutiveChars
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
@@ -31,6 +32,23 @@ class LoudsTokenArrayMozcDictionary(
         )
         for (yomi in yomiList) {
             appendNodesForYomi(key = yomi, beginPos = beginPos, builder = builder)
+        }
+        if (options.isOmissionSearchEnabled && !subKey.hasNConsecutiveChars(4)) {
+            trace?.omissionLookupCount = (trace?.omissionLookupCount ?: 0) + 1
+            val omissionResults = yomiTrie.commonPrefixSearchWithOmission(
+                str = subKey,
+                succinctBitVector = succinctBitVectorLBSYomi,
+            )
+            for (omissionResult in omissionResults) {
+                if (!omissionResult.omissionOccurred) continue
+                appendNodesForYomi(
+                    key = omissionResult.yomi,
+                    beginPos = beginPos,
+                    wordCostOffset = options.omissionSearchOffsetScore,
+                    attributes = MozcNodeAttribute.SYSTEM_DICTIONARY or MozcNodeAttribute.OMISSION_SEARCH,
+                    builder = builder,
+                )
+            }
         }
     }
 
@@ -68,6 +86,8 @@ class LoudsTokenArrayMozcDictionary(
     private fun appendNodesForYomi(
         key: String,
         beginPos: Int,
+        wordCostOffset: Int = 0,
+        attributes: Int = MozcNodeAttribute.SYSTEM_DICTIONARY,
         builder: MozcNodeListBuilder,
     ) {
         if (key.isEmpty()) return
@@ -100,14 +120,18 @@ class LoudsTokenArrayMozcDictionary(
                     this.value = value
                     leftId = tokenArray.leftIds[posIndex]
                     rightId = tokenArray.rightIds[posIndex]
-                    wordCost = token.wordCost.toInt()
+                    wordCost = token.wordCost.toInt() + wordCostOffset
                     this.beginPos = beginPos
                     endPos = beginPos + key.length
                     nodeType = MozcNodeType.NORMAL
-                    attributes = MozcNodeAttribute.SYSTEM_DICTIONARY
+                    this.attributes = attributes
                 },
             )
-            trace?.dictionaryNodeCount = (trace?.dictionaryNodeCount ?: 0) + 1
+            if (attributes and MozcNodeAttribute.OMISSION_SEARCH != 0) {
+                trace?.omissionNodeCount = (trace?.omissionNodeCount ?: 0) + 1
+            } else {
+                trace?.dictionaryNodeCount = (trace?.dictionaryNodeCount ?: 0) + 1
+            }
         }
     }
 }

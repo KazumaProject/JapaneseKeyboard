@@ -37,6 +37,36 @@ class KanaKanjiEngineMozcCompatibleRoutingTest {
         assertEquals(1, fakeProvider.callCount)
         assertEquals("今日", candidates.single().string)
         assertEquals("きょう", candidates.single().yomi)
+        assertEquals(false, fakeProvider.lastOptions?.isOmissionSearchEnabled)
+    }
+
+    @Test
+    fun onPathPassesOmissionSearchSettingsToMozcCompatibleConverter() = runTest {
+        val fakeProvider = RecordingMozcProvider()
+        val engine = KanaKanjiEngine().apply {
+            setMozcCompatibleConverterForTesting(fakeProvider)
+        }
+
+        engine.getCandidates(
+            input = "かくせい",
+            n = 7,
+            mozcUtPersonName = false,
+            mozcUTPlaces = false,
+            mozcUTWiki = false,
+            mozcUTNeologd = false,
+            mozcUTWeb = false,
+            userDictionaryRepository = mock<UserDictionaryRepository>(),
+            learnRepository = null,
+            isOmissionSearchEnable = true,
+            typoCorrectionOffsetScore = 3000,
+            omissionSearchOffsetScore = 2345,
+            enableMozcCompatibleConversion = true,
+        )
+
+        assertEquals(1, fakeProvider.callCount)
+        assertEquals(7, fakeProvider.lastOptions?.nBest)
+        assertEquals(true, fakeProvider.lastOptions?.isOmissionSearchEnabled)
+        assertEquals(2345, fakeProvider.lastOptions?.omissionSearchOffsetScore)
     }
 
     @Test
@@ -101,12 +131,14 @@ class KanaKanjiEngineMozcCompatibleRoutingTest {
 
     private class RecordingMozcProvider : MozcCandidateProvider {
         var callCount: Int = 0
+        var lastOptions: MozcConversionOptions? = null
 
         override fun getCandidates(
             input: String,
             options: MozcConversionOptions,
         ): List<Candidate> {
             callCount++
+            lastOptions = options
             assertTrue(options.nBest > 0)
             return listOf(
                 Candidate(
