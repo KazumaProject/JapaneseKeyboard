@@ -83,6 +83,9 @@ class DictionaryBinaryReader @Inject constructor(
         return BufferedReader(InputStreamReader(ByteArrayInputStream(bytes), Charsets.UTF_8))
     }
 
+    fun openBundledAsset(path: String): InputStream =
+        resolver.openBundledAsset(path)
+
     fun loadEnglishReading(key: DictionaryFileKey): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId =
         loadWithBundledFallback(key) { input ->
             openZipAwareObjectInputStream(input, key.name).use {

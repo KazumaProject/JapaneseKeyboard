@@ -803,6 +803,8 @@
     <string name="custom_input_color_enable_title">カスタマイズを有効にする</string>
     <string name="conversion_candidates_romaji_enable_preference_title">ローマ字変換候補を表示</string>
     <string name="conversion_candidates_romaji_enable_preference_summary">ローマ字の変換候補を末尾に追加します</string>
+    <string name="pref_mozc_compatible_conversion_title">Mozc 互換変換ロジック</string>
+    <string name="pref_mozc_compatible_conversion_summary">Mozc の converter 構造に基づくラティス・未知語・Segmenter・Viterbi・N-best・resegment を使用します。OFF の場合は従来の変換ロジックを使用します。</string>
     <string name="learn_dictionary_preference_title">先頭の変換候補を学習</string>
     <string name="learn_dictionary_preference_summary">先頭の変換候補を選択したときに学習します</string>
     <string name="enable_prediction_search_learn_dictionary_preference_titile">学習辞書で予測変換</string>

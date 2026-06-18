@@ -208,6 +208,7 @@ data class ImePreferencesSnapshot(
     val inputConversionTextColor: Int,
     val sumireEnglishQwertyPreference: Boolean,
     val conversionCandidatesRomajiEnablePreference: Boolean,
+    val enableMozcCompatibleConversionPreference: Boolean,
     val enableZenzRightContextPreference: Boolean,
     val learnFirstCandidateDictionaryPreference: Boolean,
     val enablePredictionSearchLearnDictionaryPreference: Boolean,
@@ -573,6 +574,8 @@ data class ImePreferencesSnapshot(
                     appPreference.sumire_english_qwerty_preference,
                 conversionCandidatesRomajiEnablePreference =
                     appPreference.conversion_candidates_romaji_enable_preference,
+                enableMozcCompatibleConversionPreference =
+                    appPreference.enable_mozc_compatible_conversion_preference,
                 enableZenzRightContextPreference =
                     AppVariantConfig.hasZenz && appPreference.enable_zenz_right_context_preference,
                 learnFirstCandidateDictionaryPreference =

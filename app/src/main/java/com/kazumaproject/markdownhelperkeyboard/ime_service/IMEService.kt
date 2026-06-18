@@ -1014,6 +1014,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var sumireEnglishQwertyPreference: Boolean? = false
     private var conversionCandidatesRomajiEnablePreference: Boolean? = false
+    private var enableMozcCompatibleConversionPreference: Boolean = false
 
     private var enableZenzRightContextPreference: Boolean? = false
 
@@ -1947,6 +1948,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireEnglishQwertyPreference = preferences.sumireEnglishQwertyPreference
         conversionCandidatesRomajiEnablePreference =
             preferences.conversionCandidatesRomajiEnablePreference
+        enableMozcCompatibleConversionPreference =
+            preferences.enableMozcCompatibleConversionPreference
         enableZenzRightContextPreference = preferences.enableZenzRightContextPreference
         learnFirstCandidateDictionaryPreference =
             preferences.learnFirstCandidateDictionaryPreference
@@ -20760,7 +20763,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
                     typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
                         ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
+                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
+                    enableMozcCompatibleConversion = enableMozcCompatibleConversionPreference,
                 )
                 engineResult?.candidates.orEmpty()
             } else {
@@ -20779,7 +20783,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
                     typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
                         ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
+                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
+                    enableMozcCompatibleConversion = enableMozcCompatibleConversionPreference,
                 )
             }
         }
@@ -20924,7 +20929,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
                         typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
                             ?: 3000,
-                        omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
+                        omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
+                        enableMozcCompatibleConversion = enableMozcCompatibleConversionPreference,
                     )
                     engineResult?.let {
                         Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: ${it.primarySplitPositions} ${isHenkan.get()} $ngWords $insertString ${it.splitPatterns}")
@@ -20946,7 +20952,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
                         typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
                             ?: 3000,
-                        omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
+                        omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
+                        enableMozcCompatibleConversion = enableMozcCompatibleConversionPreference,
                     )
                 }
             }
@@ -21100,7 +21107,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     learnRepository = suggestionLearnRepository,
                     typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
                         ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
+                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
+                    enableMozcCompatibleConversion = enableMozcCompatibleConversionPreference,
                 )
                 engineResult?.candidates.orEmpty()
             } else {
@@ -21116,7 +21124,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     learnRepository = suggestionLearnRepository,
                     typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
                         ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
+                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
+                    enableMozcCompatibleConversion = enableMozcCompatibleConversionPreference,
                 )
             }
         }

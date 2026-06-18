@@ -67,6 +67,12 @@
             app:showSeekBarValue="true" />
 
         <SwitchPreferenceCompat
+            android:key="enable_mozc_compatible_conversion_preference"
+            android:title="@string/pref_mozc_compatible_conversion_title"
+            android:summary="@string/pref_mozc_compatible_conversion_summary"
+            android:defaultValue="false" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="conversion_bunsetsu_separation_preference"
             android:title="@string/conversion_separation_title"

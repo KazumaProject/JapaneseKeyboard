@@ -33,6 +33,8 @@ internal object CustomThemeColorPreferenceKeys {
 
 object AppPreference {
 
+    const val ENABLE_MOZC_COMPATIBLE_CONVERSION_PREFERENCE =
+        "enable_mozc_compatible_conversion_preference"
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_BG_COLOR = 0x00000000
     const val DEFAULT_CUSTOM_THEME_CANDIDATE_ITEM_PRESSED_BG_COLOR = 0xFFF0F0F3.toInt()
     const val SHORTCUT_TOOLBAR_HEIGHT_DEFAULT_DP = 36
@@ -71,6 +73,8 @@ object AppPreference {
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
     private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 4)
+    private val ENABLE_MOZC_COMPATIBLE_CONVERSION =
+        Pair(ENABLE_MOZC_COMPATIBLE_CONVERSION_PREFERENCE, false)
     private val CANDIDATE_ORDER_OVERRIDE_ENABLE =
         Pair("candidate_order_override_enable_preference", false)
     private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
@@ -1384,6 +1388,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(N_BEST_PREFERENCE.first, value ?: 4)
+        }
+
+    var enable_mozc_compatible_conversion_preference: Boolean
+        get() = preferences.getBoolean(
+            ENABLE_MOZC_COMPATIBLE_CONVERSION.first,
+            ENABLE_MOZC_COMPATIBLE_CONVERSION.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENABLE_MOZC_COMPATIBLE_CONVERSION.first, value)
         }
 
     var candidate_order_override_enable_preference: Boolean?

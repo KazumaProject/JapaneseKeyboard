@@ -22,6 +22,21 @@ import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVect
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.LoudsTokenArrayMozcDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryDetector
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcCandidateFilter
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcCandidateProvider
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcCompatibleConverter
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcConnector
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcConversionOptions
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcConverterTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNBestGenerator
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcPrefixSuffixPenalty
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcResegmenter
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenterData
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcUnknownNodeGenerator
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcViterbi
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
@@ -68,6 +83,8 @@ class KanaKanjiEngine {
     private lateinit var graphBuilder: GraphBuilder
     private lateinit var findPath: FindPath
     private var dictionaryBinaryReader: DictionaryBinaryReader? = null
+    private var mozcCompatibleConverter: MozcCandidateProvider? = null
+    private var mozcCompatibleConverterForTesting: MozcCandidateProvider? = null
 
     private lateinit var connectionIds: ShortArray
     private var connectionMatrixSize: Int = 0
@@ -201,6 +218,12 @@ class KanaKanjiEngine {
 
     fun setDictionaryBinaryReader(reader: DictionaryBinaryReader) {
         dictionaryBinaryReader = reader
+        mozcCompatibleConverter = null
+    }
+
+    fun setMozcCompatibleConverterForTesting(converter: MozcCandidateProvider?) {
+        mozcCompatibleConverterForTesting = converter
+        mozcCompatibleConverter = null
     }
 
     private fun dictionaryReader(context: Context): DictionaryBinaryReader {
@@ -249,6 +272,70 @@ class KanaKanjiEngine {
                 matrixSize = connectionMatrixSize,
             )
         }
+
+    private fun tryMozcCompatibleCandidatesOrNull(
+        enableMozcCompatibleConversion: Boolean,
+        input: String,
+        n: Int,
+    ): List<Candidate>? {
+        if (!enableMozcCompatibleConversion) return null
+        val result = try {
+            getMozcCompatibleConverter().getCandidates(
+                input = input,
+                options = MozcConversionOptions(nBest = n),
+            )
+        } catch (error: Throwable) {
+            Timber.w(error, "Mozc compatible conversion failed. Falling back to legacy converter.")
+            return null
+        }
+        check(result.isNotEmpty()) {
+            "Mozc compatible conversion returned empty candidates for '$input'"
+        }
+        return result
+    }
+
+    private fun getMozcCompatibleConverter(): MozcCandidateProvider {
+        mozcCompatibleConverterForTesting?.let { return it }
+        mozcCompatibleConverter?.let { return it }
+
+        val reader = dictionaryBinaryReader
+            ?: error("DictionaryBinaryReader is required for Mozc compatible conversion")
+        val trace = MozcConverterTrace()
+        val segmenterData = MozcSegmenterData.fromInputStreams(
+            prefixPenalty = reader.openBundledAsset(MozcSegmenterData.PREFIX_PENALTY_ASSET),
+            suffixPenalty = reader.openBundledAsset(MozcSegmenterData.SUFFIX_PENALTY_ASSET),
+            boundaryRule = reader.openBundledAsset(MozcSegmenterData.BOUNDARY_RULE_ASSET),
+            posGroup = reader.openBundledAsset(MozcSegmenterData.POS_GROUP_ASSET),
+        )
+        val dictionary = LoudsTokenArrayMozcDictionary(
+            yomiTrie = systemYomiTrie,
+            tangoTrie = systemTangoTrie,
+            tokenArray = systemTokenArray,
+            succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+            trace = trace,
+        )
+        val connector = MozcConnector(
+            connectionIds = connectionIds,
+            matrixSize = connectionMatrixSize,
+        )
+        val segmenter = MozcSegmenter(segmenterData, trace)
+        val boundaryDetector = MozcBoundaryDetector(segmenter)
+        return MozcCompatibleConverter(
+            dictionary = dictionary,
+            unknownNodeGenerator = MozcUnknownNodeGenerator(segmenterData.posMatcher, trace),
+            prefixSuffixPenalty = MozcPrefixSuffixPenalty(segmenter, trace),
+            resegmenter = MozcResegmenter(segmenter, connector, boundaryDetector, trace),
+            viterbi = MozcViterbi(connector, trace),
+            nBestGenerator = MozcNBestGenerator(connector, boundaryDetector, trace),
+            candidateFilter = MozcCandidateFilter(trace),
+            trace = trace,
+        ).also {
+            mozcCompatibleConverter = it
+        }
+    }
 
     fun applyDictionaryOverrideState(context: Context) {
         val reader = dictionaryReader(context)
@@ -854,8 +941,14 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        enableMozcCompatibleConversion: Boolean = false,
     ): List<Candidate> {
+        tryMozcCompatibleCandidatesOrNull(
+            enableMozcCompatibleConversion = enableMozcCompatibleConversion,
+            input = input,
+            n = n,
+        )?.let { return it }
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -1333,8 +1426,14 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        enableMozcCompatibleConversion: Boolean = false,
     ): BunsetsuCandidateResult {
+        tryMozcCompatibleCandidatesOrNull(
+            enableMozcCompatibleConversion = enableMozcCompatibleConversion,
+            input = input,
+            n = n,
+        )?.let { return BunsetsuCandidateResult(candidates = it, splitPatterns = emptyList()) }
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -1838,8 +1937,14 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        enableMozcCompatibleConversion: Boolean = false,
     ): BunsetsuCandidateResult {
+        tryMozcCompatibleCandidatesOrNull(
+            enableMozcCompatibleConversion = enableMozcCompatibleConversion,
+            input = input,
+            n = n,
+        )?.let { return BunsetsuCandidateResult(candidates = it, splitPatterns = emptyList()) }
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -2288,8 +2393,14 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        enableMozcCompatibleConversion: Boolean = false,
     ): List<Candidate> {
+        tryMozcCompatibleCandidatesOrNull(
+            enableMozcCompatibleConversion = enableMozcCompatibleConversion,
+            input = input,
+            n = n,
+        )?.let { return it }
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -2723,8 +2834,14 @@ class KanaKanjiEngine {
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        enableMozcCompatibleConversion: Boolean = false,
     ): List<Candidate> {
+        tryMozcCompatibleCandidatesOrNull(
+            enableMozcCompatibleConversion = enableMozcCompatibleConversion,
+            input = input,
+            n = n,
+        )?.let { return it }
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -3186,8 +3303,14 @@ class KanaKanjiEngine {
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        enableMozcCompatibleConversion: Boolean = false,
     ): BunsetsuCandidateResult {
+        tryMozcCompatibleCandidatesOrNull(
+            enableMozcCompatibleConversion = enableMozcCompatibleConversion,
+            input = input,
+            n = n,
+        )?.let { return BunsetsuCandidateResult(candidates = it, splitPatterns = emptyList()) }
 
         val graph = graphBuilder.constructGraph(
             input,
