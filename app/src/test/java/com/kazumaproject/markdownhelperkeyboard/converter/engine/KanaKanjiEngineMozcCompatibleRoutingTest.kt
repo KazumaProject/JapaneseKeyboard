@@ -70,6 +70,34 @@ class KanaKanjiEngineMozcCompatibleRoutingTest {
     }
 
     @Test
+    fun englishInputDoesNotCallMozcCompatibleConverterEvenWhenEnabled() = runTest {
+        val fakeProvider = RecordingMozcProvider()
+        val engine = KanaKanjiEngine().apply {
+            setMozcCompatibleConverterForTesting(fakeProvider)
+        }
+
+        runCatching {
+            engine.getCandidates(
+                input = "hello",
+                n = 3,
+                mozcUtPersonName = false,
+                mozcUTPlaces = false,
+                mozcUTWiki = false,
+                mozcUTNeologd = false,
+                mozcUTWeb = false,
+                userDictionaryRepository = mock<UserDictionaryRepository>(),
+                learnRepository = null,
+                isOmissionSearchEnable = true,
+                typoCorrectionOffsetScore = 3000,
+                omissionSearchOffsetScore = 1900,
+                enableMozcCompatibleConversion = true,
+            )
+        }
+
+        assertEquals(0, fakeProvider.callCount)
+    }
+
+    @Test
     fun offPathDoesNotCallMozcCompatibleConverter() = runTest {
         val fakeProvider = RecordingMozcProvider()
         val engine = KanaKanjiEngine().apply {

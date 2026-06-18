@@ -281,6 +281,7 @@ class KanaKanjiEngine {
         omissionSearchOffsetScore: Int,
     ): List<Candidate>? {
         if (!enableMozcCompatibleConversion) return null
+        if (input.isAllHalfWidthAscii()) return null
         val result = try {
             getMozcCompatibleConverter().getCandidates(
                 input = input,
