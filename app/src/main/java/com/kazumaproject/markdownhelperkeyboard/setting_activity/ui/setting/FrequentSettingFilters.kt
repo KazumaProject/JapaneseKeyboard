@@ -85,6 +85,7 @@ internal object FrequentSettingFilters {
             R.id.flickKeyboardPopupStyleListFragment,
             R.id.flickKeyboardSizeSettingsFragment,
             R.id.circularFlickSettingsFragment,
+            R.id.hierarchicalFlickAngleMarginFragment,
             R.id.circularSlotActionSettingFragment,
             R.id.sumireSpecialKeyEditorFragment,
                 -> SettingCategory.INPUT_METHOD

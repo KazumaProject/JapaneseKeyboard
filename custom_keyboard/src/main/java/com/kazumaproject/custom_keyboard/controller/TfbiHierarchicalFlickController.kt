@@ -11,6 +11,7 @@ import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.KeyMode
+import com.kazumaproject.custom_keyboard.data.ModeSwitchBoundary
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
@@ -91,6 +92,7 @@ class TfbiHierarchicalFlickController(
     private var popupBackgroundColor: Int? = null
     private var popupHighlightedColor: Int? = null
     private var popupTextColor: Int? = null
+    private var modeSwitchAngleMargin = MODE_SWITCH_ANGLE_MARGIN
 
     /**
      * ▼▼▼ 追加: 色を設定するメソッド ▼▼▼
@@ -109,6 +111,10 @@ class TfbiHierarchicalFlickController(
             textColor = style.textColor
         )
         popupView?.applyPopupViewStyle(popupStyle)
+    }
+
+    fun setModeSwitchAngleMargin(margin: Double) {
+        modeSwitchAngleMargin = margin.coerceIn(0.0, 34.0)
     }
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
@@ -456,6 +462,7 @@ class TfbiHierarchicalFlickController(
     ): Boolean {
         val targetNode = currentMap[targetDirection] as? TfbiFlickNode.Input ?: return false
         if (targetNode.triggersMode == null || targetNode.triggersMode == currentMode) return true
+        if (targetNode.modeSwitchBoundary != ModeSwitchBoundary.I_ROW_DIACRITIC) return true
 
         val targetAngle = centerAngle(targetDirection) ?: return false
         val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
@@ -469,7 +476,7 @@ class TfbiHierarchicalFlickController(
             .minOrNull()
 
         return nearestAlternativeDiff == null ||
-                targetDiff + MODE_SWITCH_ANGLE_MARGIN < nearestAlternativeDiff
+                targetDiff + modeSwitchAngleMargin < nearestAlternativeDiff
     }
 
     private fun angleDifference(angle: Double, targetAngle: Double): Double {

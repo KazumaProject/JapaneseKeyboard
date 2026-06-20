@@ -16,7 +16,9 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
         val sumireKeyboardSizePreference =
             findPreference<Preference>("sumire_keyboard_size_preference")
 
-        // 先に sumireCustomAnglePreference を取得しておく（リスナー内で使うため）
+        // 入力スタイルに応じて表示を切り替える設定項目を先に取得しておく
+        val hierarchicalFlickAngleMarginPreference =
+            findPreference<Preference>("hierarchical_flick_angle_margin_preference")
         val sumireCustomAnglePreference =
             findPreference<Preference>("sumire_custom_angle_preference")
         val circularSlotActionSettingPreference =
@@ -31,7 +33,8 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
                 summary = entries[findIndexOfValue(value)].toString()
             }
 
-            // 【追加】初期表示状態の設定 ("sumire" の場合のみ表示)
+            // 【追加】初期表示状態の設定
+            hierarchicalFlickAngleMarginPreference?.isVisible = (value == "third-flick")
             sumireCustomAnglePreference?.isVisible = (value == "sumire")
             circularSlotActionSettingPreference?.isVisible = (value == "sumire")
 
@@ -45,7 +48,8 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
                     preference.summary = listPreference.entries[index].toString()
                 }
 
-                // 【追加】変更時の表示切り替え ("sumire" が選ばれたら表示、それ以外は非表示)
+                // 【追加】変更時の表示切り替え
+                hierarchicalFlickAngleMarginPreference?.isVisible = (stringValue == "third-flick")
                 sumireCustomAnglePreference?.isVisible = (stringValue == "sumire")
                 circularSlotActionSettingPreference?.isVisible = (stringValue == "sumire")
 
@@ -79,6 +83,13 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
         findPreference<Preference>("flick_keyboard_popup_view_style_preference")?.apply {
             setOnPreferenceClickListener {
                 navigateSafely(R.id.flickKeyboardPopupStyleListFragment)
+                true
+            }
+        }
+
+        hierarchicalFlickAngleMarginPreference?.apply {
+            setOnPreferenceClickListener {
+                navigateSafely(R.id.hierarchicalFlickAngleMarginFragment)
                 true
             }
         }
