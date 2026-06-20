@@ -1022,6 +1022,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var learnPredictionPreference: Int? = 2
     private var circularFlickWindowScale: Float? = 1.0f
     private var circularFlickDirectionCount: Int? = 4
+    private var hierarchicalFlickModeSwitchAngleMargin: Int? = 20
 
     private var customKeyBorderWidth: Int? = 1
 
@@ -1955,6 +1956,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         learnPredictionPreference = preferences.learnPredictionPreference
         circularFlickWindowScale = preferences.circularFlickWindowScale
         circularFlickDirectionCount = preferences.circularFlickDirectionCount
+        hierarchicalFlickModeSwitchAngleMargin = preferences.hierarchicalFlickModeSwitchAngleMargin
         customKeyBorderWidth = preferences.customKeyBorderWidth
         qwertySwitchNumberKeyWithoutNumberPreference =
             preferences.qwertySwitchNumberKeyWithoutNumberPreference
