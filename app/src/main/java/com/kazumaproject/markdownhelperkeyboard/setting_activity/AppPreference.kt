@@ -121,6 +121,8 @@ object AppPreference {
         Pair("flick_guide_text_size_sp_preference", 9)
     private val FLICK_GUIDE_MAX_CHARACTERS_PREFERENCE =
         Pair("flick_guide_max_characters_preference", 1)
+    private val HIERARCHICAL_FLICK_MODE_SWITCH_ANGLE_MARGIN =
+        Pair("hierarchical_flick_mode_switch_angle_margin_preference", 20)
 
     private val CUSTOM_KEYBOARD_TWO_WORDS_OUTPUTS =
         Pair("custom_keyboard_two_words_preference", true)
@@ -1368,6 +1370,18 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(FLICK_SENSITIVITY.first, value ?: 100)
+        }
+
+    var hierarchical_flick_mode_switch_angle_margin_preference: Int
+        get() = preferences.getInt(
+            HIERARCHICAL_FLICK_MODE_SWITCH_ANGLE_MARGIN.first,
+            HIERARCHICAL_FLICK_MODE_SWITCH_ANGLE_MARGIN.second
+        ).coerceIn(0, 34)
+        set(value) = preferences.edit {
+            it.putInt(
+                HIERARCHICAL_FLICK_MODE_SWITCH_ANGLE_MARGIN.first,
+                value.coerceIn(0, 34)
+            )
         }
 
     var long_press_timeout_preference: Int?
