@@ -12071,7 +12071,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun commitBitmapViaClipboard(contentUri: Uri) {
         Timber.d("commitBitmapViaClipboard: 開始")
         try {
-            clipboardUtil.setClipBoardUri(contentUri, label = "Image")
+            clipboardUtil.setClipBoardUri(
+                uri = contentUri,
+                label = "Image",
+                isSensitive = false
+            )
 
             // 2. ターゲットアプリに読み取り権限を一時的に付与
             // (FileProviderのgrantUriPermissions属性がtrueなら不要な場合もあるが、明示的に行うのが安全)
