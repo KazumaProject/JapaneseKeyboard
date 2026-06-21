@@ -14,6 +14,7 @@ data class CandidateStripInputState(
     val customLayoutPickerShown: Boolean,
     val customLayouts: List<CustomKeyboardLayout>,
     val selectedTextGemmaActionsShown: Boolean,
+    val editorTextSelected: Boolean,
     val clipboardPreviewEnabled: Boolean,
     val clipboardPreviewDescriptionShown: Boolean,
     val clipboardPreviewTapToDelete: Boolean,

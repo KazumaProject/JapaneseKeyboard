@@ -89,6 +89,7 @@ object CandidateStripContentResolver {
         if (state.symbolKeyboardShown) return null
         if (state.customLayoutPickerShown) return null
         if (state.selectedTextGemmaActionsShown) return null
+        if (state.editorTextSelected) return null
         val hasContent = state.clipboardBitmap != null || state.clipboardText.isNotBlank()
         if (!hasContent) return null
         if (state.clipboardPreviewTapToDelete && state.clipboardTextIsLastPasted) return null
