@@ -4,6 +4,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -18,8 +20,10 @@ class CandidateStripContentResolverTest {
             clipboardText = "hello",
             undoEnabled = true
         )
-        val content = CandidateStripContentResolver.resolve(state)
-        assertTrue(content is CandidateStripContent.ClipboardPreview)
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertNotNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.undoEnabled)
     }
 
     @Test
@@ -31,8 +35,10 @@ class CandidateStripContentResolverTest {
             clipboardText = "hello",
             redoEnabled = true
         )
-        val content = CandidateStripContentResolver.resolve(state)
-        assertTrue(content is CandidateStripContent.ClipboardPreview)
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertNotNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.redoEnabled)
     }
 
     @Test
@@ -44,8 +50,10 @@ class CandidateStripContentResolverTest {
             clipboardText = "hello",
             reconvertEnabled = true
         )
-        val content = CandidateStripContentResolver.resolve(state)
-        assertTrue(content is CandidateStripContent.ClipboardPreview)
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertNotNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.reconvertEnabled)
     }
 
     @Test
@@ -57,8 +65,10 @@ class CandidateStripContentResolverTest {
             clipboardText = "hello",
             incognitoVisible = true
         )
-        val content = CandidateStripContentResolver.resolve(state)
-        assertTrue(content is CandidateStripContent.ClipboardPreview)
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertNotNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.incognitoVisible)
     }
 
     @Test
@@ -71,8 +81,10 @@ class CandidateStripContentResolverTest {
             clipboardBitmap = null,
             undoEnabled = true
         )
-        val content = CandidateStripContentResolver.resolve(state)
-        assertTrue(content is CandidateStripContent.EmptyStateActions)
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.undoEnabled)
     }
 
     @Test
@@ -88,11 +100,13 @@ class CandidateStripContentResolverTest {
             redoEnabled = true,
             reconvertEnabled = true
         )
-        val actions = CandidateStripContentResolver.resolve(state).asEmptyStateActions()
-        assertTrue(actions.incognitoVisible)
-        assertTrue(actions.undoEnabled)
-        assertTrue(actions.redoEnabled)
-        assertTrue(actions.reconvertEnabled)
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.incognitoVisible)
+        assertTrue(emptyState.quickActions.undoEnabled)
+        assertTrue(emptyState.quickActions.redoEnabled)
+        assertTrue(emptyState.quickActions.reconvertEnabled)
     }
 
     @Test
@@ -105,6 +119,7 @@ class CandidateStripContentResolverTest {
             clipboardText = "hello"
         )
         val content = CandidateStripContentResolver.resolve(state)
+
         assertTrue(content is CandidateStripContent.Candidates)
     }
 
@@ -119,6 +134,7 @@ class CandidateStripContentResolverTest {
             clipboardText = "hello"
         )
         val content = CandidateStripContentResolver.resolve(state)
+
         assertTrue(content is CandidateStripContent.CustomLayoutPicker)
     }
 
@@ -132,8 +148,10 @@ class CandidateStripContentResolverTest {
             clipboardTextIsLastPasted = true,
             undoEnabled = true
         )
-        val content = CandidateStripContentResolver.resolve(state)
-        assertTrue(content is CandidateStripContent.EmptyStateActions)
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.undoEnabled)
     }
 
     @Test
@@ -147,8 +165,11 @@ class CandidateStripContentResolverTest {
             shortcutToolbarIntegratedInSuggestion = true,
             shortcutItems = listOf(ShortcutType.SETTINGS)
         )
-        val preview = CandidateStripContentResolver.resolve(state).asClipboardPreview()
-        assertTrue(preview.showShortcutEntry)
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertTrue(emptyState.showShortcutEntry)
+        assertNotNull(emptyState.clipboardPreview)
+        assertFalse(emptyState.showIntegratedShortcuts)
     }
 
     @Test
@@ -163,10 +184,13 @@ class CandidateStripContentResolverTest {
             shortcutToolbarIntegratedInSuggestion = true,
             shortcutItems = listOf(ShortcutType.SETTINGS)
         )
-        val actions = CandidateStripContentResolver.resolve(state).asEmptyStateActions()
-        assertTrue(actions.undoEnabled)
-        assertTrue(actions.showIntegratedShortcuts)
-        assertFalse(actions.shortcutItems.isEmpty())
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertFalse(emptyState.showShortcutEntry)
+        assertNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.undoEnabled)
+        assertTrue(emptyState.showIntegratedShortcuts)
+        assertFalse(emptyState.shortcutItems.isEmpty())
     }
 
     @Test
@@ -179,7 +203,90 @@ class CandidateStripContentResolverTest {
             symbolKeyboardShown = true
         )
         val content = CandidateStripContentResolver.resolve(state)
-        assertFalse(content is CandidateStripContent.ClipboardPreview)
+
+        assertFalse(
+            content is CandidateStripContent.EmptyState &&
+                content.clipboardPreview != null
+        )
+    }
+
+    @Test
+    fun emptyStateOrdersShortcutEntryUndoAndClipboardPreview_whenIntegratedShortcutAndUndoAndClipboardAvailable() {
+        val state = baseState(
+            inputStringEmpty = true,
+            tailEmpty = true,
+            clipboardPreviewEnabled = true,
+            clipboardText = "hello",
+            undoEnabled = true,
+            shortcutToolbarVisible = true,
+            shortcutToolbarIntegratedInSuggestion = true,
+            shortcutItems = listOf(ShortcutType.SETTINGS)
+        )
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertTrue(emptyState.showShortcutEntry)
+        assertTrue(emptyState.quickActions.undoEnabled)
+        assertNotNull(emptyState.clipboardPreview)
+        assertFalse(emptyState.showIntegratedShortcuts)
+    }
+
+    @Test
+    fun emptyStateKeepsUndoAndClipboardPreview_whenShortcutIntegrationOff() {
+        val state = baseState(
+            inputStringEmpty = true,
+            tailEmpty = true,
+            clipboardPreviewEnabled = true,
+            clipboardText = "hello",
+            undoEnabled = true,
+            shortcutToolbarVisible = true,
+            shortcutToolbarIntegratedInSuggestion = false
+        )
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertFalse(emptyState.showShortcutEntry)
+        assertTrue(emptyState.quickActions.undoEnabled)
+        assertNotNull(emptyState.clipboardPreview)
+    }
+
+    @Test
+    fun emptyStateKeepsClipboardPreviewAndAllQuickActions() {
+        val state = baseState(
+            inputStringEmpty = true,
+            tailEmpty = true,
+            clipboardPreviewEnabled = true,
+            clipboardText = "hello",
+            incognitoVisible = true,
+            undoEnabled = true,
+            redoEnabled = true,
+            reconvertEnabled = true
+        )
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertNotNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.incognitoVisible)
+        assertTrue(emptyState.quickActions.undoEnabled)
+        assertTrue(emptyState.quickActions.redoEnabled)
+        assertTrue(emptyState.quickActions.reconvertEnabled)
+    }
+
+    @Test
+    fun emptyStateShowsQuickActionsThenShortcutItems_whenClipboardPreviewUnavailable() {
+        val state = baseState(
+            inputStringEmpty = true,
+            tailEmpty = true,
+            clipboardPreviewEnabled = true,
+            clipboardText = "",
+            undoEnabled = true,
+            shortcutToolbarVisible = true,
+            shortcutToolbarIntegratedInSuggestion = true,
+            shortcutItems = listOf(ShortcutType.SETTINGS)
+        )
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertFalse(emptyState.showShortcutEntry)
+        assertNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.undoEnabled)
+        assertTrue(emptyState.showIntegratedShortcuts)
     }
 
     private fun baseState(
@@ -251,13 +358,7 @@ class CandidateStripContentResolverTest {
             rowCount = 4
         )
 
-    private fun CandidateStripContent.asClipboardPreview():
-        CandidateStripContent.ClipboardPreview =
-        this as? CandidateStripContent.ClipboardPreview
-            ?: throw AssertionError("Expected ClipboardPreview but was $this")
-
-    private fun CandidateStripContent.asEmptyStateActions():
-        CandidateStripContent.EmptyStateActions =
-        this as? CandidateStripContent.EmptyStateActions
-            ?: throw AssertionError("Expected EmptyStateActions but was $this")
+    private fun CandidateStripContent.asEmptyState(): CandidateStripContent.EmptyState =
+        this as? CandidateStripContent.EmptyState
+            ?: throw AssertionError("Expected EmptyState but was $this")
 }

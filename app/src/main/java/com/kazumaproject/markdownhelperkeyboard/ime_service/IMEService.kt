@@ -17773,7 +17773,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 shortcutToolbarIntegratedInSuggestion = shortcutToolbarIntegratedInSuggestion == true,
                 inputStringEmpty = inputString.value.isEmpty(),
                 tailEmpty = stringInTail.get().isEmpty(),
-                clipboardPreviewShown = content is CandidateStripContent.ClipboardPreview,
+                clipboardPreviewShown = content.hasClipboardPreview(),
                 selectedTextGemmaActionsShown = content is CandidateStripContent.GemmaActions,
                 suggestionsEmpty = content !is CandidateStripContent.Candidates &&
                     content !is CandidateStripContent.GemmaActions,
@@ -17796,6 +17796,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             content = currentCandidateStripContent
         )
         applyCandidateStripPresentation(presentation)
+    }
+
+    private fun CandidateStripContent.hasClipboardPreview(): Boolean {
+        return this is CandidateStripContent.EmptyState && clipboardPreview != null
     }
 
     private fun applyCandidateStripPresentation(presentation: CandidateStripPresentation) {

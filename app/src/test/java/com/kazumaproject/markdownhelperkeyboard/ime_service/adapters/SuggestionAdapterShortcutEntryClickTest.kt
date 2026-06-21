@@ -5,6 +5,8 @@ import android.os.Looper
 import android.widget.FrameLayout
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.ClipboardPreviewState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.QuickActionsState
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -20,12 +22,24 @@ class SuggestionAdapterShortcutEntryClickTest {
     fun shortcutEntryClickNotifiesListener() {
         val adapter = SuggestionAdapter()
         adapter.submitContent(
-            CandidateStripContent.ClipboardPreview(
-                text = "clip",
-                bitmap = null,
-                descriptionShown = true,
-                tapToDelete = false,
+            CandidateStripContent.EmptyState(
                 showShortcutEntry = true,
+                quickActions = QuickActionsState(
+                    incognitoVisible = false,
+                    undoEnabled = false,
+                    redoEnabled = false,
+                    reconvertEnabled = false,
+                    undoText = "",
+                    redoText = "",
+                ),
+                clipboardPreview = ClipboardPreviewState(
+                    text = "clip",
+                    bitmap = null,
+                    descriptionShown = true,
+                    tapToDelete = false,
+                ),
+                shortcutItems = emptyList(),
+                showIntegratedShortcuts = false,
             )
         )
         drainMainUntilItemCount(adapter, expectedItemCount = 2)
