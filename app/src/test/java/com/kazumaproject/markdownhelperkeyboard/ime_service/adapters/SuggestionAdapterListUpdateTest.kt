@@ -4,6 +4,8 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Looper
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.QuickActionsState
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -31,12 +33,20 @@ class SuggestionAdapterListUpdateTest {
             firstUpdate.countDown()
         }
 
-        adapter.suggestions = candidates
+        adapter.submitContent(
+            CandidateStripContent.Candidates(
+                candidates = candidates
+            )
+        )
         drainMainUntil(firstUpdate)
         assertTrue("first candidate update should be committed", firstUpdate.await(0, TimeUnit.MILLISECONDS))
         updateCount.set(0)
 
-        adapter.suggestions = candidates.toList()
+        adapter.submitContent(
+            CandidateStripContent.Candidates(
+                candidates = candidates.toList()
+            )
+        )
         shadowOf(Looper.getMainLooper()).idle()
 
         assertEquals(0, updateCount.get())
@@ -46,8 +56,23 @@ class SuggestionAdapterListUpdateTest {
     @Test
     fun incognitoQuickActionRequestsStartAnchorWithoutSuggestionListUpdate() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(listOf(ShortcutType.SETTINGS, ShortcutType.EMOJI))
-        adapter.setIntegratedShortcutItemsVisibility(true)
+        val shortcuts = listOf(ShortcutType.SETTINGS, ShortcutType.EMOJI)
+        adapter.submitContent(
+            CandidateStripContent.EmptyState(
+                showShortcutEntry = false,
+                quickActions = QuickActionsState(
+                    incognitoVisible = false,
+                    undoEnabled = false,
+                    redoEnabled = false,
+                    reconvertEnabled = false,
+                    undoText = "",
+                    redoText = "",
+                ),
+                clipboardPreview = null,
+                shortcutItems = shortcuts,
+                showIntegratedShortcuts = true
+            )
+        )
         drainMainUntil { adapter.itemCount == 2 }
 
         val startAnchorCount = AtomicInteger(0)
@@ -62,6 +87,22 @@ class SuggestionAdapterListUpdateTest {
         }
 
         adapter.setIncognitoIcon(ColorDrawable(Color.BLACK))
+        adapter.submitContent(
+            CandidateStripContent.EmptyState(
+                showShortcutEntry = false,
+                quickActions = QuickActionsState(
+                    incognitoVisible = true,
+                    undoEnabled = false,
+                    redoEnabled = false,
+                    reconvertEnabled = false,
+                    undoText = "",
+                    redoText = "",
+                ),
+                clipboardPreview = null,
+                shortcutItems = shortcuts,
+                showIntegratedShortcuts = true
+            )
+        )
 
         drainMainUntil(firstAnchor)
         assertTrue(
