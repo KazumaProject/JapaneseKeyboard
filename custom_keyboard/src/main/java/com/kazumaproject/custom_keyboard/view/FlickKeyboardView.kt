@@ -152,6 +152,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var customAngleAndRange: Map<CircularFlickDirection, Pair<Float, Float>> = emptyMap()
     private var circularViewScale: Float = 1.0f
     private var circularFlickDirectionCount: Int = 4
+    private var hierarchicalFlickModeSwitchAngleMargin: Double = 20.0
+    private var visibleKeyLabels: Set<String>? = null
     private var borderWidth: Int = 1
     private var flickGuideEnabled: Boolean = false
     private var flickGuideTextSizeSp: Float = 9f
@@ -291,6 +293,20 @@ class FlickKeyboardView @JvmOverloads constructor(
         circularFlickDirectionCount = directionCount.coerceIn(4, 7)
     }
 
+    fun setHierarchicalFlickModeSwitchAngleMargin(margin: Double) {
+        hierarchicalFlickModeSwitchAngleMargin = margin.coerceIn(0.0, 34.0)
+        hierarchicalTfbiControllers.forEach {
+            it.setModeSwitchAngleMargin(hierarchicalFlickModeSwitchAngleMargin)
+        }
+    }
+
+    fun setVisibleKeyLabels(labels: Set<String>?) {
+        visibleKeyLabels = labels
+        dynamicKeyMap.values.forEach { info ->
+            applyVisibleKeyFilter(info.view, info.keyData)
+        }
+    }
+
     fun applyKeyboardTheme(
         themeMode: String,
         currentNightMode: Int,
@@ -398,12 +414,24 @@ class FlickKeyboardView @JvmOverloads constructor(
         val keyView = createKeyView(keyData)
         keyView.layoutParams = createLayoutParams(item.placement, keyData)
         val controller = attachKeyBehavior(keyView, keyData)
+        applyVisibleKeyFilter(keyView, keyData)
 
         keyData.keyId?.let { id ->
             dynamicKeyMap[id] = KeyInfo(keyView, keyData, controller, index)
         }
 
         addView(keyView)
+    }
+
+    private fun applyVisibleKeyFilter(keyView: View, keyData: KeyData) {
+        val labels = visibleKeyLabels ?: run {
+            keyView.visibility = View.VISIBLE
+            keyView.isEnabled = true
+            return
+        }
+        val isVisible = keyData.label in labels
+        keyView.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
+        keyView.isEnabled = isVisible
     }
 
     private fun addSpacerItem(item: SpacerItem) {
@@ -2003,6 +2031,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         flickSensitivity = flickSensitivity.toFloat()
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setModeSwitchAngleMargin(hierarchicalFlickModeSwitchAngleMargin)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : TfbiHierarchicalFlickController.TfbiListener {
                             override fun onPress(character: String) {

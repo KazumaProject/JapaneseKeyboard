@@ -11,6 +11,7 @@ import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
+import com.kazumaproject.custom_keyboard.data.ModeSwitchBoundary
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.data.copyWithItems
@@ -9972,7 +9973,9 @@ object KeyboardDefaultLayouts {
                     "き", triggersMode = KeyMode.NORMAL
                 ),
                 TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input(
-                    char = "ぎ", triggersMode = KeyMode.DAKUTEN
+                    char = "ぎ",
+                    triggersMode = KeyMode.DAKUTEN,
+                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
                 ),
                 TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
                     label = "きゅ", nextMap = subMenuForKyu, cancelOnTap = true
@@ -10246,7 +10249,9 @@ object KeyboardDefaultLayouts {
                     "し", triggersMode = KeyMode.NORMAL
                 ),
                 TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input(
-                    char = "じ", triggersMode = KeyMode.DAKUTEN
+                    char = "じ",
+                    triggersMode = KeyMode.DAKUTEN,
+                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
                 ),
                 TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
                     label = "しゅ", nextMap = subMenuForSyu, cancelOnTap = true
@@ -10349,7 +10354,9 @@ object KeyboardDefaultLayouts {
                     "ち", triggersMode = KeyMode.NORMAL
                 ),
                 TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input(
-                    char = "ぢ", triggersMode = KeyMode.DAKUTEN
+                    char = "ぢ",
+                    triggersMode = KeyMode.DAKUTEN,
+                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
                 ),
                 TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
                     label = "ちゅ", nextMap = subMenuForTyu, cancelOnTap = true
@@ -10493,10 +10500,14 @@ object KeyboardDefaultLayouts {
                     "ひ", triggersMode = KeyMode.NORMAL
                 ),
                 TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input(
-                    char = "び", triggersMode = KeyMode.DAKUTEN
+                    char = "び",
+                    triggersMode = KeyMode.DAKUTEN,
+                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
                 ),
                 TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input(
-                    char = "ぴ", triggersMode = KeyMode.HANDAKUTEN
+                    char = "ぴ",
+                    triggersMode = KeyMode.HANDAKUTEN,
+                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
                 ),
                 TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
                     label = "ひゅ", nextMap = subMenuForHyu, cancelOnTap = true

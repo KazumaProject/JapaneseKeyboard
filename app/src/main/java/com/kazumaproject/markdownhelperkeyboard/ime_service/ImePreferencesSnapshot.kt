@@ -214,6 +214,7 @@ data class ImePreferencesSnapshot(
     val learnPredictionPreference: Int,
     val circularFlickWindowScale: Float,
     val circularFlickDirectionCount: Int,
+    val hierarchicalFlickModeSwitchAngleMargin: Int,
     val customKeyBorderWidth: Int,
     val qwertySwitchNumberKeyWithoutNumberPreference: Boolean,
     val customRomajiZenkakuConversionEnablePreference: Boolean,
@@ -582,6 +583,8 @@ data class ImePreferencesSnapshot(
                 learnPredictionPreference = appPreference.learn_prediction_preference,
                 circularFlickWindowScale = appPreference.circular_flickWindow_scale,
                 circularFlickDirectionCount = appPreference.circularFlickDirectionCount,
+                hierarchicalFlickModeSwitchAngleMargin =
+                    appPreference.hierarchical_flick_mode_switch_angle_margin_preference,
                 customKeyBorderWidth = appPreference.custom_theme_border_width,
                 qwertySwitchNumberKeyWithoutNumberPreference =
                     appPreference.qwerty_switch_number_key_without_number_preference,

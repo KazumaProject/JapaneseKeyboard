@@ -96,6 +96,11 @@
             app:summary="@string/sumire_custom_angle_preference_summary" />
 
         <Preference
+            android:key="hierarchical_flick_angle_margin_preference"
+            android:title="@string/hierarchical_flick_angle_margin_preference_title"
+            app:summary="@string/hierarchical_flick_angle_margin_preference_summary" />
+
+        <Preference
             android:key="circular_slot_action_setting_preference"
             android:title="Circular Flick SLOT4〜6 設定"
             app:summary="日本語・英語・数字モードの通常キーに、追加フリックアクションを設定します" />

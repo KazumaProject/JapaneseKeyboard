@@ -774,6 +774,7 @@ object SettingDestinations {
             "custom_keyboard_size_preference" -> R.id.flickKeyboardSizeSettingsFragment
             "flick_keyboard_popup_view_style_preference" -> R.id.flickKeyboardPopupStyleListFragment
             "sumire_custom_angle_preference" -> R.id.circularFlickSettingsFragment
+            "hierarchical_flick_angle_margin_preference" -> R.id.hierarchicalFlickAngleMarginFragment
             "circular_slot_action_setting_preference" -> R.id.circularSlotActionSettingFragment
             "sumire_special_key_editor_preference" -> R.id.sumireSpecialKeyEditorFragment
             "physical_keyboard_shortcut_setting_preference" -> R.id.physicalKeyboardShortcutListFragment
