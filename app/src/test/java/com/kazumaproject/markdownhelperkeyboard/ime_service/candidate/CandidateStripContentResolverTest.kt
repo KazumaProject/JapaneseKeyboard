@@ -139,6 +139,63 @@ class CandidateStripContentResolverTest {
     }
 
     @Test
+    fun editorTextSelectedSuppressesClipboardPreview() {
+        val state = baseState(
+            inputStringEmpty = true,
+            tailEmpty = true,
+            candidatesShown = false,
+            symbolKeyboardShown = false,
+            customLayoutPickerShown = false,
+            selectedTextGemmaActionsShown = false,
+            editorTextSelected = true,
+            clipboardPreviewEnabled = true,
+            clipboardText = "hello"
+        )
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertFalse(
+            content is CandidateStripContent.EmptyState &&
+                content.clipboardPreview != null
+        )
+    }
+
+    @Test
+    fun clipboardPreviewShown_whenNoEditorTextSelected() {
+        val state = baseState(
+            inputStringEmpty = true,
+            tailEmpty = true,
+            candidatesShown = false,
+            symbolKeyboardShown = false,
+            customLayoutPickerShown = false,
+            selectedTextGemmaActionsShown = false,
+            editorTextSelected = false,
+            clipboardPreviewEnabled = true,
+            clipboardText = "hello"
+        )
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertNotNull(emptyState.clipboardPreview)
+    }
+
+    @Test
+    fun gemmaActionsWinOverClipboardPreview_whenEditorTextSelected() {
+        val actions = listOf(candidate("Translate"))
+        val state = baseState(
+            candidates = actions,
+            inputStringEmpty = true,
+            tailEmpty = true,
+            selectedTextGemmaActionsShown = true,
+            editorTextSelected = true,
+            clipboardPreviewEnabled = true,
+            clipboardText = "hello"
+        )
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertTrue(content is CandidateStripContent.GemmaActions)
+        assertTrue((content as CandidateStripContent.GemmaActions).actions == actions)
+    }
+
+    @Test
     fun clipboardPreviewShown_whenClipboardTextIsLastPastedAndTapToDeleteDisabled() {
         val state = baseState(
             inputStringEmpty = true,
@@ -316,6 +373,7 @@ class CandidateStripContentResolverTest {
         customLayoutPickerShown: Boolean = false,
         customLayouts: List<CustomKeyboardLayout> = emptyList(),
         selectedTextGemmaActionsShown: Boolean = false,
+        editorTextSelected: Boolean = false,
         clipboardPreviewEnabled: Boolean = false,
         clipboardPreviewDescriptionShown: Boolean = true,
         clipboardPreviewTapToDelete: Boolean = false,
@@ -342,6 +400,7 @@ class CandidateStripContentResolverTest {
             customLayoutPickerShown = customLayoutPickerShown,
             customLayouts = customLayouts,
             selectedTextGemmaActionsShown = selectedTextGemmaActionsShown,
+            editorTextSelected = editorTextSelected,
             clipboardPreviewEnabled = clipboardPreviewEnabled,
             clipboardPreviewDescriptionShown = clipboardPreviewDescriptionShown,
             clipboardPreviewTapToDelete = clipboardPreviewTapToDelete,
