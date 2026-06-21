@@ -894,6 +894,14 @@
     <string name="circularflicksettingsfragment">Donuts Input</string>
     <string name="sumire_custom_angle_preference_title">Donuts Input</string>
     <string name="sumire_custom_angle_preference_summary">Adjust the flick recognition angle</string>
+    <string name="hierarchical_flick_angle_margin_preference_title">Recognition angle for three-step flick input</string>
+    <string name="hierarchical_flick_angle_margin_preference_summary">Adjusts the boundary angle between neighboring input candidates</string>
+    <string name="hierarchical_flick_angle_margin_heading">I-column dakuten / contracted sounds</string>
+    <string name="hierarchical_flick_angle_margin_reset">Reset</string>
+    <string name="hierarchical_flick_angle_margin_label">Angle difference required for dakuten</string>
+    <string name="hierarchical_flick_angle_margin_description">Adjust this so inputs such as kyo / gyo are recognized as intended.\nIncreasing the angle makes gyo less likely to be recognized by mistake when entering kyo.</string>
+    <string name="hierarchical_flick_angle_margin_value">%1$d°</string>
+    <string name="hierarchical_flick_angle_margin_result">%1$s</string>
     <string name="custom_border_width">Border width</string>
     <string name="qwerty_switch_number_key_without_number_preference_title">Input mode when switching from the number keyboard</string>
     <string name="qwerty_switch_number_key_without_number_preference_sumary">When switching to the Kana keyboard or Sumire keyboard, switch to Japanese input mode instead of the number keyboard.。</string>
