@@ -2,10 +2,10 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -22,9 +22,7 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun integratedOffShowsQuickActionsLeftAligned() {
         val adapter = SuggestionAdapter()
-        adapter.setUndoEnabled(true)
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutItemsVisibility(false)
+        adapter.submitContent(emptyActions(undoEnabled = true))
 
         assertEquals(
             listOf(SuggestionAdapter.SuggestionDisplayItemKind.QuickActionsItem),
@@ -36,9 +34,12 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun integratedOnShowsQuickActionsAndShortcutItemsInSameLane() {
         val adapter = SuggestionAdapter()
-        adapter.setUndoEnabled(true)
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutItemsVisibility(true)
+        adapter.submitContent(
+            emptyActions(
+                undoEnabled = true,
+                showIntegratedShortcuts = true
+            )
+        )
 
         assertEquals(
             listOf(
@@ -54,8 +55,7 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun integratedShortcutItemsUseStartAnchorSignature() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutItemsVisibility(true)
+        adapter.submitContent(CandidateStripContent.IntegratedShortcuts(shortcuts()))
 
         assertEquals(
             SuggestionAdapter.StartAnchorSignature(
@@ -70,9 +70,12 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun incognitoQuickActionChangesStartAnchorSignature() {
         val adapter = SuggestionAdapter()
-        adapter.setUndoEnabled(true)
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutItemsVisibility(true)
+        adapter.submitContent(
+            emptyActions(
+                undoEnabled = true,
+                showIntegratedShortcuts = true
+            )
+        )
 
         assertEquals(
             SuggestionAdapter.StartAnchorSignature(
@@ -88,6 +91,13 @@ class SuggestionAdapterDisplayItemTest {
         )
 
         adapter.setIncognitoIcon(ColorDrawable(Color.BLACK))
+        adapter.submitContent(
+            emptyActions(
+                incognitoVisible = true,
+                undoEnabled = true,
+                showIntegratedShortcuts = true
+            )
+        )
 
         assertEquals(
             SuggestionAdapter.StartAnchorSignature(
@@ -108,9 +118,7 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun integratedOffClipboardPreviewDoesNotShowShortcutEntry() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutEntryVisibility(false)
-        adapter.setClipboardPreview("clip")
+        adapter.submitContent(clipboardPreview(showShortcutEntry = false))
 
         assertEquals(
             listOf(SuggestionAdapter.SuggestionDisplayItemKind.ClipboardPreviewItem),
@@ -122,9 +130,7 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun integratedOnClipboardPreviewShowsShortcutEntry() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutEntryVisibility(true)
-        adapter.setClipboardPreview("clip")
+        adapter.submitContent(clipboardPreview(showShortcutEntry = true))
 
         assertEquals(
             listOf(
@@ -139,10 +145,7 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun expandedShortcutEntryReplacesClipboardPreviewWithShortcutItems() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutEntryVisibility(true)
-        adapter.setClipboardPreview("clip")
-        adapter.setIntegratedShortcutEntryExpanded(true)
+        adapter.submitContent(CandidateStripContent.ExpandedShortcutEntry(shortcuts()))
 
         assertEquals(
             listOf(
@@ -153,7 +156,7 @@ class SuggestionAdapterDisplayItemTest {
             adapter.buildDisplayItemKindsForTesting()
         )
 
-        adapter.setIntegratedShortcutEntryExpanded(false)
+        adapter.submitContent(clipboardPreview(showShortcutEntry = true))
 
         assertEquals(
             listOf(
@@ -168,9 +171,12 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun integratedOffGemmaActionsDoNotShowShortcutEntry() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutEntryVisibility(false)
-        adapter.suggestions = gemmaActions()
+        adapter.submitContent(
+            CandidateStripContent.GemmaActions(
+                actions = gemmaActions(),
+                showShortcutEntry = false
+            )
+        )
 
         assertEquals(
             listOf(
@@ -185,9 +191,12 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun integratedOnGemmaActionsShowShortcutEntry() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutEntryVisibility(true)
-        adapter.suggestions = gemmaActions()
+        adapter.submitContent(
+            CandidateStripContent.GemmaActions(
+                actions = gemmaActions(),
+                showShortcutEntry = true
+            )
+        )
 
         assertEquals(
             listOf(
@@ -203,10 +212,7 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun expandedShortcutEntryReplacesGemmaActionsWithShortcutItems() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutEntryVisibility(true)
-        adapter.suggestions = gemmaActions()
-        adapter.setIntegratedShortcutEntryExpanded(true)
+        adapter.submitContent(CandidateStripContent.ExpandedShortcutEntry(shortcuts()))
 
         assertEquals(
             listOf(
@@ -217,7 +223,12 @@ class SuggestionAdapterDisplayItemTest {
             adapter.buildDisplayItemKindsForTesting()
         )
 
-        adapter.setIntegratedShortcutEntryExpanded(false)
+        adapter.submitContent(
+            CandidateStripContent.GemmaActions(
+                actions = gemmaActions(),
+                showShortcutEntry = true
+            )
+        )
 
         assertEquals(
             listOf(
@@ -233,9 +244,12 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun normalCandidatesDoNotShowShortcutEntry() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutEntryVisibility(true)
-        adapter.suggestions = listOf(candidate("候補1"), candidate("候補2"))
+        adapter.submitContent(
+            CandidateStripContent.Candidates(
+                candidates = listOf(candidate("候補1"), candidate("候補2")),
+                showShortcutEntry = false
+            )
+        )
 
         assertEquals(
             listOf(
@@ -251,11 +265,10 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun customLayoutPickerDoesNotShowShortcutEntry() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(shortcuts())
-        adapter.setIntegratedShortcutEntryVisibility(true)
-        adapter.updateState(
-            TenKeyQWERTYMode.Custom,
-            listOf(CustomKeyboardLayout(name = "Custom", columnCount = 5, rowCount = 4))
+        adapter.submitContent(
+            CandidateStripContent.CustomLayoutPicker(
+                listOf(CustomKeyboardLayout(name = "Custom", columnCount = 5, rowCount = 4))
+            )
         )
 
         assertEquals(
@@ -267,6 +280,35 @@ class SuggestionAdapterDisplayItemTest {
 
     private fun shortcuts(): List<ShortcutType> =
         listOf(ShortcutType.SETTINGS, ShortcutType.EMOJI)
+
+    private fun emptyActions(
+        incognitoVisible: Boolean = false,
+        undoEnabled: Boolean = false,
+        redoEnabled: Boolean = false,
+        reconvertEnabled: Boolean = false,
+        showIntegratedShortcuts: Boolean = false,
+    ): CandidateStripContent.EmptyStateActions =
+        CandidateStripContent.EmptyStateActions(
+            incognitoVisible = incognitoVisible,
+            undoEnabled = undoEnabled,
+            redoEnabled = redoEnabled,
+            reconvertEnabled = reconvertEnabled,
+            undoText = if (undoEnabled) "元に戻す" else "",
+            redoText = if (redoEnabled) "やり直す" else "",
+            shortcutItems = shortcuts(),
+            showIntegratedShortcuts = showIntegratedShortcuts,
+        )
+
+    private fun clipboardPreview(
+        showShortcutEntry: Boolean
+    ): CandidateStripContent.ClipboardPreview =
+        CandidateStripContent.ClipboardPreview(
+            text = "clip",
+            bitmap = null,
+            descriptionShown = true,
+            tapToDelete = false,
+            showShortcutEntry = showShortcutEntry,
+        )
 
     private fun gemmaActions(): List<Candidate> =
         listOf(

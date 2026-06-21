@@ -183,6 +183,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacing
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.SuggestionAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCandidateEmptyPopupThemeColors
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContentResolver
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME2
@@ -623,8 +626,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var suggestionAdapter: SuggestionAdapter? = null
     private var suggestionAdapterFull: SuggestionAdapter? = null
+    private var currentCandidateStripCandidates: List<Candidate> = emptyList()
+    private var currentCandidateStripFullCandidates: List<Candidate> = emptyList()
+    private var currentCandidateStripContent: CandidateStripContent = CandidateStripContent.Empty
+    private var currentShortcutItems: List<ShortcutType> = emptyList()
+    private var candidateStripIncognitoIconDrawable: Drawable? = null
+    private var candidateStripIncognitoVisible: Boolean = false
+    private var integratedShortcutEntryExpanded: Boolean = false
     private var lastSuggestionLayoutKey: SuggestionLayoutKey? = null
     private var mainSuggestionGridSpacingDecoration: RecyclerView.ItemDecoration? = null
+
+    private data class ClipboardPreviewSnapshot(
+        val text: String,
+        val bitmap: Bitmap?,
+        val textIsLastPasted: Boolean,
+    )
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -649,8 +665,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setSuggestionAdapterSuggestionsOnMain(candidates: List<Candidate>) {
         runOnMainThread {
             measureDebugSection("IMEService.setSuggestionAdapterSuggestionsOnMain") {
-                collapseShortcutEntryExpansion()
-                suggestionAdapter?.suggestions = candidates
+                collapseShortcutEntryExpansion(refreshContent = false)
+                currentCandidateStripCandidates = candidates
+                refreshCandidateStripContent()
             }
         }
     }
@@ -661,9 +678,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         runOnMainThread {
             measureDebugSection("IMEService.setSuggestionAdaptersOnMain") {
-                collapseShortcutEntryExpansion()
-                suggestionAdapter?.suggestions = candidates
-                suggestionAdapterFull?.suggestions = fullCandidates
+                collapseShortcutEntryExpansion(refreshContent = false)
+                currentCandidateStripCandidates = candidates
+                currentCandidateStripFullCandidates = fullCandidates
+                refreshCandidateStripContent()
             }
         }
     }
@@ -675,10 +693,145 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) = measureDebugStage("IMEService.updateSuggestionAdaptersOnMain") {
         withContext(Dispatchers.Main.immediate) {
             if (!shouldApplyCandidateResult(insertString)) return@withContext
-            collapseShortcutEntryExpansion()
-            suggestionAdapter?.suggestions = candidates
-            suggestionAdapterFull?.suggestions = fullCandidates
+            collapseShortcutEntryExpansion(refreshContent = false)
+            currentCandidateStripCandidates = candidates
+            currentCandidateStripFullCandidates = fullCandidates
+            refreshCandidateStripContent()
         }
+    }
+
+    private fun refreshCandidateStripContent(
+        candidatesShown: Boolean = shortcutToolbarHiddenForCandidates,
+        resetCandidateTabSelection: Boolean = false
+    ) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            runOnMainThread {
+                refreshCandidateStripContent(
+                    candidatesShown = candidatesShown,
+                    resetCandidateTabSelection = resetCandidateTabSelection
+                )
+            }
+            return
+        }
+
+        val content = resolveCandidateStripContent(
+            candidates = currentCandidateStripCandidates,
+            candidatesShown = candidatesShown
+        )
+        val fullContent = resolveCandidateStripContent(
+            candidates = currentCandidateStripFullCandidates,
+            candidatesShown = candidatesShown
+        )
+        currentCandidateStripContent = content
+        suggestionAdapter?.submitContent(content)
+        suggestionAdapterFull?.submitContent(fullContent)
+        val presentation = resolveCandidateStripPresentation(
+            candidatesShown = candidatesShown,
+            resetCandidateTabSelection = resetCandidateTabSelection,
+            content = content
+        )
+        applyCandidateStripPresentation(presentation)
+    }
+
+    private fun resolveCandidateStripContent(
+        candidates: List<Candidate>,
+        candidatesShown: Boolean
+    ): CandidateStripContent {
+        val state = buildCandidateStripInputState(
+            candidates = candidates,
+            candidatesShown = candidatesShown
+        )
+        return CandidateStripContentResolver.resolve(state)
+    }
+
+    private fun buildCandidateStripInputState(
+        candidates: List<Candidate>,
+        candidatesShown: Boolean
+    ): CandidateStripInputState {
+        val clipboardPreview = resolveClipboardPreviewSnapshot()
+        val hasUndoHistory = isEditHistoryEnabled() && deletedBuffer.hasUndoHistory()
+        val hasRedoHistory = isEditHistoryEnabled() && deletedBuffer.hasRedoHistory()
+        return CandidateStripInputState(
+            candidates = candidates,
+            inputStringEmpty = inputString.value.isEmpty(),
+            tailEmpty = stringInTail.get().isEmpty(),
+            candidatesShown = candidatesShown,
+            symbolKeyboardShown = keyboardSymbolViewState.value.isShown,
+            customLayoutPickerShown = isCustomLayoutPickerShownForCandidateStrip(),
+            customLayouts = customLayouts,
+            selectedTextGemmaActionsShown = candidates.isSelectedTextGemmaActionCandidates(),
+            clipboardPreviewEnabled = clipboardPreviewVisibility == true,
+            clipboardPreviewDescriptionShown = clipboardPreviewTapToDelete != true,
+            clipboardPreviewTapToDelete = clipboardPreviewTapToDelete == true,
+            clipboardText = clipboardPreview.text,
+            clipboardBitmap = clipboardPreview.bitmap,
+            clipboardTextIsLastPasted = clipboardPreview.textIsLastPasted,
+            incognitoVisible = candidateStripIncognitoVisible,
+            undoEnabled = hasUndoHistory,
+            redoEnabled = hasRedoHistory,
+            reconvertEnabled = shouldShowReconversionButton(),
+            undoText = if (hasUndoHistory) {
+                getString(com.kazumaproject.core.R.string.undo_action_label)
+            } else {
+                ""
+            },
+            redoText = if (hasRedoHistory) {
+                getString(com.kazumaproject.core.R.string.redo_action_label)
+            } else {
+                ""
+            },
+            shortcutToolbarVisible = shortcutTollbarVisibility == true,
+            shortcutToolbarIntegratedInSuggestion = shortcutToolbarIntegratedInSuggestion == true,
+            integratedShortcutEntryExpanded = integratedShortcutEntryExpanded,
+            shortcutItems = currentShortcutItems,
+        )
+    }
+
+    private fun resolveClipboardPreviewSnapshot(): ClipboardPreviewSnapshot {
+        return when (val item = clipboardUtil.getPrimaryClipContent()) {
+            is ClipboardItem.Image -> {
+                if (clipboardUtil.isPrimaryClipSensitive()) {
+                    ClipboardPreviewSnapshot(
+                        text = getSensitiveClipboardPreviewText(),
+                        bitmap = null,
+                        textIsLastPasted = false
+                    )
+                } else {
+                    ClipboardPreviewSnapshot(
+                        text = "",
+                        bitmap = item.bitmap,
+                        textIsLastPasted = false
+                    )
+                }
+            }
+
+            is ClipboardItem.Text -> {
+                ClipboardPreviewSnapshot(
+                    text = getClipboardPreviewText(item.text),
+                    bitmap = null,
+                    textIsLastPasted =
+                        appPreference.last_pasted_clipboard_text_preference == item.text
+                )
+            }
+
+            is ClipboardItem.Empty -> {
+                ClipboardPreviewSnapshot(
+                    text = "",
+                    bitmap = null,
+                    textIsLastPasted = false
+                )
+            }
+        }
+    }
+
+    private fun isCustomLayoutPickerShownForCandidateStrip(): Boolean {
+        return qwertyMode.value == TenKeyQWERTYMode.Custom &&
+            customLayouts.isNotEmpty() &&
+            customKeyboardSuggestionPreference == true
+    }
+
+    private fun List<Candidate>.isSelectedTextGemmaActionCandidates(): Boolean {
+        return isNotEmpty() && all { isSelectedTextGemmaActionCandidate(it) }
     }
 
     private suspend fun updateFloatingCandidatesOnMain(
@@ -1655,7 +1808,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         resetKeyboard()
         initializeMozcDictionaries(preferences)
         suggestionAdapter?.updateCustomTabVisibility(preferences.customKeyboardSuggestionPreference)
-        mainLayoutBinding?.let { updateCandidateStripPresentation(it) }
+        refreshCandidateStripContent()
     }
 
     private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
@@ -1989,13 +2142,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 editorInfo != null &&
                 (editorInfo.imeOptions and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING) != 0
         isPrivateMode = detected
-        suggestionAdapter?.setIncognitoIcon(
-            if (detected) {
-                ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
-            } else {
-                null
-            }
-        )
+        candidateStripIncognitoVisible = detected
+        candidateStripIncognitoIconDrawable = if (detected) {
+            ContextCompat.getDrawable(this, com.kazumaproject.core.R.drawable.incognito)
+        } else {
+            null
+        }
+        suggestionAdapter?.setIncognitoIcon(candidateStripIncognitoIconDrawable)
+        suggestionAdapterFull?.setIncognitoIcon(candidateStripIncognitoIconDrawable)
+        refreshCandidateStripContent()
     }
 
     private fun learnedRepositoryForSuggestion(): LearnRepository? {
@@ -3677,7 +3832,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     suggestionRecyclerView.adapter = suggestionAdapter
                     candidatesRowView.adapter = suggestionAdapterFull
                 }
-                updateCandidateStripPresentation(this, candidatesShown = false)
+                refreshCandidateStripContent(candidatesShown = false)
                 val currentKeyboardType = keyboardOrder.getOrNull(currentKeyboardOrder)
                 if (shouldSwitchTenkeyEnglishToQwerty() && currentInputModeForSession == InputMode.ModeEnglish && currentKeyboardType == KeyboardType.TENKEY) {
                     _tenKeyQWERTYMode.update { TenKeyQWERTYMode.TenKeyQWERTY }
@@ -4787,47 +4942,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
 
-        // Show clipboard preview only if nothing was deleted and clipboard has data
-        suggestionAdapter?.apply {
-            if (deletedBuffer.isEmpty()) {
-                Timber.d("SuggestionAdapter onUpdateSelection clipboard: ")
-                when (val item = clipboardUtil.getPrimaryClipContent()) {
-                    is ClipboardItem.Image -> {
-                        if (clipboardPreviewVisibility == true) {
-                            if (clipboardPreviewTapToDelete != true) {
-                                setPasteEnabled(true)
-                                if (clipboardUtil.isPrimaryClipSensitive()) {
-                                    setClipboardPreview(getSensitiveClipboardPreviewText())
-                                } else {
-                                    setClipboardImagePreview(item.bitmap)
-                                }
-                            }
-                        } else {
-                            setPasteEnabled(false)
-                        }
-                    }
-
-                    is ClipboardItem.Text -> {
-                        if (clipboardPreviewVisibility == true) {
-                            if (clipboardPreviewTapToDelete != true) {
-                                setPasteEnabled(true)
-                                setClipboardPreview(getClipboardPreviewText(item.text))
-                            }
-                        } else {
-                            setPasteEnabled(false)
-                        }
-                    }
-
-                    is ClipboardItem.Empty -> {
-                        setPasteEnabled(false)
-                        setClipboardPreview("")
-                    }
-                }
-            } else {
-                setPasteEnabled(false)
-            }
-        }
-        mainLayoutBinding?.let { updateCandidateStripPresentation(it) }
+        refreshCandidateStripContent()
 
         val tail = stringInTail.get()
         val hasTail = tail.isNotEmpty()
@@ -6791,7 +6906,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyView.setRomajiEnglishSwitchKeyVisibility(false)
             setNumberLayoutTo(customLayoutDefault)
             suggestionRecyclerView.isVisible = true
-            updateCandidateStripPresentation(this)
+            refreshCandidateStripContent()
         }
         syncFloatingKeyboardContentForMode(TenKeyQWERTYMode.Number)
         renderCurrentKeyboardStateOnActiveSurface()
@@ -8136,7 +8251,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
         if (selectedTextGemmaSession?.selectedText == selectedText &&
-            suggestionAdapter?.suggestions.orEmpty().any { isSelectedTextGemmaActionCandidate(it) }
+            currentCandidateStripCandidates.any { isSelectedTextGemmaActionCandidate(it) }
         ) {
             return
         }
@@ -8537,23 +8652,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             type = resultCandidateType.toByte()
         )
 
-        suggestionAdapter?.let { adapter ->
-            adapter.suggestions = replaceCandidateInList(
-                currentList = adapter.suggestions,
-                originalCandidate = originalCandidate,
-                candidatePosition = candidatePosition,
-                translatedCandidate = updatedCandidate
-            )
-        }
-
-        suggestionAdapterFull?.let { adapter ->
-            adapter.suggestions = replaceCandidateInList(
-                currentList = adapter.suggestions,
-                originalCandidate = originalCandidate,
-                candidatePosition = candidatePosition,
-                translatedCandidate = updatedCandidate
-            )
-        }
+        currentCandidateStripCandidates = replaceCandidateInList(
+            currentList = currentCandidateStripCandidates,
+            originalCandidate = originalCandidate,
+            candidatePosition = candidatePosition,
+            translatedCandidate = updatedCandidate
+        )
+        currentCandidateStripFullCandidates = replaceCandidateInList(
+            currentList = currentCandidateStripFullCandidates,
+            originalCandidate = originalCandidate,
+            candidatePosition = candidatePosition,
+            translatedCandidate = updatedCandidate
+        )
+        refreshCandidateStripContent()
 
         reflectGemmaResultInPreEdit(
             originalCandidate = originalCandidate,
@@ -9919,7 +10030,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             Timber.w("fallbackFromCustomKeyboardIfNeeded: keyboardOrder is empty")
             suggestionAdapter?.updateState(TenKeyQWERTYMode.Default, emptyList())
             showKeyboard(KeyboardType.TENKEY, source = "fallbackFromCustomKeyboardIfNeeded.emptyOrder")
-            mainLayoutBinding?.let { updateCandidateStripPresentation(it) }
+            refreshCandidateStripContent()
             return
         }
 
@@ -9935,7 +10046,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ?.let { currentKeyboardOrder = it }
         suggestionAdapter?.updateState(TenKeyQWERTYMode.Default, emptyList())
         showKeyboard(fallbackType, source = "fallbackFromCustomKeyboardIfNeeded")
-        mainLayoutBinding?.let { updateCandidateStripPresentation(it) }
+        refreshCandidateStripContent()
     }
 
     private fun onCustomKeyboardLayoutsChanged(newLayouts: List<CustomKeyboardLayout>) {
@@ -9983,7 +10094,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (qwertyMode.value == TenKeyQWERTYMode.Custom) {
             suggestionAdapter?.updateState(TenKeyQWERTYMode.Custom, customLayouts)
-            mainLayoutBinding?.let { updateCandidateStripPresentation(it) }
+            refreshCandidateStripContent()
             renderCustomKeyboardLayout(selectedLayout)
             syncFloatingKeyboardContentForMode(qwertyMode.value)
             renderCurrentKeyboardStateOnActiveSurface()
@@ -11683,16 +11794,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val text = selectedText.toString()
         val isSensitive = currentInputType.isPassword()
         clipboardUtil.setClipBoard(text, isSensitive = isSensitive)
-        suggestionAdapter?.apply {
-            if (clipboardPreviewVisibility == true) {
-                setPasteEnabled(true)
-                setClipboardPreview(if (isSensitive) getSensitiveClipboardPreviewText() else text)
-                appPreference.last_pasted_clipboard_text_preference = ""
-            } else {
-                setPasteEnabled(false)
-            }
-        }
-        mainLayoutBinding?.let { updateCandidateStripPresentation(it) }
+        appPreference.last_pasted_clipboard_text_preference = ""
+        refreshCandidateStripContent()
     }
 
     /**
@@ -11741,7 +11844,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
-        mainLayoutBinding?.let { updateCandidateStripPresentation(it) }
+        refreshCandidateStripContent()
     }
 
     private fun pasteImageAction(bitmap: Bitmap) {
@@ -12000,45 +12103,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun updateClipboardPreview() {
         Timber.d("SuggestionAdapter Clipboard: updateClipboardPreview")
-        collapseShortcutEntryExpansion()
-        suggestionAdapter?.apply {
-            when (val item = clipboardUtil.getPrimaryClipContent()) {
-                is ClipboardItem.Image -> {
-                    if (clipboardPreviewVisibility == true) {
-                        if (clipboardPreviewTapToDelete != true) {
-                            setPasteEnabled(true)
-                            if (clipboardUtil.isPrimaryClipSensitive()) {
-                                setClipboardPreview(getSensitiveClipboardPreviewText())
-                            } else {
-                                setClipboardImagePreview(item.bitmap)
-                            }
-                        } else {
-                            setPasteEnabled(false)
-                        }
-                    } else {
-                        setPasteEnabled(false)
-                    }
-                }
-
-                is ClipboardItem.Text -> {
-                    if (clipboardPreviewVisibility == true) {
-                        if (clipboardPreviewTapToDelete != true) {
-                            setPasteEnabled(true)
-                            if (appPreference.last_pasted_clipboard_text_preference != item.text) {
-                                setClipboardPreview(getClipboardPreviewText(item.text))
-                            }
-                        }
-                    } else {
-                        setPasteEnabled(false)
-                    }
-                }
-
-                is ClipboardItem.Empty -> {
-                    setPasteEnabled(false)
-                    setClipboardPreview("")
-                }
-            }
-        }
+        refreshCandidateStripContent()
     }
 
     private fun getClipboardPreviewText(text: String): String {
@@ -13437,7 +13502,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("suggestionFlag CandidateShowFlag.Idle: [$insertString] [$stringInTail] [$prevFlag] [$currentFlag]")
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     shortcutToolbarHiddenForCandidates = true
-                    updateCandidateStripPresentation(mainView, candidatesShown = true)
+                    refreshCandidateStripContent(candidatesShown = true)
                     when {
                         physicalKeyboardEnable.replayCache.isEmpty() &&
                                 isKeyboardFloatingMode == true || (physicalKeyboardEnable.replayCache.isNotEmpty() &&
@@ -13540,53 +13605,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             setSumireKeyboardSwitchNumberAndKatakanaKey(0)
                             countToggleKatakana = 0
                         }
-                        suggestionAdapter?.apply {
-                            if (deletedBuffer.isEmpty()) {
-                                Timber.d("SuggestionAdapter Clipboard: from coroutine flow")
-                                when (val item = clipboardUtil.getPrimaryClipContent()) {
-                                    is ClipboardItem.Image -> {
-                                        if (clipboardPreviewVisibility == true) {
-                                            setPasteEnabled(true)
-                                            if (clipboardUtil.isPrimaryClipSensitive()) {
-                                                setClipboardPreview(getSensitiveClipboardPreviewText())
-                                            } else {
-                                                setClipboardImagePreview(item.bitmap)
-                                            }
-                                        } else {
-                                            setPasteEnabled(false)
-                                        }
-                                    }
-
-                                    is ClipboardItem.Text -> {
-                                        if (clipboardPreviewVisibility == true) {
-                                            if (clipboardPreviewTapToDelete == true) {
-                                                if (appPreference.last_pasted_clipboard_text_preference != item.text) {
-                                                    setPasteEnabled(true)
-                                                    setClipboardPreview(getClipboardPreviewText(item.text))
-                                                } else {
-                                                    setPasteEnabled(false)
-                                                }
-                                            } else {
-                                                setPasteEnabled(true)
-                                                setClipboardPreview(getClipboardPreviewText(item.text))
-                                            }
-                                        } else {
-                                            setPasteEnabled(false)
-                                        }
-                                    }
-
-                                    is ClipboardItem.Empty -> {
-                                        // 空だった場合の処理
-                                        setPasteEnabled(false)
-                                        setClipboardPreview("") // 念のためプレビューもクリア
-                                    }
-                                }
-                            } else {
-                                setPasteEnabled(false)
-                            }
-                        }
-                        updateCandidateStripPresentation(
-                            mainView = mainView,
+                        refreshCandidateStripContent(
                             candidatesShown = false,
                             resetCandidateTabSelection = resetCandidateTabSelection
                         )
@@ -13594,7 +13613,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     CandidateShowFlag.Updating -> {
                         shortcutToolbarHiddenForCandidates = true
-                        updateCandidateStripPresentation(mainView, candidatesShown = true)
+                        refreshCandidateStripContent(candidatesShown = true)
                         setSuggestionOnView(insertString, mainView)
                     }
                 }
@@ -13629,7 +13648,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setKeyboardSizeForHeightSymbol(mainView, isSymbolKeyboardShow.isShown)
                 }
                 mainView.apply {
-                    updateCandidateStripPresentation(mainView)
+                    refreshCandidateStripContent()
                     if (isSymbolKeyboardShow.isShown) {
                         when {
                             customLayoutDefault.isVisible -> {
@@ -13764,7 +13783,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         )
                     }
                 }
-                updateCandidateStripPresentation(mainView)
+                refreshCandidateStripContent()
                 syncFloatingKeyboardContentForMode(it)
                 renderCurrentKeyboardStateOnActiveSurface()
                 updateFloatingKeyboardSizeForMode(it)
@@ -13924,12 +13943,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             shortCurRepository.enabledShortcutsFlow.collectLatest {
+                currentShortcutItems = it
                 shortcutAdapter?.submitList(it) {
                     updateShortcutActiveStates()
                 }
-                suggestionAdapter?.setShortcutItems(it)
                 updateShortcutActiveStates()
-                updateCandidateStripPresentation(mainView)
+                refreshCandidateStripContent()
             }
         }
 
@@ -16845,12 +16864,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         Timber.d("SuggestionAdapter.HelperIcon.PASTE: clicked")
                         pasteAction()
                         if (clipboardPreviewTapToDelete == true) {
-                            //clipboardUtil.clearClipboard()
-                            adapter.apply {
-                                setClipboardPreview("")
-                                setPasteEnabled(false)
-                            }
-                            updateCandidateStripPresentation(mainView)
+                            refreshCandidateStripContent()
                         }
                     }
                 }
@@ -16871,11 +16885,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
                         clipboardUtil.clearClipboard()
-                        adapter.apply {
-                            setClipboardPreview("")
-                            setPasteEnabled(false)
-                        }
-                        updateCandidateStripPresentation(mainView)
+                        refreshCandidateStripContent()
                     }
                 }
             }
@@ -16889,7 +16899,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 handleShortcutAction(type, mainView)
             }
             adapter.setOnShortcutEntryClickListener {
-                adapter.toggleIntegratedShortcutEntryExpansion()
+                integratedShortcutEntryExpanded = !integratedShortcutEntryExpanded
+                refreshCandidateStripContent()
             }
         }
         suggestionAdapterFull?.let { adapter ->
@@ -16964,11 +16975,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     SuggestionAdapter.HelperIcon.PASTE -> {
                         clipboardUtil.clearClipboard()
-                        adapter.apply {
-                            setClipboardPreview("")
-                            setPasteEnabled(false)
-                        }
-                        mainLayoutBinding?.let { updateCandidateStripPresentation(it) }
+                        refreshCandidateStripContent()
                     }
                 }
             }
@@ -17127,8 +17134,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun shouldUseSelectedTextGemmaActionLayout(): Boolean {
-        val suggestions = suggestionAdapter?.suggestions.orEmpty()
-        return suggestions.isNotEmpty() && suggestions.all { isSelectedTextGemmaActionCandidate(it) }
+        return currentCandidateStripCandidates.isSelectedTextGemmaActionCandidates()
     }
 
     private fun toggleKeyboardLayoutEditMode(mainView: MainLayoutBinding) {
@@ -17748,14 +17754,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun shouldUseIndependentShortcutToolbar(): Boolean {
-        return resolveCandidateStripPresentation().showIndependentShortcutToolbar
+        return resolveCandidateStripPresentation(
+            content = currentCandidateStripContent
+        ).showIndependentShortcutToolbar
     }
 
     private fun resolveCandidateStripPresentation(
         candidatesShown: Boolean = shortcutToolbarHiddenForCandidates,
-        resetCandidateTabSelection: Boolean = false
+        resetCandidateTabSelection: Boolean = false,
+        content: CandidateStripContent = currentCandidateStripContent
     ): CandidateStripPresentation {
-        val adapter = suggestionAdapter
         return CandidateStripPresentationPolicy.resolve(
             CandidateStripPresentationState(
                 candidateTabVisible = candidateTabVisibility == true,
@@ -17765,10 +17773,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 shortcutToolbarIntegratedInSuggestion = shortcutToolbarIntegratedInSuggestion == true,
                 inputStringEmpty = inputString.value.isEmpty(),
                 tailEmpty = stringInTail.get().isEmpty(),
-                clipboardPreviewShown = adapter?.isShowingClipboardPreviewForEmptyState() == true,
-                selectedTextGemmaActionsShown = shouldUseSelectedTextGemmaActionLayout(),
-                suggestionsEmpty = adapter?.suggestions.orEmpty().isEmpty(),
-                customLayoutPickerShown = adapter?.isShowingCustomLayoutPicker() == true,
+                clipboardPreviewShown = content is CandidateStripContent.ClipboardPreview,
+                selectedTextGemmaActionsShown = content is CandidateStripContent.GemmaActions,
+                suggestionsEmpty = content !is CandidateStripContent.Candidates &&
+                    content !is CandidateStripContent.GemmaActions,
+                customLayoutPickerShown = content is CandidateStripContent.CustomLayoutPicker,
                 symbolKeyboardShown = keyboardSymbolViewState.value.isShown,
                 shortcutToolbarHiddenForCandidates = shortcutToolbarHiddenForCandidates
             )
@@ -17783,10 +17792,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         assertMainThread("updateCandidateStripPresentation")
         val presentation = resolveCandidateStripPresentation(
             candidatesShown = candidatesShown,
-            resetCandidateTabSelection = resetCandidateTabSelection
+            resetCandidateTabSelection = resetCandidateTabSelection,
+            content = currentCandidateStripContent
         )
-        suggestionAdapter?.setIntegratedShortcutItemsVisibility(presentation.showIntegratedShortcutItems)
-        suggestionAdapter?.setIntegratedShortcutEntryVisibility(presentation.showIntegratedShortcutEntry)
+        applyCandidateStripPresentation(presentation)
+    }
+
+    private fun applyCandidateStripPresentation(presentation: CandidateStripPresentation) {
+        val mainView = mainLayoutBinding ?: return
         applyCandidateTabSuggestionOffset(mainView, presentation.showCandidateTab)
         mainView.candidateTabLayout.isVisible = presentation.showCandidateTab
         if (presentation.resetCandidateTabSelection) {
@@ -17802,8 +17815,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun collapseShortcutEntryExpansion() {
-        suggestionAdapter?.setIntegratedShortcutEntryExpanded(false)
+    private fun collapseShortcutEntryExpansion(refreshContent: Boolean = true) {
+        if (!integratedShortcutEntryExpanded) return
+        integratedShortcutEntryExpanded = false
+        if (refreshContent) {
+            refreshCandidateStripContent()
+        }
     }
 
     private fun handleShortcutAction(type: ShortcutType, mainView: MainLayoutBinding) {
@@ -19113,23 +19130,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun refreshEditHistoryUi() {
-        val hasUndoHistory = isEditHistoryEnabled() && deletedBuffer.hasUndoHistory()
-        val hasRedoHistory = isEditHistoryEnabled() && deletedBuffer.hasRedoHistory()
-        val undoLabel =
-            if (hasUndoHistory) getString(com.kazumaproject.core.R.string.undo_action_label) else ""
-        val redoLabel =
-            if (hasRedoHistory) getString(com.kazumaproject.core.R.string.redo_action_label) else ""
-        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
-            adapter.setUndoPreviewText(undoLabel)
-            adapter.setUndoEnabled(hasUndoHistory)
-            adapter.setRedoPreviewText(redoLabel)
-            adapter.setRedoEnabled(hasRedoHistory)
-        }
         updateSideKeyPreviousDrawableForHistory()
-        if (!hasUndoHistory && !hasRedoHistory) {
-            updateClipboardPreview()
-        }
-        refreshReconversionUi()
+        refreshCandidateStripContent()
     }
 
     private fun canPerformPendingReconversion(entry: ReconversionEntry): Boolean {
@@ -19150,10 +19152,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun refreshReconversionUi() {
-        val isEnabled = shouldShowReconversionButton()
-        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
-            adapter.setReconvertEnabled(isEnabled)
-        }
+        refreshCandidateStripContent()
     }
 
     private fun clearPendingReconversionEntry() {
@@ -19772,7 +19771,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearZenzLiveSlot("resetAllFlags")
         setSuggestionAdapterSuggestionsOnMain(emptyList())
         isPrivateMode = false
+        candidateStripIncognitoVisible = false
+        candidateStripIncognitoIconDrawable = null
+        integratedShortcutEntryExpanded = false
         suggestionAdapter?.setIncognitoIcon(null)
+        suggestionAdapterFull?.setIncognitoIcon(null)
         stringInTail.set("")
         suggestionClickNum = 0
         currentCustomKeyboardPosition = 0
@@ -22076,8 +22079,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleEmptyInputEnterKey(mainView: MainLayoutBinding) {
         if (dispatchDirectEnterIfNeeded()) {
-            updateCandidateStripPresentation(
-                mainView = mainView,
+            refreshCandidateStripContent(
                 candidatesShown = false,
                 resetCandidateTabSelection = candidateTabVisibility == true
             )
@@ -22096,8 +22098,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
             isFirstClickHasStringTail = false
         }
-        updateCandidateStripPresentation(
-            mainView = mainView,
+        refreshCandidateStripContent(
             candidatesShown = false,
             resetCandidateTabSelection = candidateTabVisibility == true
         )
@@ -22106,8 +22107,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun forceNewLine(mainView: MainLayoutBinding) {
         if (dispatchDirectEnterIfNeeded()) {
-            updateCandidateStripPresentation(
-                mainView = mainView,
+            refreshCandidateStripContent(
                 candidatesShown = false,
                 resetCandidateTabSelection = candidateTabVisibility == true
             )
@@ -22126,8 +22126,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
             isFirstClickHasStringTail = false
         }
-        updateCandidateStripPresentation(
-            mainView = mainView,
+        refreshCandidateStripContent(
             candidatesShown = false,
             resetCandidateTabSelection = candidateTabVisibility == true
         )

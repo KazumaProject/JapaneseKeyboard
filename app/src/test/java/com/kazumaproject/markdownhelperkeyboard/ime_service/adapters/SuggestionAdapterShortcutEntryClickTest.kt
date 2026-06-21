@@ -4,7 +4,7 @@ import android.content.Context
 import android.os.Looper
 import android.widget.FrameLayout
 import androidx.test.core.app.ApplicationProvider
-import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,9 +19,15 @@ class SuggestionAdapterShortcutEntryClickTest {
     @Test
     fun shortcutEntryClickNotifiesListener() {
         val adapter = SuggestionAdapter()
-        adapter.setShortcutItems(listOf(ShortcutType.SETTINGS))
-        adapter.setIntegratedShortcutEntryVisibility(true)
-        adapter.setClipboardPreview("clip")
+        adapter.submitContent(
+            CandidateStripContent.ClipboardPreview(
+                text = "clip",
+                bitmap = null,
+                descriptionShown = true,
+                tapToDelete = false,
+                showShortcutEntry = true,
+            )
+        )
         drainMainUntilItemCount(adapter, expectedItemCount = 2)
 
         var clicked = false
