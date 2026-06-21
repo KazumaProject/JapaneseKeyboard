@@ -1,8 +1,12 @@
 package com.kazumaproject.custom_keyboard.layout
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
+import com.kazumaproject.custom_keyboard.data.FlickKeyDefinitionTfbiMapper
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.GridPlacement
+import com.kazumaproject.custom_keyboard.data.KanaRowFlickDefinitionGenerator
+import com.kazumaproject.custom_keyboard.data.KanaRowSpec
+import com.kazumaproject.custom_keyboard.data.KanaSeries
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
@@ -9931,6 +9935,18 @@ object KeyboardDefaultLayouts {
 
     }
 
+    private fun createHierarchicalKaKeyDefinition() =
+        KanaRowFlickDefinitionGenerator.create(
+            KanaRowSpec(
+                id = "kana_ka",
+                label = "か",
+                number = "2",
+                normal = KanaSeries("か", "き", "く", "け", "こ"),
+                dakuten = KanaSeries("が", "ぎ", "ぐ", "げ", "ご"),
+                iColumnModeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
+            )
+        )
+
     private fun createHierarchicalFlickMaps(): Map<String, TfbiFlickNode.StatefulKey> {
         // --- "あ"行 SubMenus ---
         val subMenu_Small_A = TfbiFlickNode.SubMenu(
@@ -9956,83 +9972,6 @@ object KeyboardDefaultLayouts {
             TfbiFlickDirection.DOWN to TfbiFlickNode.Input("お"),
             TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("ぉ"),
             TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("1")
-        )
-
-        // --- "か"行 SubMenus (ご提示のコード) ---
-        val subMenuForKyo = mapOf(
-            TfbiFlickDirection.DOWN to TfbiFlickNode.Input("きょ"),
-            TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("きょう")
-        )
-        val subMenuForKyu = mapOf(
-            TfbiFlickDirection.UP to TfbiFlickNode.Input("きゅ"),
-            TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("きゅう")
-        )
-        val subMenu_KI = TfbiFlickNode.SubMenu(
-            mapOf(
-                TfbiFlickDirection.LEFT to TfbiFlickNode.Input(
-                    "き", triggersMode = KeyMode.NORMAL
-                ),
-                TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input(
-                    char = "ぎ",
-                    triggersMode = KeyMode.DAKUTEN,
-                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
-                ),
-                TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
-                    label = "きゅ", nextMap = subMenuForKyu, cancelOnTap = true
-                ),
-                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("きゃ"),
-                TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
-                    label = "きょ", nextMap = subMenuForKyo, cancelOnTap = true
-                )
-            ),
-            label = "き",
-        )
-        val subMenu_KU = TfbiFlickNode.SubMenu(
-            mapOf(
-                TfbiFlickDirection.UP to TfbiFlickNode.Input("く"),
-                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input(
-                    char = "ぐ", triggersMode = KeyMode.DAKUTEN
-                ),
-                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input(
-                    char = "くう",
-                )
-            ),
-            cancelOnTap = true,
-            label = "く",
-        )
-
-        val subMenu_KE = TfbiFlickNode.SubMenu(
-            mapOf(
-                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("け"),
-                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input(
-                    char = "げ", triggersMode = KeyMode.DAKUTEN
-                )
-            ),
-            cancelOnTap = true,
-            label = "け",
-        )
-        val subMenu_KO = TfbiFlickNode.SubMenu(
-            mapOf(
-                TfbiFlickDirection.DOWN to TfbiFlickNode.Input("こ"),
-                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input(
-                    char = "ご", triggersMode = KeyMode.DAKUTEN
-                ),
-                TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("こう"),
-                TfbiFlickDirection.LEFT to TfbiFlickNode.Input("2"),
-            ),
-            cancelOnTap = true,
-            label = "こ",
-        )
-
-        // --- "が"行 SubMenus (ご提示のコード) ---
-        val subMenuForGyo = mapOf(
-            TfbiFlickDirection.DOWN to TfbiFlickNode.Input("ぎょ"),
-            TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input("ぎょう")
-        )
-
-        val subMenuForGyu = mapOf(
-            TfbiFlickDirection.UP to TfbiFlickNode.Input("ぎゅ"),
-            TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぎゅう")
         )
 
         val subMenuForSyu = mapOf(
@@ -10147,30 +10086,6 @@ object KeyboardDefaultLayouts {
             TfbiFlickDirection.UP to TfbiFlickNode.Input("てぃー")
         )
 
-        val subMenu_GI = TfbiFlickNode.SubMenu(
-            mapOf(
-                TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input(
-                    "ぎ", triggersMode = KeyMode.DAKUTEN
-                ),
-                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input(
-                    char = "き", triggersMode = KeyMode.NORMAL
-                ),
-                TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
-                    label = "ぎゅ", nextMap = subMenuForGyu, cancelOnTap = true
-                ),
-                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("ぎゃ"),
-                TfbiFlickDirection.DOWN to TfbiFlickNode.SubMenu(
-                    label = "ぎょ", nextMap = subMenuForGyo, cancelOnTap = true
-                )
-            )
-        )
-        val subMenu_GA = TfbiFlickNode.SubMenu(
-            mapOf(
-                TfbiFlickDirection.TAP to TfbiFlickNode.Input("か"),
-                TfbiFlickDirection.UP_RIGHT to TfbiFlickNode.Input("が"),
-            ), cancelOnTap = true, label = "が"
-        )
-
         val subMenu_ZA = TfbiFlickNode.SubMenu(
             mapOf(
                 TfbiFlickDirection.TAP to TfbiFlickNode.Input("さ"),
@@ -10211,35 +10126,6 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.TAP to TfbiFlickNode.Input("は"),
                 TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぱ"),
             ), cancelOnTap = true, label = "ぱ"
-        )
-
-        val subMenu_GU = TfbiFlickNode.SubMenu(
-            mapOf(
-                TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input("ぐ"),
-                TfbiFlickDirection.UP to TfbiFlickNode.Input(
-                    char = "く", triggersMode = KeyMode.NORMAL
-                ),
-                TfbiFlickDirection.LEFT to TfbiFlickNode.Input(
-                    char = "ぐう",
-                )
-            ), cancelOnTap = true
-        )
-        val subMenu_GE = TfbiFlickNode.SubMenu(
-            mapOf(
-                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("げ"),
-                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input(
-                    char = "け", triggersMode = KeyMode.NORMAL
-                )
-            ), cancelOnTap = true
-        )
-        val subMenu_GO = TfbiFlickNode.SubMenu(
-            mapOf(
-                TfbiFlickDirection.DOWN_RIGHT to TfbiFlickNode.Input("ご"),
-                TfbiFlickDirection.DOWN to TfbiFlickNode.Input(
-                    char = "こ", triggersMode = KeyMode.NORMAL
-                ),
-                TfbiFlickDirection.RIGHT to TfbiFlickNode.Input("ごう"),
-            ), cancelOnTap = true
         )
 
         // --- "さ"行 SubMenus ---
@@ -10885,24 +10771,6 @@ object KeyboardDefaultLayouts {
             )
         )
 
-        // --- "か"行 Map (ご提示のコード) ---
-        val k_Map = mapOf(
-            TfbiFlickDirection.TAP to TfbiFlickNode.Input("か"),
-            TfbiFlickDirection.UP_RIGHT to subMenu_GA,
-            TfbiFlickDirection.LEFT to subMenu_KI,
-            TfbiFlickDirection.UP to subMenu_KU,
-            TfbiFlickDirection.RIGHT to subMenu_KE,
-            TfbiFlickDirection.DOWN to subMenu_KO
-        )
-        val g_Map = mapOf(
-            TfbiFlickDirection.TAP to TfbiFlickNode.Input("か"),
-            TfbiFlickDirection.UP_RIGHT to subMenu_GA,
-            TfbiFlickDirection.LEFT to subMenu_GI,
-            TfbiFlickDirection.UP to subMenu_GU,
-            TfbiFlickDirection.RIGHT to subMenu_GE,
-            TfbiFlickDirection.DOWN to subMenu_GO
-        )
-
         // --- "さ"行 Map ---
         val s_Map = mapOf(
             TfbiFlickDirection.TAP to TfbiFlickNode.Input("さ"),
@@ -11030,9 +10898,7 @@ object KeyboardDefaultLayouts {
                 label = "あ", normalMap = a_Map, dakutenMap = null, handakutenMap = null
             ),
             // か行
-            "か" to TfbiFlickNode.StatefulKey(
-                label = "か", normalMap = k_Map, dakutenMap = g_Map, handakutenMap = null
-            ),
+            "か" to FlickKeyDefinitionTfbiMapper.toStatefulKey(createHierarchicalKaKeyDefinition()),
             // さ行
             "さ" to TfbiFlickNode.StatefulKey(
                 label = "さ", normalMap = s_Map, dakutenMap = z_Map, handakutenMap = null
