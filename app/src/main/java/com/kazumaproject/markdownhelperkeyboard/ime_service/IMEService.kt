@@ -586,11 +586,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private val clipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
         ioScope.launch {
+            // 現在クリップボードにあるアイテムを取得 (ClipboardItem.Text or Image)
+            val newItem = clipboardUtil.getPrimaryClipContent()
+            val isSensitive = clipboardUtil.isPrimaryClipSensitive()
             clipboardMutex.withLock {
-                // 1. 現在クリップボードにあるアイテムを取得 (ClipboardItem.Text or Image)
-                val newItem = clipboardUtil.getPrimaryClipContent()
-                if (newItem is ClipboardItem.Empty) return@withLock
-                if (clipboardUtil.isPrimaryClipSensitive()) return@withLock
+                if (newItem is ClipboardItem.Empty || isSensitive) return@withLock
 
                 // 2. DBに保存されている最新のメタデータを取得
                 val lastSavedItem = clipboardHistoryRepository.getLatestItem()
@@ -621,6 +621,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
             }
+            withContext(Dispatchers.Main.immediate) {
+                if (newItem is ClipboardItem.Empty) {
+                    clearSelectedTextClipboardPreviewRefresh()
+                } else {
+                    markClipboardPreviewRefreshAfterPrimaryClipChanged()
+                }
+                updateClipboardPreview()
+            }
         }
     }
 
@@ -641,6 +649,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val bitmap: Bitmap?,
         val textIsLastPasted: Boolean,
     )
+
+    private var selectedTextClipboardPreviewRefreshText: String? = null
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -749,6 +759,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         candidatesShown: Boolean
     ): CandidateStripInputState {
         val clipboardPreview = resolveClipboardPreviewSnapshot()
+        val selectedEditorText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
+        val shouldSuppressClipboardPreviewForSelectedText =
+            selectedEditorText.isNotEmpty() &&
+                selectedTextClipboardPreviewRefreshText != selectedEditorText
         val hasUndoHistory = isEditHistoryEnabled() && deletedBuffer.hasUndoHistory()
         val hasRedoHistory = isEditHistoryEnabled() && deletedBuffer.hasRedoHistory()
         return CandidateStripInputState(
@@ -760,8 +774,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customLayoutPickerShown = isCustomLayoutPickerShownForCandidateStrip(),
             customLayouts = customLayouts,
             selectedTextGemmaActionsShown = candidates.isSelectedTextGemmaActionCandidates(),
-            editorTextSelected =
-                currentInputConnection?.getSelectedText(0)?.isNotEmpty() == true,
+            editorTextSelected = shouldSuppressClipboardPreviewForSelectedText,
             clipboardPreviewEnabled = clipboardPreviewVisibility == true,
             clipboardPreviewDescriptionShown = clipboardPreviewTapToDelete != true,
             clipboardPreviewTapToDelete = clipboardPreviewTapToDelete == true,
@@ -4910,10 +4923,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val selectedText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
         if (selectedText.isNotEmpty()) {
+            if (selectedTextClipboardPreviewRefreshText == selectedText) {
+                clearSelectedTextGemmaSession(
+                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
+                )
+                updateClipboardPreview()
+                return
+            }
+            clearSelectedTextClipboardPreviewRefresh()
             if (selectedTextGemmaSession?.selectedText != null &&
                 selectedTextGemmaSession?.selectedText != selectedText
             ) {
-                clearSelectedTextGemmaSession(clearSuggestions = true)
+                clearSelectedTextGemmaSession(
+                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
+                )
             }
             if (AppVariantConfig.hasGemma &&
                 appPreference.enable_gemma_translation_preference &&
@@ -4921,11 +4944,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ) {
                 showSelectedTextGemmaActions(selectedText)
             } else {
-                clearSelectedTextGemmaSession(clearSuggestions = true)
+                clearSelectedTextGemmaSession(
+                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
+                )
             }
             return
-        } else if (selectedTextGemmaSession != null) {
-            clearSelectedTextGemmaSession(clearSuggestions = true)
+        } else {
+            clearSelectedTextClipboardPreviewRefresh()
+            if (selectedTextGemmaSession != null) {
+                clearSelectedTextGemmaSession(
+                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
+                )
+            }
         }
 
         val preservedPreEdit = preservePreEditOnNextSelectionUpdate
@@ -4944,7 +4974,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
 
-        refreshCandidateStripContent()
+        updateClipboardPreview()
 
         val tail = stringInTail.get()
         val hasTail = tail.isNotEmpty()
@@ -8249,7 +8279,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun showSelectedTextGemmaActions(selectedText: String) {
         if (!gemmaTranslationManager.isTranslationAvailable()) {
-            clearSelectedTextGemmaSession(clearSuggestions = true)
+            clearSelectedTextGemmaSession(
+                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            )
             return
         }
         if (selectedTextGemmaSession?.selectedText == selectedText &&
@@ -8276,7 +8308,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
                 }
                 if (actions.isEmpty()) {
-                    clearSelectedTextGemmaSession(clearSuggestions = true)
+                    clearSelectedTextGemmaSession(
+                        clearSuggestions = hasSelectedTextGemmaActionCandidates()
+                    )
                     return@withContext
                 }
 
@@ -8321,6 +8355,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
+    }
+
+    private fun hasSelectedTextGemmaActionCandidates(): Boolean {
+        return currentCandidateStripCandidates.any(::isSelectedTextGemmaActionCandidate) ||
+            currentCandidateStripFullCandidates.any(::isSelectedTextGemmaActionCandidate)
+    }
+
+    private fun markClipboardPreviewRefreshAfterPrimaryClipChanged() {
+        selectedTextClipboardPreviewRefreshText =
+            currentInputConnection?.getSelectedText(0)?.toString()
+                ?.takeIf { it.isNotEmpty() }
+        if (selectedTextClipboardPreviewRefreshText != null) {
+            clearSelectedTextGemmaSession(
+                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            )
+        }
+    }
+
+    private fun clearSelectedTextClipboardPreviewRefresh() {
+        selectedTextClipboardPreviewRefreshText = null
     }
 
     private fun clearSelectedTextGemmaSession(clearSuggestions: Boolean) {
@@ -11797,7 +11851,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val isSensitive = currentInputType.isPassword()
         clipboardUtil.setClipBoard(text, isSensitive = isSensitive)
         appPreference.last_pasted_clipboard_text_preference = ""
-        refreshCandidateStripContent()
+        markClipboardPreviewRefreshAfterPrimaryClipChanged()
+        updateClipboardPreview()
     }
 
     /**
@@ -12109,7 +12164,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun updateClipboardPreview() {
         Timber.d("SuggestionAdapter Clipboard: updateClipboardPreview")
-        refreshCandidateStripContent()
+        runOnMainThread {
+            refreshCandidateStripContent()
+        }
     }
 
     private fun getClipboardPreviewText(text: String): String {
