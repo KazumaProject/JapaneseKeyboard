@@ -760,6 +760,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             customLayoutPickerShown = isCustomLayoutPickerShownForCandidateStrip(),
             customLayouts = customLayouts,
             selectedTextGemmaActionsShown = candidates.isSelectedTextGemmaActionCandidates(),
+            editorTextSelected =
+                currentInputConnection?.getSelectedText(0)?.isNotEmpty() == true,
             clipboardPreviewEnabled = clipboardPreviewVisibility == true,
             clipboardPreviewDescriptionShown = clipboardPreviewTapToDelete != true,
             clipboardPreviewTapToDelete = clipboardPreviewTapToDelete == true,
