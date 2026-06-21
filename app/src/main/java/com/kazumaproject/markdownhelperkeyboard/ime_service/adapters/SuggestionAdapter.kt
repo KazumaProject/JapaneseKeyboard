@@ -33,6 +33,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.measureDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
@@ -262,6 +263,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var released: Boolean = false
     private var displayGeneration: Int = 0
     private var committedStartAnchorSignature: StartAnchorSignature? = null
+    private var currentContent: CandidateStripContent = CandidateStripContent.Empty
 
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
@@ -374,11 +376,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     fun isShowingClipboardPreviewForEmptyState(): Boolean {
-        return currentClipboardPreviewState(hasLeadingShortcutEntry = false).hasClipboardPreview
+        return currentContent is CandidateStripContent.ClipboardPreview
     }
 
     fun isShowingCustomLayoutPicker(): Boolean {
-        return currentMode is TenKeyQWERTYMode.Custom && customLayouts.isNotEmpty() && showCustomTab
+        return currentContent is CandidateStripContent.CustomLayoutPicker
     }
 
     fun setShortcutItems(items: List<ShortcutType>) {
@@ -415,8 +417,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val normalizedExpanded =
             expanded &&
                 showIntegratedShortcutEntry &&
-                shortcutItems.isNotEmpty() &&
-                hasSwitchableShortcutEntryContent()
+                shortcutItems.isNotEmpty()
         if (integratedShortcutEntryExpanded == normalizedExpanded) return
         integratedShortcutEntryExpanded = normalizedExpanded
         rebuildDisplayItems()
@@ -567,10 +568,24 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             traceDebugSection("SuggestionAdapter.suggestions.set") {
                 if (candidateSuggestions == value) return
 
-                candidateSuggestions = value
-                rebuildDisplayItems {
-                    onListUpdated?.invoke()
-                }
+                submitContent(
+                    if (value.isEmpty()) {
+                        CandidateStripContent.Empty
+                    } else if (value.all { it.isSelectedTextGemmaActionCandidate() }) {
+                        CandidateStripContent.GemmaActions(
+                            actions = value,
+                            showShortcutEntry = false
+                        )
+                    } else {
+                        CandidateStripContent.Candidates(
+                            candidates = value,
+                            showShortcutEntry = false
+                        )
+                    },
+                    onCommitted = {
+                        onListUpdated?.invoke()
+                    }
+                )
             }
         }
 
@@ -578,6 +593,30 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     init {
         differ.submitList(buildDisplayItems())
+    }
+
+    fun submitContent(content: CandidateStripContent) {
+        val nextCandidates = content.candidatesForClicks()
+        submitContent(
+            content = content,
+            onCommitted = if (candidateSuggestions != nextCandidates) {
+                { onListUpdated?.invoke() }
+            } else {
+                null
+            }
+        )
+    }
+
+    private fun submitContent(
+        content: CandidateStripContent,
+        onCommitted: (() -> Unit)?,
+    ) {
+        traceDebugSection("SuggestionAdapter.submitContent") {
+            if (currentContent == content) return
+            currentContent = content
+            candidateSuggestions = content.candidatesForClicks()
+            rebuildDisplayItems(onCommitted)
+        }
     }
 
     private fun rebuildDisplayItems(onCommitted: (() -> Unit)? = null) {
@@ -606,63 +645,117 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private fun buildDisplayItems(): List<SuggestionDisplayItem> {
-        if (shouldShowExpandedShortcutEntryItems()) {
-            return buildExpandedShortcutEntryItems()
+        return when (val content = currentContent) {
+            is CandidateStripContent.Candidates -> buildCandidateItems(content)
+            is CandidateStripContent.GemmaActions -> buildGemmaActionItems(content)
+            is CandidateStripContent.CustomLayoutPicker -> buildCustomLayoutItems(content)
+            is CandidateStripContent.ClipboardPreview -> buildClipboardPreviewItems(content)
+            is CandidateStripContent.EmptyStateActions -> buildEmptyStateActionItems(content)
+            is CandidateStripContent.IntegratedShortcuts -> buildIntegratedShortcutItems(content)
+            is CandidateStripContent.ExpandedShortcutEntry -> buildExpandedShortcutEntryItems(content)
+            CandidateStripContent.Empty -> emptyList()
         }
+    }
 
-        if (candidateSuggestions.isNotEmpty()) {
-            return buildList {
-                if (isShowingSelectedTextGemmaActions() && shouldShowIntegratedShortcutEntry()) {
-                    add(SuggestionDisplayItem.ShortcutEntryItem)
-                }
-                candidateSuggestions.forEachIndexed { index, candidate ->
-                    if (candidate.isSelectedTextGemmaActionCandidate()) {
-                        add(SuggestionDisplayItem.GemmaActionItem(candidate, index))
-                    } else {
-                        add(SuggestionDisplayItem.CandidateItem(candidate, index))
-                    }
-                }
+    private fun buildCandidateItems(
+        content: CandidateStripContent.Candidates
+    ): List<SuggestionDisplayItem> =
+        buildList {
+            if (content.showShortcutEntry) {
+                add(SuggestionDisplayItem.ShortcutEntryItem)
+            }
+            content.candidates.forEachIndexed { index, candidate ->
+                add(SuggestionDisplayItem.CandidateItem(candidate, index))
             }
         }
 
-        if (isShowingCustomLayoutPicker()) {
-            return customLayouts.mapIndexed { index, layout ->
-                SuggestionDisplayItem.CustomLayoutItem(layout, index)
+    private fun buildGemmaActionItems(
+        content: CandidateStripContent.GemmaActions
+    ): List<SuggestionDisplayItem> =
+        buildList {
+            if (content.showShortcutEntry) {
+                add(SuggestionDisplayItem.ShortcutEntryItem)
+            }
+            content.actions.forEachIndexed { index, candidate ->
+                add(SuggestionDisplayItem.GemmaActionItem(candidate, index))
             }
         }
 
-        return buildList {
-            val showShortcutEntry = shouldShowIntegratedShortcutEntry()
-            val clipboardPreviewState = currentClipboardPreviewState(
-                hasLeadingShortcutEntry = showShortcutEntry
+    private fun buildCustomLayoutItems(
+        content: CandidateStripContent.CustomLayoutPicker
+    ): List<SuggestionDisplayItem> =
+        content.layouts.mapIndexed { index, layout ->
+            SuggestionDisplayItem.CustomLayoutItem(layout, index)
+        }
+
+    private fun buildClipboardPreviewItems(
+        content: CandidateStripContent.ClipboardPreview
+    ): List<SuggestionDisplayItem> =
+        buildList {
+            if (content.showShortcutEntry) {
+                add(SuggestionDisplayItem.ShortcutEntryItem)
+            }
+            add(
+                SuggestionDisplayItem.ClipboardPreviewItem(
+                    ClipboardPreviewState(
+                        pasteEnabled = true,
+                        clipboardDescriptionShown = content.descriptionShown,
+                        clipboardText = content.text,
+                        clipboardBitmap = content.bitmap,
+                        hasLeadingShortcutEntry = content.showShortcutEntry
+                    )
+                )
             )
-            if (clipboardPreviewState.hasClipboardPreview) {
-                if (showShortcutEntry) {
-                    add(SuggestionDisplayItem.ShortcutEntryItem)
-                }
-                add(SuggestionDisplayItem.ClipboardPreviewItem(clipboardPreviewState))
-                return@buildList
-            }
+        }
 
-            val quickActionsState = currentQuickActionsState()
+    private fun buildEmptyStateActionItems(
+        content: CandidateStripContent.EmptyStateActions
+    ): List<SuggestionDisplayItem> =
+        buildList {
+            val quickActionsState = QuickActionsState(
+                undoEnabled = content.undoEnabled,
+                redoEnabled = content.redoEnabled,
+                reconvertEnabled = content.reconvertEnabled,
+                undoText = content.undoText,
+                redoText = content.redoText,
+                incognitoIconDrawable = incognitoIconDrawable.takeIf {
+                    content.incognitoVisible
+                }
+            )
             if (quickActionsState.hasVisibleAction) {
                 add(SuggestionDisplayItem.QuickActionsItem(quickActionsState))
             }
-            if (shouldShowIntegratedShortcutItems()) {
-                shortcutItems.forEach { shortcutType ->
+            if (content.showIntegratedShortcuts) {
+                content.shortcutItems.forEach { shortcutType ->
                     add(SuggestionDisplayItem.ShortcutItem(shortcutType))
                 }
             }
         }
-    }
 
-    private fun buildExpandedShortcutEntryItems(): List<SuggestionDisplayItem> =
+    private fun buildIntegratedShortcutItems(
+        content: CandidateStripContent.IntegratedShortcuts
+    ): List<SuggestionDisplayItem> =
+        content.shortcutItems.map { shortcutType ->
+            SuggestionDisplayItem.ShortcutItem(shortcutType)
+        }
+
+    private fun buildExpandedShortcutEntryItems(
+        content: CandidateStripContent.ExpandedShortcutEntry
+    ): List<SuggestionDisplayItem> =
         buildList {
             add(SuggestionDisplayItem.ShortcutEntryItem)
-            shortcutItems.forEach { shortcutType ->
+            content.shortcutItems.forEach { shortcutType ->
                 add(SuggestionDisplayItem.ShortcutItem(shortcutType))
             }
         }
+
+    private fun CandidateStripContent.candidatesForClicks(): List<Candidate> {
+        return when (this) {
+            is CandidateStripContent.Candidates -> candidates
+            is CandidateStripContent.GemmaActions -> actions
+            else -> emptyList()
+        }
+    }
 
     internal fun buildDisplayItemKindsForTesting(): List<SuggestionDisplayItemKind> {
         return buildDisplayItems().map { it.kind() }
@@ -1008,7 +1101,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 isDynamicColorEnable = isDynamicColorEnable,
             )
             applyEmptyHelperTextColor(clipboardPreviewTextDescription)
-            clipboardPreviewTextDescription?.isVisible = false
+            clipboardPreviewTextDescription?.isVisible = state.clipboardDescriptionShown
             pasteIconParent?.apply {
                 setOnClickListener {
                     onItemHelperIconClickListener?.invoke(HelperIcon.PASTE)
@@ -1066,35 +1159,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         } else {
             parent.setBackgroundResource(com.kazumaproject.core.R.drawable.ten_keys_center_bg)
         }
-    }
-
-    private fun shouldShowIntegratedShortcutItems(): Boolean {
-        return showIntegratedShortcutItems &&
-            shortcutItems.isNotEmpty() &&
-            candidateSuggestions.isEmpty() &&
-            !isShowingCustomLayoutPicker() &&
-            !isShowingClipboardPreviewForEmptyState()
-    }
-
-    private fun shouldShowIntegratedShortcutEntry(): Boolean {
-        return showIntegratedShortcutEntry &&
-            shortcutItems.isNotEmpty() &&
-            !isShowingCustomLayoutPicker()
-    }
-
-    private fun shouldShowExpandedShortcutEntryItems(): Boolean {
-        if (!integratedShortcutEntryExpanded || !shouldShowIntegratedShortcutEntry()) return false
-        return hasSwitchableShortcutEntryContent()
-    }
-
-    private fun hasSwitchableShortcutEntryContent(): Boolean {
-        return isShowingSelectedTextGemmaActions() ||
-            currentClipboardPreviewState(hasLeadingShortcutEntry = false).hasClipboardPreview
-    }
-
-    private fun isShowingSelectedTextGemmaActions(): Boolean {
-        return candidateSuggestions.isNotEmpty() &&
-            candidateSuggestions.all { it.isSelectedTextGemmaActionCandidate() }
     }
 
     private fun onBindShortcutViewHolder(
