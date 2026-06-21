@@ -6,6 +6,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.ClipboardPreviewState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.QuickActionsState
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -55,7 +57,7 @@ class SuggestionAdapterDisplayItemTest {
     @Test
     fun integratedShortcutItemsUseStartAnchorSignature() {
         val adapter = SuggestionAdapter()
-        adapter.submitContent(CandidateStripContent.IntegratedShortcuts(shortcuts()))
+        adapter.submitContent(emptyActions(showIntegratedShortcuts = true))
 
         assertEquals(
             SuggestionAdapter.StartAnchorSignature(
@@ -64,6 +66,42 @@ class SuggestionAdapterDisplayItemTest {
             adapter.buildStartAnchorSignatureForTesting()
         )
         assertTrue(adapter.isStartAnchoredContentExpected())
+        adapter.release()
+    }
+
+    @Test
+    fun emptyStateBuildsShortcutEntryQuickActionsClipboardPreviewInOrder() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(
+            CandidateStripContent.EmptyState(
+                showShortcutEntry = true,
+                quickActions = QuickActionsState(
+                    incognitoVisible = false,
+                    undoEnabled = true,
+                    redoEnabled = false,
+                    reconvertEnabled = false,
+                    undoText = "元に戻す",
+                    redoText = "",
+                ),
+                clipboardPreview = ClipboardPreviewState(
+                    text = "clip",
+                    bitmap = null,
+                    descriptionShown = true,
+                    tapToDelete = false,
+                ),
+                shortcutItems = shortcuts(),
+                showIntegratedShortcuts = false,
+            )
+        )
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutEntryItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.QuickActionsItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ClipboardPreviewItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting()
+        )
         adapter.release()
     }
 
@@ -246,8 +284,7 @@ class SuggestionAdapterDisplayItemTest {
         val adapter = SuggestionAdapter()
         adapter.submitContent(
             CandidateStripContent.Candidates(
-                candidates = listOf(candidate("候補1"), candidate("候補2")),
-                showShortcutEntry = false
+                candidates = listOf(candidate("候補1"), candidate("候補2"))
             )
         )
 
@@ -287,27 +324,43 @@ class SuggestionAdapterDisplayItemTest {
         redoEnabled: Boolean = false,
         reconvertEnabled: Boolean = false,
         showIntegratedShortcuts: Boolean = false,
-    ): CandidateStripContent.EmptyStateActions =
-        CandidateStripContent.EmptyStateActions(
-            incognitoVisible = incognitoVisible,
-            undoEnabled = undoEnabled,
-            redoEnabled = redoEnabled,
-            reconvertEnabled = reconvertEnabled,
-            undoText = if (undoEnabled) "元に戻す" else "",
-            redoText = if (redoEnabled) "やり直す" else "",
+    ): CandidateStripContent.EmptyState =
+        CandidateStripContent.EmptyState(
+            showShortcutEntry = false,
+            quickActions = QuickActionsState(
+                incognitoVisible = incognitoVisible,
+                undoEnabled = undoEnabled,
+                redoEnabled = redoEnabled,
+                reconvertEnabled = reconvertEnabled,
+                undoText = if (undoEnabled) "元に戻す" else "",
+                redoText = if (redoEnabled) "やり直す" else "",
+            ),
+            clipboardPreview = null,
             shortcutItems = shortcuts(),
             showIntegratedShortcuts = showIntegratedShortcuts,
         )
 
     private fun clipboardPreview(
         showShortcutEntry: Boolean
-    ): CandidateStripContent.ClipboardPreview =
-        CandidateStripContent.ClipboardPreview(
-            text = "clip",
-            bitmap = null,
-            descriptionShown = true,
-            tapToDelete = false,
+    ): CandidateStripContent.EmptyState =
+        CandidateStripContent.EmptyState(
             showShortcutEntry = showShortcutEntry,
+            quickActions = QuickActionsState(
+                incognitoVisible = false,
+                undoEnabled = false,
+                redoEnabled = false,
+                reconvertEnabled = false,
+                undoText = "",
+                redoText = "",
+            ),
+            clipboardPreview = ClipboardPreviewState(
+                text = "clip",
+                bitmap = null,
+                descriptionShown = true,
+                tapToDelete = false,
+            ),
+            shortcutItems = shortcuts(),
+            showIntegratedShortcuts = false,
         )
 
     private fun gemmaActions(): List<Candidate> =

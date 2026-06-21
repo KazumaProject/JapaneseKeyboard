@@ -16,8 +16,7 @@ object CandidateStripContentResolver {
                 )
             }
             return CandidateStripContent.Candidates(
-                candidates = state.candidates,
-                showShortcutEntry = false
+                candidates = state.candidates
             )
         }
         if (state.customLayoutPickerShown) {
@@ -25,30 +24,28 @@ object CandidateStripContentResolver {
                 layouts = state.customLayouts
             )
         }
-        if (shouldShowClipboardPreview(state)) {
-            return CandidateStripContent.ClipboardPreview(
-                text = state.clipboardText,
-                bitmap = state.clipboardBitmap,
-                descriptionShown = state.clipboardPreviewDescriptionShown,
-                tapToDelete = state.clipboardPreviewTapToDelete,
-                showShortcutEntry = shouldShowShortcutEntryWithClipboardPreview(state)
-            )
-        }
-        if (shouldShowEmptyStateActions(state)) {
-            return CandidateStripContent.EmptyStateActions(
-                incognitoVisible = state.incognitoVisible,
-                undoEnabled = state.undoEnabled,
-                redoEnabled = state.redoEnabled,
-                reconvertEnabled = state.reconvertEnabled,
-                undoText = state.undoText,
-                redoText = state.redoText,
+        val clipboardPreview = resolveClipboardPreviewOrNull(state)
+        val quickActions = resolveQuickActions(state)
+        val showShortcutEntry = shouldShowShortcutEntryForEmptyState(
+            state = state,
+            clipboardPreview = clipboardPreview
+        )
+        val showIntegratedShortcuts = shouldShowIntegratedShortcutItems(
+            state = state,
+            clipboardPreview = clipboardPreview
+        )
+        if (
+            clipboardPreview != null ||
+            quickActions.hasAnyAction ||
+            showShortcutEntry ||
+            showIntegratedShortcuts
+        ) {
+            return CandidateStripContent.EmptyState(
+                showShortcutEntry = showShortcutEntry,
+                quickActions = quickActions,
+                clipboardPreview = clipboardPreview,
                 shortcutItems = state.shortcutItems,
-                showIntegratedShortcuts = shouldShowIntegratedShortcutItems(state)
-            )
-        }
-        if (shouldShowIntegratedShortcutItems(state)) {
-            return CandidateStripContent.IntegratedShortcuts(
-                shortcutItems = state.shortcutItems
+                showIntegratedShortcuts = showIntegratedShortcuts
             )
         }
         return CandidateStripContent.Empty
@@ -61,10 +58,6 @@ object CandidateStripContentResolver {
     }
 
     private fun shouldShowShortcutEntryWithGemmaActions(
-        state: CandidateStripInputState
-    ): Boolean = canShowShortcutEntry(state)
-
-    private fun shouldShowShortcutEntryWithClipboardPreview(
         state: CandidateStripInputState
     ): Boolean = canShowShortcutEntry(state)
 
@@ -83,44 +76,72 @@ object CandidateStripContentResolver {
     ): Boolean {
         val hasGemmaActions =
             state.candidates.isNotEmpty() && state.selectedTextGemmaActionsShown
-        return hasGemmaActions || shouldShowClipboardPreview(state)
+        return hasGemmaActions || resolveClipboardPreviewOrNull(state) != null
     }
 
-    private fun shouldShowClipboardPreview(state: CandidateStripInputState): Boolean {
-        if (!state.clipboardPreviewEnabled) return false
-        if (!state.inputStringEmpty) return false
-        if (!state.tailEmpty) return false
-        if (state.candidatesShown) return false
-        if (state.symbolKeyboardShown) return false
-        if (state.customLayoutPickerShown) return false
-        if (state.selectedTextGemmaActionsShown) return false
+    private fun resolveClipboardPreviewOrNull(
+        state: CandidateStripInputState
+    ): ClipboardPreviewState? {
+        if (!state.clipboardPreviewEnabled) return null
+        if (!state.inputStringEmpty) return null
+        if (!state.tailEmpty) return null
+        if (state.candidatesShown) return null
+        if (state.symbolKeyboardShown) return null
+        if (state.customLayoutPickerShown) return null
+        if (state.selectedTextGemmaActionsShown) return null
         val hasContent = state.clipboardBitmap != null || state.clipboardText.isNotBlank()
-        if (!hasContent) return false
-        if (state.clipboardTextIsLastPasted) return false
-        return true
+        if (!hasContent) return null
+        if (state.clipboardTextIsLastPasted) return null
+        return ClipboardPreviewState(
+            text = state.clipboardText,
+            bitmap = state.clipboardBitmap,
+            descriptionShown = state.clipboardPreviewDescriptionShown,
+            tapToDelete = state.clipboardPreviewTapToDelete
+        )
     }
 
-    private fun shouldShowEmptyStateActions(state: CandidateStripInputState): Boolean {
-        if (state.symbolKeyboardShown) return false
-        if (!state.inputStringEmpty) return false
-        if (!state.tailEmpty) return false
-        if (state.candidatesShown) return false
-        if (state.customLayoutPickerShown) return false
-        return state.incognitoVisible ||
-            state.undoEnabled ||
-            state.redoEnabled ||
-            state.reconvertEnabled
+    private fun resolveQuickActions(state: CandidateStripInputState): QuickActionsState {
+        val canShowQuickActions =
+            !state.symbolKeyboardShown &&
+                state.inputStringEmpty &&
+                state.tailEmpty &&
+                !state.candidatesShown &&
+                !state.customLayoutPickerShown &&
+                !state.selectedTextGemmaActionsShown
+        return QuickActionsState(
+            incognitoVisible = canShowQuickActions && state.incognitoVisible,
+            undoEnabled = canShowQuickActions && state.undoEnabled,
+            redoEnabled = canShowQuickActions && state.redoEnabled,
+            reconvertEnabled = canShowQuickActions && state.reconvertEnabled,
+            undoText = state.undoText,
+            redoText = state.redoText,
+        )
     }
 
-    private fun shouldShowIntegratedShortcutItems(state: CandidateStripInputState): Boolean {
+    private fun shouldShowShortcutEntryForEmptyState(
+        state: CandidateStripInputState,
+        clipboardPreview: ClipboardPreviewState?
+    ): Boolean {
+        return state.shortcutToolbarVisible &&
+            state.shortcutToolbarIntegratedInSuggestion &&
+            state.shortcutItems.isNotEmpty() &&
+            clipboardPreview != null
+    }
+
+    private fun shouldShowIntegratedShortcutItems(
+        state: CandidateStripInputState,
+        clipboardPreview: ClipboardPreviewState?
+    ): Boolean {
         if (!state.shortcutToolbarVisible) return false
         if (!state.shortcutToolbarIntegratedInSuggestion) return false
+        if (state.shortcutItems.isEmpty()) return false
         if (state.symbolKeyboardShown) return false
+        if (clipboardPreview != null) return false
         if (!state.inputStringEmpty) return false
         if (!state.tailEmpty) return false
         if (state.candidatesShown) return false
         if (state.customLayoutPickerShown) return false
         if (state.selectedTextGemmaActionsShown) return false
-        return state.shortcutItems.isNotEmpty()
+        return true
     }
 }

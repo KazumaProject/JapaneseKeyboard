@@ -376,7 +376,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     fun isShowingClipboardPreviewForEmptyState(): Boolean {
-        return currentContent is CandidateStripContent.ClipboardPreview
+        return (currentContent as? CandidateStripContent.EmptyState)?.clipboardPreview != null
     }
 
     fun isShowingCustomLayoutPicker(): Boolean {
@@ -578,8 +578,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         )
                     } else {
                         CandidateStripContent.Candidates(
-                            candidates = value,
-                            showShortcutEntry = false
+                            candidates = value
                         )
                     },
                     onCommitted = {
@@ -649,10 +648,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             is CandidateStripContent.Candidates -> buildCandidateItems(content)
             is CandidateStripContent.GemmaActions -> buildGemmaActionItems(content)
             is CandidateStripContent.CustomLayoutPicker -> buildCustomLayoutItems(content)
-            is CandidateStripContent.ClipboardPreview -> buildClipboardPreviewItems(content)
-            is CandidateStripContent.EmptyStateActions -> buildEmptyStateActionItems(content)
-            is CandidateStripContent.IntegratedShortcuts -> buildIntegratedShortcutItems(content)
             is CandidateStripContent.ExpandedShortcutEntry -> buildExpandedShortcutEntryItems(content)
+            is CandidateStripContent.EmptyState -> buildEmptyStateItems(content)
             CandidateStripContent.Empty -> emptyList()
         }
     }
@@ -661,9 +658,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         content: CandidateStripContent.Candidates
     ): List<SuggestionDisplayItem> =
         buildList {
-            if (content.showShortcutEntry) {
-                add(SuggestionDisplayItem.ShortcutEntryItem)
-            }
             content.candidates.forEachIndexed { index, candidate ->
                 add(SuggestionDisplayItem.CandidateItem(candidate, index))
             }
@@ -688,55 +682,44 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             SuggestionDisplayItem.CustomLayoutItem(layout, index)
         }
 
-    private fun buildClipboardPreviewItems(
-        content: CandidateStripContent.ClipboardPreview
+    private fun buildEmptyStateItems(
+        content: CandidateStripContent.EmptyState
     ): List<SuggestionDisplayItem> =
         buildList {
             if (content.showShortcutEntry) {
                 add(SuggestionDisplayItem.ShortcutEntryItem)
             }
-            add(
-                SuggestionDisplayItem.ClipboardPreviewItem(
-                    ClipboardPreviewState(
-                        pasteEnabled = true,
-                        clipboardDescriptionShown = content.descriptionShown,
-                        clipboardText = content.text,
-                        clipboardBitmap = content.bitmap,
-                        hasLeadingShortcutEntry = content.showShortcutEntry
-                    )
-                )
-            )
-        }
-
-    private fun buildEmptyStateActionItems(
-        content: CandidateStripContent.EmptyStateActions
-    ): List<SuggestionDisplayItem> =
-        buildList {
             val quickActionsState = QuickActionsState(
-                undoEnabled = content.undoEnabled,
-                redoEnabled = content.redoEnabled,
-                reconvertEnabled = content.reconvertEnabled,
-                undoText = content.undoText,
-                redoText = content.redoText,
+                undoEnabled = content.quickActions.undoEnabled,
+                redoEnabled = content.quickActions.redoEnabled,
+                reconvertEnabled = content.quickActions.reconvertEnabled,
+                undoText = content.quickActions.undoText,
+                redoText = content.quickActions.redoText,
                 incognitoIconDrawable = incognitoIconDrawable.takeIf {
-                    content.incognitoVisible
+                    content.quickActions.incognitoVisible
                 }
             )
-            if (quickActionsState.hasVisibleAction) {
+            if (content.quickActions.hasAnyAction) {
                 add(SuggestionDisplayItem.QuickActionsItem(quickActionsState))
+            }
+            content.clipboardPreview?.let { preview ->
+                add(
+                    SuggestionDisplayItem.ClipboardPreviewItem(
+                        ClipboardPreviewState(
+                            pasteEnabled = true,
+                            clipboardDescriptionShown = preview.descriptionShown,
+                            clipboardText = preview.text,
+                            clipboardBitmap = preview.bitmap,
+                            hasLeadingShortcutEntry = content.showShortcutEntry
+                        )
+                    )
+                )
             }
             if (content.showIntegratedShortcuts) {
                 content.shortcutItems.forEach { shortcutType ->
                     add(SuggestionDisplayItem.ShortcutItem(shortcutType))
                 }
             }
-        }
-
-    private fun buildIntegratedShortcutItems(
-        content: CandidateStripContent.IntegratedShortcuts
-    ): List<SuggestionDisplayItem> =
-        content.shortcutItems.map { shortcutType ->
-            SuggestionDisplayItem.ShortcutItem(shortcutType)
         }
 
     private fun buildExpandedShortcutEntryItems(
