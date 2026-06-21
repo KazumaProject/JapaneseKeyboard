@@ -206,7 +206,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val clipboardDescriptionShown: Boolean,
         val clipboardText: String,
         val clipboardBitmap: Bitmap?,
-        val hasLeadingShortcutEntry: Boolean
+        val centerInStrip: Boolean,
+        val offsetForLeadingShortcutEntry: Boolean,
+        val addInlineStartMargin: Boolean,
     ) {
         val hasClipboardPreview: Boolean
             get() = pasteEnabled && (clipboardBitmap != null || clipboardText.isNotBlank())
@@ -710,7 +712,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                             clipboardDescriptionShown = preview.descriptionShown,
                             clipboardText = preview.text,
                             clipboardBitmap = preview.bitmap,
-                            hasLeadingShortcutEntry = content.showShortcutEntry
+                            centerInStrip = content.shouldCenterClipboardPreview(),
+                            offsetForLeadingShortcutEntry =
+                                content.shouldOffsetCenteredClipboardPreview(),
+                            addInlineStartMargin = content.shouldAddClipboardPreviewStartMargin()
                         )
                     )
                 )
@@ -752,6 +757,24 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         return startAnchorSignatureFor(buildDisplayItems()) != null
     }
 
+    internal fun buildClipboardPreviewCenterInStripFlagsForTesting(): List<Boolean> {
+        return buildDisplayItems()
+            .filterIsInstance<SuggestionDisplayItem.ClipboardPreviewItem>()
+            .map { it.state.centerInStrip }
+    }
+
+    internal fun buildClipboardPreviewOffsetForLeadingShortcutEntryFlagsForTesting(): List<Boolean> {
+        return buildDisplayItems()
+            .filterIsInstance<SuggestionDisplayItem.ClipboardPreviewItem>()
+            .map { it.state.offsetForLeadingShortcutEntry }
+    }
+
+    internal fun buildClipboardPreviewInlineStartMarginFlagsForTesting(): List<Boolean> {
+        return buildDisplayItems()
+            .filterIsInstance<SuggestionDisplayItem.ClipboardPreviewItem>()
+            .map { it.state.addInlineStartMargin }
+    }
+
     private fun currentQuickActionsState(): QuickActionsState =
         QuickActionsState(
             undoEnabled = isUndoEnabled,
@@ -763,14 +786,16 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         )
 
     private fun currentClipboardPreviewState(
-        hasLeadingShortcutEntry: Boolean
+        centerInStrip: Boolean
     ): ClipboardPreviewState =
         ClipboardPreviewState(
             pasteEnabled = isPasteEnabled,
             clipboardDescriptionShown = isClipboardDescriptionShow,
             clipboardText = clipboardText,
             clipboardBitmap = clipboardBitmap,
-            hasLeadingShortcutEntry = hasLeadingShortcutEntry,
+            centerInStrip = centerInStrip,
+            offsetForLeadingShortcutEntry = false,
+            addInlineStartMargin = false,
         )
 
     private fun SuggestionDisplayItem.kind(): SuggestionDisplayItemKind =
@@ -1051,11 +1076,15 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     ) {
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
         Timber.d("SuggestionAdapter onBindClipboardPreviewViewHolder: ${state.clipboardText} ${state.pasteEnabled}")
-        holder.itemView.translationX = if (state.hasLeadingShortcutEntry) {
+        holder.itemView.translationX = if (state.offsetForLeadingShortcutEntry) {
             -holder.itemView.resources.displayMetrics.density * 28f
         } else {
             0f
         }
+        holder.itemView.updateClipboardPreviewLayout(
+            centerInStrip = state.centerInStrip,
+            addInlineStartMargin = state.addInlineStartMargin
+        )
         holder.apply {
             pasteIconParent?.apply {
                 isEnabled = state.pasteEnabled
@@ -1094,6 +1123,51 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                     true
                 }
             }
+        }
+    }
+
+    private fun CandidateStripContent.EmptyState.shouldCenterClipboardPreview(): Boolean {
+        return !quickActions.hasAnyAction &&
+            !showIntegratedShortcuts
+    }
+
+    private fun CandidateStripContent.EmptyState.shouldOffsetCenteredClipboardPreview(): Boolean {
+        return shouldCenterClipboardPreview() && showShortcutEntry
+    }
+
+    private fun CandidateStripContent.EmptyState.shouldAddClipboardPreviewStartMargin(): Boolean {
+        return !shouldCenterClipboardPreview() && quickActions.hasAnyAction
+    }
+
+    private fun View.updateClipboardPreviewLayout(
+        centerInStrip: Boolean,
+        addInlineStartMargin: Boolean,
+    ) {
+        val targetWidth = if (centerInStrip) {
+            ViewGroup.LayoutParams.MATCH_PARENT
+        } else {
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        }
+        val targetStartMargin = if (addInlineStartMargin) {
+            (resources.displayMetrics.density * 8f).toInt()
+        } else {
+            0
+        }
+        val currentLayoutParams = layoutParams ?: return
+        var changed = false
+        if (currentLayoutParams.width != targetWidth) {
+            currentLayoutParams.width = targetWidth
+            changed = true
+        }
+        if (
+            currentLayoutParams is ViewGroup.MarginLayoutParams &&
+            currentLayoutParams.marginStart != targetStartMargin
+        ) {
+            currentLayoutParams.marginStart = targetStartMargin
+            changed = true
+        }
+        if (changed) {
+            layoutParams = currentLayoutParams
         }
     }
 

@@ -139,13 +139,31 @@ class CandidateStripContentResolverTest {
     }
 
     @Test
-    fun clipboardPreviewHidden_whenClipboardTextIsLastPasted() {
+    fun clipboardPreviewShown_whenClipboardTextIsLastPastedAndTapToDeleteDisabled() {
         val state = baseState(
             inputStringEmpty = true,
             tailEmpty = true,
             clipboardPreviewEnabled = true,
             clipboardText = "hello",
             clipboardTextIsLastPasted = true,
+            clipboardPreviewTapToDelete = false,
+            undoEnabled = true
+        )
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
+
+        assertNotNull(emptyState.clipboardPreview)
+        assertTrue(emptyState.quickActions.undoEnabled)
+    }
+
+    @Test
+    fun clipboardPreviewHidden_whenClipboardTextIsLastPastedAndTapToDeleteEnabled() {
+        val state = baseState(
+            inputStringEmpty = true,
+            tailEmpty = true,
+            clipboardPreviewEnabled = true,
+            clipboardText = "hello",
+            clipboardTextIsLastPasted = true,
+            clipboardPreviewTapToDelete = true,
             undoEnabled = true
         )
         val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()

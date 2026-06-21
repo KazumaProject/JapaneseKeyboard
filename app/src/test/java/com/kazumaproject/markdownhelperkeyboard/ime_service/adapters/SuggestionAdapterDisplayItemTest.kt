@@ -162,6 +162,18 @@ class SuggestionAdapterDisplayItemTest {
             listOf(SuggestionAdapter.SuggestionDisplayItemKind.ClipboardPreviewItem),
             adapter.buildDisplayItemKindsForTesting()
         )
+        assertEquals(
+            listOf(true),
+            adapter.buildClipboardPreviewCenterInStripFlagsForTesting()
+        )
+        assertEquals(
+            listOf(false),
+            adapter.buildClipboardPreviewOffsetForLeadingShortcutEntryFlagsForTesting()
+        )
+        assertEquals(
+            listOf(false),
+            adapter.buildClipboardPreviewInlineStartMarginFlagsForTesting()
+        )
         adapter.release()
     }
 
@@ -176,6 +188,98 @@ class SuggestionAdapterDisplayItemTest {
                 SuggestionAdapter.SuggestionDisplayItemKind.ClipboardPreviewItem,
             ),
             adapter.buildDisplayItemKindsForTesting()
+        )
+        assertEquals(
+            listOf(true),
+            adapter.buildClipboardPreviewCenterInStripFlagsForTesting()
+        )
+        assertEquals(
+            listOf(true),
+            adapter.buildClipboardPreviewOffsetForLeadingShortcutEntryFlagsForTesting()
+        )
+        assertEquals(
+            listOf(false),
+            adapter.buildClipboardPreviewInlineStartMarginFlagsForTesting()
+        )
+        adapter.release()
+    }
+
+    @Test
+    fun clipboardPreviewWithQuickActionsIsNotCentered() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(
+            CandidateStripContent.EmptyState(
+                showShortcutEntry = true,
+                quickActions = QuickActionsState(
+                    incognitoVisible = false,
+                    undoEnabled = true,
+                    redoEnabled = false,
+                    reconvertEnabled = false,
+                    undoText = "元に戻す",
+                    redoText = "",
+                ),
+                clipboardPreview = ClipboardPreviewState(
+                    text = "clip",
+                    bitmap = null,
+                    descriptionShown = true,
+                    tapToDelete = false,
+                ),
+                shortcutItems = shortcuts(),
+                showIntegratedShortcuts = false,
+            )
+        )
+
+        assertEquals(
+            listOf(false),
+            adapter.buildClipboardPreviewCenterInStripFlagsForTesting()
+        )
+        assertEquals(
+            listOf(false),
+            adapter.buildClipboardPreviewOffsetForLeadingShortcutEntryFlagsForTesting()
+        )
+        assertEquals(
+            listOf(true),
+            adapter.buildClipboardPreviewInlineStartMarginFlagsForTesting()
+        )
+        adapter.release()
+    }
+
+    @Test
+    fun clipboardPreviewWithQuickActionsAndNoShortcutEntryIsNotCentered() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(
+            CandidateStripContent.EmptyState(
+                showShortcutEntry = false,
+                quickActions = QuickActionsState(
+                    incognitoVisible = false,
+                    undoEnabled = true,
+                    redoEnabled = false,
+                    reconvertEnabled = false,
+                    undoText = "元に戻す",
+                    redoText = "",
+                ),
+                clipboardPreview = ClipboardPreviewState(
+                    text = "clip",
+                    bitmap = null,
+                    descriptionShown = true,
+                    tapToDelete = false,
+                ),
+                shortcutItems = shortcuts(),
+                showIntegratedShortcuts = false,
+            )
+        )
+
+        assertEquals(
+            listOf(false),
+            adapter.buildClipboardPreviewCenterInStripFlagsForTesting()
+        )
+        assertEquals(
+            listOf(false),
+            adapter.buildClipboardPreviewOffsetForLeadingShortcutEntryFlagsForTesting()
+        )
+        assertEquals(
+            listOf(true),
+            adapter.buildClipboardPreviewInlineStartMarginFlagsForTesting()
         )
         adapter.release()
     }
