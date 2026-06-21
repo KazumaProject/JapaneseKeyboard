@@ -15,7 +15,7 @@ enum class KeyMode {
 
 enum class ModeSwitchBoundary {
     NONE,
-    I_ROW_DIACRITIC
+    I_COLUMN_DIACRITIC
 }
 
 sealed class TfbiFlickNode {

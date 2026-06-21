@@ -9975,7 +9975,7 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input(
                     char = "ぎ",
                     triggersMode = KeyMode.DAKUTEN,
-                    modeSwitchBoundary = ModeSwitchBoundary.I_ROW_DIACRITIC
+                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
                 ),
                 TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
                     label = "きゅ", nextMap = subMenuForKyu, cancelOnTap = true
@@ -10251,7 +10251,7 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input(
                     char = "じ",
                     triggersMode = KeyMode.DAKUTEN,
-                    modeSwitchBoundary = ModeSwitchBoundary.I_ROW_DIACRITIC
+                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
                 ),
                 TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
                     label = "しゅ", nextMap = subMenuForSyu, cancelOnTap = true
@@ -10356,7 +10356,7 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input(
                     char = "ぢ",
                     triggersMode = KeyMode.DAKUTEN,
-                    modeSwitchBoundary = ModeSwitchBoundary.I_ROW_DIACRITIC
+                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
                 ),
                 TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
                     label = "ちゅ", nextMap = subMenuForTyu, cancelOnTap = true
@@ -10502,12 +10502,12 @@ object KeyboardDefaultLayouts {
                 TfbiFlickDirection.DOWN_LEFT to TfbiFlickNode.Input(
                     char = "び",
                     triggersMode = KeyMode.DAKUTEN,
-                    modeSwitchBoundary = ModeSwitchBoundary.I_ROW_DIACRITIC
+                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
                 ),
                 TfbiFlickDirection.UP_LEFT to TfbiFlickNode.Input(
                     char = "ぴ",
                     triggersMode = KeyMode.HANDAKUTEN,
-                    modeSwitchBoundary = ModeSwitchBoundary.I_ROW_DIACRITIC
+                    modeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC
                 ),
                 TfbiFlickDirection.UP to TfbiFlickNode.SubMenu(
                     label = "ひゅ", nextMap = subMenuForHyu, cancelOnTap = true

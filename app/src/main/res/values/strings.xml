@@ -896,7 +896,7 @@
     <string name="sumire_custom_angle_preference_summary">Adjust the flick recognition angle</string>
     <string name="hierarchical_flick_angle_margin_preference_title">Recognition angle for three-step flick input</string>
     <string name="hierarchical_flick_angle_margin_preference_summary">Adjusts the boundary angle between neighboring input candidates</string>
-    <string name="hierarchical_flick_angle_margin_heading">I-row dakuten / contracted sounds</string>
+    <string name="hierarchical_flick_angle_margin_heading">I-column dakuten / contracted sounds</string>
     <string name="hierarchical_flick_angle_margin_reset">Reset</string>
     <string name="hierarchical_flick_angle_margin_label">Angle difference required for dakuten</string>
     <string name="hierarchical_flick_angle_margin_description">Adjust this so inputs such as kyo / gyo are recognized as intended.\nIncreasing the angle makes gyo less likely to be recognized by mistake when entering kyo.</string>

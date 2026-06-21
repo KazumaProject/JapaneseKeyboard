@@ -462,7 +462,7 @@ class TfbiHierarchicalFlickController(
     ): Boolean {
         val targetNode = currentMap[targetDirection] as? TfbiFlickNode.Input ?: return false
         if (targetNode.triggersMode == null || targetNode.triggersMode == currentMode) return true
-        if (targetNode.modeSwitchBoundary != ModeSwitchBoundary.I_ROW_DIACRITIC) return true
+        if (targetNode.modeSwitchBoundary != ModeSwitchBoundary.I_COLUMN_DIACRITIC) return true
 
         val targetAngle = centerAngle(targetDirection) ?: return false
         val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
