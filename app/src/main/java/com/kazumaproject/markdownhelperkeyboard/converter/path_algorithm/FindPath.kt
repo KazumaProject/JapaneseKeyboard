@@ -6,6 +6,11 @@ import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.JapaneseCandidateDedupeAction
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.JapaneseCandidateDedupeMode
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.JapaneseCandidateDedupeTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.JapaneseCandidateIdentity
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.JapaneseCandidateSource
 import timber.log.Timber
 import java.util.PriorityQueue
 
@@ -23,35 +28,44 @@ class FindPath(
         connectionIds: ShortArray,
         connectionMatrixSize: Int,
         n: Int,
+        searchOptions: JapaneseSearchOptions = JapaneseSearchOptions(),
     ): MutableList<Candidate> {
         forwardDp(
             graph = graph,
             length = length,
             connectionIds = connectionIds,
             connectionMatrixSize = connectionMatrixSize,
+            beamWidth = searchOptions.beamWidth,
         )
 
         val resultFinal = mutableListOf<Candidate>()
         val foundStrings = HashSet<String>()
 
-        val pQueue: PriorityQueue<Pair<Node, Int>> =
-            PriorityQueue(
-                compareBy<Pair<Node, Int>> { it.second }
-                    .thenBy { it.first.sPos }
-                    .thenBy { it.first.len }
-                    .thenBy { System.identityHashCode(it.first) },
-            )
+        var sequence = 0L
+        val pQueue = createPathPriorityQueue()
 
-        val eos = Pair(graph[length + 1]?.get(0) ?: return resultFinal, 0)
-        pQueue.add(eos)
+        val eos = graph[length + 1]?.get(0) ?: return resultFinal
+        pQueue.add(
+            PathElement(
+                node = eos,
+                next = null,
+                gx = 0,
+                fx = 0,
+                wordCost = 0,
+                structureCost = 0,
+                splitPositions = IntArray(0),
+                sequence = sequence++,
+            )
+        )
 
         while (pQueue.isNotEmpty()) {
-            val node = pQueue.poll() ?: break
+            val element = pQueue.poll() ?: break
+            val node = element.node
 
-            if (node.first.tango == "BOS") {
-                val stringFromNode = getStringFromNode(node.first)
-                val yomiUsedFromNode = getYomiUsedFromNode(node.first)
-
+            if (node.tango == "BOS") {
+                val pathNodes = getNodesFromPath(element)
+                val stringFromNode = getStringFromPathNodes(pathNodes)
+                val yomiUsedFromNode = getYomiUsedFromPathNodes(pathNodes)
                 if (foundStrings.add(stringFromNode)) {
                     val candidate = Candidate(
                         string = stringFromNode,
@@ -63,12 +77,12 @@ class FindPath(
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
                         score = if (stringFromNode.any { it.isDigit() }) {
-                            node.second + 2000
+                            element.fx + 2000
                         } else {
-                            node.second
+                            element.fx
                         },
-                        leftId = node.first.next?.l,
-                        rightId = node.first.next?.r,
+                        leftId = pathNodes.firstOrNull()?.l,
+                        rightId = pathNodes.firstOrNull()?.r,
                     )
                     resultFinal.add(candidate)
                 }
@@ -79,28 +93,32 @@ class FindPath(
             } else {
                 val prevNodes = getPrevNodes2(
                     graph = graph,
-                    node = node.first,
-                    startPosition = node.first.sPos,
+                    node = node,
+                    startPosition = node.sPos,
                 ).flatten()
 
                 for (prevNode in prevNodes) {
                     val edgeScore = getEdgeCost(
                         leftId = prevNode.l.toInt(),
-                        rightId = node.first.r.toInt(),
+                        rightId = node.r.toInt(),
                         connectionIds = connectionIds,
                         connectionMatrixSize = connectionMatrixSize,
                     )
 
                     val ngramAdjustment = ngramRuleScorerProvider().score(
                         prevNode = prevNode,
-                        currentNode = node.first,
+                        currentNode = node,
                     )
 
-                    prevNode.g = node.first.g + edgeScore + node.first.score + ngramAdjustment
-                    prevNode.next = node.first
-
-                    val result2 = Pair(prevNode, prevNode.g + prevNode.f)
-                    pQueue.add(result2)
+                    pQueue.add(
+                        createPreviousPathElement(
+                            prevNode = prevNode,
+                            current = element,
+                            edgeScore = edgeScore,
+                            ngramAdjustment = ngramAdjustment,
+                            sequence = sequence++,
+                        )
+                    )
                 }
             }
         }
@@ -244,33 +262,63 @@ class FindPath(
         return connectionIds[index].toInt()
     }
 
-    private fun getStringFromNode(node: Node): String {
-        var tempNode = node
-        val result = mutableListOf<String>()
+    private fun createPathPriorityQueue(): PriorityQueue<PathElement> =
+        PriorityQueue(
+            compareBy<PathElement> { it.fx }
+                .thenBy { it.node.sPos }
+                .thenBy { it.node.len }
+                .thenBy { System.identityHashCode(it.node) }
+                .thenBy { it.sequence },
+        )
 
-        while (tempNode.tango != "EOS") {
-            tempNode.next?.let {
-                result.add(it.tango)
-                tempNode = it
-            }
-        }
-
-        return result.dropLast(1).joinToString("")
+    private fun createPreviousPathElement(
+        prevNode: Node,
+        current: PathElement,
+        edgeScore: Int,
+        ngramAdjustment: Int,
+        sequence: Long,
+    ): PathElement {
+        val wordCostDiff = current.node.score
+        val structureCostDiff = edgeScore + ngramAdjustment
+        val gx = current.gx + wordCostDiff + structureCostDiff
+        return PathElement(
+            node = prevNode,
+            next = current,
+            gx = gx,
+            fx = gx + prevNode.f,
+            wordCost = current.wordCost + wordCostDiff,
+            structureCost = current.structureCost + structureCostDiff,
+            splitPositions = copySplitPositionsWithBoundary(current),
+            sequence = sequence,
+        )
     }
 
-    private fun getYomiUsedFromNode(node: Node): String {
-        var tempNode = node
-        val result = mutableListOf<String>()
-
-        while (tempNode.tango != "EOS") {
-            tempNode.next?.let {
-                result.add(it.yomiUsed)
-                tempNode = it
-            }
+    private fun copySplitPositionsWithBoundary(current: PathElement): IntArray {
+        val rightNode = current.node
+        if (rightNode.tango == "EOS" || rightNode.sPos <= 0 || !isIndependentWord(rightNode.l)) {
+            return current.splitPositions
         }
-
-        return result.dropLast(1).joinToString("")
+        return IntArray(current.splitPositions.size + 1).also { result ->
+            result[0] = rightNode.sPos
+            current.splitPositions.copyInto(result, destinationOffset = 1)
+        }
     }
+
+    private fun getNodesFromPath(element: PathElement): List<Node> {
+        val result = mutableListOf<Node>()
+        var cursor = element.next
+        while (cursor != null && cursor.node.tango != "EOS") {
+            result.add(cursor.node)
+            cursor = cursor.next
+        }
+        return result
+    }
+
+    private fun getStringFromPathNodes(nodes: List<Node>): String =
+        nodes.joinToString(separator = "") { it.tango }
+
+    private fun getYomiUsedFromPathNodes(nodes: List<Node>): String =
+        nodes.joinToString(separator = "") { it.yomiUsed }
 
     fun backwardAStarWithBunsetsu(
         graph: MutableMap<Int, MutableList<Node>>,
@@ -278,43 +326,111 @@ class FindPath(
         connectionIds: ShortArray,
         connectionMatrixSize: Int,
         n: Int,
+        input: String = "",
+        options: JapaneseBunsetsuOptions = JapaneseBunsetsuOptions(),
     ): BunsetsuCandidateResult {
         forwardDp(
             graph = graph,
             length = length,
             connectionIds = connectionIds,
             connectionMatrixSize = connectionMatrixSize,
+            beamWidth = options.searchOptions.beamWidth,
         )
 
         val resultFinal = mutableListOf<Candidate>()
         val splitPatterns = mutableListOf<List<Int>>()
         val splitPatternByCandidateString = linkedMapOf<String, List<Int>>()
+        val splitPatternByCandidateIdentity = linkedMapOf<JapaneseCandidateIdentity, List<Int>>()
+        val dedupeTraces = mutableListOf<JapaneseCandidateDedupeTrace>()
         val foundStrings = HashSet<String>()
+        val foundIdentities = LinkedHashSet<JapaneseCandidateIdentity>()
 
-        val pQueue: PriorityQueue<Pair<Node, Int>> =
-            PriorityQueue(
-                compareBy<Pair<Node, Int>> { it.second }
-                    .thenBy { it.first.sPos }
-                    .thenBy { it.first.len }
-                    .thenBy { System.identityHashCode(it.first) },
+        var sequence = 0L
+        val pQueue = createPathPriorityQueue()
+
+        graph[length + 1]?.get(0)?.let {
+            pQueue.add(
+                PathElement(
+                    node = it,
+                    next = null,
+                    gx = 0,
+                    fx = 0,
+                    wordCost = 0,
+                    structureCost = 0,
+                    splitPositions = IntArray(0),
+                    sequence = sequence++,
+                )
             )
-
-        graph[length + 1]?.get(0)?.let { pQueue.add(Pair(it, 0)) }
+        }
             ?: return BunsetsuCandidateResult(emptyList(), emptyList())
 
         while (pQueue.isNotEmpty()) {
-            val node = pQueue.poll() ?: break
+            val element = pQueue.poll() ?: break
+            val node = element.node
 
-            if (node.first.tango == "BOS") {
-                val stringFromNode = getStringFromNode(node.first)
-                val yomiUsedFromNode = getYomiUsedFromNode(node.first)
-                val bunsetsuPositions = getBunsetsuPositions(node.first)
+            if (node.tango == "BOS") {
+                val pathNodes = getNodesFromPath(element)
+                val stringFromNode = getStringFromPathNodes(pathNodes)
+                val yomiUsedFromNode = getYomiUsedFromPathNodes(pathNodes)
+                val bunsetsuPositions = element.splitPositionList()
+                val firstNode = pathNodes.firstOrNull()
+                val identity = JapaneseCandidateIdentity(
+                    value = stringFromNode,
+                    key = yomiUsedFromNode,
+                    leftId = firstNode?.l,
+                    rightId = firstNode?.r,
+                    splitPattern = bunsetsuPositions,
+                    wordCost = element.wordCost,
+                    structureCost = element.structureCost,
+                    candidateSource = JapaneseCandidateSource.NBEST,
+                )
 
-                if (foundStrings.add(stringFromNode)) {
+                val valueAlreadySeen = !foundStrings.add(stringFromNode)
+                val identityAlreadySeen = !foundIdentities.add(identity)
+                val shouldDrop = when (options.candidateDedupeMode) {
+                    JapaneseCandidateDedupeMode.LEGACY_VALUE -> valueAlreadySeen
+                    JapaneseCandidateDedupeMode.IDENTITY -> identityAlreadySeen
+                }
+
+                if (options.includeDedupeTrace) {
+                    val action = when {
+                        shouldDrop && options.candidateDedupeMode == JapaneseCandidateDedupeMode.LEGACY_VALUE ->
+                            JapaneseCandidateDedupeAction.DROPPED_VALUE_DUPLICATE
+
+                        shouldDrop && options.candidateDedupeMode == JapaneseCandidateDedupeMode.IDENTITY ->
+                            JapaneseCandidateDedupeAction.DROPPED_IDENTITY_DUPLICATE
+
+                        valueAlreadySeen && options.candidateDedupeMode == JapaneseCandidateDedupeMode.IDENTITY ->
+                            JapaneseCandidateDedupeAction.WOULD_DROP_BY_VALUE_ONLY
+
+                        else -> JapaneseCandidateDedupeAction.RETAINED
+                    }
+                    dedupeTraces.add(
+                        JapaneseCandidateDedupeTrace(
+                            input = input,
+                            identity = identity,
+                            action = action,
+                            reason = when (action) {
+                                JapaneseCandidateDedupeAction.RETAINED -> "candidate retained"
+                                JapaneseCandidateDedupeAction.DROPPED_VALUE_DUPLICATE ->
+                                    "legacy value-only dedupe removed this candidate"
+
+                                JapaneseCandidateDedupeAction.DROPPED_IDENTITY_DUPLICATE ->
+                                    "identity dedupe removed an exact duplicate candidate"
+
+                                JapaneseCandidateDedupeAction.WOULD_DROP_BY_VALUE_ONLY ->
+                                    "same value has another key/lid/rid/split identity"
+                            },
+                        )
+                    )
+                }
+
+                if (!shouldDrop) {
                     if (splitPatterns.none { it == bunsetsuPositions } && splitPatterns.size < 4) {
                         splitPatterns.add(bunsetsuPositions)
                     }
-                    splitPatternByCandidateString[stringFromNode] = bunsetsuPositions
+                    splitPatternByCandidateString.putIfAbsent(stringFromNode, bunsetsuPositions)
+                    splitPatternByCandidateIdentity[identity] = bunsetsuPositions
 
                     val candidate = Candidate(
                         string = stringFromNode,
@@ -326,12 +442,13 @@ class FindPath(
                         length = length.toUByte(),
                         yomi = yomiUsedFromNode,
                         score = if (stringFromNode.any { it.isDigit() }) {
-                            node.second + 2000
+                            element.fx + 2000
                         } else {
-                            node.second
+                            element.fx
                         },
-                        leftId = node.first.next?.l,
-                        rightId = node.first.next?.r,
+                        leftId = firstNode?.l,
+                        rightId = firstNode?.r,
+                        japaneseCandidateIdentity = identity,
                     )
                     resultFinal.add(candidate)
                 }
@@ -341,33 +458,39 @@ class FindPath(
                         candidates = resultFinal,
                         splitPatterns = splitPatterns,
                         splitPatternByCandidateString = splitPatternByCandidateString,
+                        splitPatternByCandidateIdentity = splitPatternByCandidateIdentity,
+                        dedupeTraces = dedupeTraces,
                     )
                 }
             } else {
                 val prevNodes = getPrevNodes2(
                     graph = graph,
-                    node = node.first,
-                    startPosition = node.first.sPos,
+                    node = node,
+                    startPosition = node.sPos,
                 ).flatten()
 
                 for (prevNode in prevNodes) {
                     val edgeScore = getEdgeCost(
                         leftId = prevNode.l.toInt(),
-                        rightId = node.first.r.toInt(),
+                        rightId = node.r.toInt(),
                         connectionIds = connectionIds,
                         connectionMatrixSize = connectionMatrixSize,
                     )
 
                     val ngramAdjustment = ngramRuleScorerProvider().score(
                         prevNode = prevNode,
-                        currentNode = node.first,
+                        currentNode = node,
                     )
 
-                    prevNode.g = node.first.g + edgeScore + node.first.score + ngramAdjustment
-                    prevNode.next = node.first
-
-                    val result2 = Pair(prevNode, prevNode.g + prevNode.f)
-                    pQueue.add(result2)
+                    pQueue.add(
+                        createPreviousPathElement(
+                            prevNode = prevNode,
+                            current = element,
+                            edgeScore = edgeScore,
+                            ngramAdjustment = ngramAdjustment,
+                            sequence = sequence++,
+                        )
+                    )
                 }
             }
         }
@@ -376,6 +499,8 @@ class FindPath(
             candidates = resultFinal.sortedBy { it.score },
             splitPatterns = splitPatterns,
             splitPatternByCandidateString = splitPatternByCandidateString,
+            splitPatternByCandidateIdentity = splitPatternByCandidateIdentity,
+            dedupeTraces = dedupeTraces,
         )
     }
 
@@ -389,136 +514,18 @@ class FindPath(
         val totalStartTime = System.currentTimeMillis()
         Timber.d("▼ backwardAStarWithBunsetsu 開始 (入力長: $length)")
 
-        val forwardDpStartTime = System.currentTimeMillis()
-
-        forwardDpWithLog(
+        val result = backwardAStarWithBunsetsu(
             graph = graph,
             length = length,
             connectionIds = connectionIds,
             connectionMatrixSize = connectionMatrixSize,
+            n = n,
         )
 
-        val forwardDpTime = System.currentTimeMillis() - forwardDpStartTime
-        Timber.d("  ├─ forwardDp 処理時間: ${forwardDpTime}ms")
-
-        val backwardAStarStartTime = System.currentTimeMillis()
-
-        val resultFinal = mutableListOf<Candidate>()
-        var bestBunsetsuPositions: List<Int> = emptyList()
-        val foundStrings = HashSet<String>()
-
-        val pQueue: PriorityQueue<Pair<Node, Int>> =
-            PriorityQueue(
-                compareBy<Pair<Node, Int>> { it.second }
-                    .thenBy { it.first.sPos }
-                    .thenBy { it.first.len }
-                    .thenBy { System.identityHashCode(it.first) },
-            )
-
-        graph[length + 1]?.get(0)?.let { pQueue.add(Pair(it, 0)) }
-            ?: return Pair(emptyList(), emptyList())
-
-        var loopCount = 0
-        var maxQueueSize = 0
-
-        while (pQueue.isNotEmpty()) {
-            loopCount++
-            maxQueueSize = maxOf(maxQueueSize, pQueue.size)
-
-            val node = pQueue.poll() ?: break
-
-            if (node.first.tango == "BOS") {
-                val stringFromNode = getStringFromNode(node.first)
-                val yomiUsedFromNode = getYomiUsedFromNode(node.first)
-                val bunsetsuPositions = getBunsetsuPositions(node.first)
-
-                if (foundStrings.add(stringFromNode)) {
-                    if (resultFinal.isEmpty()) {
-                        bestBunsetsuPositions = bunsetsuPositions
-                    }
-
-                    val candidate = Candidate(
-                        string = stringFromNode,
-                        type = when {
-                            stringFromNode.isAllFullWidthNumericSymbol() -> 30.toByte()
-                            stringFromNode.isAllHalfWidthNumericSymbol() -> 31.toByte()
-                            else -> 1.toByte()
-                        },
-                        yomi = yomiUsedFromNode,
-                        length = length.toUByte(),
-                        score = if (stringFromNode.any { it.isDigit() }) {
-                            node.second + 2000
-                        } else {
-                            node.second
-                        },
-                        leftId = node.first.next?.l,
-                        rightId = node.first.next?.r,
-                    )
-                    resultFinal.add(candidate)
-                }
-
-                if (resultFinal.size >= n) {
-                    val backwardAStarTime = System.currentTimeMillis() - backwardAStarStartTime
-                    val totalTime = System.currentTimeMillis() - totalStartTime
-                    Timber.d("  ├─ 後方A*探索 処理時間: ${backwardAStarTime}ms (早期リターン)")
-                    Timber.d("  │  ├─ ループ回数: $loopCount 回")
-                    Timber.d("  │  └─ pQueue最大サイズ: $maxQueueSize")
-                    Timber.d("▼ backwardAStarWithBunsetsu 完了 (全体: ${totalTime}ms)")
-                    return Pair(resultFinal, bestBunsetsuPositions)
-                }
-            } else {
-                val prevNodes = getPrevNodes2(
-                    graph = graph,
-                    node = node.first,
-                    startPosition = node.first.sPos,
-                ).flatten()
-
-                for (prevNode in prevNodes) {
-                    val edgeScore = getEdgeCost(
-                        leftId = prevNode.l.toInt(),
-                        rightId = node.first.r.toInt(),
-                        connectionIds = connectionIds,
-                        connectionMatrixSize = connectionMatrixSize,
-                    )
-
-                    val ngramAdjustment = ngramRuleScorerProvider().score(
-                        prevNode = prevNode,
-                        currentNode = node.first,
-                    )
-
-                    prevNode.g = node.first.g + edgeScore + node.first.score + ngramAdjustment
-                    prevNode.next = node.first
-
-                    val result2 = Pair(prevNode, prevNode.g + prevNode.f)
-                    pQueue.add(result2)
-                }
-            }
-        }
-
-        val backwardAStarTime = System.currentTimeMillis() - backwardAStarStartTime
         val totalTime = System.currentTimeMillis() - totalStartTime
-        Timber.d("  ├─ 後方A*探索 処理時間: ${backwardAStarTime}ms")
-        Timber.d("  │  ├─ ループ回数: $loopCount 回")
-        Timber.d("  │  └─ pQueue最大サイズ: $maxQueueSize")
         Timber.d("▼ backwardAStarWithBunsetsu 完了 (全体: ${totalTime}ms)")
 
-        return Pair(resultFinal.sortedBy { it.score }, bestBunsetsuPositions)
-    }
-
-    private fun getBunsetsuPositions(bosNode: Node): List<Int> {
-        val positions = mutableListOf<Int>()
-        var currentPosition = 0
-        var tempNode = bosNode.next
-
-        while (tempNode != null && tempNode.tango != "EOS") {
-            if (currentPosition > 0 && isIndependentWord(tempNode.l)) {
-                positions.add(currentPosition)
-            }
-            currentPosition += tempNode.len.toInt()
-            tempNode = tempNode.next
-        }
-
-        return positions
+        return Pair(result.candidates, result.primarySplitPositions)
     }
 
     private fun isIndependentWord(id: Short): Boolean {

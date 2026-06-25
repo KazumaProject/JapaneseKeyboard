@@ -1401,6 +1401,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                input = input,
             )
         }
 
@@ -1507,7 +1508,9 @@ class KanaKanjiEngine {
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
-                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+                splitPatternByCandidateIdentity = resultNBestFinalDeferred.splitPatternByCandidateIdentity,
+                dedupeTraces = resultNBestFinalDeferred.dedupeTraces
             )
         }
 
@@ -1520,7 +1523,9 @@ class KanaKanjiEngine {
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultWithHankaku.splitPatterns,
-                splitPatternByCandidateString = resultWithHankaku.splitPatternByCandidateString
+                splitPatternByCandidateString = resultWithHankaku.splitPatternByCandidateString,
+                splitPatternByCandidateIdentity = resultWithHankaku.splitPatternByCandidateIdentity,
+                dedupeTraces = resultWithHankaku.dedupeTraces
             )
         }
 
@@ -1673,7 +1678,9 @@ class KanaKanjiEngine {
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
-                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+                splitPatternByCandidateIdentity = resultNBestFinalDeferred.splitPatternByCandidateIdentity,
+                dedupeTraces = resultNBestFinalDeferred.dedupeTraces
             )
         }
 
@@ -1819,7 +1826,9 @@ class KanaKanjiEngine {
         return BunsetsuCandidateResult(
             candidates = resultListFinal,
             splitPatterns = resultNBestFinalDeferred.splitPatterns,
-            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+            splitPatternByCandidateIdentity = resultNBestFinalDeferred.splitPatternByCandidateIdentity,
+            dedupeTraces = resultNBestFinalDeferred.dedupeTraces
         )
 
     }
@@ -1906,6 +1915,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                input = input,
             )
         }
 
@@ -2014,7 +2024,9 @@ class KanaKanjiEngine {
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
-                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+                splitPatternByCandidateIdentity = resultNBestFinalDeferred.splitPatternByCandidateIdentity,
+                dedupeTraces = resultNBestFinalDeferred.dedupeTraces
             )
         }
 
@@ -2025,7 +2037,9 @@ class KanaKanjiEngine {
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultWithHankaku.splitPatterns,
-                splitPatternByCandidateString = resultWithHankaku.splitPatternByCandidateString
+                splitPatternByCandidateString = resultWithHankaku.splitPatternByCandidateString,
+                splitPatternByCandidateIdentity = resultWithHankaku.splitPatternByCandidateIdentity,
+                dedupeTraces = resultWithHankaku.dedupeTraces
             )
         }
 
@@ -2120,7 +2134,9 @@ class KanaKanjiEngine {
             return BunsetsuCandidateResult(
                 candidates = finalListOneLetter,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
-                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+                splitPatternByCandidateIdentity = resultNBestFinalDeferred.splitPatternByCandidateIdentity,
+                dedupeTraces = resultNBestFinalDeferred.dedupeTraces
             )
         }
 
@@ -2269,7 +2285,9 @@ class KanaKanjiEngine {
         return BunsetsuCandidateResult(
             candidates = finalList,
             splitPatterns = resultNBestFinalDeferred.splitPatterns,
-            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+            splitPatternByCandidateIdentity = resultNBestFinalDeferred.splitPatternByCandidateIdentity,
+            dedupeTraces = resultNBestFinalDeferred.dedupeTraces
         )
 
     }
@@ -3253,6 +3271,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                input = input,
             )
         }
 
@@ -3359,7 +3378,9 @@ class KanaKanjiEngine {
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
-                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+                splitPatternByCandidateIdentity = resultNBestFinalDeferred.splitPatternByCandidateIdentity,
+                dedupeTraces = resultNBestFinalDeferred.dedupeTraces
             )
         }
 
@@ -3372,7 +3393,9 @@ class KanaKanjiEngine {
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultWithHankaku.splitPatterns,
-                splitPatternByCandidateString = resultWithHankaku.splitPatternByCandidateString
+                splitPatternByCandidateString = resultWithHankaku.splitPatternByCandidateString,
+                splitPatternByCandidateIdentity = resultWithHankaku.splitPatternByCandidateIdentity,
+                dedupeTraces = resultWithHankaku.dedupeTraces
             )
         }
 
@@ -3517,7 +3540,9 @@ class KanaKanjiEngine {
             return BunsetsuCandidateResult(
                 candidates = finalList,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
-                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+                splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+                splitPatternByCandidateIdentity = resultNBestFinalDeferred.splitPatternByCandidateIdentity,
+                dedupeTraces = resultNBestFinalDeferred.dedupeTraces
             )
         }
 
@@ -3660,7 +3685,9 @@ class KanaKanjiEngine {
         return BunsetsuCandidateResult(
             candidates = resultListFinal,
             splitPatterns = resultNBestFinalDeferred.splitPatterns,
-            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+            splitPatternByCandidateIdentity = resultNBestFinalDeferred.splitPatternByCandidateIdentity,
+            dedupeTraces = resultNBestFinalDeferred.dedupeTraces
         )
 
     }
@@ -4847,7 +4874,9 @@ class KanaKanjiEngine {
         return BunsetsuCandidateResult(
             candidates = newList,
             splitPatterns = originalData.splitPatterns,
-            splitPatternByCandidateString = originalData.splitPatternByCandidateString
+            splitPatternByCandidateString = originalData.splitPatternByCandidateString,
+            splitPatternByCandidateIdentity = originalData.splitPatternByCandidateIdentity,
+            dedupeTraces = originalData.dedupeTraces,
         )
     }
 

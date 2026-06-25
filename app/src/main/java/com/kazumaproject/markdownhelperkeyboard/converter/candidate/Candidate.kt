@@ -10,5 +10,6 @@ data class Candidate(
     val score: Int,
     val yomi: String? = null,
     val leftId: Short? = null,
-    val rightId: Short? = null
+    val rightId: Short? = null,
+    val japaneseCandidateIdentity: JapaneseCandidateIdentity? = null,
 )

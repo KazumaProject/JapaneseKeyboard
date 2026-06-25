@@ -233,3 +233,245 @@ dependencies {
 
 //    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 }
+
+def japaneseBunsetsuReportDirProvider = layout.buildDirectory.dir("reports/japanese-bunsetsu")
+
+tasks.withType(Test).configureEach {
+    systemProperty "japaneseBunsetsuReportDir", japaneseBunsetsuReportDirProvider.get().asFile.absolutePath
+    if (project.hasProperty("upstreamJapaneseBunsetsuTrace")) {
+        systemProperty "upstreamJapaneseBunsetsuTrace", project.property("upstreamJapaneseBunsetsuTrace").toString()
+    }
+}
+
+tasks.register("generateJapaneseBunsetsuGoldenFixtures") {
+    def sourceFile = layout.projectDirectory.file("src/test/resources/japanese_bunsetsu/inputs.tsv")
+    def outputFile = japaneseBunsetsuReportDirProvider.map { it.file("inputs.tsv") }
+    inputs.file(sourceFile)
+    outputs.file(outputFile)
+    doLast {
+        def output = outputFile.get().asFile
+        output.parentFile.mkdirs()
+        output.text = sourceFile.asFile.text
+    }
+}
+
+tasks.register("traceUpstreamJapaneseBunsetsu") {
+    dependsOn("generateJapaneseBunsetsuGoldenFixtures")
+    def outputFile = japaneseBunsetsuReportDirProvider.map { it.file("upstream_trace.tsv") }
+    outputs.file(outputFile)
+    doLast {
+        def output = outputFile.get().asFile
+        output.parentFile.mkdirs()
+        if (project.hasProperty("upstreamJapaneseBunsetsuTrace")) {
+            output.bytes = file(project.property("upstreamJapaneseBunsetsuTrace").toString()).bytes
+        } else {
+            def inputsFile = japaneseBunsetsuReportDirProvider.get().file("inputs.tsv").asFile
+            def inputs = inputsFile.readLines("UTF-8").drop(1).findAll { it.trim() }
+            output.withPrintWriter("UTF-8") { writer ->
+                writer.println("input\ttop1_value\ttop10_values\tboundary\tfirst_divergence_stage\treason")
+                inputs.each { input ->
+                    writer.println("${input}\t\t\t\tUPSTREAM_TRACE_MISSING\tSupply -PupstreamJapaneseBunsetsuTrace=/path/to/upstream_trace.tsv generated from mozc-master")
+                }
+            }
+        }
+    }
+}
+
+afterEvaluate {
+    tasks.register("traceKotlinJapaneseBunsetsu") {
+        dependsOn("testLiteStandardDebugUnitTest")
+        def outputFile = japaneseBunsetsuReportDirProvider.map { it.file("kotlin_trace.tsv") }
+        outputs.file(outputFile)
+        doLast {
+            def output = outputFile.get().asFile
+            if (!output.exists()) {
+                def report = japaneseBunsetsuReportDirProvider.get().file("japanese_bunsetsu_quality_report.tsv").asFile
+                if (!report.exists()) {
+                    throw new GradleException("Kotlin trace was not generated: ${output}")
+                }
+                def lines = report.readLines("UTF-8")
+                def header = lines.first().split("\t", -1).toList()
+                def inputIndex = header.indexOf("input")
+                def top1Index = header.indexOf("kotlin_top1_value")
+                def top10Index = header.indexOf("kotlin_top10_values")
+                def boundaryIndex = header.indexOf("kotlin_boundary")
+                if ([inputIndex, top1Index, top10Index, boundaryIndex].any { it < 0 }) {
+                    throw new GradleException("Cannot reconstruct Kotlin trace from ${report}")
+                }
+                output.parentFile.mkdirs()
+                output.withPrintWriter("UTF-8") { writer ->
+                    writer.println("input\ttop1_value\ttop10_values\tboundary\tfirst_divergence_stage\treason")
+                    lines.drop(1).each { line ->
+                        def cols = line.split("\t", -1)
+                        writer.println("${cols[inputIndex]}\t${cols[top1Index]}\t${cols[top10Index]}\t${cols[boundaryIndex]}\tKOTLIN_TRACE\tKotlin trace reconstructed from quality report")
+                    }
+                }
+            }
+        }
+    }
+
+    tasks.register("joinJapaneseBunsetsuTrace") {
+        dependsOn("traceUpstreamJapaneseBunsetsu", "traceKotlinJapaneseBunsetsu")
+        def upstreamFile = japaneseBunsetsuReportDirProvider.map { it.file("upstream_trace.tsv") }
+        def kotlinFile = japaneseBunsetsuReportDirProvider.map { it.file("kotlin_trace.tsv") }
+        def outputFile = japaneseBunsetsuReportDirProvider.map { it.file("japanese_bunsetsu_quality_report.tsv") }
+        inputs.file(upstreamFile)
+        inputs.file(kotlinFile)
+        outputs.file(outputFile)
+        doLast {
+            def readTrace = { File file ->
+                def rows = [:]
+                if (!file.exists()) {
+                    return rows
+                }
+                def lines = file.readLines("UTF-8").findAll { it.trim() }
+                if (lines.isEmpty()) {
+                    return rows
+                }
+                def header = lines.first().split("\t", -1).toList()
+                def inputIndex = header.indexOf("input")
+                def top1Index = header.indexOf("top1_value")
+                def top10Index = header.indexOf("top10_values")
+                def boundaryIndex = header.indexOf("boundary")
+                def reasonIndex = header.indexOf("reason")
+                lines.drop(1).each { line ->
+                    def cols = line.split("\t", -1)
+                    def input = inputIndex >= 0 && inputIndex < cols.length ? cols[inputIndex] : ""
+                    if (input) {
+                        rows[input] = [
+                            top1: top1Index >= 0 && top1Index < cols.length ? cols[top1Index] : "",
+                            top10: top10Index >= 0 && top10Index < cols.length ? cols[top10Index] : "",
+                            boundary: boundaryIndex >= 0 && boundaryIndex < cols.length ? cols[boundaryIndex] : "",
+                            reason: reasonIndex >= 0 && reasonIndex < cols.length ? cols[reasonIndex] : "",
+                        ]
+                    }
+                }
+                rows
+            }
+            def upstreamRows = readTrace(upstreamFile.get().asFile)
+            def kotlinRows = readTrace(kotlinFile.get().asFile)
+            def allInputs = new LinkedHashSet<String>()
+            allInputs.addAll(kotlinRows.keySet())
+            allInputs.addAll(upstreamRows.keySet())
+
+            def output = outputFile.get().asFile
+            output.parentFile.mkdirs()
+            output.withPrintWriter("UTF-8") { writer ->
+                writer.println([
+                    "input",
+                    "upstream_top1_value",
+                    "kotlin_top1_value",
+                    "top1_match",
+                    "upstream_top10_values",
+                    "kotlin_top10_values",
+                    "upstream_boundary",
+                    "kotlin_boundary",
+                    "boundary_match",
+                    "first_divergence_stage",
+                    "first_missing_candidate",
+                    "reason",
+                    "key",
+                    "value",
+                    "content_key",
+                    "content_value",
+                    "lid",
+                    "rid",
+                    "cost",
+                    "wcost",
+                    "structure_cost",
+                    "split_pattern",
+                    "candidate_source",
+                    "rewriter_action",
+                ].join("\t"))
+                allInputs.each { input ->
+                    def upstream = upstreamRows[input]
+                    def kotlin = kotlinRows[input]
+                    def upstreamTop1 = upstream?.top1 ?: ""
+                    def kotlinTop1 = kotlin?.top1 ?: ""
+                    def upstreamTop10 = upstream?.top10 ?: ""
+                    def kotlinTop10 = kotlin?.top10 ?: ""
+                    def upstreamBoundary = upstream?.boundary ?: ""
+                    def kotlinBoundary = kotlin?.boundary ?: ""
+                    def upstreamMissing = upstream == null || (upstreamTop1 == "" && upstreamTop10 == "" && upstreamBoundary == "")
+                    def top1Match = !upstreamMissing && upstreamTop1 == kotlinTop1
+                    def boundaryMatch = !upstreamMissing && upstreamBoundary == kotlinBoundary
+                    def kotlinTop10Set = kotlinTop10 ? kotlinTop10.split("\\|", -1).toList() : []
+                    def firstMissing = ""
+                    if (upstreamTop10) {
+                        firstMissing = upstreamTop10.split("\\|", -1).find { !kotlinTop10Set.contains(it) } ?: ""
+                    }
+                    def stage = upstreamMissing ?
+                        "UPSTREAM_TRACE_MISSING" :
+                        (!top1Match ? "TOP1" : (firstMissing ? "TOP10" : (!boundaryMatch ? "BOUNDARY" : "MATCH")))
+                    def reason = stage == "UPSTREAM_TRACE_MISSING" ?
+                        "Supply -PupstreamJapaneseBunsetsuTrace=/path/to/upstream_trace.tsv generated from mozc-master" :
+                        (stage == "MATCH" ? "Kotlin trace matches supplied upstream trace" : "trace differs at ${stage}")
+                    writer.println([
+                        input,
+                        upstreamTop1,
+                        kotlinTop1,
+                        top1Match.toString(),
+                        upstreamTop10,
+                        kotlinTop10,
+                        upstreamBoundary,
+                        kotlinBoundary,
+                        boundaryMatch.toString(),
+                        stage,
+                        firstMissing,
+                        reason,
+                        "",
+                        kotlinTop1,
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        "",
+                        kotlinBoundary,
+                        "NBEST",
+                        "",
+                    ].join("\t"))
+                }
+            }
+        }
+    }
+
+    tasks.register("analyzeJapaneseBunsetsuRootCause") {
+        dependsOn("joinJapaneseBunsetsuTrace")
+        def inputFile = japaneseBunsetsuReportDirProvider.map { it.file("japanese_bunsetsu_quality_report.tsv") }
+        def outputFile = japaneseBunsetsuReportDirProvider.map { it.file("root_cause_summary.tsv") }
+        inputs.file(inputFile)
+        outputs.file(outputFile)
+        doLast {
+            def report = inputFile.get().asFile
+            def lines = report.readLines("UTF-8")
+            def header = lines.first().split("\t", -1).toList()
+            def stageIndex = header.indexOf("first_divergence_stage")
+            if (stageIndex < 0) {
+                throw new GradleException("first_divergence_stage column is missing from ${report}")
+            }
+            def counts = new TreeMap<String, Integer>()
+            lines.drop(1).each { line ->
+                def cols = line.split("\t", -1)
+                def stage = stageIndex < cols.length ? cols[stageIndex] : "UNKNOWN"
+                counts[stage] = (counts[stage] ?: 0) + 1
+            }
+            def output = outputFile.get().asFile
+            output.parentFile.mkdirs()
+            output.withPrintWriter("UTF-8") { writer ->
+                writer.println("first_divergence_stage\tcount")
+                counts.each { stage, count -> writer.println("${stage}\t${count}") }
+            }
+        }
+    }
+
+    tasks.register("reportJapaneseBunsetsuQuality") {
+        dependsOn("analyzeJapaneseBunsetsuRootCause")
+        doLast {
+            def dir = japaneseBunsetsuReportDirProvider.get().asFile
+            println("Japanese bunsetsu quality report: ${new File(dir, "japanese_bunsetsu_quality_report.tsv")}")
+            println("Japanese bunsetsu root cause summary: ${new File(dir, "root_cause_summary.tsv")}")
+        }
+    }
+}
