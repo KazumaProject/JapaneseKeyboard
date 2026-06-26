@@ -277,4 +277,14 @@
         <item>2</item>
         <item>3</item>
     </string-array>
+
+    <string-array name="conversion_engine_entries">
+        <item>@string/conversion_engine_legacy_sumire_title</item>
+        <item>@string/conversion_engine_mozc_kotlin_title</item>
+    </string-array>
+
+    <string-array name="conversion_engine_values">
+        <item>legacy_sumire</item>
+        <item>mozc_kotlin</item>
+    </string-array>
 </resources>

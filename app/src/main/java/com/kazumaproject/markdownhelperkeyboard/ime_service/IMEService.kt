@@ -166,6 +166,10 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCand
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
+import com.kazumaproject.markdownhelperkeyboard.converter.api.JapaneseConversionEngineSelector
+import com.kazumaproject.markdownhelperkeyboard.converter.api.JapaneseConversionRequest
+import com.kazumaproject.markdownhelperkeyboard.converter.api.JapaneseConversionRequestType
+import com.kazumaproject.markdownhelperkeyboard.converter.api.JapaneseConversionResult
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
@@ -436,6 +440,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
+
+    @Inject
+    lateinit var japaneseConversionEngineSelector: JapaneseConversionEngineSelector
 
     @Inject
     lateinit var dictionarySourceResolver: DictionarySourceResolver
@@ -20746,6 +20753,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private suspend fun convertJapanese(
+        insertString: String,
+        requestType: JapaneseConversionRequestType,
+        suggestionLearnRepository: LearnRepository?,
+        enableTypoCorrectionJapaneseFlick: Boolean,
+        enableTypoCorrectionQwertyEnglish: Boolean,
+    ): JapaneseConversionResult =
+        japaneseConversionEngineSelector.current().convert(
+            JapaneseConversionRequest(
+                input = insertString,
+                nBest = nBest ?: 4,
+                requestType = requestType,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUTPlaces = mozcUTPlaces,
+                mozcUTWiki = mozcUTWiki,
+                mozcUTNeologd = mozcUTNeologd,
+                mozcUTWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = suggestionLearnRepository,
+                isOmissionSearchEnable = isOmissionSearchEnable ?: false,
+                enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+                enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+                typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
+                    ?: 3000,
+                omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
+            )
+        )
+
     private suspend fun getSuggestionListOriginal(
         insertString: String, mainView: MainLayoutBinding
     ): List<Candidate> {
@@ -20820,44 +20855,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         var engineResult: BunsetsuCandidateResult? = null
         val engineCandidates = withContext(Dispatchers.Default) {
-            if (bunsetsuSeparation == true) {
-                engineResult = kanaKanjiEngine.getCandidatesOriginalWithBunsetsu(
-                    input = insertString,
-                    n = nBest ?: 4,
-                    mozcUtPersonName = mozcUTPersonName,
-                    mozcUTPlaces = mozcUTPlaces,
-                    mozcUTWiki = mozcUTWiki,
-                    mozcUTNeologd = mozcUTNeologd,
-                    mozcUTWeb = mozcUTWeb,
-                    userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = suggestionLearnRepository,
-                    isOmissionSearchEnable = isOmissionSearchEnable ?: false,
-                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
-                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                        ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
-                )
-                engineResult?.candidates.orEmpty()
-            } else {
-                kanaKanjiEngine.getCandidatesOriginal(
-                    input = insertString,
-                    n = nBest ?: 4,
-                    mozcUtPersonName = mozcUTPersonName,
-                    mozcUTPlaces = mozcUTPlaces,
-                    mozcUTWiki = mozcUTWiki,
-                    mozcUTNeologd = mozcUTNeologd,
-                    mozcUTWeb = mozcUTWeb,
-                    userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = suggestionLearnRepository,
-                    isOmissionSearchEnable = isOmissionSearchEnable ?: false,
-                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
-                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                        ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
-                )
-            }
+            val conversionResult = convertJapanese(
+                insertString = insertString,
+                requestType = if (bunsetsuSeparation == true) {
+                    JapaneseConversionRequestType.CONVERSION_WITH_BUNSETSU
+                } else {
+                    JapaneseConversionRequestType.CONVERSION
+                },
+                suggestionLearnRepository = suggestionLearnRepository,
+                enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+                enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+            )
+            engineResult = conversionResult.bunsetsuResult
+            conversionResult.candidates
         }
 
         val result = if (conversionCandidatesRomajiEnablePreference == true) {
@@ -20984,47 +20994,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         var engineResult: BunsetsuCandidateResult? = null
         val engineCandidates = measureDebugStage("IMEService.getSuggestionList.kanaKanjiEngine") {
             withContext(Dispatchers.Default) {
-                if (bunsetsuSeparation == true) {
-                    engineResult = kanaKanjiEngine.getCandidatesWithBunsetsuSeparation(
-                        input = insertString,
-                        n = nBest ?: 4,
-                        mozcUtPersonName = mozcUTPersonName,
-                        mozcUTPlaces = mozcUTPlaces,
-                        mozcUTWiki = mozcUTWiki,
-                        mozcUTNeologd = mozcUTNeologd,
-                        mozcUTWeb = mozcUTWeb,
-                        userDictionaryRepository = userDictionaryRepository,
-                        learnRepository = suggestionLearnRepository,
-                        isOmissionSearchEnable = isOmissionSearchEnable ?: false,
-                        enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                        enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
-                        typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                            ?: 3000,
-                        omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
-                    )
-                    engineResult?.let {
-                        Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: ${it.primarySplitPositions} ${isHenkan.get()} $ngWords $insertString ${it.splitPatterns}")
-                    }
-                    engineResult?.candidates.orEmpty()
-                } else {
-                    kanaKanjiEngine.getCandidates(
-                        input = insertString,
-                        n = nBest ?: 4,
-                        mozcUtPersonName = mozcUTPersonName,
-                        mozcUTPlaces = mozcUTPlaces,
-                        mozcUTWiki = mozcUTWiki,
-                        mozcUTNeologd = mozcUTNeologd,
-                        mozcUTWeb = mozcUTWeb,
-                        userDictionaryRepository = userDictionaryRepository,
-                        learnRepository = suggestionLearnRepository,
-                        isOmissionSearchEnable = isOmissionSearchEnable ?: false,
-                        enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                        enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
-                        typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                            ?: 3000,
-                        omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
-                    )
+                val conversionResult = convertJapanese(
+                    insertString = insertString,
+                    requestType = if (bunsetsuSeparation == true) {
+                        JapaneseConversionRequestType.SUGGESTION_WITH_BUNSETSU
+                    } else {
+                        JapaneseConversionRequestType.SUGGESTION
+                    },
+                    suggestionLearnRepository = suggestionLearnRepository,
+                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
+                )
+                engineResult = conversionResult.bunsetsuResult
+                engineResult?.let {
+                    Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: ${it.primarySplitPositions} ${isHenkan.get()} $ngWords $insertString ${it.splitPatterns}")
                 }
+                conversionResult.candidates
             }
         }
         val result = if (conversionCandidatesRomajiEnablePreference == true) {
@@ -21163,38 +21148,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
         var engineResult: BunsetsuCandidateResult? = null
         val engineCandidates = withContext(Dispatchers.Default) {
-            if (bunsetsuSeparation == true) {
-                engineResult = kanaKanjiEngine.getCandidatesWithoutPredictionWithBunsetsu(
-                    input = insertString,
-                    n = nBest ?: 4,
-                    mozcUtPersonName = mozcUTPersonName,
-                    mozcUTPlaces = mozcUTPlaces,
-                    mozcUTWiki = mozcUTWiki,
-                    mozcUTNeologd = mozcUTNeologd,
-                    mozcUTWeb = mozcUTWeb,
-                    userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = suggestionLearnRepository,
-                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                        ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
-                )
-                engineResult?.candidates.orEmpty()
-            } else {
-                kanaKanjiEngine.getCandidatesWithoutPrediction(
-                    input = insertString,
-                    n = nBest ?: 4,
-                    mozcUtPersonName = mozcUTPersonName,
-                    mozcUTPlaces = mozcUTPlaces,
-                    mozcUTWiki = mozcUTWiki,
-                    mozcUTNeologd = mozcUTNeologd,
-                    mozcUTWeb = mozcUTWeb,
-                    userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = suggestionLearnRepository,
-                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                        ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900
-                )
-            }
+            val conversionResult = convertJapanese(
+                insertString = insertString,
+                requestType = if (bunsetsuSeparation == true) {
+                    JapaneseConversionRequestType.WITHOUT_PREDICTION_WITH_BUNSETSU
+                } else {
+                    JapaneseConversionRequestType.WITHOUT_PREDICTION
+                },
+                suggestionLearnRepository = suggestionLearnRepository,
+                enableTypoCorrectionJapaneseFlick = false,
+                enableTypoCorrectionQwertyEnglish = false,
+            )
+            engineResult = conversionResult.bunsetsuResult
+            conversionResult.candidates
         }
 
         val result = if (conversionCandidatesRomajiEnablePreference == true) {

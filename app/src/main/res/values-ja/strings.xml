@@ -1269,6 +1269,12 @@
     <string name="setting_category_input_method_summary">スミレ・かな・QWERTY など</string>
     <string name="setting_category_candidate_conversion_title">候補・変換</string>
     <string name="setting_category_candidate_conversion_summary">候補欄・変換・再変換</string>
+    <string name="setting_category_conversion_engine_title">変換エンジン</string>
+    <string name="setting_category_conversion_engine_summary">日本語のかな漢字変換エンジンを選択します。</string>
+    <string name="conversion_engine_preference_title">日本語変換エンジン</string>
+    <string name="conversion_engine_preference_dialog_title">変換エンジンを選択</string>
+    <string name="conversion_engine_legacy_sumire_title">現在の Sumire エンジン</string>
+    <string name="conversion_engine_mozc_kotlin_title">Mozc Kotlin エンジン</string>
     <string name="setting_category_dictionary_summary">ユーザー辞書・学習辞書・NGワード</string>
     <string name="setting_category_ai_conversion_title">AI変換</string>
     <string name="setting_category_ai_conversion_summary">zenz・Gemma</string>

@@ -1271,6 +1271,12 @@
     <string name="setting_category_input_method_summary">Sumire, Kana, QWERTY, and more</string>
     <string name="setting_category_candidate_conversion_title">Candidates and Conversion</string>
     <string name="setting_category_candidate_conversion_summary">Candidate bar, conversion, and reconversion</string>
+    <string name="setting_category_conversion_engine_title">Conversion Engine</string>
+    <string name="setting_category_conversion_engine_summary">Select the Japanese conversion engine.</string>
+    <string name="conversion_engine_preference_title">Japanese conversion engine</string>
+    <string name="conversion_engine_preference_dialog_title">Select conversion engine</string>
+    <string name="conversion_engine_legacy_sumire_title">Current Sumire engine</string>
+    <string name="conversion_engine_mozc_kotlin_title">Mozc Kotlin engine</string>
     <string name="setting_category_dictionary_summary">User dictionary, learning dictionary, and NG words</string>
     <string name="setting_category_ai_conversion_title">AI Conversion</string>
     <string name="setting_category_ai_conversion_summary">zenz and Gemma</string>

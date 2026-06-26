@@ -13,6 +13,7 @@ enum class SettingCategory {
     KEYBOARD_DISPLAY,
     INPUT_METHOD,
     CANDIDATE_CONVERSION,
+    CONVERSION_ENGINE,
     DICTIONARY,
     AI_CONVERSION,
     CLIPBOARD_SHORTCUT,
@@ -559,6 +560,15 @@ object SettingDestinations {
             iconRes = CoreR.drawable.arrows_output_24px,
         ),
         destination(
+            key = "setting_route_conversion_engine",
+            title = context.getString(R.string.setting_category_conversion_engine_title),
+            summary = context.getString(R.string.setting_category_conversion_engine_summary),
+            category = SettingCategory.CONVERSION_ENGINE,
+            keywords = listOf("conversion", "engine", "mozc", "kotlin", "変換", "エンジン"),
+            destinationId = R.id.conversionEnginePreferenceFragment,
+            iconRes = CoreR.drawable.arrows_output_24px,
+        ),
+        destination(
             key = "setting_route_dictionary",
             title = context.getString(R.string.category_dictionary),
             summary = context.getString(R.string.setting_category_dictionary_summary),
@@ -683,6 +693,7 @@ object SettingDestinations {
             SettingCategory.KEYBOARD_DISPLAY -> context.getString(R.string.setting_category_keyboard_display_title)
             SettingCategory.INPUT_METHOD -> context.getString(R.string.setting_category_input_method_title)
             SettingCategory.CANDIDATE_CONVERSION -> context.getString(R.string.setting_category_candidate_conversion_title)
+            SettingCategory.CONVERSION_ENGINE -> context.getString(R.string.setting_category_conversion_engine_title)
             SettingCategory.DICTIONARY -> context.getString(R.string.category_dictionary)
             SettingCategory.AI_CONVERSION -> context.getString(R.string.setting_category_ai_conversion_title)
             SettingCategory.CLIPBOARD_SHORTCUT -> context.getString(R.string.setting_category_clipboard_shortcut_title)
@@ -700,6 +711,7 @@ object SettingDestinations {
             SettingCategory.KEYBOARD_DISPLAY -> CoreR.drawable.keyboard_24px
             SettingCategory.INPUT_METHOD -> CoreR.drawable.input_24px
             SettingCategory.CANDIDATE_CONVERSION -> CoreR.drawable.arrows_output_24px
+            SettingCategory.CONVERSION_ENGINE -> CoreR.drawable.arrows_output_24px
             SettingCategory.DICTIONARY -> CoreR.drawable.dictionary_24px
             SettingCategory.AI_CONVERSION -> CoreR.drawable.lightbulb_24dp
             SettingCategory.CLIPBOARD_SHORTCUT -> CoreR.drawable.content_paste_24px
@@ -716,6 +728,7 @@ object SettingDestinations {
             "setting_route_keyboard_display" -> R.id.keyboardDisplayPreferenceFragment
             "setting_route_input_method" -> R.id.inputMethodPreferenceFragment
             "setting_route_candidate_conversion" -> R.id.candidateConversionPreferenceFragment
+            "setting_route_conversion_engine" -> R.id.conversionEnginePreferenceFragment
             "setting_route_dictionary" -> R.id.dictionaryPreferenceFragment
             "setting_route_ai_conversion" -> R.id.aiConversionPreferenceFragment
             "setting_route_clipboard_shortcut" -> R.id.clipboardShortcutPreferenceFragment

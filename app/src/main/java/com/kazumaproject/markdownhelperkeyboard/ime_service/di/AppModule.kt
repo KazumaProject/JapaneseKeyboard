@@ -14,6 +14,16 @@ import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVect
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.converter.MozcKotlinCandidateFilter
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.converter.MozcKotlinConnector
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.converter.MozcKotlinImmutableConverter
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.converter.MozcKotlinNBestGenerator
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.dictionary.AssetsMozcSystemDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.dictionary.LazyAssetsMozcLoudsDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.dictionary.MozcDictionaryGroup
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.dictionary.MozcDictionarySource
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.segmenter.MozcKotlinSegmenter
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.segmenter.MozcSegmenterAssetLoader
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
@@ -82,6 +92,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
 import javax.inject.Singleton
+import kotlin.math.sqrt
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -698,6 +709,101 @@ object AppModule {
         kanaKanjiEngine.setDictionaryBinaryReader(dictionaryBinaryReader)
 
         return kanaKanjiEngine
+    }
+
+    @Singleton
+    @Provides
+    fun provideMozcKotlinConnector(
+        @ConnectionIds connectionIds: ShortArray,
+    ): MozcKotlinConnector {
+        val matrixSize = sqrt(connectionIds.size.toDouble()).toInt()
+        require(matrixSize * matrixSize == connectionIds.size)
+        return MozcKotlinConnector(connectionIds, matrixSize)
+    }
+
+    @Singleton
+    @Provides
+    fun provideMozcKotlinSegmenter(
+        @ApplicationContext context: Context,
+    ): MozcKotlinSegmenter {
+        return MozcSegmenterAssetLoader(context).load()
+    }
+
+    @Singleton
+    @Provides
+    fun provideMozcDictionaryGroup(
+        @SystemTangoTrie systemTangoTrie: LOUDS,
+        @SystemYomiTrie systemYomiTrie: LOUDSWithTermId,
+        @SystemTokenArray systemTokenArray: TokenArray,
+        @SystemSuccinctBitVectorLBSYomi systemSuccinctBitVectorLBSYomi: SuccinctBitVector,
+        @SystemSuccinctBitVectorIsLeafYomi systemSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
+        @SystemSuccinctBitVectorTokenArray systemSuccinctBitVectorTokenArray: SuccinctBitVector,
+        @SystemSuccinctBitVectorTangoLBS systemSuccinctBitVectorTangoLBS: SuccinctBitVector,
+        dictionaryBinaryReader: DictionaryBinaryReader,
+    ): MozcDictionaryGroup {
+        return MozcDictionaryGroup(
+            systemDictionary = AssetsMozcSystemDictionary(
+                yomiTrie = systemYomiTrie,
+                tangoTrie = systemTangoTrie,
+                tokenArray = systemTokenArray,
+                yomiLbs = systemSuccinctBitVectorLBSYomi,
+                yomiIsLeaf = systemSuccinctBitVectorIsLeafYomi,
+                tokenBitVector = systemSuccinctBitVectorTokenArray,
+                tangoLbs = systemSuccinctBitVectorTangoLBS,
+            ),
+            systemUserDictionary = null,
+            wikiDictionary = LazyAssetsMozcLoudsDictionary(
+                source = MozcDictionarySource.WIKI,
+                reader = dictionaryBinaryReader,
+                yomiKey = DictionaryFileKey.WIKI_YOMI,
+                tangoKey = DictionaryFileKey.WIKI_TANGO,
+                tokenKey = DictionaryFileKey.WIKI_TOKEN,
+            ),
+            webDictionary = LazyAssetsMozcLoudsDictionary(
+                source = MozcDictionarySource.WEB,
+                reader = dictionaryBinaryReader,
+                yomiKey = DictionaryFileKey.WEB_YOMI,
+                tangoKey = DictionaryFileKey.WEB_TANGO,
+                tokenKey = DictionaryFileKey.WEB_TOKEN,
+            ),
+            personDictionary = LazyAssetsMozcLoudsDictionary(
+                source = MozcDictionarySource.PERSON,
+                reader = dictionaryBinaryReader,
+                yomiKey = DictionaryFileKey.PERSON_NAME_YOMI,
+                tangoKey = DictionaryFileKey.PERSON_NAME_TANGO,
+                tokenKey = DictionaryFileKey.PERSON_NAME_TOKEN,
+            ),
+            placesDictionary = LazyAssetsMozcLoudsDictionary(
+                source = MozcDictionarySource.PLACES,
+                reader = dictionaryBinaryReader,
+                yomiKey = DictionaryFileKey.PLACES_YOMI,
+                tangoKey = DictionaryFileKey.PLACES_TANGO,
+                tokenKey = DictionaryFileKey.PLACES_TOKEN,
+            ),
+            neologdDictionary = LazyAssetsMozcLoudsDictionary(
+                source = MozcDictionarySource.NEOLOGD,
+                reader = dictionaryBinaryReader,
+                yomiKey = DictionaryFileKey.NEOLOGD_YOMI,
+                tangoKey = DictionaryFileKey.NEOLOGD_TANGO,
+                tokenKey = DictionaryFileKey.NEOLOGD_TOKEN,
+            ),
+        )
+    }
+
+    @Singleton
+    @Provides
+    fun provideMozcKotlinImmutableConverter(
+        dictionaryGroup: MozcDictionaryGroup,
+        connector: MozcKotlinConnector,
+        segmenter: MozcKotlinSegmenter,
+    ): MozcKotlinImmutableConverter {
+        return MozcKotlinImmutableConverter(
+            dictionaryGroup = dictionaryGroup,
+            connector = connector,
+            segmenter = segmenter,
+            nBestGenerator = MozcKotlinNBestGenerator(connector),
+            candidateFilter = MozcKotlinCandidateFilter(),
+        )
     }
 
     @Singleton

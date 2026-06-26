@@ -28,6 +28,7 @@ object SettingTabRegistry {
     const val TAB_HARDWARE_KEYBOARD = "hardware_keyboard"
     const val TAB_ZENZ = "zenz"
     const val TAB_GEMMA = "gemma"
+    const val TAB_CONVERSION_ENGINE = "conversion_engine"
 
     fun createTabs(): List<SettingTabSpec> {
         val tabs = mutableListOf(
@@ -66,6 +67,14 @@ object SettingTabRegistry {
                 fragmentFactory = { GemmaPreferenceFragment() },
             )
         }
+
+        tabs += SettingTabSpec(
+            key = TAB_CONVERSION_ENGINE,
+            title = { context -> context.getString(R.string.setting_category_conversion_engine_title) },
+            xmlRes = R.xml.pref_conversion_engine,
+            destinationId = R.id.conversionEnginePreferenceFragment,
+            fragmentFactory = { ConversionEnginePreferenceFragment() },
+        )
 
         tabs += listOf(
             SettingTabSpec(

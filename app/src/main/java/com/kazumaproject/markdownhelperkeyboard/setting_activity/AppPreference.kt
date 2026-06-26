@@ -71,6 +71,8 @@ object AppPreference {
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
     private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 4)
+    private val CONVERSION_ENGINE_PREFERENCE =
+        Pair("conversion_engine_preference", "legacy_sumire")
     private val CANDIDATE_ORDER_OVERRIDE_ENABLE =
         Pair("candidate_order_override_enable_preference", false)
     private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
@@ -1398,6 +1400,22 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(N_BEST_PREFERENCE.first, value ?: 4)
+        }
+
+    var conversion_engine_preference: String
+        get() = preferences.getString(
+            CONVERSION_ENGINE_PREFERENCE.first,
+            CONVERSION_ENGINE_PREFERENCE.second
+        ) ?: CONVERSION_ENGINE_PREFERENCE.second
+        set(value) {
+            val normalized = when (value) {
+                "legacy_sumire",
+                "mozc_kotlin" -> value
+                else -> CONVERSION_ENGINE_PREFERENCE.second
+            }
+            preferences.edit {
+                it.putString(CONVERSION_ENGINE_PREFERENCE.first, normalized)
+            }
         }
 
     var candidate_order_override_enable_preference: Boolean?

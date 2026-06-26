@@ -154,6 +154,27 @@ android {
 
 }
 
+tasks.register("generateMozcSegmenterAssets", Exec) {
+    def defaultMozcDir = rootProject.file("build/mozc-upstream-phase25/mozc-master")
+    def mozcDir = project.findProperty("mozcSourceDir")?.toString()
+            ? rootProject.file(project.findProperty("mozcSourceDir").toString())
+            : defaultMozcDir
+    def outputDir = file("src/main/assets/mozc/segmenter")
+
+    inputs.file(file("src/main/assets/id.def"))
+    inputs.file(new File(mozcDir, "src/data/dictionary_oss/id.def"))
+    inputs.file(new File(mozcDir, "src/data/rules/boundary.def"))
+    inputs.file(new File(mozcDir, "src/data/rules/segmenter.def"))
+    inputs.file(new File(mozcDir, "src/data/rules/special_pos.def"))
+    outputs.dir(outputDir)
+
+    commandLine "python3",
+            rootProject.file("tools/mozc_segmenter_assets/generate_mozc_segmenter_assets.py"),
+            "--mozc_dir", mozcDir,
+            "--app_id_def", file("src/main/assets/id.def"),
+            "--output_dir", outputDir
+}
+
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.13.0'

@@ -19,6 +19,7 @@ internal object FrequentSettingFilters {
             SettingCategory.KEYBOARD_DISPLAY,
             SettingCategory.INPUT_METHOD,
             SettingCategory.CANDIDATE_CONVERSION,
+            SettingCategory.CONVERSION_ENGINE,
             SettingCategory.DICTIONARY,
             SettingCategory.AI_CONVERSION,
             SettingCategory.CLIPBOARD_SHORTCUT,
@@ -94,6 +95,9 @@ internal object FrequentSettingFilters {
             R.id.candidateTabOrderFragment,
             R.id.candidateOrderOverrideFragment,
                 -> SettingCategory.CANDIDATE_CONVERSION
+
+            R.id.conversionEnginePreferenceFragment,
+                -> SettingCategory.CONVERSION_ENGINE
 
             R.id.dictionaryPreferenceFragment,
             R.id.systemUserDictionaryBuilderFragment,

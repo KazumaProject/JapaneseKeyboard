@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:title="@string/setting_category_conversion_engine_title">
+
+        <ListPreference
+            android:defaultValue="legacy_sumire"
+            android:dialogTitle="@string/conversion_engine_preference_dialog_title"
+            android:entries="@array/conversion_engine_entries"
+            android:entryValues="@array/conversion_engine_values"
+            android:key="conversion_engine_preference"
+            android:title="@string/conversion_engine_preference_title"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+</PreferenceScreen>

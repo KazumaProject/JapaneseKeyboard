@@ -146,6 +146,11 @@
         android:label="@string/setting_category_candidate_conversion_title" />
 
     <fragment
+        android:id="@+id/conversionEnginePreferenceFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.ConversionEnginePreferenceFragment"
+        android:label="@string/setting_category_conversion_engine_title" />
+
+    <fragment
         android:id="@+id/aiConversionPreferenceFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.AiConversionPreferenceFragment"
         android:label="@string/setting_category_ai_conversion_title" />
