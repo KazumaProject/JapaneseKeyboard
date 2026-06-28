@@ -24,41 +24,146 @@ data class KanaRowSpec(
     val label: String,
     val number: String? = null,
     val normal: KanaSeries,
-    val dakuten: KanaSeries? = null,
-    val handakuten: KanaSeries? = null,
-    val iColumnModeSwitchBoundary: ModeSwitchBoundary = ModeSwitchBoundary.NONE
+    val diacritics: KanaRowDiacritics = KanaRowDiacritics.None,
+    val iColumnModeSwitchBoundary: ModeSwitchBoundary = ModeSwitchBoundary.NONE,
+    val normalOverrides: KanaRowStageOverrides = KanaRowStageOverrides(),
+    val dakutenOverrides: KanaRowStageOverrides = KanaRowStageOverrides(),
+    val handakutenOverrides: KanaRowStageOverrides = KanaRowStageOverrides()
 )
 
+sealed interface KanaRowDiacritics {
+    val dakuten: KanaSeries?
+    val handakuten: KanaSeries?
+
+    data object None : KanaRowDiacritics {
+        override val dakuten: KanaSeries? = null
+        override val handakuten: KanaSeries? = null
+    }
+
+    data class Dakuten(
+        override val dakuten: KanaSeries
+    ) : KanaRowDiacritics {
+        override val handakuten: KanaSeries? = null
+    }
+
+    data class DakutenAndHandakuten(
+        override val dakuten: KanaSeries,
+        override val handakuten: KanaSeries
+    ) : KanaRowDiacritics
+}
+
+data class KanaRowStageOverrides(
+    val uColumn: KanaRowColumnOverrides = KanaRowColumnOverrides(),
+    val eColumn: KanaRowColumnOverrides = KanaRowColumnOverrides(),
+    val oColumn: KanaRowColumnOverrides = KanaRowColumnOverrides()
+)
+
+data class KanaRowColumnOverrides(
+    val upserts: List<FlickEntryDefinition> = emptyList(),
+    val removals: Set<TfbiFlickDirection> = emptySet()
+)
+
+fun kanaRowStageOverrides(
+    block: KanaRowStageOverridesBuilder.() -> Unit
+): KanaRowStageOverrides = KanaRowStageOverridesBuilder().apply(block).build()
+
+@KanaRowFlickDefinitionDsl
+class KanaRowStageOverridesBuilder {
+    private val uColumnBuilder = KanaRowColumnOverridesBuilder()
+    private val eColumnBuilder = KanaRowColumnOverridesBuilder()
+    private val oColumnBuilder = KanaRowColumnOverridesBuilder()
+
+    fun uColumn(block: KanaRowColumnOverridesBuilder.() -> Unit) {
+        uColumnBuilder.apply(block)
+    }
+
+    fun eColumn(block: KanaRowColumnOverridesBuilder.() -> Unit) {
+        eColumnBuilder.apply(block)
+    }
+
+    fun oColumn(block: KanaRowColumnOverridesBuilder.() -> Unit) {
+        oColumnBuilder.apply(block)
+    }
+
+    fun build(): KanaRowStageOverrides = KanaRowStageOverrides(
+        uColumn = uColumnBuilder.build(),
+        eColumn = eColumnBuilder.build(),
+        oColumn = oColumnBuilder.build()
+    )
+}
+
+@KanaRowFlickDefinitionDsl
+class KanaRowColumnOverridesBuilder {
+    private val upserts = mutableListOf<FlickEntryDefinition>()
+    private val removals = mutableSetOf<TfbiFlickDirection>()
+
+    fun upsert(direction: TfbiFlickDirection, node: FlickNodeDefinition) {
+        upserts += FlickEntryDefinition(direction = direction, node = node)
+    }
+
+    fun remove(direction: TfbiFlickDirection) {
+        removals += direction
+    }
+
+    fun build(): KanaRowColumnOverrides = KanaRowColumnOverrides(
+        upserts = upserts.toList(),
+        removals = removals.toSet()
+    )
+}
+
 @DslMarker
-private annotation class KanaRowFlickDefinitionDsl
+annotation class KanaRowFlickDefinitionDsl
 
 object KanaRowFlickDefinitionGenerator {
     fun create(spec: KanaRowSpec): FlickKeyDefinition {
-        require(spec.handakuten == null) {
-            "Handakuten row generation is not supported yet."
-        }
         return FlickKeyDefinition(
             id = spec.id,
             label = spec.label,
             normal = createNormalStage(spec),
-            dakuten = spec.dakuten?.let { createDakutenStage(spec, it) },
-            handakuten = null
+            dakuten = spec.diacritics.dakuten?.let { createDakutenStage(spec, it) },
+            handakuten = createHandakutenStageOrNull(spec)
         )
+    }
+
+    private fun createHandakutenStageOrNull(spec: KanaRowSpec): FlickStageDefinition? {
+        return when (val diacritics = spec.diacritics) {
+            KanaRowDiacritics.None,
+            is KanaRowDiacritics.Dakuten -> null
+
+            is KanaRowDiacritics.DakutenAndHandakuten -> createHandakutenStage(
+                spec = spec,
+                dakuten = diacritics.dakuten,
+                handakuten = diacritics.handakuten
+            )
+        }
     }
 
     private fun createNormalStage(spec: KanaRowSpec): FlickStageDefinition = stage {
         add(TAP, input(spec.normal.a))
-        spec.dakuten?.let { dakuten ->
-            add(UP_RIGHT, dakutenAColumn(spec.normal, dakuten))
+        spec.diacritics.dakuten?.let { dakuten ->
+            add(UP_RIGHT, modeAColumn(spec.normal.a, dakuten.a, UP_RIGHT))
+        }
+        spec.diacritics.handakuten?.let { handakuten ->
+            add(UP_LEFT, modeAColumn(spec.normal.a, handakuten.a, UP_LEFT))
         }
         add(LEFT, branch(label = spec.normal.i, cancelOnTap = false) {
             add(LEFT, input(spec.normal.i, nextState = FlickKeyState.NORMAL))
-            spec.dakuten?.let { dakuten ->
+            spec.diacritics.dakuten?.let { dakuten ->
                 add(
                     DOWN_LEFT,
                     input(
                         text = dakuten.i,
                         nextState = FlickKeyState.DAKUTEN,
+                        modeSwitchBoundary = spec.iColumnModeSwitchBoundary
+                    )
+                )
+            }
+            spec.diacritics.handakuten?.let { handakuten ->
+                add(
+                    UP_LEFT,
+                    input(
+                        text = handakuten.i,
+                        nextState = FlickKeyState.HANDAKUTEN,
                         modeSwitchBoundary = spec.iColumnModeSwitchBoundary
                     )
                 )
@@ -69,26 +174,36 @@ object KanaRowFlickDefinitionGenerator {
         })
         add(UP, branch(label = spec.normal.u) {
             add(UP, input(spec.normal.u))
-            spec.dakuten?.let { dakuten ->
+            spec.diacritics.dakuten?.let { dakuten ->
                 add(UP_LEFT, input(dakuten.u, nextState = FlickKeyState.DAKUTEN))
             }
-            add(UP_RIGHT, input("${spec.normal.u}う"))
+            spec.diacritics.handakuten?.let { handakuten ->
+                add(UP_RIGHT, input(handakuten.u, nextState = FlickKeyState.HANDAKUTEN))
+            } ?: add(UP_RIGHT, input("${spec.normal.u}う"))
+            applyOverrides(spec.normalOverrides.uColumn)
         })
         add(RIGHT, branch(label = spec.normal.e) {
             add(RIGHT, input(spec.normal.e))
-            spec.dakuten?.let { dakuten ->
+            spec.diacritics.dakuten?.let { dakuten ->
                 add(DOWN_RIGHT, input(dakuten.e, nextState = FlickKeyState.DAKUTEN))
             }
+            spec.diacritics.handakuten?.let { handakuten ->
+                add(UP_RIGHT, input(handakuten.e, nextState = FlickKeyState.HANDAKUTEN))
+            }
+            applyOverrides(spec.normalOverrides.eColumn)
         })
         add(DOWN, branch(label = spec.normal.o) {
             add(DOWN, input(spec.normal.o))
-            spec.dakuten?.let { dakuten ->
+            spec.diacritics.dakuten?.let { dakuten ->
                 add(DOWN_RIGHT, input(dakuten.o, nextState = FlickKeyState.DAKUTEN))
             }
-            add(DOWN_LEFT, input("${spec.normal.o}う"))
+            spec.diacritics.handakuten?.let { handakuten ->
+                add(DOWN_LEFT, input(handakuten.o, nextState = FlickKeyState.HANDAKUTEN))
+            } ?: add(DOWN_LEFT, input("${spec.normal.o}う"))
             spec.number?.let { number ->
                 add(LEFT, input(number))
             }
+            applyOverrides(spec.normalOverrides.oColumn)
         })
     }
 
@@ -97,7 +212,10 @@ object KanaRowFlickDefinitionGenerator {
         dakuten: KanaSeries
     ): FlickStageDefinition = stage {
         add(TAP, input(spec.normal.a))
-        add(UP_RIGHT, dakutenAColumn(spec.normal, dakuten))
+        add(UP_RIGHT, modeAColumn(spec.normal.a, dakuten.a, UP_RIGHT))
+        spec.diacritics.handakuten?.let { handakuten ->
+            add(UP_LEFT, modeAColumn(spec.normal.a, handakuten.a, UP_LEFT))
+        }
         add(LEFT, branch(cancelOnTap = false) {
             add(DOWN_LEFT, input(dakuten.i, nextState = FlickKeyState.DAKUTEN))
             add(UP_LEFT, input(spec.normal.i, nextState = FlickKeyState.NORMAL))
@@ -108,26 +226,79 @@ object KanaRowFlickDefinitionGenerator {
         add(UP, branch {
             add(UP_LEFT, input(dakuten.u))
             add(UP, input(spec.normal.u, nextState = FlickKeyState.NORMAL))
+            spec.diacritics.handakuten?.let { handakuten ->
+                add(UP_RIGHT, input(handakuten.u, nextState = FlickKeyState.HANDAKUTEN))
+            }
             add(LEFT, input("${dakuten.u}う"))
+            applyOverrides(spec.dakutenOverrides.uColumn)
         })
         add(RIGHT, branch {
             add(DOWN_RIGHT, input(dakuten.e))
             add(RIGHT, input(spec.normal.e, nextState = FlickKeyState.NORMAL))
+            spec.diacritics.handakuten?.let { handakuten ->
+                add(UP_RIGHT, input(handakuten.e, nextState = FlickKeyState.HANDAKUTEN))
+            }
+            applyOverrides(spec.dakutenOverrides.eColumn)
         })
         add(DOWN, branch {
             add(DOWN_RIGHT, input(dakuten.o))
             add(DOWN, input(spec.normal.o, nextState = FlickKeyState.NORMAL))
+            spec.diacritics.handakuten?.let { handakuten ->
+                add(DOWN_LEFT, input(handakuten.o, nextState = FlickKeyState.HANDAKUTEN))
+            }
             add(RIGHT, input("${dakuten.o}う"))
+            applyOverrides(spec.dakutenOverrides.oColumn)
         })
     }
 
-    private fun dakutenAColumn(
-        normal: KanaSeries,
-        dakuten: KanaSeries
+    private fun createHandakutenStage(
+        spec: KanaRowSpec,
+        dakuten: KanaSeries,
+        handakuten: KanaSeries
+    ): FlickStageDefinition = stage {
+        add(TAP, input(spec.normal.a))
+        add(UP_RIGHT, modeAColumn(spec.normal.a, dakuten.a, UP_RIGHT))
+        add(UP_LEFT, modeAColumn(spec.normal.a, handakuten.a, UP_LEFT))
+        add(LEFT, branch(cancelOnTap = false) {
+            add(UP_LEFT, input(handakuten.i, nextState = FlickKeyState.HANDAKUTEN))
+            add(DOWN_LEFT, input(spec.normal.i, nextState = FlickKeyState.NORMAL))
+            add(UP, yoonBranch("${handakuten.i}ゅ"))
+            add(RIGHT, input("${handakuten.i}ゃ"))
+            add(DOWN, yoonBranch("${handakuten.i}ょ"))
+        })
+        add(UP, branch {
+            add(UP, input(spec.normal.u, nextState = FlickKeyState.NORMAL))
+            add(UP_LEFT, input(dakuten.u, nextState = FlickKeyState.DAKUTEN))
+            add(UP_RIGHT, input(handakuten.u, nextState = FlickKeyState.HANDAKUTEN))
+            add(RIGHT, input("${handakuten.u}う"))
+            applyOverrides(spec.handakutenOverrides.uColumn)
+        })
+        add(RIGHT, branch {
+            add(RIGHT, input(spec.normal.e, nextState = FlickKeyState.NORMAL))
+            add(DOWN_RIGHT, input(dakuten.e, nextState = FlickKeyState.DAKUTEN))
+            add(UP_RIGHT, input(handakuten.e, nextState = FlickKeyState.HANDAKUTEN))
+            applyOverrides(spec.handakutenOverrides.eColumn)
+        })
+        add(DOWN, branch {
+            add(DOWN, input(spec.normal.o, nextState = FlickKeyState.NORMAL))
+            add(DOWN_RIGHT, input(dakuten.o, nextState = FlickKeyState.DAKUTEN))
+            add(DOWN_LEFT, input(handakuten.o, nextState = FlickKeyState.HANDAKUTEN))
+            add(LEFT, input("${handakuten.o}う"))
+            spec.number?.let { number ->
+                add(UP_LEFT, input(number))
+            }
+            applyOverrides(spec.handakutenOverrides.oColumn)
+        })
+    }
+
+    private fun modeAColumn(
+        normal: String,
+        mode: String,
+        modeDirection: TfbiFlickDirection
     ): FlickNodeDefinition.Branch {
-        return branch(label = dakuten.a) {
-            add(TAP, input(normal.a))
-            add(UP_RIGHT, input(dakuten.a))
+        return branch(label = mode) {
+            add(TAP, input(normal))
+            add(modeDirection, input(mode))
         }
     }
 
@@ -185,6 +356,26 @@ object KanaRowFlickDefinitionGenerator {
             node: FlickNodeDefinition
         ) {
             entries += FlickEntryDefinition(direction, node)
+        }
+
+        fun applyOverrides(overrides: KanaRowColumnOverrides) {
+            if (overrides.removals.isNotEmpty()) {
+                entries.removeAll { entry -> entry.direction in overrides.removals }
+            }
+            overrides.upserts.forEach { entry ->
+                entries.upsertInPlace(entry)
+            }
+        }
+
+        private fun MutableList<FlickEntryDefinition>.upsertInPlace(
+            entry: FlickEntryDefinition
+        ) {
+            val index = indexOfFirst { current -> current.direction == entry.direction }
+            if (index >= 0) {
+                this[index] = entry
+            } else {
+                this += entry
+            }
         }
     }
 }
