@@ -9,6 +9,7 @@ import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
+import android.os.SystemClock
 import android.text.Spannable
 import android.text.SpannableString
 import android.text.style.AbsoluteSizeSpan
@@ -66,9 +67,7 @@ import com.kazumaproject.custom_keyboard.data.toLegacyFlickDirection
 import com.kazumaproject.custom_keyboard.data.toSumireSpecialKeyDirectionOrNull
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import kotlin.math.abs
-import kotlin.math.pow
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 class FlickKeyboardView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
@@ -353,6 +352,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     fun setKeyboard(layout: KeyboardLayout) {
         Log.d("FlickKeyboardView", "setKeyboard (Full Rebuild)")
 
+        cancelTrackedTouchState()
         listener?.onLongPressActionCanceled(KeyAction.Cancel)
 
         removeAllViews()
@@ -2192,31 +2192,53 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val pointerDownTime = mutableMapOf<Int, Long>()
     private val TAG = "FlickKeyboardViewTouch"
 
+    private fun cancelTrackedTouchState() {
+        if (motionTargets.isEmpty() && pointerDownTime.isEmpty()) return
+
+        val eventTime = SystemClock.uptimeMillis()
+        motionTargets.toList().forEach { (trackedPointerId, target) ->
+            var cancelEvent: MotionEvent? = null
+            try {
+                cancelEvent = MotionEvent.obtain(
+                    pointerDownTime[trackedPointerId] ?: eventTime,
+                    eventTime,
+                    MotionEvent.ACTION_CANCEL,
+                    target.width / 2f,
+                    target.height / 2f,
+                    0
+                )
+                target.dispatchTouchEvent(cancelEvent)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to dispatch ACTION_CANCEL while clearing touch state", e)
+            } finally {
+                cancelEvent?.recycle()
+            }
+
+            try {
+                target.cancelPendingInputEvents()
+                target.isPressed = false
+                target.isSelected = false
+                target.refreshDrawableState()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to reset tracked touch target state", e)
+            }
+        }
+
+        motionTargets.clear()
+        pointerDownTime.clear()
+    }
+
     private fun findTargetView(x: Float, y: Float): View? {
         for (i in 0 until childCount) {
             val child = getChildAt(i)
+            if (child.visibility != View.VISIBLE || !child.isEnabled) continue
             child.getHitRect(hitRect)
             if (hitRect.contains(x.toInt(), y.toInt())) {
                 return child
             }
         }
 
-        var nearestChild: View? = null
-        var minDistance = Double.MAX_VALUE
-
-        for (i in 0 until childCount) {
-            val child = getChildAt(i)
-            val childCenterX = child.left + child.width / 2f
-            val childCenterY = child.top + child.height / 2f
-            val distance = sqrt((x - childCenterX).pow(2) + (y - childCenterY).pow(2))
-
-            if (distance < minDistance) {
-                minDistance = distance.toDouble()
-                nearestChild = child
-            }
-        }
-
-        return nearestChild
+        return null
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -2533,6 +2555,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        cancelTrackedTouchState()
         super.onDetachedFromWindow()
         listener?.onLongPressActionCanceled(KeyAction.Cancel)
         flickControllers.forEach { it.cancel() }
@@ -2546,6 +2569,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
         if (changedView == this && visibility != View.VISIBLE) {
+            cancelTrackedTouchState()
             listener?.onLongPressActionCanceled(KeyAction.Cancel)
         }
     }
