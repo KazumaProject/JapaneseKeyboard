@@ -17368,10 +17368,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardLayoutEditActive = keyboardLayoutEditState.value is KeyboardLayoutEditState.Enabled,
             keyboardFloatingActive = isKeyboardFloatingMode == true,
             inputBehavior = currentInputBehavior,
+            liveConversionEnabled = isLiveConversionEnable == true,
         )
 
         shortcutAdapter?.setActiveShortcutTypes(activeTypes)
         suggestionAdapter?.setActiveShortcutTypes(activeTypes)
+    }
+
+    private fun toggleLiveConversionFromShortcut() {
+        val next = isLiveConversionEnable != true
+        appPreference.live_conversion_preference = next
+        isLiveConversionEnable = next
+        val shouldShowLiveConversionCandidateYomi =
+            next && showLiveConversionCandidateYomi
+        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setShowCandidateYomiForLiveConversion(shouldShowLiveConversionCandidateYomi)
+        }
+        updateShortcutActiveStates()
+        refreshCandidateStripContent()
     }
 
     private fun toggleKeyboardFloatingModeFromShortcut() {
@@ -17924,6 +17938,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             ShortcutType.INPUT_BEHAVIOR_TOGGLE -> {
                 toggleRuntimeInputBehaviorFromShortcut()
+            }
+
+            ShortcutType.LIVE_CONVERSION_TOGGLE -> {
+                toggleLiveConversionFromShortcut()
             }
 
             ShortcutType.SELECT_ALL -> {
