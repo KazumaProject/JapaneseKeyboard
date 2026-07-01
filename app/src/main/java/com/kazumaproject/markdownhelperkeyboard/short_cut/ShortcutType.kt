@@ -44,6 +44,12 @@ enum class ShortcutType(
         activeIconResId = com.kazumaproject.core.R.drawable.language_japanese_kana_right_24px,
         description = "入力方式切替"
     ),
+    LIVE_CONVERSION_TOGGLE(
+        "live_conversion_toggle",
+        com.kazumaproject.core.R.drawable.live_conversion_24px,
+        activeIconResId = com.kazumaproject.core.R.drawable.live_conversion_on_24px,
+        description = "ライブ変換"
+    ),
     SELECT_ALL(
         "select_all",
         com.kazumaproject.core.R.drawable.text_select_start_24dp,
