@@ -981,7 +981,8 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -1048,6 +1049,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -1462,7 +1464,8 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): BunsetsuCandidateResult {
 
         val graph = graphBuilder.constructGraph(
@@ -1532,6 +1535,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -1969,7 +1973,8 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): BunsetsuCandidateResult {
 
         val graph = graphBuilder.constructGraph(
@@ -2039,6 +2044,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -2421,7 +2427,8 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -2488,6 +2495,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -2858,7 +2866,8 @@ class KanaKanjiEngine {
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -2924,6 +2933,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -3323,7 +3333,8 @@ class KanaKanjiEngine {
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): BunsetsuCandidateResult {
 
         val graph = graphBuilder.constructGraph(
@@ -3392,6 +3403,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
