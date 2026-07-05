@@ -154,6 +154,329 @@ android {
 
 }
 
+tasks.register("generateMozcSegmenterData") {
+    def sourceDir = rootProject.file("tools/mozc_segmenter")
+    def boundaryDef = new File(sourceDir, "boundary.def")
+    def segmenterDef = new File(sourceDir, "segmenter.def")
+    def specialPosDef = new File(sourceDir, "special_pos.def")
+    def idDef = file("src/main/assets/id.def")
+    def outputDir = file("src/main/assets/mozc")
+    def segmenterDat = new File(outputDir, "segmenter.dat")
+    def segmenterManifest = new File(outputDir, "segmenter_manifest.json")
+    def nodeAttributeDat = new File(outputDir, "node_attribute_by_lid.dat")
+    def nodeAttributeManifest = new File(outputDir, "node_attribute_manifest.json")
+
+    inputs.files(boundaryDef, segmenterDef, specialPosDef, idDef)
+    outputs.files(segmenterDat, segmenterManifest, nodeAttributeDat, nodeAttributeManifest)
+
+    doLast {
+        outputDir.mkdirs()
+
+        def writeUInt16 = { ByteArrayOutputStream out, int value ->
+            if (value < 0 || value > 0xFFFF) {
+                throw new GradleException("UInt16 out of range: ${value}")
+            }
+            out.write(value & 0xFF)
+            out.write((value >>> 8) & 0xFF)
+        }
+        def writeUInt32 = { ByteArrayOutputStream out, long value ->
+            if (value < 0 || value > 0xFFFFFFFFL) {
+                throw new GradleException("UInt32 out of range: ${value}")
+            }
+            out.write((int) (value & 0xFF))
+            out.write((int) ((value >>> 8) & 0xFF))
+            out.write((int) ((value >>> 16) & 0xFF))
+            out.write((int) ((value >>> 24) & 0xFF))
+        }
+        def patternToSegmenterRegexp = { String pattern ->
+            pattern.replace("*", "[^,]+")
+        }
+        def patternToBoundaryRegexp = { String pattern ->
+            def regexp = "^" + pattern.replace("*", "[^,]+")
+            if (!regexp.endsWith(",")) {
+                regexp += "(?:,|\$)"
+            }
+            regexp
+        }
+        def isDataLine = { String line ->
+            def trimmed = line.trim()
+            trimmed.length() > 0 && !trimmed.startsWith("#")
+        }
+
+        def featuresById = []
+        idDef.eachLine("UTF-8") { String line ->
+            if (!isDataLine(line)) return
+            def fields = line.trim().split(/\s+/, 2)
+            if (fields.length < 2) return
+            def id = fields[0] as int
+            while (featuresById.size() <= id) {
+                featuresById.add("")
+            }
+            featuresById[id] = fields[1]
+        }
+        def idFeatureCount = featuresById.size()
+        specialPosDef.eachLine("UTF-8") { String line ->
+            if (isDataLine(line)) {
+                featuresById.add(line.trim().split(/\s+/)[0])
+            }
+        }
+        if (featuresById.isEmpty()) {
+            throw new GradleException("id.def has no POS features")
+        }
+
+        def segmenterRules = []
+        segmenterDef.eachLine("UTF-8") { String line ->
+            if (!isDataLine(line)) return
+            def fields = line.trim().split(/\s+/)
+            if (fields.length < 3) {
+                throw new GradleException("Invalid segmenter rule: ${line}")
+            }
+            segmenterRules.add([
+                left: java.util.regex.Pattern.compile(patternToSegmenterRegexp(fields[0])),
+                right: java.util.regex.Pattern.compile(patternToSegmenterRegexp(fields[1])),
+                result: fields[2].equalsIgnoreCase("true"),
+            ])
+        }
+
+        def isBoundary = { int rid, int lid ->
+            if (rid == 0 || lid == 0) return true
+            if (rid >= featuresById.size() || lid >= featuresById.size()) return true
+            def leftFeature = featuresById[rid]
+            def rightFeature = featuresById[lid]
+            for (rule in segmenterRules) {
+                if (rule.left.matcher(leftFeature).lookingAt() &&
+                    rule.right.matcher(rightFeature).lookingAt()) {
+                    return rule.result
+                }
+            }
+            true
+        }
+
+        def lSize = featuresById.size()
+        def rSize = featuresById.size()
+        def originalMatrix = new byte[(lSize + 1) * (rSize + 1)]
+        for (int rid = 0; rid <= lSize; rid++) {
+            for (int lid = 0; lid <= rSize; lid++) {
+                int index = rid + lSize * lid
+                originalMatrix[index] = (byte) (isBoundary(rid, lid) ? 1 : 0)
+            }
+        }
+
+        def buildStateTable = { int tableSize, Closure<String> rowBuilder ->
+            def compressedByRow = new LinkedHashMap<String, Integer>()
+            def table = []
+            for (int id = 0; id < tableSize; id++) {
+                def row = rowBuilder(id)
+                def compressedId = compressedByRow[row]
+                if (compressedId == null) {
+                    compressedId = compressedByRow.size()
+                    compressedByRow[row] = compressedId
+                }
+                table.add(compressedId)
+            }
+            [table: table, size: compressedByRow.size()]
+        }
+
+        def lState = buildStateTable(lSize + 1) { int rid ->
+            def bytes = new byte[rSize + 1]
+            for (int lid = 0; lid <= rSize; lid++) {
+                bytes[lid] = originalMatrix[rid + lSize * lid]
+            }
+            new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+        }
+        def rState = buildStateTable(rSize + 1) { int lid ->
+            def bytes = new byte[lSize + 1]
+            for (int rid = 0; rid <= lSize; rid++) {
+                bytes[rid] = originalMatrix[rid + lSize * lid]
+            }
+            new String(bytes, java.nio.charset.StandardCharsets.ISO_8859_1)
+        }
+
+        def bitCount = lState.size * rState.size
+        def bitArrayData = new byte[4 * (1 + (bitCount >> 5))]
+        for (int rid = 0; rid <= lSize; rid++) {
+            for (int lid = 0; lid <= rSize; lid++) {
+                int originalIndex = rid + lSize * lid
+                int compressedIndex = lState.table[rid] + lState.size * rState.table[lid]
+                if (originalMatrix[originalIndex] != 0) {
+                    bitArrayData[compressedIndex >>> 3] =
+                        (byte) (bitArrayData[compressedIndex >>> 3] | (1 << (compressedIndex & 0x07)))
+                }
+            }
+        }
+
+        def prefixPatterns = []
+        def suffixPatterns = []
+        boundaryDef.eachLine("UTF-8") { String line ->
+            if (!isDataLine(line)) return
+            def fields = line.trim().split(/\s+/)
+            if (fields.length < 3) {
+                throw new GradleException("Invalid boundary rule: ${line}")
+            }
+            def target = fields[0]
+            def pattern = java.util.regex.Pattern.compile(patternToBoundaryRegexp(fields[1]))
+            def cost = fields[2] as int
+            if (cost < 0 || cost > 0xFFFF) {
+                throw new GradleException("Boundary cost out of range: ${line}")
+            }
+            if (target == "PREFIX") {
+                prefixPatterns.add([pattern: pattern, cost: cost])
+            } else if (target == "SUFFIX") {
+                suffixPatterns.add([pattern: pattern, cost: cost])
+            } else {
+                throw new GradleException("Invalid boundary target: ${line}")
+            }
+        }
+        def costFor = { List patterns, String feature ->
+            for (entry in patterns) {
+                if (entry.pattern.matcher(feature).find()) {
+                    return entry.cost
+                }
+            }
+            0
+        }
+        def boundaryData = []
+        for (int id = 0; id < featuresById.size(); id++) {
+            if (id < idFeatureCount) {
+                boundaryData.add(costFor(prefixPatterns, featuresById[id]))
+                boundaryData.add(costFor(suffixPatterns, featuresById[id]))
+            } else {
+                boundaryData.add(0)
+                boundaryData.add(0)
+            }
+        }
+
+        def segmenterOut = new ByteArrayOutputStream()
+        segmenterOut.write("MSGM".getBytes("US-ASCII"))
+        writeUInt32(segmenterOut, 1)
+        writeUInt32(segmenterOut, lState.size)
+        writeUInt32(segmenterOut, rState.size)
+        writeUInt32(segmenterOut, lState.table.size())
+        writeUInt32(segmenterOut, rState.table.size())
+        writeUInt32(segmenterOut, bitArrayData.length)
+        writeUInt32(segmenterOut, boundaryData.size())
+        lState.table.each { writeUInt16(segmenterOut, it as int) }
+        rState.table.each { writeUInt16(segmenterOut, it as int) }
+        segmenterOut.write(bitArrayData)
+        boundaryData.each { writeUInt16(segmenterOut, it as int) }
+        segmenterDat.bytes = segmenterOut.toByteArray()
+
+        def particleNames = ["助詞", "係助詞", "格助詞", "副助詞", "接続助詞", "終助詞", "並立助詞"]
+        def attributes = new int[idFeatureCount]
+        def startsWithParticleLids = []
+        for (int id = 0; id < idFeatureCount; id++) {
+            def feature = featuresById[id]
+            if (particleNames.any { feature.contains(it) }) {
+                attributes[id] = 1
+                startsWithParticleLids.add(id)
+            }
+        }
+        if (startsWithParticleLids.isEmpty()) {
+            throw new GradleException("node_attribute_by_lid has no STARTS_WITH_PARTICLE IDs")
+        }
+        def attributeOut = new ByteArrayOutputStream()
+        attributeOut.write("MNAT".getBytes("US-ASCII"))
+        writeUInt32(attributeOut, 1)
+        writeUInt32(attributeOut, attributes.length)
+        attributes.each { writeUInt32(attributeOut, it as int) }
+        nodeAttributeDat.bytes = attributeOut.toByteArray()
+
+        segmenterManifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([
+            format: "mozc_segmenter",
+            version: 1,
+            source: [
+                boundary_def: "src/data/rules/boundary.def",
+                segmenter_def: "src/data/rules/segmenter.def",
+            ],
+            matrix: [
+                l_num_elements: lState.size,
+                r_num_elements: rState.size,
+                l_table_size: lState.table.size(),
+                r_table_size: rState.table.size(),
+                bitarray_size: bitArrayData.length,
+                boundary_data_size: boundaryData.size(),
+            ],
+        ])) + "\n"
+        nodeAttributeManifest.text = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson([
+            format: "mozc_node_attribute_by_lid",
+            version: 1,
+            source: "id.def",
+            starts_with_particle_count: startsWithParticleLids.size(),
+            starts_with_particle_lids: startsWithParticleLids,
+        ])) + "\n"
+    }
+}
+
+tasks.register("verifyMozcSegmenterData") {
+    dependsOn("generateMozcSegmenterData")
+
+    doLast {
+        def outputDir = file("src/main/assets/mozc")
+        def segmenterDat = new File(outputDir, "segmenter.dat")
+        def segmenterManifest = new File(outputDir, "segmenter_manifest.json")
+        def nodeAttributeManifest = new File(outputDir, "node_attribute_manifest.json")
+
+        byte[] bytes = segmenterDat.bytes
+        def offset = 0
+        def readAscii = { int size ->
+            def value = new String(bytes, offset, size, "US-ASCII")
+            offset += size
+            value
+        }
+        def readUInt32 = {
+            if (offset + 4 > bytes.length) throw new GradleException("Unexpected EOF in segmenter.dat")
+            long value = ((long) bytes[offset] & 0xFFL) |
+                (((long) bytes[offset + 1] & 0xFFL) << 8) |
+                (((long) bytes[offset + 2] & 0xFFL) << 16) |
+                (((long) bytes[offset + 3] & 0xFFL) << 24)
+            offset += 4
+            value
+        }
+
+        def magic = readAscii(4)
+        def version = readUInt32()
+        def lNumElements = readUInt32()
+        def rNumElements = readUInt32()
+        def lTableSize = readUInt32()
+        def rTableSize = readUInt32()
+        def bitArraySize = readUInt32()
+        def boundaryDataSize = readUInt32()
+
+        if (magic != "MSGM") throw new GradleException("Invalid segmenter magic: ${magic}")
+        if (version != 1L) throw new GradleException("Invalid segmenter version: ${version}")
+        if (lTableSize <= 0 || rTableSize <= 0 || bitArraySize <= 0 || boundaryDataSize <= 0) {
+            throw new GradleException("Segmenter data has an empty table")
+        }
+        long expectedSize = 4 + 7 * 4 + lTableSize * 2 + rTableSize * 2 + bitArraySize + boundaryDataSize * 2
+        if (bytes.length != expectedSize) {
+            throw new GradleException("segmenter.dat size mismatch: ${bytes.length} != ${expectedSize}")
+        }
+        if (boundaryDataSize < 2 * (Math.max(lTableSize, rTableSize) - 1)) {
+            throw new GradleException("boundaryDataSize is too small: ${boundaryDataSize}")
+        }
+
+        def manifest = new groovy.json.JsonSlurper().parse(segmenterManifest)
+        def matrix = manifest.matrix
+        if (matrix.l_num_elements != lNumElements ||
+            matrix.r_num_elements != rNumElements ||
+            matrix.l_table_size != lTableSize ||
+            matrix.r_table_size != rTableSize ||
+            matrix.bitarray_size != bitArraySize ||
+            matrix.boundary_data_size != boundaryDataSize) {
+            throw new GradleException("segmenter_manifest.json does not match segmenter.dat")
+        }
+
+        def attributeManifest = new groovy.json.JsonSlurper().parse(nodeAttributeManifest)
+        if ((attributeManifest.starts_with_particle_count as int) <= 0) {
+            throw new GradleException("node_attribute_manifest.json has no STARTS_WITH_PARTICLE IDs")
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn("verifyMozcSegmenterData")
+}
+
 dependencies {
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.13.0'
