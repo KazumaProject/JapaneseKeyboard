@@ -22,7 +22,17 @@ import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVect
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphNodeDedupMode
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTable
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.BoundaryTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.CandidateTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.ConversionTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.ForwardDpTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.GraphNodeTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.PenaltyTrace
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
@@ -54,6 +64,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toSupersc
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import java.io.BufferedInputStream
 import java.io.File
@@ -193,11 +204,28 @@ class KanaKanjiEngine {
     private var systemUserSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
     private lateinit var englishEngine: EnglishEngine
+    private var mozcSegmenter: MozcSegmenter? = null
+    private var mozcNodeAttributeTable: MozcNodeAttributeTable? = null
+    @Volatile
+    private var mozcDictionaryActive: Boolean = false
 
     companion object {
         const val SCORE_OFFSET = 8000
         const val SCORE_OFFSET_SMALL = 6000
     }
+
+    private fun isMozcParityEnabled(): Boolean =
+        mozcDictionaryActive && mozcSegmenter != null && mozcNodeAttributeTable != null
+
+    private fun graphNodeDedupModeForCurrentDictionary(): GraphNodeDedupMode =
+        if (isMozcParityEnabled()) {
+            GraphNodeDedupMode.MOZC_KEEP_ALL
+        } else {
+            GraphNodeDedupMode.EXISTING_BY_TANGO_L_R
+        }
+
+    private fun mozcNodeAttributeTableForCurrentDictionary(): MozcNodeAttributeTable? =
+        if (isMozcParityEnabled()) mozcNodeAttributeTable else null
 
     fun setDictionaryBinaryReader(reader: DictionaryBinaryReader) {
         dictionaryBinaryReader = reader
@@ -250,6 +278,86 @@ class KanaKanjiEngine {
             )
         }
 
+    fun convertWithTrace(input: String): ConversionTrace = runBlocking {
+        val graphNodeTrace = mutableListOf<GraphNodeTrace>()
+        val penaltyTrace = mutableListOf<PenaltyTrace>()
+        val forwardDpTrace = mutableListOf<ForwardDpTrace>()
+        val boundaryTrace = mutableListOf<BoundaryTrace>()
+        val candidateTrace = mutableListOf<CandidateTrace>()
+
+        val graph = graphBuilder.constructGraph(
+            input,
+            systemYomiTrie,
+            systemTangoTrie,
+            systemTokenArray,
+            succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+            userDictionaryRepository = null,
+            learnRepository = null,
+            wikiYomiTrie = wikiYomiTrie,
+            wikiTangoTrie = wikiTangoTrie,
+            wikiTokenArray = wikiTokenArray,
+            succinctBitVectorLBSWikiYomi = wikiSuccinctBitVectorLBSYomi,
+            succinctBitVectorWikiTangoLBS = wikiSuccinctBitVectorLBSTango,
+            succinctBitVectorWikiTokenArray = wikiSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafWikiYomi = wikiSuccinctBitVectorIsLeaf,
+            webYomiTrie = webYomiTrie,
+            webTangoTrie = webTangoTrie,
+            webTokenArray = webTokenArray,
+            succinctBitVectorLBSwebYomi = webSuccinctBitVectorLBSYomi,
+            succinctBitVectorwebTangoLBS = webSuccinctBitVectorLBSTango,
+            succinctBitVectorwebTokenArray = webSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafwebYomi = webSuccinctBitVectorIsLeaf,
+            personYomiTrie = personYomiTrie,
+            personTangoTrie = personTangoTrie,
+            personTokenArray = personTokenArray,
+            succinctBitVectorLBSpersonYomi = personSuccinctBitVectorLBSYomi,
+            succinctBitVectorpersonTangoLBS = personSuccinctBitVectorLBSTango,
+            succinctBitVectorpersonTokenArray = personSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafpersonYomi = personSuccinctBitVectorIsLeaf,
+            neologdYomiTrie = neologdYomiTrie,
+            neologdTangoTrie = neologdTangoTrie,
+            neologdTokenArray = neologdTokenArray,
+            succinctBitVectorLBSneologdYomi = neologdSuccinctBitVectorLBSYomi,
+            succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
+            succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
+            isOmissionSearchEnable = false,
+            enableTypoCorrectionJapaneseFlick = false,
+            typoCorrectionOffsetScore = 0,
+            omissionSearchOffSetScore = 0,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            graphNodeTrace = graphNodeTrace,
+        )
+
+        if (graph.isNotEmpty()) {
+            val connectionMatrix = connectionMatrixSnapshot()
+            findPath.backwardAStarWithBunsetsu(
+                graph = graph,
+                length = input.length,
+                connectionIds = connectionMatrix.connectionIds,
+                connectionMatrixSize = connectionMatrix.matrixSize,
+                n = 1000,
+                penaltyTrace = penaltyTrace,
+                forwardDpTrace = forwardDpTrace,
+                boundaryTrace = boundaryTrace,
+                candidateTrace = candidateTrace,
+            )
+        }
+
+        ConversionTrace(
+            input = input,
+            graphNodes = graphNodeTrace,
+            penaltyEvents = penaltyTrace,
+            forwardDpEvents = forwardDpTrace,
+            boundaryEvents = boundaryTrace,
+            finalCandidates = candidateTrace,
+        )
+    }
+
     fun applyDictionaryOverrideState(context: Context) {
         val reader = dictionaryReader(context)
         val appContext = context.applicationContext
@@ -285,6 +393,8 @@ class KanaKanjiEngine {
         val newWiki = loadOptionalTripleDictionary(reader, DictionaryCategory.WIKI)
         val newNeologd = loadOptionalTripleDictionary(reader, DictionaryCategory.NEOLOGD)
         val newWeb = loadOptionalTripleDictionary(reader, DictionaryCategory.WEB)
+        val newMozcDictionaryActive =
+            reader.resolveCategoryLoadState(DictionaryCategory.SYSTEM) == DictionaryCategoryLoadState.Bundled
 
         synchronized(this) {
             connectionIds = newConnectionIds
@@ -314,6 +424,7 @@ class KanaKanjiEngine {
             assignWikiDictionary(newWiki)
             assignNeologdDictionary(newNeologd)
             assignWebDictionary(newWeb)
+            mozcDictionaryActive = newMozcDictionaryActive
         }
     }
 
@@ -409,10 +520,26 @@ class KanaKanjiEngine {
         kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector,
         kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
-        engineEngine: EnglishEngine
+        engineEngine: EnglishEngine,
+        mozcSegmenter: MozcSegmenter? = null,
+        mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
+        mozcDictionaryActive: Boolean = false,
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
+        this@KanaKanjiEngine.mozcSegmenter = mozcSegmenter
+        this@KanaKanjiEngine.mozcNodeAttributeTable = mozcNodeAttributeTable
+        this@KanaKanjiEngine.mozcDictionaryActive = mozcDictionaryActive
+        this@KanaKanjiEngine.findPath.configureMozcParityProviders(
+            mozcSegmenterProvider = {
+                if (this@KanaKanjiEngine.isMozcParityEnabled()) {
+                    this@KanaKanjiEngine.mozcSegmenter
+                } else {
+                    null
+                }
+            },
+            mozcBoundaryModeProvider = { MozcBoundaryMode.ONLY_EDGE },
+        )
 
         // System
         val inferredConnectionMatrixSize = ConnectionMatrix.inferMatrixSize(connectionIdList)
@@ -899,7 +1026,9 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable,
             enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -1378,7 +1507,9 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable,
             enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -1883,7 +2014,9 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable,
             enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -2333,7 +2466,9 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable,
             enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2767,7 +2902,9 @@ class KanaKanjiEngine {
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
             isOmissionSearchEnable = false,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -3230,7 +3367,9 @@ class KanaKanjiEngine {
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
             isOmissionSearchEnable = false,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {

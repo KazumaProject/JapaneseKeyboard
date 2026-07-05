@@ -4,10 +4,14 @@ import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.core.domain.extensions.hasNConsecutiveChars
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.graph.MozcNodeAttributes
+import com.kazumaproject.graph.MozcNodeType
 import com.kazumaproject.graph.Node
 import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTable
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.GraphNodeTrace
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
@@ -54,27 +58,62 @@ class GraphBuilder {
     private fun addOrUpdateNode(
         graph: MutableMap<Int, MutableList<Node>>,
         endIndex: Int,
-        newNode: Node
+        newNode: Node,
+        mode: GraphNodeDedupMode,
+        trace: MutableList<GraphNodeTrace>?,
+        input: String,
+        source: String,
     ) {
         val nodes = graph.computeIfAbsent(endIndex) { mutableListOf() }
 
-        // tango, l, r の3つがすべて一致するノードを探す
-        val existingNodeIndex = nodes.indexOfFirst {
-            it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r
-        }
-
-        if (existingNodeIndex != -1) {
-            // 完全に一致する既存ノードが見つかった場合
-            val existingNode = nodes[existingNodeIndex]
-            if (newNode.score < existingNode.score) {
-                // 新しいノードの方がスコアが良い（低い）ので置き換える
-                nodes[existingNodeIndex] = newNode
+        when (mode) {
+            GraphNodeDedupMode.MOZC_KEEP_ALL -> {
+                nodes.add(newNode)
+                trace?.add(newNode.toTrace(input, endIndex, source, "ADDED"))
             }
-        } else {
-            // 新しい単語、または、同じ単語だが品詞が異なる場合は、単純に追加する
-            nodes.add(newNode)
+            GraphNodeDedupMode.EXISTING_BY_TANGO_L_R -> {
+                // tango, l, r の3つがすべて一致するノードを探す
+                val existingNodeIndex = nodes.indexOfFirst {
+                    it.tango == newNode.tango && it.l == newNode.l && it.r == newNode.r
+                }
+
+                if (existingNodeIndex != -1) {
+                    // 完全に一致する既存ノードが見つかった場合
+                    val existingNode = nodes[existingNodeIndex]
+                    if (newNode.score < existingNode.score) {
+                        // 新しいノードの方がスコアが良い（低い）ので置き換える
+                        nodes[existingNodeIndex] = newNode
+                        trace?.add(newNode.toTrace(input, endIndex, source, "REPLACED"))
+                    } else {
+                        trace?.add(newNode.toTrace(input, endIndex, source, "SKIPPED"))
+                    }
+                } else {
+                    // 新しい単語、または、同じ単語だが品詞が異なる場合は、単純に追加する
+                    nodes.add(newNode)
+                    trace?.add(newNode.toTrace(input, endIndex, source, "ADDED"))
+                }
+            }
         }
     }
+
+    private fun Node.toTrace(
+        input: String,
+        endIndex: Int,
+        source: String,
+        event: String,
+    ): GraphNodeTrace =
+        GraphNodeTrace(
+            input = input,
+            yomiUsed = yomiUsed,
+            tango = tango,
+            startPos = sPos,
+            endPos = endIndex,
+            leftId = l.toInt(),
+            rightId = r.toInt(),
+            wordCost = score,
+            source = source,
+            event = event,
+        )
 
     suspend fun constructGraph(
         str: String,
@@ -85,7 +124,7 @@ class GraphBuilder {
         succinctBitVectorIsLeafYomi: SuccinctBitVector,
         succinctBitVectorTokenArray: SuccinctBitVector,
         succinctBitVectorTangoLBS: SuccinctBitVector,
-        userDictionaryRepository: UserDictionaryRepository,
+        userDictionaryRepository: UserDictionaryRepository?,
         learnRepository: LearnRepository?,
         wikiYomiTrie: LOUDSWithTermId?,
         wikiTangoTrie: LOUDS?,
@@ -118,9 +157,15 @@ class GraphBuilder {
         isOmissionSearchEnable: Boolean,
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffSetScore: Int
+        omissionSearchOffSetScore: Int,
+        graphNodeDedupMode: GraphNodeDedupMode = GraphNodeDedupMode.EXISTING_BY_TANGO_L_R,
+        mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
+        graphNodeTrace: MutableList<GraphNodeTrace>? = null,
     ): MutableMap<Int, MutableList<Node>> {
         if (str.isAllHalfWidthAscii()) return mutableMapOf()
+        fun mozcAttributesFor(leftId: Short): Int =
+            mozcNodeAttributeTable?.attributesFor(leftId.toInt()) ?: MozcNodeAttributes.NONE
+
         val graph: MutableMap<Int, MutableList<Node>> = LinkedHashMap()
         graph[0] = mutableListOf(BOS)
         graph[str.length + 1] = mutableListOf(
@@ -134,6 +179,7 @@ class GraphBuilder {
                 yomiUsed = "EOS",
                 len = 0,
                 sPos = str.length + 1,
+                mozcNodeType = MozcNodeType.EOS,
             )
         )
         for (i in str.indices) {
@@ -141,7 +187,7 @@ class GraphBuilder {
             var foundInAnyDictionary = false
 
             // 1. ユーザー辞書
-            val userWords = userDictionaryRepository.commonPrefixSearchInUserDict(subStr)
+            val userWords = userDictionaryRepository?.commonPrefixSearchInUserDict(subStr) ?: emptyList()
             if (userWords.isNotEmpty()) foundInAnyDictionary = true
             userWords.forEach { userWord ->
                 val endIndex = i + userWord.reading.length
@@ -155,9 +201,10 @@ class GraphBuilder {
                     tango = userWord.word,
                     yomiUsed = userWord.reading,
                     len = userWord.reading.length.toShort(),
-                    sPos = i
+                    sPos = i,
+                    mozcAttributes = mozcAttributesFor(contextId),
                 )
-                addOrUpdateNode(graph, endIndex, node)
+                addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "USER")
             }
 
             // 2. 学習辞書
@@ -166,17 +213,18 @@ class GraphBuilder {
             learnedWords.forEach { learnedWord ->
                 val endIndex = i + learnedWord.input.length
                 val node = Node(
-                    l = learnedWord.leftId ?: 1851,
-                    r = learnedWord.rightId ?: 1851,
+                    l = learnedWord.leftId ?: 1851.toShort(),
+                    r = learnedWord.rightId ?: 1851.toShort(),
                     score = learnedWord.score.toInt(),
                     f = learnedWord.score.toInt(),
                     g = learnedWord.score.toInt(),
                     tango = learnedWord.out,
                     yomiUsed = learnedWord.input,
                     len = learnedWord.input.length.toShort(),
-                    sPos = i
+                    sPos = i,
+                    mozcAttributes = mozcAttributesFor(learnedWord.leftId ?: 1851.toShort()),
                 )
-                addOrUpdateNode(graph, endIndex, node)
+                addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "LEARN")
             }
 
             val localSystemUserYomiTrie = systemUserYomiTrie
@@ -232,7 +280,14 @@ class GraphBuilder {
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i,
+                                mozcAttributes = mozcAttributesFor(
+                                    localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
+                                ),
                             ),
+                            graphNodeDedupMode,
+                            graphNodeTrace,
+                            str,
+                            "SYSTEM_USER",
                         )
                     }
                 }
@@ -294,7 +349,14 @@ class GraphBuilder {
                                         yomiUsed = yomiStr,
                                         len = yomiStr.length.toShort(),
                                         sPos = i,
+                                        mozcAttributes = mozcAttributesFor(
+                                            localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
+                                        ),
                                     ),
+                                    graphNodeDedupMode,
+                                    graphNodeTrace,
+                                    str,
+                                    "SYSTEM_USER_TYPO",
                                 )
                             }
                     }
@@ -347,7 +409,14 @@ class GraphBuilder {
                                     yomiUsed = yomiStr,
                                     len = yomiStr.length.toShort(),
                                     sPos = i,
+                                    mozcAttributes = mozcAttributesFor(
+                                        localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
+                                    ),
                                 ),
+                                graphNodeDedupMode,
+                                graphNodeTrace,
+                                str,
+                                "SYSTEM_USER_OMISSION",
                             )
                         }
                     }
@@ -387,9 +456,10 @@ class GraphBuilder {
                             tango = tango,
                             yomiUsed = yomiStr,
                             len = yomiStr.length.toShort(),
-                            sPos = i
+                            sPos = i,
+                            mozcAttributes = mozcAttributesFor(tokenArray.leftIds[token.posTableIndex.toInt()]),
                         )
-                        addOrUpdateNode(graph, endIndex, node)
+                        addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "SYSTEM")
                     }
                 }
             }
@@ -448,7 +518,12 @@ class GraphBuilder {
                                     yomiUsed = yomiStr,
                                     len = yomiStr.length.toShort(),
                                     sPos = i,
-                                )
+                                    mozcAttributes = mozcAttributesFor(tokenArray.leftIds[token.posTableIndex.toInt()]),
+                                ),
+                                graphNodeDedupMode,
+                                graphNodeTrace,
+                                str,
+                                "SYSTEM_TYPO",
                             )
                         }
                 }
@@ -492,9 +567,10 @@ class GraphBuilder {
                                 tango = tango,
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
-                                sPos = i
+                                sPos = i,
+                                mozcAttributes = mozcAttributesFor(tokenArray.leftIds[token.posTableIndex.toInt()]),
                             )
-                            addOrUpdateNode(graph, endIndex, node)
+                            addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "SYSTEM_OMISSION")
                         }
                     }
                 }
@@ -538,9 +614,10 @@ class GraphBuilder {
                                 tango = tango,
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
-                                sPos = i
+                                sPos = i,
+                                mozcAttributes = mozcAttributesFor(wikiTokenArray.leftIds[token.posTableIndex.toInt()]),
                             )
-                            addOrUpdateNode(graph, endIndex, node)
+                            addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "WIKI")
                         }
                     }
                 }
@@ -584,9 +661,10 @@ class GraphBuilder {
                                 tango = tango,
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
-                                sPos = i
+                                sPos = i,
+                                mozcAttributes = mozcAttributesFor(webTokenArray.leftIds[token.posTableIndex.toInt()]),
                             )
-                            addOrUpdateNode(graph, endIndex, node)
+                            addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "WEB")
                         }
                     }
                 }
@@ -631,9 +709,10 @@ class GraphBuilder {
                                 tango = tango,
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
-                                sPos = i
+                                sPos = i,
+                                mozcAttributes = mozcAttributesFor(personTokenArray.leftIds[token.posTableIndex.toInt()]),
                             )
-                            addOrUpdateNode(graph, endIndex, node)
+                            addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "PERSON")
                         }
                     }
                 }
@@ -678,9 +757,10 @@ class GraphBuilder {
                                 tango = tango,
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
-                                sPos = i
+                                sPos = i,
+                                mozcAttributes = mozcAttributesFor(neologdTokenArray.leftIds[token.posTableIndex.toInt()]),
                             )
-                            addOrUpdateNode(graph, endIndex, node)
+                            addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "NEOLOGD")
                         }
                     }
                 }
@@ -700,9 +780,11 @@ class GraphBuilder {
                     yomiUsed = yomiStr,
                     len = yomiStr.length.toShort(),
                     sPos = i,
+                    mozcAttributes = mozcAttributesFor(0),
                 )
                 // 未知語は重複を考慮せずそのまま追加する
                 graph.computeIfAbsent(endIndex) { mutableListOf() }.add(unknownNode)
+                graphNodeTrace?.add(unknownNode.toTrace(str, endIndex, "UNKNOWN", "ADDED"))
             }
         }
         return graph

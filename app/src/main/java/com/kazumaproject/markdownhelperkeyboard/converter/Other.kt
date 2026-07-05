@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
 import com.kazumaproject.graph.Node
+import com.kazumaproject.graph.MozcNodeType
 
 object Other {
     val BOS = Node(
@@ -12,6 +13,7 @@ object Other {
         tango = "BOS",
         len = 0,
         yomiUsed = "BOS",
-        0,
+        sPos = 0,
+        mozcNodeType = MozcNodeType.BOS,
     )
 }
