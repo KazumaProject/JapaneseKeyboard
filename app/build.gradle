@@ -410,12 +410,17 @@ tasks.register("generateMozcSegmenterData") {
 tasks.register("verifyMozcSegmenterData") {
     dependsOn("generateMozcSegmenterData")
 
-    doLast {
-        def outputDir = file("src/main/assets/mozc")
-        def segmenterDat = new File(outputDir, "segmenter.dat")
-        def segmenterManifest = new File(outputDir, "segmenter_manifest.json")
-        def nodeAttributeManifest = new File(outputDir, "node_attribute_manifest.json")
+    def outputDir = file("src/main/assets/mozc")
+    def segmenterDat = new File(outputDir, "segmenter.dat")
+    def segmenterManifest = new File(outputDir, "segmenter_manifest.json")
+    def nodeAttributeDat = new File(outputDir, "node_attribute_by_lid.dat")
+    def nodeAttributeManifest = new File(outputDir, "node_attribute_manifest.json")
+    def verifyStamp = layout.buildDirectory.file("intermediates/mozcSegmenter/verify.stamp")
 
+    inputs.files(segmenterDat, segmenterManifest, nodeAttributeDat, nodeAttributeManifest)
+    outputs.file(verifyStamp)
+
+    doLast {
         byte[] bytes = segmenterDat.bytes
         def offset = 0
         def readAscii = { int size ->
@@ -470,6 +475,10 @@ tasks.register("verifyMozcSegmenterData") {
         if ((attributeManifest.starts_with_particle_count as int) <= 0) {
             throw new GradleException("node_attribute_manifest.json has no STARTS_WITH_PARTICLE IDs")
         }
+
+        def stampFile = verifyStamp.get().asFile
+        stampFile.parentFile.mkdirs()
+        stampFile.text = "ok\n"
     }
 }
 
