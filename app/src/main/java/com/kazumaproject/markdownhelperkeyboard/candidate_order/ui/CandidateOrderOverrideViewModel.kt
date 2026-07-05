@@ -146,7 +146,8 @@ class CandidateOrderOverrideViewModel @Inject constructor(
                     enableTypoCorrectionQwertyEnglish = false,
                     typoCorrectionOffsetScore = appPreference
                         .enable_typo_correction_japanese_flick_keyboard_offset_score_preference,
-                    omissionSearchOffsetScore = appPreference.omission_search_offset_score_preference
+                    omissionSearchOffsetScore = appPreference.omission_search_offset_score_preference,
+                    beamWidth = appPreference.conversion_beam_width_preference,
                 )
             }
                 .let { filterCandidateOrderEditableCandidates(reading, it) }

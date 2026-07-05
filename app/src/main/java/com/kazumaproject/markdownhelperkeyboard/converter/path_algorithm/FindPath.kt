@@ -51,12 +51,14 @@ class FindPath(
         connectionIds: ShortArray,
         connectionMatrixSize: Int,
         n: Int,
+        beamWidth: Int = 20,
     ): MutableList<Candidate> {
         forwardDp(
             graph = graph,
             length = length,
             connectionIds = connectionIds,
             connectionMatrixSize = connectionMatrixSize,
+            beamWidth = beamWidth.coerceAtLeast(1),
         )
 
         val resultFinal = mutableListOf<Candidate>()
@@ -113,8 +115,8 @@ class FindPath(
 
                 for (prevNode in prevNodes) {
                     val edgeScore = getEdgeCost(
-                        leftId = prevNode.l.toInt(),
-                        rightId = node.first.r.toInt(),
+                        rid = prevNode.r.toInt(),
+                        lid = node.first.l.toInt(),
                         connectionIds = connectionIds,
                         connectionMatrixSize = connectionMatrixSize,
                     )
@@ -154,8 +156,8 @@ class FindPath(
 
                 for (prev in prevNodes) {
                     val edgeCost = getEdgeCost(
-                        leftId = prev.l.toInt(),
-                        rightId = node.r.toInt(),
+                        rid = prev.r.toInt(),
+                        lid = node.l.toInt(),
                         connectionIds = connectionIds,
                         connectionMatrixSize = connectionMatrixSize,
                     )
@@ -209,8 +211,8 @@ class FindPath(
 
                 for (prev in prevNodes) {
                     val edgeCost = getEdgeCost(
-                        leftId = prev.l.toInt(),
-                        rightId = node.r.toInt(),
+                        rid = prev.r.toInt(),
+                        lid = node.l.toInt(),
                         connectionIds = connectionIds,
                         connectionMatrixSize = connectionMatrixSize,
                     )
@@ -270,16 +272,16 @@ class FindPath(
     }
 
     private fun getEdgeCost(
-        leftId: Int,
-        rightId: Int,
+        rid: Int,
+        lid: Int,
         connectionIds: ShortArray,
         connectionMatrixSize: Int,
     ): Int {
         require(connectionMatrixSize > 0) { "connectionMatrixSize must be positive: $connectionMatrixSize" }
-        require(leftId in 0 until connectionMatrixSize && rightId in 0 until connectionMatrixSize) {
-            "connection id out of range: leftId=$leftId, rightId=$rightId, matrixSize=$connectionMatrixSize"
+        require(rid in 0 until connectionMatrixSize && lid in 0 until connectionMatrixSize) {
+            "connection id out of range: rid=$rid, lid=$lid, matrixSize=$connectionMatrixSize"
         }
-        val index = leftId * connectionMatrixSize + rightId
+        val index = rid * connectionMatrixSize + lid
         require(index in connectionIds.indices) {
             "connection index out of range: index=$index, size=${connectionIds.size}, matrixSize=$connectionMatrixSize"
         }
@@ -320,6 +322,7 @@ class FindPath(
         connectionIds: ShortArray,
         connectionMatrixSize: Int,
         n: Int,
+        beamWidth: Int = 20,
         penaltyTrace: MutableList<PenaltyTrace>? = null,
         forwardDpTrace: MutableList<ForwardDpTrace>? = null,
         boundaryTrace: MutableList<BoundaryTrace>? = null,
@@ -342,6 +345,7 @@ class FindPath(
                 length = length,
                 connectionIds = connectionIds,
                 connectionMatrixSize = connectionMatrixSize,
+                beamWidth = beamWidth.coerceAtLeast(1),
             )
         } finally {
             forwardDpTraceSink = null
@@ -465,8 +469,8 @@ class FindPath(
                     }
 
                     val edgeScore = getEdgeCost(
-                        leftId = prevNode.l.toInt(),
-                        rightId = currentNode.r.toInt(),
+                        rid = prevNode.r.toInt(),
+                        lid = currentNode.l.toInt(),
                         connectionIds = connectionIds,
                         connectionMatrixSize = connectionMatrixSize,
                     )
@@ -509,6 +513,7 @@ class FindPath(
         connectionIds: ShortArray,
         connectionMatrixSize: Int,
         n: Int,
+        beamWidth: Int = 20,
     ): Pair<List<Candidate>, List<Int>> {
         val totalStartTime = System.currentTimeMillis()
         Timber.d("▼ backwardAStarWithBunsetsu 開始 (入力長: $length)")
@@ -520,6 +525,7 @@ class FindPath(
             length = length,
             connectionIds = connectionIds,
             connectionMatrixSize = connectionMatrixSize,
+            beamWidth = beamWidth.coerceAtLeast(1),
         )
 
         val forwardDpTime = System.currentTimeMillis() - forwardDpStartTime
@@ -599,8 +605,8 @@ class FindPath(
 
                 for (prevNode in prevNodes) {
                     val edgeScore = getEdgeCost(
-                        leftId = prevNode.l.toInt(),
-                        rightId = node.first.r.toInt(),
+                        rid = prevNode.r.toInt(),
+                        lid = node.first.l.toInt(),
                         connectionIds = connectionIds,
                         connectionMatrixSize = connectionMatrixSize,
                     )

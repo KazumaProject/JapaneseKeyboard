@@ -13,6 +13,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttribute
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenterDataReader
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.BeforeClass
 import org.junit.Test
@@ -75,6 +76,17 @@ class MozcCompoundConversionParityTest {
             trace.finalCandidates.any {
                 it.candidate == "未入力時" && it.path.containsAll(listOf("未入力", "時"))
             },
+        )
+    }
+
+    @Test
+    fun minyuuryokuji_candidatesRankMiNyuryokuJiFirst() {
+        val trace = engine.convertWithTrace("みにゅうりょくじ")
+
+        assertEquals(
+            trace.finalCandidates.take(10).joinToString("\n"),
+            "未入力時",
+            trace.finalCandidates.first().candidate,
         )
     }
 
