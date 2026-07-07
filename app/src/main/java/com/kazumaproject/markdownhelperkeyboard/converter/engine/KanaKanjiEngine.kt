@@ -4518,29 +4518,33 @@ class KanaKanjiEngine {
         succinctBitVectorTokenArray: SuccinctBitVector,
         succinctBitVectorTangoLBS: SuccinctBitVector,
         type: Byte
-    ): List<Candidate> = commonPrefixListString.flatMap { yomi ->
-        val termId = yomiTrie.getTermIdShortArray(
-            yomiTrie.getNodeIndex(
-                yomi, succinctBitVectorLBSYomi
-            ), succinctBitVectorIsLeafYomi
-        )
-        tokenArray.getListDictionaryByYomiTermIdShortArray(
-            termId, succinctBitVectorTokenArray
-        ).map {
-            Candidate(
-                string = when (it.nodeId) {
-                    -2 -> yomi
-                    -1 -> yomi.hiraToKata()
-                    else -> tangoTrie.getLetterShortArray(
-                        it.nodeId, succinctBitVectorTangoLBS
-                    )
-                },
-                type = type,
-                length = yomi.length.toUByte(),
-                score = it.wordCost.toInt(),
-                leftId = tokenArray.leftIds[it.posTableIndex.toInt()],
-                rightId = tokenArray.rightIds[it.posTableIndex.toInt()]
+    ): List<Candidate> = buildList {
+        commonPrefixListString.forEach { yomi ->
+            val termId = yomiTrie.getTermIdShortArray(
+                yomiTrie.getNodeIndex(
+                    yomi, succinctBitVectorLBSYomi
+                ), succinctBitVectorIsLeafYomi
             )
+            tokenArray.forEachDictionaryByYomiTermIdShortArray(
+                termId, succinctBitVectorTokenArray
+            ) { posTableIndex, wordCost, nodeId ->
+                add(
+                    Candidate(
+                        string = when (nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> tangoTrie.getLetterShortArray(
+                                nodeId, succinctBitVectorTangoLBS
+                            )
+                        },
+                        type = type,
+                        length = yomi.length.toUByte(),
+                        score = wordCost.toInt(),
+                        leftId = tokenArray.leftIds[posTableIndex.toInt()],
+                        rightId = tokenArray.rightIds[posTableIndex.toInt()]
+                    )
+                )
+            }
         }
     }
 
@@ -4558,23 +4562,27 @@ class KanaKanjiEngine {
         val termIdArray = yomiTrie.getTermIdShortArray(
             yomiTrie.getNodeIndex(input, succinctBitVectorLBSYomi), succinctBitVectorIsLeafYomi
         )
-        return tokenArray.getListDictionaryByYomiTermIdShortArray(
-            termIdArray, succinctBitVectorTokenArray
-        ).map { entry ->
-            Candidate(
-                string = when (entry.nodeId) {
-                    -2 -> input
-                    -1 -> input.hiraToKata()
-                    else -> tangoTrie.getLetterShortArray(
-                        entry.nodeId, succinctBitVectorTangoLBS
+        return buildList {
+            tokenArray.forEachDictionaryByYomiTermIdShortArray(
+                termIdArray, succinctBitVectorTokenArray
+            ) { posTableIndex, wordCost, nodeId ->
+                add(
+                    Candidate(
+                        string = when (nodeId) {
+                            -2 -> input
+                            -1 -> input.hiraToKata()
+                            else -> tangoTrie.getLetterShortArray(
+                                nodeId, succinctBitVectorTangoLBS
+                            )
+                        },
+                        type = type,
+                        length = input.length.toUByte(),
+                        score = wordCost.toInt(),
+                        leftId = tokenArray.leftIds[posTableIndex.toInt()],
+                        rightId = tokenArray.rightIds[posTableIndex.toInt()]
                     )
-                },
-                type = type,
-                length = input.length.toUByte(),
-                score = entry.wordCost.toInt(),
-                leftId = tokenArray.leftIds[entry.posTableIndex.toInt()],
-                rightId = tokenArray.rightIds[entry.posTableIndex.toInt()]
-            )
+                )
+            }
         }
     }
 
@@ -4660,41 +4668,42 @@ class KanaKanjiEngine {
         succinctBitVectorTokenArray: SuccinctBitVector,
         succinctBitVectorTangoLBS: SuccinctBitVector,
     ): List<Candidate> {
-        return yomiList
-            .asSequence()
-            .filter { it.length != input.length }
-            .flatMap { yomi ->
+        return buildList {
+            yomiList.forEach { yomi ->
+                if (yomi.length == input.length) return@forEach
                 val nodeIndex =
                     yomiTrie.getNodeIndex(yomi, succinctBitVector = succinctBitVectorLBSYomi)
                 if (nodeIndex <= 0) {
-                    return@flatMap emptySequence()
+                    return@forEach
                 }
                 val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
-                tokenArray.getListDictionaryByYomiTermId(
+                tokenArray.forEachDictionaryByYomiTermId(
                     termId,
                     succinctBitVector = succinctBitVectorTokenArray,
-                ).asSequence().map { token ->
-                    val baseCost = token.wordCost.toInt()
+                ) { posTableIndex, wordCost, nodeId ->
+                    val baseCost = wordCost.toInt()
                     val score = when {
                         yomi.length == input.length -> baseCost
                         input.length <= 5 -> baseCost + SCORE_OFFSET * (yomi.length - input.length)
                         else -> baseCost + SCORE_OFFSET_SMALL
                     }
-                    Candidate(
-                        string = when (token.nodeId) {
-                            -2 -> yomi
-                            -1 -> yomi.hiraToKata()
-                            else -> tangoTrie.getLetter(token.nodeId, succinctBitVectorTangoLBS)
-                        },
-                        type = 9,
-                        length = yomi.length.toUByte(),
-                        score = score,
-                        leftId = tokenArray.leftIds[token.posTableIndex.toInt()],
-                        rightId = tokenArray.rightIds[token.posTableIndex.toInt()],
+                    add(
+                        Candidate(
+                            string = when (nodeId) {
+                                -2 -> yomi
+                                -1 -> yomi.hiraToKata()
+                                else -> tangoTrie.getLetter(nodeId, succinctBitVectorTangoLBS)
+                            },
+                            type = 9,
+                            length = yomi.length.toUByte(),
+                            score = score,
+                            leftId = tokenArray.leftIds[posTableIndex.toInt()],
+                            rightId = tokenArray.rightIds[posTableIndex.toInt()],
+                        )
                     )
                 }
             }
-            .toList()
+        }
     }
 
     private fun deferredPredictionEmojiSymbols(

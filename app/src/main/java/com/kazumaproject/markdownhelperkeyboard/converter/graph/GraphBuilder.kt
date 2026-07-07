@@ -183,11 +183,16 @@ class GraphBuilder {
             )
         )
         for (i in str.indices) {
-            val subStr = str.substring(i)
+            var subStrCache: String? = null
+            fun subStr(): String {
+                val cached = subStrCache
+                if (cached != null) return cached
+                return str.substring(i).also { subStrCache = it }
+            }
             var foundInAnyDictionary = false
 
             // 1. ユーザー辞書
-            val userWords = userDictionaryRepository?.commonPrefixSearchInUserDict(subStr) ?: emptyList()
+            val userWords = userDictionaryRepository?.commonPrefixSearchInUserDict(subStr()) ?: emptyList()
             if (userWords.isNotEmpty()) foundInAnyDictionary = true
             userWords.forEach { userWord ->
                 val endIndex = i + userWord.reading.length
@@ -208,7 +213,7 @@ class GraphBuilder {
             }
 
             // 2. 学習辞書
-            val learnedWords = learnRepository?.findCommonPrefixes(subStr) ?: emptyList()
+            val learnedWords = learnRepository?.findCommonPrefixes(subStr()) ?: emptyList()
             if (learnedWords.isNotEmpty()) foundInAnyDictionary = true
             learnedWords.forEach { learnedWord ->
                 val endIndex = i + learnedWord.input.length
@@ -244,44 +249,46 @@ class GraphBuilder {
                 localSystemUserTokenBitVector != null &&
                 localSystemUserTangoLBS != null
             ) {
-                val systemUserPrefixSearch = localSystemUserYomiTrie.commonPrefixSearch(
-                    str = subStr,
+                val systemUserPrefixSearch = localSystemUserYomiTrie.commonPrefixSearchWithNodeIndex(
+                    str = str,
+                    start = i,
                     succinctBitVector = localSystemUserLBSYomi,
                 )
                 if (systemUserPrefixSearch.isNotEmpty()) foundInAnyDictionary = true
-                for (yomiStr in systemUserPrefixSearch) {
-                    val nodeIndex = localSystemUserYomiTrie.getNodeIndex(yomiStr, localSystemUserLBSYomi)
+                for (prefixResult in systemUserPrefixSearch) {
+                    val yomiStr = prefixResult.yomi
+                    val nodeIndex = prefixResult.nodeIndex
                     if (nodeIndex <= 0) continue
                     val termId = localSystemUserYomiTrie.getTermId(nodeIndex, localSystemUserIsLeaf)
-                    val listToken = localSystemUserTokenArray.getListDictionaryByYomiTermId(
+                    val endIndex = i + yomiStr.length
+                    localSystemUserTokenArray.forEachDictionaryByYomiTermId(
                         termId,
                         localSystemUserTokenBitVector,
-                    )
-                    val endIndex = i + yomiStr.length
-                    listToken.forEach { token ->
-                        val tango = when (token.nodeId) {
+                    ) { posTableIndex, wordCost, tokenNodeId ->
+                        val tango = when (tokenNodeId) {
                             -2 -> yomiStr
                             -1 -> yomiStr.hiraToKata()
                             else -> localSystemUserTangoTrie.getLetter(
-                                token.nodeId,
+                                tokenNodeId,
                                 succinctBitVector = localSystemUserTangoLBS,
                             )
                         }
+                        val leftId = localSystemUserTokenArray.leftIds[posTableIndex.toInt()]
                         addOrUpdateNode(
                             graph,
                             endIndex,
                             Node(
-                                l = localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
-                                r = localSystemUserTokenArray.rightIds[token.posTableIndex.toInt()],
-                                score = token.wordCost.toInt(),
-                                f = token.wordCost.toInt(),
-                                g = token.wordCost.toInt(),
+                                l = leftId,
+                                r = localSystemUserTokenArray.rightIds[posTableIndex.toInt()],
+                                score = wordCost.toInt(),
+                                f = wordCost.toInt(),
+                                g = wordCost.toInt(),
                                 tango = tango,
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i,
                                 mozcAttributes = mozcAttributesFor(
-                                    localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
+                                    leftId,
                                 ),
                             ),
                             graphNodeDedupMode,
@@ -293,9 +300,9 @@ class GraphBuilder {
                 }
 
                 // 1.x システムユーザー辞書 (Typo Correction Prefix)
-                if (enableTypoCorrectionJapaneseFlick && subStr.length > 2) {
+                if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
                     val typoPrefixResults = localSystemUserYomiTrie.commonPrefixSearchWithTypoCorrectionPrefix(
-                        str = subStr,
+                        str = subStr(),
                         succinctBitVector = localSystemUserLBSYomi,
                         maxResults = 98,
                         maxLen = 12,
@@ -363,9 +370,9 @@ class GraphBuilder {
                 }
 
                 // 1.y システムユーザー辞書 (Omission Search)
-                if (isOmissionSearchEnable && !subStr.hasNConsecutiveChars(4)) {
+                if (isOmissionSearchEnable && !subStr().hasNConsecutiveChars(4)) {
                     val omissionSearchResults = localSystemUserYomiTrie.commonPrefixSearchWithOmission(
-                        str = subStr,
+                        str = subStr(),
                         succinctBitVector = localSystemUserLBSYomi,
                     )
                     if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
@@ -424,40 +431,42 @@ class GraphBuilder {
             }
 
             // 3. システム辞書 (通常検索)
-            val commonPrefixSearchSystem: List<String> = yomiTrie.commonPrefixSearch(
-                str = subStr,
+            val commonPrefixSearchSystem = yomiTrie.commonPrefixSearchWithNodeIndex(
+                str = str,
+                start = i,
                 succinctBitVector = succinctBitVectorLBSYomi
             )
             if (commonPrefixSearchSystem.isNotEmpty()) foundInAnyDictionary = true
-            for (yomiStr in commonPrefixSearchSystem) {
-                val nodeIndex = yomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSYomi)
+            for (prefixResult in commonPrefixSearchSystem) {
+                val yomiStr = prefixResult.yomi
+                val nodeIndex = prefixResult.nodeIndex
                 if (nodeIndex > 0) {
                     val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
-                    val listToken = tokenArray.getListDictionaryByYomiTermId(
+                    val endIndex = i + yomiStr.length
+                    tokenArray.forEachDictionaryByYomiTermId(
                         termId,
                         succinctBitVectorTokenArray
-                    )
-                    val endIndex = i + yomiStr.length
-                    listToken.forEach { token ->
-                        val tango = when (token.nodeId) {
+                    ) { posTableIndex, wordCost, tokenNodeId ->
+                        val tango = when (tokenNodeId) {
                             -2 -> yomiStr
                             -1 -> yomiStr.hiraToKata()
                             else -> tangoTrie.getLetter(
-                                token.nodeId,
+                                tokenNodeId,
                                 succinctBitVector = succinctBitVectorTangoLBS
                             )
                         }
+                        val leftId = tokenArray.leftIds[posTableIndex.toInt()]
                         val node = Node(
-                            l = tokenArray.leftIds[token.posTableIndex.toInt()],
-                            r = tokenArray.rightIds[token.posTableIndex.toInt()],
-                            score = token.wordCost.toInt(),
-                            f = token.wordCost.toInt(),
-                            g = token.wordCost.toInt(),
+                            l = leftId,
+                            r = tokenArray.rightIds[posTableIndex.toInt()],
+                            score = wordCost.toInt(),
+                            f = wordCost.toInt(),
+                            g = wordCost.toInt(),
                             tango = tango,
                             yomiUsed = yomiStr,
                             len = yomiStr.length.toShort(),
                             sPos = i,
-                            mozcAttributes = mozcAttributesFor(tokenArray.leftIds[token.posTableIndex.toInt()]),
+                            mozcAttributes = mozcAttributesFor(leftId),
                         )
                         addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "SYSTEM")
                     }
@@ -465,9 +474,9 @@ class GraphBuilder {
             }
 
             // 3.x システム辞書 (Typo Correction Prefix)
-            if (enableTypoCorrectionJapaneseFlick && subStr.length > 2) {
+            if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
                 val typoPrefixResults = yomiTrie.commonPrefixSearchWithTypoCorrectionPrefix(
-                    str = subStr,
+                    str = subStr(),
                     succinctBitVector = succinctBitVectorLBSYomi,
                     maxResults = 98,
                     maxLen = 12, // ここは調整（予測変換の最大長に合わせる）
@@ -530,10 +539,10 @@ class GraphBuilder {
             }
 
             // 4. システム辞書 (Omission Search)
-            if (isOmissionSearchEnable && !subStr.hasNConsecutiveChars(4)) {
+            if (isOmissionSearchEnable && !subStr().hasNConsecutiveChars(4)) {
                 val omissionSearchResults: List<OmissionSearchResult> =
                     yomiTrie.commonPrefixSearchWithOmission(
-                        str = subStr,
+                        str = subStr(),
                         succinctBitVector = succinctBitVectorLBSYomi
                     )
                 if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
@@ -581,41 +590,43 @@ class GraphBuilder {
                 succinctBitVectorLBSWikiYomi != null && succinctBitVectorWikiTangoLBS != null &&
                 succinctBitVectorWikiTokenArray != null && succinctBitVectorIsLeafWikiYomi != null
             ) {
-                val commonPrefixSearchWiki: List<String> = wikiYomiTrie.commonPrefixSearch(
-                    str = subStr,
+                val commonPrefixSearchWiki = wikiYomiTrie.commonPrefixSearchWithNodeIndex(
+                    str = str,
+                    start = i,
                     succinctBitVector = succinctBitVectorLBSWikiYomi
                 )
                 if (commonPrefixSearchWiki.isNotEmpty()) foundInAnyDictionary = true
-                for (yomiStr in commonPrefixSearchWiki) {
-                    val nodeIndex = wikiYomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSWikiYomi)
+                for (prefixResult in commonPrefixSearchWiki) {
+                    val yomiStr = prefixResult.yomi
+                    val nodeIndex = prefixResult.nodeIndex
                     if (nodeIndex > 0) {
                         val termId =
                             wikiYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafWikiYomi)
-                        val listToken = wikiTokenArray.getListDictionaryByYomiTermId(
+                        val endIndex = i + yomiStr.length
+                        wikiTokenArray.forEachDictionaryByYomiTermId(
                             termId,
                             succinctBitVectorWikiTokenArray
-                        )
-                        val endIndex = i + yomiStr.length
-                        listToken.forEach { token ->
-                            val tango = when (token.nodeId) {
+                        ) { posTableIndex, wordCost, tokenNodeId ->
+                            val tango = when (tokenNodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
                                 else -> wikiTangoTrie.getLetter(
-                                    token.nodeId,
+                                    tokenNodeId,
                                     succinctBitVector = succinctBitVectorWikiTangoLBS
                                 )
                             }
+                            val leftId = wikiTokenArray.leftIds[posTableIndex.toInt()]
                             val node = Node(
-                                l = wikiTokenArray.leftIds[token.posTableIndex.toInt()],
-                                r = wikiTokenArray.rightIds[token.posTableIndex.toInt()],
-                                score = token.wordCost.toInt(),
-                                f = token.wordCost.toInt(),
-                                g = token.wordCost.toInt(),
+                                l = leftId,
+                                r = wikiTokenArray.rightIds[posTableIndex.toInt()],
+                                score = wordCost.toInt(),
+                                f = wordCost.toInt(),
+                                g = wordCost.toInt(),
                                 tango = tango,
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i,
-                                mozcAttributes = mozcAttributesFor(wikiTokenArray.leftIds[token.posTableIndex.toInt()]),
+                                mozcAttributes = mozcAttributesFor(leftId),
                             )
                             addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "WIKI")
                         }
@@ -628,41 +639,43 @@ class GraphBuilder {
                 succinctBitVectorLBSwebYomi != null && succinctBitVectorwebTangoLBS != null &&
                 succinctBitVectorwebTokenArray != null && succinctBitVectorIsLeafwebYomi != null
             ) {
-                val commonPrefixSearchWeb: List<String> = webYomiTrie.commonPrefixSearch(
-                    str = subStr,
+                val commonPrefixSearchWeb = webYomiTrie.commonPrefixSearchWithNodeIndex(
+                    str = str,
+                    start = i,
                     succinctBitVector = succinctBitVectorLBSwebYomi
                 )
                 if (commonPrefixSearchWeb.isNotEmpty()) foundInAnyDictionary = true
-                for (yomiStr in commonPrefixSearchWeb) {
-                    val nodeIndex = webYomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSwebYomi)
+                for (prefixResult in commonPrefixSearchWeb) {
+                    val yomiStr = prefixResult.yomi
+                    val nodeIndex = prefixResult.nodeIndex
                     if (nodeIndex > 0) {
                         val termId =
                             webYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafwebYomi)
-                        val listToken = webTokenArray.getListDictionaryByYomiTermId(
+                        val endIndex = i + yomiStr.length
+                        webTokenArray.forEachDictionaryByYomiTermId(
                             termId,
                             succinctBitVectorwebTokenArray
-                        )
-                        val endIndex = i + yomiStr.length
-                        listToken.forEach { token ->
-                            val tango = when (token.nodeId) {
+                        ) { posTableIndex, wordCost, tokenNodeId ->
+                            val tango = when (tokenNodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
                                 else -> webTangoTrie.getLetter(
-                                    token.nodeId,
+                                    tokenNodeId,
                                     succinctBitVector = succinctBitVectorwebTangoLBS
                                 )
                             }
+                            val leftId = webTokenArray.leftIds[posTableIndex.toInt()]
                             val node = Node(
-                                l = webTokenArray.leftIds[token.posTableIndex.toInt()],
-                                r = webTokenArray.rightIds[token.posTableIndex.toInt()],
-                                score = token.wordCost.toInt(),
-                                f = token.wordCost.toInt(),
-                                g = token.wordCost.toInt(),
+                                l = leftId,
+                                r = webTokenArray.rightIds[posTableIndex.toInt()],
+                                score = wordCost.toInt(),
+                                f = wordCost.toInt(),
+                                g = wordCost.toInt(),
                                 tango = tango,
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i,
-                                mozcAttributes = mozcAttributesFor(webTokenArray.leftIds[token.posTableIndex.toInt()]),
+                                mozcAttributes = mozcAttributesFor(leftId),
                             )
                             addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "WEB")
                         }
@@ -675,42 +688,43 @@ class GraphBuilder {
                 succinctBitVectorLBSpersonYomi != null && succinctBitVectorpersonTangoLBS != null &&
                 succinctBitVectorpersonTokenArray != null && succinctBitVectorIsLeafpersonYomi != null
             ) {
-                val commonPrefixSearchPerson: List<String> = personYomiTrie.commonPrefixSearch(
-                    str = subStr,
+                val commonPrefixSearchPerson = personYomiTrie.commonPrefixSearchWithNodeIndex(
+                    str = str,
+                    start = i,
                     succinctBitVector = succinctBitVectorLBSpersonYomi
                 )
                 if (commonPrefixSearchPerson.isNotEmpty()) foundInAnyDictionary = true
-                for (yomiStr in commonPrefixSearchPerson) {
-                    val nodeIndex =
-                        personYomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSpersonYomi)
+                for (prefixResult in commonPrefixSearchPerson) {
+                    val yomiStr = prefixResult.yomi
+                    val nodeIndex = prefixResult.nodeIndex
                     if (nodeIndex > 0) {
                         val termId =
                             personYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafpersonYomi)
-                        val listToken = personTokenArray.getListDictionaryByYomiTermId(
+                        val endIndex = i + yomiStr.length
+                        personTokenArray.forEachDictionaryByYomiTermId(
                             termId,
                             succinctBitVectorpersonTokenArray
-                        )
-                        val endIndex = i + yomiStr.length
-                        listToken.forEach { token ->
-                            val tango = when (token.nodeId) {
+                        ) { posTableIndex, wordCost, tokenNodeId ->
+                            val tango = when (tokenNodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
                                 else -> personTangoTrie.getLetter(
-                                    token.nodeId,
+                                    tokenNodeId,
                                     succinctBitVector = succinctBitVectorpersonTangoLBS
                                 )
                             }
+                            val leftId = personTokenArray.leftIds[posTableIndex.toInt()]
                             val node = Node(
-                                l = personTokenArray.leftIds[token.posTableIndex.toInt()],
-                                r = personTokenArray.rightIds[token.posTableIndex.toInt()],
-                                score = token.wordCost.toInt(),
-                                f = token.wordCost.toInt(),
-                                g = token.wordCost.toInt(),
+                                l = leftId,
+                                r = personTokenArray.rightIds[posTableIndex.toInt()],
+                                score = wordCost.toInt(),
+                                f = wordCost.toInt(),
+                                g = wordCost.toInt(),
                                 tango = tango,
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i,
-                                mozcAttributes = mozcAttributesFor(personTokenArray.leftIds[token.posTableIndex.toInt()]),
+                                mozcAttributes = mozcAttributesFor(leftId),
                             )
                             addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "PERSON")
                         }
@@ -723,42 +737,43 @@ class GraphBuilder {
                 succinctBitVectorLBSneologdYomi != null && succinctBitVectorneologdTangoLBS != null &&
                 succinctBitVectorneologdTokenArray != null && succinctBitVectorIsLeafneologdYomi != null
             ) {
-                val commonPrefixSearchNeologd: List<String> = neologdYomiTrie.commonPrefixSearch(
-                    str = subStr,
+                val commonPrefixSearchNeologd = neologdYomiTrie.commonPrefixSearchWithNodeIndex(
+                    str = str,
+                    start = i,
                     succinctBitVector = succinctBitVectorLBSneologdYomi
                 )
                 if (commonPrefixSearchNeologd.isNotEmpty()) foundInAnyDictionary = true
-                for (yomiStr in commonPrefixSearchNeologd) {
-                    val nodeIndex =
-                        neologdYomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSneologdYomi)
+                for (prefixResult in commonPrefixSearchNeologd) {
+                    val yomiStr = prefixResult.yomi
+                    val nodeIndex = prefixResult.nodeIndex
                     if (nodeIndex > 0) {
                         val termId =
                             neologdYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafneologdYomi)
-                        val listToken = neologdTokenArray.getListDictionaryByYomiTermId(
+                        val endIndex = i + yomiStr.length
+                        neologdTokenArray.forEachDictionaryByYomiTermId(
                             termId,
                             succinctBitVectorneologdTokenArray
-                        )
-                        val endIndex = i + yomiStr.length
-                        listToken.forEach { token ->
-                            val tango = when (token.nodeId) {
+                        ) { posTableIndex, wordCost, tokenNodeId ->
+                            val tango = when (tokenNodeId) {
                                 -2 -> yomiStr
                                 -1 -> yomiStr.hiraToKata()
                                 else -> neologdTangoTrie.getLetter(
-                                    token.nodeId,
+                                    tokenNodeId,
                                     succinctBitVector = succinctBitVectorneologdTangoLBS
                                 )
                             }
+                            val leftId = neologdTokenArray.leftIds[posTableIndex.toInt()]
                             val node = Node(
-                                l = neologdTokenArray.leftIds[token.posTableIndex.toInt()],
-                                r = neologdTokenArray.rightIds[token.posTableIndex.toInt()],
-                                score = token.wordCost.toInt(),
-                                f = token.wordCost.toInt(),
-                                g = token.wordCost.toInt(),
+                                l = leftId,
+                                r = neologdTokenArray.rightIds[posTableIndex.toInt()],
+                                score = wordCost.toInt(),
+                                f = wordCost.toInt(),
+                                g = wordCost.toInt(),
                                 tango = tango,
                                 yomiUsed = yomiStr,
                                 len = yomiStr.length.toShort(),
                                 sPos = i,
-                                mozcAttributes = mozcAttributesFor(neologdTokenArray.leftIds[token.posTableIndex.toInt()]),
+                                mozcAttributes = mozcAttributesFor(leftId),
                             )
                             addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "NEOLOGD")
                         }
@@ -767,8 +782,8 @@ class GraphBuilder {
             }
 
             // 9. どの辞書にもヒットしなかった場合のフォールバック
-            if (!foundInAnyDictionary && subStr.isNotEmpty()) {
-                val yomiStr = subStr.substring(0, 1) // 1文字だけを未知語として切り出す
+            if (!foundInAnyDictionary && i < str.length) {
+                val yomiStr = str.substring(i, i + 1) // 1文字だけを未知語として切り出す
                 val endIndex = i + yomiStr.length
                 val unknownNode = Node(
                     l = 0, // 未知語用のID (一般名詞など)
