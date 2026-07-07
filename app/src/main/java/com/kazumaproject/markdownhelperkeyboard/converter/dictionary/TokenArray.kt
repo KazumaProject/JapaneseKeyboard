@@ -91,6 +91,21 @@ class TokenArray {
         return tempList2
     }
 
+    fun forEachDictionaryByYomiTermId(
+        nodeId: Int,
+        succinctBitVector: SuccinctBitVector,
+        block: (posTableIndex: Short, wordCost: Short, nodeId: Int) -> Unit,
+    ) {
+        val startSelect0 = succinctBitVector.select0(nodeId)
+        val endSelect0 = succinctBitVector.select0(nodeId + 1)
+        val startRank1 = succinctBitVector.rank1(startSelect0)
+        val endRank1 = succinctBitVector.rank1(endSelect0)
+
+        for (i in startRank1 until endRank1) {
+            block(posTableIndexList[i], wordCostList[i], nodeIdList[i])
+        }
+    }
+
     fun getListDictionaryByYomiTermIdShortArray(
         nodeId: Short,
         rank0ArrayTokenArrayBitvector: ShortArray,
@@ -140,6 +155,21 @@ class TokenArray {
             )
         }
         return tempList2
+    }
+
+    fun forEachDictionaryByYomiTermIdShortArray(
+        nodeId: Short,
+        succinctBitVector: SuccinctBitVector,
+        block: (posTableIndex: Short, wordCost: Short, nodeId: Int) -> Unit,
+    ) {
+        val startSelect0 = succinctBitVector.select0(nodeId.toInt())
+        val startRank1 = succinctBitVector.rank1(startSelect0)
+        val endSelect0 = succinctBitVector.select0(nodeId + 1)
+        val endRank1 = succinctBitVector.rank1(endSelect0)
+
+        for (i in startRank1 until endRank1) {
+            block(posTableIndexList[i], wordCostList[i], nodeIdList[i])
+        }
     }
 
     fun readExternal(

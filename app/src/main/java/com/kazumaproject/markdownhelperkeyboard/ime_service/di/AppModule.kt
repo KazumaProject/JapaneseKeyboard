@@ -14,6 +14,9 @@ import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVect
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTableReader
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenterDataReader
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
@@ -55,6 +58,8 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_9_10
 import com.kazumaproject.markdownhelperkeyboard.delete_key_flick.database.DeleteKeyFlickDeleteTargetDao
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplateDao
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
@@ -628,10 +633,35 @@ object AppModule {
         englishEngine: EnglishEngine,
         ngramRuleScorerManager: NgramRuleScorerManager,
         dictionaryBinaryReader: DictionaryBinaryReader,
+        @ApplicationContext context: Context,
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
         val graphBuilder = GraphBuilder()
         val findPath = FindPath(ngramRuleScorerProvider = ngramRuleScorerManager::currentScorer)
+        val bundledMozcDictionaryActive =
+            dictionaryBinaryReader.resolveCategoryLoadState(DictionaryCategory.SYSTEM) == DictionaryCategoryLoadState.Bundled
+        val mozcSegmenter = if (bundledMozcDictionaryActive) {
+            runCatching {
+                context.assets.open("mozc/segmenter.dat").use { input ->
+                    MozcSegmenter(MozcSegmenterDataReader().read(input))
+                }
+            }.onFailure {
+                Timber.w(it, "Mozc segmenter asset is unavailable. Falling back to legacy conversion path.")
+            }.getOrNull()
+        } else {
+            null
+        }
+        val mozcNodeAttributeTable = if (bundledMozcDictionaryActive) {
+            runCatching {
+                context.assets.open("mozc/node_attribute_by_lid.dat").use { input ->
+                    MozcNodeAttributeTableReader().read(input)
+                }
+            }.onFailure {
+                Timber.w(it, "Mozc node attribute asset is unavailable. Falling back to legacy conversion path.")
+            }.getOrNull()
+        } else {
+            null
+        }
 
         kanaKanjiEngine.buildEngine(
             graphBuilder = graphBuilder,
@@ -693,7 +723,12 @@ object AppModule {
             kotowazaSuccinctBitVectorIsLeafYomi = kotowazaSuccinctBitVectorIsLeafYomi,
             kotowazaSuccinctBitVectorTokenArray = kotowazaSuccinctBitVectorTokenArray,
             kotowazaSuccinctBitVectorTangoLBS = kotowazaSuccinctBitVectorTangoLBS,
-            engineEngine = englishEngine
+            engineEngine = englishEngine,
+            mozcSegmenter = mozcSegmenter,
+            mozcNodeAttributeTable = mozcNodeAttributeTable,
+            mozcDictionaryActive = bundledMozcDictionaryActive &&
+                mozcSegmenter != null &&
+                mozcNodeAttributeTable != null,
         )
         kanaKanjiEngine.setDictionaryBinaryReader(dictionaryBinaryReader)
 

@@ -1,0 +1,260 @@
+# Copyright 2010-2021, Google Inc.
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#     * Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above
+# copyright notice, this list of conditions and the following disclaimer
+# in the documentation and/or other materials provided with the
+# distribution.
+#     * Neither the name of Google Inc. nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+# continuous numbers should be grouped
+# 2|0|8|...
+
+# 2345 or 2万 2十
+名詞,数,アラビア数字 名詞,数,(アラビア数字|漢数字) false
+
+# 2十|5万
+名詞,数,漢数字 名詞,数,アラビア数字 true
+
+# 二十
+名詞,数,漢数字 名詞,数,漢数字 false
+
+# 20,000  2.000
+名詞,数,(アラビア数字|漢数字) 名詞,数,区切り文字 false
+名詞,数,区切り文字  名詞,数,(アラビア数字|漢数字) false
+
+# 第九
+# This is a tentaive workaround for fixing 第|五三 vs 大誤算
+接頭詞,数接続 名詞,数,漢数字 false
+
+# 何周
+接頭詞,数接続 名詞,接尾,助数詞 false
+接頭詞,数接続 名詞,(一般|サ変接続|形容動詞語幹|副詞可能) true
+
+# 句読点 
+記号,(句点|読点|括弧開|括弧閉) * true
+* 記号,(句点|読点|括弧開|括弧閉|空白) true
+
+# フィラー should be isolated
+^フィラー * true
+* ^フィラー true
+
+# 動詞,非自立,*
+# 非自立,一段
+# 損ねる,貰える is not a 非自立
+* ^動詞,非自立,*,*,*,*,(あげる|上げる|つづける|続ける|そこねる|そびれる|おえる|終える|はじめる|始める|ねがえる|願える|もらえる) true
+# 非自立,五段・カ行イ音便
+* ^動詞,非自立,*,*,*,*,(いただく|頂く|ぬく|抜く) true
+# 非自立,五段・サ行
+* ^動詞,非自立,*,*,*,*,(いたす|致す|つくす|尽くす|なおす|直す) true
+# 非自立,五段・マ行
+* ^動詞,非自立,*,*,*,*,(こむ|込む) true
+# 非自立,五段・ラ行,ラ行特殊
+* ^動詞,非自立,*,*,*,*,(おわる|終わる|いらっしゃる|らっしゃる|下さる|くださる|クダサル) true
+# 非自立,五段・ワ行促音便
+# 貰う is not a 非自立
+* ^動詞,非自立,*,*,*,*,(あう|合う|願う|もらう) true
+
+# お+動詞丁寧連用 (お切りに)
+# 接頭詞,丁寧連用形接続 動詞,*,*,*,*,丁寧連用形 false
+接頭詞,動詞接続 動詞 false
+
+# 名詞,接尾可能 (e.g., 先生,アナ)
+* ^名詞,接尾可能 true
+
+# 飛んでく
+^助詞,接続助詞  ^動詞,非自立 false
+^動詞,自立      ^動詞,非自立 false
+
+# よくなる
+副詞,一般,*,*,*,*,よく 動詞,自立,*,*,五段・ラ行,*,なる false
+
+# 徹底化する
+名詞,接尾,サ変接続 動詞,自立,*,*,サ変・スル false
+
+# って
+* 動詞,非自立,*,*,五段・カ行促音便,連用タ接続,く false
+
+# 接頭 don't allow continuous prefix
+^接頭詞 ^接頭詞 true
+
+# ..みたいな
+* 名詞,非自立,形容動詞語幹,*,*,*,みたい false
+
+# Katakana 助詞
+* ^助詞,*,*,*,*,*,(ヲ|ニ|ナ|ネ|ヨ|ン|ヨー|ワ|デ|ノ|ヘ|ヲ|之|ナア|ネェ|ヨー|なァ)$ true
+
+# 動いた|時, 動いた際.
+* 名詞,非自立,副詞可能,*,*,*,(きり|ため|っきり|はず|ほど|まま) false
+* 名詞,非自立,副詞可能 true
+
+# katakana 名詞 非自立
+* 名詞,非自立,一般,*,*,*,(コト|フシ|ホ|モノ|ン) true
+
+# katakana
+* 助動詞,*,*,*,特殊・デス,基本形,ッス true
+* 助動詞,*,*,*,特殊・デス,基本形,デス true
+* 助動詞,*,*,*,特殊・デス,基本形,ドス true
+* 助動詞,*,*,*,特殊・デス,未然形,ッス true
+* 助動詞,*,*,*,不変化型,基本形,じゃン true
+
+# 京都|府
+# Most common name would be compound, this rule kill 大阪県 or some
+# invalid connection
+* 名詞,固有名詞,地域,一般 true
+
+# by default, prefix can be grouped if right word is noun
+# 接頭詞,名詞接続,*,*,*,*,*,(お|ご) フィラー false
+# 接頭詞,名詞接続,*,*,*,*,*,(お|ご) ^名詞,固有名詞 true
+# 接頭詞,名詞接続,*,*,*,*,*,(お|ご) ^名詞 false
+# 接頭詞,名詞接続,*,*,*,*,*,(お|ご) ^助動詞 false
+# 接頭詞,名詞接続,*,*,*,*,*,(お|ご) ^接頭詞 false
+接頭詞,名詞接続 * false
+
+連体詞, ^名詞 true
+
+# functional word (無い|事) is isolated word
+* 助動詞,*,*,*,形容詞・イ段,*,無い true
+動詞 助動詞,*,*,*,形容詞・イ段,*,無い true
+^(助動詞|動詞),*,*,*,*,基本形 名詞,非自立,一般,*,*,*,(事|コト) true
+
+# 捉前る
+^名詞 助動詞,*,*,*,(文語・ル|文語・リ|文語・マジ|文語・ゴトシ|文語・ケリ|文語・キ) true
+
+# 食べて以内
+^助詞 名詞,非自立,副詞可能,*,*,*,以内 true
+
+# 乗り切っ他
+^(動詞|助動詞|形容詞) 名詞,非自立,副詞可能,*,*,*,他 true
+
+#..できる
+^名詞,サ変接続 動詞,自立,*,*,一段,*,できる false
+
+#..ような => not split
+#..様な => split
+* 名詞,非自立,助動詞語幹,*,*,*,よう false
+# * 名詞,非自立,助動詞語幹,*,*,*,よう true
+* 名詞,非自立,助動詞語幹,*,*,*,様 true
+
+# Rare connection from NOUN
+^名詞,非自立 ^助詞 false
+^名詞 助詞,終助詞,*,*,*,*,(よ|ね|の) false
+^名詞 ^助詞,(終助詞|特殊|接続助詞|動詞非自立的) true
+^名詞 ^名詞,非自立,(一般|助動詞語幹|形容動詞語幹) true
+^名詞 ^形容詞,非自立 true
+^名詞 ^動詞,(接尾|非自立) true
+
+# Rare connection from verb/adjective
+^(動詞|形容詞|助動詞) 名詞,接尾,(サ変接続|人名|副詞可能|助数詞|地域|形容動詞語幹|形容動詞語幹) true
+^(動詞|形容詞|助動詞) 形容詞,非自立,*,*,形容詞・アウオ段,*,良い true
+
+# Split (動詞連用形)+た|かな, e.g., 寝た|かな.
+^助動詞,*,*,*,特殊・タ,基本形,た ^助詞,終助詞,*,*,*,*,かな true
+
+# kill 他飲む
+^接頭詞,名詞接続 ^(動詞|形容詞) true
+
+# 接尾
+名詞,固有名詞,人名 名詞,接尾,人名 false
+# 店名＋さん
+名詞,固有名詞,一般 名詞,接尾,人名 false
+名詞,固有名詞,地域 名詞,接尾,地域 false
+名詞,数 名詞,接尾,助数詞 true
+名詞,接尾,特殊 名詞,接尾,助動詞語幹 false
+
+# インストール|後
+名詞 名詞,接尾,副詞可能 true
+
+
+名詞,接尾,助数詞 名詞,接尾 false
+
+# don't allow continuous suffix
+^名詞,接尾 ^名詞,接尾 true
+
+# some special suffix can be grouped
+* ^名詞,接尾,(副詞可能|助動詞語幹|特殊) false
+
+# by default, suffix should not be groupd
+* ^名詞,接尾 true
+
+# ～なのだ
+^助動詞,*,*,*,特殊・ダ ^名詞,非自立 false
+
+# ～ちゃう
+^動詞 動詞,非自立,*,*,五段・ワ行促音便,*,(ちまう|ちゃう|じまう|じゃう) false
+^動詞 動詞,非自立,*,*,五段・カ行促音便,*,(てく|どく) false
+^動詞 動詞,非自立,*,*,五段・カ行イ音便,*,とく false
+^動詞 動詞,非自立,*,*,一段,*,(てる|でる) false
+^動詞 動詞,非自立,*,*,五段・ラ行,*,(とる|どる) false
+
+# どうなる,楽しくなる,多くなる
+^副詞,助詞類接続,*,*,*,*,(そう|こう|どう|どぉ) ^動詞,自立,*,*,五段・ラ行,*,なる false
+^形容詞,自立,*,*,*,連用テ接続 ^動詞,自立,*,*,五段・ラ行,*,なる false
+^名詞,副詞可能 ^動詞,自立,*,*,五段・ラ行,*,なる false
+
+# ..はある
+^助詞,*,*,*,*,*,(は|に|で|も|が|の) ^動詞,自立,*,*,五段・ラ行,*,ある true
+
+# ..がする, 細くする (形容詞+する)
+^助詞,*,*,*,*,*,(は|に|で|も|が|の|と) ^動詞,自立,*,*,サ変・スル,* false
+^名詞,(一般|サ変接続|形容動詞語幹|副詞可能) ^動詞,自立,*,*,サ変・スル,* false
+^(形容詞|動詞|副詞) ^動詞,自立,*,*,サ変・スル,* false
+* ^動詞,自立,*,*,サ変・スル,* true
+
+# ..はない
+^助詞,*,*,*,*,*,(は|に|で|も|が|の) 形容詞,自立,*,*,形容詞・アウオ段,*,ない false
+
+# .. という
+#^助詞,格助詞,引用,*,*,*,と ^動詞,自立,*,*,五段・ワ行促音便,*,(いう|言う) false
+#* ^助詞,格助詞,引用,*,*,*,と true
+
+# ふう vs 風
+* 名詞,非自立,形容動詞語幹,*,*,*,ふう true
+
+# とってもいい, これはいい
+^副詞,一般 形容詞,(接尾|非自立) true
+^助詞 形容詞,(接尾|非自立) true
+
+助動詞,*,*,*,特殊・ダ 名詞 true
+
+* ^(その他|フィラー|感動詞) true
+* ^記号,(括弧開|括弧閉|アルファベット|一般) true
+* ^記号,(句点|読点) true
+* ^形容詞,自立 true
+* ^形容詞,(接尾|非自立) false
+* ^(助詞|助動詞) false
+
+* ^動詞,自立 true
+* ^動詞,接尾 false
+* ^名詞,(接続詞的|接尾|動詞非自立的|特殊|非自立) false
+* ^名詞 true
+* ^助詞,接続助詞,*,*,*,*,て false
+
+# special rule for 非自立
+* 動詞,非自立,*,*,*,*,(いける|いる|える|かける|かねる|きれる|すぎる|たげる|つづける|づける|づける|できる|どける|のける|みせる|みる|もらえる|る|く|尽くす) false
+
+# ～でる (楽しんでる) must be 1 segment
+* 助詞,接続助詞,*,*,*,*,で false
+
+# default rule
+* * true

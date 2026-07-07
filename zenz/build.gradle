@@ -24,10 +24,27 @@ def zenzModelAssetName = providers.gradleProperty("zenzModelAssetName")
 def zenzModelHfToken = providers.gradleProperty("zenzModelHfToken")
         .orElse(localProperties.getProperty("zenzModelHfToken") ?: System.getenv("HF_TOKEN") ?: "")
         .get()
+def defaultZenzModelCacheDir = rootProject.layout.projectDirectory.dir(".gradle/zenz-model-cache").asFile.absolutePath
 def zenzModelCacheDir = providers.gradleProperty("zenzModelCacheDir")
-        .orElse(localProperties.getProperty("zenzModelCacheDir") ?: System.getenv("ZENZ_MODEL_CACHE_DIR") ?: "")
+        .orElse(localProperties.getProperty("zenzModelCacheDir") ?: System.getenv("ZENZ_MODEL_CACHE_DIR") ?: defaultZenzModelCacheDir)
         .get()
 def generatedZenzAssetsDir = layout.buildDirectory.dir("generated/assets/zenzModel/main")
+def zenzDebugNativeAbis = providers.gradleProperty("zenzDebugNativeAbis")
+        .orElse(localProperties.getProperty("zenzDebugNativeAbis") ?: System.getenv("ZENZ_DEBUG_NATIVE_ABIS") ?: "arm64-v8a")
+        .get()
+        .split(",")
+        .collect { it.trim() }
+        .findAll { it }
+def zenzReleaseNativeAbis = providers.gradleProperty("zenzReleaseNativeAbis")
+        .orElse(localProperties.getProperty("zenzReleaseNativeAbis") ?: System.getenv("ZENZ_RELEASE_NATIVE_ABIS") ?: "arm64-v8a,x86_64")
+        .get()
+        .split(",")
+        .collect { it.trim() }
+        .findAll { it }
+def zenzDebugOptimizedNative = providers.gradleProperty("zenzDebugOptimizedNative")
+        .orElse(localProperties.getProperty("zenzDebugOptimizedNative") ?: System.getenv("ZENZ_DEBUG_OPTIMIZED_NATIVE") ?: "false")
+        .get()
+        .toBoolean()
 
 android {
     namespace 'com.kazumaproject.zenz'
@@ -40,15 +57,28 @@ android {
         targetSdk 36
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
-
-        // NDKの設定（llama等の.soファイルに合わせる）
-        ndk {
-            abiFilters 'arm64-v8a', 'x86_64'
-        }
     }
 
     buildTypes {
+        debug {
+            ndk {
+                abiFilters(*zenzDebugNativeAbis)
+            }
+            externalNativeBuild {
+                cmake {
+                    arguments "-DZENZ_NATIVE_OPTIMIZED=${zenzDebugOptimizedNative ? 'ON' : 'OFF'}"
+                }
+            }
+        }
         release {
+            ndk {
+                abiFilters(*zenzReleaseNativeAbis)
+            }
+            externalNativeBuild {
+                cmake {
+                    arguments "-DZENZ_NATIVE_OPTIMIZED=ON"
+                }
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

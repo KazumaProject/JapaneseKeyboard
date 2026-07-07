@@ -4,12 +4,13 @@ project(zenz_core LANGUAGES C CXX)
 # -------------------------------------------------------------------
 # ★重要: パフォーマンス設定
 # -------------------------------------------------------------------
-# 常に Release ビルドにする（これをしないと推論が劇的に遅くなります）
-set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+option(ZENZ_NATIVE_OPTIMIZED "Build the Zenz native library with release optimization flags" ON)
 
-# 最適化オプションの強制
-# -ffast-math を使いつつ、無限大(Infinity)の計算は許可する設定
-add_compile_options(-O3 -ffast-math -fno-finite-math-only -DNDEBUG)
+if(ZENZ_NATIVE_OPTIMIZED)
+    # Release builds need fast inference; debug builds can opt in via zenzDebugOptimizedNative.
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
+    add_compile_options(-O3 -ffast-math -fno-finite-math-only -DNDEBUG)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
