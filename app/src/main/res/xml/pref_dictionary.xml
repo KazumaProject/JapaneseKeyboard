@@ -21,6 +21,19 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/conversion_beam_width_category_title">
+
+        <SeekBarPreference
+            android:defaultValue="20"
+            android:key="conversion_beam_width_preference"
+            android:max="100"
+            android:summary="@string/conversion_beam_width_preference_summary"
+            android:title="@string/conversion_beam_width_preference_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory
         android:title="N-gram">
 

@@ -1,0 +1,16 @@
+{
+    "format": "mozc_segmenter",
+    "version": 1,
+    "source": {
+        "boundary_def": "src/data/rules/boundary.def",
+        "segmenter_def": "src/data/rules/segmenter.def"
+    },
+    "matrix": {
+        "l_num_elements": 40,
+        "r_num_elements": 31,
+        "l_table_size": 2676,
+        "r_table_size": 2676,
+        "bitarray_size": 156,
+        "boundary_data_size": 5350
+    }
+}

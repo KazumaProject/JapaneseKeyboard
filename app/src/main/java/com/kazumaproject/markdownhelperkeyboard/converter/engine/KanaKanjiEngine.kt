@@ -22,7 +22,17 @@ import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVect
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphNodeDedupMode
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTable
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.BoundaryTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.CandidateTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.ConversionTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.ForwardDpTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.GraphNodeTrace
+import com.kazumaproject.markdownhelperkeyboard.converter.trace.PenaltyTrace
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
@@ -54,6 +64,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.toSupersc
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import java.io.BufferedInputStream
 import java.io.File
@@ -193,11 +204,28 @@ class KanaKanjiEngine {
     private var systemUserSuccinctBitVectorLBSTango: SuccinctBitVector? = null
 
     private lateinit var englishEngine: EnglishEngine
+    private var mozcSegmenter: MozcSegmenter? = null
+    private var mozcNodeAttributeTable: MozcNodeAttributeTable? = null
+    @Volatile
+    private var mozcDictionaryActive: Boolean = false
 
     companion object {
         const val SCORE_OFFSET = 8000
         const val SCORE_OFFSET_SMALL = 6000
     }
+
+    private fun isMozcParityEnabled(): Boolean =
+        mozcDictionaryActive && mozcSegmenter != null && mozcNodeAttributeTable != null
+
+    private fun graphNodeDedupModeForCurrentDictionary(): GraphNodeDedupMode =
+        if (isMozcParityEnabled()) {
+            GraphNodeDedupMode.MOZC_KEEP_ALL
+        } else {
+            GraphNodeDedupMode.EXISTING_BY_TANGO_L_R
+        }
+
+    private fun mozcNodeAttributeTableForCurrentDictionary(): MozcNodeAttributeTable? =
+        if (isMozcParityEnabled()) mozcNodeAttributeTable else null
 
     fun setDictionaryBinaryReader(reader: DictionaryBinaryReader) {
         dictionaryBinaryReader = reader
@@ -250,6 +278,86 @@ class KanaKanjiEngine {
             )
         }
 
+    fun convertWithTrace(input: String): ConversionTrace = runBlocking {
+        val graphNodeTrace = mutableListOf<GraphNodeTrace>()
+        val penaltyTrace = mutableListOf<PenaltyTrace>()
+        val forwardDpTrace = mutableListOf<ForwardDpTrace>()
+        val boundaryTrace = mutableListOf<BoundaryTrace>()
+        val candidateTrace = mutableListOf<CandidateTrace>()
+
+        val graph = graphBuilder.constructGraph(
+            input,
+            systemYomiTrie,
+            systemTangoTrie,
+            systemTokenArray,
+            succinctBitVectorLBSYomi = systemSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = systemSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = systemSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = systemSuccinctBitVectorTangoLBS,
+            userDictionaryRepository = null,
+            learnRepository = null,
+            wikiYomiTrie = wikiYomiTrie,
+            wikiTangoTrie = wikiTangoTrie,
+            wikiTokenArray = wikiTokenArray,
+            succinctBitVectorLBSWikiYomi = wikiSuccinctBitVectorLBSYomi,
+            succinctBitVectorWikiTangoLBS = wikiSuccinctBitVectorLBSTango,
+            succinctBitVectorWikiTokenArray = wikiSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafWikiYomi = wikiSuccinctBitVectorIsLeaf,
+            webYomiTrie = webYomiTrie,
+            webTangoTrie = webTangoTrie,
+            webTokenArray = webTokenArray,
+            succinctBitVectorLBSwebYomi = webSuccinctBitVectorLBSYomi,
+            succinctBitVectorwebTangoLBS = webSuccinctBitVectorLBSTango,
+            succinctBitVectorwebTokenArray = webSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafwebYomi = webSuccinctBitVectorIsLeaf,
+            personYomiTrie = personYomiTrie,
+            personTangoTrie = personTangoTrie,
+            personTokenArray = personTokenArray,
+            succinctBitVectorLBSpersonYomi = personSuccinctBitVectorLBSYomi,
+            succinctBitVectorpersonTangoLBS = personSuccinctBitVectorLBSTango,
+            succinctBitVectorpersonTokenArray = personSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafpersonYomi = personSuccinctBitVectorIsLeaf,
+            neologdYomiTrie = neologdYomiTrie,
+            neologdTangoTrie = neologdTangoTrie,
+            neologdTokenArray = neologdTokenArray,
+            succinctBitVectorLBSneologdYomi = neologdSuccinctBitVectorLBSYomi,
+            succinctBitVectorneologdTangoLBS = neologdSuccinctBitVectorLBSTango,
+            succinctBitVectorneologdTokenArray = neologdSuccinctBitVectorTokenArray,
+            succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
+            isOmissionSearchEnable = false,
+            enableTypoCorrectionJapaneseFlick = false,
+            typoCorrectionOffsetScore = 0,
+            omissionSearchOffSetScore = 0,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            graphNodeTrace = graphNodeTrace,
+        )
+
+        if (graph.isNotEmpty()) {
+            val connectionMatrix = connectionMatrixSnapshot()
+            findPath.backwardAStarWithBunsetsu(
+                graph = graph,
+                length = input.length,
+                connectionIds = connectionMatrix.connectionIds,
+                connectionMatrixSize = connectionMatrix.matrixSize,
+                n = 1000,
+                penaltyTrace = penaltyTrace,
+                forwardDpTrace = forwardDpTrace,
+                boundaryTrace = boundaryTrace,
+                candidateTrace = candidateTrace,
+            )
+        }
+
+        ConversionTrace(
+            input = input,
+            graphNodes = graphNodeTrace,
+            penaltyEvents = penaltyTrace,
+            forwardDpEvents = forwardDpTrace,
+            boundaryEvents = boundaryTrace,
+            finalCandidates = candidateTrace,
+        )
+    }
+
     fun applyDictionaryOverrideState(context: Context) {
         val reader = dictionaryReader(context)
         val appContext = context.applicationContext
@@ -285,6 +393,8 @@ class KanaKanjiEngine {
         val newWiki = loadOptionalTripleDictionary(reader, DictionaryCategory.WIKI)
         val newNeologd = loadOptionalTripleDictionary(reader, DictionaryCategory.NEOLOGD)
         val newWeb = loadOptionalTripleDictionary(reader, DictionaryCategory.WEB)
+        val newMozcDictionaryActive =
+            reader.resolveCategoryLoadState(DictionaryCategory.SYSTEM) == DictionaryCategoryLoadState.Bundled
 
         synchronized(this) {
             connectionIds = newConnectionIds
@@ -314,6 +424,7 @@ class KanaKanjiEngine {
             assignWikiDictionary(newWiki)
             assignNeologdDictionary(newNeologd)
             assignWebDictionary(newWeb)
+            mozcDictionaryActive = newMozcDictionaryActive
         }
     }
 
@@ -409,10 +520,26 @@ class KanaKanjiEngine {
         kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector,
         kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
-        engineEngine: EnglishEngine
+        engineEngine: EnglishEngine,
+        mozcSegmenter: MozcSegmenter? = null,
+        mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
+        mozcDictionaryActive: Boolean = false,
     ) {
         this@KanaKanjiEngine.graphBuilder = graphBuilder
         this@KanaKanjiEngine.findPath = findPath
+        this@KanaKanjiEngine.mozcSegmenter = mozcSegmenter
+        this@KanaKanjiEngine.mozcNodeAttributeTable = mozcNodeAttributeTable
+        this@KanaKanjiEngine.mozcDictionaryActive = mozcDictionaryActive
+        this@KanaKanjiEngine.findPath.configureMozcParityProviders(
+            mozcSegmenterProvider = {
+                if (this@KanaKanjiEngine.isMozcParityEnabled()) {
+                    this@KanaKanjiEngine.mozcSegmenter
+                } else {
+                    null
+                }
+            },
+            mozcBoundaryModeProvider = { MozcBoundaryMode.ONLY_EDGE },
+        )
 
         // System
         val inferredConnectionMatrixSize = ConnectionMatrix.inferMatrixSize(connectionIdList)
@@ -854,7 +981,8 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -899,7 +1027,9 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable,
             enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -919,6 +1049,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -1333,7 +1464,8 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): BunsetsuCandidateResult {
 
         val graph = graphBuilder.constructGraph(
@@ -1378,7 +1510,9 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable,
             enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -1401,6 +1535,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -1838,7 +1973,8 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): BunsetsuCandidateResult {
 
         val graph = graphBuilder.constructGraph(
@@ -1883,7 +2019,9 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable,
             enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -1906,6 +2044,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -2288,7 +2427,8 @@ class KanaKanjiEngine {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         enableTypoCorrectionQwertyEnglish: Boolean = false,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -2333,7 +2473,9 @@ class KanaKanjiEngine {
             isOmissionSearchEnable = isOmissionSearchEnable,
             enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2353,6 +2495,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -2723,7 +2866,8 @@ class KanaKanjiEngine {
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): List<Candidate> {
 
         val graph = graphBuilder.constructGraph(
@@ -2767,7 +2911,9 @@ class KanaKanjiEngine {
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
             isOmissionSearchEnable = false,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2787,6 +2933,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -3186,7 +3333,8 @@ class KanaKanjiEngine {
         userDictionaryRepository: UserDictionaryRepository,
         learnRepository: LearnRepository?,
         typoCorrectionOffsetScore: Int,
-        omissionSearchOffsetScore: Int
+        omissionSearchOffsetScore: Int,
+        beamWidth: Int = 20,
     ): BunsetsuCandidateResult {
 
         val graph = graphBuilder.constructGraph(
@@ -3230,7 +3378,9 @@ class KanaKanjiEngine {
             succinctBitVectorIsLeafneologdYomi = neologdSuccinctBitVectorIsLeaf,
             isOmissionSearchEnable = false,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
-            omissionSearchOffSetScore = omissionSearchOffsetScore
+            omissionSearchOffSetScore = omissionSearchOffsetScore,
+            graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
+            mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -3253,6 +3403,7 @@ class KanaKanjiEngine {
                 connectionIds = connectionMatrix.connectionIds,
                 connectionMatrixSize = connectionMatrix.matrixSize,
                 n = n,
+                beamWidth = beamWidth,
             )
         }
 
@@ -4367,29 +4518,33 @@ class KanaKanjiEngine {
         succinctBitVectorTokenArray: SuccinctBitVector,
         succinctBitVectorTangoLBS: SuccinctBitVector,
         type: Byte
-    ): List<Candidate> = commonPrefixListString.flatMap { yomi ->
-        val termId = yomiTrie.getTermIdShortArray(
-            yomiTrie.getNodeIndex(
-                yomi, succinctBitVectorLBSYomi
-            ), succinctBitVectorIsLeafYomi
-        )
-        tokenArray.getListDictionaryByYomiTermIdShortArray(
-            termId, succinctBitVectorTokenArray
-        ).map {
-            Candidate(
-                string = when (it.nodeId) {
-                    -2 -> yomi
-                    -1 -> yomi.hiraToKata()
-                    else -> tangoTrie.getLetterShortArray(
-                        it.nodeId, succinctBitVectorTangoLBS
-                    )
-                },
-                type = type,
-                length = yomi.length.toUByte(),
-                score = it.wordCost.toInt(),
-                leftId = tokenArray.leftIds[it.posTableIndex.toInt()],
-                rightId = tokenArray.rightIds[it.posTableIndex.toInt()]
+    ): List<Candidate> = buildList {
+        commonPrefixListString.forEach { yomi ->
+            val termId = yomiTrie.getTermIdShortArray(
+                yomiTrie.getNodeIndex(
+                    yomi, succinctBitVectorLBSYomi
+                ), succinctBitVectorIsLeafYomi
             )
+            tokenArray.forEachDictionaryByYomiTermIdShortArray(
+                termId, succinctBitVectorTokenArray
+            ) { posTableIndex, wordCost, nodeId ->
+                add(
+                    Candidate(
+                        string = when (nodeId) {
+                            -2 -> yomi
+                            -1 -> yomi.hiraToKata()
+                            else -> tangoTrie.getLetterShortArray(
+                                nodeId, succinctBitVectorTangoLBS
+                            )
+                        },
+                        type = type,
+                        length = yomi.length.toUByte(),
+                        score = wordCost.toInt(),
+                        leftId = tokenArray.leftIds[posTableIndex.toInt()],
+                        rightId = tokenArray.rightIds[posTableIndex.toInt()]
+                    )
+                )
+            }
         }
     }
 
@@ -4407,23 +4562,27 @@ class KanaKanjiEngine {
         val termIdArray = yomiTrie.getTermIdShortArray(
             yomiTrie.getNodeIndex(input, succinctBitVectorLBSYomi), succinctBitVectorIsLeafYomi
         )
-        return tokenArray.getListDictionaryByYomiTermIdShortArray(
-            termIdArray, succinctBitVectorTokenArray
-        ).map { entry ->
-            Candidate(
-                string = when (entry.nodeId) {
-                    -2 -> input
-                    -1 -> input.hiraToKata()
-                    else -> tangoTrie.getLetterShortArray(
-                        entry.nodeId, succinctBitVectorTangoLBS
+        return buildList {
+            tokenArray.forEachDictionaryByYomiTermIdShortArray(
+                termIdArray, succinctBitVectorTokenArray
+            ) { posTableIndex, wordCost, nodeId ->
+                add(
+                    Candidate(
+                        string = when (nodeId) {
+                            -2 -> input
+                            -1 -> input.hiraToKata()
+                            else -> tangoTrie.getLetterShortArray(
+                                nodeId, succinctBitVectorTangoLBS
+                            )
+                        },
+                        type = type,
+                        length = input.length.toUByte(),
+                        score = wordCost.toInt(),
+                        leftId = tokenArray.leftIds[posTableIndex.toInt()],
+                        rightId = tokenArray.rightIds[posTableIndex.toInt()]
                     )
-                },
-                type = type,
-                length = input.length.toUByte(),
-                score = entry.wordCost.toInt(),
-                leftId = tokenArray.leftIds[entry.posTableIndex.toInt()],
-                rightId = tokenArray.rightIds[entry.posTableIndex.toInt()]
-            )
+                )
+            }
         }
     }
 
@@ -4509,41 +4668,42 @@ class KanaKanjiEngine {
         succinctBitVectorTokenArray: SuccinctBitVector,
         succinctBitVectorTangoLBS: SuccinctBitVector,
     ): List<Candidate> {
-        return yomiList
-            .asSequence()
-            .filter { it.length != input.length }
-            .flatMap { yomi ->
+        return buildList {
+            yomiList.forEach { yomi ->
+                if (yomi.length == input.length) return@forEach
                 val nodeIndex =
                     yomiTrie.getNodeIndex(yomi, succinctBitVector = succinctBitVectorLBSYomi)
                 if (nodeIndex <= 0) {
-                    return@flatMap emptySequence()
+                    return@forEach
                 }
                 val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
-                tokenArray.getListDictionaryByYomiTermId(
+                tokenArray.forEachDictionaryByYomiTermId(
                     termId,
                     succinctBitVector = succinctBitVectorTokenArray,
-                ).asSequence().map { token ->
-                    val baseCost = token.wordCost.toInt()
+                ) { posTableIndex, wordCost, nodeId ->
+                    val baseCost = wordCost.toInt()
                     val score = when {
                         yomi.length == input.length -> baseCost
                         input.length <= 5 -> baseCost + SCORE_OFFSET * (yomi.length - input.length)
                         else -> baseCost + SCORE_OFFSET_SMALL
                     }
-                    Candidate(
-                        string = when (token.nodeId) {
-                            -2 -> yomi
-                            -1 -> yomi.hiraToKata()
-                            else -> tangoTrie.getLetter(token.nodeId, succinctBitVectorTangoLBS)
-                        },
-                        type = 9,
-                        length = yomi.length.toUByte(),
-                        score = score,
-                        leftId = tokenArray.leftIds[token.posTableIndex.toInt()],
-                        rightId = tokenArray.rightIds[token.posTableIndex.toInt()],
+                    add(
+                        Candidate(
+                            string = when (nodeId) {
+                                -2 -> yomi
+                                -1 -> yomi.hiraToKata()
+                                else -> tangoTrie.getLetter(nodeId, succinctBitVectorTangoLBS)
+                            },
+                            type = 9,
+                            length = yomi.length.toUByte(),
+                            score = score,
+                            leftId = tokenArray.leftIds[posTableIndex.toInt()],
+                            rightId = tokenArray.rightIds[posTableIndex.toInt()],
+                        )
                     )
                 }
             }
-            .toList()
+        }
     }
 
     private fun deferredPredictionEmojiSymbols(

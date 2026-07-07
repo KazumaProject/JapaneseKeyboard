@@ -31,6 +31,7 @@ data class ImePreferencesSnapshot(
     val liveConversionStartLength: Int,
     val showLiveConversionCandidateYomi: Boolean,
     val nBest: Int,
+    val conversionBeamWidth: Int,
     val flickSensitivityPreferenceValue: Int,
     val longPressTimeoutPreferenceValue: Int,
     val qwertyShowIMEButtonPreference: Boolean,
@@ -285,6 +286,7 @@ data class ImePreferencesSnapshot(
                 showLiveConversionCandidateYomi =
                     appPreference.live_conversion_candidate_yomi_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
+                conversionBeamWidth = appPreference.conversion_beam_width_preference,
                 flickSensitivityPreferenceValue = appPreference.flick_sensitivity_preference ?: 100,
                 longPressTimeoutPreferenceValue =
                     appPreference.long_press_timeout_preference ?: 300,

@@ -1,5 +1,18 @@
 package com.kazumaproject.graph
 
+enum class MozcNodeType {
+    NOR,
+    BOS,
+    EOS,
+    CON,
+    HIS,
+}
+
+object MozcNodeAttributes {
+    const val NONE = 0
+    const val STARTS_WITH_PARTICLE = 1
+}
+
 data class Node(
     val l: Short,
     val r: Short,
@@ -12,6 +25,9 @@ data class Node(
     var sPos: Int,
     var prev: Node? = null,
     var next: Node? = null,
+    var adjustedScore: Int = score,
+    val mozcNodeType: MozcNodeType = MozcNodeType.NOR,
+    val mozcAttributes: Int = MozcNodeAttributes.NONE,
 ) {
     override fun toString(): String {
         return this.tango
