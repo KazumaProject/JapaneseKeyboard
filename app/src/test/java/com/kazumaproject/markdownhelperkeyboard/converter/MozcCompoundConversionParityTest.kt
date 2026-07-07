@@ -147,7 +147,7 @@ internal object TestEngineFactory {
             it.buildEngine(
                 graphBuilder = GraphBuilder(),
                 findPath = FindPath(),
-                connectionIdList = readConnectionIds(),
+                connectionMatrix = ConnectionMatrix.fromShortArray(readConnectionIds()),
                 systemTangoTrie = system.tangoTrie,
                 systemYomiTrie = system.yomiTrie,
                 systemTokenArray = system.tokenArray,
