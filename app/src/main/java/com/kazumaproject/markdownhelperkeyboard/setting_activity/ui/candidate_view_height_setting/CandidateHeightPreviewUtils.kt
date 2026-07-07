@@ -551,6 +551,7 @@ private fun configureQwertyPreview(
         indentSmallDp = appPreference.qwerty_key_indent_small ?: 9.0f,
         sideMarginDp = appPreference.qwerty_key_side_margin ?: 4.0f,
         textSizeSp = appPreference.qwerty_key_text_size ?: 18.0f,
+        symbolKeymapTextSizeSp = appPreference.qwerty_symbol_keymap_text_size ?: 9.0f,
         specialTextSizeSp = appPreference.qwerty_special_key_text_size ?: 12.0f,
         specialIconSizeDp = appPreference.qwerty_special_key_icon_size ?: 18.0f
     )

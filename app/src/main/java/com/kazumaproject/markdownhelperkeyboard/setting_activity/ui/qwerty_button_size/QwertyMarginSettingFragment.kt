@@ -116,6 +116,17 @@ class QwertyMarginSettingFragment : Fragment() {
         }
 
         setupSingleSeekBar(
+            binding.seekbarSymbolKeymapTextSize,
+            binding.valueSymbolKeymapTextSize,
+            appPreference.qwerty_symbol_keymap_text_size ?: 9.0f,
+            "sp",
+            minValue = 4.0f
+        ) { value ->
+            appPreference.qwerty_symbol_keymap_text_size = value
+            updatePreview()
+        }
+
+        setupSingleSeekBar(
             binding.seekbarSpecialTextSize,
             binding.valueSpecialTextSize,
             appPreference.qwerty_special_key_text_size ?: 12.0f,
@@ -141,14 +152,26 @@ class QwertyMarginSettingFragment : Fragment() {
         valueText: android.widget.TextView,
         initialValue: Float,
         unit: String, // 単位表示用に追加
+        minValue: Float = 0.0f,
         onChanged: (Float) -> Unit
     ) {
+        val minProgress = (minValue * 10).toInt()
         // 初期値をProgressに変換 (小数点1桁まで扱うため10倍)
-        seekBar.progress = (initialValue * 10).toInt()
-        valueText.text = String.format(Locale.US, "%.1f%s", initialValue, unit)
+        val initialProgress = (initialValue.coerceAtLeast(minValue) * 10).toInt()
+        seekBar.progress = initialProgress
+        valueText.text = String.format(Locale.US, "%.1f%s", initialProgress / 10.0f, unit)
 
         seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(p0: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (progress < minProgress) {
+                    val minFloatValue = minProgress / 10.0f
+                    valueText.text = String.format(Locale.US, "%.1f%s", minFloatValue, unit)
+                    if (fromUser) {
+                        onChanged(minFloatValue)
+                    }
+                    p0?.progress = minProgress
+                    return
+                }
                 val floatValue = progress / 10.0f
                 valueText.text = String.format(Locale.US, "%.1f%s", floatValue, unit)
                 if (fromUser) {
@@ -170,6 +193,7 @@ class QwertyMarginSettingFragment : Fragment() {
             appPreference.qwerty_key_indent_small = 9.0f
             appPreference.qwerty_key_side_margin = 4.0f
             appPreference.qwerty_key_text_size = 18.0f
+            appPreference.qwerty_symbol_keymap_text_size = 9.0f
             appPreference.qwerty_special_key_text_size = 12.0f
             appPreference.qwerty_special_key_icon_size = 18.0f
 
@@ -187,6 +211,7 @@ class QwertyMarginSettingFragment : Fragment() {
         val iSmall = appPreference.qwerty_key_indent_small ?: 9.0f
         val side = appPreference.qwerty_key_side_margin ?: 4.0f
         val textSize = appPreference.qwerty_key_text_size ?: 18.0f
+        val symbolKeymapTextSize = appPreference.qwerty_symbol_keymap_text_size ?: 9.0f
         val specialTextSize = appPreference.qwerty_special_key_text_size ?: 12.0f
         val specialIconSize = appPreference.qwerty_special_key_icon_size ?: 18.0f
 
@@ -198,8 +223,15 @@ class QwertyMarginSettingFragment : Fragment() {
             indentSmallDp = iSmall,
             sideMarginDp = side,
             textSizeSp = textSize, // ★ 引数追加
+            symbolKeymapTextSizeSp = symbolKeymapTextSize,
             specialTextSizeSp = specialTextSize,
             specialIconSizeDp = specialIconSize
+        )
+        binding.previewQwertyView.updateNumberKeyState(
+            appPreference.qwerty_show_number_buttons ?: false
+        )
+        binding.previewQwertyView.updateSymbolKeymapState(
+            appPreference.qwerty_show_keymap_symbols ?: false
         )
     }
 
