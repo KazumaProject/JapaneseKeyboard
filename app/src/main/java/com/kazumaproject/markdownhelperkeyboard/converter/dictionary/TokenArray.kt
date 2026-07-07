@@ -25,8 +25,10 @@ class TokenArray {
     private val nodeIdListTemp: MutableList<Int> = arrayListOf()
     private var bitListTemp: MutableList<Boolean> = arrayListOf()
     var bitvector: BitSet = BitSet()
-    var leftIds: List<Short> = listOf()
-    var rightIds: List<Short> = listOf()
+    var leftIds: ShortArray = shortArrayOf()
+        private set
+    var rightIds: ShortArray = shortArrayOf()
+        private set
 
     fun getNodeIds(): IntArray {
         return nodeIdList
@@ -329,9 +331,16 @@ class TokenArray {
         objectInputStream: ObjectInputStream
     ) {
         objectInputStream.apply {
-            leftIds = (readObject() as ShortArray).toList()
-            rightIds = (readObject() as ShortArray).toList()
+            setPOSTable(
+                leftIds = readObject() as ShortArray,
+                rightIds = readObject() as ShortArray,
+            )
         }
+    }
+
+    fun setPOSTable(leftIds: ShortArray, rightIds: ShortArray) {
+        this.leftIds = leftIds
+        this.rightIds = rightIds
     }
 
     fun readPOSTableWithIndex(

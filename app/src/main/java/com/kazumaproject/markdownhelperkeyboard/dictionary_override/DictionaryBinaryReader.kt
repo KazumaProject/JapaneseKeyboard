@@ -4,13 +4,18 @@ import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import timber.log.Timber
 import java.io.BufferedInputStream
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.FileOutputStream
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.ObjectInputStream
+import java.io.RandomAccessFile
+import java.nio.channels.FileChannel
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -20,6 +25,12 @@ class DictionaryBinaryReader @Inject constructor(
     private val resolver: DictionarySourceResolver,
     private val store: DictionaryOverrideStore,
 ) {
+    @Volatile
+    private var posTableCache: PosTableCache? = null
+
+    @Volatile
+    private var connectionMatrixCache: ConnectionMatrixCache? = null
+
     fun openZipAwareObjectInputStream(input: InputStream, debugName: String): ObjectInputStream =
         openZipAwareObject(input, debugName)
 
@@ -62,11 +73,8 @@ class DictionaryBinaryReader @Inject constructor(
     }
 
     fun readPosTableInto(tokenArray: TokenArray) {
-        loadWithBundledFallback(DictionaryFileKey.POS_TABLE) { input ->
-            openZipAwareObjectInputStream(input, DictionaryFileKey.POS_TABLE.name).use { objectInput ->
-                tokenArray.readPOSTable(objectInput)
-            }
-        }
+        val posTable = loadPosTable()
+        tokenArray.setPOSTable(posTable.leftIds, posTable.rightIds)
     }
 
     fun loadConnectionIds(key: DictionaryFileKey = DictionaryFileKey.CONNECTION_ID): ShortArray =
@@ -75,6 +83,21 @@ class DictionaryBinaryReader @Inject constructor(
                 ConnectionIdBuilder().readShortArrayFromBytes(raw)
             }
         }
+
+    fun loadConnectionMatrix(key: DictionaryFileKey = DictionaryFileKey.CONNECTION_ID): ConnectionMatrix.CostTable {
+        val revision = store.currentRevision
+        connectionMatrixCache
+            ?.takeIf { it.revision == revision && it.key == key }
+            ?.let { return it.costTable }
+
+        return synchronized(this) {
+            connectionMatrixCache
+                ?.takeIf { it.revision == revision && it.key == key }
+                ?.costTable
+                ?: createMappedConnectionMatrix(key, revision)
+                    .also { connectionMatrixCache = ConnectionMatrixCache(revision, key, it) }
+        }
+    }
 
     fun openIdDefReader(key: DictionaryFileKey = DictionaryFileKey.ID_DEF): BufferedReader {
         val bytes = loadWithBundledFallback(key) { input ->
@@ -123,6 +146,70 @@ class DictionaryBinaryReader @Inject constructor(
         }
         return resolver.openBundledForKey(key).use(loader)
     }
+
+    private fun loadPosTable(): PosTableCache {
+        val revision = store.currentRevision
+        posTableCache
+            ?.takeIf { it.revision == revision }
+            ?.let { return it }
+
+        return synchronized(this) {
+            posTableCache
+                ?.takeIf { it.revision == revision }
+                ?: loadWithBundledFallback(DictionaryFileKey.POS_TABLE) { input ->
+                    openZipAwareObjectInputStream(input, DictionaryFileKey.POS_TABLE.name).use { objectInput ->
+                        PosTableCache(
+                            revision = revision,
+                            leftIds = objectInput.readObject() as ShortArray,
+                            rightIds = objectInput.readObject() as ShortArray,
+                        )
+                    }
+                }.also { posTableCache = it }
+        }
+    }
+
+    private data class PosTableCache(
+        val revision: Long,
+        val leftIds: ShortArray,
+        val rightIds: ShortArray,
+    )
+
+    private fun createMappedConnectionMatrix(
+        key: DictionaryFileKey,
+        revision: Long,
+    ): ConnectionMatrix.CostTable {
+        val cacheFile = mappedConnectionMatrixFile(key, revision)
+        cacheFile.parentFile?.mkdirs()
+        loadWithBundledFallback(key) { input ->
+            openZipAwareRawInputStream(input, key.name).use { raw ->
+                FileOutputStream(cacheFile, false).use { output ->
+                    raw.copyTo(output)
+                }
+            }
+        }
+        cacheFile.parentFile
+            ?.listFiles { file -> file.name.startsWith("${key.name}_") && file != cacheFile }
+            ?.forEach { file -> runCatching { file.delete() } }
+
+        val mappedBuffer = RandomAccessFile(cacheFile, "r").channel.use { channel ->
+            channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size())
+        }
+        return ConnectionMatrix.fromByteBuffer(mappedBuffer)
+    }
+
+    private fun mappedConnectionMatrixFile(
+        key: DictionaryFileKey,
+        revision: Long,
+    ): File {
+        val baseDir = store.directory.parentFile ?: store.directory
+        return File(baseDir, "dictionary_runtime_cache/${key.name}_$revision.bin")
+    }
+
+    private data class ConnectionMatrixCache(
+        val revision: Long,
+        val key: DictionaryFileKey,
+        val costTable: ConnectionMatrix.CostTable,
+    )
 
     companion object {
         private val ZIP_SIGNATURE = byteArrayOf(0x50, 0x4B, 0x03, 0x04)

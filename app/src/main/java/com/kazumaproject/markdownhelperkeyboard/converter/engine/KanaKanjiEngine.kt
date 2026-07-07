@@ -80,8 +80,7 @@ class KanaKanjiEngine {
     private lateinit var findPath: FindPath
     private var dictionaryBinaryReader: DictionaryBinaryReader? = null
 
-    private lateinit var connectionIds: ShortArray
-    private var connectionMatrixSize: Int = 0
+    private lateinit var connectionMatrix: ConnectionMatrix.CostTable
 
     private lateinit var systemYomiTrie: LOUDSWithTermId
     private lateinit var systemTangoTrie: LOUDS
@@ -263,18 +262,16 @@ class KanaKanjiEngine {
     )
 
     private data class ConnectionMatrixSnapshot(
-        val connectionIds: ShortArray,
-        val matrixSize: Int,
+        val costTable: ConnectionMatrix.CostTable,
     )
 
     private fun connectionMatrixSnapshot(): ConnectionMatrixSnapshot =
         synchronized(this) {
-            check(connectionMatrixSize > 0) {
-                "connectionMatrixSize must be initialized from connectionId.dat before use"
+            check(::connectionMatrix.isInitialized) {
+                "connectionMatrix must be initialized from connectionId.dat before use"
             }
             ConnectionMatrixSnapshot(
-                connectionIds = connectionIds,
-                matrixSize = connectionMatrixSize,
+                costTable = connectionMatrix,
             )
         }
 
@@ -338,8 +335,7 @@ class KanaKanjiEngine {
             findPath.backwardAStarWithBunsetsu(
                 graph = graph,
                 length = input.length,
-                connectionIds = connectionMatrix.connectionIds,
-                connectionMatrixSize = connectionMatrix.matrixSize,
+                connectionMatrix = connectionMatrix.costTable,
                 n = 1000,
                 penaltyTrace = penaltyTrace,
                 forwardDpTrace = forwardDpTrace,
@@ -364,9 +360,7 @@ class KanaKanjiEngine {
         val store = DictionaryOverrideStore(appContext, DictionaryOverrideValidator())
         DictionaryCompatibilityValidator(DictionarySourceResolver(appContext, store))
             .requireActiveStateCompatible()
-        val newConnectionIds = reader.loadConnectionIds(DictionaryFileKey.CONNECTION_ID)
-        val newConnectionMatrixSize = ConnectionMatrix.inferMatrixSize(newConnectionIds)
-            ?: error("connectionId.dat size ${newConnectionIds.size} is not a valid square matrix")
+        val newConnectionMatrix = reader.loadConnectionMatrix(DictionaryFileKey.CONNECTION_ID)
         val newSystem = loadTripleDictionary(reader, DictionaryCategory.SYSTEM)
         val newSingleKanji = loadTripleDictionary(reader, DictionaryCategory.SINGLE_KANJI)
         val newEmoji = loadTripleDictionary(reader, DictionaryCategory.EMOJI)
@@ -397,8 +391,7 @@ class KanaKanjiEngine {
             reader.resolveCategoryLoadState(DictionaryCategory.SYSTEM) == DictionaryCategoryLoadState.Bundled
 
         synchronized(this) {
-            connectionIds = newConnectionIds
-            connectionMatrixSize = newConnectionMatrixSize
+            connectionMatrix = newConnectionMatrix
             assignSystemDictionary(newSystem)
             assignSingleKanjiDictionary(newSingleKanji)
             assignEmojiDictionary(newEmoji)
@@ -463,7 +456,7 @@ class KanaKanjiEngine {
     fun buildEngine(
         graphBuilder: GraphBuilder,
         findPath: FindPath,
-        connectionIdList: ShortArray,
+        connectionMatrix: ConnectionMatrix.CostTable,
 
         systemTangoTrie: LOUDS,
         systemYomiTrie: LOUDSWithTermId,
@@ -542,10 +535,7 @@ class KanaKanjiEngine {
         )
 
         // System
-        val inferredConnectionMatrixSize = ConnectionMatrix.inferMatrixSize(connectionIdList)
-            ?: error("connectionId.dat size ${connectionIdList.size} is not a valid square matrix")
-        this@KanaKanjiEngine.connectionIds = connectionIdList
-        this@KanaKanjiEngine.connectionMatrixSize = inferredConnectionMatrixSize
+        this@KanaKanjiEngine.connectionMatrix = connectionMatrix
         this@KanaKanjiEngine.systemTangoTrie = systemTangoTrie
         this@KanaKanjiEngine.systemTokenArray = systemTokenArray
         this@KanaKanjiEngine.systemYomiTrie = systemYomiTrie
@@ -1046,8 +1036,7 @@ class KanaKanjiEngine {
             findPath.backwardAStar(
                 graph = graph,
                 length = input.length,
-                connectionIds = connectionMatrix.connectionIds,
-                connectionMatrixSize = connectionMatrix.matrixSize,
+                connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
             )
@@ -1532,8 +1521,7 @@ class KanaKanjiEngine {
             findPath.backwardAStarWithBunsetsu(
                 graph = graph,
                 length = input.length,
-                connectionIds = connectionMatrix.connectionIds,
-                connectionMatrixSize = connectionMatrix.matrixSize,
+                connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
             )
@@ -2041,8 +2029,7 @@ class KanaKanjiEngine {
             findPath.backwardAStarWithBunsetsu(
                 graph = graph,
                 length = input.length,
-                connectionIds = connectionMatrix.connectionIds,
-                connectionMatrixSize = connectionMatrix.matrixSize,
+                connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
             )
@@ -2492,8 +2479,7 @@ class KanaKanjiEngine {
             findPath.backwardAStar(
                 graph = graph,
                 length = input.length,
-                connectionIds = connectionMatrix.connectionIds,
-                connectionMatrixSize = connectionMatrix.matrixSize,
+                connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
             )
@@ -2930,8 +2916,7 @@ class KanaKanjiEngine {
             findPath.backwardAStar(
                 graph = graph,
                 length = input.length,
-                connectionIds = connectionMatrix.connectionIds,
-                connectionMatrixSize = connectionMatrix.matrixSize,
+                connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
             )
@@ -3400,8 +3385,7 @@ class KanaKanjiEngine {
             findPath.backwardAStarWithBunsetsu(
                 graph = graph,
                 length = input.length,
-                connectionIds = connectionMatrix.connectionIds,
-                connectionMatrixSize = connectionMatrix.matrixSize,
+                connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
             )
