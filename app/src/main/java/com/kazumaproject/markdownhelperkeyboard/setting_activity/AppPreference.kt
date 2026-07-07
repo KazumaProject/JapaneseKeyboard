@@ -71,6 +71,7 @@ object AppPreference {
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
     private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 4)
+    private val CONVERSION_BEAM_WIDTH_PREFERENCE = Pair("conversion_beam_width_preference", 20)
     private val CANDIDATE_ORDER_OVERRIDE_ENABLE =
         Pair("candidate_order_override_enable_preference", false)
     private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
@@ -1398,6 +1399,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(N_BEST_PREFERENCE.first, value ?: 4)
+        }
+
+    var conversion_beam_width_preference: Int
+        get() = preferences.getInt(
+            CONVERSION_BEAM_WIDTH_PREFERENCE.first,
+            CONVERSION_BEAM_WIDTH_PREFERENCE.second,
+        ).coerceIn(1, 100)
+        set(value) = preferences.edit {
+            it.putInt(CONVERSION_BEAM_WIDTH_PREFERENCE.first, value.coerceIn(1, 100))
         }
 
     var candidate_order_override_enable_preference: Boolean?

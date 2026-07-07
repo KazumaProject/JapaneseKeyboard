@@ -294,6 +294,15 @@
             app:min="2"
             app:showSeekBarValue="true" />
 
+        <SeekBarPreference
+            android:defaultValue="20"
+            android:key="conversion_beam_width_preference"
+            android:max="100"
+            android:summary="@string/conversion_beam_width_preference_summary"
+            android:title="@string/conversion_beam_width_preference_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
         <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="conversion_bunsetsu_separation_preference"

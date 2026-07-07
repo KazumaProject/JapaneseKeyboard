@@ -160,15 +160,6 @@
                 </FrameLayout>
             </FrameLayout>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/toggle_candidate_list_button"
-                style="?attr/materialButtonOutlinedStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="top|start"
-                android:layout_marginStart="12dp"
-                android:layout_marginTop="12dp"
-                android:text="@string/candidate_preview_input_mode" />
         </FrameLayout>
 
         <com.google.android.material.button.MaterialButton
@@ -293,6 +284,14 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/toggle_candidate_list_button"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/candidate_preview_input_mode" />
 
                     <LinearLayout
                         android:id="@+id/height_controls_container"

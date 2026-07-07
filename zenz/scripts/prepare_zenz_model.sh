@@ -51,6 +51,13 @@ if [[ -n "${CACHE_DIR}" ]]; then
 fi
 
 if [[ -f "${OUTPUT_FILE}" && -f "${STAMP_FILE}" ]] && grep -qx "${EXPECTED_STAMP}" "${STAMP_FILE}"; then
+  if [[ -n "${CACHE_FILE}" ]]; then
+    if [[ ! -f "${CACHE_FILE}" || ! -f "${CACHE_STAMP_FILE}" ]] || ! grep -qx "${EXPECTED_STAMP}" "${CACHE_STAMP_FILE}"; then
+      cp "${OUTPUT_FILE}" "${CACHE_FILE}"
+      cp "${STAMP_FILE}" "${CACHE_STAMP_FILE}"
+      echo "Stored Zenz model cache at ${CACHE_FILE}"
+    fi
+  fi
   echo "Zenz model already prepared at ${OUTPUT_FILE}"
   exit 0
 fi

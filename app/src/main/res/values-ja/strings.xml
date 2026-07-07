@@ -1339,4 +1339,7 @@
     <string name="shortcut_toolbar_summary_date_picker">今日の日付を挿入します</string>
     <string name="shortcut_toolbar_summary_voice_input">音声入力を開始します</string>
     <string name="shortcut_toolbar_summary_clip_board">クリップボード履歴を表示します</string>
+    <string name="conversion_beam_width_category_title">変換探索</string>
+    <string name="conversion_beam_width_preference_title">変換探索幅</string>
+    <string name="conversion_beam_width_preference_summary">かな漢字変換の探索中に保持するラティスノード数を設定します。デフォルトは20です。</string>
 </resources>
