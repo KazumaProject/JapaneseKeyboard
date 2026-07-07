@@ -29,6 +29,11 @@ import java.util.BitSet
 
 class LOUDSWithTermId {
 
+    data class CommonPrefixSearchResult(
+        val yomi: String,
+        val nodeIndex: Int,
+    )
+
     val LBSTemp: MutableList<Boolean> = arrayListOf()
     var LBS: BitSet = BitSet()
     var labels: CharArray = charArrayOf()
@@ -260,20 +265,30 @@ class LOUDSWithTermId {
     }
 
     fun commonPrefixSearch(str: String, succinctBitVector: SuccinctBitVector): List<String> {
-        val result = mutableListOf<String>()
+        return commonPrefixSearchWithNodeIndex(str, 0, succinctBitVector).map { it.yomi }
+    }
+
+    fun commonPrefixSearchWithNodeIndex(
+        str: CharSequence,
+        start: Int,
+        succinctBitVector: SuccinctBitVector,
+    ): List<CommonPrefixSearchResult> {
+        val resultWithNodeIndex = mutableListOf<CommonPrefixSearchResult>()
         val resultTemp = StringBuilder()
         var n = 0
-        for (c in str) {
+        for (indexInString in start until str.length) {
+            val c = str[indexInString]
             n = traverse(n, c, succinctBitVector)
             if (n < 0) break
             val index = succinctBitVector.rank1(n)
             if (index >= labels.size) break
             resultTemp.append(labels[index])
             if (isLeaf[n]) {
-                result.add(resultTemp.toString())
+                val yomi = resultTemp.toString()
+                resultWithNodeIndex.add(CommonPrefixSearchResult(yomi, n))
             }
         }
-        return result
+        return resultWithNodeIndex
     }
 
     private fun collectWords(

@@ -101,7 +101,7 @@ class MozcCompoundConversionParityTest {
     }
 }
 
-private object TestEngineFactory {
+internal object TestEngineFactory {
     private val assetsDir: File by lazy {
         listOf(
             File("app/src/main/assets"),

@@ -28,7 +28,12 @@ class FindPath(
         val node: Node,
         val priorityCost: Int,
         val backwardCost: Int,
-        val path: List<Node>,
+        val path: LinkedPathNode,
+    )
+
+    private data class LinkedPathNode(
+        val node: Node,
+        val next: LinkedPathNode?,
     )
 
     companion object {
@@ -63,6 +68,7 @@ class FindPath(
 
         val resultFinal = mutableListOf<Candidate>()
         val foundStrings = HashSet<String>()
+        val ngramRuleScorer = ngramRuleScorerProvider()
 
         val pQueue: PriorityQueue<Pair<Node, Int>> =
             PriorityQueue(
@@ -111,7 +117,7 @@ class FindPath(
                     graph = graph,
                     node = node.first,
                     startPosition = node.first.sPos,
-                ).flatten()
+                )
 
                 for (prevNode in prevNodes) {
                     val edgeScore = getEdgeCost(
@@ -121,7 +127,7 @@ class FindPath(
                         connectionMatrixSize = connectionMatrixSize,
                     )
 
-                    val ngramAdjustment = ngramRuleScorerProvider().score(
+                    val ngramAdjustment = ngramRuleScorer.score(
                         prevNode = prevNode,
                         currentNode = node.first,
                     )
@@ -172,18 +178,19 @@ class FindPath(
                 node.f = score
             }
 
-            val beforePruning = nodes.toList()
+            val traceSink = forwardDpTraceSink
+            val beforePruning = traceSink?.let { nodes.toList() }
             if (i <= length && nodes.size > beamWidth) {
                 nodes.sortBy { it.f }
                 graph[i] = nodes.take(beamWidth).toMutableList()
             }
-            forwardDpTraceSink?.add(
+            traceSink?.add(
                 ForwardDpTrace(
                     position = i,
-                    nodeCountBeforePruning = beforePruning.size,
+                    nodeCountBeforePruning = beforePruning?.size ?: nodes.size,
                     nodeCountAfterPruning = graph[i]?.size ?: nodes.size,
                     keptNodes = (graph[i] ?: nodes).map { it.tango },
-                    droppedNodes = if (i <= length && beforePruning.size > beamWidth) {
+                    droppedNodes = if (beforePruning != null && i <= length && beforePruning.size > beamWidth) {
                         beforePruning.sortedBy { it.f }.drop(beamWidth).map { it.tango }
                     } else {
                         emptyList()
@@ -258,7 +265,7 @@ class FindPath(
         graph: MutableMap<Int, MutableList<Node>>,
         node: Node,
         startPosition: Int,
-    ): MutableList<MutableList<Node>> {
+    ): MutableList<Node> {
         val index =
             if (node.tango == "EOS") {
                 graph.keys.maxOrNull()?.minus(1) ?: return mutableListOf()
@@ -266,9 +273,9 @@ class FindPath(
                 startPosition
             }
 
-        if (startPosition == 0) return mutableListOf(mutableListOf(BOS))
+        if (startPosition == 0) return mutableListOf(BOS)
         if (index < 0) return mutableListOf()
-        return mutableListOf(graph[index] ?: mutableListOf())
+        return graph[index] ?: mutableListOf()
     }
 
     private fun getEdgeCost(
@@ -362,6 +369,7 @@ class FindPath(
         val splitPatterns = mutableListOf<List<Int>>()
         val splitPatternByCandidateString = linkedMapOf<String, List<Int>>()
         val foundStrings = HashSet<String>()
+        val ngramRuleScorer = ngramRuleScorerProvider()
 
         val pQueue: PriorityQueue<PathQueueElement> =
             PriorityQueue(
@@ -377,7 +385,7 @@ class FindPath(
                     node = it,
                     priorityCost = 0,
                     backwardCost = 0,
-                    path = listOf(it),
+                    path = LinkedPathNode(it, null),
                 ),
             )
         }
@@ -390,20 +398,22 @@ class FindPath(
             if (currentNode.tango == "BOS") {
                 val stringFromNode = getStringFromPath(element.path)
                 val yomiUsedFromNode = getYomiUsedFromPath(element.path)
-                val bunsetsuPositions = getBunsetsuPositionsFromPath(element.path, mozcSegmenter)
-                val candidateTraceEvent = CandidateTrace(
-                    candidate = stringFromNode,
-                    yomi = yomiUsedFromNode,
-                    totalCost = if (stringFromNode.any { it.isDigit() }) {
-                        element.priorityCost + 2000
-                    } else {
-                        element.priorityCost
-                    },
-                    path = getPathStringsFromPath(element.path),
+                val totalCost = if (stringFromNode.any { it.isDigit() }) {
+                    element.priorityCost + 2000
+                } else {
+                    element.priorityCost
+                }
+                candidateTrace?.add(
+                    CandidateTrace(
+                        candidate = stringFromNode,
+                        yomi = yomiUsedFromNode,
+                        totalCost = totalCost,
+                        path = getPathStringsFromPath(element.path),
+                    ),
                 )
-                candidateTrace?.add(candidateTraceEvent)
 
                 if (foundStrings.add(stringFromNode)) {
+                    val bunsetsuPositions = getBunsetsuPositionsFromPath(element.path, mozcSegmenter)
                     if (splitPatterns.none { it == bunsetsuPositions } && splitPatterns.size < 4) {
                         splitPatterns.add(bunsetsuPositions)
                     }
@@ -418,13 +428,9 @@ class FindPath(
                         },
                         length = length.toUByte(),
                         yomi = yomiUsedFromNode,
-                        score = if (stringFromNode.any { it.isDigit() }) {
-                            element.priorityCost + 2000
-                        } else {
-                            element.priorityCost
-                        },
-                        leftId = element.path.getOrNull(1)?.l,
-                        rightId = element.path.getOrNull(1)?.r,
+                        score = totalCost,
+                        leftId = element.path.next?.node?.l,
+                        rightId = element.path.next?.node?.r,
                     )
                     resultFinal.add(candidate)
                 }
@@ -441,7 +447,7 @@ class FindPath(
                     graph = graph,
                     node = currentNode,
                     startPosition = currentNode.sPos,
-                ).flatten()
+                )
 
                 for (prevNode in prevNodes) {
                     if (boundaryChecker != null) {
@@ -475,8 +481,8 @@ class FindPath(
                         connectionMatrixSize = connectionMatrixSize,
                     )
 
-                    currentNode.next = element.path.getOrNull(1)
-                    val ngramAdjustment = ngramRuleScorerProvider().score(
+                    currentNode.next = element.path.next?.node
+                    val ngramAdjustment = ngramRuleScorer.score(
                         prevNode = prevNode,
                         currentNode = currentNode,
                     )
@@ -493,7 +499,7 @@ class FindPath(
                             node = prevNode,
                             priorityCost = backwardCost + prevNode.f,
                             backwardCost = backwardCost,
-                            path = listOf(prevNode) + element.path,
+                            path = LinkedPathNode(prevNode, element.path),
                         ),
                     )
                 }
@@ -536,6 +542,7 @@ class FindPath(
         val resultFinal = mutableListOf<Candidate>()
         var bestBunsetsuPositions: List<Int> = emptyList()
         val foundStrings = HashSet<String>()
+        val ngramRuleScorer = ngramRuleScorerProvider()
 
         val pQueue: PriorityQueue<Pair<Node, Int>> =
             PriorityQueue(
@@ -601,7 +608,7 @@ class FindPath(
                     graph = graph,
                     node = node.first,
                     startPosition = node.first.sPos,
-                ).flatten()
+                )
 
                 for (prevNode in prevNodes) {
                     val edgeScore = getEdgeCost(
@@ -611,7 +618,7 @@ class FindPath(
                         connectionMatrixSize = connectionMatrixSize,
                     )
 
-                    val ngramAdjustment = ngramRuleScorerProvider().score(
+                    val ngramAdjustment = ngramRuleScorer.score(
                         prevNode = prevNode,
                         currentNode = node.first,
                     )
@@ -694,33 +701,57 @@ class FindPath(
         return result
     }
 
-    private fun getStringFromPath(path: List<Node>): String =
-        path.asSequence()
-            .filter { it.tango != "BOS" && it.tango != "EOS" }
-            .joinToString("") { it.tango }
+    private fun getStringFromPath(path: LinkedPathNode): String {
+        val result = StringBuilder()
+        var current: LinkedPathNode? = path
+        while (current != null) {
+            val node = current.node
+            if (node.tango != "BOS" && node.tango != "EOS") {
+                result.append(node.tango)
+            }
+            current = current.next
+        }
+        return result.toString()
+    }
 
-    private fun getYomiUsedFromPath(path: List<Node>): String =
-        path.asSequence()
-            .filter { it.tango != "BOS" && it.tango != "EOS" }
-            .joinToString("") { it.yomiUsed }
+    private fun getYomiUsedFromPath(path: LinkedPathNode): String {
+        val result = StringBuilder()
+        var current: LinkedPathNode? = path
+        while (current != null) {
+            val node = current.node
+            if (node.tango != "BOS" && node.tango != "EOS") {
+                result.append(node.yomiUsed)
+            }
+            current = current.next
+        }
+        return result.toString()
+    }
 
-    private fun getPathStringsFromPath(path: List<Node>): List<String> =
-        path.asSequence()
-            .filter { it.tango != "BOS" && it.tango != "EOS" }
-            .map { it.tango }
-            .toList()
+    private fun getPathStringsFromPath(path: LinkedPathNode): List<String> {
+        val result = mutableListOf<String>()
+        var current: LinkedPathNode? = path
+        while (current != null) {
+            val node = current.node
+            if (node.tango != "BOS" && node.tango != "EOS") {
+                result.add(node.tango)
+            }
+            current = current.next
+        }
+        return result
+    }
 
     private fun getBunsetsuPositionsFromPath(
-        path: List<Node>,
+        path: LinkedPathNode,
         mozcSegmenter: MozcSegmenter?,
     ): List<Int> {
         val positions = mutableListOf<Int>()
         var currentPosition = 0
         var previousNode: Node? = null
 
-        path.asSequence()
-            .filter { it.tango != "BOS" && it.tango != "EOS" }
-            .forEach { node ->
+        var current: LinkedPathNode? = path
+        while (current != null) {
+            val node = current.node
+            if (node.tango != "BOS" && node.tango != "EOS") {
                 val prev = previousNode
                 if (currentPosition > 0 && prev != null) {
                     val isBoundary = if (mozcSegmenter != null) {
@@ -739,6 +770,8 @@ class FindPath(
                 currentPosition += node.len.toInt()
                 previousNode = node
             }
+            current = current.next
+        }
 
         return positions
     }
