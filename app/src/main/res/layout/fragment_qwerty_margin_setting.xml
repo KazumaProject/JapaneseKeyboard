@@ -193,6 +193,35 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/label_symbol_keymap_text_size"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/qwerty_symbol_keymap_text_size" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <SeekBar
+                android:id="@+id/seekbar_symbol_keymap_text_size"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:max="240"
+                android:progress="90" />
+
+            <TextView
+                android:id="@+id/value_symbol_keymap_text_size"
+                android:layout_width="50dp"
+                android:layout_height="wrap_content"
+                android:gravity="end"
+                tools:text="9.0sp" />
+        </LinearLayout>
+
+        <TextView
             android:id="@+id/label_special_text_size"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
