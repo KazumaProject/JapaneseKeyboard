@@ -15,6 +15,7 @@ import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.domain.EmojiSkinToneSupport
 
 class SymbolAdapter :
     PagingDataAdapter<String, SymbolAdapter.SymbolViewHolder>(DIFF_CALLBACK) {
@@ -23,7 +24,9 @@ class SymbolAdapter :
     private var onItemClickListener: ((String) -> Unit)? = null
 
     /** シンボル文字列を長押ししたとき */
-    private var onItemLongClickListener: ((String, Int) -> Unit)? = null
+    private var onItemLongClickListener: ((String, Int, View) -> Unit)? = null
+
+    var showSkinToneIndicators: Boolean = false
 
     // 外部から設定するためのメソッド
     fun setOnItemClickListener(onItemClick: (String) -> Unit) {
@@ -31,7 +34,7 @@ class SymbolAdapter :
     }
 
     // 外部から設定するためのメソッド（長押し用）
-    fun setOnItemLongClickListener(onItemLongClick: (String, Int) -> Unit) {
+    fun setOnItemLongClickListener(onItemLongClick: (String, Int, View) -> Unit) {
         this.onItemLongClickListener = onItemLongClick
     }
 
@@ -80,6 +83,7 @@ class SymbolAdapter :
     inner class SymbolViewHolder(itemView: View) :
         RecyclerView.ViewHolder(itemView) {
         val symbolTextView: MaterialTextView = itemView.findViewById(R.id.symbol_text)
+        val skinToneIndicator: View = itemView.findViewById(R.id.skin_tone_indicator)
 
         init {
             // 通常クリック
@@ -93,7 +97,7 @@ class SymbolAdapter :
             itemView.setOnLongClickListener {
                 val pos = bindingAdapterPosition
                 if (pos != RecyclerView.NO_POSITION) {
-                    getItem(pos)?.let { onItemLongClickListener?.invoke(it, pos) }
+                    getItem(pos)?.let { onItemLongClickListener?.invoke(it, pos, itemView) }
                 }
                 true
             }
@@ -120,6 +124,12 @@ class SymbolAdapter :
             themeTextColor?.let { color ->
                 holder.symbolTextView.setTextColor(color)
             }
+            holder.skinToneIndicator.visibility =
+                if (showSkinToneIndicators && EmojiSkinToneSupport.hasSkinToneVariants(symbol)) {
+                    View.VISIBLE
+                } else {
+                    View.GONE
+                }
 
             // ★追加: ハイライト（Ripple）カラーの適用
             val rippleColor = themeHighlightColor ?: "#33808080".toColorInt()
@@ -131,6 +141,7 @@ class SymbolAdapter :
             )
         } else {
             holder.symbolTextView.text = ""
+            holder.skinToneIndicator.visibility = View.GONE
         }
     }
 

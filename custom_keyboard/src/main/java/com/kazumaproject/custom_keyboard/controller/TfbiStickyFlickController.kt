@@ -9,6 +9,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
 import kotlin.math.abs
@@ -23,6 +24,7 @@ class TfbiStickyFlickController(
      * このコントローラー専用のリスナーインターフェース
      */
     interface TfbiListener {
+        fun onPress(first: TfbiFlickDirection, second: TfbiFlickDirection)
         fun onFlick(first: TfbiFlickDirection, second: TfbiFlickDirection)
     }
 
@@ -48,6 +50,9 @@ class TfbiStickyFlickController(
 
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
+    private var popupStyle = PopupViewStyle(100, 20f)
+
+    private var popupWindowAnchorProvider: (() -> View?)? = null
 
     private lateinit var gestureDetector: GestureDetector
 
@@ -75,6 +80,20 @@ class TfbiStickyFlickController(
         view.setOnTouchListener { _, event -> handleTouchEvent(event) }
     }
 
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupStyle = PopupViewStyle(
+            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = style.backgroundColor,
+            textColor = style.textColor
+        )
+        popupView?.applyPopupViewStyle(popupStyle)
+    }
+
     fun cancel() {
         resetState()
         attachedView?.setOnTouchListener(null)
@@ -89,7 +108,8 @@ class TfbiStickyFlickController(
         when (event.action) {
             MotionEvent.ACTION_DOWN -> handleTouchDown(event, view)
             MotionEvent.ACTION_MOVE -> handleTouchMove(event, view)
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> handleTouchUp(event)
+            MotionEvent.ACTION_UP -> handleTouchUp(event)
+            MotionEvent.ACTION_CANCEL -> resetState()
         }
         return true
     }
@@ -100,6 +120,7 @@ class TfbiStickyFlickController(
         flickState = FlickState.NEUTRAL
         initialTouchX = event.x
         initialTouchY = event.y
+        listener?.onPress(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP)
 
         // 最初は必ず花びらなしのポップアップを表示する
         showPopup(view, TfbiFlickDirection.TAP, false)
@@ -242,22 +263,27 @@ class TfbiStickyFlickController(
         }
 
         popupView = TfbiFlickPopupView(context).apply {
+            applyPopupViewStyle(popupStyle)
             setCharacters(tapCharacter, petalChars)
             highlightDirection(TfbiFlickDirection.TAP)
         }
-        val popupWidth = anchorView.width * 3
-        val popupHeight = anchorView.height * 3
+        val scale = popupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        val popupWidth = (anchorView.width * 3 * scale).toInt().coerceAtLeast(1)
+        val popupHeight = (anchorView.height * 3 * scale).toInt().coerceAtLeast(1)
         popupWindow = PopupWindow(popupView, popupWidth, popupHeight, false).apply {
             isTouchable = false
             isFocusable = false
             setBackgroundDrawable(android.graphics.Color.TRANSPARENT.toDrawable())
             isClippingEnabled = false
         }
-        if (!anchorView.isAttachedToWindow) return
-        val location = IntArray(2).also { anchorView.getLocationInWindow(it) }
-        val offsetX = location[0] - anchorView.width
-        val offsetY = location[1] - anchorView.height
-        popupWindow?.showAtLocation(anchorView, Gravity.NO_GRAVITY, offsetX, offsetY)
+        val windowAnchor = popupWindowAnchorProvider?.invoke() ?: anchorView
+        if (!isAnchorReady(anchorView, windowAnchor)) return
+        val location = getLocationRelativeToWindowAnchor(anchorView, windowAnchor)
+        val offsetX = location[0] + anchorView.width / 2 - popupWidth / 2
+        val offsetY = location[1] + anchorView.height / 2 - popupHeight / 2
+        runCatching {
+            popupWindow?.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, offsetX, offsetY)
+        }
     }
 
     private fun setupSecondStageUI(firstDirection: TfbiFlickDirection) {
@@ -337,5 +363,12 @@ class TfbiStickyFlickController(
         }
 
         return closestDirectionData.first
+    }
+
+    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
+        if (!keyAnchor.isAttachedToWindow) return false
+        if (windowAnchor == null) return false
+        if (!windowAnchor.isAttachedToWindow) return false
+        return windowAnchor.windowToken != null
     }
 }

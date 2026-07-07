@@ -4,12 +4,17 @@ import com.kazumaproject.bitset.rank1Common
 import com.kazumaproject.bitset.rank1CommonShort
 import com.kazumaproject.bitset.select0Common
 import com.kazumaproject.bitset.select0CommonShort
+import com.kazumaproject.dictionary.models.Dictionary
 import com.kazumaproject.dictionary.models.TokenEntry
+import com.kazumaproject.toBitSet
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import java.io.ObjectOutput
 import java.io.ObjectInput
 import java.io.ObjectInputStream
 import java.io.ObjectOutputStream
+import java.text.Normalizer
 import java.util.BitSet
+import com.kazumaproject.Louds.LOUDS
 
 class TokenArray {
     private var posTableIndexList: ShortArray = shortArrayOf()
@@ -20,12 +25,20 @@ class TokenArray {
     private val nodeIdListTemp: MutableList<Int> = arrayListOf()
     private var bitListTemp: MutableList<Boolean> = arrayListOf()
     var bitvector: BitSet = BitSet()
-    var leftIds: List<Short> = listOf()
-    var rightIds: List<Short> = listOf()
+    var leftIds: ShortArray = shortArrayOf()
+        private set
+    var rightIds: ShortArray = shortArrayOf()
+        private set
 
     fun getNodeIds(): IntArray {
         return nodeIdList
     }
+
+    fun maxPosTableIndex(): Int =
+        posTableIndexList.maxOrNull()?.toInt() ?: -1
+
+    fun minPosTableIndex(): Int =
+        posTableIndexList.minOrNull()?.toInt() ?: 0
 
     fun getListDictionaryByYomiTermId(
         nodeId: Int,
@@ -80,6 +93,21 @@ class TokenArray {
         return tempList2
     }
 
+    fun forEachDictionaryByYomiTermId(
+        nodeId: Int,
+        succinctBitVector: SuccinctBitVector,
+        block: (posTableIndex: Short, wordCost: Short, nodeId: Int) -> Unit,
+    ) {
+        val startSelect0 = succinctBitVector.select0(nodeId)
+        val endSelect0 = succinctBitVector.select0(nodeId + 1)
+        val startRank1 = succinctBitVector.rank1(startSelect0)
+        val endRank1 = succinctBitVector.rank1(endSelect0)
+
+        for (i in startRank1 until endRank1) {
+            block(posTableIndexList[i], wordCostList[i], nodeIdList[i])
+        }
+    }
+
     fun getListDictionaryByYomiTermIdShortArray(
         nodeId: Short,
         rank0ArrayTokenArrayBitvector: ShortArray,
@@ -131,6 +159,21 @@ class TokenArray {
         return tempList2
     }
 
+    fun forEachDictionaryByYomiTermIdShortArray(
+        nodeId: Short,
+        succinctBitVector: SuccinctBitVector,
+        block: (posTableIndex: Short, wordCost: Short, nodeId: Int) -> Unit,
+    ) {
+        val startSelect0 = succinctBitVector.select0(nodeId.toInt())
+        val startRank1 = succinctBitVector.rank1(startSelect0)
+        val endSelect0 = succinctBitVector.select0(nodeId + 1)
+        val endRank1 = succinctBitVector.rank1(endSelect0)
+
+        for (i in startRank1 until endRank1) {
+            block(posTableIndexList[i], wordCostList[i], nodeIdList[i])
+        }
+    }
+
     fun readExternal(
         objectInput: ObjectInput,
     ): TokenArray {
@@ -146,6 +189,60 @@ class TokenArray {
             }
         }
         return TokenArray()
+    }
+
+    fun buildTokenArray(
+        dictionaries: Map<String, List<Dictionary>>,
+        tangoTrie: LOUDS,
+        out: ObjectOutput,
+        posIndexMap: Map<Pair<Short, Short>, Int>,
+    ) {
+        val posTableIndices = mutableListOf<Short>()
+        val wordCosts = mutableListOf<Short>()
+        val nodeIds = mutableListOf<Int>()
+        val bits = mutableListOf<Boolean>()
+
+        dictionaries.forEach { (yomi, dictionaryList) ->
+            bits.add(false)
+            dictionaryList.forEach { dictionary ->
+                bits.add(true)
+                val posIndex = posIndexMap.getValue(dictionary.leftId to dictionary.rightId)
+                posTableIndices.add(posIndex.toShort())
+                wordCosts.add(dictionary.cost)
+                nodeIds.add(getNodeIdForDictionary(dictionary, tangoTrie, yomi))
+            }
+        }
+
+        posTableIndexList = posTableIndices.toShortArray()
+        wordCostList = wordCosts.toShortArray()
+        nodeIdList = nodeIds.toIntArray()
+        bitvector = bits.toBitSet()
+        writeExternalNotCompress(out)
+    }
+
+    private fun getNodeIdForDictionary(
+        dictionary: Dictionary,
+        tangoTrie: LOUDS,
+        yomi: String,
+    ): Int {
+        val tango = dictionary.tango
+        return when {
+            yomi == tango -> -2
+            tango.isHiraganaOnly() -> -2
+            tango.isKatakanaOnly() -> -1
+            else -> tangoTrie.getNodeIndex(Normalizer.normalize(tango, Normalizer.Form.NFC))
+        }
+    }
+
+    fun writeExternalNotCompress(out: ObjectOutput) {
+        out.apply {
+            writeObject(posTableIndexList)
+            writeObject(wordCostList)
+            writeObject(nodeIdList)
+            writeObject(bitvector)
+            flush()
+            close()
+        }
     }
 
     /**
@@ -234,9 +331,16 @@ class TokenArray {
         objectInputStream: ObjectInputStream
     ) {
         objectInputStream.apply {
-            leftIds = (readObject() as ShortArray).toList()
-            rightIds = (readObject() as ShortArray).toList()
+            setPOSTable(
+                leftIds = readObject() as ShortArray,
+                rightIds = readObject() as ShortArray,
+            )
         }
+    }
+
+    fun setPOSTable(leftIds: ShortArray, rightIds: ShortArray) {
+        this.leftIds = leftIds
+        this.rightIds = rightIds
     }
 
     fun readPOSTableWithIndex(
@@ -247,6 +351,14 @@ class TokenArray {
             a = (readObject() as Map<Pair<Short, Short>, Int>)
         }
         return a
+    }
+
+    private fun String.isHiraganaOnly(): Boolean {
+        return isNotEmpty() && all { it in 'ぁ'..'ゖ' || it == 'ー' }
+    }
+
+    private fun String.isKatakanaOnly(): Boolean {
+        return isNotEmpty() && all { it in 'ァ'..'ヶ' || it == 'ー' }
     }
 
 }

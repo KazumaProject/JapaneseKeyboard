@@ -6,14 +6,17 @@ import android.view.inputmethod.InputMethodManager
 import androidx.room.Room
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
-import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.clicked_symbol.database.ClickedSymbolDao
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryDao
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTableReader
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
+import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenterDataReader
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
@@ -24,7 +27,27 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_13_14
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_14_15
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_15_16
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_16_17
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_17_18
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_18_19
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_19_20
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_1_2
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_20_21
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_21_22
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_22_23
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_23_24
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_24_25
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_25_26
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_26_27
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_27_28
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_28_29
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_29_30
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_30_31
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_31_32
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_32_33
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_33_34
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_34_35
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_35_36
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
@@ -33,14 +56,27 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_7_8
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_8_9
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_9_10
+import com.kazumaproject.markdownhelperkeyboard.delete_key_flick.database.DeleteKeyFlickDeleteTargetDao
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
+import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplateDao
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleDao
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutDao
 import com.kazumaproject.markdownhelperkeyboard.repository.RomajiMapRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideDao
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideDao
+import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryDao
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
 import dagger.Module
@@ -51,9 +87,6 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import timber.log.Timber
-import java.io.BufferedInputStream
-import java.io.ObjectInputStream
-import java.util.zip.ZipInputStream
 import javax.inject.Singleton
 
 @Module
@@ -85,7 +118,27 @@ object AppModule {
             MIGRATION_12_13,
             MIGRATION_13_14,
             MIGRATION_14_15,
-            MIGRATION_15_16
+            MIGRATION_15_16,
+            MIGRATION_16_17,
+            MIGRATION_17_18,
+            MIGRATION_18_19,
+            MIGRATION_19_20,
+            MIGRATION_20_21,
+            MIGRATION_21_22,
+            MIGRATION_22_23,
+            MIGRATION_23_24,
+            MIGRATION_24_25,
+            MIGRATION_25_26,
+            MIGRATION_26_27,
+            MIGRATION_27_28,
+            MIGRATION_28_29,
+            MIGRATION_29_30,
+            MIGRATION_30_31,
+            MIGRATION_31_32,
+            MIGRATION_32_33,
+            MIGRATION_33_34,
+            MIGRATION_34_35,
+            MIGRATION_35_36,
         )
         .build()
 
@@ -127,10 +180,52 @@ object AppModule {
 
     @Singleton
     @Provides
+    fun providesSystemUserDictionaryDao(db: AppDatabase): SystemUserDictionaryDao =
+        db.systemUserDictionaryDao()
+
+    @Singleton
+    @Provides
+    fun providesNgramRuleDao(db: AppDatabase): NgramRuleDao = db.ngramRuleDao()
+
+    @Singleton
+    @Provides
+    fun providesGemmaPromptTemplateDao(db: AppDatabase): GemmaPromptTemplateDao =
+        db.gemmaPromptTemplateDao()
+
+    @Singleton
+    @Provides
+    fun providesDeleteKeyFlickDeleteTargetDao(db: AppDatabase): DeleteKeyFlickDeleteTargetDao =
+        db.deleteKeyFlickDeleteTargetDao()
+
+    @Singleton
+    @Provides
+    fun providesPhysicalKeyboardShortcutDao(db: AppDatabase): PhysicalKeyboardShortcutDao =
+        db.physicalKeyboardShortcutDao()
+
+    @Singleton
+    @Provides
+    fun providesCandidateOrderOverrideDao(db: AppDatabase): CandidateOrderOverrideDao =
+        db.candidateOrderOverrideDao()
+
+    @Singleton
+    @Provides
+    fun providesSumireSpecialKeyActionOverrideDao(
+        db: AppDatabase
+    ): SumireSpecialKeyActionOverrideDao = db.sumireSpecialKeyActionOverrideDao()
+
+    @Singleton
+    @Provides
+    fun providesSumireSpecialKeyPlacementOverrideDao(
+        db: AppDatabase
+    ): SumireSpecialKeyPlacementOverrideDao = db.sumireSpecialKeyPlacementOverrideDao()
+
+    @Singleton
+    @Provides
     fun provideActiveRomajiMapFlow(repository: RomajiMapRepository): Flow<Map<String, Pair<String, Int>>> {
         return repository.getActiveMap()
             .map { entity ->
-                entity?.mapData ?: repository.getDefaultMapData()
+                val mapData = entity?.mapData
+                if (mapData.isNullOrEmpty()) repository.getDefaultMapData() else mapData
             }
     }
 
@@ -155,70 +250,29 @@ object AppModule {
     @Singleton
     @Provides
     @ConnectionIds
-    fun provideConnectionIds(@ApplicationContext context: Context): ShortArray {
-        ZipInputStream(context.assets.open("connectionId.dat.zip")).use { zipStream ->
-            var entry = zipStream.nextEntry
-            while (entry != null) {
-                if (entry.name == "connectionId.dat") {
-                    BufferedInputStream(zipStream).use { inputStream ->
-                        return ConnectionIdBuilder().readShortArrayFromBytes(inputStream)
-                    }
-                }
-                entry = zipStream.nextEntry
-            }
-        }
-        throw IllegalArgumentException("connectionId.dat not found in connectionId.zip")
+    fun provideConnectionMatrix(reader: DictionaryBinaryReader): ConnectionMatrix.CostTable {
+        return reader.loadConnectionMatrix(DictionaryFileKey.CONNECTION_ID)
     }
 
     @SystemTangoTrie
     @Singleton
     @Provides
-    fun provideTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val zipInputStream = ZipInputStream(context.assets.open("system/tango.dat.zip"))
-        zipInputStream.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
-            return LOUDS().readExternalNotCompress(it)
-        }
+    fun provideTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.SYSTEM_TANGO)
     }
 
     @SystemYomiTrie
     @Singleton
     @Provides
-    fun provideYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val zipInputStream = ZipInputStream(context.assets.open("system/yomi.dat.zip"))
-        zipInputStream.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
-            return LOUDSWithTermId().readExternalNotCompress(it)
-        }
+    fun provideYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.SYSTEM_YOMI)
     }
 
     @SystemTokenArray
     @Singleton
     @Provides
-    fun providesTokenArray(@ApplicationContext context: Context): TokenArray {
-        val tokenArray = TokenArray()
-
-        // Extract and read `token.dat` from `token.dat.zip`
-        ZipInputStream(context.assets.open("system/token.dat.zip")).use { zipStream ->
-            var entry = zipStream.nextEntry
-            while (entry != null) {
-                if (entry.name == "token.dat") { // Ensure we are processing the correct file inside the zip
-                    ObjectInputStream(BufferedInputStream(zipStream)).use { objectInput ->
-                        tokenArray.readExternal(objectInput) // Load `token.dat` into TokenArray
-                    }
-                    break
-                }
-                entry = zipStream.nextEntry
-            }
-        }
-
-        context.assets.open("pos_table.dat").use { inputStream ->
-            ObjectInputStream(BufferedInputStream(inputStream)).use { objectInput ->
-                tokenArray.readPOSTable(objectInput)
-            }
-        }
-
-        return tokenArray
+    fun providesTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.SYSTEM_TOKEN)
     }
 
     @Singleton
@@ -249,33 +303,22 @@ object AppModule {
     @SingleKanjiTangoTrie
     @Singleton
     @Provides
-    fun provideSingleKanjiTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("single_kanji/tango_singleKanji.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideSingleKanjiTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.SINGLE_KANJI_TANGO)
     }
 
     @SingleKanjiYomiTrie
     @Singleton
     @Provides
-    fun provideSingleKanjiYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("single_kanji/yomi_singleKanji.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideSingleKanjiYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.SINGLE_KANJI_YOMI)
     }
 
     @SingleKanjiTokenArray
     @Singleton
     @Provides
-    fun providesSingleKanjiTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("single_kanji/token_singleKanji.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesSingleKanjiTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.SINGLE_KANJI_TOKEN)
     }
 
     @Singleton
@@ -305,33 +348,22 @@ object AppModule {
     @EmojiTangoTrie
     @Singleton
     @Provides
-    fun provideEmojiTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoji/tango_emoji.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideEmojiTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.EMOJI_TANGO)
     }
 
     @EmojiYomiTrie
     @Singleton
     @Provides
-    fun provideEmojiYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoji/yomi_emoji.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideEmojiYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.EMOJI_YOMI)
     }
 
     @EmojiTokenArray
     @Singleton
     @Provides
-    fun providesEmojiTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoji/token_emoji.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesEmojiTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.EMOJI_TOKEN)
     }
 
     @Singleton
@@ -361,33 +393,22 @@ object AppModule {
     @EmoticonTangoTrie
     @Singleton
     @Provides
-    fun provideEmoticonTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoticon/tango_emoticon.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideEmoticonTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.EMOTICON_TANGO)
     }
 
     @EmoticonYomiTrie
     @Singleton
     @Provides
-    fun provideEmoticonYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoticon/yomi_emoticon.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideEmoticonYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.EMOTICON_YOMI)
     }
 
     @EmoticonTokenArray
     @Singleton
     @Provides
-    fun providesEmoticonTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("emoticon/token_emoticon.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesEmoticonTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.EMOTICON_TOKEN)
     }
 
     @Singleton
@@ -417,33 +438,22 @@ object AppModule {
     @SymbolTangoTrie
     @Singleton
     @Provides
-    fun provideSymbolTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("symbol/tango_symbol.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideSymbolTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.SYMBOL_TANGO)
     }
 
     @SymbolYomiTrie
     @Singleton
     @Provides
-    fun provideSymbolYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("symbol/yomi_symbol.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideSymbolYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.SYMBOL_YOMI)
     }
 
     @SymbolTokenArray
     @Singleton
     @Provides
-    fun providesSymbolTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("symbol/token_symbol.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesSymbolTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.SYMBOL_TOKEN)
     }
 
     @Singleton
@@ -474,33 +484,22 @@ object AppModule {
     @ReadingCorrectionTangoTrie
     @Singleton
     @Provides
-    fun provideReadingCorrectionTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("reading_correction/tango_reading_correction.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideReadingCorrectionTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.READING_CORRECTION_TANGO)
     }
 
     @ReadingCorrectionYomiTrie
     @Singleton
     @Provides
-    fun provideReadingCorrectionYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("reading_correction/yomi_reading_correction.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideReadingCorrectionYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.READING_CORRECTION_YOMI)
     }
 
     @ReadingCorrectionTokenArray
     @Singleton
     @Provides
-    fun providesReadingCorrectionTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("reading_correction/token_reading_correction.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesReadingCorrectionTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.READING_CORRECTION_TOKEN)
     }
 
     @Singleton
@@ -530,33 +529,22 @@ object AppModule {
     @KotowazaTangoTrie
     @Singleton
     @Provides
-    fun provideKotowazaTangoTrie(@ApplicationContext context: Context): LOUDS {
-        val objectInputTango =
-            ObjectInputStream(BufferedInputStream(context.assets.open("kotowaza/tango_kotowaza.dat")))
-        return LOUDS().readExternalNotCompress(objectInputTango)
+    fun provideKotowazaTangoTrie(reader: DictionaryBinaryReader): LOUDS {
+        return reader.loadLouds(DictionaryFileKey.KOTOWAZA_TANGO)
     }
 
     @KotowazaYomiTrie
     @Singleton
     @Provides
-    fun provideKotowazaYomiTrie(@ApplicationContext context: Context): LOUDSWithTermId {
-        val objectInputYomi =
-            ObjectInputStream(BufferedInputStream(context.assets.open("kotowaza/yomi_kotowaza.dat")))
-        return LOUDSWithTermId().readExternalNotCompress(objectInputYomi)
+    fun provideKotowazaYomiTrie(reader: DictionaryBinaryReader): LOUDSWithTermId {
+        return reader.loadLoudsWithTermId(DictionaryFileKey.KOTOWAZA_YOMI)
     }
 
     @KotowazaTokenArray
     @Singleton
     @Provides
-    fun providesKotowazaTokenArray(@ApplicationContext context: Context): TokenArray {
-        val objectInputTokenArray =
-            ObjectInputStream(BufferedInputStream(context.assets.open("kotowaza/token_kotowaza.dat")))
-        val objectInputReadPOSTable =
-            ObjectInputStream(BufferedInputStream(context.assets.open("pos_table.dat")))
-        val tokenArray = TokenArray()
-        tokenArray.readExternal(objectInputTokenArray)
-        tokenArray.readPOSTable(objectInputReadPOSTable)
-        return tokenArray
+    fun providesKotowazaTokenArray(reader: DictionaryBinaryReader): TokenArray {
+        return reader.loadTokenArray(DictionaryFileKey.KOTOWAZA_TOKEN)
     }
 
     @Singleton
@@ -586,7 +574,7 @@ object AppModule {
     @Singleton
     @Provides
     fun provideKanaKanjiHenkanEngine(
-        @ConnectionIds connectionIds: ShortArray,
+        @ConnectionIds connectionMatrix: ConnectionMatrix.CostTable,
 
         @SystemTangoTrie systemTangoTrie: LOUDS,
         @SystemYomiTrie systemYomiTrie: LOUDSWithTermId,
@@ -643,16 +631,43 @@ object AppModule {
         @KotowazaSuccinctBitVectorIsLeafYomi kotowazaSuccinctBitVectorIsLeafYomi: SuccinctBitVector,
         @KotowazaSuccinctBitVectorTokenArray kotowazaSuccinctBitVectorTokenArray: SuccinctBitVector,
         @KotowazaSuccinctBitVectorTangoLBS kotowazaSuccinctBitVectorTangoLBS: SuccinctBitVector,
-        englishEngine: EnglishEngine
+        englishEngine: EnglishEngine,
+        ngramRuleScorerManager: NgramRuleScorerManager,
+        dictionaryBinaryReader: DictionaryBinaryReader,
+        @ApplicationContext context: Context,
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
         val graphBuilder = GraphBuilder()
-        val findPath = FindPath()
+        val findPath = FindPath(ngramRuleScorerProvider = ngramRuleScorerManager::currentScorer)
+        val bundledMozcDictionaryActive =
+            dictionaryBinaryReader.resolveCategoryLoadState(DictionaryCategory.SYSTEM) == DictionaryCategoryLoadState.Bundled
+        val mozcSegmenter = if (bundledMozcDictionaryActive) {
+            runCatching {
+                context.assets.open("mozc/segmenter.dat").use { input ->
+                    MozcSegmenter(MozcSegmenterDataReader().read(input))
+                }
+            }.onFailure {
+                Timber.w(it, "Mozc segmenter asset is unavailable. Falling back to legacy conversion path.")
+            }.getOrNull()
+        } else {
+            null
+        }
+        val mozcNodeAttributeTable = if (bundledMozcDictionaryActive) {
+            runCatching {
+                context.assets.open("mozc/node_attribute_by_lid.dat").use { input ->
+                    MozcNodeAttributeTableReader().read(input)
+                }
+            }.onFailure {
+                Timber.w(it, "Mozc node attribute asset is unavailable. Falling back to legacy conversion path.")
+            }.getOrNull()
+        } else {
+            null
+        }
 
         kanaKanjiEngine.buildEngine(
             graphBuilder = graphBuilder,
             findPath = findPath,
-            connectionIdList = connectionIds,
+            connectionMatrix = connectionMatrix,
 
             systemTangoTrie = systemTangoTrie,
             systemYomiTrie = systemYomiTrie,
@@ -709,8 +724,14 @@ object AppModule {
             kotowazaSuccinctBitVectorIsLeafYomi = kotowazaSuccinctBitVectorIsLeafYomi,
             kotowazaSuccinctBitVectorTokenArray = kotowazaSuccinctBitVectorTokenArray,
             kotowazaSuccinctBitVectorTangoLBS = kotowazaSuccinctBitVectorTangoLBS,
-            engineEngine = englishEngine
+            engineEngine = englishEngine,
+            mozcSegmenter = mozcSegmenter,
+            mozcNodeAttributeTable = mozcNodeAttributeTable,
+            mozcDictionaryActive = bundledMozcDictionaryActive &&
+                mozcSegmenter != null &&
+                mozcNodeAttributeTable != null,
         )
+        kanaKanjiEngine.setDictionaryBinaryReader(dictionaryBinaryReader)
 
         return kanaKanjiEngine
     }
@@ -727,35 +748,22 @@ object AppModule {
     @Provides
     @Singleton
     @EnglishReadingLOUDS
-    fun provideEnglishReadingLOUDS(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId {
-        val zipInputStream = ZipInputStream(context.assets.open("english/reading.dat.zip"))
-        zipInputStream.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
-            return com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId()
-                .readExternalNotCompress(it)
-        }
+    fun provideEnglishReadingLOUDS(reader: DictionaryBinaryReader): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId {
+        return reader.loadEnglishReading(DictionaryFileKey.ENGLISH_READING)
     }
 
     @EnglishWordLOUDS
     @Singleton
     @Provides
-    fun provideEnglishWordLOUDS(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS {
-        val objectInputEnglish =
-            ObjectInputStream(BufferedInputStream(context.assets.open("english/word.dat")))
-        return com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS()
-            .readExternalNotCompress(objectInputEnglish)
+    fun provideEnglishWordLOUDS(reader: DictionaryBinaryReader): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS {
+        return reader.loadEnglishWord(DictionaryFileKey.ENGLISH_WORD)
     }
 
     @Provides
     @Singleton
     @EnglishTokenArray
-    fun provideEnglishTokenArray(@ApplicationContext context: Context): com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray {
-        val zipInputStream = ZipInputStream(context.assets.open("english/token.dat.zip"))
-        zipInputStream.nextEntry
-        ObjectInputStream(BufferedInputStream(zipInputStream)).use {
-            return com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray()
-                .readExternal(it)
-        }
+    fun provideEnglishTokenArray(reader: DictionaryBinaryReader): com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray {
+        return reader.loadEnglishToken(DictionaryFileKey.ENGLISH_TOKEN)
     }
 
     @Singleton

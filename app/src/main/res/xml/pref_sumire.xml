@@ -7,6 +7,16 @@
         android:title="@string/category_sumire_input_keyboard_title"
         app:isPreferenceVisible="true">
 
+        <Preference
+            android:key="sumire_keyboard_size_preference"
+            android:title="@string/sumire_keyboard_size_preference_title"
+            app:summary="@string/sumire_keyboard_size_preference_summary" />
+
+        <Preference
+            android:key="flick_keyboard_popup_view_style_preference"
+            android:title="@string/flick_keyboard_popup_view_style_preference_title"
+            android:summary="@string/flick_keyboard_popup_view_style_preference_summary" />
+
         <ListPreference
             android:defaultValue="toggle"
             android:dialogTitle="@string/sumire_input_method_dialog_title"
@@ -31,10 +41,74 @@
             app:defaultValue="false"
             app:summary="@string/kana_input_qwerty_preference_summary" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="sumire_restore_input_mode_on_restart_preference"
+            android:title="@string/sumire_restore_input_mode_on_restart_title"
+            app:summary="@string/sumire_restore_input_mode_on_restart_summary" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="sumire_restore_input_mode_on_restart_preference"
+            android:key="sumire_restore_input_mode_only_within_time_preference"
+            android:title="@string/sumire_restore_input_mode_only_within_time_title"
+            app:summary="@string/sumire_restore_input_mode_only_within_time_summary" />
+
+        <SeekBarPreference
+            android:defaultValue="5"
+            android:dependency="sumire_restore_input_mode_only_within_time_preference"
+            android:key="sumire_restore_input_mode_timeout_minutes_preference"
+            android:max="60"
+            android:title="@string/sumire_restore_input_mode_timeout_minutes_title"
+            app:min="1"
+            app:showSeekBarValue="true"
+            app:summary="@string/sumire_restore_input_mode_timeout_minutes_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="flick_keymap_guide"
+            android:title="@string/flick_keymap_guide_title"
+            app:defaultValue="false"
+            app:summary="@string/flick_keymap_guide_summary" />
+
+        <SeekBarPreference
+            android:defaultValue="9"
+            android:dependency="flick_keymap_guide"
+            android:key="flick_guide_text_size_sp_preference"
+            android:max="16"
+            android:title="@string/flick_guide_text_size_title"
+            app:min="6"
+            app:showSeekBarValue="true"
+            app:summary="@string/flick_guide_text_size_summary" />
+
+        <SeekBarPreference
+            android:defaultValue="1"
+            android:dependency="flick_keymap_guide"
+            android:key="flick_guide_max_characters_preference"
+            android:max="4"
+            android:title="@string/flick_guide_max_characters_title"
+            app:min="1"
+            app:showSeekBarValue="true"
+            app:summary="@string/flick_guide_max_characters_summary" />
+
         <Preference
             android:key="sumire_custom_angle_preference"
             android:title="@string/sumire_custom_angle_preference_title"
             app:summary="@string/sumire_custom_angle_preference_summary" />
+
+        <Preference
+            android:key="hierarchical_flick_angle_margin_preference"
+            android:title="@string/hierarchical_flick_angle_margin_preference_title"
+            app:summary="@string/hierarchical_flick_angle_margin_preference_summary" />
+
+        <Preference
+            android:key="circular_slot_action_setting_preference"
+            android:title="Circular Flick SLOT4〜6 設定"
+            app:summary="日本語・英語・数字モードの通常キーに、追加フリックアクションを設定します" />
+
+        <Preference
+            android:key="sumire_special_key_editor_preference"
+            android:title="@string/sumire_special_key_editor_preference_title"
+            app:summary="@string/sumire_special_key_editor_preference_summary" />
     </PreferenceCategory>
 
 </PreferenceScreen>

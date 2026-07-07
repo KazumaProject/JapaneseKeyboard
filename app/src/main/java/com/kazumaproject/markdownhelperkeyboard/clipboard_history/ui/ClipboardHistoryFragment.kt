@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -30,7 +31,9 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.Clipb
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentClipboardHistoryBinding
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 
@@ -127,33 +130,44 @@ class ClipboardHistoryFragment : Fragment() {
     }
 
     private fun showEditTextDialog(item: ClipboardHistoryItem) {
-        val dialogView =
-            LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_text, null)
-        val editText = dialogView.findViewById<EditText>(R.id.edit_text_clipboard_content)
-        editText.setText(item.textData)
+        viewLifecycleOwner.lifecycleScope.launch {
+            // ファイルから全文を取得
+            val fullText = withContext(Dispatchers.IO) {
+                viewModel.getFullText(item)
+            }
 
-        AlertDialog.Builder(requireContext())
-            .setTitle(getString(R.string.edit_word_title))
-            .setView(dialogView)
-            .setPositiveButton(getString(R.string.save_string)) { _, _ ->
-                val updatedText = editText.text.toString()
-                viewModel.update(item.copy(textData = updatedText))
-                Toast.makeText(context, getString(R.string.saved), Toast.LENGTH_SHORT).show()
-            }
-            .setNegativeButton(getString(R.string.cancel_string), null)
-            .setNeutralButton(getString(R.string.delete_string)) { _, _ ->
-                viewModel.delete(item.id)
-                Toast.makeText(context, getString(R.string.deleted_string), Toast.LENGTH_SHORT)
-                    .show()
-            }
-            .show()
+            val dialogView =
+                LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_text, null)
+            val editText = dialogView.findViewById<EditText>(R.id.edit_text_clipboard_content)
+            editText.setText(fullText)
+
+            AlertDialog.Builder(requireContext())
+                .setTitle(getString(R.string.edit_word_title))
+                .setView(dialogView)
+                .setPositiveButton(getString(R.string.save_string)) { _, _ ->
+                    val updatedText = editText.text.toString()
+                    // ViewModel側でファイル保存とプレビュー更新を行うようにリレーする
+                    viewModel.updateTextContent(item, updatedText)
+                    Toast.makeText(context, getString(R.string.saved), Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton(getString(R.string.cancel_string), null)
+                .setNeutralButton(getString(R.string.delete_string)) { _, _ ->
+                    viewModel.delete(item.id)
+                    Toast.makeText(context, getString(R.string.deleted_string), Toast.LENGTH_SHORT)
+                        .show()
+                }
+                .show()
+        }
     }
 
     private fun showImageDialog(item: ClipboardHistoryItem) {
         val dialogView =
             LayoutInflater.from(requireContext()).inflate(R.layout.dialog_show_image, null)
         val imageView = dialogView.findViewById<ImageView>(R.id.image_view_dialog)
-        imageView.setImageBitmap(item.imageData)
+
+        // パスから画像を読み込んで表示
+        val bitmap = BitmapFactory.decodeFile(item.contentPath)
+        imageView.setImageBitmap(bitmap)
 
         AlertDialog.Builder(requireContext())
             .setView(dialogView)
@@ -164,7 +178,7 @@ class ClipboardHistoryFragment : Fragment() {
                     .show()
             }
             .setPositiveButton(getString(R.string.share)) { _, _ ->
-                item.imageData?.let {
+                bitmap?.let {
                     shareImage(it)
                 } ?: Toast.makeText(context, getString(R.string.failed_share), Toast.LENGTH_SHORT)
                     .show()
@@ -173,33 +187,46 @@ class ClipboardHistoryFragment : Fragment() {
     }
 
     private fun shareImage(bitmap: Bitmap) {
-        try {
-            // 1. 画像をキャッシュディレクトリに一時ファイルとして保存
-            val cachePath = File(requireContext().cacheDir, "images")
-            cachePath.mkdirs() // ディレクトリを作成
-            val file = File(cachePath, "shared_image.png")
-            val stream = FileOutputStream(file)
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
-            stream.close()
+        viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                // 1. 画像をキャッシュディレクトリに一時ファイルとして保存
+                val cachePath = File(requireContext().cacheDir, "images")
+                cachePath.mkdirs()
+                val file = File(cachePath, "shared_image.png")
+                FileOutputStream(file).use { stream ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                }
 
-            // 2. FileProviderを使ってファイルのURIを取得
-            val authority = "${requireContext().packageName}.fileprovider"
-            val contentUri = FileProvider.getUriForFile(requireContext(), authority, file)
+                // 2. FileProviderを使ってファイルのURIを取得
+                val authority = "${requireContext().packageName}.fileprovider"
+                val contentUri = FileProvider.getUriForFile(requireContext(), authority, file)
 
-            // 3. 共有インテントを作成
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION) // 読み取り権限を一時的に付与
-                setDataAndType(contentUri, requireContext().contentResolver.getType(contentUri))
-                putExtra(Intent.EXTRA_STREAM, contentUri)
+                withContext(Dispatchers.Main) {
+                    // 3. 共有インテントを作成
+                    val shareIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        setDataAndType(
+                            contentUri,
+                            requireContext().contentResolver.getType(contentUri)
+                        )
+                        putExtra(Intent.EXTRA_STREAM, contentUri)
+                    }
+                    // 4. Chooserを起動
+                    startActivity(
+                        Intent.createChooser(
+                            shareIntent,
+                            getString(R.string.share_image)
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(context, getString(R.string.failed_share), Toast.LENGTH_SHORT)
+                        .show()
+                }
             }
-
-            // 4. Chooserを起動
-            startActivity(Intent.createChooser(shareIntent, getString(R.string.share_image)))
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(context, getString(R.string.failed_share), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -221,40 +248,54 @@ class ClipboardHistoryFragment : Fragment() {
     }
 
     private fun exportHistory(uri: Uri) {
-        try {
-            val jsonString = viewModel.exportToJson()
-            requireContext().contentResolver.openFileDescriptor(uri, "w")?.use {
-                FileOutputStream(it.fileDescriptor).use { fos ->
-                    fos.write(jsonString.toByteArray(Charsets.UTF_8))
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val jsonString = viewModel.exportToJson()
+                withContext(Dispatchers.IO) {
+                    requireContext().contentResolver.openFileDescriptor(uri, "w")?.use {
+                        FileOutputStream(it.fileDescriptor).use { fos ->
+                            fos.write(jsonString.toByteArray(Charsets.UTF_8))
+                        }
+                    }
                 }
+                Toast.makeText(
+                    context,
+                    getString(R.string.success_to_export_string),
+                    Toast.LENGTH_SHORT
+                ).show()
+            } catch (e: Exception) {
+                Toast.makeText(
+                    context,
+                    getString(R.string.fail_to_export_string),
+                    Toast.LENGTH_SHORT
+                ).show()
             }
-            Toast.makeText(
-                context,
-                getString(R.string.success_to_export_string),
-                Toast.LENGTH_SHORT
-            ).show()
-        } catch (e: Exception) {
-            Toast.makeText(context, getString(R.string.fail_to_export_string), Toast.LENGTH_SHORT)
-                .show()
         }
     }
 
     private fun importHistory(uri: Uri) {
-        try {
-            val jsonString = requireContext().contentResolver.openInputStream(uri)?.use {
-                it.reader(Charsets.UTF_8).readText()
-            }
-            if (jsonString != null) {
-                val count = viewModel.importFromJson(jsonString)
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val jsonString = withContext(Dispatchers.IO) {
+                    requireContext().contentResolver.openInputStream(uri)?.use {
+                        it.reader(Charsets.UTF_8).readText()
+                    }
+                }
+                if (jsonString != null) {
+                    val count = viewModel.importFromJson(jsonString)
+                    Toast.makeText(
+                        context,
+                        "${count}${getString(R.string.import_item_string)}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
                 Toast.makeText(
                     context,
-                    "${count}${getString(R.string.import_item_string)}",
-                    Toast.LENGTH_SHORT
+                    getString(R.string.fail_to_import_string),
+                    Toast.LENGTH_LONG
                 ).show()
             }
-        } catch (e: Exception) {
-            Toast.makeText(context, getString(R.string.fail_to_import_string), Toast.LENGTH_LONG)
-                .show()
         }
     }
 

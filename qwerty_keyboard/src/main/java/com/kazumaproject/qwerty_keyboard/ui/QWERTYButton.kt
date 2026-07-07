@@ -20,6 +20,17 @@ class QWERTYButton @JvmOverloads constructor(
 
     private val gestureDetector = GestureDetector(context, GestureListener())
 
+    var guideTextSizeSp: Float = DEFAULT_GUIDE_TEXT_SIZE_SP
+        set(value) {
+            field = value.coerceIn(MIN_GUIDE_TEXT_SIZE_SP, MAX_GUIDE_TEXT_SIZE_SP)
+            topRightPaint.textSize = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_SP,
+                field,
+                context.resources.displayMetrics
+            )
+            invalidate()
+        }
+
     /**
      * ✅ STEP 1: 右上の文字を保持するプロパティを追加
      * このプロパティに文字を設定すると、自動的にビューが再描画されます。
@@ -30,6 +41,12 @@ class QWERTYButton @JvmOverloads constructor(
             invalidate() // Viewの再描画をリクエストする
         }
 
+    var bottomRightChar: Char? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
+
     /**
      * ✅ STEP 2: 文字描画用のPaintオブジェクトを準備
      */
@@ -37,10 +54,9 @@ class QWERTYButton @JvmOverloads constructor(
         color =
             ContextCompat.getColor(context, com.kazumaproject.core.R.color.keyboard_icon_color)
         textAlign = Paint.Align.RIGHT
-        setPadding(0, 1, 6, 0)
         textSize = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP,
-            9f,
+            guideTextSizeSp,
             context.resources.displayMetrics
         )
     }
@@ -72,6 +88,12 @@ class QWERTYButton @JvmOverloads constructor(
             // Canvasに文字を描画
             canvas.drawText(charText, x, y, topRightPaint)
         }
+
+        bottomRightChar?.toString()?.let { charText ->
+            val x = (width - paddingRight).toFloat()
+            val y = height - paddingBottom.toFloat() - topRightPaint.fontMetrics.descent
+            canvas.drawText(charText, x, y, topRightPaint)
+        }
     }
 
 
@@ -90,5 +112,11 @@ class QWERTYButton @JvmOverloads constructor(
         override fun onLongPress(e: MotionEvent) {
             Toast.makeText(context, "Long Press", Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private companion object {
+        const val DEFAULT_GUIDE_TEXT_SIZE_SP = 9f
+        const val MIN_GUIDE_TEXT_SIZE_SP = 4f
+        const val MAX_GUIDE_TEXT_SIZE_SP = 24f
     }
 }

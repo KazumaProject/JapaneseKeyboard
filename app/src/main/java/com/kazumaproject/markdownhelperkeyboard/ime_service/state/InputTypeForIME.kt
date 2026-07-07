@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.state
 
 sealed class InputTypeForIME {
     data object None : InputTypeForIME()
+    data object TypeNull : InputTypeForIME()
     data object Text : InputTypeForIME()
     data object TextCapCharacters : InputTypeForIME()
     data object TextCapWords : InputTypeForIME()

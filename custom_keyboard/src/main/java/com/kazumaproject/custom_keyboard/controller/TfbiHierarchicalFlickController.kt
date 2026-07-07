@@ -9,7 +9,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.KeyMode
+import com.kazumaproject.custom_keyboard.data.ModeSwitchBoundary
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
@@ -32,17 +34,22 @@ class TfbiHierarchicalFlickController(
      * リスナー：最終的に入力が決定した文字を通知します。
      */
     interface TfbiListener {
+        fun onPress(character: String)
         fun onFlick(character: String)
 
         /**
          * コントローラーの内部状態が変更されたことを通知します。
          * InputMethodService はこれを受け取り、キーのラベルを "か" -> "が" などに変更します。
          */
-        fun onModeChanged(newLabel: String)
+        fun onModeChanged(
+            newLabel: String,
+            activeRootMap: Map<TfbiFlickDirection, TfbiFlickNode>
+        )
     }
 
     companion object {
         private const val MAX_ANGLE_DIFFERENCE = 70.0
+        private const val MODE_SWITCH_ANGLE_MARGIN = 20.0
         private const val TAG = "TfbiHierarchical"
     }
 
@@ -77,11 +84,15 @@ class TfbiHierarchicalFlickController(
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
     private lateinit var gestureDetector: GestureDetector
+    private var popupStyle = PopupViewStyle(100, 20f)
+
+    private var popupWindowAnchorProvider: (() -> View?)? = null
 
     // ▼▼▼ 追加: 色設定保持用の変数 ▼▼▼
     private var popupBackgroundColor: Int? = null
     private var popupHighlightedColor: Int? = null
     private var popupTextColor: Int? = null
+    private var modeSwitchAngleMargin = MODE_SWITCH_ANGLE_MARGIN
 
     /**
      * ▼▼▼ 追加: 色を設定するメソッド ▼▼▼
@@ -90,6 +101,24 @@ class TfbiHierarchicalFlickController(
         this.popupBackgroundColor = backgroundColor
         this.popupHighlightedColor = highlightedColor
         this.popupTextColor = textColor
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupStyle = PopupViewStyle(
+            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = style.backgroundColor,
+            textColor = style.textColor
+        )
+        popupView?.applyPopupViewStyle(popupStyle)
+    }
+
+    fun setModeSwitchAngleMargin(margin: Double) {
+        modeSwitchAngleMargin = margin.coerceIn(0.0, 34.0)
+    }
+
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
     }
 
     /**
@@ -148,7 +177,8 @@ class TfbiHierarchicalFlickController(
         when (event.action) {
             MotionEvent.ACTION_DOWN -> handleTouchDown(event, view)
             MotionEvent.ACTION_MOVE -> handleTouchMove(event, view)
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> handleTouchUp(event)
+            MotionEvent.ACTION_UP -> handleTouchUp(event)
+            MotionEvent.ACTION_CANCEL -> resetState()
         }
         return true
     }
@@ -168,6 +198,10 @@ class TfbiHierarchicalFlickController(
         mapStack.push(rMap)
         highlightStack.push(TfbiFlickDirection.TAP)
         currentHighlight = TfbiFlickDirection.TAP
+        val tapNode = currentMap?.get(TfbiFlickDirection.TAP)
+        if (tapNode is TfbiFlickNode.Input) {
+            listener?.onPress(tapNode.char)
+        }
 
         showPopup(view, false)
     }
@@ -232,14 +266,23 @@ class TfbiHierarchicalFlickController(
         // (TAP 以外の方向に動いたので、ジッターガードは解除)
         isJitterGuardActive = false
 
-        val highlightTargetDirection = direction
-        if (highlightTargetDirection == currentHighlight) return // 変化なし
-
         // ハイライト対象のノードを取得
-        val node = currentM[highlightTargetDirection]
+        val node = currentM[direction]
+        if (direction == currentHighlight) {
+            if (node is TfbiFlickNode.Input && isModeSwitchGestureConfident(
+                    dx = dx,
+                    dy = dy,
+                    targetDirection = direction,
+                    currentMap = currentM
+                )
+            ) {
+                updateInternalState(node.triggersMode, event)
+            }
+            return // 変化なし
+        }
 
         // ハイライトを更新
-        currentHighlight = highlightTargetDirection
+        currentHighlight = direction
 
         when (node) {
             is TfbiFlickNode.Input -> {
@@ -247,7 +290,9 @@ class TfbiHierarchicalFlickController(
                 popupView?.highlightDirection(currentHighlight)
 
                 // 状態更新
-                updateInternalState(node.triggersMode, event)
+                if (isModeSwitchGestureConfident(dx, dy, currentHighlight, currentM)) {
+                    updateInternalState(node.triggersMode, event)
+                }
             }
 
             is TfbiFlickNode.SubMenu -> {
@@ -257,7 +302,7 @@ class TfbiHierarchicalFlickController(
                 currentMap = node.nextMap
 
                 mapStack.push(currentMap!!)
-                highlightStack.push(highlightTargetDirection) // どの方向から来たかを記録
+                highlightStack.push(direction) // どの方向から来たかを記録
 
                 // ハイライトは開いた方向 (currentHighlight) を維持
                 // ただし、ジッターガードを有効にする
@@ -331,22 +376,23 @@ class TfbiHierarchicalFlickController(
 
         val rNode = rootNode ?: return
 
-        // 1. ★ 状態が変わったことを InputMethodService に通知
+        // 1. 新しいモードに基づいた新しい「ルートマップ」を取得
+        val newRootMap = getMapForCurrentMode(rNode)
+
+        // 2. ★ 状態が変わったことを InputMethodService に通知
         val newLabel = when (currentMode) {
             KeyMode.NORMAL -> rNode.label
-            KeyMode.DAKUTEN -> rNode.dakutenMap?.get(TfbiFlickDirection.TAP)
+            KeyMode.DAKUTEN -> newRootMap[TfbiFlickDirection.TAP]
                 ?.let { (it as? TfbiFlickNode.Input)?.char } ?: rNode.label
 
-            KeyMode.HANDAKUTEN -> rNode.handakutenMap?.get(TfbiFlickDirection.TAP)
+            KeyMode.HANDAKUTEN -> newRootMap[TfbiFlickDirection.TAP]
                 ?.let { (it as? TfbiFlickNode.Input)?.char } ?: rNode.label
         }
-        listener?.onModeChanged(newLabel)
+        listener?.onModeChanged(newLabel, newRootMap)
 
-        // 2. ★ マップのホットスワップ
+        // 3. ★ マップのホットスワップ
         Log.d(TAG, "Hot-swapping map stack to $newLabel map.")
 
-        // 3. 新しいモードに基づいた新しい「ルートマップ」を取得
-        val newRootMap = getMapForCurrentMode(rNode)
         this.rootMap = newRootMap
 
         // 4. 現在のスタック（パス）の情報をバックアップ
@@ -408,6 +454,53 @@ class TfbiHierarchicalFlickController(
         popupView?.highlightDirection(this.currentHighlight)
     }
 
+    private fun isModeSwitchGestureConfident(
+        dx: Float,
+        dy: Float,
+        targetDirection: TfbiFlickDirection,
+        currentMap: Map<TfbiFlickDirection, TfbiFlickNode>
+    ): Boolean {
+        val targetNode = currentMap[targetDirection] as? TfbiFlickNode.Input ?: return false
+        if (targetNode.triggersMode == null || targetNode.triggersMode == currentMode) return true
+        if (targetNode.modeSwitchBoundary != ModeSwitchBoundary.I_COLUMN_DIACRITIC) return true
+
+        val targetAngle = centerAngle(targetDirection) ?: return false
+        val angle = Math.toDegrees(atan2(dy.toDouble(), dx.toDouble()))
+        val targetDiff = angleDifference(angle, targetAngle)
+
+        val nearestAlternativeDiff = currentMap.keys
+            .filter { it != targetDirection && it != TfbiFlickDirection.TAP }
+            .mapNotNull { direction ->
+                centerAngle(direction)?.let { angleDifference(angle, it) }
+            }
+            .minOrNull()
+
+        return nearestAlternativeDiff == null ||
+                targetDiff + modeSwitchAngleMargin < nearestAlternativeDiff
+    }
+
+    private fun angleDifference(angle: Double, targetAngle: Double): Double {
+        var diff = abs(angle - targetAngle)
+        if (diff > 180) {
+            diff = 360 - diff
+        }
+        return diff
+    }
+
+    private fun centerAngle(direction: TfbiFlickDirection): Double? {
+        return when (direction) {
+            TfbiFlickDirection.RIGHT -> 0.0
+            TfbiFlickDirection.DOWN_RIGHT -> 35.0
+            TfbiFlickDirection.DOWN -> 90.0
+            TfbiFlickDirection.DOWN_LEFT -> 125.0
+            TfbiFlickDirection.LEFT -> 180.0
+            TfbiFlickDirection.UP_LEFT -> -125.0
+            TfbiFlickDirection.UP -> -90.0
+            TfbiFlickDirection.UP_RIGHT -> -35.0
+            TfbiFlickDirection.TAP -> null
+        }
+    }
+
     // --- ポップアップとUIのヘルパー ---
 
     /**
@@ -461,23 +554,28 @@ class TfbiHierarchicalFlickController(
             if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
                 setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
             }
+            applyPopupViewStyle(popupStyle)
             setCharacters(tapCharacter, petalChars)
             highlightDirection(TfbiFlickDirection.TAP)
         }
 
-        val popupWidth = anchorView.width * 3
-        val popupHeight = anchorView.height * 3
+        val scale = popupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        val popupWidth = (anchorView.width * 3 * scale).toInt().coerceAtLeast(1)
+        val popupHeight = (anchorView.height * 3 * scale).toInt().coerceAtLeast(1)
         popupWindow = PopupWindow(popupView, popupWidth, popupHeight, false).apply {
             isTouchable = false
             isFocusable = false
             setBackgroundDrawable(android.graphics.Color.TRANSPARENT.toDrawable())
             isClippingEnabled = false
         }
-        if (!anchorView.isAttachedToWindow) return
-        val location = IntArray(2).also { anchorView.getLocationInWindow(it) }
-        val offsetX = location[0] - anchorView.width
-        val offsetY = location[1] - anchorView.height
-        popupWindow?.showAtLocation(anchorView, Gravity.NO_GRAVITY, offsetX, offsetY)
+        val windowAnchor = popupWindowAnchorProvider?.invoke() ?: anchorView
+        if (!isAnchorReady(anchorView, windowAnchor)) return
+        val location = getLocationRelativeToWindowAnchor(anchorView, windowAnchor)
+        val offsetX = location[0] + anchorView.width / 2 - popupWidth / 2
+        val offsetY = location[1] + anchorView.height / 2 - popupHeight / 2
+        runCatching {
+            popupWindow?.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, offsetX, offsetY)
+        }
     }
 
     /**
@@ -534,7 +632,9 @@ class TfbiHierarchicalFlickController(
             currentMode = KeyMode.NORMAL
             val rNode = rootNode
             if (rNode != null) {
-                listener?.onModeChanged(rNode.label)
+                val activeRootMap = getMapForCurrentMode(rNode)
+                rootMap = activeRootMap
+                listener?.onModeChanged(rNode.label, activeRootMap)
             }
         }
     }
@@ -580,5 +680,12 @@ class TfbiHierarchicalFlickController(
         }
 
         return closestDirectionData.first
+    }
+
+    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
+        if (!keyAnchor.isAttachedToWindow) return false
+        if (windowAnchor == null) return false
+        if (!windowAnchor.isAttachedToWindow) return false
+        return windowAnchor.windowToken != null
     }
 }

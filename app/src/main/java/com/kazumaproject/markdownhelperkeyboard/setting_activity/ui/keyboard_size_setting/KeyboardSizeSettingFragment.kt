@@ -22,6 +22,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyboardSettingBinding
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_size_setting.adapter.KeyboardViewPagerAdapter
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.navigateSafely
 import dagger.hilt.android.AndroidEntryPoint
 import timber.log.Timber
 import javax.inject.Inject
@@ -37,7 +38,6 @@ class KeyboardSettingFragment : Fragment() {
     private val binding get() = _binding!!
 
     private var isRightAligned = true
-    private var isFloatingMode = false
     private var areControlsVisible = true
 
     private val minHeightDp = 100
@@ -55,23 +55,24 @@ class KeyboardSettingFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
         setupMenu()
         isRightAligned = appPreference.keyboard_position ?: true
-        isFloatingMode = appPreference.is_floating_mode ?: false
 
         setupViewPager()
         applyCurrentPageDimensions()
         setupKeyboardPositionButton()
-        setupFloatingButton()
         setupResetButton()
 
         updateKeyboardAlignment()      // constraints + horizontal margin apply
-        updateFloatingModeUI()
         setupResizeHandles()
         setupMoveHandle()             // vertical + horizontal move
 
         updateControlsVisibility()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        (requireActivity() as AppCompatActivity).supportActionBar?.title = ""
     }
 
     private fun setupViewPager() {
@@ -93,9 +94,6 @@ class KeyboardSettingFragment : Fragment() {
                 }
 
                 updateKeyboardAlignment()
-
-                binding.floatingKeyboardSettingBtn.visibility =
-                    if (position == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) View.VISIBLE else View.GONE
             }
         })
 
@@ -113,8 +111,6 @@ class KeyboardSettingFragment : Fragment() {
         }
 
         updateTooltipUI(binding.keyboardViewPager.currentItem)
-        binding.floatingKeyboardSettingBtn.visibility =
-            if (binding.keyboardViewPager.currentItem == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) View.VISIBLE else View.GONE
     }
 
     private fun applyCurrentPageDimensions() {
@@ -219,6 +215,13 @@ class KeyboardSettingFragment : Fragment() {
                     R.id.action_toggle_visibility -> {
                         areControlsVisible = !areControlsVisible
                         updateControlsVisibility()
+                        true
+                    }
+
+                    R.id.action_keyboard_size_direct_input -> {
+                        navigateSafely(
+                            R.id.action_keyboardSettingFragment_to_keyboardSizeDirectInputFragment
+                        )
                         true
                     }
 
@@ -465,14 +468,6 @@ class KeyboardSettingFragment : Fragment() {
         }
     }
 
-    private fun setupFloatingButton() {
-        binding.floatingKeyboardSettingBtn.setOnClickListener {
-            isFloatingMode = !isFloatingMode
-            appPreference.is_floating_mode = isFloatingMode
-            updateFloatingModeUI()
-        }
-    }
-
     private fun setupResetButton() {
         binding.resetLayoutButton.setOnClickListener {
             val currentPage = binding.keyboardViewPager.currentItem
@@ -578,25 +573,6 @@ class KeyboardSettingFragment : Fragment() {
         clampHorizontalMarginToBounds()
     }
 
-    private fun updateFloatingModeUI() {
-        if (isFloatingMode) {
-            binding.floatingKeyboardSettingBtn.text =
-                getString(R.string.key_size_floating_button_text_on)
-            binding.floatingKeyboardSettingBtn.setBackgroundColor(
-                ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.blue)
-            )
-        } else {
-            binding.floatingKeyboardSettingBtn.text =
-                getString(R.string.key_size_floating_button_text_off)
-            binding.floatingKeyboardSettingBtn.setBackgroundColor(
-                ContextCompat.getColor(
-                    requireContext(),
-                    com.kazumaproject.core.R.color.qwety_key_bg_color
-                )
-            )
-        }
-    }
-
     private fun updateTooltipUI(selectedPosition: Int) {
         val selectedColor =
             ContextCompat.getColor(requireContext(), com.kazumaproject.core.R.color.blue)
@@ -620,12 +596,6 @@ class KeyboardSettingFragment : Fragment() {
         binding.resetLayoutButton.visibility = visibility
         binding.tenkeyTooltipButton.visibility = visibility
         binding.qwertyTooltipButton.visibility = visibility
-
-        if (areControlsVisible && binding.keyboardViewPager.currentItem == KeyboardViewPagerAdapter.TEN_KEY_PAGE_POSITION) {
-            binding.floatingKeyboardSettingBtn.visibility = View.VISIBLE
-        } else {
-            binding.floatingKeyboardSettingBtn.visibility = View.GONE
-        }
     }
 
     override fun onDestroyView() {

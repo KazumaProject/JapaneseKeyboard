@@ -32,6 +32,12 @@ data class KeyDefinition(
     val keyType: KeyType,     // キーの種類 (NORMAL, CROSS_FLICKなど)
     val isSpecialKey: Boolean = false,
     val drawableResId: Int? = null,
+    val iconType: String? = null,
+    val iconValue: String? = null,
     val keyIdentifier: String,
-    val action: String? = null
+    val action: String? = null,
+    val rowUnits: Int? = null,
+    val columnUnits: Int? = null,
+    val rowSpanUnits: Int? = null,
+    val columnSpanUnits: Int? = null
 )

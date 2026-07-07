@@ -18,8 +18,29 @@ data class KeyWithFlicks(
 
     @Relation(
         parentColumn = "keyId",
+        entity = CircularFlickMapping::class,
+        entityColumn = "ownerKeyId"
+    )
+    val circularFlicks: List<CircularFlickMapping>,
+
+    @Relation(
+        parentColumn = "keyId",
         entity = TwoStepFlickMapping::class,
         entityColumn = "ownerKeyId"
     )
-    val twoStepFlicks: List<TwoStepFlickMapping>
+    val twoStepFlicks: List<TwoStepFlickMapping>,
+
+    @Relation(
+        parentColumn = "keyId",
+        entity = LongPressFlickMapping::class,
+        entityColumn = "ownerKeyId"
+    )
+    val longPressFlicks: List<LongPressFlickMapping>,
+
+    @Relation(
+        parentColumn = "keyId",
+        entity = TwoStepLongPressMappingEntity::class,
+        entityColumn = "ownerKeyId"
+    )
+    val twoStepLongPressFlicks: List<TwoStepLongPressMappingEntity>
 )

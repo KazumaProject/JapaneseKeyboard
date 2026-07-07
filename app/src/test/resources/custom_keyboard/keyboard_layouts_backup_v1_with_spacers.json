@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "layouts": [
+    {
+      "layout": {
+        "layoutId": 31,
+        "name": "V1 With Spacer",
+        "columnCount": 4,
+        "rowCount": 2,
+        "isRomaji": false,
+        "isDirectMode": false,
+        "createdAt": 1754191047725,
+        "stableId": "stable-v1-spacer"
+      },
+      "keysWithFlicks": [
+        {
+          "key": {
+            "keyId": 101,
+            "ownerLayoutId": 31,
+            "keyIdentifier": "v1-spacer-key-1",
+            "label": "A",
+            "row": 0,
+            "column": 0,
+            "rowSpan": 1,
+            "colSpan": 1,
+            "keyType": "NORMAL",
+            "isSpecialKey": false
+          },
+          "flicks": []
+        }
+      ],
+      "spacers": [
+        {
+          "spacerId": 1,
+          "ownerLayoutId": 31,
+          "itemIdentifier": "spacer-1",
+          "rowUnits": 0,
+          "columnUnits": 2,
+          "rowSpanUnits": 2,
+          "columnSpanUnits": 2,
+          "sortOrder": 0
+        }
+      ]
+    }
+  ]
+}

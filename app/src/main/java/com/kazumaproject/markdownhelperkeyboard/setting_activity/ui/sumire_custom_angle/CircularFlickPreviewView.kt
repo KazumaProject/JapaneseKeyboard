@@ -7,7 +7,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
-import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -17,14 +17,17 @@ class CircularFlickPreviewView @JvmOverloads constructor(
 
     // 方向ごとの色定義
     private val directionColors = mapOf(
-        FlickDirection.UP to Color.parseColor("#FF5252"),            // 赤
-        FlickDirection.UP_RIGHT_FAR to Color.parseColor("#448AFF"), // 青
-        FlickDirection.DOWN to Color.parseColor("#69F0AE"),         // 緑
-        FlickDirection.UP_LEFT_FAR to Color.parseColor("#FFAB40")   // オレンジ
+        CircularFlickDirection.SLOT_0 to Color.parseColor("#FF5252"),
+        CircularFlickDirection.SLOT_1 to Color.parseColor("#448AFF"),
+        CircularFlickDirection.SLOT_2 to Color.parseColor("#69F0AE"),
+        CircularFlickDirection.SLOT_3 to Color.parseColor("#FFAB40"),
+        CircularFlickDirection.SLOT_4 to Color.parseColor("#7E57C2"),
+        CircularFlickDirection.SLOT_5 to Color.parseColor("#26A69A"),
+        CircularFlickDirection.SLOT_6 to Color.parseColor("#EC407A")
     )
 
     // 現在の設定値 (FlickKeyboardViewと同じデータ構造)
-    private var ranges: Map<FlickDirection, Pair<Float, Float>> = emptyMap()
+    private var ranges: Map<CircularFlickDirection, Pair<Float, Float>> = emptyMap()
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.FILL
@@ -42,7 +45,7 @@ class CircularFlickPreviewView @JvmOverloads constructor(
 
     private val rectF = RectF()
 
-    fun setRanges(newRanges: Map<FlickDirection, Pair<Float, Float>>) {
+    fun setRanges(newRanges: Map<CircularFlickDirection, Pair<Float, Float>>) {
         this.ranges = newRanges
         invalidate() // 再描画
     }
@@ -81,11 +84,14 @@ class CircularFlickPreviewView @JvmOverloads constructor(
 
             // 方向名の略称などを描画
             val label = when (direction) {
-                FlickDirection.UP -> "UP"
-                FlickDirection.DOWN -> "DOWN"
-                FlickDirection.UP_RIGHT_FAR -> "RIGHT"
-                FlickDirection.UP_LEFT_FAR -> "LEFT"
-                else -> ""
+                CircularFlickDirection.SLOT_0 -> "SLOT_0"
+                CircularFlickDirection.SLOT_1 -> "SLOT_1"
+                CircularFlickDirection.SLOT_2 -> "SLOT_2"
+                CircularFlickDirection.SLOT_3 -> "SLOT_3"
+                CircularFlickDirection.SLOT_4 -> "SLOT_4"
+                CircularFlickDirection.SLOT_5 -> "SLOT_5"
+                CircularFlickDirection.SLOT_6 -> "SLOT_6"
+                CircularFlickDirection.TAP -> ""
             }
             canvas.drawText(label, labelX, labelY, textPaint)
         }

@@ -23,9 +23,36 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.** { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export.** { *; }
+-keep class com.kazumaproject.custom_keyboard.data.** { *; }
+-keep enum com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryEntry { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NgramRuleBackup { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.TwoNodeRuleBackup { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.ThreeNodeRuleBackup { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NodeFeatureInput { *; }
+
+# Keep Gson generic type metadata and annotations used by backup import/export parsing.
+-keepattributes Signature
+-keepattributes RuntimeVisibleAnnotations
+-keepattributes RuntimeInvisibleAnnotations
+-keepattributes *Annotation*
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep class * extends com.google.gson.reflect.TypeToken
+
+# Legacy data compatibility: Pair fields may still appear in old JSON payloads.
+-keep class kotlin.Pair { *; }
+
+# Gemma LiteRT-LM is loaded entirely via reflection from GemmaTranslationManager.
+# Keep class names, members, and singleton fields such as NativeLibraryLoader.INSTANCE
+# so release builds behave the same as debug builds.
+-keep class com.google.ai.edge.litertlm.** { *; }
+
+# LiteRT-LM references kotlin-reflect helper APIs from code paths we do not use.
+-dontwarn kotlin.reflect.full.KClasses

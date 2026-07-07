@@ -1,9 +1,9 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
 import com.kazumaproject.graph.Node
+import com.kazumaproject.graph.MozcNodeType
 
 object Other {
-    const val NUM_OF_CONNECTION_ID = 2671
     val BOS = Node(
         l = 0,
         r = 0,
@@ -13,6 +13,7 @@ object Other {
         tango = "BOS",
         len = 0,
         yomiUsed = "BOS",
-        0,
+        sPos = 0,
+        mozcNodeType = MozcNodeType.BOS,
     )
 }

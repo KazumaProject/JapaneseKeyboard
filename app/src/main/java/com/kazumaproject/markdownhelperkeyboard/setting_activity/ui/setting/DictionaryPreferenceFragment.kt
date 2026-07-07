@@ -1,18 +1,14 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
-import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
+import android.view.View
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SeekBarPreference
 import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
-import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -20,9 +16,6 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
 
     @Inject
     lateinit var appPreference: AppPreference
-
-    @Inject
-    lateinit var kanaKanjiEngine: KanaKanjiEngine
 
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.pref_dictionary, rootKey)
@@ -45,11 +38,34 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val ngWordPreference = findPreference<Preference>("ng_word_preference")
-        ngWordPreference?.setOnPreferenceClickListener {
-            findNavController().navigate(
-                R.id.action_navigation_setting_to_ngWordFragment
+        findPreference<Preference>("ng_word_preference")?.setOnPreferenceClickListener {
+            navigateSafely(
+                R.id.ngWordFragment
             )
+            true
+        }
+
+        findPreference<Preference>("system_user_dictionary_builder_preference")?.setOnPreferenceClickListener {
+            navigateSafely(
+                R.id.systemUserDictionaryBuilderFragment
+            )
+            true
+        }
+
+        findPreference<Preference>("n_gram_rule_preference")?.setOnPreferenceClickListener {
+            navigateSafely(
+                R.id.ngramRuleFragment
+            )
+            true
+        }
+
+        findPreference<Preference>("candidate_order_override_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.candidateOrderOverrideFragment)
+            true
+        }
+
+        findPreference<Preference>("external_dictionary_settings_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.externalDictionarySettingsFragment)
             true
         }
 
@@ -57,11 +73,10 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<SeekBarPreference>("learn_prediction_preference")
         learnDictionaryPrefixSeekBar?.apply {
             appPreference.learn_prediction_preference.let {
-                this.summary =
-                    resources.getString(R.string.learn_dictionary_prefix_match_summary, it)
+                summary = resources.getString(R.string.learn_dictionary_prefix_match_summary, it)
             }
-            this.setOnPreferenceChangeListener { _, newValue ->
-                this.summary =
+            setOnPreferenceChangeListener { _, newValue ->
+                summary =
                     resources.getString(
                         R.string.learn_dictionary_prefix_match_summary,
                         newValue as Int
@@ -74,11 +89,10 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             findPreference<SeekBarPreference>("user_dictionary_prefix_match_number")
         userDictionaryPrefixSeekBar?.apply {
             appPreference.user_dictionary_prefix_match_number_preference?.let {
-                this.summary =
-                    resources.getString(R.string.user_dictionary_prefix_match_summary, it)
+                summary = resources.getString(R.string.user_dictionary_prefix_match_summary, it)
             }
-            this.setOnPreferenceChangeListener { _, newValue ->
-                this.summary =
+            setOnPreferenceChangeListener { _, newValue ->
+                summary =
                     resources.getString(
                         R.string.user_dictionary_prefix_match_summary,
                         newValue as Int
@@ -87,75 +101,11 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             }
         }
 
-        val mozcUTPersonName =
-            findPreference<SwitchPreferenceCompat>("mozc_ut_person_name_preference")
-        mozcUTPersonName?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildPersonNamesDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releasePersonNamesDictionary()
-                    }
-                }
-                true
-            }
-        }
+        applyLegacySearchResultFilterIfNeeded()
+    }
 
-        val mozcUTPlaces = findPreference<SwitchPreferenceCompat>("mozc_ut_places_preference")
-        mozcUTPlaces?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildPlaceDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releasePlacesDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        val mozcUTWiki = findPreference<SwitchPreferenceCompat>("mozc_ut_wiki_preference")
-        mozcUTWiki?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildWikiDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releaseWikiDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        val mozcUTNeologd = findPreference<SwitchPreferenceCompat>("mozc_ut_neologd_preference")
-        mozcUTNeologd?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildNeologdDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releaseNeologdDictionary()
-                    }
-                }
-                true
-            }
-        }
-
-        val mozcUTWeb = findPreference<SwitchPreferenceCompat>("mozc_ut_web_preference")
-        mozcUTWeb?.apply {
-            this.setOnPreferenceChangeListener { _, newValue ->
-                viewLifecycleOwner.lifecycleScope.launch(Dispatchers.IO) {
-                    if (newValue as Boolean) {
-                        kanaKanjiEngine.buildWebDictionary(requireContext())
-                    } else {
-                        kanaKanjiEngine.releaseWebDictionary()
-                    }
-                }
-                true
-            }
-        }
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        scrollToHighlightedPreferenceAfterLayout(view)
     }
 }

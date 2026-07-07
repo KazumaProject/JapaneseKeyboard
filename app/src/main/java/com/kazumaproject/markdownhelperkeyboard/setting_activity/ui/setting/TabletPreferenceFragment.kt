@@ -9,5 +9,6 @@ import dagger.hilt.android.AndroidEntryPoint
 class TabletPreferenceFragment : PreferenceFragmentCompat() {
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.pref_tablet, rootKey)
+        applyLegacySearchResultFilterIfNeeded()
     }
 }

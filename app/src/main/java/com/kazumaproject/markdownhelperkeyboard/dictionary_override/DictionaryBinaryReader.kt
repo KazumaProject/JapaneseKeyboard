@@ -1,0 +1,241 @@
+package com.kazumaproject.markdownhelperkeyboard.dictionary_override
+
+import com.kazumaproject.Louds.LOUDS
+import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.connection_id.ConnectionIdBuilder
+import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
+import timber.log.Timber
+import java.io.BufferedInputStream
+import java.io.BufferedReader
+import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.io.InputStreamReader
+import java.io.ObjectInputStream
+import java.io.RandomAccessFile
+import java.nio.channels.FileChannel
+import java.util.zip.ZipInputStream
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class DictionaryBinaryReader @Inject constructor(
+    private val resolver: DictionarySourceResolver,
+    private val store: DictionaryOverrideStore,
+) {
+    @Volatile
+    private var posTableCache: PosTableCache? = null
+
+    @Volatile
+    private var connectionMatrixCache: ConnectionMatrixCache? = null
+
+    fun openZipAwareObjectInputStream(input: InputStream, debugName: String): ObjectInputStream =
+        openZipAwareObject(input, debugName)
+
+    fun openZipAwareRawInputStream(input: InputStream, debugName: String): InputStream {
+        return openZipAwareRaw(input, debugName)
+    }
+
+    fun openZipAwareTextReader(input: InputStream, debugName: String): BufferedReader =
+        openZipAwareText(input, debugName)
+
+    fun resolveCategoryLoadState(category: DictionaryCategory): DictionaryCategoryLoadState =
+        resolver.resolveCategoryLoadState(category)
+
+    fun loadLouds(key: DictionaryFileKey): LOUDS =
+        loadWithBundledFallback(key) { input ->
+            openZipAwareObjectInputStream(input, key.name).use {
+                LOUDS().readExternalNotCompress(it)
+            }
+        }
+
+    fun loadLoudsWithTermId(key: DictionaryFileKey): LOUDSWithTermId =
+        loadWithBundledFallback(key) { input ->
+            openZipAwareObjectInputStream(input, key.name).use {
+                LOUDSWithTermId().readExternalNotCompress(it)
+            }
+        }
+
+    fun loadTokenArray(key: DictionaryFileKey): TokenArray =
+        TokenArray().also { tokenArray ->
+            loadTokenArrayInto(key, tokenArray)
+            readPosTableInto(tokenArray)
+        }
+
+    fun loadTokenArrayInto(key: DictionaryFileKey, tokenArray: TokenArray) {
+        loadWithBundledFallback(key) { input ->
+            openZipAwareObjectInputStream(input, key.name).use { objectInput ->
+                tokenArray.readExternal(objectInput)
+            }
+        }
+    }
+
+    fun readPosTableInto(tokenArray: TokenArray) {
+        val posTable = loadPosTable()
+        tokenArray.setPOSTable(posTable.leftIds, posTable.rightIds)
+    }
+
+    fun loadConnectionIds(key: DictionaryFileKey = DictionaryFileKey.CONNECTION_ID): ShortArray =
+        loadWithBundledFallback(key) { input ->
+            openZipAwareRawInputStream(input, key.name).use { raw ->
+                ConnectionIdBuilder().readShortArrayFromBytes(raw)
+            }
+        }
+
+    fun loadConnectionMatrix(key: DictionaryFileKey = DictionaryFileKey.CONNECTION_ID): ConnectionMatrix.CostTable {
+        val revision = store.currentRevision
+        connectionMatrixCache
+            ?.takeIf { it.revision == revision && it.key == key }
+            ?.let { return it.costTable }
+
+        return synchronized(this) {
+            connectionMatrixCache
+                ?.takeIf { it.revision == revision && it.key == key }
+                ?.costTable
+                ?: createMappedConnectionMatrix(key, revision)
+                    .also { connectionMatrixCache = ConnectionMatrixCache(revision, key, it) }
+        }
+    }
+
+    fun openIdDefReader(key: DictionaryFileKey = DictionaryFileKey.ID_DEF): BufferedReader {
+        val bytes = loadWithBundledFallback(key) { input ->
+            openZipAwareRawInputStream(input, key.name).use { it.readBytes() }
+        }
+        return BufferedReader(InputStreamReader(ByteArrayInputStream(bytes), Charsets.UTF_8))
+    }
+
+    fun loadEnglishReading(key: DictionaryFileKey): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId =
+        loadWithBundledFallback(key) { input ->
+            openZipAwareObjectInputStream(input, key.name).use {
+                com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId()
+                    .readExternalNotCompress(it)
+            }
+        }
+
+    fun loadEnglishWord(key: DictionaryFileKey): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS =
+        loadWithBundledFallback(key) { input ->
+            openZipAwareObjectInputStream(input, key.name).use {
+                com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS()
+                    .readExternalNotCompress(it)
+            }
+        }
+
+    fun loadEnglishToken(key: DictionaryFileKey): com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray =
+        loadWithBundledFallback(key) { input ->
+            openZipAwareObjectInputStream(input, key.name).use {
+                com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray()
+                    .readExternal(it)
+            }
+        }
+
+    private fun <T> loadWithBundledFallback(
+        key: DictionaryFileKey,
+        loader: (InputStream) -> T,
+    ): T {
+        val shouldUseOverride = resolver.shouldUseOverride(key)
+        if (shouldUseOverride) {
+            runCatching {
+                resolver.openOverrideForKey(key).use(loader)
+            }.onSuccess { return it }
+                .onFailure { error ->
+                    Timber.w(error, "External dictionary override failed for %s. Falling back to bundled asset.", key)
+                    store.markInvalid(key, error.message ?: error::class.java.simpleName)
+                }
+        }
+        return resolver.openBundledForKey(key).use(loader)
+    }
+
+    private fun loadPosTable(): PosTableCache {
+        val revision = store.currentRevision
+        posTableCache
+            ?.takeIf { it.revision == revision }
+            ?.let { return it }
+
+        return synchronized(this) {
+            posTableCache
+                ?.takeIf { it.revision == revision }
+                ?: loadWithBundledFallback(DictionaryFileKey.POS_TABLE) { input ->
+                    openZipAwareObjectInputStream(input, DictionaryFileKey.POS_TABLE.name).use { objectInput ->
+                        PosTableCache(
+                            revision = revision,
+                            leftIds = objectInput.readObject() as ShortArray,
+                            rightIds = objectInput.readObject() as ShortArray,
+                        )
+                    }
+                }.also { posTableCache = it }
+        }
+    }
+
+    private data class PosTableCache(
+        val revision: Long,
+        val leftIds: ShortArray,
+        val rightIds: ShortArray,
+    )
+
+    private fun createMappedConnectionMatrix(
+        key: DictionaryFileKey,
+        revision: Long,
+    ): ConnectionMatrix.CostTable {
+        val cacheFile = mappedConnectionMatrixFile(key, revision)
+        cacheFile.parentFile?.mkdirs()
+        loadWithBundledFallback(key) { input ->
+            openZipAwareRawInputStream(input, key.name).use { raw ->
+                FileOutputStream(cacheFile, false).use { output ->
+                    raw.copyTo(output)
+                }
+            }
+        }
+        cacheFile.parentFile
+            ?.listFiles { file -> file.name.startsWith("${key.name}_") && file != cacheFile }
+            ?.forEach { file -> runCatching { file.delete() } }
+
+        val mappedBuffer = RandomAccessFile(cacheFile, "r").channel.use { channel ->
+            channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size())
+        }
+        return ConnectionMatrix.fromByteBuffer(mappedBuffer)
+    }
+
+    private fun mappedConnectionMatrixFile(
+        key: DictionaryFileKey,
+        revision: Long,
+    ): File {
+        val baseDir = store.directory.parentFile ?: store.directory
+        return File(baseDir, "dictionary_runtime_cache/${key.name}_$revision.bin")
+    }
+
+    private data class ConnectionMatrixCache(
+        val revision: Long,
+        val key: DictionaryFileKey,
+        val costTable: ConnectionMatrix.CostTable,
+    )
+
+    companion object {
+        private val ZIP_SIGNATURE = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
+
+        fun openZipAwareObject(input: InputStream, debugName: String): ObjectInputStream =
+            ObjectInputStream(BufferedInputStream(openZipAwareRaw(input, debugName)))
+
+        fun openZipAwareText(input: InputStream, debugName: String): BufferedReader =
+            BufferedReader(InputStreamReader(openZipAwareRaw(input, debugName), Charsets.UTF_8))
+
+        fun openZipAwareRaw(input: InputStream, debugName: String): InputStream {
+            val buffered = if (input.markSupported()) input else BufferedInputStream(input)
+            buffered.mark(ZIP_SIGNATURE.size)
+            val header = ByteArray(ZIP_SIGNATURE.size)
+            val read = buffered.read(header)
+            buffered.reset()
+            if (read == ZIP_SIGNATURE.size && header.contentEquals(ZIP_SIGNATURE)) {
+                val zipInputStream = ZipInputStream(buffered)
+                var entry = zipInputStream.nextEntry
+                while (entry != null && entry.isDirectory) {
+                    entry = zipInputStream.nextEntry
+                }
+                require(entry != null) { "No readable entry found in $debugName" }
+                return zipInputStream
+            }
+            return buffered
+        }
+    }
+}

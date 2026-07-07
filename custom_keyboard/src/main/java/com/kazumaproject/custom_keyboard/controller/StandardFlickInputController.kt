@@ -9,6 +9,7 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
@@ -18,10 +19,12 @@ import kotlin.math.sqrt
 class StandardFlickInputController(context: Context) {
 
     interface StandardFlickListener {
+        fun onPress(character: String)
         fun onFlick(character: String)
     }
 
     var listener: StandardFlickListener? = null
+    private var popupWindowAnchorProvider: (() -> View?)? = null
     private var characterMap: Map<FlickDirection, String> = emptyMap()
     private var anchorView: View? = null
     private var segmentedDrawable: SegmentedBackgroundDrawable? = null
@@ -36,6 +39,7 @@ class StandardFlickInputController(context: Context) {
     private var popupBackgroundColor: Int = Color.WHITE
     private var popupTextColor: Int = Color.BLACK
     private var popupStrokeColor: Int = Color.LTGRAY
+    private var popupStyle = PopupViewStyle(100, 19f)
 
     init {
         popupWindow = PopupWindow(
@@ -57,6 +61,20 @@ class StandardFlickInputController(context: Context) {
         this.popupBackgroundColor = theme.segmentHighlightGradientStartColor
         this.popupTextColor = theme.textColor
         this.popupStrokeColor = theme.separatorColor
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupStyle = PopupViewStyle(
+            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = style.backgroundColor,
+            textColor = style.textColor
+        )
+        popupView.applyPopupViewStyle(popupStyle)
+    }
+
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -88,6 +106,7 @@ class StandardFlickInputController(context: Context) {
                 anchorView = view
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
+                listener?.onPress(characterMap[FlickDirection.TAP] ?: "")
                 segmentedDrawable?.highlightDirection = FlickDirection.TAP
                 showPopup(FlickDirection.TAP)
                 return true
@@ -102,7 +121,7 @@ class StandardFlickInputController(context: Context) {
                 return true
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 segmentedDrawable?.highlightDirection = null
                 val dx = event.rawX - initialTouchX
                 val dy = event.rawY - initialTouchY
@@ -115,22 +134,29 @@ class StandardFlickInputController(context: Context) {
                 dismissPopup()
                 return true
             }
+
+            MotionEvent.ACTION_CANCEL -> {
+                segmentedDrawable?.highlightDirection = null
+                dismissPopup()
+                anchorView = null
+                return true
+            }
         }
         return false
     }
 
     private fun showPopup(direction: FlickDirection) {
-        val currentAnchor = anchorView ?: return
-
-        // ★★★ START: 修正箇所 ★★★
-        // PopupWindowを表示する前に、アンカービューがウィンドウにアタッチされているか必ず確認する。
-        // これで BadTokenException クラッシュを回避できる。
-        if (!currentAnchor.isAttachedToWindow) {
+        val keyAnchor = anchorView ?: return
+        val windowAnchor = popupWindowAnchorProvider?.invoke() ?: keyAnchor
+        if (!isAnchorReady(keyAnchor, windowAnchor)) {
+            if (popupWindow.isShowing) {
+                popupWindow.dismiss()
+            }
             return
         }
-        // ★★★ END: 修正箇所 ★★★
 
         popupView.setColors(popupBackgroundColor, popupTextColor, popupStrokeColor)
+        popupView.applyPopupViewStyle(popupStyle)
 
         if (direction == FlickDirection.TAP) {
             popupView.updateMultiCharText(characterMap)
@@ -142,9 +168,8 @@ class StandardFlickInputController(context: Context) {
         val baseOffsetY = 10
         val flickUpAdditionalOffset = 80
 
-        val location = IntArray(2)
-        currentAnchor.getLocationInWindow(location)
-        val x = location[0] + (currentAnchor.width / 2) - (popupView.viewSize / 2)
+        val location = getLocationRelativeToWindowAnchor(keyAnchor, windowAnchor)
+        val x = location[0] + (keyAnchor.width / 2) - (popupView.viewSize / 2)
         var y = location[1] - popupView.viewSize - baseOffsetY
 
         if (direction == FlickDirection.UP) {
@@ -152,9 +177,13 @@ class StandardFlickInputController(context: Context) {
         }
 
         if (popupWindow.isShowing) {
-            popupWindow.update(x, y, -1, -1)
+            runCatching {
+                popupWindow.update(x, y, -1, -1)
+            }
         } else {
-            popupWindow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
+            runCatching {
+                popupWindow.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, x, y)
+            }
         }
     }
 
@@ -182,5 +211,12 @@ class StandardFlickInputController(context: Context) {
 
     fun cancel() {
         dismissPopup()
+    }
+
+    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
+        if (!keyAnchor.isAttachedToWindow) return false
+        if (windowAnchor == null) return false
+        if (!windowAnchor.isAttachedToWindow) return false
+        return windowAnchor.windowToken != null
     }
 }

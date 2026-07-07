@@ -3,6 +3,17 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory android:title="@string/category_custom_keyboard_title">
+
+        <Preference
+            android:key="custom_keyboard_size_preference"
+            android:title="@string/custom_keyboard_size_preference_title"
+            app:summary="@string/custom_keyboard_size_preference_summary" />
+
+        <Preference
+            android:key="flick_keyboard_popup_view_style_preference"
+            android:title="@string/flick_keyboard_popup_view_style_preference_title"
+            android:summary="@string/flick_keyboard_popup_view_style_preference_summary" />
+
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="custom_keyboard_two_words_preference"
@@ -16,6 +27,52 @@
             android:summaryOff="@string/custom_keyboard_suggestion_summary_off"
             android:summaryOn="@string/custom_keyboard_suggestion_summary_on"
             android:title="@string/custom_keyboard_suggestion_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="remember_last_custom_keyboard_preference"
+            android:summaryOff="@string/remember_last_custom_keyboard_summary_off"
+            android:summaryOn="@string/remember_last_custom_keyboard_summary_on"
+            android:title="@string/remember_last_custom_keyboard_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="remember_custom_keyboard_input_mode_preference"
+            android:summaryOff="@string/remember_custom_keyboard_input_mode_summary_off"
+            android:summaryOn="@string/remember_custom_keyboard_input_mode_summary_on"
+            android:title="@string/remember_custom_keyboard_input_mode_title" />
+
+        <SwitchPreferenceCompat
+            android:key="custom_romaji_zenkaku_conversion_enable_preference"
+            android:title="@string/custom_romaji_zenkaku_conversion_enable_preference_title"
+            app:defaultValue="true"
+            app:summary="@string/custom_romaji_zenkaku_conversion_enable_preference_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="flick_keymap_guide"
+            android:title="@string/flick_keymap_guide_title"
+            app:defaultValue="false"
+            app:summary="@string/flick_keymap_guide_summary" />
+
+        <SeekBarPreference
+            android:defaultValue="9"
+            android:dependency="flick_keymap_guide"
+            android:key="flick_guide_text_size_sp_preference"
+            android:max="16"
+            android:title="@string/flick_guide_text_size_title"
+            app:min="6"
+            app:showSeekBarValue="true"
+            app:summary="@string/flick_guide_text_size_summary" />
+
+        <SeekBarPreference
+            android:defaultValue="1"
+            android:dependency="flick_keymap_guide"
+            android:key="flick_guide_max_characters_preference"
+            android:max="4"
+            android:title="@string/flick_guide_max_characters_title"
+            app:min="1"
+            app:showSeekBarValue="true"
+            app:summary="@string/flick_guide_max_characters_summary" />
     </PreferenceCategory>
 
 </PreferenceScreen>

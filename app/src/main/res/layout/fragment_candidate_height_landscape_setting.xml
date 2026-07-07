@@ -1,48 +1,517 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     tools:context=".setting_activity.ui.candidate_view_height_landscape_setting.CandidateHeightLandscapeSettingFragment">
 
-    <Button
-        android:id="@+id/toggle_candidate_list_button"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Toggle Candidate List"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <androidx.constraintlayout.widget.ConstraintLayout
-        android:id="@+id/candidate_height_setting_content"
+        android:id="@+id/preview_root"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="18dp"
-        android:background="@color/keyboard_bg"
-        app:layout_constraintBottom_toBottomOf="parent">
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/candidate_height_setting_recyclerview"
-            android:layout_width="match_parent"
-            android:layout_height="58dp"
-            android:background="@color/keyboard_bg"
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="0dp"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorSurface"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:title="@string/candidate_height_landscape_preference_title"
+            app:titleCentered="false" />
+
+        <FrameLayout
+            android:id="@+id/preview_canvas"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="?android:attr/colorBackground"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-        <View
-            android:id="@+id/handle_top"
-            android:layout_width="156dp"
-            android:layout_height="40dp"
-            android:background="@drawable/resize_handle"
-            android:translationY="-12dp"
-            app:layout_constraintEnd_toEndOf="@id/candidate_height_setting_recyclerview"
-            app:layout_constraintStart_toStartOf="@id/candidate_height_setting_recyclerview"
-            app:layout_constraintTop_toTopOf="@id/candidate_height_setting_recyclerview" />
+            <FrameLayout
+                android:id="@+id/candidate_height_setting_content"
+                android:layout_width="match_parent"
+                android:layout_height="330dp"
+                android:layout_gravity="bottom"
+                android:background="@color/keyboard_bg"
+                android:clipChildren="false">
 
+                <LinearLayout
+                    android:id="@+id/candidate_tab_preview_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:background="@color/keyboard_bg"
+                    android:gravity="center"
+                    android:orientation="horizontal"
+                    android:padding="2dp"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <FrameLayout
+                    android:id="@+id/candidate_preview_frame"
+                    android:layout_width="match_parent"
+                    android:layout_height="110dp"
+                    android:layout_gravity="bottom"
+                    android:clipChildren="false">
+
+                    <androidx.constraintlayout.widget.ConstraintLayout
+                        android:id="@+id/candidate_preview_area"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="bottom"
+                        android:background="@color/keyboard_bg">
+
+                        <ProgressBar
+                            android:id="@+id/candidate_preview_progressbar"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:visibility="gone"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <androidx.recyclerview.widget.RecyclerView
+                            android:id="@+id/candidate_height_setting_recyclerview"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:background="@color/keyboard_bg"
+                            android:clipToPadding="false"
+                            android:visibility="visible"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toStartOf="@+id/candidate_preview_visibility_button"
+                            app:layout_constraintStart_toStartOf="parent"
+                            app:layout_constraintTop_toTopOf="parent" />
+
+                        <com.google.android.material.imageview.ShapeableImageView
+                            android:id="@+id/candidate_preview_visibility_button"
+                            android:layout_width="40dp"
+                            android:layout_height="40dp"
+                            android:layout_marginTop="6dp"
+                            android:background="@drawable/recyclerview_size_button_bg"
+                            android:scaleType="center"
+                            android:src="@drawable/outline_arrow_drop_down_24"
+                            android:tint="@color/keyboard_icon_color"
+                            android:visibility="gone"
+                            app:layout_constraintBottom_toBottomOf="parent"
+                            app:layout_constraintEnd_toEndOf="parent"
+                            app:layout_constraintTop_toTopOf="parent"
+                            tools:visibility="visible" />
+                    </androidx.constraintlayout.widget.ConstraintLayout>
+
+                    <View
+                        android:id="@+id/handle_top"
+                        android:layout_width="156dp"
+                        android:layout_height="40dp"
+                        android:layout_gravity="top|center_horizontal"
+                        android:background="@drawable/resize_handle"
+                        android:translationY="-12dp" />
+                </FrameLayout>
+
+                <LinearLayout
+                    android:id="@+id/independent_shortcut_toolbar_preview_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="36dp"
+                    android:layout_gravity="bottom"
+                    android:background="@color/keyboard_bg"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="4dp"
+                    android:visibility="gone"
+                    tools:visibility="visible" />
+
+                <FrameLayout
+                    android:id="@+id/keyboard_preview_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp"
+                    android:layout_gravity="bottom"
+                    android:background="@color/keyboard_bg">
+
+                    <com.kazumaproject.tenkey.TenKey
+                        android:id="@+id/candidate_height_setting_tenkey_preview"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent" />
+
+                    <com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
+                        android:id="@+id/candidate_height_setting_qwerty_preview"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:visibility="gone" />
+
+                    <com.kazumaproject.custom_keyboard.view.FlickKeyboardView
+                        android:id="@+id/candidate_height_setting_flick_preview"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:clickable="false"
+                        android:focusable="false"
+                        android:visibility="gone" />
+                </FrameLayout>
+            </FrameLayout>
+
+        </FrameLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/show_inspector_button"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp"
+            android:text="@string/candidate_height_open_inspector"
+            android:visibility="gone"
+            app:icon="@drawable/baseline_settings_24"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/toolbar"
+            tools:visibility="visible" />
+        <com.google.android.material.card.MaterialCardView
+        android:id="@+id/inspector_bottom_sheet"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="8dp"
+        android:elevation="12dp"
+        app:cardCornerRadius="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/toolbar">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="16dp"
+            android:paddingBottom="16dp">
+
+            <View
+                android:id="@+id/inspector_sheet_handle"
+                android:layout_width="44dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginBottom="10dp"
+                android:background="@drawable/shortcut_toolbar_sheet_handle"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/inspector_summary_text"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textAppearance="?attr/textAppearanceTitleSmall"
+                    tools:text="2列 / 90dp / 14.0sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/close_inspector_button"
+                    style="?attr/materialButtonOutlinedStyle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/candidate_height_close_inspector"
+                    app:icon="@drawable/ic_close" />
+            </LinearLayout>
+
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:fillViewport="false"
+                android:overScrollMode="ifContentScrolls">
+
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/candidate_inspector_tab_group"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:selectionRequired="true"
+                    app:singleSelection="true">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/candidate_tab_height_button"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checkable="true"
+                        android:text="@string/candidate_height_tab_height" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/candidate_tab_text_button"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checkable="true"
+                        android:text="@string/candidate_height_tab_text" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/candidate_tab_default_button"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:checkable="true"
+                        android:text="@string/candidate_height_tab_default" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </HorizontalScrollView>
+
+            <androidx.core.widget.NestedScrollView
+                android:id="@+id/candidate_controls_scroll"
+                android:layout_width="match_parent"
+                android:layout_height="112dp"
+                android:layout_marginTop="12dp"
+                android:fillViewport="false"
+                android:overScrollMode="ifContentScrolls">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/toggle_candidate_list_button"
+                        style="?attr/materialButtonOutlinedStyle"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:text="@string/candidate_preview_input_mode" />
+
+                    <LinearLayout
+                        android:id="@+id/height_controls_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/candidate_column_label"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/candidate_column_count_label"
+                            android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+                        <HorizontalScrollView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:fillViewport="false"
+                            android:overScrollMode="ifContentScrolls">
+
+                            <com.google.android.material.button.MaterialButtonToggleGroup
+                                android:id="@+id/candidate_column_toggle_group"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                app:selectionRequired="true"
+                                app:singleSelection="true">
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/candidate_column_one_button"
+                                    style="?attr/materialButtonOutlinedStyle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:checkable="true"
+                                    android:text="@string/candidate_column_one" />
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/candidate_column_two_button"
+                                    style="?attr/materialButtonOutlinedStyle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:checkable="true"
+                                    android:text="@string/candidate_column_two" />
+
+                                <com.google.android.material.button.MaterialButton
+                                    android:id="@+id/candidate_column_three_button"
+                                    style="?attr/materialButtonOutlinedStyle"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:checkable="true"
+                                    android:text="@string/candidate_column_three" />
+                            </com.google.android.material.button.MaterialButtonToggleGroup>
+                        </HorizontalScrollView>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/candidate_height_input_layout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:hint="@string/candidate_height_input_hint"
+                            app:helperText="@string/candidate_height_range_helper"
+                            app:suffixText="@string/unit_dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/candidate_height_edit_text"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:imeOptions="actionDone"
+                                android:inputType="number"
+                                android:maxLength="3"
+                                android:selectAllOnFocus="true"
+                                android:singleLine="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <SeekBar
+                            android:id="@+id/candidate_height_seekbar"
+                            android:layout_width="match_parent"
+                            android:layout_height="56dp"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/text_controls_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/candidate_letter_size_input_layout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/candidate_letter_size_input_hint"
+                            app:helperText="@string/candidate_letter_size_range_helper"
+                            app:suffixText="@string/unit_sp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/candidate_letter_size_edit_text"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:imeOptions="actionDone"
+                                android:inputType="numberDecimal"
+                                android:maxLength="4"
+                                android:selectAllOnFocus="true"
+                                android:singleLine="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <SeekBar
+                            android:id="@+id/candidate_letter_size_seekbar"
+                            android:layout_width="match_parent"
+                            android:layout_height="56dp"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/default_controls_container"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone">
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/candidate_default_height_title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="@string/candidate_default_height_title"
+                            android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+                        <com.google.android.material.textview.MaterialTextView
+                            android:id="@+id/candidate_default_height_description"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="@string/candidate_default_height_description"
+                            android:textAppearance="?attr/textAppearanceBodySmall" />
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/default_height_one_input_layout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:hint="@string/candidate_column_one"
+                            app:suffixText="@string/unit_dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/default_height_one_edit_text"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:imeOptions="actionNext"
+                                android:inputType="number"
+                                android:maxLength="3"
+                                android:selectAllOnFocus="true"
+                                android:singleLine="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/default_height_two_input_layout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:hint="@string/candidate_column_two"
+                            app:suffixText="@string/unit_dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/default_height_two_edit_text"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:imeOptions="actionNext"
+                                android:inputType="number"
+                                android:maxLength="3"
+                                android:selectAllOnFocus="true"
+                                android:singleLine="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.textfield.TextInputLayout
+                            android:id="@+id/default_height_three_input_layout"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:hint="@string/candidate_column_three"
+                            app:suffixText="@string/unit_dp">
+
+                            <com.google.android.material.textfield.TextInputEditText
+                                android:id="@+id/default_height_three_edit_text"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:imeOptions="actionDone"
+                                android:inputType="number"
+                                android:maxLength="3"
+                                android:selectAllOnFocus="true"
+                                android:singleLine="true" />
+                        </com.google.android.material.textfield.TextInputLayout>
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/use_current_defaults_button"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:text="@string/candidate_default_height_use_current" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/restore_factory_defaults_button"
+                            style="?attr/materialButtonOutlinedStyle"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/candidate_default_height_restore_factory" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/save_defaults_button"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:text="@string/candidate_default_height_save" />
+                    </LinearLayout>
+                </LinearLayout>
+            </androidx.core.widget.NestedScrollView>
+        </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
     </androidx.constraintlayout.widget.ConstraintLayout>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

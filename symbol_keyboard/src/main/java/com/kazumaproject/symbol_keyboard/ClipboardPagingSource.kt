@@ -2,13 +2,12 @@ package com.kazumaproject.symbol_keyboard
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import com.kazumaproject.core.data.clipboard.ClipboardItem
 
 class ClipboardPagingSource(
-    private val items: List<ClipboardItem>
-) : PagingSource<Int, ClipboardItem>() {
+    private val items: List<ClipboardListItem>
+) : PagingSource<Int, ClipboardListItem>() {
 
-    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ClipboardItem> {
+    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ClipboardListItem> {
         return try {
             val position = params.key ?: 0
             val loadSize = params.loadSize
@@ -28,7 +27,7 @@ class ClipboardPagingSource(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, ClipboardItem>): Int? {
+    override fun getRefreshKey(state: PagingState<Int, ClipboardListItem>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
             val anchorPage = state.closestPageToPosition(anchorPosition)
             anchorPage?.prevKey?.plus(state.config.pageSize)

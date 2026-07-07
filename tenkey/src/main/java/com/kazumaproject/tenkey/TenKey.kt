@@ -11,6 +11,7 @@ import android.graphics.drawable.LayerDrawable
 import android.os.Build
 import android.util.AttributeSet
 import android.util.Log
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -35,11 +36,17 @@ import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyMap
 import com.kazumaproject.core.domain.key.KeyRect
 import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
 import com.kazumaproject.core.domain.state.InputMode.ModeEnglish.next
 import com.kazumaproject.core.domain.state.PressedKey
+import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
+import com.kazumaproject.core.domain.state.toInputMode
+import com.kazumaproject.core.domain.state.toTwoStateNumberReturnTargetOrNull
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
@@ -92,10 +99,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @SuppressLint("ClickableViewAccessibility")
 class TenKey(context: Context, attributeSet: AttributeSet) :
     ConstraintLayout(context, attributeSet), View.OnTouchListener {
+
+    private data class BaseMargins(
+        val start: Int,
+        val top: Int,
+        val end: Int,
+        val bottom: Int
+    )
 
     // ViewBinding for the main keyboard layout
     private val binding: KeyboardLayoutBinding
@@ -113,12 +128,20 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     // External listeners
     private var flickListener: FlickListener? = null
     private var longPressListener: LongPressListener? = null
+    private var keyTouchCancelListener: KeyTouchCancelListener? = null
+    private var inputModeChangedListener: ((InputMode) -> Unit)? = null
+    private var qwertyNumberModeRequestedListener: (() -> Unit)? = null
 
     private var flickSensitivity: Int = 100
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var keySizeDelta = 0
 
     private var isLanguageIconEnabled = true
+    private var useThreeStateKeyboard = true
+    private var useQwertyNumberWhenThreeStateOff = false
+    private var twoStateNumberReturnTarget: TwoStateNumberReturnTarget =
+        TwoStateNumberReturnTarget.Japanese
 
     /** ← REPLACED AtomicReference with StateFlow **/
     private val _currentInputMode = MutableStateFlow<InputMode>(InputMode.ModeJapanese)
@@ -150,6 +173,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private lateinit var popTextCenter: MaterialTextView
 
     private var isFlickGuideEnabled: Boolean = false
+    private var popupViewStyle = PopupViewStyle(100, 28f)
 
     private val cachedArrowRightDrawable: Drawable? by lazy {
         ContextCompat.getDrawable(
@@ -257,6 +281,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var listKeys: Map<Key, Any>
 
     private var isCursorMode = false
+    private val baseKeyMargins: MutableMap<Int, BaseMargins> = mutableMapOf()
 
     // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
@@ -299,12 +324,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             Key.SideKeyPreviousChar to binding.keyReturn,
             Key.SideKeyCursorLeft to binding.keySoftLeft,
             Key.SideKeyCursorRight to binding.keyMoveCursorRight,
-            Key.SideKeySymbol to binding.sideKeySymbol,
             Key.SideKeyInputMode to binding.keySwitchKeyMode,
             Key.SideKeyDelete to binding.keyDelete,
             Key.SideKeySpace to binding.keySpace,
             Key.SideKeyEnter to binding.keyEnter
         )
+        captureBaseKeyMargins()
 
         // Make all key views non-focusable so touches go directly to onTouch
         setViewsNotFocusable()
@@ -328,7 +353,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 Log.d("TenKey", "currentInputMode: $inputMode")
                 // Whenever inputMode changes, update all keys and switch UI
                 handleCurrentInputModeSwitch(inputMode)
-                binding.keySwitchKeyMode.setInputMode(inputMode, false)
+                binding.keySwitchKeyMode.setInputMode(
+                    inputMode = inputMode,
+                    isTablet = false,
+                    useThreeStateKeyboard = useThreeStateKeyboard,
+                    twoStateNumberReturnTarget = twoStateNumberReturnTarget
+                )
             }
         }
     }
@@ -545,6 +575,64 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             bubbleViewCenter = centerBinding.bubbleLayout
             popTextCenter = centerBinding.popupText
         }
+        applyPopupTextSize()
+        applyPopupColors()
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupViewStyle = PopupViewStyle(
+            sizeScalePercent = style.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = style.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = style.backgroundColor,
+            textColor = style.textColor
+        )
+        applyPopupTextSize()
+        applyPopupColors()
+    }
+
+    private fun applyPopupTextSize() {
+        if (!::popTextActive.isInitialized) return
+        listOf(
+            popTextActive,
+            popTextLeft,
+            popTextTop,
+            popTextRight,
+            popTextBottom,
+            popTextCenter
+        ).forEach { textView ->
+            textView.setTextSize(
+                TypedValue.COMPLEX_UNIT_SP,
+                popupViewStyle.textSizeSp.coerceIn(8f, 48f)
+            )
+        }
+    }
+
+    private fun applyPopupColors() {
+        if (!::bubbleViewActive.isInitialized || !::popTextActive.isInitialized) return
+        popupViewStyle.backgroundColor?.let { backgroundColor ->
+            listOf(
+                bubbleViewActive,
+                bubbleViewLeft,
+                bubbleViewTop,
+                bubbleViewRight,
+                bubbleViewBottom,
+                bubbleViewCenter
+            ).forEach { bubbleView ->
+                bubbleView.setBubbleColor(backgroundColor)
+            }
+        }
+        popupViewStyle.textColor?.let { textColor ->
+            listOf(
+                popTextActive,
+                popTextLeft,
+                popTextTop,
+                popTextRight,
+                popTextBottom,
+                popTextCenter
+            ).forEach { textView ->
+                textView.setTextColor(textColor)
+            }
+        }
     }
 
     fun setLanguageEnableKeyState(state: Boolean) {
@@ -568,11 +656,86 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     /**
+     * Sets key width/height scaling by adjusting the margins of each key view.
+     * 100 keeps the current layout, a smaller value shrinks keys, and a larger value expands
+     * them until the gaps between keys are minimized.
+     */
+    fun setKeySizeScale(widthScalePercent: Int, heightScalePercent: Int) {
+        scalableKeyViews().forEach { keyView ->
+            val params = keyView.layoutParams as? LayoutParams ?: return@forEach
+            val baseMargins = baseKeyMargins[keyView.id] ?: return@forEach
+
+            params.marginStart = scaleMargin(baseMargins.start, widthScalePercent)
+            params.topMargin = scaleMargin(baseMargins.top, heightScalePercent)
+            params.marginEnd = scaleMargin(baseMargins.end, widthScalePercent)
+            params.bottomMargin = scaleMargin(baseMargins.bottom, heightScalePercent)
+            keyView.layoutParams = params
+        }
+        requestLayout()
+    }
+
+    /**
      * Sets the padding delta to keySize Delta.
      * @param delta The delta value from preference.
      */
     fun setKeyLetterSizeDelta(delta: Int) {
         this.keySizeDelta = delta
+    }
+
+    private fun captureBaseKeyMargins() {
+        scalableKeyViews().forEach { keyView ->
+            val params = keyView.layoutParams as? LayoutParams ?: return@forEach
+            baseKeyMargins[keyView.id] = BaseMargins(
+                start = params.marginStart,
+                top = params.topMargin,
+                end = params.marginEnd,
+                bottom = params.bottomMargin
+            )
+        }
+    }
+
+    private fun scalableKeyViews(): List<View> {
+        return binding.run {
+            listOf(
+                key1,
+                key2,
+                key3,
+                key4,
+                key5,
+                key6,
+                key7,
+                key8,
+                key9,
+                key11,
+                key12,
+                keySmallLetter,
+                keyReturn,
+                keySoftLeft,
+                keyMoveCursorRight,
+                sideKeySymbolModeContainer,
+                keySwitchKeyMode,
+                keyDelete,
+                keySpace,
+                keyEnter
+            )
+        }
+    }
+
+    private fun scaleMargin(baseMargin: Int, scalePercent: Int): Int {
+        val clampedScale = scalePercent.coerceIn(60, 140)
+        val scaledMargin = when {
+            clampedScale >= 100 -> {
+                val reduceRatio = (clampedScale - 100) / 40f
+                baseMargin * (1f - reduceRatio)
+            }
+
+            else -> {
+                val expandRatio = (100 - clampedScale) / 40f
+                baseMargin * (1f + (expandRatio * 1.5f))
+            }
+        }
+
+        return scaledMargin.roundToInt().coerceAtLeast(0)
     }
 
     private fun setMaterialYouTheme(
@@ -617,7 +780,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
             // サイドキー
             listOf(
-                keyReturn, keySoftLeft, sideKeySymbol,
+                keyReturn, keySoftLeft,
                 keyDelete, keyMoveCursorRight, keySpace,
 
                 ).forEach { btn ->
@@ -627,6 +790,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 if (liquidGlassEnable) {
                     btn.setDrawableAlpha(liquidGlassKeyAlphaEnable)
                 }
+            }
+            sideKeySymbolModeContainer.setKeyBackground(
+                ContextCompat.getDrawable(context, sideRes)?.mutate()
+            )
+            if (liquidGlassEnable) {
+                sideKeySymbolModeContainer.setKeyDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
 
             keyEnter.background = ContextCompat
@@ -673,7 +842,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             val keys = listOf(
                 key1, key2, key3, key4, key5, key6,
                 key7, key8, key9, keySmallLetter, key11, key12,
-                keyReturn, keySoftLeft, sideKeySymbol,
+                keyReturn, keySoftLeft,
                 keyDelete, keyMoveCursorRight, keySpace, keyEnter, keySwitchKeyMode
             )
 
@@ -690,6 +859,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     ImageViewCompat.setImageTintList(view, textTint)
                 }
             }
+            sideKeySymbolModeContainer.setKeyBackground(getDynamicNeumorphDrawable(targetColor, radius))
+            sideKeySymbolModeContainer.setKeyTint(textTint)
         }
     }
 
@@ -826,6 +997,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     specialKeyTextColor = customSpecialKeyTextColor,
                     borderWidth = borderWidth
                 )
+                applyPopupTextSize()
+                applyPopupColors()
             }
 
             else -> {
@@ -875,7 +1048,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             )
 
             val specialKeys = listOf(
-                keyReturn, keySoftLeft, sideKeySymbol,
+                keyReturn, keySoftLeft,
                 keyDelete, keyMoveCursorRight, keySpace, keyEnter,
                 keySwitchKeyMode
             )
@@ -921,6 +1094,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
                 ImageViewCompat.setImageTintList(view, specialColorStateList)
                 view.setDrawableAlpha(liquidGlassKeyAlphaEnable)
+            }
+            sideKeySymbolModeContainer.apply {
+                if (customBorderEnable) {
+                    setKeySolidColor(customSpecialKeyColor)
+                    setKeyBorder(customBorderColor, borderWidth)
+                } else {
+                    setKeyBackground(specialDrawableState?.newDrawable()?.mutate())
+                }
+                setKeyTint(specialColorStateList)
+                setKeyDrawableAlpha(liquidGlassKeyAlphaEnable)
             }
         }
     }
@@ -1045,7 +1228,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             )
 
             val specialKeys = listOf(
-                keyReturn, keySoftLeft, sideKeySymbol,
+                keyReturn, keySoftLeft,
                 keyDelete, keyMoveCursorRight, keySpace, keyEnter,
                 keySwitchKeyMode
             )
@@ -1091,6 +1274,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     ImageViewCompat.setImageTintList(view, specialColorStateList)
                 }
             }
+            sideKeySymbolModeContainer.apply {
+                setKeyBackground(specialDrawableState?.newDrawable()?.mutate())
+                setKeyTint(specialColorStateList)
+            }
         }
     }
 
@@ -1122,9 +1309,37 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         this.longPressListener = longPressListener
     }
 
+    fun setOnKeyTouchCancelListener(listener: KeyTouchCancelListener?) {
+        keyTouchCancelListener = listener
+    }
+
+    fun setOnInputModeChangedListener(listener: (InputMode) -> Unit) {
+        this.inputModeChangedListener = listener
+    }
+
+    fun setOnQwertyNumberModeRequestedListener(listener: (() -> Unit)?) {
+        qwertyNumberModeRequestedListener = listener
+    }
+
     /** Padding setters for side keys (symbol, cursors, delete, enter, previous char) **/
     fun setPaddingToSideKeySymbol(paddingSize: Int) {
-        binding.sideKeySymbol.setPadding(paddingSize)
+        binding.sideKeySymbolModeContainer.setIconPadding(paddingSize)
+    }
+
+    fun setUseThreeStateKeyboard(enabled: Boolean) {
+        useThreeStateKeyboard = enabled
+        binding.sideKeySymbolModeContainer.setUseThreeStateKeyboard(enabled)
+        binding.keySwitchKeyMode.setInputMode(
+            inputMode = currentInputMode.value,
+            isTablet = false,
+            useThreeStateKeyboard = enabled,
+            twoStateNumberReturnTarget = twoStateNumberReturnTarget
+        )
+        requestLayout()
+    }
+
+    fun setUseQwertyNumberWhenThreeStateOff(enabled: Boolean) {
+        useQwertyNumberWhenThreeStateOff = enabled
     }
 
     fun setTextToMoveCursorMode(cursorMode: Boolean) {
@@ -1146,8 +1361,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Clean up references when view is detached **/
     private fun release() {
+        cancelActiveTouch(KeyTouchCancelReason.DetachedFromWindow)
         flickListener = null
         longPressListener = null
+        keyTouchCancelListener = null
+        inputModeChangedListener = null
+        qwertyNumberModeRequestedListener = null
         longPressJob?.cancel()
         longPressJob = null
         isCursorMode = false
@@ -1163,6 +1382,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         super.onDetachedFromWindow()
         Log.d("TenKey: onDetachedFromWindow", "called")
         release()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (changedView == this && visibility != View.VISIBLE) {
+            cancelActiveTouch(KeyTouchCancelReason.ViewHidden)
+        }
     }
 
     /** Intercept all touch events so we can handle them manually in onTouch **/
@@ -1205,7 +1431,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                     setKeyPressed()
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                        delay(ViewConfiguration.getLongPressTimeout().toLong())
+                        delay(longPressTimeout)
                         if (pressedKey.key != Key.NotSelected) {
                             longPressListener?.onLongPress(pressedKey.key)
                             isLongPressed = true
@@ -1249,6 +1475,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             )
                             if (pressedKey.key == Key.SideKeyInputMode) {
                                 handleClickInputModeSwitch()
+                            } else if (pressedKey.key == Key.SideKeyNumberMode) {
+                                switchToNumberMode()
                             }
                         } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                             when (gestureType) {
@@ -1292,7 +1520,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     val button = getButtonFromKey(pressedKey.key)
                     button?.let {
                         if (it is AppCompatButton) {
-                            if (it == binding.sideKeySymbol) return false
                             // ← UPDATE: use state flow's value to set text after finger-up
                             when (currentInputMode.value) {
 
@@ -1406,6 +1633,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         "called $pressedKey ${binding.keySmallLetter.drawable == cachedLanguageDrawable}"
                     )
                     if (pressedKey.key == Key.SideKeySymbol ||
+                        pressedKey.key == Key.SideKeyNumberMode ||
                         pressedKey.key == Key.SideKeyInputMode ||
                         (pressedKey.key == Key.KeyDakutenSmall && binding.keySmallLetter.drawable == cachedLanguageDrawable)
                     ) {
@@ -1442,7 +1670,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                     val button = getButtonFromKey(pressedKey.key)
                                     button?.let {
                                         if (it is AppCompatButton) {
-                                            if (it == binding.sideKeySymbol) return false
                                             when (currentInputMode.value) {
                                                 InputMode.ModeJapanese -> setJapaneseTextFor(
                                                     it
@@ -1505,7 +1732,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         )
                         setKeyPressed()
                         longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                            delay(ViewConfiguration.getLongPressTimeout().toLong())
+                            delay(longPressTimeout)
                             if (pressedKey.key != Key.NotSelected) {
                                 longPressListener?.onLongPress(pressedKey.key)
                                 isLongPressed = true
@@ -1534,6 +1761,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                 )
                                 if (pressedKey.key == Key.SideKeyInputMode) {
                                     handleClickInputModeSwitch()
+                                } else if (pressedKey.key == Key.SideKeyNumberMode) {
+                                    switchToNumberMode()
                                 }
                             } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
                                 when (gestureType) {
@@ -1575,7 +1804,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             val button = getButtonFromKey(pressedKey.key)
                             button?.let {
                                 if (it is AppCompatButton) {
-                                    if (it == binding.sideKeySymbol) return false
                                     it.isPressed = false
                                     when (currentInputMode.value) {
                                         InputMode.ModeJapanese -> setJapaneseTextFor(
@@ -1606,10 +1834,34 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     return false
                 }
 
+                MotionEvent.ACTION_CANCEL -> {
+                    cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
+                    return true
+                }
+
                 else -> return false
             }
         }
         return false
+    }
+
+    private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        resetLongPressAction()
+        resetAllKeys()
+
+        if (::popupWindowActive.isInitialized) {
+            popupWindowActive.hide()
+        }
+
+        if (::pressedKey.isInitialized && pressedKey.key != Key.NotSelected) {
+            keyTouchCancelListener?.onKeyTouchCanceled(pressedKey.key, reason)
+            pressedKey = pressedKey.copy(key = Key.NotSelected)
+        }
+
+        if (isCursorMode) {
+            handleCurrentInputModeSwitch(currentInputMode.value)
+        }
+        isCursorMode = false
     }
 
     /** Handle orientation changes by re‐applying text on all keys **/
@@ -1624,6 +1876,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     fun setFlickSensitivityValue(sensitivity: Int) {
         flickSensitivity = sensitivity
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
     private fun setTextToAllButtons() {
@@ -1705,12 +1961,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 binding.keyMoveCursorRight.layoutXPosition() + binding.keyMoveCursorRight.width,
                 binding.keyMoveCursorRight.layoutYPosition() + binding.keyMoveCursorRight.height
             ), KeyRect(
-                Key.SideKeySymbol,
-                binding.sideKeySymbol.layoutXPosition(),
-                binding.sideKeySymbol.layoutYPosition(),
-                binding.sideKeySymbol.layoutXPosition() + binding.sideKeySymbol.width,
-                binding.sideKeySymbol.layoutYPosition() + binding.sideKeySymbol.height
-            ), KeyRect(
                 Key.KeyMA,
                 binding.key7.layoutXPosition(),
                 binding.key7.layoutYPosition(),
@@ -1765,7 +2015,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 binding.keyEnter.layoutXPosition() + binding.keyEnter.width,
                 binding.keyEnter.layoutYPosition() + binding.keyEnter.height
             )
-        )
+        ) + sideKeySymbolModeKeyRects()
 
         // If the touch falls inside any key's rectangle, return that enum
         keyRects.forEach { rect ->
@@ -1783,6 +2033,22 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             dx * dx + dy * dy
         }
         return nearest?.key ?: Key.NotSelected
+    }
+
+    private fun sideKeySymbolModeKeyRects(): List<KeyRect> {
+        val container = binding.sideKeySymbolModeContainer
+        val left = container.layoutXPosition()
+        val top = container.layoutYPosition()
+        val right = left + container.width
+        val bottom = top + container.height
+        if (useThreeStateKeyboard) {
+            return listOf(KeyRect(Key.SideKeySymbol, left, top, right, bottom))
+        }
+        val centerX = left + (container.width / 2)
+        return listOf(
+            KeyRect(Key.SideKeyNumberMode, left, top, centerX, bottom),
+            KeyRect(Key.SideKeySymbol, centerX, top, right, bottom)
+        )
     }
 
     /**
@@ -1849,6 +2115,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Visually indicate which key is pressed **/
     private fun setKeyPressed() {
+        binding.sideKeySymbolModeContainer.setPressedKey(pressedKey.key)
         listKeys.forEach { (keyEnum, viewObj) ->
             when (viewObj) {
                 is InputModeSwitch -> viewObj.isPressed = (keyEnum == pressedKey.key)
@@ -1870,6 +2137,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     /** Un–highlight all keys **/
     private fun resetAllKeys() {
+        binding.sideKeySymbolModeContainer.clearPressedKey()
         listKeys.values.forEach { viewObj ->
             when (viewObj) {
                 is InputModeSwitch -> viewObj.isPressed = false
@@ -1889,8 +2157,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == binding.sideKeySymbol) return
-
                 when (currentInputMode.value) {
                     InputMode.ModeJapanese -> {
                         popTextTop.setTextFlickTopJapanese(it.id)
@@ -1916,15 +2182,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextTapNumber(it.id)
                     }
                 }
-                popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it)
-                popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it)
+                popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
+                popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it, popupViewStyle.sizeScalePercent)
                 if (popTextBottom.text.isNotEmpty()) {
-                    popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it)
+                    popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it, popupViewStyle.sizeScalePercent)
                 }
                 if (popTextRight.text.isNotEmpty()) {
-                    popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it)
+                    popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it, popupViewStyle.sizeScalePercent)
                 }
-                popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
+                popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                 Blur.applyBlurEffect(this, 8f)
             }
 
@@ -1934,11 +2200,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     popTextLeft.setTextFlickLeftNumber(it.id)
                     popTextBottom.setTextFlickBottomNumber(it.id)
                     popTextRight.setTextFlickRightNumber(it.id)
-                    popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it)
-                    popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it)
-                    popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it)
-                    popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it)
-                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
+                    popupWindowTop.setPopUpWindowTop(context, bubbleViewTop, it, popupViewStyle.sizeScalePercent)
+                    popupWindowLeft.setPopUpWindowLeft(context, bubbleViewLeft, it, popupViewStyle.sizeScalePercent)
+                    popupWindowBottom.setPopUpWindowBottom(context, bubbleViewBottom, it, popupViewStyle.sizeScalePercent)
+                    popupWindowRight.setPopUpWindowRight(context, bubbleViewRight, it, popupViewStyle.sizeScalePercent)
+                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                     Blur.applyBlurEffect(this, 8f)
                 }
             }
@@ -1961,7 +2227,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == binding.sideKeySymbol) return
                 it.isPressed = true
                 when (currentInputMode.value) {
                     InputMode.ModeJapanese -> {
@@ -1981,7 +2246,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 }
 
                 if (isLongPressed) {
-                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
+                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                 }
             }
             if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
@@ -1991,7 +2256,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 )
                 if (isLongPressed) popTextActive.setTextTapNumber(it.id)
                 if (isLongPressed) {
-                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it)
+                    popupWindowActive.setPopUpWindowCenter(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                 }
             }
         }
@@ -2003,7 +2268,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         val button = getButtonFromKey(pressedKey.key)
         button?.let {
             if (it is AppCompatButton) {
-                if (it == binding.sideKeySymbol) return
                 it.isPressed = true
                 if (!isLongPressed) it.text = ""
                 when (gestureType) {
@@ -2025,10 +2289,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowLeft(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowLeft(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickLeft(context, bubbleViewActive, it)
+                            popupWindowActive.setPopUpWindowFlickLeft(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         }
                     }
 
@@ -2050,10 +2314,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         }
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowTop(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowTop(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickTop(context, bubbleViewActive, it)
+                            popupWindowActive.setPopUpWindowFlickTop(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         }
                     }
 
@@ -2076,15 +2340,15 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         }
                         if (isLongPressed) {
                             if (popTextActive.text.isNotEmpty()) {
-                                popupWindowActive.setPopUpWindowRight(context, bubbleViewActive, it)
+                                popupWindowActive.setPopUpWindowRight(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                                 popupWindowCenter.setPopUpWindowCenter(
-                                    context, bubbleViewCenter, it
+                                    context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent
                                 )
                             }
                         } else {
                             if (popTextActive.text.isNotEmpty()) {
                                 popupWindowActive.setPopUpWindowFlickRight(
-                                    context, bubbleViewActive, it
+                                    context, bubbleViewActive, it, popupViewStyle.sizeScalePercent
                                 )
                             }
                         }
@@ -2110,16 +2374,16 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (isLongPressed) {
                             if (popTextActive.text.isNotEmpty()) {
                                 popupWindowActive.setPopUpWindowBottom(
-                                    context, bubbleViewActive, it
+                                    context, bubbleViewActive, it, popupViewStyle.sizeScalePercent
                                 )
                                 popupWindowCenter.setPopUpWindowCenter(
-                                    context, bubbleViewCenter, it
+                                    context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent
                                 )
                             }
                         } else {
                             if (popTextActive.text.isNotEmpty()) {
                                 popupWindowActive.setPopUpWindowFlickBottom(
-                                    context, bubbleViewActive, it
+                                    context, bubbleViewActive, it, popupViewStyle.sizeScalePercent
                                 )
                             }
                         }
@@ -2136,10 +2400,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickLeftNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowLeft(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowLeft(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickLeft(context, bubbleViewActive, it)
+                            popupWindowActive.setPopUpWindowFlickLeft(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         }
                     }
 
@@ -2147,10 +2411,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickTopNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowTop(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowTop(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
-                            popupWindowActive.setPopUpWindowFlickTop(context, bubbleViewActive, it)
+                            popupWindowActive.setPopUpWindowFlickTop(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         }
                     }
 
@@ -2158,11 +2422,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickRightNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowRight(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowRight(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
                             popupWindowActive.setPopUpWindowFlickRight(
-                                context, bubbleViewActive, it
+                                context, bubbleViewActive, it, popupViewStyle.sizeScalePercent
                             )
                         }
                     }
@@ -2171,11 +2435,11 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         popTextActive.setTextFlickBottomNumber(it.id)
                         if (isLongPressed) popTextCenter.setTextTapNumber(it.id)
                         if (isLongPressed) {
-                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it)
-                            popupWindowActive.setPopUpWindowBottom(context, bubbleViewActive, it)
+                            popupWindowCenter.setPopUpWindowCenter(context, bubbleViewCenter, it, popupViewStyle.sizeScalePercent)
+                            popupWindowActive.setPopUpWindowBottom(context, bubbleViewActive, it, popupViewStyle.sizeScalePercent)
                         } else {
                             popupWindowActive.setPopUpWindowFlickBottom(
-                                context, bubbleViewActive, it
+                                context, bubbleViewActive, it, popupViewStyle.sizeScalePercent
                             )
                         }
                     }
@@ -2203,7 +2467,6 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             val button = getButtonFromKey(pressedKey.key)
             button?.let {
                 if (it is AppCompatButton) {
-                    if (it == binding.sideKeySymbol) return
                     when (currentInputMode.value) {
                         InputMode.ModeJapanese -> setJapaneseTextFor(
                             it
@@ -2279,16 +2542,42 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Cycle through input modes when the switch key is clicked **/
     private fun handleClickInputModeSwitch() {
         // ← READ from StateFlow.value:
-        val newInputMode = when (currentInputMode.value) {
-            InputMode.ModeJapanese -> InputMode.ModeEnglish
-            InputMode.ModeEnglish -> InputMode.ModeNumber
-            InputMode.ModeNumber -> InputMode.ModeJapanese
+        val newInputMode = if (useThreeStateKeyboard) {
+            when (currentInputMode.value) {
+                InputMode.ModeJapanese -> InputMode.ModeEnglish
+                InputMode.ModeEnglish -> InputMode.ModeNumber
+                InputMode.ModeNumber -> InputMode.ModeJapanese
+            }
+        } else {
+            when (currentInputMode.value) {
+                InputMode.ModeJapanese -> InputMode.ModeEnglish
+                InputMode.ModeEnglish -> InputMode.ModeJapanese
+                InputMode.ModeNumber -> twoStateNumberReturnTarget.toInputMode()
+            }
         }
         // ← WRITE to MutableStateFlow:
         _currentInputMode.update { newInputMode }
+        inputModeChangedListener?.invoke(newInputMode)
         // We don’t need to manually call setKeysInXXX or setInputMode(...) here,
         // because our collector in init { … } already calls `handleCurrentInputModeSwitch(...)`
         // and `binding.keySwitchKeyMode.setInputMode(...)`.
+    }
+
+    private fun switchToNumberMode() {
+        if (useThreeStateKeyboard) return
+        rememberTwoStateNumberReturnTargetFromCurrentMode()
+        if (useQwertyNumberWhenThreeStateOff) {
+            qwertyNumberModeRequestedListener?.invoke()
+            return
+        }
+        _currentInputMode.update { InputMode.ModeNumber }
+        inputModeChangedListener?.invoke(InputMode.ModeNumber)
+    }
+
+    private fun rememberTwoStateNumberReturnTargetFromCurrentMode() {
+        currentInputMode.value.toTwoStateNumberReturnTargetOrNull()?.let { target ->
+            twoStateNumberReturnTarget = target
+        }
     }
 
     /** Sync UI to a specified input mode (called from collector) **/
@@ -2315,7 +2604,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             key12.text = ""
             keySmallLetter.setImageDrawable(null)
             keyReturn.setImageDrawable(null)
-            sideKeySymbol.setImageDrawable(null)
+            sideKeySymbolModeContainer.setImages(null, null)
             keySpace.setImageDrawable(null)
             keyMoveCursorRight.setImageDrawable(null)
             keySoftLeft.setImageDrawable(null)
@@ -2400,7 +2689,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keySmallLetter.visibility = View.INVISIBLE
 
             keyReturn.setImageDrawable(null)
-            sideKeySymbol.setImageDrawable(null)
+            sideKeySymbolModeContainer.setImages(null, null)
             keySpace.setImageDrawable(
                 cachedUndoDrawable
             )
@@ -2617,9 +2906,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     cachedUndoDrawable
                 )
             }
-            sideKeySymbol.apply {
+            sideKeySymbolModeContainer.apply {
                 visibility = View.VISIBLE
-                setImageDrawable(
+                setImages(
+                    ContextCompat.getDrawable(
+                        context,
+                        com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+                    ),
                     cachedSymbolDrawable
                 )
             }
@@ -2655,7 +2948,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
             binding.keyReturn.focusable = View.NOT_FOCUSABLE
             binding.keySoftLeft.focusable = View.NOT_FOCUSABLE
-            binding.sideKeySymbol.focusable = View.NOT_FOCUSABLE
+            binding.sideKeySymbolModeContainer.focusable = View.NOT_FOCUSABLE
             binding.keySwitchKeyMode.focusable = View.NOT_FOCUSABLE
             binding.keyDelete.focusable = View.NOT_FOCUSABLE
             binding.keyMoveCursorRight.focusable = View.NOT_FOCUSABLE
@@ -2677,7 +2970,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
             binding.keyReturn.isFocusable = false
             binding.keySoftLeft.isFocusable = false
-            binding.sideKeySymbol.isFocusable = false
+            binding.sideKeySymbolModeContainer.isFocusable = false
             binding.keySwitchKeyMode.isFocusable = false
             binding.keyDelete.isFocusable = false
             binding.keyMoveCursorRight.isFocusable = false

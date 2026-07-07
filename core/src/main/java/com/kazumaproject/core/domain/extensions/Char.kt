@@ -58,3 +58,21 @@ fun Char.toZenkaku(): Char {
         else -> this
     }
 }
+
+fun Char.isAsciiDigitForRomajiQwerty(): Boolean = this in '0'..'9'
+
+fun Char.isAsciiSymbolForRomajiQwerty(): Boolean = this in '!'..'/' ||
+        this in ':'..'@' ||
+        this in '['..'`' ||
+        this in '{'..'~'
+
+fun Char.toRomajiQwertyOutputChar(
+    useHankakuNumber: Boolean,
+    useHankakuSymbol: Boolean
+): Char {
+    return when {
+        useHankakuNumber && isAsciiDigitForRomajiQwerty() -> this
+        useHankakuSymbol && isAsciiSymbolForRomajiQwerty() -> this
+        else -> toZenkaku()
+    }
+}

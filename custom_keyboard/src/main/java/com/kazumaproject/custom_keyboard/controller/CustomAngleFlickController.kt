@@ -7,9 +7,12 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
-import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
+import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.ShapeType
+import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.custom_keyboard.view.CustomAngleFlickPopupView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,12 +31,15 @@ class CustomAngleFlickController(
 ) {
 
     interface FlickListener {
-        fun onFlick(direction: FlickDirection, character: String)
-        fun onStateChanged(view: View, newMap: Map<FlickDirection, String>)
-        fun onFlickDirectionChanged(newDirection: FlickDirection)
+        fun onPress(action: FlickAction?)
+        fun onFlick(direction: CircularFlickDirection, action: FlickAction)
+        fun onStateChanged(view: View, newMap: Map<CircularFlickDirection, FlickAction>)
+        fun onFlickDirectionChanged(newDirection: CircularFlickDirection)
     }
 
     var listener: FlickListener? = null
+
+    private var popupWindowAnchorProvider: (() -> View?)? = null
 
     private val popupView = CustomAngleFlickPopupView(context)
     private val popupWindow = PopupWindow(
@@ -50,14 +56,21 @@ class CustomAngleFlickController(
     private var initialTouchX = 0f
     private var initialTouchY = 0f
 
-    private var keyMaps: List<Map<FlickDirection, String>> = emptyList()
+    private var keyMaps: List<Map<CircularFlickDirection, FlickAction>> = emptyList()
     private var currentMapIndex = 0
 
-    private var previousDirection = FlickDirection.TAP
+    private var previousDirection = CircularFlickDirection.TAP
+    private var enabledSlots: Set<CircularFlickDirection> =
+        CircularFlickDirection.slots(4).toSet()
+    private var configuredDirectionCount: Int = 4
+    private var configuredRanges: Map<CircularFlickDirection, Pair<Float, Float>> =
+        buildEvenCircularRanges(configuredDirectionCount)
+    private var mapSwitchLabels: List<String?> = emptyList()
 
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
     private var isLongPressModeActive = false
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     init {
         // デフォルトの見た目サイズを設定（必要に応じて setPopupViewSize で上書きしてください）
@@ -66,8 +79,19 @@ class CustomAngleFlickController(
 
     // --- Configuration ---
 
-    fun setFlickRanges(ranges: Map<FlickDirection, Pair<Float, Float>>) {
-        popupView.setCustomRanges(ranges)
+    fun setFlickRanges(ranges: Map<CircularFlickDirection, Pair<Float, Float>>) {
+        configuredDirectionCount = ranges.keys.count {
+            it != CircularFlickDirection.TAP
+        }.coerceIn(4, 7)
+        configuredRanges = ranges.filterKeys { it != CircularFlickDirection.TAP }
+
+        if (keyMaps.isNotEmpty()) {
+            updateEffectiveRangesForMap(keyMaps[currentMapIndex])
+            updateMapSwitchLabelState()
+        } else {
+            popupView.setCustomRanges(ranges)
+            enabledSlots = ranges.keys.filter { it != CircularFlickDirection.TAP }.toSet()
+        }
     }
 
     fun setShapeType(shape: ShapeType) {
@@ -84,23 +108,81 @@ class CustomAngleFlickController(
         popupView.setUiSize(orbit, centerRadius, textSize)
     }
 
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
+    }
+
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
+    }
+
+    private fun updateEffectiveRangesForMap(
+        map: Map<CircularFlickDirection, FlickAction>
+    ) {
+        val effectiveRanges = buildEffectiveCircularFlickRanges(
+            configuredDirectionCount = configuredDirectionCount,
+            configuredRanges = configuredRanges,
+            map = map
+        )
+
+        popupView.setCustomRanges(effectiveRanges)
+        enabledSlots = effectiveRanges.keys.toSet()
+    }
+
     fun cancel() {
+        hidePopup()
         controllerScope.cancel()
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    fun attach(button: View, maps: List<Map<FlickDirection, String>>) {
+    fun attach(
+        button: View,
+        maps: List<Map<CircularFlickDirection, FlickAction>>,
+        switchLabels: List<String?>
+    ) {
         if (maps.isEmpty()) return
         this.keyMaps = maps
+        this.mapSwitchLabels = switchLabels
+        currentMapIndex = 0
+        updateEffectiveRangesForMap(keyMaps[currentMapIndex])
+        updateMapSwitchLabelState()
         button.setOnTouchListener { v, event ->
             handleTouchEvent(v, event)
         }
     }
 
+    private fun updateMapSwitchLabelState() {
+        val activeMapSwitchDirection = getActiveMapSwitchDirection()
+        popupView.setMapSwitchDirection(activeMapSwitchDirection)
+        val enabled = keyMaps.size >= 2 && activeMapSwitchDirection != null
+        popupView.setMapSwitchLabelEnabled(enabled)
+        if (enabled) {
+            popupView.setMapSwitchLabel(mapSwitchLabels.getOrNull(currentMapIndex))
+        } else {
+            popupView.setMapSwitchLabel(null)
+        }
+    }
+
+    private fun isMapSwitchAction(action: FlickAction?): Boolean {
+        return action is FlickAction.Action &&
+            action.action == KeyAction.MoveCustomKeyboardTab &&
+            action.label == "⇄"
+    }
+
+    private fun getActiveMapSwitchDirection(): CircularFlickDirection? {
+        if (keyMaps.isEmpty()) return null
+        val currentMap = keyMaps[currentMapIndex]
+        return currentMap.entries.firstOrNull { (direction, action) ->
+            direction != CircularFlickDirection.TAP &&
+                enabledSlots.contains(direction) &&
+                isMapSwitchAction(action)
+        }?.key
+    }
+
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {
         // ACTION_DOWNの時はTAP扱い、それ以外は座標から計算
         val currentDirection = if (event.action == MotionEvent.ACTION_DOWN) {
-            FlickDirection.TAP
+            CircularFlickDirection.TAP
         } else {
             calculateDirection(event.rawX, event.rawY)
         }
@@ -110,22 +192,26 @@ class CustomAngleFlickController(
                 anchorView = view
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
-                previousDirection = FlickDirection.TAP
+                previousDirection = CircularFlickDirection.TAP
                 isLongPressModeActive = false
                 currentMapIndex = 0 // タッチ開始時は常に最初のマップにリセット
 
                 popupView.setFullUIMode(false)
 
                 if (keyMaps.isNotEmpty()) {
-                    popupView.setCharacterMap(keyMaps[currentMapIndex])
+                    val currentMap = keyMaps[currentMapIndex]
+                    popupView.setCharacterMap(currentMap)
+                    updateEffectiveRangesForMap(currentMap)
+                    updateMapSwitchLabelState()
+                    listener?.onPress(currentMap[CircularFlickDirection.TAP])
                 }
-                popupView.updateFlickDirection(FlickDirection.TAP)
+                popupView.updateFlickDirection(CircularFlickDirection.TAP)
 
                 showPopup()
 
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
-                    delay(ViewConfiguration.getLongPressTimeout().toLong())
+                    delay(longPressTimeout)
                     isLongPressModeActive = true
                     popupView.setFullUIMode(true)
                     popupView.invalidate()
@@ -137,24 +223,28 @@ class CustomAngleFlickController(
                 if (currentDirection != previousDirection) {
                     listener?.onFlickDirectionChanged(currentDirection)
 
-                    if (currentDirection != FlickDirection.TAP) {
+                    if (currentDirection != CircularFlickDirection.TAP) {
                         longPressJob?.cancel()
                     }
                 }
 
-                // ★変更: UP_RIGHT方向フリック検知時のマップ切り替えロジック
-                if (currentDirection == FlickDirection.UP_RIGHT) {
+                val switchDirection = getActiveMapSwitchDirection()
+                if (
+                    switchDirection != null &&
+                    keyMaps.size > 1 &&
+                    enabledSlots.contains(switchDirection) &&
+                    currentDirection == switchDirection
+                ) {
                     // フルUIモードにして次の候補を見やすくする
                     popupView.setFullUIMode(true)
 
-                    // 前回がUP_RIGHTでなく、今回UP_RIGHTになった瞬間のみ切り替える
-                    if (previousDirection != FlickDirection.UP_RIGHT) {
-                        if (keyMaps.isNotEmpty()) {
-                            currentMapIndex = (currentMapIndex + 1) % keyMaps.size
-                            val newMap = keyMaps[currentMapIndex]
-                            popupView.setCharacterMap(newMap)
-                            listener?.onStateChanged(view, newMap)
-                        }
+                    if (previousDirection != switchDirection) {
+                        currentMapIndex = (currentMapIndex + 1) % keyMaps.size
+                        val newMap = keyMaps[currentMapIndex]
+                        popupView.setCharacterMap(newMap)
+                        updateEffectiveRangesForMap(newMap)
+                        updateMapSwitchLabelState()
+                        listener?.onStateChanged(view, newMap)
                     }
                 }
 
@@ -165,23 +255,29 @@ class CustomAngleFlickController(
                 return true
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 longPressJob?.cancel()
 
                 val finalDirection = calculateDirection(event.rawX, event.rawY)
 
-                // ★変更: UP_RIGHTフリックはマップ切り替え動作のため、文字入力を行わない
-                if (finalDirection != FlickDirection.UP_RIGHT) {
+                val switchDirection = getActiveMapSwitchDirection()
+                val isSwitchDirection =
+                    switchDirection != null &&
+                        keyMaps.size > 1 &&
+                        enabledSlots.contains(switchDirection) &&
+                        finalDirection == switchDirection
+
+                if (!isSwitchDirection) {
                     if (keyMaps.isNotEmpty()) {
                         val currentMap = keyMaps[currentMapIndex]
-                        val character = currentMap[finalDirection] ?: ""
+                        val action = currentMap[finalDirection]
 
-                        if (character.isNotEmpty()) {
-                            listener?.onFlick(finalDirection, character)
-                        } else if (finalDirection == FlickDirection.TAP) {
-                            val tapChar = currentMap[FlickDirection.TAP] ?: ""
-                            if (tapChar.isNotEmpty()) {
-                                listener?.onFlick(FlickDirection.TAP, tapChar)
+                        if (action != null) {
+                            listener?.onFlick(finalDirection, action)
+                        } else if (finalDirection == CircularFlickDirection.TAP) {
+                            val tapAction = currentMap[CircularFlickDirection.TAP]
+                            if (tapAction != null) {
+                                listener?.onFlick(CircularFlickDirection.TAP, tapAction)
                             }
                         }
                     }
@@ -190,26 +286,51 @@ class CustomAngleFlickController(
                 hidePopup()
                 return true
             }
+
+            MotionEvent.ACTION_CANCEL -> {
+                longPressJob?.cancel()
+                isLongPressModeActive = false
+                previousDirection = CircularFlickDirection.TAP
+                hidePopup()
+                return true
+            }
         }
         return false
     }
 
     private fun showPopup() {
-        val currentAnchor = anchorView ?: return
+        val keyAnchor = anchorView ?: return
+        val windowAnchor = popupWindowAnchorProvider?.invoke() ?: keyAnchor
+        if (!isAnchorReady(keyAnchor, windowAnchor)) {
+            if (popupWindow.isShowing) {
+                popupWindow.dismiss()
+            }
+            return
+        }
         popupWindow.width = popupView.preferredWidth
         popupWindow.height = popupView.preferredHeight
 
-        val location = IntArray(2)
-        currentAnchor.getLocationInWindow(location)
+        val location = getLocationRelativeToWindowAnchor(keyAnchor, windowAnchor)
 
-        val x = location[0] + (currentAnchor.width / 2) - (popupWindow.width / 2)
-        val y = location[1] + (currentAnchor.height / 2) - (popupWindow.height / 2)
+        val x = location[0] + (keyAnchor.width / 2) - (popupWindow.width / 2)
+        val y = location[1] + (keyAnchor.height / 2) - (popupWindow.height / 2)
 
         if (!popupWindow.isShowing) {
-            popupWindow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
+            runCatching {
+                popupWindow.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, x, y)
+            }
         } else {
-            popupWindow.update(x, y, popupWindow.width, popupWindow.height)
+            runCatching {
+                popupWindow.update(x, y, popupWindow.width, popupWindow.height)
+            }
         }
+    }
+
+    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
+        if (!keyAnchor.isAttachedToWindow) return false
+        if (windowAnchor == null) return false
+        if (!windowAnchor.isAttachedToWindow) return false
+        return windowAnchor.windowToken != null
     }
 
     private fun hidePopup() {
@@ -217,15 +338,70 @@ class CustomAngleFlickController(
         anchorView = null
     }
 
-    private fun calculateDirection(currentX: Float, currentY: Float): FlickDirection {
+    private fun calculateDirection(currentX: Float, currentY: Float): CircularFlickDirection {
         val dx = currentX - initialTouchX
         val dy = currentY - initialTouchY
         val distance = sqrt(dx * dx + dy * dy)
 
         // 判定はコンストラクタで渡された flickSensitivity を使用
-        if (distance < flickSensitivity) return FlickDirection.TAP
+        if (distance < flickSensitivity) return CircularFlickDirection.TAP
 
         val angle = (Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) + 360) % 360
         return popupView.getDirectionForAngle(angle)
+    }
+}
+
+internal fun buildEffectiveCircularFlickRanges(
+    configuredDirectionCount: Int,
+    map: Map<CircularFlickDirection, FlickAction>,
+    configuredRanges: Map<CircularFlickDirection, Pair<Float, Float>> =
+        buildEvenCircularRanges(configuredDirectionCount)
+): Map<CircularFlickDirection, Pair<Float, Float>> {
+    val activeDirections = buildActiveCircularFlickDirections(configuredDirectionCount, map)
+    val configuredDirections = CircularFlickDirection.slots(configuredDirectionCount)
+    if (
+        activeDirections == configuredDirections &&
+        configuredDirections.all { configuredRanges.containsKey(it) }
+    ) {
+        return configuredDirections.associateWith { configuredRanges.getValue(it) }
+    }
+
+    // Once optional slots are removed, custom per-slot angles no longer compact cleanly.
+    // Use even compact ranges so popup drawing and angle hit-testing share one full 360 layout.
+    val compactRanges = buildEvenCircularRanges(activeDirections.size)
+    val compactDirections = CircularFlickDirection.slots(activeDirections.size)
+    return activeDirections.mapIndexed { index, actualDirection ->
+        val compactDirection = compactDirections[index]
+        actualDirection to compactRanges.getValue(compactDirection)
+    }.toMap()
+}
+
+internal fun buildActiveCircularFlickDirections(
+    configuredDirectionCount: Int,
+    map: Map<CircularFlickDirection, FlickAction>
+): List<CircularFlickDirection> {
+    val allowedDirections = CircularFlickDirection.slots(configuredDirectionCount)
+    val baseDirections = listOf(
+        CircularFlickDirection.SLOT_0,
+        CircularFlickDirection.SLOT_1,
+        CircularFlickDirection.SLOT_2,
+        CircularFlickDirection.SLOT_3
+    ).filter { it in allowedDirections }
+    val optionalDirections = listOf(
+        CircularFlickDirection.SLOT_4,
+        CircularFlickDirection.SLOT_5,
+        CircularFlickDirection.SLOT_6
+    ).filter { direction ->
+        direction in allowedDirections && hasEffectiveCircularFlickAction(map[direction])
+    }
+
+    return baseDirections + optionalDirections
+}
+
+internal fun hasEffectiveCircularFlickAction(action: FlickAction?): Boolean {
+    return when (action) {
+        is FlickAction.Input -> action.char.isNotEmpty() || !action.label.isNullOrEmpty()
+        is FlickAction.Action -> true
+        null -> false
     }
 }

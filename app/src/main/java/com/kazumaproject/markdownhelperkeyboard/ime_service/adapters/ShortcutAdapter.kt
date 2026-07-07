@@ -8,8 +8,20 @@ import android.widget.ImageView
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
+
+internal class ShortcutIconColorState {
+    var iconColor: Int? = null
+        private set
+
+    fun setIconColor(color: Int): Boolean {
+        if (iconColor == color) return false
+        iconColor = color
+        return true
+    }
+}
 
 class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(DiffCallback) {
 
@@ -19,8 +31,10 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
      */
     var onItemClicked: ((ShortcutType) -> Unit)? = null
 
-    // ★追加: アイコンの色を保持する変数 (nullの場合はデフォルトの色)
-    private var iconColor: Int? = null
+    private val iconColorState = ShortcutIconColorState()
+    private var activeShortcutTypes: Set<ShortcutType> = emptySet()
+    private var toolbarHeightPx: Int = 0
+    private var iconSizePx: Int = 0
 
     /**
      * ViewHolder now captures clicks and calls the adapter's listener.
@@ -41,27 +55,92 @@ class ShortcutAdapter : ListAdapter<ShortcutType, ShortcutAdapter.ViewHolder>(Di
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_shortcut, parent, false)
+            .inflate(R.layout.item_shortcut_toolbar, parent, false)
         return ViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val item = getItem(position)
-        holder.imageView.setImageResource(item.iconResId) // Enumからアイコン取得
+        applyShortcutToolbarSize(holder)
+        holder.imageView.setImageResource(item.resolveIconResId()) // Enumからアイコン取得
 
         // ★追加: 色が設定されていれば適用し、なければ解除する
-        iconColor?.let { color ->
+        iconColorState.iconColor?.let { color ->
             holder.imageView.setColorFilter(color, PorterDuff.Mode.SRC_IN)
         } ?: run {
             holder.imageView.clearColorFilter()
         }
     }
 
+    fun setShortcutToolbarSize(
+        toolbarHeightPx: Int,
+        iconSizePx: Int
+    ) {
+        if (
+            this.toolbarHeightPx == toolbarHeightPx &&
+            this.iconSizePx == iconSizePx
+        ) {
+            return
+        }
+        this.toolbarHeightPx = toolbarHeightPx
+        this.iconSizePx = iconSizePx
+        if (itemCount > 0) {
+            notifyItemRangeChanged(0, itemCount)
+        }
+    }
+
     // ★追加: 外部から色を設定するメソッド
     fun setIconColor(color: Int) {
-        if (iconColor == color) return
-        iconColor = color
+        if (!iconColorState.setIconColor(color)) return
         notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setActiveShortcutTypes(activeTypes: Set<ShortcutType>) {
+        if (activeShortcutTypes == activeTypes) return
+        val oldActive = activeShortcutTypes
+        activeShortcutTypes = activeTypes
+
+        (oldActive union activeTypes).forEach { type ->
+            val index = currentList.indexOf(type)
+            if (index >= 0) {
+                notifyItemChanged(index)
+            }
+        }
+    }
+
+    fun setKeyboardLayoutEditActive(active: Boolean) {
+        setActiveShortcutTypes(
+            if (active) {
+                activeShortcutTypes + ShortcutType.KEYBOARD_LAYOUT_EDIT
+            } else {
+                activeShortcutTypes - ShortcutType.KEYBOARD_LAYOUT_EDIT
+            }
+        )
+    }
+
+    private fun applyShortcutToolbarSize(holder: ViewHolder) {
+        if (toolbarHeightPx <= 0 || iconSizePx <= 0) return
+        val context = holder.itemView.context
+        val itemMinWidthPx = context.dpToPx(64)
+        val horizontalPaddingPx = context.dpToPx(36)
+        val itemWidthPx = maxOf(itemMinWidthPx, iconSizePx + horizontalPaddingPx)
+
+        holder.itemView.layoutParams = holder.itemView.layoutParams.apply {
+            width = itemWidthPx
+            height = toolbarHeightPx
+        }
+        holder.imageView.layoutParams = holder.imageView.layoutParams.apply {
+            width = iconSizePx
+            height = iconSizePx
+        }
+    }
+
+    private fun ShortcutType.resolveIconResId(): Int {
+        return if (this in activeShortcutTypes) {
+            activeIconResId ?: iconResId
+        } else {
+            iconResId
+        }
     }
 
     private object DiffCallback : DiffUtil.ItemCallback<ShortcutType>() {

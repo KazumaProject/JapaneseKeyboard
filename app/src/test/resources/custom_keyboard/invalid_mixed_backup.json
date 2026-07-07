@@ -1,0 +1,46 @@
+[
+  {
+    "layout": {
+      "layoutId": 41,
+      "name": "Valid Mixed",
+      "columnCount": 2,
+      "rowCount": 1,
+      "isRomaji": false
+    },
+    "keysWithFlicks": [
+      {
+        "key": {
+          "keyId": 201,
+          "ownerLayoutId": 41,
+          "keyIdentifier": "valid-mixed-key",
+          "label": "A",
+          "row": 0,
+          "column": 0,
+          "rowSpan": 1,
+          "colSpan": 1,
+          "keyType": "NORMAL",
+          "isSpecialKey": false
+        },
+        "flicks": []
+      },
+      {
+        "key": {
+          "keyId": 202,
+          "ownerLayoutId": 41,
+          "keyIdentifier": "invalid-placement-key",
+          "label": "B",
+          "row": 0,
+          "column": 2,
+          "rowSpan": 1,
+          "colSpan": 1,
+          "keyType": "NORMAL",
+          "isSpecialKey": false
+        },
+        "flicks": []
+      }
+    ]
+  },
+  {
+    "keysWithFlicks": []
+  }
+]

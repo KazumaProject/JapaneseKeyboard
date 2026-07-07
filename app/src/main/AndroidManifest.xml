@@ -4,6 +4,9 @@
 
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission
+        android:name="android.permission.ACCESS_NETWORK_STATE"
+        tools:node="remove" />
 
     <queries>
         <intent>
@@ -25,6 +28,13 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="35">
 
+        <uses-native-library
+            android:name="libvndksupport.so"
+            android:required="false" />
+        <uses-native-library
+            android:name="libOpenCL.so"
+            android:required="false" />
+
         <activity
             android:name=".setting_activity.MainActivity"
             android:exported="true"
@@ -40,6 +50,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
+
+        <receiver
+            android:name=".physical_keyboard.layout.SumireKeyboardLayoutReceiver"
+            android:exported="true"
+            android:label="@string/keyboard_layouts_label">
+            <intent-filter>
+                <action android:name="android.hardware.input.action.QUERY_KEYBOARD_LAYOUTS" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.hardware.input.metadata.KEYBOARD_LAYOUTS"
+                android:resource="@xml/keyboard_layouts" />
+        </receiver>
 
         <service
             android:name=".ime_service.IMEService"
@@ -61,7 +84,7 @@
 
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.kazumaproject.markdownhelperkeyboard.fileprovider"
+            android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

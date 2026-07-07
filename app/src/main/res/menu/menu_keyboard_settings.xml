@@ -6,4 +6,9 @@
         android:icon="@android:drawable/ic_menu_view"
         android:title="Toggle Controls"
         app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_keyboard_size_direct_input"
+        android:icon="@drawable/input_24px"
+        android:title="@string/keyboard_size_direct_input_menu_title"
+        app:showAsAction="ifRoom" />
 </menu>

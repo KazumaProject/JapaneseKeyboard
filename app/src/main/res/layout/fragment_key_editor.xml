@@ -102,11 +102,48 @@
                     android:text="@string/input_style_petal" />
 
                 <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_circular_flick"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/donuts_flick" />
+
+                <com.google.android.material.chip.Chip
                     android:id="@+id/chip_two_step_flick"
                     style="@style/Widget.Material3.Chip.Filter"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/input_style_two_step" />
+            </com.google.android.material.chip.ChipGroup>
+
+            <TextView
+                android:id="@+id/text_output_mode_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="出力設定"
+                android:textAppearance="?attr/textAppearanceTitleMedium" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/output_mode_chip_group"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:singleSelection="true">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_normal_output"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="通常" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_long_press_output"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="長押し" />
             </com.google.android.material.chip.ChipGroup>
 
             <TextView
@@ -231,79 +268,205 @@
                     tools:text="削除" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- NEW: special flick editor group -->
-            <LinearLayout
-                android:id="@+id/special_flick_editor_group"
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/custom_keyboard_target_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="12dp"
+                android:hint="@string/custom_keyboard_target_hint"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <AutoCompleteTextView
+                    android:id="@+id/custom_keyboard_target_spinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    tools:text="My Keyboard" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <LinearLayout
+                android:id="@+id/key_icon_override_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
                 android:orientation="vertical"
                 android:visibility="gone"
                 tools:visibility="visible">
 
                 <TextView
+                    android:id="@+id/key_icon_override_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="特殊キー（フリック）設定"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
+                    android:text="@string/custom_key_icon_title"
+                    android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/key_icon_preview"
+                        android:layout_width="48dp"
+                        android:layout_height="48dp"
+                        android:background="@drawable/recyclerview_item_bg"
+                        android:contentDescription="@string/custom_key_icon_preview"
+                        android:padding="8dp"
+                        android:scaleType="centerInside" />
+
+                    <TextView
+                        android:id="@+id/key_icon_status"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="12dp"
+                        android:layout_weight="1"
+                        android:text="@string/custom_key_icon_action_default"
+                        android:textAppearance="?attr/textAppearanceBodyMedium" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_choose_builtin_icon"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/custom_key_icon_choose_builtin" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/button_choose_image_icon"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:text="@string/custom_key_icon_choose_image" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/button_clear_icon_override"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="@string/custom_key_icon_clear" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/circular_flick_editor_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:orientation="vertical"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <Spinner
+                        android:id="@+id/spinner_circular_map"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_circular_map_add"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:text="追加" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_circular_map_duplicate"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:text="複製" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_circular_map_delete"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:text="削除" />
+                </LinearLayout>
 
                 <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/circular_flick_mappings_recycler_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false" />
+            </LinearLayout>
+
+            <!-- フリックグリッドエディタ (ペタル・2段・特殊フリック共通) -->
+            <com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.FlickGridEditorView
+                android:id="@+id/flick_grid_editor_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:layout_marginTop="24dp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <!-- 選択中の方向テキスト -->
+            <TextView
+                android:id="@+id/text_selected_direction"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textAppearance="?attr/textAppearanceTitleSmall"
+                android:visibility="gone"
+                tools:text="右フリック時の挙動"
+                tools:visibility="visible" />
+
+            <!-- 文字入力欄（ペタル・2段フリックのテキスト入力用） -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/text_char_input_layout"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/key_label"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/text_char_edittext"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:maxLines="1" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <!-- 特殊フリック用アクション選択スピナー（セル選択時に表示） -->
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/special_flick_editor_group"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:hint="@string/key_action"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <AutoCompleteTextView
                     android:id="@+id/special_flick_mappings_recycler_view"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:nestedScrollingEnabled="false"
-                    tools:itemCount="5"
-                    tools:listitem="@layout/list_item_special_flick_mapping" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/flick_editor_group"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/setting_flick"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/flick_mappings_recycler_view"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:nestedScrollingEnabled="false"
-                    tools:itemCount="5"
-                    tools:listitem="@layout/list_item_flick_mapping" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/two_step_editor_group"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
-                android:orientation="vertical"
-                android:visibility="gone"
-                tools:visibility="visible">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/setting_two_step_flick"
-                    android:textAppearance="?attr/textAppearanceTitleMedium" />
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/two_step_mappings_recycler_view"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:nestedScrollingEnabled="false"
-                    tools:itemCount="17"
-                    tools:listitem="@layout/list_item_two_step_mapping" />
-            </LinearLayout>
+                    android:inputType="none" />
+            </com.google.android.material.textfield.TextInputLayout>
 
             <Button
                 android:id="@+id/button_done"
