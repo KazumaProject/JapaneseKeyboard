@@ -61,6 +61,7 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBi
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
+import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplateDao
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
@@ -249,8 +250,8 @@ object AppModule {
     @Singleton
     @Provides
     @ConnectionIds
-    fun provideConnectionIds(reader: DictionaryBinaryReader): ShortArray {
-        return reader.loadConnectionIds(DictionaryFileKey.CONNECTION_ID)
+    fun provideConnectionMatrix(reader: DictionaryBinaryReader): ConnectionMatrix.CostTable {
+        return reader.loadConnectionMatrix(DictionaryFileKey.CONNECTION_ID)
     }
 
     @SystemTangoTrie
@@ -573,7 +574,7 @@ object AppModule {
     @Singleton
     @Provides
     fun provideKanaKanjiHenkanEngine(
-        @ConnectionIds connectionIds: ShortArray,
+        @ConnectionIds connectionMatrix: ConnectionMatrix.CostTable,
 
         @SystemTangoTrie systemTangoTrie: LOUDS,
         @SystemYomiTrie systemYomiTrie: LOUDSWithTermId,
@@ -666,7 +667,7 @@ object AppModule {
         kanaKanjiEngine.buildEngine(
             graphBuilder = graphBuilder,
             findPath = findPath,
-            connectionIdList = connectionIds,
+            connectionMatrix = connectionMatrix,
 
             systemTangoTrie = systemTangoTrie,
             systemYomiTrie = systemYomiTrie,
