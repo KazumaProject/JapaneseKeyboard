@@ -102,6 +102,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var keyIndentSmallDp: Float = 9f
     private var keySideMarginDp: Float = 4f
     private var keyTextSizeSp: Float = 20f
+    private var symbolKeymapTextSizeSp: Float = 9f
     private var specialKeyTextSizeSp: Float = 12f
     private var specialKeyIconSizeDp: Float = 18f
     private var pendingSpecialIconSizeRefresh = false
@@ -195,6 +196,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val glideMinMoveDistance by lazy { ViewConfiguration.get(context).scaledTouchSlop * 2.4f }
     private val glideFastMoveDistance by lazy { ViewConfiguration.get(context).scaledTouchSlop * 3.0f }
     private val glideSamplingMinDistance by lazy { ViewConfiguration.get(context).scaledTouchSlop * 0.45f }
+    private val pendingGlideLongPressSlop by lazy { ViewConfiguration.get(context).scaledTouchSlop }
     private val glideMinElapsedMillis = 45L
     private val glideFastTypingSuppressMillis = 55L
 
@@ -748,6 +750,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         indentSmallDp: Float = keyIndentSmallDp,
         sideMarginDp: Float = keySideMarginDp,
         textSizeSp: Float = keyTextSizeSp,
+        symbolKeymapTextSizeSp: Float = this.symbolKeymapTextSizeSp,
         specialTextSizeSp: Float = specialKeyTextSizeSp,
         specialIconSizeDp: Float = specialKeyIconSizeDp
     ) {
@@ -757,6 +760,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.keyIndentSmallDp = indentSmallDp
         this.keySideMarginDp = sideMarginDp
         this.keyTextSizeSp = textSizeSp
+        this.symbolKeymapTextSizeSp = symbolKeymapTextSizeSp
         this.specialKeyTextSizeSp = specialTextSizeSp
         this.specialKeyIconSizeDp = specialIconSizeDp
 
@@ -764,6 +768,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         applyLayoutForMode(qwertyMode.value)
 
         updateAllKeyTextSizes()
+        updateSymbolKeymapTextSizes()
         updateSpecialKeyTextSizes()
         refreshSpecialKeyIconSizesWhenLaidOut()
     }
@@ -788,6 +793,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             if (view is TextView) { // QWERTYButton, AppCompatButton は TextView を継承している
                 view.textSize = keyTextSizeSp
             }
+        }
+    }
+
+    private fun updateSymbolKeymapTextSizes() {
+        defaultQWERTYButtonsRoman.distinct().forEach { view ->
+            view.guideTextSizeSp = symbolKeymapTextSizeSp
         }
     }
 
@@ -1658,6 +1669,34 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     return false
                 }
 
+                if (!glideStarted) {
+                    // Glide 確定前の微小 MOVE では通常の長押し予約を保持する。
+                    if (moveHandling == QwertyGlideKeyClassifier.MoveHandling.APPEND_TO_GLIDE_PATH) {
+                        appendHistoricalQwertyGlideLetterPoints(event, pointerIndex, pointerId)
+                        appendQwertyGlidePoint(
+                            x = x,
+                            y = y,
+                            eventTime = event.eventTime,
+                            pointerId = pointerId
+                        )
+                        if (shouldStartQwertyGlide(event)) {
+                            startQwertyGlide(pointerId)
+                            qwertyGlideInputListener?.onQwertyGlideUpdated(
+                                inputPointers = QwertyInputPointers(glideRawPoints.toList()),
+                                proximityInfo = getQwertyKeyboardProximityInfo()
+                            )
+                            return true
+                        }
+                    }
+
+                    return if (isPendingQwertyGlideMoveWithinLongPressBounds(pointerId, x, y)) {
+                        false
+                    } else {
+                        cancelLongPressForPointer(pointerId)
+                        false
+                    }
+                }
+
                 // Glide candidate / active pointer の MOVE はここで所有する。
                 // 通常 MOVE に落とすと pointerButtonMap が数字・句読点などへ
                 // 書き換わり、UP で通常 tap として commit されてしまう。
@@ -1750,6 +1789,17 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         flickLockedPointers.add(pointerId)
         glideStarted = true
         qwertyGlideInputListener?.onQwertyGlideStarted()
+    }
+
+    private fun isPendingQwertyGlideMoveWithinLongPressBounds(
+        pointerId: Int,
+        x: Float,
+        y: Float
+    ): Boolean {
+        val pressedView = pointerButtonMap[pointerId] ?: return false
+        pressedView.getHitRect(glideHitRect)
+        glideHitRect.inset(-pendingGlideLongPressSlop, -pendingGlideLongPressSlop)
+        return glideHitRect.contains(x.toInt(), y.toInt())
     }
 
     private fun handleQwertyGlidePointerUp(event: MotionEvent): Boolean {
@@ -1897,6 +1947,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         if (clearTrail) {
             glideTrailPoints.clear()
             invalidate()
+        }
+    }
+
+    private fun clearPendingQwertyGlideCandidateForLongPress(pointerId: Int) {
+        if (glideCandidatePointerId == pointerId && !glideStarted) {
+            clearQwertyGlideState(clearTrail = true)
         }
     }
 
@@ -2522,11 +2578,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 val hasVariations = info != null && !info.variations.isNullOrEmpty()
                 val isSpecialLongPressKey = qwertyKey in longPressEnabledKeys
                 if (hasVariations) {
+                    clearPendingQwertyGlideCandidateForLongPress(pointerId)
                     qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
                     info?.variations?.let { showVariationPopup(view, it) }
                     longPressedPointerId = pointerId
                     dismissKeyPreview()
                 } else if (isSpecialLongPressKey) {
+                    clearPendingQwertyGlideCandidateForLongPress(pointerId)
                     qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
                     lockedPointerId = pointerId
                 }

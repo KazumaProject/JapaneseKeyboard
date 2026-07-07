@@ -543,6 +543,8 @@ object AppPreference {
     private val QWERTY_KEY_INDENT_SMALL = Pair("qwerty_key_indent_small_preference", 9.0f)
     private val QWERTY_KEY_SIDE_MARGIN = Pair("qwerty_key_side_margin_preference", 4.0f)
     private val QWERTY_KEY_TEXT_SIZE = Pair("qwerty_key_text_size_preference", 18.0f)
+    private val QWERTY_SYMBOL_KEYMAP_TEXT_SIZE =
+        Pair("qwerty_symbol_keymap_text_size_preference", 9.0f)
     private val QWERTY_SPECIAL_KEY_TEXT_SIZE = Pair("special_key_text_size_preference", 12.0f)
     private val QWERTY_SPECIAL_KEY_ICON_SIZE =
         Pair("qwerty_special_key_icon_size_preference", 18.0f)
@@ -2858,6 +2860,18 @@ object AppPreference {
     var qwerty_key_text_size: Float?
         get() = preferences.getFloat(QWERTY_KEY_TEXT_SIZE.first, QWERTY_KEY_TEXT_SIZE.second)
         set(value) = preferences.edit { it.putFloat(QWERTY_KEY_TEXT_SIZE.first, value ?: 18.0f) }
+
+    var qwerty_symbol_keymap_text_size: Float?
+        get() = preferences.getFloat(
+            QWERTY_SYMBOL_KEYMAP_TEXT_SIZE.first,
+            QWERTY_SYMBOL_KEYMAP_TEXT_SIZE.second
+        ).coerceIn(4.0f, 24.0f)
+        set(value) = preferences.edit {
+            it.putFloat(
+                QWERTY_SYMBOL_KEYMAP_TEXT_SIZE.first,
+                (value ?: QWERTY_SYMBOL_KEYMAP_TEXT_SIZE.second).coerceIn(4.0f, 24.0f)
+            )
+        }
 
     var qwerty_special_key_text_size: Float?
         get() = preferences.getFloat(

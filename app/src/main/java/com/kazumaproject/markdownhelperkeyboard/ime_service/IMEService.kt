@@ -1095,6 +1095,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyKeyIndentSmall: Float? = 9.0f
     private var qwertyKeySideMargin: Float? = 4.0f
     private var qwertyKeyTextSize: Float? = 18.0f
+    private var qwertySymbolKeymapTextSize: Float? = 9.0f
     private var qwertySpecialKeyTextSize: Float? = 12.0f
     private var qwertySpecialKeyIconSize: Float? = 18.0f
 
@@ -2060,6 +2061,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyKeyIndentSmall = preferences.qwertyKeyIndentSmall
         qwertyKeySideMargin = preferences.qwertyKeySideMargin
         qwertyKeyTextSize = preferences.qwertyKeyTextSize
+        qwertySymbolKeymapTextSize = preferences.qwertySymbolKeymapTextSize
         qwertySpecialKeyTextSize = preferences.qwertySpecialKeyTextSize
         qwertySpecialKeyIconSize = preferences.qwertySpecialKeyIconSize
         keyboardThemeMode = preferences.keyboardThemeMode
@@ -3839,6 +3841,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     indentSmallDp = qwertyKeyIndentSmall ?: 9.0f,
                     sideMarginDp = qwertyKeySideMargin ?: 4.0f,
                     textSizeSp = qwertyKeyTextSize ?: 18.0f,
+                    symbolKeymapTextSizeSp = qwertySymbolKeymapTextSize ?: 9.0f,
                     specialTextSizeSp = qwertySpecialKeyTextSize ?: 12.0f,
                     specialIconSizeDp = qwertySpecialKeyIconSize ?: 18.0f
                 )
@@ -4045,6 +4048,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyKeyIndentSmall = null
         qwertyKeySideMargin = null
         qwertyKeyTextSize = null
+        qwertySymbolKeymapTextSize = null
         qwertySpecialKeyTextSize = null
         qwertySpecialKeyIconSize = null
 
@@ -18236,6 +18240,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 indentSmallDp = qwertyKeyIndentSmall ?: 9.0f,
                 sideMarginDp = qwertyKeySideMargin ?: 4.0f,
                 textSizeSp = qwertyKeyTextSize ?: 18.0f,
+                symbolKeymapTextSizeSp = qwertySymbolKeymapTextSize ?: 9.0f,
                 specialTextSizeSp = qwertySpecialKeyTextSize ?: 12.0f,
                 specialIconSizeDp = qwertySpecialKeyIconSize ?: 18.0f
             )
