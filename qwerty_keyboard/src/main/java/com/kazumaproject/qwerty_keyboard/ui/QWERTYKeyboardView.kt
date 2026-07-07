@@ -102,6 +102,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var keyIndentSmallDp: Float = 9f
     private var keySideMarginDp: Float = 4f
     private var keyTextSizeSp: Float = 20f
+    private var symbolKeymapTextSizeSp: Float = 9f
     private var specialKeyTextSizeSp: Float = 12f
     private var specialKeyIconSizeDp: Float = 18f
     private var pendingSpecialIconSizeRefresh = false
@@ -749,6 +750,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         indentSmallDp: Float = keyIndentSmallDp,
         sideMarginDp: Float = keySideMarginDp,
         textSizeSp: Float = keyTextSizeSp,
+        symbolKeymapTextSizeSp: Float = this.symbolKeymapTextSizeSp,
         specialTextSizeSp: Float = specialKeyTextSizeSp,
         specialIconSizeDp: Float = specialKeyIconSizeDp
     ) {
@@ -758,6 +760,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.keyIndentSmallDp = indentSmallDp
         this.keySideMarginDp = sideMarginDp
         this.keyTextSizeSp = textSizeSp
+        this.symbolKeymapTextSizeSp = symbolKeymapTextSizeSp
         this.specialKeyTextSizeSp = specialTextSizeSp
         this.specialKeyIconSizeDp = specialIconSizeDp
 
@@ -765,6 +768,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         applyLayoutForMode(qwertyMode.value)
 
         updateAllKeyTextSizes()
+        updateSymbolKeymapTextSizes()
         updateSpecialKeyTextSizes()
         refreshSpecialKeyIconSizesWhenLaidOut()
     }
@@ -789,6 +793,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             if (view is TextView) { // QWERTYButton, AppCompatButton は TextView を継承している
                 view.textSize = keyTextSizeSp
             }
+        }
+    }
+
+    private fun updateSymbolKeymapTextSizes() {
+        defaultQWERTYButtonsRoman.distinct().forEach { view ->
+            view.guideTextSizeSp = symbolKeymapTextSizeSp
         }
     }
 
