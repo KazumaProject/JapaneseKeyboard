@@ -4,6 +4,7 @@ import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
 import com.kazumaproject.graph.MozcNodeType
 import com.kazumaproject.graph.Node
+import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
@@ -57,12 +58,25 @@ class FindPath(
         connectionMatrixSize: Int,
         n: Int,
         beamWidth: Int = 20,
+    ): MutableList<Candidate> = backwardAStar(
+        graph = graph,
+        length = length,
+        connectionMatrix = ConnectionMatrix.fromShortArray(connectionIds, connectionMatrixSize),
+        n = n,
+        beamWidth = beamWidth,
+    )
+
+    fun backwardAStar(
+        graph: MutableMap<Int, MutableList<Node>>,
+        length: Int,
+        connectionMatrix: ConnectionMatrix.CostTable,
+        n: Int,
+        beamWidth: Int = 20,
     ): MutableList<Candidate> {
         forwardDp(
             graph = graph,
             length = length,
-            connectionIds = connectionIds,
-            connectionMatrixSize = connectionMatrixSize,
+            connectionMatrix = connectionMatrix,
             beamWidth = beamWidth.coerceAtLeast(1),
         )
 
@@ -123,8 +137,7 @@ class FindPath(
                     val edgeScore = getEdgeCost(
                         rid = prevNode.r.toInt(),
                         lid = node.first.l.toInt(),
-                        connectionIds = connectionIds,
-                        connectionMatrixSize = connectionMatrixSize,
+                        connectionMatrix = connectionMatrix,
                     )
 
                     val ngramAdjustment = ngramRuleScorer.score(
@@ -147,8 +160,7 @@ class FindPath(
     private fun forwardDp(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
-        connectionIds: ShortArray,
-        connectionMatrixSize: Int,
+        connectionMatrix: ConnectionMatrix.CostTable,
         beamWidth: Int = 20,
     ) {
         for (i in 1..length + 1) {
@@ -164,8 +176,7 @@ class FindPath(
                     val edgeCost = getEdgeCost(
                         rid = prev.r.toInt(),
                         lid = node.l.toInt(),
-                        connectionIds = connectionIds,
-                        connectionMatrixSize = connectionMatrixSize,
+                        connectionMatrix = connectionMatrix,
                     )
                     val tempCost = prev.f + nodeScore + edgeCost
                     if (tempCost < score) {
@@ -203,8 +214,7 @@ class FindPath(
     private fun forwardDpWithLog(
         graph: MutableMap<Int, MutableList<Node>>,
         length: Int,
-        connectionIds: ShortArray,
-        connectionMatrixSize: Int,
+        connectionMatrix: ConnectionMatrix.CostTable,
         beamWidth: Int = 20,
     ) {
         for (i in 1..length + 1) {
@@ -220,8 +230,7 @@ class FindPath(
                     val edgeCost = getEdgeCost(
                         rid = prev.r.toInt(),
                         lid = node.l.toInt(),
-                        connectionIds = connectionIds,
-                        connectionMatrixSize = connectionMatrixSize,
+                        connectionMatrix = connectionMatrix,
                     )
                     val tempCost = prev.f + nodeScore + edgeCost
                     if (tempCost < score) {
@@ -281,18 +290,9 @@ class FindPath(
     private fun getEdgeCost(
         rid: Int,
         lid: Int,
-        connectionIds: ShortArray,
-        connectionMatrixSize: Int,
+        connectionMatrix: ConnectionMatrix.CostTable,
     ): Int {
-        require(connectionMatrixSize > 0) { "connectionMatrixSize must be positive: $connectionMatrixSize" }
-        require(rid in 0 until connectionMatrixSize && lid in 0 until connectionMatrixSize) {
-            "connection id out of range: rid=$rid, lid=$lid, matrixSize=$connectionMatrixSize"
-        }
-        val index = rid * connectionMatrixSize + lid
-        require(index in connectionIds.indices) {
-            "connection index out of range: index=$index, size=${connectionIds.size}, matrixSize=$connectionMatrixSize"
-        }
-        return connectionIds[index].toInt()
+        return connectionMatrix.cost(rid, lid)
     }
 
     private fun getStringFromNode(node: Node): String {
@@ -334,6 +334,28 @@ class FindPath(
         forwardDpTrace: MutableList<ForwardDpTrace>? = null,
         boundaryTrace: MutableList<BoundaryTrace>? = null,
         candidateTrace: MutableList<CandidateTrace>? = null,
+    ): BunsetsuCandidateResult = backwardAStarWithBunsetsu(
+        graph = graph,
+        length = length,
+        connectionMatrix = ConnectionMatrix.fromShortArray(connectionIds, connectionMatrixSize),
+        n = n,
+        beamWidth = beamWidth,
+        penaltyTrace = penaltyTrace,
+        forwardDpTrace = forwardDpTrace,
+        boundaryTrace = boundaryTrace,
+        candidateTrace = candidateTrace,
+    )
+
+    fun backwardAStarWithBunsetsu(
+        graph: MutableMap<Int, MutableList<Node>>,
+        length: Int,
+        connectionMatrix: ConnectionMatrix.CostTable,
+        n: Int,
+        beamWidth: Int = 20,
+        penaltyTrace: MutableList<PenaltyTrace>? = null,
+        forwardDpTrace: MutableList<ForwardDpTrace>? = null,
+        boundaryTrace: MutableList<BoundaryTrace>? = null,
+        candidateTrace: MutableList<CandidateTrace>? = null,
     ): BunsetsuCandidateResult {
         val mozcSegmenter = mozcSegmenterProvider()
         if (mozcSegmenter != null) {
@@ -350,8 +372,7 @@ class FindPath(
             forwardDp(
                 graph = graph,
                 length = length,
-                connectionIds = connectionIds,
-                connectionMatrixSize = connectionMatrixSize,
+                connectionMatrix = connectionMatrix,
                 beamWidth = beamWidth.coerceAtLeast(1),
             )
         } finally {
@@ -477,8 +498,7 @@ class FindPath(
                     val edgeScore = getEdgeCost(
                         rid = prevNode.r.toInt(),
                         lid = currentNode.l.toInt(),
-                        connectionIds = connectionIds,
-                        connectionMatrixSize = connectionMatrixSize,
+                        connectionMatrix = connectionMatrix,
                     )
 
                     currentNode.next = element.path.next?.node
@@ -520,6 +540,20 @@ class FindPath(
         connectionMatrixSize: Int,
         n: Int,
         beamWidth: Int = 20,
+    ): Pair<List<Candidate>, List<Int>> = backwardAStarWithBunsetsuWithLog(
+        graph = graph,
+        length = length,
+        connectionMatrix = ConnectionMatrix.fromShortArray(connectionIds, connectionMatrixSize),
+        n = n,
+        beamWidth = beamWidth,
+    )
+
+    fun backwardAStarWithBunsetsuWithLog(
+        graph: MutableMap<Int, MutableList<Node>>,
+        length: Int,
+        connectionMatrix: ConnectionMatrix.CostTable,
+        n: Int,
+        beamWidth: Int = 20,
     ): Pair<List<Candidate>, List<Int>> {
         val totalStartTime = System.currentTimeMillis()
         Timber.d("▼ backwardAStarWithBunsetsu 開始 (入力長: $length)")
@@ -529,8 +563,7 @@ class FindPath(
         forwardDpWithLog(
             graph = graph,
             length = length,
-            connectionIds = connectionIds,
-            connectionMatrixSize = connectionMatrixSize,
+            connectionMatrix = connectionMatrix,
             beamWidth = beamWidth.coerceAtLeast(1),
         )
 
@@ -614,8 +647,7 @@ class FindPath(
                     val edgeScore = getEdgeCost(
                         rid = prevNode.r.toInt(),
                         lid = node.first.l.toInt(),
-                        connectionIds = connectionIds,
-                        connectionMatrixSize = connectionMatrixSize,
+                        connectionMatrix = connectionMatrix,
                     )
 
                     val ngramAdjustment = ngramRuleScorer.score(
