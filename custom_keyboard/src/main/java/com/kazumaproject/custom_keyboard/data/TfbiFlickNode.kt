@@ -13,16 +13,23 @@ enum class KeyMode {
     HANDAKUTEN
 }
 
+enum class ModeSwitchBoundary {
+    NONE,
+    I_COLUMN_DIACRITIC
+}
+
 sealed class TfbiFlickNode {
     /**
      * 終端ノード（文字入力を表す）
      * @param char 入力される文字
      * @param triggersMode この文字が入力された後、
      * コントローラーが遷移すべき次の状態（nullなら状態維持）
+     * @param modeSwitchBoundary triggersMode による状態遷移前に使用する追加の境界判定
      */
     data class Input(
         val char: String,
-        val triggersMode: KeyMode? = null // ★ 変更点
+        val triggersMode: KeyMode? = null,
+        val modeSwitchBoundary: ModeSwitchBoundary = ModeSwitchBoundary.NONE
     ) : TfbiFlickNode()
 
     /**

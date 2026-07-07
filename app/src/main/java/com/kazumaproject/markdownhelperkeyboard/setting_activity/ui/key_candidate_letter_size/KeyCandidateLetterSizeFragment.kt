@@ -58,6 +58,16 @@ class KeyCandidateLetterSizeFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         setKeyboardSize()
+        binding.tenkeyLetterSizePreview.setKeySizeScale(
+            appPreference.tenkey_key_width_scale_percent ?: DEFAULT_KEY_SCALE_PERCENT,
+            appPreference.tenkey_key_height_scale_percent ?: DEFAULT_KEY_SCALE_PERCENT
+        )
+        binding.tenkeyLetterSizePreview.setUseThreeStateKeyboard(
+            appPreference.tenkey_use_three_state_keyboard_preference
+        )
+        binding.tenkeyLetterSizePreview.setUseQwertyNumberWhenThreeStateOff(
+            appPreference.tenkey_switch_number_to_qwerty_number_preference
+        )
         setupRecyclerView()
         setupPreviewData()
         setupCandidateLetterSizeSeekBar()
@@ -142,6 +152,7 @@ class KeyCandidateLetterSizeFragment : Fragment() {
         menuHost.addMenuProvider(object : MenuProvider {
             override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
                 menuInflater.inflate(R.menu.fragment_reset_menu, menu)
+                menu.findItem(R.id.action_candidate_default_height)?.isVisible = false
             }
 
             override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
@@ -165,8 +176,6 @@ class KeyCandidateLetterSizeFragment : Fragment() {
     private fun resetSettings() {
         // Reset key letter size
         appPreference.key_letter_size = 0.0f
-        val keyProgress =
-            (100 * (defaultKeyTextSize - minKeyTextSize) / (maxKeyTextSize - minKeyTextSize)).toInt()
         //binding.keyLetterSizeSeekbar.progress = keyProgress
         binding.tenkeyLetterSizePreview.setKeyLetterSize(defaultKeyTextSize)
 
@@ -240,5 +249,9 @@ class KeyCandidateLetterSizeFragment : Fragment() {
         super.onDestroyView()
         binding.suggestionLetterSizeRecyclerview.adapter = null
         _binding = null
+    }
+
+    companion object {
+        private const val DEFAULT_KEY_SCALE_PERCENT = 100
     }
 }

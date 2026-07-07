@@ -2,9 +2,10 @@ package com.kazumaproject.core.domain.extensions
 
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.Color
 import android.util.TypedValue
-import android.view.View
 import androidx.annotation.AttrRes
+import androidx.annotation.ColorInt
 
 /** テーマ属性を解決して ColorInt を返す拡張関数 */
 fun Context.getThemeColor(@AttrRes attrRes: Int): Int {
@@ -13,22 +14,32 @@ fun Context.getThemeColor(@AttrRes attrRes: Int): Int {
     return typedValue.data
 }
 
-fun applySurfaceContainerHighest(view: View) {
-    val color =
-        view.context.getThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHighest)
-    view.setBackgroundColor(color)
-}
+/**
 
-fun applyColorPrimaryContainer(view: View) {
-    val color =
-        view.context.getThemeColor(com.google.android.material.R.attr.colorPrimaryContainer)
-    view.setBackgroundColor(color)
-}
+ * テーマ属性を安全に解決して ColorInt を返す。
 
-fun applyColorSurface(view: View) {
-    val color =
-        view.context.getThemeColor(com.google.android.material.R.attr.colorSurface)
-    view.setBackgroundColor(color)
+ *
+
+ * resolveAttribute に失敗した場合や、transparent が返った場合は fallbackColor を返す。
+
+ */
+
+@ColorInt
+
+fun Context.getThemeColorOrFallback(
+    @AttrRes attrRes: Int, @ColorInt fallbackColor: Int
+): Int {
+    val typedValue = TypedValue()
+    val resolved = theme.resolveAttribute(attrRes, typedValue, true)
+    if (!resolved) {
+        return fallbackColor
+    }
+    val color = typedValue.data
+    return if (color == Color.TRANSPARENT) {
+        fallbackColor
+    } else {
+        color
+    }
 }
 
 fun Context.isDarkThemeOn(): Boolean {

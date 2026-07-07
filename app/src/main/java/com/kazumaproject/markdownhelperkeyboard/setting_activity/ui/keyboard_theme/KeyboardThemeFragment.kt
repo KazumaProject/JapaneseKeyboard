@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.keyboard_th
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
+import android.view.View
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.toColorInt
 import androidx.preference.CheckBoxPreference
@@ -16,6 +17,7 @@ import com.afollestad.materialdialogs.color.colorChooser
 import com.google.android.material.color.DynamicColors
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting.CommonPreferenceFragment
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -29,6 +31,12 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         // System Theme Keys
         private const val PREF_KEY_DEFAULT = "theme_default"
         private const val PREF_KEY_ROUND_CORNER = "round_corner_keyboard_preference"
+        private const val PREF_KEY_POPUP_USE_CUSTOM_COLOR =
+            "key_popup_use_custom_color_preference"
+        private const val PREF_KEY_POPUP_BACKGROUND_COLOR =
+            "key_popup_background_color_preference"
+        private const val PREF_KEY_POPUP_TEXT_COLOR =
+            "key_popup_text_color_preference"
 
         // Liquid Glass Keys
         private const val PREF_KEY_LIQUID_GLASS = "liquid_glass_preference"
@@ -42,6 +50,18 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         private const val PREF_KEY_CUSTOM_SPECIAL_KEY = "theme_custom_special_key_color"
         private const val PREF_KEY_CUSTOM_TEXT = "theme_custom_key_text_color"
         private const val PREF_KEY_CUSTOM_SPECIAL_TEXT = "theme_custom_special_key_text_color"
+        private const val PREF_KEY_CUSTOM_CANDIDATE_TEXT =
+            "theme_custom_candidate_text_color"
+        private const val PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG =
+            "theme_custom_candidate_item_bg_color"
+        private const val PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG =
+            "theme_custom_candidate_item_pressed_bg_color"
+        private const val PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG =
+            "theme_custom_candidate_empty_popup_bg_color"
+        private const val PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT =
+            "theme_custom_candidate_empty_popup_text_color"
+        private const val PREF_KEY_CUSTOM_SHORTCUT_ICON =
+            "theme_custom_shortcut_icon_color"
 
         // Custom Border Keys
         private const val PREF_KEY_CUSTOM_BORDER_ENABLE = "theme_custom_border_enable"
@@ -61,9 +81,13 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         private const val MODE_CUSTOM = "custom"
     }
 
+    private var pendingHighlightPreferenceKey: String? = null
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         val context = preferenceManager.context
         val screen = preferenceManager.createPreferenceScreen(context)
+        pendingHighlightPreferenceKey =
+            arguments?.getString(CommonPreferenceFragment.ARG_HIGHLIGHT_PREFERENCE_KEY)
 
         // -------------------------------------------------------
         // System Category
@@ -144,7 +168,6 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         }
         systemCategory.addPreference(defaultPref)
 
-
         // -------------------------------------------------------
         // Custom Category (Keyboard Appearance)
         // -------------------------------------------------------
@@ -203,6 +226,87 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             getString(R.string.theme_custom_special_key_text_color)
         ) { appPreference.custom_theme_special_key_text_color }
         customCategory.addPreference(customSpecialTextPref)
+
+        val popupUseCustomColorPref = SwitchPreferenceCompat(context).apply {
+            key = PREF_KEY_POPUP_USE_CUSTOM_COLOR
+            title = getString(R.string.key_popup_use_custom_color_title)
+            summaryOn = getString(R.string.key_popup_use_custom_color_summary_on)
+            summaryOff = getString(R.string.key_popup_use_custom_color_summary_off)
+            setDefaultValue(false)
+        }
+        customCategory.addPreference(popupUseCustomColorPref)
+
+        val popupBackgroundColorPref = createColorPreference(
+            context,
+            PREF_KEY_POPUP_BACKGROUND_COLOR,
+            getString(R.string.key_popup_background_color_title)
+        ) { appPreference.key_popup_background_color }
+        customCategory.addPreference(popupBackgroundColorPref)
+
+        val popupTextColorPref = createColorPreference(
+            context,
+            PREF_KEY_POPUP_TEXT_COLOR,
+            getString(R.string.key_popup_text_color_title)
+        ) { appPreference.key_popup_text_color }
+        customCategory.addPreference(popupTextColorPref)
+
+        fun updatePopupColorPrefsState(enabled: Boolean) {
+            popupBackgroundColorPref.isEnabled = enabled
+            popupTextColorPref.isEnabled = enabled
+        }
+
+        updatePopupColorPrefsState(appPreference.key_popup_use_custom_color)
+
+        popupUseCustomColorPref.setOnPreferenceChangeListener { _, newValue ->
+            updatePopupColorPrefsState(newValue as Boolean)
+            true
+        }
+
+        val customCandidateTextPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_CANDIDATE_TEXT,
+            getString(R.string.theme_custom_candidate_text_color)
+        ) { appPreference.custom_theme_candidate_text_color }
+        customCategory.addPreference(customCandidateTextPref)
+
+        val customCandidateItemBgPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG,
+            getString(R.string.theme_custom_candidate_item_bg_color)
+        ) { appPreference.custom_theme_candidate_item_bg_color }
+        customCategory.addPreference(customCandidateItemBgPref)
+
+        val customCandidateItemPressedBgPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG,
+            getString(R.string.theme_custom_candidate_item_pressed_bg_color)
+        ) {
+            appPreference.getCustomThemeCandidateItemPressedBgColor(
+                ContextCompat.getColor(context, com.kazumaproject.core.R.color.qwety_key_bg_color)
+            )
+        }
+        customCategory.addPreference(customCandidateItemPressedBgPref)
+
+        val customCandidateEmptyPopupBgPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG,
+            getString(R.string.theme_custom_candidate_empty_popup_bg_color)
+        ) { appPreference.custom_theme_candidate_empty_popup_bg_color }
+        customCategory.addPreference(customCandidateEmptyPopupBgPref)
+
+        val customCandidateEmptyPopupTextPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT,
+            getString(R.string.theme_custom_candidate_empty_popup_text_color)
+        ) { appPreference.custom_theme_candidate_empty_popup_text_color }
+        customCategory.addPreference(customCandidateEmptyPopupTextPref)
+
+        val customShortcutIconPref = createColorPreference(
+            context,
+            PREF_KEY_CUSTOM_SHORTCUT_ICON,
+            getString(R.string.theme_custom_shortcut_icon_color)
+        ) { appPreference.custom_theme_shortcut_icon_color }
+        customCategory.addPreference(customShortcutIconPref)
 
         // Custom Border Settings
         val customBorderEnablePref = SwitchPreferenceCompat(context).apply {
@@ -326,6 +430,17 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         updateCustomColorsVisibility(appPreference.theme_mode == MODE_CUSTOM)
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        pendingHighlightPreferenceKey?.let { key ->
+            listView.post {
+                findPreference<Preference>(key)?.let { preference ->
+                    scrollToPreference(preference)
+                }
+            }
+        }
+    }
+
     private fun createColorPreference(
         context: Context,
         key: String,
@@ -368,6 +483,15 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
         findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_KEY)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_TEXT)?.isVisible = isVisible
         findPreference<Preference>(PREF_KEY_CUSTOM_SPECIAL_TEXT)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_POPUP_USE_CUSTOM_COLOR)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_POPUP_BACKGROUND_COLOR)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_POPUP_TEXT_COLOR)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_TEXT)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT)?.isVisible = isVisible
+        findPreference<Preference>(PREF_KEY_CUSTOM_SHORTCUT_ICON)?.isVisible = isVisible
 
         // Border Settings
         findPreference<Preference>(PREF_KEY_CUSTOM_BORDER_ENABLE)?.isVisible = isVisible
@@ -387,6 +511,18 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             PREF_KEY_CUSTOM_TEXT -> appPreference.custom_theme_key_text_color = color
             PREF_KEY_CUSTOM_SPECIAL_TEXT -> appPreference.custom_theme_special_key_text_color =
                 color
+            PREF_KEY_CUSTOM_CANDIDATE_TEXT -> appPreference.custom_theme_candidate_text_color =
+                color
+            PREF_KEY_CUSTOM_CANDIDATE_ITEM_BG ->
+                appPreference.custom_theme_candidate_item_bg_color = color
+            PREF_KEY_CUSTOM_CANDIDATE_ITEM_PRESSED_BG ->
+                appPreference.custom_theme_candidate_item_pressed_bg_color = color
+            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_BG ->
+                appPreference.custom_theme_candidate_empty_popup_bg_color = color
+            PREF_KEY_CUSTOM_CANDIDATE_EMPTY_POPUP_TEXT ->
+                appPreference.custom_theme_candidate_empty_popup_text_color = color
+            PREF_KEY_CUSTOM_SHORTCUT_ICON -> appPreference.custom_theme_shortcut_icon_color =
+                color
 
             // Border Color
             PREF_KEY_CUSTOM_BORDER_COLOR -> appPreference.custom_theme_border_color = color
@@ -397,6 +533,10 @@ class KeyboardThemeFragment : PreferenceFragmentCompat() {
             PREF_KEY_CUSTOM_POST_EDIT_BG -> appPreference.custom_theme_post_edit_bg_color = color
             PREF_KEY_CUSTOM_POST_EDIT_TEXT -> appPreference.custom_theme_post_edit_text_color =
                 color
+
+            // Tap/Flick PopupView Colors
+            PREF_KEY_POPUP_BACKGROUND_COLOR -> appPreference.key_popup_background_color = color
+            PREF_KEY_POPUP_TEXT_COLOR -> appPreference.key_popup_text_color = color
         }
     }
 

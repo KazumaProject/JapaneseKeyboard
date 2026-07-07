@@ -21,15 +21,22 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
-        <com.google.android.material.materialswitch.MaterialSwitch
-            android:id="@+id/switchFiveDirections"
-            android:layout_width="match_parent"
+        <TextView
+            android:id="@+id/tvDirectionCountLabel"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="5方向フリックモードを有効にする"
-            android:visibility="gone"
+            android:layout_marginTop="16dp"
+            android:text="フリック方向数"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/btnReset" />
+
+        <Spinner
+            android:id="@+id/spinnerDirectionCount"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginTop="8dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvDirectionCountLabel" />
 
         <TextView
             android:id="@+id/tvScaleLabel"
@@ -38,7 +45,7 @@
             android:layout_marginTop="16dp"
             android:text="ウィンドウサイズ倍率"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/switchFiveDirections" />
+            app:layout_constraintTop_toBottomOf="@id/spinnerDirectionCount" />
 
         <TextView
             android:id="@+id/tvScaleValue"
@@ -97,37 +104,55 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:checked="true"
-                android:text="上 (UP)" />
-
-            <com.google.android.material.chip.Chip
-                android:id="@+id/chipUpRight"
-                style="@style/Widget.MaterialComponents.Chip.Choice"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="左下 (UP_RIGHT)"
-                android:visibility="gone"
-                tools:visibility="visible" />
+                android:text="SLOT 0" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipRight"
                 style="@style/Widget.MaterialComponents.Chip.Choice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="右 (RIGHT)" />
+                android:text="SLOT 1" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipDown"
                 style="@style/Widget.MaterialComponents.Chip.Choice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="下 (DOWN)" />
+                android:text="SLOT 2" />
 
             <com.google.android.material.chip.Chip
                 android:id="@+id/chipLeft"
                 style="@style/Widget.MaterialComponents.Chip.Choice"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="左 (LEFT)" />
+                android:text="SLOT 3" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipUpRight"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SLOT 4"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipSlot5"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SLOT_5"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <com.google.android.material.chip.Chip
+                android:id="@+id/chipSlot6"
+                style="@style/Widget.MaterialComponents.Chip.Choice"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SLOT_6"
+                android:visibility="gone"
+                tools:visibility="visible" />
 
         </com.google.android.material.chip.ChipGroup>
 

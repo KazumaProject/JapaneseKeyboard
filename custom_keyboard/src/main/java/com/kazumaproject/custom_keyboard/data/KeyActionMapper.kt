@@ -10,6 +10,9 @@ data class DisplayAction(
 )
 
 object KeyActionMapper {
+    private const val MOVE_TO_CUSTOM_KEYBOARD_PREFIX = "MoveToCustomKeyboard:"
+    private const val TEXT_PREFIX = "Text:"
+    private const val INPUT_TEXT_PREFIX = "InputText:"
 
     /**
      * Generates a list of DisplayAction objects using localized strings.
@@ -18,6 +21,11 @@ object KeyActionMapper {
      */
     fun getDisplayActions(context: Context): List<DisplayAction> {
         return listOf(
+            DisplayAction(
+                KeyAction.DoNothing,
+                context.getString(R.string.action_do_nothing),
+                iconResIdForAction(KeyAction.DoNothing)
+            ),
             DisplayAction(
                 KeyAction.Delete,
                 context.getString(R.string.action_delete),
@@ -29,8 +37,23 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
             ),
             DisplayAction(
+                KeyAction.DeleteAfterCursorUntilSymbol,
+                context.getString(R.string.action_delete_after_cursor),
+                com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+            ),
+            DisplayAction(
                 KeyAction.Space,
                 context.getString(R.string.action_space),
+                com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            ),
+            DisplayAction(
+                KeyAction.ForceHalfWidthSpace,
+                context.getString(R.string.action_force_half_width_space),
+                com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            ),
+            DisplayAction(
+                KeyAction.ForceFullWidthSpace,
+                context.getString(R.string.action_force_full_width_space),
                 com.kazumaproject.core.R.drawable.baseline_space_bar_24
             ),
             DisplayAction(
@@ -43,7 +66,7 @@ object KeyActionMapper {
                 context.getString(R.string.action_enter),
                 com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
             ),
-            DisplayAction(KeyAction.NewLine, context.getString(R.string.action_new_line)),
+            DisplayAction(KeyAction.ForceNewLine, context.getString(R.string.action_new_line)),
             DisplayAction(
                 KeyAction.Paste,
                 context.getString(R.string.action_paste),
@@ -70,6 +93,16 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.kana_small
             ),
             DisplayAction(
+                KeyAction.ToggleDakutenOnly,
+                context.getString(R.string.action_toggle_dakuten_only),
+                com.kazumaproject.core.R.drawable.kana_small
+            ),
+            DisplayAction(
+                KeyAction.ToggleHandakutenOnly,
+                context.getString(R.string.action_toggle_handakuten_only),
+                com.kazumaproject.core.R.drawable.kana_small
+            ),
+            DisplayAction(
                 KeyAction.ToggleCase,
                 context.getString(R.string.action_toggle_case),
                 com.kazumaproject.core.R.drawable.english_small
@@ -80,14 +113,44 @@ object KeyActionMapper {
                 com.kazumaproject.core.R.drawable.shift_24px
             ),
             DisplayAction(
+                KeyAction.CapLockKey,
+                context.getString(R.string.action_cap_lock_key),
+                com.kazumaproject.core.R.drawable.caps_lock
+            ),
+            DisplayAction(
+                KeyAction.SwitchDirectMode,
+                context.getString(R.string.action_switch_direct_mode_key),
+                com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+            ),
+            DisplayAction(
+                KeyAction.SwitchRomajiEnglish,
+                context.getString(R.string.action_switch_romaji_english),
+                com.kazumaproject.core.R.drawable.language_japanese_kana_24px
+            ),
+            DisplayAction(
                 KeyAction.MoveCustomKeyboardTab,
                 context.getString(R.string.action_move_custom_keyboard_tab),
                 com.kazumaproject.core.R.drawable.keyboard_command_key_24px
             ),
             DisplayAction(
+                KeyAction.MoveToCustomKeyboard(""),
+                context.getString(R.string.action_move_to_custom_keyboard),
+                com.kazumaproject.core.R.drawable.keyboard_24px
+            ),
+            DisplayAction(
                 KeyAction.MoveCursorLeft,
                 context.getString(R.string.action_move_cursor_left),
                 com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+            ),
+            DisplayAction(
+                KeyAction.MoveCursorUp,
+                context.getString(R.string.action_move_cursor_up),
+                com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24
+            ),
+            DisplayAction(
+                KeyAction.MoveCursorDown,
+                context.getString(R.string.action_move_cursor_down),
+                com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
             ),
             DisplayAction(
                 KeyAction.MoveCursorRight,
@@ -122,17 +185,59 @@ object KeyActionMapper {
         )
     }
 
+    fun iconResIdForAction(action: KeyAction?): Int? {
+        return when (action) {
+            KeyAction.DoNothing -> null
+            KeyAction.Delete -> com.kazumaproject.core.R.drawable.backspace_24px
+            KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
+            KeyAction.DeleteAfterCursorUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_after_cursor
+            KeyAction.Space,
+            KeyAction.ForceHalfWidthSpace,
+            KeyAction.ForceFullWidthSpace -> com.kazumaproject.core.R.drawable.baseline_space_bar_24
+            KeyAction.Convert -> com.kazumaproject.core.R.drawable.henkan
+            KeyAction.Enter -> com.kazumaproject.core.R.drawable.baseline_keyboard_return_24
+            KeyAction.Paste -> com.kazumaproject.core.R.drawable.content_paste_24px
+            KeyAction.Copy -> com.kazumaproject.core.R.drawable.content_copy_24dp
+            KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
+            KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
+            KeyAction.ToggleDakuten,
+            KeyAction.ToggleDakutenOnly,
+            KeyAction.ToggleHandakutenOnly -> com.kazumaproject.core.R.drawable.kana_small
+            KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.english_small
+            KeyAction.ShiftKey -> com.kazumaproject.core.R.drawable.shift_24px
+            KeyAction.CapLockKey -> com.kazumaproject.core.R.drawable.caps_lock
+            KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
+            KeyAction.SwitchRomajiEnglish -> com.kazumaproject.core.R.drawable.language_japanese_kana_24px
+            KeyAction.MoveCustomKeyboardTab -> com.kazumaproject.core.R.drawable.keyboard_command_key_24px
+            is KeyAction.MoveToCustomKeyboard -> com.kazumaproject.core.R.drawable.keyboard_24px
+            KeyAction.MoveCursorLeft -> com.kazumaproject.core.R.drawable.baseline_arrow_left_24
+            KeyAction.MoveCursorUp -> com.kazumaproject.core.R.drawable.outline_arrow_drop_up_24
+            KeyAction.MoveCursorDown -> com.kazumaproject.core.R.drawable.outline_arrow_drop_down_24
+            KeyAction.MoveCursorRight -> com.kazumaproject.core.R.drawable.baseline_arrow_right_24
+            KeyAction.SelectAll -> com.kazumaproject.core.R.drawable.text_select_start_24dp
+            KeyAction.SwitchToEnglishLayout -> com.kazumaproject.core.R.drawable.input_mode_english_custom
+            KeyAction.SwitchToNumberLayout -> com.kazumaproject.core.R.drawable.input_mode_number_select_custom
+            KeyAction.ToggleKatakana -> com.kazumaproject.core.R.drawable.katakana
+            KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
+            else -> null
+        }
+    }
+
     // KeyActionオブジェクトをDB保存用の文字列に変換
     fun fromKeyAction(keyAction: KeyAction?): String? {
         return when (keyAction) {
+            is KeyAction.DoNothing -> "DoNothing"
             is KeyAction.Delete -> "Delete"
             is KeyAction.Backspace -> "Backspace"
             is KeyAction.Space -> "Space"
             is KeyAction.NewLine -> "NewLine"
+            is KeyAction.ForceNewLine -> "ForceNewLine"
             is KeyAction.Enter -> "Enter"
             is KeyAction.Convert -> "Convert"
             is KeyAction.Confirm -> "Confirm"
             is KeyAction.MoveCursorLeft -> "MoveCursorLeft"
+            is KeyAction.MoveCursorUp -> "MoveCursorUp"
+            is KeyAction.MoveCursorDown -> "MoveCursorDown"
             is KeyAction.MoveCursorRight -> "MoveCursorRight"
             is KeyAction.SelectLeft -> "SelectLeft"
             is KeyAction.SelectRight -> "SelectRight"
@@ -143,22 +248,47 @@ object KeyActionMapper {
             is KeyAction.ShowEmojiKeyboard -> "^_^"
             is KeyAction.SwitchToNextIme -> "SwitchToNextIme"
             is KeyAction.ToggleDakuten -> "小゛゜"
+            is KeyAction.ToggleDakutenOnly -> "ToggleDakutenOnly"
+            is KeyAction.ToggleHandakutenOnly -> "ToggleHandakutenOnly"
             is KeyAction.ToggleCase -> "a/A"
             is KeyAction.SwitchToKanaLayout -> "SwitchToKana"
             is KeyAction.SwitchToEnglishLayout -> "SwitchToEnglish"
             is KeyAction.SwitchToNumberLayout -> "SwitchToNumber"
             is KeyAction.ShiftKey -> "ShiftKeyPressed"
+            is KeyAction.CapLockKey -> "CapLockKey"
+            is KeyAction.Text -> "$TEXT_PREFIX${keyAction.text}"
+            is KeyAction.InputText -> "$INPUT_TEXT_PREFIX${keyAction.text}"
+            is KeyAction.SwitchRomajiEnglish -> "SwitchRomajiEnglish"
             is KeyAction.MoveCustomKeyboardTab -> "MoveCustomKeyboardTab"
+            is KeyAction.MoveToCustomKeyboard -> keyAction.stableId
+                .takeIf { it.isNotBlank() }
+                ?.let { "$MOVE_TO_CUSTOM_KEYBOARD_PREFIX$it" }
+
             is KeyAction.DeleteUntilSymbol -> "DeleteUntilSymbol"
+            is KeyAction.DeleteAfterCursorUntilSymbol -> "DeleteAfterCursorUntilSymbol"
             is KeyAction.ToggleKatakana -> "SwitchKatakana"
             is KeyAction.VoiceInput -> "VoiceInput"
+            is KeyAction.SwitchDirectMode -> "SwitchDirectMode"
+            is KeyAction.ForceHalfWidthSpace -> "ForceHalfWidthSpace"
+            is KeyAction.ForceFullWidthSpace -> "ForceFullWidthSpace"
             else -> null
         }
     }
 
     // DBから読み込んだ文字列をKeyActionオブジェクトに変換
     fun toKeyAction(actionString: String?): KeyAction? {
+        if (actionString?.startsWith(MOVE_TO_CUSTOM_KEYBOARD_PREFIX) == true) {
+            val stableId = actionString.removePrefix(MOVE_TO_CUSTOM_KEYBOARD_PREFIX)
+            return stableId.takeIf { it.isNotBlank() }?.let { KeyAction.MoveToCustomKeyboard(it) }
+        }
+        if (actionString?.startsWith(TEXT_PREFIX) == true) {
+            return KeyAction.Text(actionString.removePrefix(TEXT_PREFIX))
+        }
+        if (actionString?.startsWith(INPUT_TEXT_PREFIX) == true) {
+            return KeyAction.InputText(actionString.removePrefix(INPUT_TEXT_PREFIX))
+        }
         return when (actionString) {
+            "DoNothing" -> KeyAction.DoNothing
             "Delete" -> KeyAction.Delete
             "Backspace" -> KeyAction.Backspace
             "Space" -> KeyAction.Space
@@ -167,6 +297,8 @@ object KeyActionMapper {
             "Convert" -> KeyAction.Convert
             "Confirm" -> KeyAction.Confirm
             "MoveCursorLeft" -> KeyAction.MoveCursorLeft
+            "MoveCursorUp" -> KeyAction.MoveCursorUp
+            "MoveCursorDown" -> KeyAction.MoveCursorDown
             "MoveCursorRight" -> KeyAction.MoveCursorRight
             "SelectLeft" -> KeyAction.SelectLeft
             "SelectRight" -> KeyAction.SelectRight
@@ -177,15 +309,24 @@ object KeyActionMapper {
             "^_^" -> KeyAction.ShowEmojiKeyboard
             "SwitchToNextIme" -> KeyAction.SwitchToNextIme
             "小゛゜" -> KeyAction.ToggleDakuten
+            "ToggleDakutenOnly" -> KeyAction.ToggleDakutenOnly
+            "ToggleHandakutenOnly" -> KeyAction.ToggleHandakutenOnly
             "a/A" -> KeyAction.ToggleCase
             "SwitchToKana" -> KeyAction.SwitchToKanaLayout
             "SwitchToEnglish" -> KeyAction.SwitchToEnglishLayout
             "SwitchToNumber" -> KeyAction.SwitchToNumberLayout
             "ShiftKeyPressed" -> KeyAction.ShiftKey
+            "CapLockKey" -> KeyAction.CapLockKey
             "MoveCustomKeyboardTab" -> KeyAction.MoveCustomKeyboardTab
             "DeleteUntilSymbol" -> KeyAction.DeleteUntilSymbol
+            "DeleteAfterCursorUntilSymbol" -> KeyAction.DeleteAfterCursorUntilSymbol
             "SwitchKatakana" -> KeyAction.ToggleKatakana
+            "SwitchRomajiEnglish" -> KeyAction.SwitchRomajiEnglish
             "VoiceInput" -> KeyAction.VoiceInput
+            "ForceNewLine" -> KeyAction.ForceNewLine
+            "SwitchDirectMode" -> KeyAction.SwitchDirectMode
+            "ForceHalfWidthSpace" -> KeyAction.ForceHalfWidthSpace
+            "ForceFullWidthSpace" -> KeyAction.ForceFullWidthSpace
             else -> null
         }
     }

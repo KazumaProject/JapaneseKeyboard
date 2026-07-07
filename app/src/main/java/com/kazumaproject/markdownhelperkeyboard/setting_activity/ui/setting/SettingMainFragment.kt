@@ -1,14 +1,20 @@
 package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.OnBackPressedCallback
 import androidx.core.content.ContextCompat.getSystemService
+import androidx.core.os.bundleOf
+import androidx.core.view.MenuProvider
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.google.android.material.tabs.TabLayoutMediator
@@ -91,28 +97,58 @@ class SettingMainFragment : Fragment() {
         // 変数に代入してからattachする
         tabLayoutMediator =
             TabLayoutMediator(binding.settingTabLayout, binding.settingViewPager) { tab, position ->
-                tab.text = when (position) {
-                    0 -> getString(R.string.category_common)
-                    1 -> getString(R.string.keyboardthemefragment)
-                    2 -> "zenz"
-                    3 -> getString(R.string.category_dictionary)
-                    4 -> getString(R.string.category_kana)
-                    5 -> "QWERTY"
-                    6 -> getString(R.string.category_sumire_input_keyboard_title) // スミレ入力
-                    7 -> getString(R.string.category_custom_keyboard_title) // カスタムキーボード
-                    8 -> getString(R.string.tablet_preference_category_title) // タブレット
-                    else -> ""
-                }
+                tab.text = adapter.getTitle(position, this)
             }
         tabLayoutMediator?.attach()
+
+        setupSearchMenu()
 
         requireActivity().onBackPressedDispatcher.addCallback(
             viewLifecycleOwner,
             object : OnBackPressedCallback(true) {
                 override fun handleOnBackPressed() {
-                    requireActivity().finish()
+                    val navController = findNavController()
+                    if (!appPreference.setting_use_new_home_screen_preference &&
+                        navController.previousBackStackEntry?.destination?.id ==
+                        R.id.navigation_setting
+                    ) {
+                        requireActivity().finish()
+                        return
+                    }
+                    if (!findNavController().popBackStack()) {
+                        requireActivity().finish()
+                    }
                 }
             })
+    }
+
+    private fun setupSearchMenu() {
+        requireActivity().addMenuProvider(
+            object : MenuProvider {
+                override fun onCreateMenu(menu: Menu, menuInflater: MenuInflater) {
+                    menuInflater.inflate(R.menu.legacy_setting_search_menu, menu)
+                }
+
+                override fun onMenuItemSelected(menuItem: MenuItem): Boolean {
+                    return when (menuItem.itemId) {
+                        R.id.action_legacy_setting_search -> {
+                            navigateSafely(
+                                R.id.settingSearchFragment,
+                                bundleOf(
+                                    SettingSearchFragment.ARG_SEARCH_SCOPE to
+                                        SettingSearchScope.LEGACY_TABS.name
+                                ),
+                            )
+                            true
+                        }
+
+                        else -> false
+                    }
+                }
+            },
+            viewLifecycleOwner,
+            Lifecycle.State.RESUMED,
+        )
     }
 
     override fun onResume() {
@@ -124,8 +160,8 @@ class SettingMainFragment : Fragment() {
             }
             binding.settingProgressBar.isVisible = false
             if (enabled == false) {
-                findNavController().navigate(
-                    R.id.action_navigation_setting_to_enableKeyboardFragment
+                navigateSafely(
+                    R.id.enableKeyboardFragment
                 )
             }
         }

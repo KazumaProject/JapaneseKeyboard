@@ -4,7 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Rect
 import android.graphics.Typeface
 import android.graphics.drawable.Drawable
@@ -18,6 +21,7 @@ import android.text.style.StyleSpan
 import android.util.AttributeSet
 import android.util.Log
 import android.util.SparseArray
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -34,10 +38,13 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import androidx.core.util.isNotEmpty
 import androidx.core.util.size
+import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import androidx.core.widget.ImageViewCompat
 import com.google.android.material.color.DynamicColors
 import com.google.android.material.textview.MaterialTextView
+import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
 import com.kazumaproject.core.data.qwerty.CapsLockState
 import com.kazumaproject.core.data.qwerty.QWERTYKeys
 import com.kazumaproject.core.data.qwerty.VariationInfo
@@ -49,12 +56,21 @@ import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setMarginStart
 import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
+import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
 import com.kazumaproject.core.domain.qwerty.QWERTYKey
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyInfo
 import com.kazumaproject.core.domain.qwerty.QWERTYKeyMap
 import com.kazumaproject.core.domain.state.QWERTYMode
 import com.kazumaproject.qwerty_keyboard.R
 import com.kazumaproject.qwerty_keyboard.databinding.QwertyLayoutBinding
+import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideGesturePolicy
+import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideInputListener
+import com.kazumaproject.qwerty_keyboard.glide.QwertyGlideKeyClassifier
+import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointerPoint
+import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
+import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyProximity
+import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -68,6 +84,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.hypot
 
 /**
  * A custom keyboard view with dynamic margins.
@@ -85,6 +102,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var keyIndentSmallDp: Float = 9f
     private var keySideMarginDp: Float = 4f
     private var keyTextSizeSp: Float = 20f
+    private var symbolKeymapTextSizeSp: Float = 9f
+    private var specialKeyTextSizeSp: Float = 12f
+    private var specialKeyIconSizeDp: Float = 18f
+    private var pendingSpecialIconSizeRefresh = false
 
     /** Map each active pointer ID → the View (key) it’s currently “pressing” (or null). */
     private val pointerButtonMap = SparseArray<View?>()
@@ -92,8 +113,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     /** For each pointer, store a coroutine Job to detect long‐press. */
     private val longPressJobs = SparseArray<Job>()
 
-    /** CoroutineScope on main dispatcher. */
-    private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    /** StateFlow collectors are tied to the current View attach lifecycle. */
+    private var renderScope: CoroutineScope? = null
+
+    /** Touch jobs are also recreated after PopupWindow detach / reattach. */
+    private var touchScope: CoroutineScope? = null
 
     /** If a second finger cancels the first, we suppress that first pointer until it lifts. */
     private var suppressedPointerId: Int? = null
@@ -102,6 +126,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private val hitRect = Rect()
 
     private var qwertyKeyListener: QWERTYKeyListener? = null
+    private var qwertyKeyTouchCancelListener: QwertyKeyTouchCancelListener? = null
     private var qwertyKeyMap: QWERTYKeyMap
 
     // ① Track the last time Shift was tapped (to detect double‐tap)
@@ -112,7 +137,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var shiftDoubleTapped = false
 
     // Long‐press timeout (system default)
-    private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
+    private var longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
 
     private val _capsLockState = MutableStateFlow(CapsLockState())
     private val capsLockState: StateFlow<CapsLockState> = _capsLockState.asStateFlow()
@@ -131,6 +156,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var variationPopup: PopupWindow? = null
     private var variationPopupView: VariationsPopupView? = null
     private var longPressedPointerId: Int? = null
+    private var keyPreviewPopupStyle = PopupViewStyle(100, 28f)
+    private var variationPopupStyle = PopupViewStyle(100, 28f)
 
     // ★ ポインターをロックするための変数を追加
     private var lockedPointerId: Int? = null
@@ -143,8 +170,35 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private var isNumberKeysShow: Boolean = false
     private var isSymbolKeymapShow: Boolean = false
+    private var numberKeyFlickUpChars: Map<String, String> = emptyMap()
+    private var numberKeyFlickDownChars: Map<String, String> = emptyMap()
 
     private var liquidGlassEnable: Boolean = false
+
+    private var qwertyGlideInputMode: Boolean = false
+    private var qwertyGlideInputListener: QwertyGlideInputListener? = null
+    private var glideCandidatePointerId: Int? = null
+    private var glideStarted = false
+    private var glideDownTime = 0L
+    private var glideLastSampleX = 0f
+    private var glideLastSampleY = 0f
+    private var lastNonGlideKeyUpTime = 0L
+    private val glideRawPoints = mutableListOf<QwertyInputPointerPoint>()
+    private val glideTrailPoints = mutableListOf<Pair<Float, Float>>()
+    private val glideTrailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(170, 66, 133, 244)
+        strokeWidth = context.resources.displayMetrics.density * 5f
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+        style = Paint.Style.STROKE
+    }
+    private val glideTrailPath = Path()
+    private val glideMinMoveDistance by lazy { ViewConfiguration.get(context).scaledTouchSlop * 2.4f }
+    private val glideFastMoveDistance by lazy { ViewConfiguration.get(context).scaledTouchSlop * 3.0f }
+    private val glideSamplingMinDistance by lazy { ViewConfiguration.get(context).scaledTouchSlop * 0.45f }
+    private val pendingGlideLongPressSlop by lazy { ViewConfiguration.get(context).scaledTouchSlop }
+    private val glideMinElapsedMillis = 45L
+    private val glideFastTypingSuppressMillis = 55L
 
     // ★ ポップアップなしで長押しを有効にするキーのリストを追加
     private val longPressEnabledKeys = setOf(
@@ -187,9 +241,29 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private var enableDeleteLeftFlick = false
 
     /**
+     * Delete キーの上フリックを有効にするフラグ
+     */
+    private var enableDeleteUpFlick = false
+
+    /**
+     * Delete キーの下フリックを有効にするフラグ
+     */
+    private var enableDeleteDownFlick = false
+
+    /**
      * Delete キーの左フリック検知時のリスナー
      */
     private var onDeleteLeftFlickListener: (() -> Unit)? = null
+
+    /**
+     * Delete キーの上フリック検知時のリスナー
+     */
+    private var onDeleteUpFlickListener: (() -> Unit)? = null
+
+    /**
+     * Delete キーの下フリック検知時のリスナー
+     */
+    private var onDeleteDownFlickListener: (() -> Unit)? = null
 
     // Theme Variables (Initialized with defaults)
     private var themeMode: String = "default"
@@ -218,40 +292,109 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
 
-        scope.launch {
-            launch {
-                capsLockState.collectLatest { state ->
-                    updateCapsLockUI(state)
-                }
-            }
-            launch {
-                qwertyMode.collectLatest { state ->
-                    Log.d("qwertyMode", "$state")
-                    // ★ レイアウトとコンテンツを適用するメソッドを呼び出し
-                    applyLayoutForMode(state)
-                    applyContentForMode(state)
-                }
-            }
-            launch {
-                romajiModeState.collectLatest { romajiMode ->
-                    // モード変更時にレイアウトとコンテンツを再適用
-                    applyLayoutForMode(qwertyMode.value)
-                    applyContentForMode(qwertyMode.value)
+        touchScope = createViewScope()
+    }
 
-                    if (romajiMode) {
-                        binding.keySpace.text =
-                            resources.getString(com.kazumaproject.core.R.string.space_japanese)
-                        binding.key123.text =
-                            resources.getString(com.kazumaproject.core.R.string.string_123)
-                        binding.keyKuten.text = "。"
-                        binding.keyTouten.text = "、"
-                    } else {
-                        binding.keySpace.text =
-                            resources.getString(com.kazumaproject.core.R.string.space_english)
-                        binding.keyKuten.text = "."
-                        binding.keyTouten.text = ","
-                    }
-                }
+    private fun createViewScope(): CoroutineScope {
+        return CoroutineScope(Dispatchers.Main.immediate + SupervisorJob())
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (touchScope == null) {
+            touchScope = createViewScope()
+        }
+        val enterKeyText = binding.keyReturn.text
+        val spaceKeyText = binding.keySpace.text
+        startStateCollectors()
+        renderCurrentStateImmediately(enterKeyText, spaceKeyText)
+    }
+
+    override fun onDetachedFromWindow() {
+        notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.DetachedFromWindow)
+        stopStateCollectors()
+        stopTouchScope()
+        super.onDetachedFromWindow()
+    }
+
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (changedView == this && visibility != View.VISIBLE) {
+            notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.ViewHidden)
+            setCursorMode(false)
+            clearAllPressed()
+            cancelQwertyGlideCandidate(notify = true)
+        }
+    }
+
+    private fun startStateCollectors() {
+        if (renderScope != null) return
+
+        val newScope = createViewScope()
+        renderScope = newScope
+
+        newScope.launch {
+            capsLockState.collectLatest { state ->
+                updateCapsLockUI(state)
+                renderShiftKeyDrawable()
+            }
+        }
+        newScope.launch {
+            qwertyMode.collectLatest { state ->
+                Log.d("qwertyMode", "$state")
+                applyLayoutForMode(state)
+                applyContentForMode(state)
+                renderShiftKeyDrawable()
+            }
+        }
+        newScope.launch {
+            romajiModeState.collectLatest { romajiMode ->
+                applyLayoutForMode(qwertyMode.value)
+                applyContentForMode(qwertyMode.value)
+                applyRomajiModeLabels(romajiMode)
+                renderShiftKeyDrawable()
+            }
+        }
+    }
+
+    private fun stopStateCollectors() {
+        renderScope?.cancel()
+        renderScope = null
+    }
+
+    private fun stopTouchScope() {
+        for (i in 0 until longPressJobs.size()) {
+            longPressJobs.valueAt(i)?.cancel()
+        }
+        longPressJobs.clear()
+        touchScope?.cancel()
+        touchScope = null
+    }
+
+    private fun renderCurrentStateImmediately(
+        enterKeyText: CharSequence? = binding.keyReturn.text,
+        spaceKeyText: CharSequence? = binding.keySpace.text,
+    ) {
+        applyLayoutForMode(qwertyMode.value)
+        applyContentForMode(qwertyMode.value)
+        applyRomajiModeLabels(romajiModeState.value)
+        updateCapsLockUI(capsLockState.value)
+        renderShiftKeyDrawable()
+        binding.keyReturn.text = enterKeyText
+        binding.keySpace.text = spaceKeyText
+        refreshSpecialKeyIconSizesWhenLaidOut()
+    }
+
+    private fun applyRomajiModeLabels(romajiMode: Boolean) {
+        binding.apply {
+            if (romajiMode) {
+                keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_japanese)
+                keyKuten.text = "。"
+                keyTouten.text = "、"
+            } else {
+                keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
+                keyKuten.text = "."
+                keyTouten.text = ","
             }
         }
     }
@@ -358,7 +501,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             )
 
             val specialKeys = listOf(
-                keyShift, keyDelete, keySwitchDefault, keyReturn, key123,
+                keyShift, keyDelete, keySwitchDefault, keyEmoji, keyReturn, key123,
                 switchNumberLayout, cursorLeft, cursorRight, switchRomajiEnglish
             )
 
@@ -606,7 +749,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         indentLargeDp: Float = keyIndentLargeDp,
         indentSmallDp: Float = keyIndentSmallDp,
         sideMarginDp: Float = keySideMarginDp,
-        textSizeSp: Float = keyTextSizeSp
+        textSizeSp: Float = keyTextSizeSp,
+        symbolKeymapTextSizeSp: Float = this.symbolKeymapTextSizeSp,
+        specialTextSizeSp: Float = specialKeyTextSizeSp,
+        specialIconSizeDp: Float = specialKeyIconSizeDp
     ) {
         this.keyVerticalMarginDp = verticalDp
         this.keyHorizontalGapDp = horizontalGapDp
@@ -614,31 +760,83 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.keyIndentSmallDp = indentSmallDp
         this.keySideMarginDp = sideMarginDp
         this.keyTextSizeSp = textSizeSp
+        this.symbolKeymapTextSizeSp = symbolKeymapTextSizeSp
+        this.specialKeyTextSizeSp = specialTextSizeSp
+        this.specialKeyIconSizeDp = specialIconSizeDp
 
         // 現在のモードでレイアウトを再適用
         applyLayoutForMode(qwertyMode.value)
 
         updateAllKeyTextSizes()
+        updateSymbolKeymapTextSizes()
+        updateSpecialKeyTextSizes()
+        refreshSpecialKeyIconSizesWhenLaidOut()
+    }
+
+    private fun refreshSpecialKeyIconSizesWhenLaidOut() {
+        if (isLaidOut) {
+            pendingSpecialIconSizeRefresh = false
+            updateSpecialKeyIconSizes()
+            return
+        }
+        if (pendingSpecialIconSizeRefresh) return
+        pendingSpecialIconSizeRefresh = true
+        doOnLayout {
+            pendingSpecialIconSizeRefresh = false
+            updateSpecialKeyIconSizes()
+        }
     }
 
     private fun updateAllKeyTextSizes() {
         qwertyButtonMap.keys.forEach { view ->
-            if (view.id == binding.keySpace.id ||
-                view.id == binding.keyReturn.id ||
-                view.id == binding.switchNumberLayout.id ||
-                view.id == binding.switchRomajiEnglish.id ||
-                view.id == binding.keyKuten.id ||
-                view.id == binding.keyTouten.id ||
-                view.id == binding.key123.id
-            ) return@forEach
+            if (specialTextButtons.contains(view)) return@forEach
             if (view is TextView) { // QWERTYButton, AppCompatButton は TextView を継承している
                 view.textSize = keyTextSizeSp
             }
         }
     }
 
+    private fun updateSymbolKeymapTextSizes() {
+        defaultQWERTYButtonsRoman.distinct().forEach { view ->
+            view.guideTextSizeSp = symbolKeymapTextSizeSp
+        }
+    }
+
+    private fun updateSpecialKeyTextSizes() {
+        specialTextButtons.forEach { view ->
+            view.textSize = specialKeyTextSizeSp
+        }
+    }
+
+    private fun updateSpecialKeyIconSizes() {
+        val iconSizePx = context.dpToPx(specialKeyIconSizeDp).coerceAtLeast(1)
+        specialIconButtons.forEach { button ->
+            button.scaleType = ImageView.ScaleType.FIT_CENTER
+            applyIconPadding(button, iconSizePx)
+            button.post {
+                applyIconPadding(button, iconSizePx)
+            }
+        }
+    }
+
+    private fun applyIconPadding(button: AppCompatImageButton, iconSizePx: Int) {
+        if (button.width == 0 || button.height == 0) return
+
+        val horizontalPadding = ((button.width - iconSizePx) / 2).coerceAtLeast(0)
+        val verticalPadding = ((button.height - iconSizePx) / 2).coerceAtLeast(0)
+        button.setPadding(
+            horizontalPadding,
+            verticalPadding,
+            horizontalPadding,
+            verticalPadding
+        )
+    }
+
     /**
      * キーの文字内容（ラベル、右上の文字など）を適用するメソッド
+     *
+     * 注意: keyShift の drawable はここでは直接 setImageResource を呼ばず、
+     * [renderShiftKeyDrawable] に集約して上書き競合を避ける。
      */
     private fun applyContentForMode(mode: QWERTYMode) {
         when (mode) {
@@ -648,7 +846,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         defaultQWERTYButtonsRoman.forEach { it.topRightChar = null }
                     }
 
-                    keyShift.setImageResource(com.kazumaproject.core.R.drawable.shift_24px)
                     key123.text = resources.getString(com.kazumaproject.core.R.string.string_123)
 
                     // 右上の文字の更新ロジック
@@ -659,7 +856,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
             QWERTYMode.Number -> {
                 binding.apply {
-                    keyShift.setImageResource(com.kazumaproject.core.R.drawable.qwerty_symbol)
                     key123.text = if (romajiModeState.value) {
                         resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
                     } else {
@@ -675,8 +871,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         keyZ.text = "。"
                         keyX.text = "、"
                     } else {
-                        key123.text =
-                            resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
                         keyF.text = ";"
                         keyJ.text = "￥"
                         keyK.text = "&"
@@ -691,7 +885,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
             QWERTYMode.Symbol -> {
                 binding.apply {
-                    keyShift.setImageResource(com.kazumaproject.core.R.drawable.qwerty_number)
                     key123.text = if (romajiModeState.value) {
                         resources.getString(com.kazumaproject.core.R.string.string_abc_japanese)
                     } else {
@@ -726,47 +919,42 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 defaultQWERTYButtonsRoman.forEach { it.topRightChar = null }
             }
         }
+        // キーラベルが切り替わった後に Shift drawable を再評価する。
+        renderShiftKeyDrawable()
+    }
+
+    /**
+     * Shift キーの drawable を一箇所で決定する関数。
+     *
+     * Number / Symbol mode の場合は Shift キーが Number/Symbol 切替キーとして使われるため、
+     * CapsLockState よりも QWERTYMode の drawable を優先する。
+     * Default mode の場合のみ CapsLock / Shift の状態に応じた drawable を選択する。
+     */
+    private fun renderShiftKeyDrawable() {
+        val drawableRes = when (qwertyMode.value) {
+            QWERTYMode.Number -> com.kazumaproject.core.R.drawable.qwerty_symbol
+            QWERTYMode.Symbol -> com.kazumaproject.core.R.drawable.qwerty_number
+            QWERTYMode.Default -> {
+                val state = capsLockState.value
+                when {
+                    state.capsLockOn -> com.kazumaproject.core.R.drawable.caps_lock
+                    state.shiftOn -> com.kazumaproject.core.R.drawable.shift_fill_24px
+                    else -> com.kazumaproject.core.R.drawable.shift_24px
+                }
+            }
+        }
+        binding.keyShift.setImageResource(drawableRes)
     }
 
     // CapsLock UI update extraction
     private fun updateCapsLockUI(state: CapsLockState) {
-        when {
-            state.shiftOn && state.capsLockOn -> {
-                qwertyButtonMap.keys.forEach { button ->
-                    if (button is AppCompatButton) button.isAllCaps = true
-                    if (button is AppCompatImageButton && button.id == binding.keyShift.id) {
-                        button.setImageResource(com.kazumaproject.core.R.drawable.caps_lock)
-                    }
-                }
-            }
-
-            !state.shiftOn && state.capsLockOn -> {
-                qwertyButtonMap.keys.forEach { button ->
-                    if (button is AppCompatButton) button.isAllCaps = true
-                    if (button is AppCompatImageButton && button.id == binding.keyShift.id) {
-                        button.setImageResource(com.kazumaproject.core.R.drawable.caps_lock)
-                    }
-                }
-            }
-
-            state.shiftOn && !state.capsLockOn -> {
-                qwertyButtonMap.keys.forEach { button ->
-                    if (button is AppCompatButton) button.isAllCaps = true
-                    if (button is AppCompatImageButton && button.id == binding.keyShift.id) {
-                        button.setImageResource(com.kazumaproject.core.R.drawable.shift_fill_24px)
-                    }
-                }
-            }
-
-            else -> {
-                qwertyButtonMap.keys.forEach { button ->
-                    if (button is AppCompatButton) button.isAllCaps = false
-                    if (button is AppCompatImageButton && button.id == binding.keyShift.id) {
-                        button.setImageResource(com.kazumaproject.core.R.drawable.shift_24px)
-                    }
-                }
-            }
+        // 大文字表示の切り替え
+        val allCaps = state.shiftOn || state.capsLockOn
+        qwertyButtonMap.keys.forEach { button ->
+            if (button is AppCompatButton) button.isAllCaps = allCaps
         }
+        // Shift キーの drawable は renderShiftKeyDrawable() に集約。
+        renderShiftKeyDrawable()
     }
 
     private fun updateTopRightCharsForDefaultMode() {
@@ -876,18 +1064,50 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setFlickUpDetectionEnabled(enabled: Boolean) {
         this.enableFlickUpDetection = enabled
+        updateNumberKeyFlickGuides()
     }
 
     fun setFlickDownDetectionEnabled(enabled: Boolean) {
         this.enableFlickDownDetection = enabled
+        updateNumberKeyFlickGuides()
+    }
+
+    fun setNumberKeyFlickUpChars(map: Map<String, String>) {
+        numberKeyFlickUpChars = map
+        updateNumberKeyFlickGuides()
+    }
+
+    fun setNumberKeyFlickDownChars(map: Map<String, String>) {
+        numberKeyFlickDownChars = map
+        updateNumberKeyFlickGuides()
     }
 
     fun setDeleteLeftFlickEnabled(enabled: Boolean) {
         this.enableDeleteLeftFlick = enabled
     }
 
+    fun setDeleteUpFlickEnabled(enabled: Boolean) {
+        this.enableDeleteUpFlick = enabled
+    }
+
+    fun setDeleteDownFlickEnabled(enabled: Boolean) {
+        this.enableDeleteDownFlick = enabled
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
+    }
+
     fun setOnDeleteLeftFlickListener(listener: () -> Unit) {
         this.onDeleteLeftFlickListener = listener
+    }
+
+    fun setOnDeleteUpFlickListener(listener: () -> Unit) {
+        this.onDeleteUpFlickListener = listener
+    }
+
+    fun setOnDeleteDownFlickListener(listener: () -> Unit) {
+        this.onDeleteDownFlickListener = listener
     }
 
     private fun setMaterialYouTheme(
@@ -914,7 +1134,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             listOf(
-                keyShift, keyDelete, keySwitchDefault, keyReturn, key123,
+                keyShift, keyDelete, keySwitchDefault, keyEmoji, keyReturn, key123,
                 switchNumberLayout, cursorLeft, cursorRight, switchRomajiEnglish
             ).forEach {
                 it.setBackgroundDrawable(ContextCompat.getDrawable(context, bgSideRes))
@@ -931,6 +1151,29 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     fun setReturnKeyText(text: String) {
         binding.keyReturn.text = text
+    }
+
+    private val specialIconButtons: List<AppCompatImageButton> by lazy {
+        listOf(
+            binding.keyShift,
+            binding.keyDelete,
+            binding.keyEmoji,
+            binding.keySwitchDefault,
+            binding.cursorLeft,
+            binding.cursorRight
+        )
+    }
+
+    private val specialTextButtons: List<TextView> by lazy {
+        listOf(
+            binding.keySpace,
+            binding.key123,
+            binding.keyKuten,
+            binding.keyTouten,
+            binding.switchRomajiEnglish,
+            binding.switchNumberLayout,
+            binding.keyReturn
+        )
     }
 
     /** Map each key View → its corresponding QWERTYKey. */
@@ -967,6 +1210,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.keyShift to QWERTYKey.QWERTYKeyShift,
             binding.keyDelete to QWERTYKey.QWERTYKeyDelete,
             binding.keySwitchDefault to QWERTYKey.QWERTYKeySwitchDefaultLayout,
+            binding.keyEmoji to QWERTYKey.QWERTYKeyEmoji,
             binding.key123 to QWERTYKey.QWERTYKeySwitchMode,
             binding.keySpace to QWERTYKey.QWERTYKeySpace,
             binding.keyReturn to QWERTYKey.QWERTYKeyReturn,
@@ -999,6 +1243,27 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             binding.keyA, binding.keyS, binding.keyD, binding.keyF, binding.keyG,
             binding.keyH, binding.keyJ, binding.keyK, binding.keyL,
             // Bottom row
+            binding.keyZ, binding.keyX, binding.keyC, binding.keyV, binding.keyB,
+            binding.keyN, binding.keyM
+        )
+    }
+
+    private val qRowLetterViews: List<QWERTYButton> by lazy {
+        listOf(
+            binding.keyQ, binding.keyW, binding.keyE, binding.keyR, binding.keyT,
+            binding.keyY, binding.keyU, binding.keyI, binding.keyO, binding.keyP
+        )
+    }
+
+    private val aRowLetterViews: List<QWERTYButton> by lazy {
+        listOf(
+            binding.keyA, binding.keyS, binding.keyD, binding.keyF, binding.keyG,
+            binding.keyH, binding.keyJ, binding.keyK, binding.keyL
+        )
+    }
+
+    private val zRowLetterViews: List<QWERTYButton> by lazy {
+        listOf(
             binding.keyZ, binding.keyX, binding.keyC, binding.keyV, binding.keyB,
             binding.keyN, binding.keyM
         )
@@ -1056,6 +1321,76 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         this.qwertyKeyListener = listener
     }
 
+    fun setOnQwertyKeyTouchCancelListener(listener: QwertyKeyTouchCancelListener?) {
+        qwertyKeyTouchCancelListener = listener
+    }
+
+    fun setQwertyGlideInputMode(enabled: Boolean) {
+        if (qwertyGlideInputMode == enabled) return
+        qwertyGlideInputMode = enabled
+        if (!enabled) {
+            cancelQwertyGlideCandidate(notify = false)
+        }
+    }
+
+    fun setQwertyGlideInputListener(listener: QwertyGlideInputListener?) {
+        qwertyGlideInputListener = listener
+    }
+
+    fun getQwertyKeyboardProximityInfo(): QwertyKeyboardProximityInfo {
+        val letterViews = getVisibleQwertyLetterViews()
+        val keysWithoutNeighbors = letterViews.mapIndexed { index, view ->
+            val row = when (view) {
+                in qRowLetterViews -> 0
+                in aRowLetterViews -> 1
+                else -> 2
+            }
+            val column = when (row) {
+                0 -> qRowLetterViews.indexOf(view)
+                1 -> aRowLetterViews.indexOf(view)
+                else -> zRowLetterViews.indexOf(view)
+            }
+            val ch = view.text?.firstOrNull()?.lowercaseChar() ?: ('a' + index)
+            QwertyKeyProximity(
+                char = ch,
+                centerX = view.left + view.width / 2f,
+                centerY = view.top + view.height / 2f,
+                width = view.width.toFloat(),
+                height = view.height.toFloat(),
+                rowIndex = row,
+                columnIndex = column,
+                neighborChars = emptyList()
+            )
+        }.filter { it.char in 'a'..'z' }
+
+        val averageKeyWidth = keysWithoutNeighbors.map { it.width }.average().toFloatOrDefault()
+        val averageKeyHeight = keysWithoutNeighbors.map { it.height }.average().toFloatOrDefault()
+        val neighborRadius = hypot(averageKeyWidth, averageKeyHeight) * 1.35f
+        val keys = keysWithoutNeighbors.map { key ->
+            key.copy(
+                neighborChars = keysWithoutNeighbors
+                    .asSequence()
+                    .filter { it.char != key.char }
+                    .map { other ->
+                        other.char to hypot(key.centerX - other.centerX, key.centerY - other.centerY)
+                    }
+                    .filter { (_, distance) -> distance <= neighborRadius }
+                    .sortedBy { (_, distance) -> distance }
+                    .map { (char, _) -> char }
+                    .take(8)
+                    .toList()
+            )
+        }
+
+        return QwertyKeyboardProximityInfo(
+            keys = keys,
+            keyboardWidth = width,
+            keyboardHeight = height,
+            averageKeyWidth = averageKeyWidth,
+            averageKeyHeight = averageKeyHeight
+        )
+    }
+
     override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
         return event.actionMasked == MotionEvent.ACTION_DOWN
     }
@@ -1088,11 +1423,21 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     }
                 }
 
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                MotionEvent.ACTION_UP -> {
+                    setCursorMode(false)
+                    clearAllPressed()
+                }
+
+                MotionEvent.ACTION_CANCEL -> {
+                    notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.ActionCancel)
                     setCursorMode(false)
                     clearAllPressed()
                 }
             }
+            return true
+        }
+
+        if (handleQwertyGlideTouchEvent(event)) {
             return true
         }
 
@@ -1113,6 +1458,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     firstView?.let { view ->
                         view.isPressed = false
                         dismissKeyPreview()
+                        notifyQwertyTouchCanceledForPointer(
+                            firstPointerId,
+                            KeyTouchCancelReason.PointerInterrupted
+                        )
                         cancelLongPressForPointer(firstPointerId)
                         pointerStartCoords.remove(firstPointerId)
                         flickLockedPointers.remove(firstPointerId)
@@ -1192,7 +1541,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                         } else {
                             val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                             when (qwertyKey) {
-                                QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey -> {
+                                QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey, QWERTYKey.QWERTYKeyEmoji -> {
                                     qwertyKeyListener?.onReleasedQWERTYKey(qwertyKey, null, null)
                                 }
 
@@ -1248,7 +1597,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                                     val qwertyKey =
                                         qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
                                     when (qwertyKey) {
-                                        QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey -> {
+                                        QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey, QWERTYKey.QWERTYKeyEmoji -> {
                                             qwertyKeyListener?.onReleasedQWERTYKey(
                                                 qwertyKey,
                                                 null,
@@ -1267,22 +1616,131 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     }
                 }
                 clearAllPressed()
+                lastNonGlideKeyUpTime = SystemClock.uptimeMillis()
             }
 
             MotionEvent.ACTION_CANCEL -> {
+                notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.ActionCancel)
                 variationPopup?.dismiss()
                 variationPopup = null
                 variationPopupView = null
                 longPressedPointerId = null
                 clearAllPressed()
+                cancelQwertyGlideCandidate(notify = true)
             }
         }
         return true
     }
 
-    override fun onDetachedFromWindow() {
-        super.onDetachedFromWindow()
-        scope.cancel()
+    private fun handleQwertyGlideTouchEvent(event: MotionEvent): Boolean {
+        if (!qwertyGlideInputMode || romajiModeState.value) {
+            return false
+        }
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                beginQwertyGlideCandidateIfPossible(event, event.actionIndex)
+                return false
+            }
+
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                if (glideCandidatePointerId != null) {
+                    cancelQwertyGlideCandidate(notify = glideStarted)
+                }
+                return false
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                val pointerId = glideCandidatePointerId ?: return false
+                val pointerIndex = event.findPointerIndex(pointerId)
+                if (pointerIndex < 0) {
+                    cancelQwertyGlideCandidate(notify = glideStarted)
+                    return true
+                }
+                val x = event.getX(pointerIndex)
+                val y = event.getY(pointerIndex)
+                val keyHit = classifyQwertyGlideKeyHit(x, y)
+                val moveHandling = QwertyGlideKeyClassifier.decideMoveHandling(
+                    glidePointerId = glideCandidatePointerId,
+                    pointerId = pointerId,
+                    keyHit = keyHit
+                )
+
+                if (moveHandling == QwertyGlideKeyClassifier.MoveHandling.ROUTE_TO_NORMAL_KEY_HANDLER) {
+                    return false
+                }
+
+                if (!glideStarted) {
+                    // Glide 確定前の微小 MOVE では通常の長押し予約を保持する。
+                    if (moveHandling == QwertyGlideKeyClassifier.MoveHandling.APPEND_TO_GLIDE_PATH) {
+                        appendHistoricalQwertyGlideLetterPoints(event, pointerIndex, pointerId)
+                        appendQwertyGlidePoint(
+                            x = x,
+                            y = y,
+                            eventTime = event.eventTime,
+                            pointerId = pointerId
+                        )
+                        if (shouldStartQwertyGlide(event)) {
+                            startQwertyGlide(pointerId)
+                            qwertyGlideInputListener?.onQwertyGlideUpdated(
+                                inputPointers = QwertyInputPointers(glideRawPoints.toList()),
+                                proximityInfo = getQwertyKeyboardProximityInfo()
+                            )
+                            return true
+                        }
+                    }
+
+                    return if (isPendingQwertyGlideMoveWithinLongPressBounds(pointerId, x, y)) {
+                        false
+                    } else {
+                        cancelLongPressForPointer(pointerId)
+                        false
+                    }
+                }
+
+                // Glide candidate / active pointer の MOVE はここで所有する。
+                // 通常 MOVE に落とすと pointerButtonMap が数字・句読点などへ
+                // 書き換わり、UP で通常 tap として commit されてしまう。
+                if (moveHandling == QwertyGlideKeyClassifier.MoveHandling.IGNORE_AND_CONSUME) {
+                    releasePressedKeyForGlideMove(pointerId)
+                    return true
+                }
+
+                releasePressedKeyForGlideMove(pointerId)
+                appendHistoricalQwertyGlideLetterPoints(event, pointerIndex, pointerId)
+                appendQwertyGlidePoint(
+                    x = x,
+                    y = y,
+                    eventTime = event.eventTime,
+                    pointerId = pointerId
+                )
+                if (!glideStarted && shouldStartQwertyGlide(event)) {
+                    startQwertyGlide(pointerId)
+                }
+                if (glideStarted) {
+                    qwertyGlideInputListener?.onQwertyGlideUpdated(
+                        inputPointers = QwertyInputPointers(glideRawPoints.toList()),
+                        proximityInfo = getQwertyKeyboardProximityInfo()
+                    )
+                    return true
+                }
+                return false
+            }
+
+            MotionEvent.ACTION_POINTER_UP -> {
+                return handleQwertyGlidePointerUp(event)
+            }
+
+            MotionEvent.ACTION_UP -> {
+                return handleQwertyGlidePointerUp(event)
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
+                val consumed = glideCandidatePointerId != null
+                cancelQwertyGlideCandidate(notify = glideStarted)
+                return consumed
+            }
+        }
+        return false
     }
 
     private fun setToggleShiftState(view: View) {
@@ -1299,16 +1757,218 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
+    private fun beginQwertyGlideCandidateIfPossible(event: MotionEvent, pointerIndex: Int) {
+        val pointerId = event.getPointerId(pointerIndex)
+        val x = event.getX(pointerIndex)
+        val y = event.getY(pointerIndex)
+        if (findExactQwertyGlideLetterViewUnder(x, y) == null) return
+        if (SystemClock.uptimeMillis() - lastNonGlideKeyUpTime < glideFastTypingSuppressMillis) return
+
+        glideCandidatePointerId = pointerId
+        glideStarted = false
+        glideDownTime = event.eventTime
+        glideRawPoints.clear()
+        glideTrailPoints.clear()
+        glideLastSampleX = x
+        glideLastSampleY = y
+        appendQwertyGlidePoint(x, y, event.eventTime, pointerId, force = true)
+    }
+
+    private fun startQwertyGlide(pointerId: Int) {
+        val pressedView = pointerButtonMap[pointerId]
+        pressedView?.isPressed = false
+        dismissKeyPreview()
+        notifyQwertyTouchCanceledForPointer(pointerId, KeyTouchCancelReason.PointerInterrupted)
+        cancelLongPressForPointer(pointerId)
+        variationPopup?.dismiss()
+        variationPopup = null
+        variationPopupView = null
+        longPressedPointerId = null
+        pointerButtonMap.remove(pointerId)
+        pointerStartCoords.remove(pointerId)
+        flickLockedPointers.add(pointerId)
+        glideStarted = true
+        qwertyGlideInputListener?.onQwertyGlideStarted()
+    }
+
+    private fun isPendingQwertyGlideMoveWithinLongPressBounds(
+        pointerId: Int,
+        x: Float,
+        y: Float
+    ): Boolean {
+        val pressedView = pointerButtonMap[pointerId] ?: return false
+        pressedView.getHitRect(glideHitRect)
+        glideHitRect.inset(-pendingGlideLongPressSlop, -pendingGlideLongPressSlop)
+        return glideHitRect.contains(x.toInt(), y.toInt())
+    }
+
+    private fun handleQwertyGlidePointerUp(event: MotionEvent): Boolean {
+        val pointerId = glideCandidatePointerId ?: return false
+        val liftedId = event.getPointerId(event.actionIndex)
+        if (liftedId != pointerId) return false
+        val upX = event.getX(event.actionIndex)
+        val upY = event.getY(event.actionIndex)
+        if (findExactQwertyGlideLetterViewUnder(upX, upY) != null) {
+            appendQwertyGlidePoint(
+                x = upX,
+                y = upY,
+                eventTime = event.eventTime,
+                pointerId = pointerId
+            )
+        }
+        return if (glideStarted) {
+            qwertyGlideInputListener?.onQwertyGlideEnded(
+                inputPointers = QwertyInputPointers(glideRawPoints.toList()),
+                proximityInfo = getQwertyKeyboardProximityInfo()
+            )
+            clearQwertyGlideState(clearTrail = true)
+            clearAllPressed()
+            true
+        } else {
+            clearQwertyGlideState(clearTrail = true)
+            false
+        }
+    }
+
+    private fun releasePressedKeyForGlideMove(pointerId: Int) {
+        pointerButtonMap[pointerId]?.isPressed = false
+        dismissKeyPreview()
+        notifyQwertyTouchCanceledForPointer(pointerId, KeyTouchCancelReason.PointerInterrupted)
+        cancelLongPressForPointer(pointerId)
+    }
+
+    /**
+     * Glide 開始後に history を取り込むための関数。
+     *
+     * history に含まれる各座標が「Glide 用 alphabet key 上にある」ものだけを
+     * raw points / trail に採用する。Space / 数字キー / Return など非アルファベットキー上の座標は、
+     * 一瞬通過しただけでも history に乗っているケースがあり、それらが
+     * `glideRawPoints` や proximity decoder に混入して候補生成を歪める原因に
+     * なるため除外する。
+     */
+    private fun appendHistoricalQwertyGlideLetterPoints(
+        event: MotionEvent,
+        pointerIndex: Int,
+        pointerId: Int
+    ) {
+        for (historyIndex in 0 until event.historySize) {
+            val hx = event.getHistoricalX(pointerIndex, historyIndex)
+            val hy = event.getHistoricalY(pointerIndex, historyIndex)
+            if (findExactQwertyGlideLetterViewUnder(hx, hy) == null) {
+                continue
+            }
+            appendQwertyGlidePoint(
+                x = hx,
+                y = hy,
+                eventTime = event.getHistoricalEventTime(historyIndex),
+                pointerId = pointerId
+            )
+        }
+    }
+
+    private fun appendQwertyGlidePoint(
+        x: Float,
+        y: Float,
+        eventTime: Long,
+        pointerId: Int,
+        force: Boolean = false
+    ) {
+        if (!force && hypot(x - glideLastSampleX, y - glideLastSampleY) < glideSamplingMinDistance) {
+            return
+        }
+        glideLastSampleX = x
+        glideLastSampleY = y
+        val relativeTime = (eventTime - glideDownTime).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+        glideRawPoints.add(
+            QwertyInputPointerPoint(
+                x = x.toInt(),
+                y = y.toInt(),
+                time = relativeTime,
+                pointerId = pointerId
+            )
+        )
+        glideTrailPoints.add(x to y)
+        invalidate()
+    }
+
+    private fun shouldStartQwertyGlide(event: MotionEvent): Boolean {
+        if (glideRawPoints.size < 3) return false
+        val first = glideRawPoints.first()
+        val last = glideRawPoints.last()
+        val directDistance = hypot(
+            (last.x - first.x).toFloat(),
+            (last.y - first.y).toFloat()
+        )
+        val elapsed = event.eventTime - glideDownTime
+        return QwertyGlideGesturePolicy.shouldStart(
+            pointCount = glideRawPoints.size,
+            directDistance = directDistance,
+            elapsedMillis = elapsed,
+            distinctLetterKeysNearTrail = countDistinctQwertyLetterKeysNearTrail(),
+            minMoveDistance = glideMinMoveDistance,
+            fastMoveDistance = glideFastMoveDistance,
+            minElapsedMillis = glideMinElapsedMillis
+        )
+    }
+
+    private fun countDistinctQwertyLetterKeysNearTrail(): Int {
+        if (glideRawPoints.isEmpty()) return 0
+        val proximityInfo = getQwertyKeyboardProximityInfo()
+        val radius = (proximityInfo.averageKeyWidth.coerceAtLeast(1f) * 0.75f)
+        return glideRawPoints.mapNotNull { point ->
+            proximityInfo.keys
+                .minByOrNull { key -> hypot(point.x - key.centerX, point.y - key.centerY) }
+                ?.takeIf { key -> hypot(point.x - key.centerX, point.y - key.centerY) <= radius }
+                ?.char
+        }.distinct().size
+    }
+
+    private fun isInsideQwertyGlideGestureArea(x: Float, y: Float): Boolean {
+        val keys = getVisibleQwertyLetterViews()
+        if (keys.isEmpty()) return false
+        val left = keys.minOf { it.left }.toFloat() - keySideMarginDp * resources.displayMetrics.density * 3f
+        val right = keys.maxOf { it.right }.toFloat() + keySideMarginDp * resources.displayMetrics.density * 3f
+        val top = keys.minOf { it.top }.toFloat() - keyVerticalMarginDp * resources.displayMetrics.density * 3f
+        val bottom = keys.maxOf { it.bottom }.toFloat() + keyVerticalMarginDp * resources.displayMetrics.density * 3f
+        return x in left..right && y in top..bottom
+    }
+
+    private fun cancelQwertyGlideCandidate(notify: Boolean) {
+        if (notify) qwertyGlideInputListener?.onQwertyGlideCancelled()
+        clearQwertyGlideState(clearTrail = true)
+        clearAllPressed()
+    }
+
+    private fun clearQwertyGlideState(clearTrail: Boolean) {
+        glideCandidatePointerId = null
+        glideStarted = false
+        glideDownTime = 0L
+        glideRawPoints.clear()
+        if (clearTrail) {
+            glideTrailPoints.clear()
+            invalidate()
+        }
+    }
+
+    private fun clearPendingQwertyGlideCandidateForLongPress(pointerId: Int) {
+        if (glideCandidatePointerId == pointerId && !glideStarted) {
+            clearQwertyGlideState(clearTrail = true)
+        }
+    }
+
     fun resetQWERTYKeyboard() {
+        cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps()
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { false }
         binding.apply {
             keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
         }
+        refreshSpecialKeyIconSizesWhenLaidOut()
     }
 
     fun resetQWERTYKeyboard(enterKyeText: String) {
+        cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps()
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { false }
@@ -1316,9 +1976,22 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
             keyReturn.text = enterKyeText
         }
+        refreshSpecialKeyIconSizesWhenLaidOut()
+    }
+
+    fun setNumberView() {
+        cancelQwertyGlideCandidate(notify = glideStarted)
+        clearShiftCaps()
+        _qwertyMode.update { QWERTYMode.Number }
+        _romajiModeState.update { false }
+        binding.apply {
+            keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_english)
+        }
+        refreshSpecialKeyIconSizesWhenLaidOut()
     }
 
     fun setRomajiKeyboard(enterKeyText: String) {
+        cancelQwertyGlideCandidate(notify = glideStarted)
         clearShiftCaps()
         _qwertyMode.update { QWERTYMode.Default }
         _romajiModeState.update { true }
@@ -1326,6 +1999,64 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             keySpace.text = resources.getString(com.kazumaproject.core.R.string.space_japanese)
             keyReturn.text = enterKeyText
         }
+        refreshSpecialKeyIconSizesWhenLaidOut()
+    }
+
+    /**
+     * 現在の QWERTY 表示状態のスナップショットを返す。
+     *
+     * Floating mode と通常モードのように 2 つの QWERTYKeyboardView インスタンス間で
+     * 状態を非破壊的にコピーするために [renderUiState] と組み合わせて利用する。
+     */
+    fun snapshotUiState(): QwertyKeyboardUiState {
+        return QwertyKeyboardUiState(
+            qwertyMode = qwertyMode.value,
+            capsLockState = capsLockState.value,
+            romajiMode = romajiModeState.value,
+            enterKeyText = binding.keyReturn.text?.toString().orEmpty(),
+            spaceKeyText = binding.keySpace.text?.toString().orEmpty(),
+            showRomajiEnglishSwitchKey = binding.switchRomajiEnglish.isVisible
+        )
+    }
+
+    /**
+     * 渡された [state] をそのまま反映する。
+     *
+     * [resetQWERTYKeyboard] のように内部状態を初期化する関数ではない。
+     * - Shift / CapsLock を無条件にクリアしない
+     * - qwertyMode を Default に戻さない
+     *
+     * Floating mode ON / OFF 切り替え時、または surface 再描画時に
+     * もう一方の QWERTYKeyboardView へ現在状態を伝搬する用途で利用する。
+     */
+    fun renderUiState(state: QwertyKeyboardUiState) {
+        cancelQwertyGlideCandidate(notify = glideStarted)
+        // romaji を先に反映してから qwertyMode を反映することで、
+        // applyContentForMode で参照される romajiMode の値が正しい状態で
+        // 各キーラベルが描画されるようにする。
+        _romajiModeState.value = state.romajiMode
+        _qwertyMode.value = state.qwertyMode
+        _capsLockState.value = state.capsLockState
+
+        binding.apply {
+            keyReturn.text = state.enterKeyText
+            keySpace.text = state.spaceKeyText
+            switchRomajiEnglish.isVisible = state.showRomajiEnglishSwitchKey
+        }
+
+        // Floating PopupWindow の detach 中は collector が止まっているため、
+        // StateFlow の emit だけに依存せず、渡された状態をこの場で描画する。
+        applyLayoutForMode(state.qwertyMode)
+        applyContentForMode(state.qwertyMode)
+        applyRomajiModeLabels(state.romajiMode)
+        updateCapsLockUI(state.capsLockState)
+        renderShiftKeyDrawable()
+        binding.apply {
+            keyReturn.text = state.enterKeyText
+            keySpace.text = state.spaceKeyText
+            switchRomajiEnglish.isVisible = state.showRomajiEnglishSwitchKey
+        }
+        refreshSpecialKeyIconSizesWhenLaidOut()
     }
 
     private fun handlePointerDown(event: MotionEvent, pointerIndex: Int) {
@@ -1364,6 +2095,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 it.id != binding.key123.id &&
                 it.id != binding.keyReturn.id &&
                 it.id != binding.keySwitchDefault.id &&
+                it.id != binding.keyEmoji.id &&
                 it.id != binding.cursorLeft.id &&
                 it.id != binding.cursorRight.id &&
                 it.id != binding.switchRomajiEnglish.id &&
@@ -1399,6 +2131,14 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun handleUpFlick(previousView: View) {
         val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
+        getNumberKeyFlickUpChar(qwertyKey)?.let { charToInsert ->
+            qwertyKeyListener?.onFlickUPQWERTYKey(
+                qwertyKey = qwertyKey,
+                tap = charToInsert,
+                variations = listOf(charToInsert)
+            )
+            return
+        }
         val variations = getVariationInfo(qwertyKey)
         variations?.let { variation ->
             qwertyKeyListener?.onFlickUPQWERTYKey(
@@ -1412,10 +2152,40 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun handleDownFlick(previousView: View) {
         if (previousView !is QWERTYButton) return
         val qwertyKey = qwertyButtonMap[previousView] ?: QWERTYKey.QWERTYKeyNotSelect
+        getNumberKeyFlickDownChar(qwertyKey)?.let { charToInsert ->
+            qwertyKeyListener?.onFlickDownQWERTYKey(qwertyKey = qwertyKey, character = charToInsert)
+            return
+        }
         if (qwertyKey == QWERTYKey.QWERTYKeySpace) return
         val baseChar = previousView.text.firstOrNull()?.uppercaseChar() ?: return
         val charToInsert = if (romajiModeState.value) baseChar.toZenkaku() else baseChar
         qwertyKeyListener?.onFlickDownQWERTYKey(qwertyKey = qwertyKey, character = charToInsert)
+    }
+
+    private fun getNumberKeyFlickUpChar(qwertyKey: QWERTYKey): Char? {
+        return QwertyNumberKeyFlickConfig.charForKeyWhenEnabled(
+            key = qwertyKey,
+            chars = numberKeyFlickUpChars,
+            isNumberKeysShown = isNumberKeysShow,
+            isFlickEnabled = enableFlickUpDetection
+        )
+    }
+
+    private fun getNumberKeyFlickDownChar(qwertyKey: QWERTYKey): Char? {
+        return QwertyNumberKeyFlickConfig.charForKeyWhenEnabled(
+            key = qwertyKey,
+            chars = numberKeyFlickDownChars,
+            isNumberKeysShown = isNumberKeysShow,
+            isFlickEnabled = enableFlickDownDetection
+        )
+    }
+
+    private fun isQwertyUpFlickEnabledForCurrentGesture(): Boolean {
+        return !qwertyGlideInputMode && enableFlickUpDetection
+    }
+
+    private fun isQwertyDownFlickEnabledForCurrentGesture(): Boolean {
+        return !qwertyGlideInputMode && enableFlickDownDetection
     }
 
     private fun handlePointerMove(event: MotionEvent, pointerIndex: Int, pointerId: Int) {
@@ -1430,7 +2200,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             val flickDirection = detectFlickDirection(x, y, startX, startY, flickThreshold)
             when (flickDirection) {
                 FlickDirection.UP -> {
-                    if (enableFlickUpDetection && previousView is QWERTYButton) {
+                    // Delete キーの上フリックを優先 (左フリックと同じ流儀)
+                    if (enableDeleteUpFlick && previousView != null && previousView.id == binding.keyDelete.id) {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        onDeleteUpFlickListener?.invoke()
+                        return
+                    }
+                    if (isQwertyUpFlickEnabledForCurrentGesture() && previousView is QWERTYButton) {
                         applyCommonFlickEffects(pointerId, previousView)
                         handleUpFlick(previousView)
                         return
@@ -1438,7 +2214,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 }
 
                 FlickDirection.DOWN -> {
-                    if (enableFlickDownDetection && previousView is QWERTYButton) {
+                    // Delete キーの下フリックを優先 (左フリックと同じ流儀)
+                    if (enableDeleteDownFlick && previousView != null && previousView.id == binding.keyDelete.id) {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        onDeleteDownFlickListener?.invoke()
+                        return
+                    }
+                    if (isQwertyDownFlickEnabledForCurrentGesture() && previousView is QWERTYButton) {
                         applyCommonFlickEffects(pointerId, previousView)
                         handleDownFlick(previousView)
                         return
@@ -1465,10 +2247,6 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 cancelLongPressForPointer(pointerId)
             }
             currentView?.let {
-                val qwertyKey = qwertyButtonMap[it]
-                qwertyKey?.let { key ->
-                    qwertyKeyListener?.onPressedQWERTYKey(key)
-                }
                 it.isPressed = true
                 pointerButtonMap.put(pointerId, it)
                 pointerStartCoords.put(pointerId, Pair(x, y))
@@ -1479,6 +2257,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     it.id != binding.key123.id &&
                     it.id != binding.keyReturn.id &&
                     it.id != binding.keySwitchDefault.id &&
+                    it.id != binding.keyEmoji.id &&
                     it.id != binding.switchNumberLayout.id &&
                     it.id != binding.cursorRight.id &&
                     it.id != binding.cursorLeft.id
@@ -1511,6 +2290,25 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         lockedPointerId = null
     }
 
+    private fun notifyQwertyTouchCanceledForActivePointers(
+        reason: KeyTouchCancelReason
+    ) {
+        for (i in 0 until pointerButtonMap.size()) {
+            val view = pointerButtonMap.valueAt(i) ?: continue
+            val key = qwertyButtonMap[view] ?: continue
+            qwertyKeyTouchCancelListener?.onQwertyKeyTouchCanceled(key, reason)
+        }
+    }
+
+    private fun notifyQwertyTouchCanceledForPointer(
+        pointerId: Int,
+        reason: KeyTouchCancelReason
+    ) {
+        val view = pointerButtonMap[pointerId] ?: return
+        val key = qwertyButtonMap[view] ?: return
+        qwertyKeyTouchCancelListener?.onQwertyKeyTouchCanceled(key, reason)
+    }
+
     private fun showKeyPreview(view: View) {
         if (isTablet) return
         if (!showPopupView) return
@@ -1520,6 +2318,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val popupView = LayoutInflater.from(context).inflate(layoutRes, this, false)
         val tv = popupView.findViewById<TextView>(R.id.preview_text)
         val iv = popupView.findViewById<ImageView>(R.id.preview_bubble_bg)
+        tv.setTextSize(
+            TypedValue.COMPLEX_UNIT_SP,
+            keyPreviewPopupStyle.textSizeSp.coerceIn(8f, 48f)
+        )
         val isLandMode =
             (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
 
@@ -1552,6 +2354,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
             }
         }
+        keyPreviewPopupStyle.backgroundColor?.let { backgroundColor ->
+            iv.setDrawableSolidColor(backgroundColor)
+        }
+        keyPreviewPopupStyle.textColor?.let { textColor ->
+            tv.setTextColor(textColor)
+        }
         popupView.rootView.layoutParams.height = previewHeight
 
         when (view) {
@@ -1568,14 +2376,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             else -> tv.text = ""
         }
 
-        val popup = PopupWindow(popupView, view.width * 2, view.height * 2 + 64, false).apply {
+        val scale = keyPreviewPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        val popupWidth = (view.width * 2 * scale).toInt().coerceAtLeast(1)
+        val popupHeight = ((view.height * 2 + 64) * scale).toInt().coerceAtLeast(1)
+
+        val popup = PopupWindow(popupView, popupWidth, popupHeight, false).apply {
             isTouchable = false
             isFocusable = false
             elevation = 6f
         }
 
-        val xOffset = -(view.width / 2)
-        val yOffset = -(view.height * 2 + 64)
+        val xOffset = -((popupWidth - view.width) / 2)
+        val yOffset = -popupHeight
         popup.showAsDropDown(view, xOffset, yOffset)
         keyPreviewPopup = popup
     }
@@ -1608,6 +2420,88 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
         }
         return nearestView
+    }
+
+    private fun getVisibleQwertyLetterViews(): List<QWERTYButton> {
+        if (qwertyMode.value != QWERTYMode.Default) return emptyList()
+        return (qRowLetterViews + aRowLetterViews + zRowLetterViews)
+            .filter { it.isVisible && it.text?.singleOrNull()?.lowercaseChar() in 'a'..'z' }
+    }
+
+    private fun isQwertyGlideLetterView(view: View?): Boolean {
+        if (view !is QWERTYButton) return false
+        return view in getVisibleQwertyLetterViews()
+    }
+
+    private fun View.toQwertyGlideKeyRect(): QwertyGlideKeyClassifier.KeyRect {
+        getHitRect(glideHitRect)
+        return QwertyGlideKeyClassifier.KeyRect(
+            left = glideHitRect.left,
+            top = glideHitRect.top,
+            right = glideHitRect.right,
+            bottom = glideHitRect.bottom
+        )
+    }
+
+    private fun classifyQwertyGlideKeyHit(
+        x: Float,
+        y: Float
+    ): QwertyGlideKeyClassifier.KeyHit {
+        val letterViews = getVisibleQwertyLetterViews()
+        val letterViewSet = letterViews.toSet()
+        val letterRects = letterViews.map { it.toQwertyGlideKeyRect() }
+        val nonLetterRects = qwertyButtonMap.keys
+            .filter { it.isVisible && it !in letterViewSet }
+            .map { it.toQwertyGlideKeyRect() }
+        return QwertyGlideKeyClassifier.classify(
+            letterRects = letterRects,
+            nonLetterRects = nonLetterRects,
+            x = x.toInt(),
+            y = y.toInt()
+        )
+    }
+
+    /**
+     * 共有 [hitRect] を使い回すと、Glide 中の判定が他のタッチ処理と競合する恐れが
+     * あるため、Glide 専用の Rect を別に確保する。
+     */
+    private val glideHitRect = Rect()
+
+    /**
+     * 指定座標が「Glide で実際に使う visible なアルファベットキー」の hitRect 内に
+     * 入っているかを厳密に判定する。
+     *
+     * [findButtonUnder] のような nearest-neighbor フォールバックは行わない。
+     * 数字キー / Space / Return などの上にある座標を、近接するアルファベットキーへ
+     * 吸わせてしまうのを防ぐ目的で、矩形に *厳密に* 含まれているケースだけ true を
+     * 返す。
+     */
+    private fun findExactQwertyGlideLetterViewUnder(x: Float, y: Float): QWERTYButton? {
+        val xi = x.toInt()
+        val yi = y.toInt()
+        return getVisibleQwertyLetterViews().firstOrNull { key ->
+            if (!key.isVisible) return@firstOrNull false
+            key.getHitRect(glideHitRect)
+            glideHitRect.contains(xi, yi)
+        }
+    }
+
+    override fun dispatchDraw(canvas: Canvas) {
+        super.dispatchDraw(canvas)
+        if (glideTrailPoints.size < 2) return
+        glideTrailPath.reset()
+        val first = glideTrailPoints.first()
+        glideTrailPath.moveTo(first.first, first.second)
+        for (i in 1 until glideTrailPoints.size) {
+            val previous = glideTrailPoints[i - 1]
+            val current = glideTrailPoints[i]
+            val midX = (previous.first + current.first) / 2f
+            val midY = (previous.second + current.second) / 2f
+            glideTrailPath.quadTo(previous.first, previous.second, midX, midY)
+        }
+        val last = glideTrailPoints.last()
+        glideTrailPath.lineTo(last.first, last.second)
+        canvas.drawPath(glideTrailPath, glideTrailPaint)
     }
 
     private fun logVariationIfNeeded(key: QWERTYKey) {
@@ -1674,7 +2568,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun scheduleLongPressForPointer(pointerId: Int, view: View) {
         cancelLongPressForPointer(pointerId)
-        val job = scope.launch {
+        val activeTouchScope = touchScope ?: createViewScope().also { touchScope = it }
+        val job = activeTouchScope.launch {
             delay(longPressTimeout)
             val currentView = pointerButtonMap[pointerId]
             if (currentView == view) {
@@ -1683,11 +2578,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 val hasVariations = info != null && !info.variations.isNullOrEmpty()
                 val isSpecialLongPressKey = qwertyKey in longPressEnabledKeys
                 if (hasVariations) {
+                    clearPendingQwertyGlideCandidateForLongPress(pointerId)
                     qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
                     info?.variations?.let { showVariationPopup(view, it) }
                     longPressedPointerId = pointerId
                     dismissKeyPreview()
                 } else if (isSpecialLongPressKey) {
+                    clearPendingQwertyGlideCandidateForLongPress(pointerId)
                     qwertyKeyListener?.onLongPressQWERTYKey(qwertyKey)
                     lockedPointerId = pointerId
                 }
@@ -1699,7 +2596,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     private fun showVariationPopup(anchorView: View, variations: List<Char>) {
         variationPopup?.dismiss()
         val context = this.context
-        variationPopupView = VariationsPopupView(context).apply { setChars(variations) }
+        variationPopupView = VariationsPopupView(context).apply {
+            applyPopupViewStyle(variationPopupStyle)
+            setChars(variations)
+        }
         when (themeMode) {
             "custom" -> {
                 variationPopupView?.setNeumorphicColors(
@@ -1714,11 +2614,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
         }
         val maxColumns = 3
-        val itemSize = 100
+        val scale = variationPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        val itemSize = (100 * scale).toInt().coerceAtLeast(1)
         val cols = if (variations.size < maxColumns) variations.size else maxColumns
         val rows = kotlin.math.ceil(variations.size.toFloat() / maxColumns).toInt()
         val popupWidth = itemSize * cols
-        val popupHeight = 150 * rows
+        val popupHeight = ((150 * rows) * scale).toInt().coerceAtLeast(1)
         val popup = PopupWindow(variationPopupView, popupWidth, popupHeight, false).apply {
             isTouchable = false
         }
@@ -1730,6 +2631,22 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val yOffset = -anchorView.height - popupHeight
         popup.showAsDropDown(anchorView, xOffset, yOffset)
         this.variationPopup = popup
+    }
+
+    fun applyPopupViewStyleSet(styleSet: QwertyPopupViewStyleSet) {
+        keyPreviewPopupStyle = PopupViewStyle(
+            sizeScalePercent = styleSet.keyPreview.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = styleSet.keyPreview.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = styleSet.keyPreview.backgroundColor,
+            textColor = styleSet.keyPreview.textColor
+        )
+        variationPopupStyle = PopupViewStyle(
+            sizeScalePercent = styleSet.variation.sizeScalePercent.coerceIn(50, 200),
+            textSizeSp = styleSet.variation.textSizeSp.coerceIn(8f, 48f),
+            backgroundColor = styleSet.variation.backgroundColor,
+            textColor = styleSet.variation.textColor
+        )
+        variationPopupView?.applyPopupViewStyle(variationPopupStyle)
     }
 
     private fun cancelLongPressForPointer(pointerId: Int) {
@@ -1760,7 +2677,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     fun setRomajiMode(state: Boolean) {
-        Log.d("QWERTY Keyboard Debug","romaji: [$state]")
+        Log.d("QWERTY Keyboard Debug", "romaji: [$state]")
+        if (state) cancelQwertyGlideCandidate(notify = glideStarted)
         _romajiModeState.update { state }
     }
 
@@ -1793,11 +2711,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun setSpecialKeyVisibility(
         showCursors: Boolean,
         showSwitchKey: Boolean,
-        showKutouten: Boolean
+        showKutouten: Boolean,
+        showEmojiKey: Boolean = false
     ) {
         binding.cursorLeft.isVisible = showCursors
         binding.cursorRight.isVisible = showCursors
         binding.keySwitchDefault.isVisible = showSwitchKey
+        binding.keyEmoji.isVisible = showEmojiKey
         binding.keyKuten.isVisible = showKutouten
         binding.keyTouten.isVisible = showKutouten
     }
@@ -1883,6 +2803,35 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         displayOrHideNumberKeys(state)
         // Ensure topRightChars update correctly when number row toggles
         updateTopRightCharsForDefaultMode()
+        updateNumberKeyFlickGuides()
+    }
+
+    private fun updateNumberKeyFlickGuides() {
+        qwertyButtonMap.forEach { (view, key) ->
+            if (view !is QWERTYButton || !QwertyNumberKeyFlickConfig.isQwertyNumberKey(key)) {
+                return@forEach
+            }
+            view.topRightChar = if (isNumberKeysShow && enableFlickUpDetection) {
+                QwertyNumberKeyFlickConfig.charForKeyWhenEnabled(
+                    key = key,
+                    chars = numberKeyFlickUpChars,
+                    isNumberKeysShown = isNumberKeysShow,
+                    isFlickEnabled = enableFlickUpDetection
+                )
+            } else {
+                null
+            }
+            view.bottomRightChar = if (isNumberKeysShow && enableFlickDownDetection) {
+                QwertyNumberKeyFlickConfig.charForKeyWhenEnabled(
+                    key = key,
+                    chars = numberKeyFlickDownChars,
+                    isNumberKeysShown = isNumberKeysShow,
+                    isFlickEnabled = enableFlickDownDetection
+                )
+            } else {
+                null
+            }
+        }
     }
 
     fun updateSwitchRomajiEnglishState(state: Boolean) {
@@ -1941,4 +2890,12 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun setSwitchNumberLayoutKeyVisibility(state: Boolean) {
         binding.switchNumberLayout.isVisible = state
     }
+
+    fun setDefaultView() {
+        _qwertyMode.update { QWERTYMode.Default }
+    }
+}
+
+private fun Double.toFloatOrDefault(defaultValue: Float = 0f): Float {
+    return if (isNaN()) defaultValue else toFloat()
 }
