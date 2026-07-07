@@ -13,6 +13,7 @@ import com.kazumaproject.bitset.select1CommonShort
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArrayFromListChar
 import com.kazumaproject.toListChar
 import java.io.IOException
@@ -74,6 +75,14 @@ class LOUDS {
         return -1
     }
 
+    fun convertListToBitSet() {
+        LBS = LBSTemp.toBitSet()
+        LBSTemp.clear()
+        isLeaf = isLeafTemp.toBitSet()
+        isLeafTemp.clear()
+        labels = labelsTemp.toCharArray()
+    }
+
     fun commonPrefixSearch(str: String): MutableList<String> {
         val resultTemp: MutableList<Char> = mutableListOf()
         val result: MutableList<String> = mutableListOf()
@@ -114,8 +123,8 @@ class LOUDS {
             val currentNodeId = LBS.rank1Common(currentNodeIndex, rank1Array)
             val currentChar = labels[currentNodeId]
 
-            /** Remove this for Wakati **/
-            if (currentChar != ' ') {
+            // Keep real spaces in words; skip LOUDS sentinels (node ids 0 and 1).
+            if (currentNodeId > 1) {
                 result.append(currentChar)
             }
 
@@ -138,8 +147,8 @@ class LOUDS {
             val currentNodeId = succinctBitVector.rank1(currentNodeIndex)
             val currentChar = labels[currentNodeId]
 
-            /** Remove this for Wakati **/
-            if (currentChar != ' ') {
+            // Keep real spaces in words; skip LOUDS sentinels (node ids 0 and 1).
+            if (currentNodeId > 1) {
                 result.append(currentChar)
             }
 
@@ -157,16 +166,20 @@ class LOUDS {
     ): String {
         val list = mutableListOf<Char>()
         val firstNodeId = LBS.rank1CommonShort(nodeIndex, rank1Array)
-        val firstChar = labels[firstNodeId.toInt()]
-        list.add(firstChar)
+        if (firstNodeId > 1) {
+            val firstChar = labels[firstNodeId.toInt()]
+            list.add(firstChar)
+        }
         var parentNodeIndex = LBS.select1CommonShort(
             LBS.rank0CommonShort(nodeIndex.toShort(), rank0Array),
             rank1Array
         ).toInt()
         while (parentNodeIndex != 0) {
             val parentNodeId = LBS.rank1CommonShort(parentNodeIndex, rank1Array)
-            val pair = labels[parentNodeId.toInt()]
-            list.add(pair)
+            if (parentNodeId > 1) {
+                val pair = labels[parentNodeId.toInt()]
+                list.add(pair)
+            }
             parentNodeIndex = LBS.select1CommonShort(
                 LBS.rank0CommonShort(parentNodeIndex.toShort(), rank0Array),
                 rank1Array
@@ -182,14 +195,18 @@ class LOUDS {
     ): String {
         val list = mutableListOf<Char>()
         val firstNodeId = succinctBitVector.rank1(nodeIndex)
-        val firstChar = labels[firstNodeId]
-        list.add(firstChar)
+        if (firstNodeId > 1) {
+            val firstChar = labels[firstNodeId]
+            list.add(firstChar)
+        }
         val rank0 = succinctBitVector.rank0(nodeIndex)
         var parentNodeIndex = succinctBitVector.select1(rank0)
         while (parentNodeIndex != 0) {
             val parentNodeId = succinctBitVector.rank1(parentNodeIndex)
-            val pair = labels[parentNodeId]
-            list.add(pair)
+            if (parentNodeId > 1) {
+                val pair = labels[parentNodeId]
+                list.add(pair)
+            }
             val rank0InLoop = succinctBitVector.rank0(parentNodeIndex)
             parentNodeIndex = succinctBitVector.select1(rank0InLoop)
             if (parentNodeId == (0)) return ""
@@ -256,6 +273,20 @@ class LOUDS {
                 writeObject(LBS)
                 writeObject(labelsTemp.toByteArrayFromListChar().deflate())
                 writeObject(isLeaf)
+                flush()
+                close()
+            }
+        } catch (e: IOException) {
+            println(e.stackTraceToString())
+        }
+    }
+
+    fun writeExternalNotCompress(out: ObjectOutput) {
+        try {
+            out.apply {
+                writeObject(LBS)
+                writeObject(isLeaf)
+                writeObject(labels)
                 flush()
                 close()
             }

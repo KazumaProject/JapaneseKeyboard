@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.setting
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.View
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.preference.Preference
@@ -31,6 +32,12 @@ class ZenzPreferenceFragment : PreferenceFragmentCompat() {
         }
 
         updateModelPrefSummary()
+        applyLegacySearchResultFilterIfNeeded()
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        scrollToHighlightedPreferenceAfterLayout(view)
     }
 
     private fun showModelSelectDialog() {

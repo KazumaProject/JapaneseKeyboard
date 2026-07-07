@@ -6,26 +6,46 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.kazumaproject.data.clicked_symbol.ClickedSymbol
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideDao
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.clicked_symbol.database.ClickedSymbolDao
-import com.kazumaproject.markdownhelperkeyboard.clipboard_history.BitmapConverter
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryDao
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemTypeConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyDefinition
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.LongPressFlickMapping
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefinition
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TfbiFlickDirectionConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepFlickMapping
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepLongPressMappingEntity
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.MapTypeConverter
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapEntity
+import com.kazumaproject.markdownhelperkeyboard.delete_key_flick.database.DeleteKeyFlickDeleteTarget
+import com.kazumaproject.markdownhelperkeyboard.delete_key_flick.database.DeleteKeyFlickDeleteTargetDao
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplateDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleDao
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.ThreeNodeRuleEntity
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.TwoNodeRuleEntity
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutDao
+import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.data.ShortcutItem
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideDao
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideEntity
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideDao
+import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideEntity
+import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryDao
+import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryEntry
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
@@ -39,18 +59,30 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         CustomKeyboardLayout::class,
         KeyDefinition::class,
         FlickMapping::class,
+        CircularFlickMapping::class,
         TwoStepFlickMapping::class,
+        LongPressFlickMapping::class,
+        TwoStepLongPressMappingEntity::class,
         UserTemplate::class,
         ClipboardHistoryItem::class,
         RomajiMapEntity::class,
         NgWord::class,
-        ShortcutItem::class
+        ShortcutItem::class,
+        SystemUserDictionaryEntry::class,
+        TwoNodeRuleEntity::class,
+        ThreeNodeRuleEntity::class,
+        GemmaPromptTemplate::class,
+        DeleteKeyFlickDeleteTarget::class,
+        PhysicalKeyboardShortcutItem::class,
+        SpacerDefinition::class,
+        CandidateOrderOverrideEntity::class,
+        SumireSpecialKeyActionOverrideEntity::class,
+        SumireSpecialKeyPlacementOverrideEntity::class,
     ],
-    version = 16,
+    version = 36,
     exportSchema = false
 )
 @TypeConverters(
-    BitmapConverter::class,
     ItemTypeConverter::class,
     MapTypeConverter::class,
     TfbiFlickDirectionConverter::class
@@ -66,6 +98,14 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun romajiMapDao(): RomajiMapDao
     abstract fun ngWordDao(): NgWordDao
     abstract fun shortcutDao(): ShortcutDao
+    abstract fun systemUserDictionaryDao(): SystemUserDictionaryDao
+    abstract fun ngramRuleDao(): NgramRuleDao
+    abstract fun gemmaPromptTemplateDao(): GemmaPromptTemplateDao
+    abstract fun deleteKeyFlickDeleteTargetDao(): DeleteKeyFlickDeleteTargetDao
+    abstract fun physicalKeyboardShortcutDao(): PhysicalKeyboardShortcutDao
+    abstract fun candidateOrderOverrideDao(): CandidateOrderOverrideDao
+    abstract fun sumireSpecialKeyActionOverrideDao(): SumireSpecialKeyActionOverrideDao
+    abstract fun sumireSpecialKeyPlacementOverrideDao(): SumireSpecialKeyPlacementOverrideDao
 
     companion object {
 
@@ -376,5 +416,502 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 旧テーブルを削除（BLOBデータが含まれており、移行中のCursorWindow制限を避けるため）
+                db.execSQL("DROP TABLE IF EXISTS `clipboard_history`")
+                // 新しいスキーマで再作成
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `clipboard_history` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `itemType` TEXT NOT NULL,
+                      `preview` TEXT NOT NULL,
+                      `contentPath` TEXT NOT NULL,
+                      `timestamp` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `system_user_dictionary_entry` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `yomi` TEXT NOT NULL,
+                      `tango` TEXT NOT NULL,
+                      `score` INTEGER NOT NULL,
+                      `leftId` INTEGER NOT NULL,
+                      `rightId` INTEGER NOT NULL,
+                      `createdAt` INTEGER NOT NULL,
+                      `updatedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_system_user_dictionary_entry_yomi`
+                    ON `system_user_dictionary_entry`(`yomi`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_system_user_dictionary_entry_tango`
+                    ON `system_user_dictionary_entry`(`tango`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_system_user_dictionary_entry_yomi_tango_leftId_rightId`
+                    ON `system_user_dictionary_entry`(`yomi`, `tango`, `leftId`, `rightId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_18_19 = object : Migration(18, 19) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `two_node_rule` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `prevWord` TEXT NOT NULL,
+                      `prevLeftId` INTEGER NOT NULL,
+                      `prevRightId` INTEGER NOT NULL,
+                      `currentWord` TEXT NOT NULL,
+                      `currentLeftId` INTEGER NOT NULL,
+                      `currentRightId` INTEGER NOT NULL,
+                      `adjustment` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_two_node_rule_prevWord_prevLeftId_prevRightId_currentWord_currentLeftId_currentRightId`
+                    ON `two_node_rule`(`prevWord`, `prevLeftId`, `prevRightId`, `currentWord`, `currentLeftId`, `currentRightId`)
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `three_node_rule` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `firstWord` TEXT NOT NULL,
+                      `firstLeftId` INTEGER NOT NULL,
+                      `firstRightId` INTEGER NOT NULL,
+                      `secondWord` TEXT NOT NULL,
+                      `secondLeftId` INTEGER NOT NULL,
+                      `secondRightId` INTEGER NOT NULL,
+                      `thirdWord` TEXT NOT NULL,
+                      `thirdLeftId` INTEGER NOT NULL,
+                      `thirdRightId` INTEGER NOT NULL,
+                      `adjustment` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_three_node_rule_firstWord_firstLeftId_firstRightId_secondWord_secondLeftId_secondRightId_thirdWord_thirdLeftId_thirdRightId`
+                    ON `three_node_rule`(`firstWord`, `firstLeftId`, `firstRightId`, `secondWord`, `secondLeftId`, `secondRightId`, `thirdWord`, `thirdLeftId`, `thirdRightId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `gemma_prompt_template` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `title` TEXT NOT NULL,
+                      `prompt` TEXT NOT NULL,
+                      `isEnabled` INTEGER NOT NULL,
+                      `sortOrder` INTEGER NOT NULL,
+                      `createdAt` INTEGER NOT NULL,
+                      `updatedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_gemma_prompt_template_sortOrder`
+                    ON `gemma_prompt_template`(`sortOrder`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_gemma_prompt_template_isEnabled`
+                    ON `gemma_prompt_template`(`isEnabled`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `long_press_flick_mappings` (
+                        `ownerKeyId` INTEGER NOT NULL,
+                        `flickDirection` TEXT NOT NULL,
+                        `output` TEXT NOT NULL,
+                        PRIMARY KEY(`ownerKeyId`, `flickDirection`),
+                        FOREIGN KEY(`ownerKeyId`) REFERENCES `key_definitions`(`keyId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_long_press_flick_mappings_ownerKeyId`
+                    ON `long_press_flick_mappings`(`ownerKeyId`)
+                    """.trimIndent()
+                )
+
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `two_step_long_press_mappings` (
+                        `ownerKeyId` INTEGER NOT NULL,
+                        `firstDirection` TEXT NOT NULL,
+                        `secondDirection` TEXT NOT NULL,
+                        `output` TEXT NOT NULL,
+                        PRIMARY KEY(`ownerKeyId`, `firstDirection`, `secondDirection`),
+                        FOREIGN KEY(`ownerKeyId`) REFERENCES `key_definitions`(`keyId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_two_step_long_press_mappings_ownerKeyId`
+                    ON `two_step_long_press_mappings`(`ownerKeyId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP INDEX IF EXISTS `index_two_step_long_press_mappings_ownerKeyId`")
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `two_step_long_press_mappings_new` (
+                        `ownerKeyId` INTEGER NOT NULL,
+                        `firstDirection` TEXT NOT NULL,
+                        `secondDirection` TEXT NOT NULL,
+                        `output` TEXT NOT NULL,
+                        PRIMARY KEY(`ownerKeyId`, `firstDirection`, `secondDirection`),
+                        FOREIGN KEY(`ownerKeyId`) REFERENCES `key_definitions`(`keyId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT INTO `two_step_long_press_mappings_new` (
+                        `ownerKeyId`,
+                        `firstDirection`,
+                        `secondDirection`,
+                        `output`
+                    )
+                    SELECT
+                        `ownerKeyId`,
+                        `firstDirection`,
+                        `secondDirection`,
+                        `output`
+                    FROM `two_step_long_press_mappings`
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE `two_step_long_press_mappings`")
+                db.execSQL(
+                    "ALTER TABLE `two_step_long_press_mappings_new` RENAME TO `two_step_long_press_mappings`"
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_two_step_long_press_mappings_ownerKeyId`
+                    ON `two_step_long_press_mappings`(`ownerKeyId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `clipboard_history` ADD COLUMN `isPinned` INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `delete_key_flick_delete_targets` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `symbol` TEXT NOT NULL,
+                      `sortOrder` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_delete_key_flick_delete_targets_symbol`
+                    ON `delete_key_flick_delete_targets` (`symbol`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `physical_keyboard_shortcut_items` (
+                      `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                      `context` TEXT NOT NULL,
+                      `keyCode` INTEGER NOT NULL,
+                      `scanCode` INTEGER,
+                      `ctrl` INTEGER NOT NULL,
+                      `shift` INTEGER NOT NULL,
+                      `alt` INTEGER NOT NULL,
+                      `meta` INTEGER NOT NULL,
+                      `actionId` TEXT NOT NULL,
+                      `enabled` INTEGER NOT NULL,
+                      `sortOrder` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_physical_keyboard_shortcut_items_context_keyCode_scanCode_ctrl_shift_alt_meta`
+                    ON `physical_keyboard_shortcut_items` (`context`, `keyCode`, `scanCode`, `ctrl`, `shift`, `alt`, `meta`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `circular_flick_mappings` (
+                        `ownerKeyId` INTEGER NOT NULL,
+                        `stateIndex` INTEGER NOT NULL,
+                        `circularDirection` TEXT NOT NULL,
+                        `actionType` TEXT NOT NULL,
+                        `actionValue` TEXT,
+                        PRIMARY KEY(`ownerKeyId`, `stateIndex`, `circularDirection`),
+                        FOREIGN KEY(`ownerKeyId`) REFERENCES `key_definitions`(`keyId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `keyboard_layouts` ADD COLUMN `stableId` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `keyboard_layouts` ADD COLUMN `isDirectMode` INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `rowUnits` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `columnUnits` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `rowSpanUnits` INTEGER")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `columnSpanUnits` INTEGER")
+            }
+        }
+
+        /**
+         * バージョン29から30へのマイグレーション。
+         * KeyboardLayout に行内 Spacer (SpacerItem) を永続化するための
+         * `spacer_definitions` テーブルを追加します。
+         *
+         * これにより QWERTY / AZERTY / Dvorak / Colemak テンプレートの
+         * 「Shift | spacer | 文字キー | spacer | Delete」のような
+         * 行途中の Spacer 配置も DB ↔ アプリ間でラウンドトリップ可能になります。
+         */
+        val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `spacer_definitions` (
+                        `spacerId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `ownerLayoutId` INTEGER NOT NULL,
+                        `itemIdentifier` TEXT NOT NULL,
+                        `rowUnits` INTEGER NOT NULL,
+                        `columnUnits` INTEGER NOT NULL,
+                        `rowSpanUnits` INTEGER NOT NULL,
+                        `columnSpanUnits` INTEGER NOT NULL,
+                        `sortOrder` INTEGER NOT NULL DEFAULT 0,
+                        FOREIGN KEY(`ownerLayoutId`) REFERENCES `keyboard_layouts`(`layoutId`) ON DELETE CASCADE ON UPDATE NO ACTION
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_spacer_definitions_ownerLayoutId`
+                    ON `spacer_definitions`(`ownerLayoutId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        /**
+         * バージョン30から31へのマイグレーション。
+         *
+         * KeyAction.MoveToCustomKeyboard が参照する CustomKeyboardLayout.stableId に
+         * unique index を張る。インデックスを張る前に既存データを修復する:
+         *
+         * 1. blank / null 相当の stableId に決定的なユニーク値を割り当てる
+         *    (`auto-stable-{layoutId}` 形式)。既存ユーザーの DB に残った旧データを
+         *    壊さないように、UUID ではなく layoutId 由来の値を使う。
+         * 2. 重複する stableId を持つ row のうち、layoutId が最小の row 以外には
+         *    `auto-stable-dup-{layoutId}` を割り当てて衝突を解消する。
+         *    (旧バージョンに stableId が空のまま保存されていた場合や、
+         *    バックアップのインポートで重複が混入したケースを想定)
+         * 3. unique index を作成する。
+         *
+         * このマイグレーションは破壊的に layoutId / 既存の有効な stableId を上書きしない。
+         * 修復処理によって stableId が変わった場合、その row を参照していた
+         * MoveToCustomKeyboard は「削除済みのカスタムキーボード」と表示されるが、
+         * これは元から不整合な状態だったレイアウトに限られる。正常なレイアウトの
+         * stableId は維持される。
+         */
+        val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 1) blank / null stableId を決定的に埋める
+                db.execSQL(
+                    """
+                    UPDATE keyboard_layouts
+                    SET stableId = 'auto-stable-' || layoutId
+                    WHERE stableId IS NULL OR stableId = ''
+                    """.trimIndent()
+                )
+
+                // 2) 重複する stableId を解消する
+                //    layoutId が最小のものを「残す」候補とし、それ以外には
+                //    `auto-stable-dup-<layoutId>` を割り当てる。
+                db.execSQL(
+                    """
+                    UPDATE keyboard_layouts
+                    SET stableId = 'auto-stable-dup-' || layoutId
+                    WHERE layoutId NOT IN (
+                        SELECT MIN(layoutId)
+                        FROM keyboard_layouts
+                        GROUP BY stableId
+                    )
+                    """.trimIndent()
+                )
+
+                // 3) unique index 作成
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_keyboard_layouts_stableId`
+                    ON `keyboard_layouts`(`stableId`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_31_32 = object : Migration(31, 32) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `keyboard_layouts` ADD COLUMN `isFlexiblePlacementLayout` INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `keyboard_layouts` ADD COLUMN `usageMode` TEXT NOT NULL DEFAULT 'Normal'"
+                )
+            }
+        }
+
+        val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `candidate_order_override` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `input` TEXT NOT NULL,
+                        `candidate` TEXT NOT NULL,
+                        `rank` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_candidate_order_override_input`
+                    ON `candidate_order_override`(`input`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_candidate_order_override_input_candidate`
+                    ON `candidate_order_override`(`input`, `candidate`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_34_35 = object : Migration(34, 35) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `sumire_special_key_action_overrides` (
+                        `layout_type` TEXT NOT NULL,
+                        `input_mode` TEXT NOT NULL,
+                        `key_id` TEXT NOT NULL,
+                        `direction` TEXT NOT NULL,
+                        `override_type` TEXT NOT NULL,
+                        `action_string` TEXT,
+                        `input_text` TEXT,
+                        `updated_at` INTEGER NOT NULL,
+                        PRIMARY KEY(`layout_type`, `input_mode`, `key_id`, `direction`)
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `sumire_special_key_placement_overrides` (
+                        `layout_type` TEXT NOT NULL,
+                        `input_mode` TEXT NOT NULL,
+                        `key_id` TEXT NOT NULL,
+                        `row_units` INTEGER NOT NULL,
+                        `column_units` INTEGER NOT NULL,
+                        `row_span_units` INTEGER NOT NULL,
+                        `column_span_units` INTEGER NOT NULL,
+                        `updated_at` INTEGER NOT NULL,
+                        PRIMARY KEY(`layout_type`, `input_mode`, `key_id`)
+                    )
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_35_36 = object : Migration(35, 36) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `iconType` TEXT")
+                db.execSQL("ALTER TABLE `key_definitions` ADD COLUMN `iconValue` TEXT")
+                db.execSQL("ALTER TABLE `flick_mappings` ADD COLUMN `iconType` TEXT")
+                db.execSQL("ALTER TABLE `flick_mappings` ADD COLUMN `iconValue` TEXT")
+                db.execSQL("ALTER TABLE `circular_flick_mappings` ADD COLUMN `iconType` TEXT")
+                db.execSQL("ALTER TABLE `circular_flick_mappings` ADD COLUMN `iconValue` TEXT")
+            }
+        }
     }
 }

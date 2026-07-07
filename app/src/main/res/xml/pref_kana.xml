@@ -7,6 +7,10 @@
             android:key="kana_keyboard_letter_size_preference"
             android:title="@string/kana_keyboard_letter_size_preference_titile"
             app:summary="@string/kana_keyboard_letter_size_preference_summary" />
+        <Preference
+            android:key="tenkey_popup_view_style_preference"
+            android:title="@string/tenkey_popup_view_style_preference_title"
+            android:summary="@string/tenkey_popup_view_style_preference_summary" />
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="tenkey_show_switch_ime_button_preference"
@@ -17,6 +21,37 @@
             android:title="@string/kana_input_qwerty_preference_title"
             app:defaultValue="false"
             app:summary="@string/kana_input_qwerty_preference_summary" />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="tenkey_restore_input_mode_on_restart_preference"
+            android:title="@string/tenkey_restore_input_mode_on_restart_title"
+            app:summary="@string/tenkey_restore_input_mode_on_restart_summary" />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="tenkey_restore_input_mode_on_restart_preference"
+            android:key="tenkey_restore_input_mode_only_within_time_preference"
+            android:title="@string/tenkey_restore_input_mode_only_within_time_title"
+            app:summary="@string/tenkey_restore_input_mode_only_within_time_summary" />
+        <SeekBarPreference
+            android:defaultValue="5"
+            android:dependency="tenkey_restore_input_mode_only_within_time_preference"
+            android:key="tenkey_restore_input_mode_timeout_minutes_preference"
+            android:max="60"
+            android:title="@string/tenkey_restore_input_mode_timeout_minutes_title"
+            app:min="1"
+            app:showSeekBarValue="true"
+            app:summary="@string/tenkey_restore_input_mode_timeout_minutes_summary" />
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="tenkey_use_three_state_keyboard_preference"
+            app:disableDependentsState="true"
+            android:title="@string/tenkey_use_three_state_keyboard_title"
+            app:summary="@string/tenkey_use_three_state_keyboard_summary" />
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:dependency="tenkey_use_three_state_keyboard_preference"
+            android:key="tenkey_switch_number_to_qwerty_number_preference"
+            android:title="数字入力時にQWERTY数字キーボードを使用" />
         <SwitchPreferenceCompat
             android:key="tenkey_keymap_guide"
             android:title="@string/tenkey_keymap_guide_title"

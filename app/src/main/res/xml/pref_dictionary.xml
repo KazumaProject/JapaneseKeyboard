@@ -3,6 +3,66 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory
+        android:title="@string/system_user_dictionary">
+
+        <Preference
+            android:key="system_user_dictionary_builder_preference"
+            android:title="@string/system_user_dictionary_builder_title"
+            app:summary="@string/system_user_dictionary_builder_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/external_dictionary_settings_title">
+
+        <Preference
+            android:key="external_dictionary_settings_preference"
+            android:title="@string/external_dictionary_settings_title"
+            app:summary="@string/external_dictionary_settings_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/conversion_beam_width_category_title">
+
+        <SeekBarPreference
+            android:defaultValue="20"
+            android:key="conversion_beam_width_preference"
+            android:max="100"
+            android:summary="@string/conversion_beam_width_preference_summary"
+            android:title="@string/conversion_beam_width_preference_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="N-gram">
+
+        <Preference
+            android:key="n_gram_rule_preference"
+            android:title="@string/n_gram_rule_preference_title"
+            app:summary="@string/n_gram_rule_preference_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/candidate_order_override_fragment_title">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="candidate_order_override_enable_preference"
+            android:summaryOff="@string/candidate_order_override_enable_summary_off"
+            android:summaryOn="@string/candidate_order_override_enable_summary_on"
+            android:title="@string/candidate_order_override_enable_title"
+            app:iconSpaceReserved="false" />
+
+        <Preference
+            android:key="candidate_order_override_preference"
+            android:title="@string/candidate_order_override_preference_title"
+            app:iconSpaceReserved="false"
+            app:summary="@string/candidate_order_override_preference_summary" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
         android:title="@string/category_ng_word_title"
         app:summary="@string/category_ng_word_summary">
 
@@ -76,43 +136,6 @@
             android:summaryOff="@string/user_template_summary_off"
             android:summaryOn="@string/user_template_summary_on"
             android:title="@string/user_template_title" />
-    </PreferenceCategory>
-
-    <PreferenceCategory android:title="@string/category_mozc_ut_title">
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="mozc_ut_person_name_preference"
-            android:summaryOff="@string/mozc_ut_person_name_summary_off"
-            android:summaryOn="@string/mozc_ut_person_name_summary_on"
-            android:title="@string/mozc_ut_person_name_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="mozc_ut_places_preference"
-            android:summaryOff="@string/mozc_ut_places_summary_off"
-            android:summaryOn="@string/mozc_ut_places_summary_on"
-            android:title="@string/mozc_ut_places_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="mozc_ut_web_preference"
-            android:summaryOff="@string/mozc_ut_web_summary_off"
-            android:summaryOn="@string/mozc_ut_web_summary_on"
-            android:title="@string/mozc_ut_web_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="mozc_ut_wiki_preference"
-            android:summaryOff="@string/mozc_ut_wiki_summary_off"
-            android:summaryOn="@string/mozc_ut_wiki_summary_on"
-            android:title="@string/mozc_ut_wiki_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="mozc_ut_neologd_preference"
-            android:summaryOff="@string/mozc_ut_neologd_summary_off"
-            android:summaryOn="@string/mozc_ut_neologd_summary_on"
-            android:title="@string/mozc_ut_neologd_title" />
     </PreferenceCategory>
 
 </androidx.preference.PreferenceScreen>

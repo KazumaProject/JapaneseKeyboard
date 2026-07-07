@@ -22,9 +22,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.view.isGone
+import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.markdownhelperkeyboard.R
@@ -32,6 +34,7 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentUserTemplate
 import com.kazumaproject.markdownhelperkeyboard.user_template.adapter.UserTemplateAdapter
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 import java.io.FileOutputStream
 
 @AndroidEntryPoint
@@ -41,6 +44,9 @@ class UserTemplateFragment : Fragment() {
 
     private var _binding: FragmentUserTemplateBinding? = null
     private val binding get() = _binding!!
+    private lateinit var userTemplateAdapter: UserTemplateAdapter
+    private var allUserTemplates: List<UserTemplate> = emptyList()
+    private var userTemplateSearchQuery: String = ""
 
     private val exportLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -81,6 +87,7 @@ class UserTemplateFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupMenu()
         setupRecyclerView()
+        setupSearch()
         setupListeners()
         observeViewModel()
         resetInputFields()
@@ -219,10 +226,18 @@ class UserTemplateFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        val adapter = UserTemplateAdapter { userTemplate ->
+        userTemplateAdapter = UserTemplateAdapter { userTemplate ->
             showEditDialog(userTemplate)
         }
-        binding.recyclerViewUserWords.adapter = adapter
+        binding.recyclerViewUserWords.adapter = userTemplateAdapter
+        binding.userTemplateFastScroller.attachToRecyclerView(binding.recyclerViewUserWords)
+    }
+
+    private fun setupSearch() {
+        binding.editTextSearchUserTemplate.addTextChangedListener { text ->
+            userTemplateSearchQuery = text?.toString().orEmpty()
+            applyUserTemplateFilter()
+        }
     }
 
     private fun setupListeners() {
@@ -260,9 +275,55 @@ class UserTemplateFragment : Fragment() {
     private fun observeViewModel() {
         viewModel.allTemplates.observe(viewLifecycleOwner) { templates ->
             templates?.let {
-                (binding.recyclerViewUserWords.adapter as UserTemplateAdapter).submitList(it)
+                allUserTemplates = it
+                applyUserTemplateFilter()
             }
         }
+    }
+
+    private fun applyUserTemplateFilter() {
+        val binding = _binding ?: return
+        val query = userTemplateSearchQuery.trim()
+        val filteredTemplates = if (query.isEmpty()) {
+            allUserTemplates
+        } else {
+            allUserTemplates
+                .filter {
+                    it.word.startsWith(query, ignoreCase = true) ||
+                        it.reading.startsWith(query, ignoreCase = true)
+                }
+                .sortedWith(compareBy<UserTemplate> {
+                    userTemplateSearchRank(it, query)
+                }.thenBy {
+                    userTemplateMatchedLength(it, query)
+                }.thenBy {
+                    it.reading
+                }.thenBy {
+                    it.word
+                })
+        }
+        userTemplateAdapter.submitList(filteredTemplates)
+        binding.recyclerViewUserWords.post {
+            _binding?.userTemplateFastScroller?.invalidate()
+        }
+    }
+
+    private fun userTemplateSearchRank(userTemplate: UserTemplate, query: String): Int {
+        return when {
+            userTemplate.word.equals(query, ignoreCase = true) ||
+                userTemplate.reading.equals(query, ignoreCase = true) -> 0
+
+            userTemplate.word.startsWith(query, ignoreCase = true) ||
+                userTemplate.reading.startsWith(query, ignoreCase = true) -> 1
+
+            else -> 2
+        }
+    }
+
+    private fun userTemplateMatchedLength(userTemplate: UserTemplate, query: String): Int {
+        return sequenceOf(userTemplate.reading, userTemplate.word)
+            .filter { it.startsWith(query, ignoreCase = true) }
+            .minOfOrNull { it.length } ?: Int.MAX_VALUE
     }
 
     private fun addTemplate() {
@@ -341,9 +402,33 @@ class UserTemplateFragment : Fragment() {
                             posIndex = updatedPosIndex,
                             posScore = updatedPosScore
                         )
-                    viewModel.update(updatedTemplate)
-                    Toast.makeText(context, getString(R.string.updated_string), Toast.LENGTH_SHORT)
-                        .show()
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        when (viewModel.updateSafely(updatedTemplate)) {
+                            UserTemplateUpdateResult.Updated -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.updated_string),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            UserTemplateUpdateResult.Duplicate -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.duplicate_item_exists),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            UserTemplateUpdateResult.Error -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.update_failed),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
                 }
             }
             .setNegativeButton(getString(R.string.cancel_string), null)
@@ -377,6 +462,7 @@ class UserTemplateFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        binding.userTemplateFastScroller.detachFromRecyclerView()
         super.onDestroyView()
         _binding = null
     }

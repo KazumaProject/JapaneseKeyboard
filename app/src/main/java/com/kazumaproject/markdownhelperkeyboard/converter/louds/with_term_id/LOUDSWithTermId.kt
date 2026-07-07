@@ -29,6 +29,11 @@ import java.util.BitSet
 
 class LOUDSWithTermId {
 
+    data class CommonPrefixSearchResult(
+        val yomi: String,
+        val nodeIndex: Int,
+    )
+
     val LBSTemp: MutableList<Boolean> = arrayListOf()
     var LBS: BitSet = BitSet()
     var labels: CharArray = charArrayOf()
@@ -72,6 +77,8 @@ class LOUDSWithTermId {
         LBSTemp.clear()
         isLeaf = isLeafTemp.toBitSet()
         isLeafTemp.clear()
+        labels = labelsTemp.toCharArray()
+        labelsTemp.clear()
     }
 
     fun getLetter(nodeIndex: Int): String {
@@ -193,7 +200,9 @@ class LOUDSWithTermId {
         var childPos = firstChildShortArray(pos, rank0Array, rank1Array)
         if (childPos < 0) return -1
         while (LBS[childPos]) {
-            if (c == labels[LBS.rank1CommonShort(childPos, rank1Array).toInt()]) {
+            val labelIndex = LBS.rank1CommonShort(childPos, rank1Array).toInt()
+            if (labelIndex !in labels.indices) return -1
+            if (c == labels[labelIndex]) {
                 return childPos
             }
             childPos += 1
@@ -215,7 +224,9 @@ class LOUDSWithTermId {
     private fun traverse(pos: Int, c: Char, rank0Array: IntArray, rank1Array: IntArray): Int {
         var childPos = firstChild(pos, rank0Array, rank1Array)
         while (childPos >= 0 && LBS[childPos]) {
-            if (c == labels[LBS.rank1Common(childPos, rank1Array)]) {
+            val labelIndex = LBS.rank1Common(childPos, rank1Array)
+            if (labelIndex !in labels.indices) return -1
+            if (c == labels[labelIndex]) {
                 return childPos
             }
             childPos++
@@ -226,7 +237,9 @@ class LOUDSWithTermId {
     private fun traverse(pos: Int, c: Char, succinctBitVector: SuccinctBitVector): Int {
         var childPos = firstChild(pos, succinctBitVector)
         while (childPos >= 0 && LBS[childPos]) {
-            if (c == labels[succinctBitVector.rank1(childPos)]) {
+            val labelIndex = succinctBitVector.rank1(childPos)
+            if (labelIndex !in labels.indices) return -1
+            if (c == labels[labelIndex]) {
                 return childPos
             }
             childPos++
@@ -252,20 +265,30 @@ class LOUDSWithTermId {
     }
 
     fun commonPrefixSearch(str: String, succinctBitVector: SuccinctBitVector): List<String> {
-        val result = mutableListOf<String>()
+        return commonPrefixSearchWithNodeIndex(str, 0, succinctBitVector).map { it.yomi }
+    }
+
+    fun commonPrefixSearchWithNodeIndex(
+        str: CharSequence,
+        start: Int,
+        succinctBitVector: SuccinctBitVector,
+    ): List<CommonPrefixSearchResult> {
+        val resultWithNodeIndex = mutableListOf<CommonPrefixSearchResult>()
         val resultTemp = StringBuilder()
         var n = 0
-        for (c in str) {
+        for (indexInString in start until str.length) {
+            val c = str[indexInString]
             n = traverse(n, c, succinctBitVector)
             if (n < 0) break
             val index = succinctBitVector.rank1(n)
             if (index >= labels.size) break
             resultTemp.append(labels[index])
             if (isLeaf[n]) {
-                result.add(resultTemp.toString())
+                val yomi = resultTemp.toString()
+                resultWithNodeIndex.add(CommonPrefixSearchResult(yomi, n))
             }
         }
-        return result
+        return resultWithNodeIndex
     }
 
     private fun collectWords(
@@ -413,6 +436,7 @@ class LOUDSWithTermId {
         val charCount = chars.size
 
         while (currentIndex < LBS.size() && LBS[currentIndex]) {
+            if (charIndex !in labels.indices) return -1
             val currentChar = chars[wordOffset]
             val currentLabel = labels[charIndex]
 
@@ -442,6 +466,7 @@ class LOUDSWithTermId {
         val charCount = chars.size
 
         while (currentIndex < LBS.size() && LBS[currentIndex]) {
+            if (charIndex !in labels.indices) return -1
             val currentChar = chars[wordOffset]
             val currentLabel = labels[charIndex]
 
@@ -490,6 +515,7 @@ class LOUDSWithTermId {
         val charCount = chars.size
 
         while (currentIndex < LBS.size() && LBS[currentIndex]) {
+            if (charIndex.toInt() !in labels.indices) return -1
             val currentChar = chars[wordOffset]
             val currentLabel = labels[charIndex.toInt()]
 
@@ -518,6 +544,21 @@ class LOUDSWithTermId {
                 writeObject(labels.toList().toByteArrayFromListChar().deflate())
                 writeObject(isLeaf)
                 writeObject(termIds.toByteArray().deflate())
+                flush()
+                close()
+            }
+        } catch (e: IOException) {
+            println(e.stackTraceToString())
+        }
+    }
+
+    fun writeExternalNotCompress(out: ObjectOutput) {
+        try {
+            out.apply {
+                writeObject(LBS)
+                writeObject(isLeaf)
+                writeObject(labels)
+                writeObject(termIds.toIntArray())
                 flush()
                 close()
             }

@@ -231,17 +231,6 @@ fun getLastCharacterAsString(ic: InputConnection): String {
     return beforeText.substring(start, end)
 }
 
-private val validTwoCharBrackets = setOf(
-    "()", "[]", "{}", "<>", "「」",
-    "（）", "［］", "｛｝", "＜＞",
-    "〔〕", "〘〙", "〘〙", "〚〛", "〈〉",
-    "《》", "«»", "‹›", "『』", "【】"
-)
-
-fun String.isOnlyTwoCharBracketPair(): Boolean {
-    return validTwoCharBrackets.contains(this)
-}
-
 fun String.replaceJapaneseCharactersForEnglish(): String {
     return this.replace('あ', '@')
         .replace('い', '#')
@@ -585,4 +574,15 @@ fun String.containsFullWidthNumber(): Boolean {
     // '０' (U+FF10) から '９' (U+FF19) までの文字が
     // 1文字でも含まれているかをチェックします。
     return this.any { it in '０'..'９' }
+}
+
+fun String.convertFullWidthAlnumToHalfWidth(): String {
+    return this.map { char ->
+        when (char) {
+            in '０'..'９' -> ('0'.code + (char.code - '０'.code)).toChar()
+            in 'Ａ'..'Ｚ' -> ('A'.code + (char.code - 'Ａ'.code)).toChar()
+            in 'ａ'..'ｚ' -> ('a'.code + (char.code - 'ａ'.code)).toChar()
+            else -> char
+        }
+    }.joinToString("")
 }

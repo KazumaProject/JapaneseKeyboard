@@ -46,6 +46,8 @@ import com.kazumaproject.core.domain.key.KeyInfo.KeyEEnglish.getOutputChar
 import com.kazumaproject.core.domain.key.KeyMap
 import com.kazumaproject.core.domain.key.KeyRect
 import com.kazumaproject.core.domain.listener.FlickListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
+import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.LongPressListener
 import com.kazumaproject.core.domain.state.GestureType
 import com.kazumaproject.core.domain.state.InputMode
@@ -103,8 +105,10 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     val currentInputMode = AtomicReference<InputMode>(InputMode.ModeJapanese)
     private lateinit var pressedKey: PressedKey
+    private var inputModeChangedListener: ((InputMode) -> Unit)? = null
 
     private var flickSensitivity: Int = 100
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     // All AppCompatButton keys (all the character keys)
     private val allButtonKeys = listOf(
@@ -269,6 +273,7 @@ class TabletKeyboardView @JvmOverloads constructor(
     private var keyMap: KeyMap
     private var flickListener: FlickListener? = null
     private var longPressListener: LongPressListener? = null
+    private var keyTouchCancelListener: KeyTouchCancelListener? = null
 
     private var longPressJob: Job? = null
     private var isLongPressed = false
@@ -795,6 +800,10 @@ class TabletKeyboardView @JvmOverloads constructor(
         this.longPressListener = longPressListener
     }
 
+    fun setOnKeyTouchCancelListener(listener: KeyTouchCancelListener?) {
+        keyTouchCancelListener = listener
+    }
+
     override fun onTouch(v: View?, event: MotionEvent?): Boolean {
         if (v != null && event != null) {
             if (this.visibility != View.VISIBLE) {
@@ -876,7 +885,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                     }
                     Log.d("ACTION_DOWN: ", "${tabletCapsLockState.value}")
                     longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                        delay(ViewConfiguration.getLongPressTimeout().toLong())
+                        delay(longPressTimeout)
                         if (pressedKey.key != Key.NotSelected) {
                             longPressListener?.onLongPress(pressedKey.key)
                             isLongPressed = true
@@ -1148,7 +1157,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                         )
                         setKeyPressed()
                         longPressJob = CoroutineScope(Dispatchers.Main).launch {
-                            delay(ViewConfiguration.getLongPressTimeout().toLong())
+                            delay(longPressTimeout)
                             if (pressedKey.key != Key.NotSelected) {
                                 longPressListener?.onLongPress(pressedKey.key)
                                 isLongPressed = true
@@ -1232,6 +1241,11 @@ class TabletKeyboardView @JvmOverloads constructor(
                     return false
                 }
 
+                MotionEvent.ACTION_CANCEL -> {
+                    cancelActiveTouch(KeyTouchCancelReason.ActionCancel)
+                    return true
+                }
+
                 else -> {
                     return false
                 }
@@ -1246,11 +1260,35 @@ class TabletKeyboardView @JvmOverloads constructor(
         uiScope.cancel()
     }
 
+    override fun onVisibilityChanged(changedView: View, visibility: Int) {
+        super.onVisibilityChanged(changedView, visibility)
+        if (changedView == this && visibility != View.VISIBLE) {
+            cancelActiveTouch(KeyTouchCancelReason.ViewHidden)
+        }
+    }
+
     private fun release() {
+        cancelActiveTouch(KeyTouchCancelReason.DetachedFromWindow)
         flickListener = null
         longPressListener = null
+        keyTouchCancelListener = null
+        inputModeChangedListener = null
         longPressJob?.cancel()
         longPressJob = null
+    }
+
+    private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        resetLongPressAction()
+        resetAllKeys()
+
+        if (::popupWindowActive.isInitialized) {
+            popupWindowActive.hide()
+        }
+
+        if (::pressedKey.isInitialized && pressedKey.key != Key.NotSelected) {
+            keyTouchCancelListener?.onKeyTouchCanceled(pressedKey.key, reason)
+            pressedKey = pressedKey.copy(key = Key.NotSelected)
+        }
     }
 
     private fun getGestureType(event: MotionEvent, pointer: Int = 0): GestureType {
@@ -1609,6 +1647,7 @@ class TabletKeyboardView @JvmOverloads constructor(
                 // no key pressed
             }
 
+            Key.SideKeyNumberMode -> {}
             Key.KeyDakutenSmall -> {}
             Key.KeyKutouten -> {}
             Key.SideKeyInputMode -> {}
@@ -3385,6 +3424,14 @@ class TabletKeyboardView @JvmOverloads constructor(
         flickSensitivity = sensitivity
     }
 
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
+    }
+
+    fun setOnInputModeChangedListener(listener: (InputMode) -> Unit) {
+        inputModeChangedListener = listener
+    }
+
     private fun handleCurrentInputModeSwitch(inputMode: InputMode) {
         when (inputMode) {
             InputMode.ModeJapanese -> {
@@ -3601,6 +3648,7 @@ class TabletKeyboardView @JvmOverloads constructor(
         }
         currentInputMode.set(newInputMode)
         binding.keySwitchKeyMode.setInputMode(newInputMode, isTablet = true)
+        inputModeChangedListener?.invoke(newInputMode)
     }
 
     fun resetLayout() {

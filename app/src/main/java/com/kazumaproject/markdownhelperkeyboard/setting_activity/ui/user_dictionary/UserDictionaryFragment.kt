@@ -21,18 +21,20 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.view.MenuHost
 import androidx.core.view.MenuProvider
 import androidx.core.view.isGone
+import androidx.core.widget.addTextChangedListener
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentUserDictionaryBinding
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiraganaWithSymbols
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.adapter.UserWordAdapter
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import dagger.hilt.android.AndroidEntryPoint
 import java.io.FileOutputStream
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class UserDictionaryFragment : Fragment() {
@@ -41,6 +43,9 @@ class UserDictionaryFragment : Fragment() {
 
     private var _binding: FragmentUserDictionaryBinding? = null
     private val binding get() = _binding!!
+    private lateinit var userWordAdapter: UserWordAdapter
+    private var allUserWords: List<UserWord> = emptyList()
+    private var userDictionarySearchQuery: String = ""
 
     // Export
     private val exportLauncher =
@@ -75,6 +80,7 @@ class UserDictionaryFragment : Fragment() {
 
         setupMenu()
         setupRecyclerView()
+        setupSearch()
         setupListeners()
         observeViewModel()
         setupSpinner()
@@ -188,8 +194,6 @@ class UserDictionaryFragment : Fragment() {
         }
     }
 
-    private enum class OtherDictFormat { AUTO, GOOGLE_JP_INPUT, MICROSOFT_IME }
-
     private var pendingOtherDictFormat: OtherDictFormat = OtherDictFormat.AUTO
 
     private val otherDictImportLauncher =
@@ -261,58 +265,7 @@ class UserDictionaryFragment : Fragment() {
     }
 
     private fun parseOtherDictText(text: String, format: OtherDictFormat): List<UserWord> {
-        val lines = text
-            .replace("\r\n", "\n")
-            .replace("\r", "\n")
-            .split('\n')
-
-        val out = ArrayList<UserWord>(lines.size)
-        val seen = HashSet<String>(lines.size)
-
-        for (raw in lines) {
-            val line = raw.trim()
-            if (line.isEmpty()) continue
-
-            // たまにヘッダ/説明が混じるケースの保険
-            if (line.startsWith("#")) continue
-            if (line.contains("Microsoft IME", ignoreCase = true) && line.count { it == '\t' } < 1) continue
-
-            val cols = line.split('\t')
-            if (cols.size < 2) continue
-
-            var reading = cols[0].trim()
-            var word = cols[1].trim()
-            if (reading.isEmpty() || word.isEmpty()) continue
-
-            // AUTOの場合は軽いヒューリスティックで入れ替え（任意だが安全性が上がる）
-            if (format == OtherDictFormat.AUTO) {
-                // もし「reading側に漢字が多く、word側がひらがなっぽい」なら入れ替え
-                val readingLooksKanji = reading.any { it in '\u4E00'..'\u9FFF' }
-                val wordLooksKana = word.all { it in '\u3040'..'\u309F' || it in '\u30A0'..'\u30FF' || it == 'ー' }
-                if (readingLooksKanji && wordLooksKana) {
-                    val tmp = reading
-                    reading = word
-                    word = tmp
-                }
-            }
-
-            val key = "$reading\t$word"
-            if (!seen.add(key)) continue
-
-            if (reading.isAllHiraganaWithSymbols()){
-                out.add(
-                    UserWord(
-                        id = 0,
-                        word = word,          // 単語（表記）
-                        reading = reading,    // よみ
-                        posIndex = 0,
-                        posScore = 5000
-                    )
-                )
-            }
-        }
-
-        return out
+        return OtherDictionaryUserWordParser.parse(text, format)
     }
 
     private fun launchOtherDictFilePicker() {
@@ -370,10 +323,18 @@ class UserDictionaryFragment : Fragment() {
     }
 
     private fun setupRecyclerView() {
-        val adapter = UserWordAdapter { userWord ->
+        userWordAdapter = UserWordAdapter { userWord ->
             showEditDialog(userWord)
         }
-        binding.recyclerViewUserWords.adapter = adapter
+        binding.recyclerViewUserWords.adapter = userWordAdapter
+        binding.userDictionaryFastScroller.attachToRecyclerView(binding.recyclerViewUserWords)
+    }
+
+    private fun setupSearch() {
+        binding.editTextSearchUserDictionary.addTextChangedListener { text ->
+            userDictionarySearchQuery = text?.toString().orEmpty()
+            applyUserDictionaryFilter()
+        }
     }
 
     private fun setupListeners() {
@@ -421,9 +382,55 @@ class UserDictionaryFragment : Fragment() {
     private fun observeViewModel() {
         viewModel.allWords.observe(viewLifecycleOwner) { words ->
             words?.let {
-                (binding.recyclerViewUserWords.adapter as UserWordAdapter).submitList(it)
+                allUserWords = it
+                applyUserDictionaryFilter()
             }
         }
+    }
+
+    private fun applyUserDictionaryFilter() {
+        val binding = _binding ?: return
+        val query = userDictionarySearchQuery.trim()
+        val filteredWords = if (query.isEmpty()) {
+            allUserWords
+        } else {
+            allUserWords
+                .filter {
+                    it.word.startsWith(query, ignoreCase = true) ||
+                        it.reading.startsWith(query, ignoreCase = true)
+                }
+                .sortedWith(compareBy<UserWord> {
+                    userWordSearchRank(it, query)
+                }.thenBy {
+                    userWordMatchedLength(it, query)
+                }.thenBy {
+                    it.reading
+                }.thenBy {
+                    it.word
+                })
+        }
+        userWordAdapter.submitList(filteredWords)
+        binding.recyclerViewUserWords.post {
+            _binding?.userDictionaryFastScroller?.invalidate()
+        }
+    }
+
+    private fun userWordSearchRank(userWord: UserWord, query: String): Int {
+        return when {
+            userWord.word.equals(query, ignoreCase = true) ||
+                userWord.reading.equals(query, ignoreCase = true) -> 0
+
+            userWord.word.startsWith(query, ignoreCase = true) ||
+                userWord.reading.startsWith(query, ignoreCase = true) -> 1
+
+            else -> 2
+        }
+    }
+
+    private fun userWordMatchedLength(userWord: UserWord, query: String): Int {
+        return sequenceOf(userWord.reading, userWord.word)
+            .filter { it.startsWith(query, ignoreCase = true) }
+            .minOfOrNull { it.length } ?: Int.MAX_VALUE
     }
 
     private fun addWord() {
@@ -495,9 +502,33 @@ class UserDictionaryFragment : Fragment() {
                         posIndex = updatedPosIndex,
                         posScore = updatedPosScore
                     )
-                    viewModel.update(updatedUserWord)
-                    Toast.makeText(context, getString(R.string.updated_string), Toast.LENGTH_SHORT)
-                        .show()
+                    viewLifecycleOwner.lifecycleScope.launch {
+                        when (viewModel.updateSafely(updatedUserWord)) {
+                            UserWordUpdateResult.Updated -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.updated_string),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            UserWordUpdateResult.Duplicate -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.user_dictionary_duplicate_entry),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+
+                            UserWordUpdateResult.Error -> {
+                                Toast.makeText(
+                                    context,
+                                    getString(R.string.update_failed),
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                        }
+                    }
                 }
             }
             .setNegativeButton(getString(R.string.cancel_string), null)
@@ -531,6 +562,7 @@ class UserDictionaryFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        binding.userDictionaryFastScroller.detachFromRecyclerView()
         super.onDestroyView()
         _binding = null
     }

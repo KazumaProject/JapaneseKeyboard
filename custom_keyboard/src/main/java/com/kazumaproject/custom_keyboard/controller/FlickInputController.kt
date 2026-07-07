@@ -49,6 +49,7 @@ class FlickInputController(context: Context) {
     }
 
     private var anchorView: View? = null
+    private var popupWindowAnchorProvider: (() -> View?)? = null
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var flickThreshold = 80f
@@ -62,6 +63,7 @@ class FlickInputController(context: Context) {
     private var isLongPressModeActive = false
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
+    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var popupPosition: PopupPosition = PopupPosition.CENTER
 
@@ -80,6 +82,14 @@ class FlickInputController(context: Context) {
     fun setPopupViewSize(center: Float, target: Float, orbit: Float, textSize: Float) {
         popupView.setUiSize(center, target, orbit, textSize)
         this.flickThreshold = center
+    }
+
+    fun setLongPressTimeout(timeoutMillis: Long) {
+        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
+    }
+
+    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
+        popupWindowAnchorProvider = provider
     }
 
 
@@ -120,7 +130,7 @@ class FlickInputController(context: Context) {
 
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
-                    delay(ViewConfiguration.getLongPressTimeout().toLong())
+                    delay(longPressTimeout)
                     isLongPressModeActive = true
                     popupView.setFullUIMode(true)
                     popupView.invalidate()
@@ -158,7 +168,7 @@ class FlickInputController(context: Context) {
                 return true
             }
 
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 longPressJob?.cancel()
 
                 val finalDirectionToInput = if (isDownModeActive || isLongPressModeActive) {
@@ -176,17 +186,33 @@ class FlickInputController(context: Context) {
                 hidePopup()
                 return true
             }
+
+            MotionEvent.ACTION_CANCEL -> {
+                longPressJob?.cancel()
+                isLongPressModeActive = false
+                isDownModeActive = false
+                previousDirection = FlickDirection.TAP
+                lastValidFlickDirection = FlickDirection.TAP
+                hidePopup()
+                return true
+            }
         }
         return false
     }
 
     private fun showPopup() {
         val currentAnchor = anchorView ?: return
+        val windowAnchor = resolveWindowAnchor(currentAnchor)
+        if (!isAnchorReady(currentAnchor, windowAnchor)) {
+            if (popupWindow.isShowing) {
+                popupWindow.dismiss()
+            }
+            return
+        }
         popupWindow.width = popupView.preferredWidth
         popupWindow.height = popupView.preferredHeight
 
-        val location = IntArray(2)
-        currentAnchor.getLocationInWindow(location)
+        val location = getLocationRelativeToWindowAnchor(currentAnchor, windowAnchor)
 
         val anchorX = location[0]
         val anchorY = location[1]
@@ -199,8 +225,19 @@ class FlickInputController(context: Context) {
         }
 
         if (!popupWindow.isShowing) {
-            popupWindow.showAtLocation(currentAnchor, Gravity.NO_GRAVITY, x, y)
+            popupWindow.showAtLocation(windowAnchor, Gravity.NO_GRAVITY, x, y)
         }
+    }
+
+    private fun resolveWindowAnchor(keyAnchor: View): View? {
+        return popupWindowAnchorProvider?.invoke() ?: keyAnchor
+    }
+
+    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
+        if (!keyAnchor.isAttachedToWindow) return false
+        if (windowAnchor == null) return false
+        if (!windowAnchor.isAttachedToWindow) return false
+        return windowAnchor.windowToken != null
     }
 
     private fun hidePopup() {

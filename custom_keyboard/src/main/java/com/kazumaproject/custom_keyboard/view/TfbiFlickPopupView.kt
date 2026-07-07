@@ -7,6 +7,7 @@ import android.graphics.RectF
 import android.util.TypedValue
 import android.view.View
 import androidx.core.content.ContextCompat
+import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 
@@ -40,6 +41,8 @@ class TfbiFlickPopupView(context: Context) : View(context) {
         textAlign = Paint.Align.CENTER
         textSize = spToPx(20f)
     }
+    private var popupBackgroundColor: Int? = null
+    private var popupTextColor: Int? = null
 
     private val rects = mutableMapOf<TfbiFlickDirection, RectF>()
     private var cornerRadius = 20f
@@ -67,6 +70,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
         highlightBgPaint.color = highlightedBackgroundColor
         strokePaint.color = textColor
         textPaint.color = textColor
+        applyPopupColorOverrides()
         invalidate()
     }
 
@@ -80,6 +84,22 @@ class TfbiFlickPopupView(context: Context) : View(context) {
         if (this.highlightedDirection != direction) {
             this.highlightedDirection = direction
             invalidate()
+        }
+    }
+
+    fun applyPopupViewStyle(style: PopupViewStyle) {
+        popupBackgroundColor = style.backgroundColor
+        popupTextColor = style.textColor
+        textPaint.textSize = spToPx(style.textSizeSp.coerceIn(8f, 48f))
+        applyPopupColorOverrides()
+        invalidate()
+    }
+
+    private fun applyPopupColorOverrides() {
+        popupBackgroundColor?.let { bgPaint.color = it }
+        popupTextColor?.let { textColor ->
+            textPaint.color = textColor
+            strokePaint.color = textColor
         }
     }
 

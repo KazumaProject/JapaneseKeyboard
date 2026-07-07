@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="@string/category_language_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="app_setting_language_preference"
+            android:summaryOff="@string/app_language_summary_off"
+            android:summaryOn="@string/app_language_summary_on"
+            android:title="@string/language_display_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/back_up">
+
+        <Preference
+            android:key="pref_backup_export"
+            android:summary="@string/pref_backup_export_summary"
+            android:title="@string/pref_backup_export_title" />
+
+        <Preference
+            android:key="pref_backup_import"
+            android:summary="@string/pref_backup_import_summary"
+            android:title="@string/pref_backup_import_title" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_about_app_title">
+
+        <Preference
+            android:key="preference_open_source"
+            android:title="@string/open_source_libraries_title" />
+
+        <Preference
+            android:key="app_version_preference"
+            android:title="@string/app_version_title" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

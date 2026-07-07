@@ -30,8 +30,16 @@ class UserDictionaryRepository @Inject constructor(
         return userWordDao.searchByReadingExactSuspend(prefix)
     }
 
+    suspend fun existsDuplicateForUpdate(word: String, reading: String, excludeId: Int): Boolean {
+        return userWordDao.existsDuplicateForUpdate(word, reading, excludeId)
+    }
+
     suspend fun commonPrefixSearchInUserDict(prefix: String): List<UserWord> {
         return userWordDao.commonPrefixSearchInUserDict(prefix)
+    }
+
+    suspend fun allWordsSuspend(): List<UserWord> {
+        return userWordDao.getAllSuspend()
     }
 
     suspend fun insert(userWord: UserWord) {
