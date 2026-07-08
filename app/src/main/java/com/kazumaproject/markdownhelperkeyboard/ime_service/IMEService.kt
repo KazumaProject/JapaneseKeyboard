@@ -247,6 +247,7 @@ import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.datab
 import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.CustomZeroQueryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.DeleteKeyFlickDeleteTargetRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.GemmaPromptTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
@@ -271,8 +272,8 @@ import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.Sumi
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.AndroidZeroQueryAssetReader
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.LazyZeroQueryProvider
+import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryLookupUseCase
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryProvider
-import com.kazumaproject.markdownhelperkeyboard.zeroquery.toCandidate
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
 import com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
 import com.kazumaproject.tenkey.TenKey
@@ -466,6 +467,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     lateinit var candidateOrderOverrideRepository: CandidateOrderOverrideRepository
 
     @Inject
+    lateinit var customZeroQueryRepository: CustomZeroQueryRepository
+
+    @Inject
     lateinit var clickedSymbolRepository: ClickedSymbolRepository
 
     @Inject
@@ -645,8 +649,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zeroQueryCandidates: List<Candidate> = emptyList()
     private var zeroQueryVisible: Boolean = false
     private var zeroQuerySelectionUpdateSuppressCount: Int = 0
+    private var zeroQueryLookupJob: Job? = null
     private val zeroQueryProviderHolder = LazyZeroQueryProvider {
         ZeroQueryProvider(AndroidZeroQueryAssetReader(assets))
+    }
+    private val zeroQueryLookupUseCase: ZeroQueryLookupUseCase by lazy {
+        ZeroQueryLookupUseCase(
+            customZeroQueryRepository = customZeroQueryRepository,
+            bundledProviderHolder = zeroQueryProviderHolder,
+        )
     }
     private var currentShortcutItems: List<ShortcutType> = emptyList()
     private var candidateStripIncognitoIconDrawable: Drawable? = null
@@ -873,9 +884,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         pendingZeroQueryKeyAfterCommit = committedText
     }
 
+    private fun cancelZeroQueryLookup() {
+        zeroQueryLookupJob?.cancel()
+        zeroQueryLookupJob = null
+    }
+
     private fun clearZeroQueryShownState(refresh: Boolean = true) {
         val changed = zeroQueryVisible || zeroQueryCandidates.isNotEmpty() ||
             zeroQuerySelectionUpdateSuppressCount != 0
+        cancelZeroQueryLookup()
         zeroQueryVisible = false
         zeroQueryCandidates = emptyList()
         zeroQuerySelectionUpdateSuppressCount = 0
@@ -889,6 +906,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             zeroQueryVisible ||
             zeroQueryCandidates.isNotEmpty() ||
             zeroQuerySelectionUpdateSuppressCount != 0
+        cancelZeroQueryLookup()
         pendingZeroQueryKeyAfterCommit = null
         zeroQueryVisible = false
         zeroQueryCandidates = emptyList()
@@ -970,30 +988,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun consumePendingZeroQueryAfterCommit() {
         val key = pendingZeroQueryKeyAfterCommit ?: return
         pendingZeroQueryKeyAfterCommit = null
+        cancelZeroQueryLookup()
 
         if (!canShowZeroQueryAfterCommit(key)) {
             clearZeroQueryShownState(refresh = true)
             return
         }
 
-        val provider = zeroQueryProviderHolder.getIfEnabled(zeroQuerySuggestionPreference)
-            ?: run {
-                clearZeroQueryShownState(refresh = true)
-                return
+        zeroQueryLookupJob = scope.launch {
+            val candidates = withContext(Dispatchers.IO) {
+                zeroQueryLookupUseCase.lookup(key)
             }
-        val candidates = provider.lookup(key)
-            .map { it.toCandidate() }
-            .filter { it.string.isNotBlank() }
-            .distinctBy { it.string }
-        if (candidates.isEmpty()) {
-            clearZeroQueryShownState(refresh = true)
-            return
-        }
+                .filter { it.string.isNotBlank() }
+                .distinctBy { it.string }
 
-        zeroQueryCandidates = candidates
-        zeroQueryVisible = true
-        zeroQuerySelectionUpdateSuppressCount += 1
-        refreshCandidateStripContent(candidatesShown = false)
+            if (!canShowZeroQueryAfterCommit(key)) {
+                clearZeroQueryShownState(refresh = true)
+                return@launch
+            }
+            if (candidates.isEmpty()) {
+                clearZeroQueryShownState(refresh = true)
+                return@launch
+            }
+
+            zeroQueryCandidates = candidates
+            zeroQueryVisible = true
+            zeroQuerySelectionUpdateSuppressCount += 1
+            zeroQueryLookupJob = null
+            refreshCandidateStripContent(candidatesShown = false)
+        }
     }
 
     private fun handleZeroQueryOnUpdateSelection(
