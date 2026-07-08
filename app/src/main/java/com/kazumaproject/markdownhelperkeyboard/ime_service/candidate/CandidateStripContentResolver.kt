@@ -19,6 +19,14 @@ object CandidateStripContentResolver {
                 candidates = state.candidates
             )
         }
+        if (shouldShowZeroQuerySuggestions(state)) {
+            return CandidateStripContent.ZeroQuerySuggestions(
+                candidates = state.zeroQueryCandidates
+            )
+        }
+        if (shouldShowZeroQueryCollapsed(state)) {
+            return CandidateStripContent.ZeroQueryCollapsed
+        }
         if (state.customLayoutPickerShown) {
             return CandidateStripContent.CustomLayoutPicker(
                 layouts = state.customLayouts
@@ -77,6 +85,27 @@ object CandidateStripContentResolver {
         val hasGemmaActions =
             state.candidates.isNotEmpty() && state.selectedTextGemmaActionsShown
         return hasGemmaActions || resolveClipboardPreviewOrNull(state) != null
+    }
+
+    private fun shouldShowZeroQuerySuggestions(state: CandidateStripInputState): Boolean {
+        return state.zeroQueryVisible && canShowZeroQuerySurface(state)
+    }
+
+    private fun shouldShowZeroQueryCollapsed(state: CandidateStripInputState): Boolean {
+        return !state.zeroQueryVisible && canShowZeroQuerySurface(state)
+    }
+
+    private fun canShowZeroQuerySurface(state: CandidateStripInputState): Boolean {
+        if (!state.includeZeroQuery) return false
+        if (state.zeroQueryCandidates.isEmpty()) return false
+        if (!state.inputStringEmpty) return false
+        if (!state.tailEmpty) return false
+        if (state.candidatesShown) return false
+        if (state.symbolKeyboardShown) return false
+        if (state.customLayoutPickerShown) return false
+        if (state.selectedTextGemmaActionsShown) return false
+        if (state.editorTextSelected) return false
+        return true
     }
 
     private fun resolveClipboardPreviewOrNull(
