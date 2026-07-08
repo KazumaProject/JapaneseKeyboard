@@ -64,6 +64,11 @@ class DictionaryPreferenceFragment : PreferenceFragmentCompat() {
             true
         }
 
+        findPreference<Preference>("custom_zero_query_dictionary_preference")?.setOnPreferenceClickListener {
+            navigateSafely(R.id.customZeroQueryDictionaryFragment)
+            true
+        }
+
         findPreference<Preference>("external_dictionary_settings_preference")?.setOnPreferenceClickListener {
             navigateSafely(R.id.externalDictionarySettingsFragment)
             true
