@@ -130,6 +130,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     internal enum class SuggestionDisplayItemKind {
         CandidateItem,
         GemmaActionItem,
+        ZeroQueryCloseItem,
+        ZeroQueryCandidateItem,
         QuickActionsItem,
         ClipboardPreviewItem,
         ShortcutEntryItem,
@@ -162,6 +164,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         ) : SuggestionDisplayItem()
 
         data class GemmaActionItem(
+            val candidate: Candidate,
+            val candidateIndex: Int,
+        ) : SuggestionDisplayItem()
+
+        object ZeroQueryCloseItem : SuggestionDisplayItem()
+
+        data class ZeroQueryCandidateItem(
             val candidate: Candidate,
             val candidateIndex: Int,
         ) : SuggestionDisplayItem()
@@ -222,6 +231,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var onCustomLayoutItemClickListener: ((Int) -> Unit)? = null
     private var onShortcutItemClickListener: ((ShortcutType) -> Unit)? = null
     private var onShortcutEntryClickListener: ((View) -> Unit)? = null
+    private var onZeroQueryCandidateClickListener: ((Candidate) -> Unit)? = null
+    private var onZeroQueryCloseClickListener: (() -> Unit)? = null
     private var onShowSoftKeyboardClick: (() -> Unit)? = null
 
     private val adapterScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -295,6 +306,14 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         this.onShortcutEntryClickListener = listener
     }
 
+    fun setOnZeroQueryCandidateClickListener(listener: (Candidate) -> Unit) {
+        this.onZeroQueryCandidateClickListener = listener
+    }
+
+    fun setOnZeroQueryCloseClickListener(listener: () -> Unit) {
+        this.onZeroQueryCloseClickListener = listener
+    }
+
     fun setOnPhysicalKeyboardListener(listener: () -> Unit) {
         this.onShowSoftKeyboardClick = listener
     }
@@ -308,6 +327,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         onCustomLayoutItemClickListener = null
         onShortcutItemClickListener = null
         onShortcutEntryClickListener = null
+        onZeroQueryCandidateClickListener = null
+        onZeroQueryCloseClickListener = null
         onShowSoftKeyboardClick = null
         onListUpdated = null
         onStartAnchoredContentCommitted = null
@@ -503,6 +524,15 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         oldItem.candidate.string == newItem.candidate.string &&
                         oldItem.candidate.type == newItem.candidate.type
 
+                oldItem is SuggestionDisplayItem.ZeroQueryCloseItem &&
+                    newItem is SuggestionDisplayItem.ZeroQueryCloseItem -> true
+
+                oldItem is SuggestionDisplayItem.ZeroQueryCandidateItem &&
+                    newItem is SuggestionDisplayItem.ZeroQueryCandidateItem ->
+                    oldItem.candidateIndex == newItem.candidateIndex &&
+                        oldItem.candidate.string == newItem.candidate.string &&
+                        oldItem.candidate.type == newItem.candidate.type
+
                 oldItem is SuggestionDisplayItem.QuickActionsItem &&
                     newItem is SuggestionDisplayItem.QuickActionsItem -> true
 
@@ -649,6 +679,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         return when (val content = currentContent) {
             is CandidateStripContent.Candidates -> buildCandidateItems(content)
             is CandidateStripContent.GemmaActions -> buildGemmaActionItems(content)
+            is CandidateStripContent.ZeroQuerySuggestions -> buildZeroQueryItems(content)
             is CandidateStripContent.CustomLayoutPicker -> buildCustomLayoutItems(content)
             is CandidateStripContent.ExpandedShortcutEntry -> buildExpandedShortcutEntryItems(content)
             is CandidateStripContent.EmptyState -> buildEmptyStateItems(content)
@@ -662,6 +693,16 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         buildList {
             content.candidates.forEachIndexed { index, candidate ->
                 add(SuggestionDisplayItem.CandidateItem(candidate, index))
+            }
+        }
+
+    private fun buildZeroQueryItems(
+        content: CandidateStripContent.ZeroQuerySuggestions
+    ): List<SuggestionDisplayItem> =
+        buildList {
+            add(SuggestionDisplayItem.ZeroQueryCloseItem)
+            content.candidates.forEachIndexed { index, candidate ->
+                add(SuggestionDisplayItem.ZeroQueryCandidateItem(candidate, index))
             }
         }
 
@@ -688,6 +729,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         content: CandidateStripContent.EmptyState
     ): List<SuggestionDisplayItem> =
         buildList {
+            if (content.showZeroQueryToggle) {
+                add(SuggestionDisplayItem.ZeroQueryCloseItem)
+            }
             if (content.showShortcutEntry) {
                 add(SuggestionDisplayItem.ShortcutEntryItem)
             }
@@ -749,6 +793,20 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         return buildDisplayItems().map { it.kind() }
     }
 
+    internal fun buildZeroQueryDisplayTextsForTesting(): List<String> {
+        return buildDisplayItems().mapNotNull { item ->
+            when (item) {
+                SuggestionDisplayItem.ZeroQueryCloseItem -> "[ ... ]"
+                is SuggestionDisplayItem.ZeroQueryCandidateItem -> item.candidate.string
+                else -> null
+            }
+        }
+    }
+
+    internal fun buildClickCandidatesForTesting(): List<Candidate> {
+        return currentContent.candidatesForClicks()
+    }
+
     internal fun buildStartAnchorSignatureForTesting(): StartAnchorSignature? {
         return startAnchorSignatureFor(buildDisplayItems())
     }
@@ -804,6 +862,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 SuggestionDisplayItemKind.CandidateItem
             is SuggestionDisplayItem.GemmaActionItem ->
                 SuggestionDisplayItemKind.GemmaActionItem
+            SuggestionDisplayItem.ZeroQueryCloseItem ->
+                SuggestionDisplayItemKind.ZeroQueryCloseItem
+            is SuggestionDisplayItem.ZeroQueryCandidateItem ->
+                SuggestionDisplayItemKind.ZeroQueryCandidateItem
             is SuggestionDisplayItem.QuickActionsItem ->
                 SuggestionDisplayItemKind.QuickActionsItem
             is SuggestionDisplayItem.ClipboardPreviewItem ->
@@ -817,7 +879,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
 
     private fun startAnchorSignatureFor(items: List<SuggestionDisplayItem>): StartAnchorSignature? {
-        return when (val first = items.firstOrNull()) {
+        return when (
+            val first = items.firstOrNull {
+                it !is SuggestionDisplayItem.ZeroQueryCloseItem
+            }
+        ) {
             is SuggestionDisplayItem.QuickActionsItem ->
                 StartAnchorSignature(
                     role = StartAnchorRole.QuickActions,
@@ -884,6 +950,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     override fun getItemViewType(position: Int): Int {
         return when (displayItems[position]) {
             is SuggestionDisplayItem.CandidateItem -> VIEW_TYPE_SUGGESTION
+            SuggestionDisplayItem.ZeroQueryCloseItem -> VIEW_TYPE_SUGGESTION
+            is SuggestionDisplayItem.ZeroQueryCandidateItem -> VIEW_TYPE_SUGGESTION
             is SuggestionDisplayItem.GemmaActionItem -> VIEW_TYPE_GEMMA_ACTION
             is SuggestionDisplayItem.QuickActionsItem -> VIEW_TYPE_EMPTY
             is SuggestionDisplayItem.ClipboardPreviewItem -> VIEW_TYPE_CLIPBOARD_PREVIEW
@@ -963,10 +1031,23 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 holder as ClipboardPreviewViewHolder,
                 (item as SuggestionDisplayItem.ClipboardPreviewItem).state,
             )
-            VIEW_TYPE_SUGGESTION -> onBindSuggestionViewHolder(
-                holder as SuggestionViewHolder,
-                item as SuggestionDisplayItem.CandidateItem,
-            )
+            VIEW_TYPE_SUGGESTION -> {
+                val suggestionHolder = holder as SuggestionViewHolder
+                when (item) {
+                    is SuggestionDisplayItem.CandidateItem -> onBindSuggestionViewHolder(
+                        suggestionHolder,
+                        item,
+                    )
+                    SuggestionDisplayItem.ZeroQueryCloseItem -> onBindZeroQueryCloseViewHolder(
+                        suggestionHolder,
+                    )
+                    is SuggestionDisplayItem.ZeroQueryCandidateItem -> onBindZeroQueryCandidateViewHolder(
+                        suggestionHolder,
+                        item,
+                    )
+                    else -> Unit
+                }
+            }
             VIEW_TYPE_GEMMA_ACTION -> onBindGemmaActionViewHolder(
                 holder as GemmaActionViewHolder,
                 item as SuggestionDisplayItem.GemmaActionItem,
@@ -1128,7 +1209,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private fun CandidateStripContent.EmptyState.shouldCenterClipboardPreview(): Boolean {
         return !quickActions.hasAnyAction &&
-            !showIntegratedShortcuts
+            !showIntegratedShortcuts &&
+            !showZeroQueryToggle
     }
 
     private fun CandidateStripContent.EmptyState.shouldOffsetCenteredClipboardPreview(): Boolean {
@@ -1136,7 +1218,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private fun CandidateStripContent.EmptyState.shouldAddClipboardPreviewStartMargin(): Boolean {
-        return !shouldCenterClipboardPreview() && quickActions.hasAnyAction
+        return !shouldCenterClipboardPreview() && (quickActions.hasAnyAction || showZeroQueryToggle)
     }
 
     private fun View.updateClipboardPreviewLayout(
@@ -1482,6 +1564,49 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
         holder.itemView.setOnLongClickListener {
             onItemLongClickListener?.invoke(suggestion, position)
+            true
+        }
+    }
+
+    private fun onBindZeroQueryCloseViewHolder(
+        holder: SuggestionViewHolder,
+    ) {
+        applyCandidateItemBackground(holder.itemView)
+        holder.text.text = "[ ... ]"
+        holder.text.textSize = candidateTextSize
+        holder.yomiText.isVisible = false
+        holder.yomiText.text = ""
+        holder.typeText.text = ""
+        candidateTextColor?.let { color ->
+            holder.text.setTextColor(color)
+            holder.typeText.setTextColor(color)
+            holder.yomiText.setTextColor(color)
+        }
+        holder.itemView.isPressed = false
+        holder.itemView.setOnClickListener {
+            onZeroQueryCloseClickListener?.invoke()
+        }
+        holder.itemView.setOnLongClickListener {
+            true
+        }
+    }
+
+    private fun onBindZeroQueryCandidateViewHolder(
+        holder: SuggestionViewHolder,
+        item: SuggestionDisplayItem.ZeroQueryCandidateItem,
+    ) {
+        onBindSuggestionViewHolder(
+            holder,
+            SuggestionDisplayItem.CandidateItem(
+                candidate = item.candidate,
+                candidateIndex = item.candidateIndex,
+            )
+        )
+        holder.itemView.isPressed = false
+        holder.itemView.setOnClickListener {
+            onZeroQueryCandidateClickListener?.invoke(item.candidate)
+        }
+        holder.itemView.setOnLongClickListener {
             true
         }
     }

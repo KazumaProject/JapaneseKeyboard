@@ -138,4 +138,19 @@
             android:title="@string/user_template_title" />
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/category_zero_query_suggestion_title">
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="zero_query_suggestion_preference"
+            android:summaryOff="@string/zero_query_suggestion_summary_off"
+            android:summaryOn="@string/zero_query_suggestion_summary_on"
+            android:title="@string/zero_query_suggestion_title" />
+
+        <Preference
+            android:key="custom_zero_query_dictionary_preference"
+            android:title="@string/custom_zero_query_dictionary_title"
+            app:iconSpaceReserved="false"
+            app:summary="@string/custom_zero_query_dictionary_summary" />
+    </PreferenceCategory>
+
 </androidx.preference.PreferenceScreen>

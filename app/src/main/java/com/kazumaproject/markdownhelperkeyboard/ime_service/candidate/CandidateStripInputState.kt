@@ -7,6 +7,9 @@ import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 
 data class CandidateStripInputState(
     val candidates: List<Candidate>,
+    val zeroQueryVisible: Boolean = false,
+    val zeroQueryCandidates: List<Candidate> = emptyList(),
+    val includeZeroQuery: Boolean = false,
     val inputStringEmpty: Boolean,
     val tailEmpty: Boolean,
     val candidatesShown: Boolean,

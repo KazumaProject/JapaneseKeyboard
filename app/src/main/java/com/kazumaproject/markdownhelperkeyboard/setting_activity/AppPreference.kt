@@ -69,6 +69,8 @@ object AppPreference {
     private val USER_DICTIONARY_PREFERENCE = Pair("user_dictionary_preference", true)
     private val USER_DICTIONARY_PREFIX_PREFERENCE = Pair("user_dictionary_prefix_match_number", 2)
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
+    private val ZERO_QUERY_SUGGESTION_PREFERENCE =
+        Pair("zero_query_suggestion_preference", false)
     private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 4)
     private val CONVERSION_BEAM_WIDTH_PREFERENCE = Pair("conversion_beam_width_preference", 20)
@@ -1469,6 +1471,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(USER_TEMPLATE_PREFERENCE.first, value ?: true)
+        }
+
+    var zero_query_suggestion_preference: Boolean
+        get() = preferences.getBoolean(
+            ZERO_QUERY_SUGGESTION_PREFERENCE.first,
+            ZERO_QUERY_SUGGESTION_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ZERO_QUERY_SUGGESTION_PREFERENCE.first, value)
         }
 
     var time_same_pronounce_typing_preference: Int?

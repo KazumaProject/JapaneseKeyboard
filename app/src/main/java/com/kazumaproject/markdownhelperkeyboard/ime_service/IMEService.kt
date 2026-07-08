@@ -247,6 +247,7 @@ import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.datab
 import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClickedSymbolRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.ClipboardHistoryRepository
+import com.kazumaproject.markdownhelperkeyboard.repository.CustomZeroQueryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.DeleteKeyFlickDeleteTargetRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.GemmaPromptTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.KeyboardRepository
@@ -269,6 +270,10 @@ import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.SumireSpecial
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyActionOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.SumireSpecialKeyPlacementOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
+import com.kazumaproject.markdownhelperkeyboard.zeroquery.AndroidZeroQueryAssetReader
+import com.kazumaproject.markdownhelperkeyboard.zeroquery.LazyZeroQueryProvider
+import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryLookupUseCase
+import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryProvider
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
 import com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
 import com.kazumaproject.tenkey.TenKey
@@ -462,6 +467,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     lateinit var candidateOrderOverrideRepository: CandidateOrderOverrideRepository
 
     @Inject
+    lateinit var customZeroQueryRepository: CustomZeroQueryRepository
+
+    @Inject
     lateinit var clickedSymbolRepository: ClickedSymbolRepository
 
     @Inject
@@ -637,6 +645,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var currentCandidateStripCandidates: List<Candidate> = emptyList()
     private var currentCandidateStripFullCandidates: List<Candidate> = emptyList()
     private var currentCandidateStripContent: CandidateStripContent = CandidateStripContent.Empty
+    private var pendingZeroQueryKeyAfterCommit: String? = null
+    private var zeroQueryCandidates: List<Candidate> = emptyList()
+    private var zeroQueryVisible: Boolean = false
+    private var zeroQuerySelectionUpdateSuppressCount: Int = 0
+    private var zeroQueryLookupJob: Job? = null
+    private val zeroQueryProviderHolder = LazyZeroQueryProvider {
+        ZeroQueryProvider(AndroidZeroQueryAssetReader(assets))
+    }
+    private val zeroQueryLookupUseCase: ZeroQueryLookupUseCase by lazy {
+        ZeroQueryLookupUseCase(
+            customZeroQueryRepository = customZeroQueryRepository,
+            bundledProviderHolder = zeroQueryProviderHolder,
+        )
+    }
     private var currentShortcutItems: List<ShortcutType> = emptyList()
     private var candidateStripIncognitoIconDrawable: Drawable? = null
     private var candidateStripIncognitoVisible: Boolean = false
@@ -726,11 +748,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val content = resolveCandidateStripContent(
             candidates = currentCandidateStripCandidates,
-            candidatesShown = candidatesShown
+            candidatesShown = candidatesShown,
+            includeZeroQuery = true
         )
         val fullContent = resolveCandidateStripContent(
             candidates = currentCandidateStripFullCandidates,
-            candidatesShown = candidatesShown
+            candidatesShown = candidatesShown,
+            includeZeroQuery = false
         )
         currentCandidateStripContent = content
         suggestionAdapter?.submitContent(content)
@@ -745,18 +769,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun resolveCandidateStripContent(
         candidates: List<Candidate>,
-        candidatesShown: Boolean
+        candidatesShown: Boolean,
+        includeZeroQuery: Boolean
     ): CandidateStripContent {
         val state = buildCandidateStripInputState(
             candidates = candidates,
-            candidatesShown = candidatesShown
+            candidatesShown = candidatesShown,
+            includeZeroQuery = includeZeroQuery
         )
         return CandidateStripContentResolver.resolve(state)
     }
 
     private fun buildCandidateStripInputState(
         candidates: List<Candidate>,
-        candidatesShown: Boolean
+        candidatesShown: Boolean,
+        includeZeroQuery: Boolean
     ): CandidateStripInputState {
         val clipboardPreview = resolveClipboardPreviewSnapshot()
         val selectedEditorText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
@@ -767,6 +794,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasRedoHistory = isEditHistoryEnabled() && deletedBuffer.hasRedoHistory()
         return CandidateStripInputState(
             candidates = candidates,
+            zeroQueryVisible = zeroQueryVisible,
+            zeroQueryCandidates = zeroQueryCandidates,
+            includeZeroQuery = includeZeroQuery,
             inputStringEmpty = inputString.value.isEmpty(),
             tailEmpty = stringInTail.get().isEmpty(),
             candidatesShown = candidatesShown,
@@ -847,6 +877,191 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun List<Candidate>.isSelectedTextGemmaActionCandidates(): Boolean {
         return isNotEmpty() && all { isSelectedTextGemmaActionCandidate(it) }
+    }
+
+    private fun rememberZeroQueryKeyAfterCommit(committedText: String) {
+        if (committedText.isBlank()) return
+        pendingZeroQueryKeyAfterCommit = committedText
+    }
+
+    private fun cancelZeroQueryLookup() {
+        zeroQueryLookupJob?.cancel()
+        zeroQueryLookupJob = null
+    }
+
+    private fun clearZeroQueryShownState(refresh: Boolean = true) {
+        val changed = zeroQueryVisible || zeroQueryCandidates.isNotEmpty() ||
+            zeroQuerySelectionUpdateSuppressCount != 0
+        cancelZeroQueryLookup()
+        zeroQueryVisible = false
+        zeroQueryCandidates = emptyList()
+        zeroQuerySelectionUpdateSuppressCount = 0
+        if (refresh && changed) {
+            refreshCandidateStripContent()
+        }
+    }
+
+    private fun clearZeroQueryAllState(refresh: Boolean = true) {
+        val changed = pendingZeroQueryKeyAfterCommit != null ||
+            zeroQueryVisible ||
+            zeroQueryCandidates.isNotEmpty() ||
+            zeroQuerySelectionUpdateSuppressCount != 0
+        cancelZeroQueryLookup()
+        pendingZeroQueryKeyAfterCommit = null
+        zeroQueryVisible = false
+        zeroQueryCandidates = emptyList()
+        zeroQuerySelectionUpdateSuppressCount = 0
+        if (refresh && changed) {
+            refreshCandidateStripContent()
+        }
+    }
+
+    private fun toggleZeroQueryVisibility() {
+        if (zeroQueryCandidates.isEmpty()) {
+            clearZeroQueryAllState(refresh = true)
+            return
+        }
+
+        zeroQueryVisible = !zeroQueryVisible
+        zeroQuerySelectionUpdateSuppressCount = 0
+        refreshCandidateStripContent(candidatesShown = false)
+    }
+
+    private fun canShowZeroQueryAfterCommit(committedText: String): Boolean {
+        if (!zeroQuerySuggestionPreference) return false
+        if (inputString.value.isNotEmpty()) return false
+        if (stringInTail.get().isNotEmpty()) return false
+        if (keyboardSymbolViewState.value.isShown) return false
+        if (
+            currentInputModeForSession != InputMode.ModeJapanese &&
+            !committedText.isZeroQueryNumberKey()
+        ) {
+            return false
+        }
+        if (isCurrentInputTypePasswordOrEmailForZeroQuery()) return false
+        if (isCustomLayoutPickerShownForCandidateStrip()) return false
+        if (isSelectedTextGemmaActionsShownForCandidateStrip()) return false
+        if (currentInputConnection?.getSelectedText(0)?.toString().orEmpty().isNotEmpty()) {
+            return false
+        }
+        return true
+    }
+
+    private fun String.isZeroQueryNumberKey(): Boolean {
+        if (isEmpty()) return false
+
+        var index = 0
+        while (index < length) {
+            val codePoint = codePointAt(index)
+            if (Character.digit(codePoint, 10) < 0) {
+                return false
+            }
+            index += Character.charCount(codePoint)
+        }
+        return true
+    }
+
+    private fun canCommitZeroQueryCandidate(): Boolean {
+        if (!zeroQuerySuggestionPreference) return false
+        if (zeroQueryCandidates.isEmpty()) return false
+        if (inputString.value.isNotEmpty()) return false
+        if (stringInTail.get().isNotEmpty()) return false
+        if (isCurrentInputTypePasswordOrEmailForZeroQuery()) return false
+        if (currentInputConnection?.getSelectedText(0)?.toString().orEmpty().isNotEmpty()) {
+            return false
+        }
+        return true
+    }
+
+    private fun isCurrentInputTypePasswordOrEmailForZeroQuery(): Boolean {
+        return currentInputType in passwordTypes ||
+            currentInputType == InputTypeForIME.TextEmailAddress ||
+            currentInputType == InputTypeForIME.TextWebEmailAddress
+    }
+
+    private fun isSelectedTextGemmaActionsShownForCandidateStrip(): Boolean {
+        return currentCandidateStripCandidates.isSelectedTextGemmaActionCandidates() ||
+            currentCandidateStripFullCandidates.isSelectedTextGemmaActionCandidates() ||
+            currentCandidateStripContent is CandidateStripContent.GemmaActions
+    }
+
+    private fun consumePendingZeroQueryAfterCommit() {
+        val key = pendingZeroQueryKeyAfterCommit ?: return
+        pendingZeroQueryKeyAfterCommit = null
+        cancelZeroQueryLookup()
+
+        if (!canShowZeroQueryAfterCommit(key)) {
+            clearZeroQueryShownState(refresh = true)
+            return
+        }
+
+        zeroQueryLookupJob = scope.launch {
+            val candidates = withContext(Dispatchers.IO) {
+                zeroQueryLookupUseCase.lookup(key)
+            }
+                .filter { it.string.isNotBlank() }
+                .distinctBy { it.string }
+
+            if (!canShowZeroQueryAfterCommit(key)) {
+                clearZeroQueryShownState(refresh = true)
+                return@launch
+            }
+            if (candidates.isEmpty()) {
+                clearZeroQueryShownState(refresh = true)
+                return@launch
+            }
+
+            zeroQueryCandidates = candidates
+            zeroQueryVisible = true
+            zeroQuerySelectionUpdateSuppressCount += 1
+            zeroQueryLookupJob = null
+            refreshCandidateStripContent(candidatesShown = false)
+        }
+    }
+
+    private fun handleZeroQueryOnUpdateSelection(
+        oldSelStart: Int,
+        oldSelEnd: Int,
+        newSelStart: Int,
+        newSelEnd: Int,
+    ) {
+        if (!zeroQueryVisible && zeroQueryCandidates.isEmpty() &&
+            pendingZeroQueryKeyAfterCommit == null &&
+            zeroQuerySelectionUpdateSuppressCount == 0
+        ) {
+            return
+        }
+
+        val selectedText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
+        val inputAndSelectionAreEmpty =
+            inputString.value.isEmpty() &&
+                stringInTail.get().isEmpty() &&
+                selectedText.isEmpty() &&
+                newSelStart == newSelEnd
+        if (zeroQuerySelectionUpdateSuppressCount > 0 && inputAndSelectionAreEmpty) {
+            zeroQuerySelectionUpdateSuppressCount -= 1
+            return
+        }
+
+        val cursorMoved = oldSelStart != newSelStart || oldSelEnd != newSelEnd
+        if (
+            selectedText.isNotEmpty() ||
+            newSelStart != newSelEnd ||
+            inputString.value.isNotEmpty() ||
+            stringInTail.get().isNotEmpty() ||
+            cursorMoved
+        ) {
+            clearZeroQueryAllState(refresh = false)
+        }
+    }
+
+    private fun commitZeroQueryCandidate(candidate: Candidate) {
+        if (!canCommitZeroQueryCandidate()) {
+            clearZeroQueryAllState(refresh = true)
+            return
+        }
+        currentInputConnection?.commitText(candidate.string, 1)
+        clearZeroQueryAllState(refresh = true)
     }
 
     private suspend fun updateFloatingCandidatesOnMain(
@@ -977,6 +1192,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isLearnDictionaryMode: Boolean? = false
     private var isUserDictionaryEnable: Boolean? = false
     private var isUserTemplateEnable: Boolean? = false
+    private var zeroQuerySuggestionPreference: Boolean = false
     private var hankakuPreference: Boolean? = false
     private var customDirectModeSpaceHankakuPreference: Boolean = true
     private var isLiveConversionEnable: Boolean? = false
@@ -1652,8 +1868,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             pageSize = PAGE_SIZE,
         )
         listAdapter.onSuggestionClicked = { suggestion: CandidateItem ->
-            commitText(suggestion.word, 1)
-            finishComposingText()
+            val tail = FloatingCandidateTailResolver.resolveTail(
+                originalInput = inputString.value,
+                selectedCandidateLength = suggestion.length.toInt()
+            )
+            stringInTail.set(tail)
+            if (tail.isNotEmpty()) {
+                commitText(suggestion.word, 1)
+                finishComposingText()
+                updateSuggestionsForFloatingCandidate(emptyList())
+                _inputString.update { tail }
+                listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+                currentHighlightIndex = RecyclerView.NO_POSITION
+                scope.launch {
+                    delay(64)
+                    floatingCandidateNextItem(insertString = tail)
+                }
+            } else {
+                if (suggestion.word.isNotBlank()) {
+                    rememberZeroQueryKeyAfterCommit(suggestion.word)
+                }
+                commitText(suggestion.word, 1)
+                finishComposingText()
+                updateSuggestionsForFloatingCandidate(emptyList())
+                _inputString.update { "" }
+                listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
+                currentHighlightIndex = RecyclerView.NO_POSITION
+                consumePendingZeroQueryAfterCommit()
+            }
         }
         listAdapter.onPagerClicked = {
             goToNextPageForFloatingCandidate()
@@ -1808,6 +2050,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onStartInput: ${Build.MANUFACTURER}")
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
+        clearZeroQueryAllState(refresh = false)
         resetAllFlags()
         shortcutToolbarHiddenForCandidates = false
         physicalKeyboardFloatingXPosition = 200
@@ -1852,6 +2095,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.showLearnedCandidatesInIncognitoPreference
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
+        zeroQuerySuggestionPreference = preferences.zeroQuerySuggestionPreference
+        if (!zeroQuerySuggestionPreference) {
+            clearZeroQueryAllState(refresh = true)
+        }
         hankakuPreference = preferences.hankakuPreference
         customDirectModeSpaceHankakuPreference =
             preferences.customDirectModeSpaceHankakuPreference
@@ -3525,6 +3772,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
+        clearZeroQueryAllState(refresh = false)
         isInputViewActive = true
         collapseShortcutEntryExpansion()
         shortcutInputBehaviorOverride = null
@@ -3878,6 +4126,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
+        clearZeroQueryAllState(refresh = false)
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode()
         persistCurrentCustomKeyboardInputModeIfEnabled()
@@ -3906,6 +4155,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
+        clearZeroQueryAllState(refresh = false)
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
         collapseShortcutEntryExpansion()
@@ -4280,6 +4530,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        clearZeroQueryAllState(refresh = false)
         collapseShortcutEntryExpansion()
         when (newConfig.orientation) {
             Configuration.ORIENTATION_PORTRAIT -> {
@@ -4930,6 +5181,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (candidatesStart != -1 || candidatesEnd != -1) {
             return
         }
+
+        handleZeroQueryOnUpdateSelection(
+            oldSelStart = oldSelStart,
+            oldSelEnd = oldSelEnd,
+            newSelStart = newSelStart,
+            newSelEnd = newSelEnd,
+        )
 
         if (suppressedSelectionCleanupCount > 0) {
             suppressedSelectionCleanupCount -= 1
@@ -6126,8 +6384,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     floatingCandidateNextItem(insertString = subString)
                 }
             } else {
+                if (selectedSuggestion.word.isNotBlank()) {
+                    rememberZeroQueryKeyAfterCommit(selectedSuggestion.word)
+                }
                 commitText(selectedSuggestion.word, 1)
                 updateSuggestionsForFloatingCandidate(emptyList())
+                _inputString.update { "" }
+                listAdapter.updateHighlightPosition(-1)
+                currentHighlightIndex = -1
+                consumePendingZeroQueryAfterCommit()
             }
         }
     }
@@ -8294,6 +8559,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun showSelectedTextGemmaActions(selectedText: String) {
+        clearZeroQueryAllState(refresh = false)
         if (!gemmaTranslationManager.isTranslationAvailable()) {
             clearSelectedTextGemmaSession(
                 clearSuggestions = hasSelectedTextGemmaActionCandidates()
@@ -8394,6 +8660,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun clearSelectedTextGemmaSession(clearSuggestions: Boolean) {
+        clearZeroQueryAllState(refresh = false)
         selectedTextGemmaActionMenuRequestId.incrementAndGet()
         cancelActiveSelectedTextGemmaAction()
         selectedTextGemmaSession = null
@@ -11875,6 +12142,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * クリップボードからの貼り付けアクション。テキストと画像の両方に対応。
      */
     private fun pasteAction() {
+        clearZeroQueryAllState(refresh = false)
         when (val item = clipboardUtil.getPrimaryClipContent()) {
             is ClipboardItem.Image -> {
                 commitBitmap(item.bitmap)
@@ -11921,6 +12189,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun pasteImageAction(bitmap: Bitmap) {
+        clearZeroQueryAllState(refresh = false)
         commitBitmap(bitmap)
         clearDeletedBufferWithoutResetLayout()
         refreshEditHistoryUi()
@@ -11940,6 +12209,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun pasteClipboardItemContent(item: ClipboardItem) {
+        clearZeroQueryAllState(refresh = false)
         when (item) {
             is ClipboardItem.Image -> {
                 commitBitmap(item.bitmap)
@@ -13580,6 +13850,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val insertString = inputString.value
                 Timber.d("suggestionFlag CandidateShowFlag.Idle: [$insertString] [$stringInTail] [$prevFlag] [$currentFlag]")
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
+                    clearZeroQueryAllState(refresh = false)
                     shortcutToolbarHiddenForCandidates = true
                     refreshCandidateStripContent(candidatesShown = true)
                     when {
@@ -13691,6 +13962,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     CandidateShowFlag.Updating -> {
+                        clearZeroQueryAllState(refresh = false)
                         shortcutToolbarHiddenForCandidates = true
                         refreshCandidateStripContent(candidatesShown = true)
                         setSuggestionOnView(insertString, mainView)
@@ -13710,6 +13982,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             keyboardSymbolViewState.collectLatest { isSymbolKeyboardShow ->
                 Timber.d("keyboardSymbolViewState: $isSymbolKeyboardShow")
+                clearZeroQueryAllState(refresh = false)
                 setKeyboardSizeSwitchKeyboard(mainView)
                 if (isKeyboardFloatingMode == true) {
                     floatingKeyboardBinding?.let { floatingKeyboardLayoutBinding ->
@@ -15338,6 +15611,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         string: String, mainView: MainLayoutBinding,
     ) {
         if (string.isNotEmpty()) {
+            clearZeroQueryAllState(refresh = false)
             hasConvertedKatakana = false
             if (isRestoringReconversionInput) {
                 isRestoringReconversionInput = false
@@ -16143,6 +16417,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun restoreRawInputFromBunsetsuSession() {
         val session = bunsetsuConversionSession ?: return
+        clearZeroQueryAllState(refresh = false)
         val rawInput = session.rawInput
         val shouldForceRefresh = inputString.value == rawInput
         clearBunsetsuConversionSession()
@@ -16259,11 +16534,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val session = bunsetsuConversionSession ?: return false
         val commitString = session.segments.joinToString(separator = "") { it.displayText }
         val tailText = session.tailText
+        val shouldRememberZeroQuery = tailText.isEmpty() && commitString.isNotBlank()
         if (tailText.isEmpty()) {
             finalizeBunsetsuReconversion(
                 originalReading = session.rawInput,
                 committedText = commitString
             )
+        }
+        if (shouldRememberZeroQuery) {
+            rememberZeroQueryKeyAfterCommit(commitString)
         }
         beginBatchEdit()
         try {
@@ -16311,6 +16590,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         stringInTail.set("")
         _inputString.update { tailText }
         clearBunsetsuConversionSession()
+        if (shouldRememberZeroQuery) {
+            consumePendingZeroQueryAfterCommit()
+        }
         return true
     }
 
@@ -16969,6 +17251,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             adapter.setOnCustomLayoutItemClickListener { position ->
+                clearZeroQueryAllState(refresh = false)
                 selectCustomKeyboardTab(
                     index = position,
                     reason = CustomKeyboardSelectionReason.UserTabClick
@@ -16978,8 +17261,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 handleShortcutAction(type, mainView)
             }
             adapter.setOnShortcutEntryClickListener {
+                clearZeroQueryAllState(refresh = false)
                 integratedShortcutEntryExpanded = !integratedShortcutEntryExpanded
                 refreshCandidateStripContent()
+            }
+            adapter.setOnZeroQueryCandidateClickListener { candidate ->
+                vibrate()
+                commitZeroQueryCandidate(candidate)
+            }
+            adapter.setOnZeroQueryCloseClickListener {
+                toggleZeroQueryVisibility()
             }
         }
         suggestionAdapterFull?.let { adapter ->
@@ -17869,7 +18160,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 clipboardPreviewShown = content.hasClipboardPreview(),
                 selectedTextGemmaActionsShown = content is CandidateStripContent.GemmaActions,
                 suggestionsEmpty = content !is CandidateStripContent.Candidates &&
-                    content !is CandidateStripContent.GemmaActions,
+                    content !is CandidateStripContent.GemmaActions &&
+                    content !is CandidateStripContent.ZeroQuerySuggestions,
                 customLayoutPickerShown = content is CandidateStripContent.CustomLayoutPicker,
                 symbolKeyboardShown = keyboardSymbolViewState.value.isShown,
                 shortcutToolbarHiddenForCandidates = shortcutToolbarHiddenForCandidates
@@ -17921,6 +18213,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleShortcutAction(type: ShortcutType, mainView: MainLayoutBinding) {
+        clearZeroQueryAllState(refresh = false)
         when (type) {
             ShortcutType.SETTINGS -> {
                 launchSettingsActivity("setting_fragment_request")
@@ -18993,6 +19286,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setCursorLeftAfterCommitPair(candidate.string)
         }
         resetFlagsSuggestionClick()
+        consumePendingZeroQueryAfterCommit()
     }
 
     private fun handleBunsetsuCandidateClick(
@@ -19130,6 +19424,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             ""
         }
+        val shouldRememberZeroQuery = nextInput.isEmpty() && committedText.isNotBlank()
 
         if (nextInput.isEmpty()) {
             finalizeBunsetsuReconversion(
@@ -19142,6 +19437,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 committedText = committedText
             )
             preserveBunsetsuReconversionDraftOnNextProcessInput = true
+        }
+        if (shouldRememberZeroQuery) {
+            rememberZeroQueryKeyAfterCommit(committedText)
         }
 
         beginBatchEdit()
@@ -19202,6 +19500,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             stringInTail.set("")
+            if (shouldRememberZeroQuery) {
+                consumePendingZeroQueryAfterCommit()
+            }
         }
         return true
     }
@@ -19258,6 +19559,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun clearPendingReconversionEntry() {
+        clearZeroQueryAllState(refresh = false)
         pendingReconversionEntry = null
         refreshReconversionUi()
     }
@@ -19357,6 +19659,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun performPendingReconversion() {
+        clearZeroQueryAllState(refresh = false)
         val entry = pendingReconversionEntry ?: return
         val mainView = mainLayoutBinding ?: return
         if (!canPerformPendingReconversion(entry)) {
@@ -19457,6 +19760,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun restoreCompositionState(input: String, tail: String) {
+        clearZeroQueryAllState(refresh = false)
         beginBatchEdit()
         try {
             _inputString.update { input }
@@ -19565,6 +19869,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun undoLastHistoryEntry() {
+        clearZeroQueryAllState(refresh = false)
         val entry = deletedBuffer.popUndo() ?: return
         if (performUndo(entry)) {
             deletedBuffer.pushRedo(entry)
@@ -19575,6 +19880,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun redoLastHistoryEntry() {
+        clearZeroQueryAllState(refresh = false)
         val entry = deletedBuffer.popRedo() ?: return
         if (performRedo(entry)) {
             deletedBuffer.pushUndoFromRedo(entry)
@@ -19585,6 +19891,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun undoAllHistoryEntries() {
+        clearZeroQueryAllState(refresh = false)
         while (deletedBuffer.hasUndoHistory()) {
             val entry = deletedBuffer.popUndo() ?: break
             if (performUndo(entry)) {
@@ -19598,6 +19905,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun redoAllHistoryEntries() {
+        clearZeroQueryAllState(refresh = false)
         while (deletedBuffer.hasRedoHistory()) {
             val entry = deletedBuffer.popRedo() ?: break
             if (performRedo(entry)) {
@@ -19651,6 +19959,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 reading = reading,
                 committedText = candidateString
             )
+        }
+        if (candidateString.isNotBlank() && stringInTail.get().isEmpty()) {
+            rememberZeroQueryKeyAfterCommit(candidateString)
         }
         _inputString.update { "" }
         commitText(candidateString, 1)
@@ -19725,6 +20036,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun commitQwertyGlideCandidate(candidate: Candidate) {
+        if (candidate.string.isNotBlank() && stringInTail.get().isEmpty()) {
+            rememberZeroQueryKeyAfterCommit(candidate.string)
+        }
         beginBatchEdit()
         try {
             setComposingText("", 0)
@@ -19736,6 +20050,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         stringInTail.set("")
         currentQwertyGlideCompositionText = null
         resetFlagsSuggestionClick()
+        consumePendingZeroQueryAfterCommit()
     }
 
     private fun processCandidate(
@@ -19822,6 +20137,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 committedText = candidate.string
             )
         }
+        if (candidate.string.isNotBlank() && stringInTail.get().isEmpty()) {
+            rememberZeroQueryKeyAfterCommit(candidate.string)
+        }
         _inputString.update { "" }
         commitText(candidate.string, 1)
     }
@@ -19859,12 +20177,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 committedText = candidate.string
             )
         }
+        if (candidate.string.isNotBlank() && stringInTail.get().isEmpty()) {
+            rememberZeroQueryKeyAfterCommit(candidate.string)
+        }
         _inputString.update { "" }
         commitText(candidate.string, 1)
     }
 
     private fun resetAllFlags() {
         Timber.d("onUpdate resetAllFlags called")
+        clearZeroQueryAllState(refresh = false)
         customKeyboardRenderJob?.cancel()
         customKeyboardRenderJob = null
         clearFunctionKeyConversionSource()
@@ -19924,6 +20246,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun clearDirectCommitCompositionState(reason: String) {
+        clearZeroQueryAllState(refresh = false)
         clearFunctionKeyConversionSource()
         qwertyGlideInputCoordinator?.cancelPending()
         currentQwertyGlideCompositionText = null
@@ -20211,6 +20534,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         clearSuggestionStateAfterCommit()
         resetFlagsEnterKey()
+        consumePendingZeroQueryAfterCommit()
     }
 
     private fun setTenkeyIconsInHenkan(insertString: String, mainView: MainLayoutBinding) {
@@ -21571,6 +21895,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleDeleteKeyTap(insertString: String, suggestions: List<Candidate>) {
+        clearZeroQueryAllState(refresh = false)
         if (dispatchDirectBackspaceIfNeeded()) {
             stopDeleteLongPress()
             return
@@ -21616,6 +21941,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         mainView: MainLayoutBinding
     ) {
+        clearZeroQueryAllState(refresh = false)
         if (dispatchDirectSpaceIfNeeded()) {
             resetFlagsKeySpace()
             return
@@ -21670,6 +21996,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestions: List<Candidate>,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        clearZeroQueryAllState(refresh = false)
         if (dispatchDirectSpaceIfNeeded()) {
             resetFlagsKeySpace()
             return
@@ -21709,6 +22036,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun handleSpaceKeyClickInQWERTY(
         insertString: String, mainView: MainLayoutBinding, suggestions: List<Candidate>
     ) {
+        clearZeroQueryAllState(refresh = false)
         if (dispatchDirectSpaceIfNeeded()) {
             resetFlagsKeySpace()
             return
@@ -21804,6 +22132,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding?
     ) {
+        clearZeroQueryAllState(refresh = false)
         if (dispatchDirectSpaceIfNeeded()) {
             resetFlagsKeySpace()
             return
@@ -22150,10 +22479,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleLeftCursorMoveAction() {
         Timber.d("handleLeftCursorMoveAction: called")
+        clearZeroQueryAllState(refresh = false)
         sendDpadLeftIfPossible()
     }
 
     private fun handleRightCursorMoveAction() {
+        clearZeroQueryAllState(refresh = false)
         sendDpadRightIfPossible()
     }
 
@@ -22186,6 +22517,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleEmptyInputEnterKey(mainView: MainLayoutBinding) {
+        clearZeroQueryAllState(refresh = false)
         if (dispatchDirectEnterIfNeeded()) {
             refreshCandidateStripContent(
                 candidatesShown = false,
@@ -22214,6 +22546,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun forceNewLine(mainView: MainLayoutBinding) {
+        clearZeroQueryAllState(refresh = false)
         if (dispatchDirectEnterIfNeeded()) {
             refreshCandidateStripContent(
                 candidatesShown = false,
@@ -22242,6 +22575,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handleEmptyInputEnterKeyFloating(floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding) {
+        clearZeroQueryAllState(refresh = false)
         if (dispatchDirectEnterIfNeeded()) {
             setDrawableToEnterKeyCorrespondingToImeOptionsFloating(floatingKeyboardLayoutBinding)
             return
@@ -22324,6 +22658,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun finishInputEnterKey() {
+        clearZeroQueryAllState(refresh = false)
         _inputString.update { "" }
         finishComposingText()
         clearSuggestionStateAfterCommit()
@@ -22340,6 +22675,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleLeftKeyPress(gestureType: GestureType, insertString: String) {
         Timber.d("called handleLeftKeyPress $insertString ${stringInTail.get()} $gestureType")
+        clearZeroQueryAllState(refresh = false)
         if (insertString.isEmpty() && stringInTail.get().isEmpty()) {
             when (gestureType) {
                 GestureType.FlickRight -> {
@@ -22507,6 +22843,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun actionInRightKeyPressed(gestureType: GestureType, insertString: String) {
+        clearZeroQueryAllState(refresh = false)
         when {
             insertString.isEmpty() -> {
                 if (selectMode.value) {
@@ -22521,6 +22858,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun actionInRightKeyPressed(insertString: String) {
+        clearZeroQueryAllState(refresh = false)
         when {
             insertString.isEmpty() -> handleEmptyInputString()
             !isHenkan.get() -> handleNonHenkan(insertString)
