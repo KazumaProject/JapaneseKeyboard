@@ -15,6 +15,12 @@ sealed interface CandidateStripContent {
         val showShortcutEntry: Boolean,
     ) : CandidateStripContent
 
+    data class ZeroQuerySuggestions(
+        val candidates: List<Candidate>,
+    ) : CandidateStripContent
+
+    data object ZeroQueryCollapsed : CandidateStripContent
+
     data class CustomLayoutPicker(
         val layouts: List<CustomKeyboardLayout>,
     ) : CandidateStripContent

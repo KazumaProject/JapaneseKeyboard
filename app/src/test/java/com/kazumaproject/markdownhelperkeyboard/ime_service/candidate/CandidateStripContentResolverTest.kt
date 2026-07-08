@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -364,8 +365,211 @@ class CandidateStripContentResolverTest {
         assertTrue(emptyState.showIntegratedShortcuts)
     }
 
+    @Test
+    fun zeroQuerySuggestionsShown_whenAllConditionsMatch() {
+        val zeroQueryCandidates = listOf(candidate("おめでとうございます"))
+        val state = baseState(
+            zeroQueryVisible = true,
+            zeroQueryCandidates = zeroQueryCandidates,
+            includeZeroQuery = true,
+            inputStringEmpty = true,
+            tailEmpty = true
+        )
+
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertTrue(content is CandidateStripContent.ZeroQuerySuggestions)
+        assertEquals(
+            zeroQueryCandidates,
+            (content as CandidateStripContent.ZeroQuerySuggestions).candidates
+        )
+    }
+
+    @Test
+    fun zeroQueryCollapsedShown_whenCandidatesAreRetainedButHidden() {
+        val state = baseState(
+            zeroQueryVisible = false,
+            zeroQueryCandidates = listOf(candidate("おめでとうございます")),
+            includeZeroQuery = true,
+            inputStringEmpty = true,
+            tailEmpty = true
+        )
+
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertTrue(content is CandidateStripContent.ZeroQueryCollapsed)
+    }
+
+    @Test
+    fun zeroQueryCollapsedWinsOverEmptyStateContent() {
+        val state = baseState(
+            zeroQueryVisible = false,
+            zeroQueryCandidates = listOf(candidate("おめでとうございます")),
+            includeZeroQuery = true,
+            inputStringEmpty = true,
+            tailEmpty = true,
+            clipboardPreviewEnabled = true,
+            clipboardText = "clip",
+            undoEnabled = true,
+            shortcutToolbarVisible = true,
+            shortcutToolbarIntegratedInSuggestion = true,
+            shortcutItems = listOf(ShortcutType.SETTINGS)
+        )
+
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertTrue(content is CandidateStripContent.ZeroQueryCollapsed)
+    }
+
+    @Test
+    fun candidatesWinOverZeroQuerySuggestions() {
+        val state = baseState(
+            candidates = listOf(candidate("通常候補")),
+            zeroQueryVisible = true,
+            zeroQueryCandidates = listOf(candidate("後続候補")),
+            includeZeroQuery = true,
+            inputStringEmpty = true,
+            tailEmpty = true
+        )
+
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertTrue(content is CandidateStripContent.Candidates)
+    }
+
+    @Test
+    fun expandedShortcutEntryWinsOverZeroQuerySuggestions() {
+        val state = baseState(
+            zeroQueryVisible = true,
+            zeroQueryCandidates = listOf(candidate("後続候補")),
+            includeZeroQuery = true,
+            inputStringEmpty = true,
+            tailEmpty = true,
+            shortcutToolbarVisible = true,
+            shortcutToolbarIntegratedInSuggestion = true,
+            integratedShortcutEntryExpanded = true,
+            clipboardPreviewEnabled = true,
+            clipboardText = "clip",
+            shortcutItems = listOf(ShortcutType.SETTINGS)
+        )
+
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertTrue(content is CandidateStripContent.ExpandedShortcutEntry)
+    }
+
+    @Test
+    fun zeroQuerySuggestionsWinOverEmptyStateContent() {
+        val state = baseState(
+            zeroQueryVisible = true,
+            zeroQueryCandidates = listOf(candidate("後続候補")),
+            includeZeroQuery = true,
+            inputStringEmpty = true,
+            tailEmpty = true,
+            clipboardPreviewEnabled = true,
+            clipboardText = "clip",
+            undoEnabled = true,
+            shortcutToolbarVisible = true,
+            shortcutToolbarIntegratedInSuggestion = true,
+            shortcutItems = listOf(ShortcutType.SETTINGS)
+        )
+
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertTrue(content is CandidateStripContent.ZeroQuerySuggestions)
+    }
+
+    @Test
+    fun zeroQuerySuggestionsHidden_whenIncludeZeroQueryIsFalse() {
+        val state = baseState(
+            zeroQueryVisible = true,
+            zeroQueryCandidates = listOf(candidate("後続候補")),
+            includeZeroQuery = false,
+            inputStringEmpty = true,
+            tailEmpty = true
+        )
+
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertTrue(content is CandidateStripContent.Empty)
+    }
+
+    @Test
+    fun zeroQuerySuggestionsHidden_whenInputOrTailBlocksIt() {
+        val blockedByInput = baseState(
+            zeroQueryVisible = true,
+            zeroQueryCandidates = listOf(candidate("後続候補")),
+            includeZeroQuery = true,
+            inputStringEmpty = false,
+            tailEmpty = true
+        )
+        val blockedByTail = baseState(
+            zeroQueryVisible = true,
+            zeroQueryCandidates = listOf(candidate("後続候補")),
+            includeZeroQuery = true,
+            inputStringEmpty = true,
+            tailEmpty = false
+        )
+
+        assertTrue(CandidateStripContentResolver.resolve(blockedByInput) is CandidateStripContent.Empty)
+        assertTrue(CandidateStripContentResolver.resolve(blockedByTail) is CandidateStripContent.Empty)
+    }
+
+    @Test
+    fun zeroQuerySuggestionsHidden_whenUiStateBlocksIt() {
+        val candidates = listOf(candidate("後続候補"))
+        val base = baseState(
+            zeroQueryVisible = true,
+            zeroQueryCandidates = candidates,
+            includeZeroQuery = true,
+            inputStringEmpty = true,
+            tailEmpty = true
+        )
+
+        assertTrue(
+            CandidateStripContentResolver.resolve(
+                base.copy(candidatesShown = true)
+            ) is CandidateStripContent.Empty
+        )
+        assertTrue(
+            CandidateStripContentResolver.resolve(
+                base.copy(symbolKeyboardShown = true)
+            ) is CandidateStripContent.Empty
+        )
+        assertTrue(
+            CandidateStripContentResolver.resolve(
+                base.copy(selectedTextGemmaActionsShown = true)
+            ) is CandidateStripContent.Empty
+        )
+        assertTrue(
+            CandidateStripContentResolver.resolve(
+                base.copy(editorTextSelected = true)
+            ) is CandidateStripContent.Empty
+        )
+    }
+
+    @Test
+    fun customLayoutPickerShown_whenZeroQueryBlockedByPickerState() {
+        val state = baseState(
+            zeroQueryVisible = true,
+            zeroQueryCandidates = listOf(candidate("後続候補")),
+            includeZeroQuery = true,
+            inputStringEmpty = true,
+            tailEmpty = true,
+            customLayoutPickerShown = true,
+            customLayouts = listOf(customLayout("layout"))
+        )
+
+        val content = CandidateStripContentResolver.resolve(state)
+
+        assertTrue(content is CandidateStripContent.CustomLayoutPicker)
+    }
+
     private fun baseState(
         candidates: List<Candidate> = emptyList(),
+        zeroQueryVisible: Boolean = false,
+        zeroQueryCandidates: List<Candidate> = emptyList(),
+        includeZeroQuery: Boolean = false,
         inputStringEmpty: Boolean = false,
         tailEmpty: Boolean = true,
         candidatesShown: Boolean = false,
@@ -393,6 +597,9 @@ class CandidateStripContentResolverTest {
     ): CandidateStripInputState =
         CandidateStripInputState(
             candidates = candidates,
+            zeroQueryVisible = zeroQueryVisible,
+            zeroQueryCandidates = zeroQueryCandidates,
+            includeZeroQuery = includeZeroQuery,
             inputStringEmpty = inputStringEmpty,
             tailEmpty = tailEmpty,
             candidatesShown = candidatesShown,

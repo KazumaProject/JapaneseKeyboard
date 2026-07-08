@@ -401,6 +401,14 @@
             app:iconSpaceReserved="false" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="zero_query_suggestion_preference"
+            android:summaryOff="@string/zero_query_suggestion_summary_off"
+            android:summaryOn="@string/zero_query_suggestion_summary_on"
+            android:title="@string/zero_query_suggestion_title"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="henkan_delete_key_action_preference"
             android:summaryOff="@string/henkan_delete_key_action_summary_off"

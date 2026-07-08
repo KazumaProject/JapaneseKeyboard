@@ -4,9 +4,12 @@ import android.content.Context
 import android.os.Looper
 import android.widget.FrameLayout
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.ClipboardPreviewState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.QuickActionsState
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -62,6 +65,131 @@ class SuggestionAdapterShortcutEntryClickTest {
         assertTrue(clicked)
         adapter.release()
     }
+
+    @Test
+    fun zeroQueryCandidateClickNotifiesDedicatedListenerOnly() {
+        val adapter = SuggestionAdapter()
+        val zeroQueryCandidate = candidate("おめでとうございます")
+        adapter.submitContent(
+            CandidateStripContent.ZeroQuerySuggestions(
+                candidates = listOf(zeroQueryCandidate)
+            )
+        )
+        drainMainUntilItemCount(adapter, expectedItemCount = 2)
+
+        var normalCandidateClicked = false
+        var zeroQueryClicked: Candidate? = null
+        adapter.setOnItemClickListener { _, _ ->
+            normalCandidateClicked = true
+        }
+        adapter.setOnZeroQueryCandidateClickListener { candidate ->
+            zeroQueryClicked = candidate
+        }
+
+        val holder = createSuggestionHolder(adapter)
+        adapter.onBindViewHolder(holder, 1)
+
+        holder.itemView.performClick()
+
+        assertEquals(zeroQueryCandidate, zeroQueryClicked)
+        assertFalse(normalCandidateClicked)
+        adapter.release()
+    }
+
+    @Test
+    fun zeroQueryCloseClickNotifiesDedicatedListenerOnly() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(
+            CandidateStripContent.ZeroQuerySuggestions(
+                candidates = listOf(candidate("おめでとうございます"))
+            )
+        )
+        drainMainUntilItemCount(adapter, expectedItemCount = 2)
+
+        var normalCandidateClicked = false
+        var closeClicked = false
+        adapter.setOnItemClickListener { _, _ ->
+            normalCandidateClicked = true
+        }
+        adapter.setOnZeroQueryCloseClickListener {
+            closeClicked = true
+        }
+
+        val holder = createSuggestionHolder(adapter)
+        adapter.onBindViewHolder(holder, 0)
+
+        holder.itemView.performClick()
+
+        assertTrue(closeClicked)
+        assertFalse(normalCandidateClicked)
+        adapter.release()
+    }
+
+    @Test
+    fun zeroQueryCollapsedClickNotifiesDedicatedListenerOnly() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(CandidateStripContent.ZeroQueryCollapsed)
+        drainMainUntilItemCount(adapter, expectedItemCount = 1)
+
+        var normalCandidateClicked = false
+        var closeClicked = false
+        adapter.setOnItemClickListener { _, _ ->
+            normalCandidateClicked = true
+        }
+        adapter.setOnZeroQueryCloseClickListener {
+            closeClicked = true
+        }
+
+        val holder = createSuggestionHolder(adapter)
+        adapter.onBindViewHolder(holder, 0)
+
+        holder.itemView.performClick()
+
+        assertTrue(closeClicked)
+        assertFalse(normalCandidateClicked)
+        adapter.release()
+    }
+
+    @Test
+    fun zeroQueryCandidateLongPressDoesNothing() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(
+            CandidateStripContent.ZeroQuerySuggestions(
+                candidates = listOf(candidate("おめでとうございます"))
+            )
+        )
+        drainMainUntilItemCount(adapter, expectedItemCount = 2)
+
+        var normalCandidateLongClicked = false
+        adapter.setOnItemLongClickListener { _, _ ->
+            normalCandidateLongClicked = true
+        }
+
+        val holder = createSuggestionHolder(adapter)
+        adapter.onBindViewHolder(holder, 1)
+
+        assertTrue(holder.itemView.performLongClick())
+        assertFalse(normalCandidateLongClicked)
+        adapter.release()
+    }
+
+    private fun createSuggestionHolder(adapter: SuggestionAdapter): androidx.recyclerview.widget.RecyclerView.ViewHolder {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val parent = FrameLayout(context)
+        return adapter.onCreateViewHolder(
+            parent,
+            SuggestionAdapter.VIEW_TYPE_SUGGESTION
+        )
+    }
+
+    private fun candidate(text: String): Candidate =
+        Candidate(
+            string = text,
+            type = 9.toByte(),
+            length = text.length.toUByte(),
+            score = 0,
+            yomi = text
+        )
 
     private fun drainMainUntilItemCount(adapter: SuggestionAdapter, expectedItemCount: Int) {
         repeat(20) {

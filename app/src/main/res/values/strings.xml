@@ -159,6 +159,7 @@
     <string name="category_ng_word_summary">You can register words by long-pressing a conversion candidate.</string>
     <string name="category_learning_dictionary_title">Learning Dictionary</string>
     <string name="category_user_dictionary_title">User Dictionary</string>
+    <string name="category_zero_query_suggestion_title">Next-word Suggestions</string>
     <string name="category_template_title">Templates</string>
     <string name="category_gemma_translation_title">Gemma Translation</string>
 
@@ -284,6 +285,9 @@
     <string name="user_template_title">Templates</string>
     <string name="user_template_summary_on">Enable templates\nShows registered words in conversion candidates</string>
     <string name="user_template_summary_off">Disable templates</string>
+    <string name="zero_query_suggestion_title">Next-word suggestions after commit</string>
+    <string name="zero_query_suggestion_summary_on">Show suggestions immediately after committing text when there is no current input</string>
+    <string name="zero_query_suggestion_summary_off">Do not show next-word suggestions after committing text</string>
     <string name="gemma_translation_enable_title">Candidate translation with Gemma 4</string>
     <string name="gemma_translation_enable_summary_on">Enable long-press translation for conversion candidates when a Gemma 4 model is loaded</string>
     <string name="gemma_translation_enable_summary_off">Disable Gemma-based candidate translation</string>
