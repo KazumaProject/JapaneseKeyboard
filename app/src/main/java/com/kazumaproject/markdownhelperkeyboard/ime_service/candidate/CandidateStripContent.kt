@@ -19,8 +19,6 @@ sealed interface CandidateStripContent {
         val candidates: List<Candidate>,
     ) : CandidateStripContent
 
-    data object ZeroQueryCollapsed : CandidateStripContent
-
     data class CustomLayoutPicker(
         val layouts: List<CustomKeyboardLayout>,
     ) : CandidateStripContent
@@ -35,6 +33,7 @@ sealed interface CandidateStripContent {
         val clipboardPreview: ClipboardPreviewState?,
         val shortcutItems: List<ShortcutType>,
         val showIntegratedShortcuts: Boolean,
+        val showZeroQueryToggle: Boolean = false,
     ) : CandidateStripContent
 
     data object Empty : CandidateStripContent

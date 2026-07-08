@@ -430,17 +430,40 @@ class SuggestionAdapterDisplayItemTest {
     }
 
     @Test
-    fun zeroQueryCollapsedBuildsToggleOnly() {
+    fun hiddenZeroQueryEmptyStateBuildsToggleThenNormalItems() {
         val adapter = SuggestionAdapter()
-        adapter.submitContent(CandidateStripContent.ZeroQueryCollapsed)
+        adapter.submitContent(
+            emptyActions(
+                undoEnabled = true,
+                showIntegratedShortcuts = true,
+                showZeroQueryToggle = true
+            )
+        )
 
         assertEquals(
-            listOf(SuggestionAdapter.SuggestionDisplayItemKind.ZeroQueryCloseItem),
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.ZeroQueryCloseItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.QuickActionsItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutItem,
+            ),
             adapter.buildDisplayItemKindsForTesting()
         )
         assertEquals(
             listOf("[ ... ]"),
             adapter.buildZeroQueryDisplayTextsForTesting()
+        )
+        assertEquals(
+            SuggestionAdapter.StartAnchorSignature(
+                role = SuggestionAdapter.StartAnchorRole.QuickActions,
+                quickActions = SuggestionAdapter.QuickActionsVisibilitySignature(
+                    incognitoVisible = false,
+                    undoVisible = true,
+                    redoVisible = false,
+                    reconvertVisible = false
+                )
+            ),
+            adapter.buildStartAnchorSignatureForTesting()
         )
         adapter.release()
     }
@@ -470,6 +493,7 @@ class SuggestionAdapterDisplayItemTest {
         redoEnabled: Boolean = false,
         reconvertEnabled: Boolean = false,
         showIntegratedShortcuts: Boolean = false,
+        showZeroQueryToggle: Boolean = false,
     ): CandidateStripContent.EmptyState =
         CandidateStripContent.EmptyState(
             showShortcutEntry = false,
@@ -484,6 +508,7 @@ class SuggestionAdapterDisplayItemTest {
             clipboardPreview = null,
             shortcutItems = shortcuts(),
             showIntegratedShortcuts = showIntegratedShortcuts,
+            showZeroQueryToggle = showZeroQueryToggle,
         )
 
     private fun clipboardPreview(
