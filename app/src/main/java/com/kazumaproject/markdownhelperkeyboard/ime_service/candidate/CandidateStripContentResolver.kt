@@ -24,9 +24,6 @@ object CandidateStripContentResolver {
                 candidates = state.zeroQueryCandidates
             )
         }
-        if (shouldShowZeroQueryCollapsed(state)) {
-            return CandidateStripContent.ZeroQueryCollapsed
-        }
         if (state.customLayoutPickerShown) {
             return CandidateStripContent.CustomLayoutPicker(
                 layouts = state.customLayouts
@@ -42,18 +39,21 @@ object CandidateStripContentResolver {
             state = state,
             clipboardPreview = clipboardPreview
         )
+        val showZeroQueryToggle = shouldShowZeroQueryToggle(state)
         if (
             clipboardPreview != null ||
             quickActions.hasAnyAction ||
             showShortcutEntry ||
-            showIntegratedShortcuts
+            showIntegratedShortcuts ||
+            showZeroQueryToggle
         ) {
             return CandidateStripContent.EmptyState(
                 showShortcutEntry = showShortcutEntry,
                 quickActions = quickActions,
                 clipboardPreview = clipboardPreview,
                 shortcutItems = state.shortcutItems,
-                showIntegratedShortcuts = showIntegratedShortcuts
+                showIntegratedShortcuts = showIntegratedShortcuts,
+                showZeroQueryToggle = showZeroQueryToggle
             )
         }
         return CandidateStripContent.Empty
@@ -91,7 +91,7 @@ object CandidateStripContentResolver {
         return state.zeroQueryVisible && canShowZeroQuerySurface(state)
     }
 
-    private fun shouldShowZeroQueryCollapsed(state: CandidateStripInputState): Boolean {
+    private fun shouldShowZeroQueryToggle(state: CandidateStripInputState): Boolean {
         return !state.zeroQueryVisible && canShowZeroQuerySurface(state)
     }
 
