@@ -404,6 +404,71 @@ class SuggestionAdapterDisplayItemTest {
     }
 
     @Test
+    fun zeroQuerySuggestionsBuildCloseThenCandidates() {
+        val adapter = SuggestionAdapter()
+        val candidates = listOf(candidate("おめでとうございます"), candidate("よろしくお願いします"))
+        adapter.submitContent(
+            CandidateStripContent.ZeroQuerySuggestions(
+                candidates = candidates
+            )
+        )
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.ZeroQueryCloseItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ZeroQueryCandidateItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ZeroQueryCandidateItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting()
+        )
+        assertEquals(
+            listOf("[ ... ]", "おめでとうございます", "よろしくお願いします"),
+            adapter.buildZeroQueryDisplayTextsForTesting()
+        )
+        assertTrue(adapter.buildClickCandidatesForTesting().isEmpty())
+        adapter.release()
+    }
+
+    @Test
+    fun hiddenZeroQueryEmptyStateBuildsToggleThenNormalItems() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(
+            emptyActions(
+                undoEnabled = true,
+                showIntegratedShortcuts = true,
+                showZeroQueryToggle = true
+            )
+        )
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.ZeroQueryCloseItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.QuickActionsItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ShortcutItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting()
+        )
+        assertEquals(
+            listOf("[ ... ]"),
+            adapter.buildZeroQueryDisplayTextsForTesting()
+        )
+        assertEquals(
+            SuggestionAdapter.StartAnchorSignature(
+                role = SuggestionAdapter.StartAnchorRole.QuickActions,
+                quickActions = SuggestionAdapter.QuickActionsVisibilitySignature(
+                    incognitoVisible = false,
+                    undoVisible = true,
+                    redoVisible = false,
+                    reconvertVisible = false
+                )
+            ),
+            adapter.buildStartAnchorSignatureForTesting()
+        )
+        adapter.release()
+    }
+
+    @Test
     fun customLayoutPickerDoesNotShowShortcutEntry() {
         val adapter = SuggestionAdapter()
         adapter.submitContent(
@@ -428,6 +493,7 @@ class SuggestionAdapterDisplayItemTest {
         redoEnabled: Boolean = false,
         reconvertEnabled: Boolean = false,
         showIntegratedShortcuts: Boolean = false,
+        showZeroQueryToggle: Boolean = false,
     ): CandidateStripContent.EmptyState =
         CandidateStripContent.EmptyState(
             showShortcutEntry = false,
@@ -442,6 +508,7 @@ class SuggestionAdapterDisplayItemTest {
             clipboardPreview = null,
             shortcutItems = shortcuts(),
             showIntegratedShortcuts = showIntegratedShortcuts,
+            showZeroQueryToggle = showZeroQueryToggle,
         )
 
     private fun clipboardPreview(

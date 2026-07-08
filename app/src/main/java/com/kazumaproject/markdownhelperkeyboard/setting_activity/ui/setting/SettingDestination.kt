@@ -763,6 +763,7 @@ object SettingDestinations {
             "external_dictionary_settings_preference" -> R.id.externalDictionarySettingsFragment
             "n_gram_rule_preference" -> R.id.ngramRuleFragment
             "candidate_order_override_preference" -> R.id.candidateOrderOverrideFragment
+            "custom_zero_query_dictionary_preference" -> R.id.customZeroQueryDictionaryFragment
             "ng_word_preference" -> R.id.ngWordFragment
             "gemma_prompt_template_management_preference" -> R.id.gemmaPromptTemplateFragment
             "kana_keyboard_letter_size_preference" -> R.id.tenKeyCandidateLetterSizeFragment
