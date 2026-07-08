@@ -4880,7 +4880,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     setupSuminagashiInkEffect(mainView, floatingKeyboardBinding)
                     ViewCompat.setOnApplyWindowInsetsListener(mainView.root) { _, windowInsets ->
                         val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+
+                        var updated = systemBottomInset != insets.bottom
                         systemBottomInset = insets.bottom
+
+                        if (updated && isKeyboardFloatingMode != true) {
+                            mainLayoutBinding?.let { mainView ->
+                                updateKeyboardLayout(mainView)
+                            }
+                        }
+
                         windowInsets
                     }
                     setCandidateTabLayout(mainView)
