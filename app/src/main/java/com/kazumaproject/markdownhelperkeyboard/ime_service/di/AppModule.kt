@@ -48,6 +48,7 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_33_34
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_34_35
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_35_36
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_36_37
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
@@ -79,6 +80,7 @@ import com.kazumaproject.markdownhelperkeyboard.sumire_special_key.database.Sumi
 import com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryDao
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
+import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQueryDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -139,6 +141,7 @@ object AppModule {
             MIGRATION_33_34,
             MIGRATION_34_35,
             MIGRATION_35_36,
+            MIGRATION_36_37,
         )
         .build()
 
@@ -218,6 +221,11 @@ object AppModule {
     fun providesSumireSpecialKeyPlacementOverrideDao(
         db: AppDatabase
     ): SumireSpecialKeyPlacementOverrideDao = db.sumireSpecialKeyPlacementOverrideDao()
+
+    @Singleton
+    @Provides
+    fun providesCustomZeroQueryDao(db: AppDatabase): CustomZeroQueryDao =
+        db.customZeroQueryDao()
 
     @Singleton
     @Provides

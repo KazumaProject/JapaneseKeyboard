@@ -25,6 +25,7 @@ data class ImePreferencesSnapshot(
     val showLearnedCandidatesInIncognitoPreference: Boolean,
     val isUserDictionaryEnable: Boolean,
     val isUserTemplateEnable: Boolean,
+    val zeroQuerySuggestionPreference: Boolean,
     val hankakuPreference: Boolean,
     val customDirectModeSpaceHankakuPreference: Boolean,
     val isLiveConversionEnable: Boolean,
@@ -278,6 +279,7 @@ data class ImePreferencesSnapshot(
                     appPreference.show_learned_candidates_in_incognito_preference,
                 isUserDictionaryEnable = appPreference.user_dictionary_preference ?: true,
                 isUserTemplateEnable = appPreference.user_template_preference ?: true,
+                zeroQuerySuggestionPreference = appPreference.zero_query_suggestion_preference,
                 hankakuPreference = appPreference.space_hankaku_preference ?: false,
                 customDirectModeSpaceHankakuPreference =
                     appPreference.custom_direct_mode_space_hankaku_preference ?: true,
