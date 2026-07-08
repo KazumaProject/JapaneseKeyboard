@@ -404,6 +404,48 @@ class SuggestionAdapterDisplayItemTest {
     }
 
     @Test
+    fun zeroQuerySuggestionsBuildCloseThenCandidates() {
+        val adapter = SuggestionAdapter()
+        val candidates = listOf(candidate("おめでとうございます"), candidate("よろしくお願いします"))
+        adapter.submitContent(
+            CandidateStripContent.ZeroQuerySuggestions(
+                candidates = candidates
+            )
+        )
+
+        assertEquals(
+            listOf(
+                SuggestionAdapter.SuggestionDisplayItemKind.ZeroQueryCloseItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ZeroQueryCandidateItem,
+                SuggestionAdapter.SuggestionDisplayItemKind.ZeroQueryCandidateItem,
+            ),
+            adapter.buildDisplayItemKindsForTesting()
+        )
+        assertEquals(
+            listOf("[ ... ]", "おめでとうございます", "よろしくお願いします"),
+            adapter.buildZeroQueryDisplayTextsForTesting()
+        )
+        assertTrue(adapter.buildClickCandidatesForTesting().isEmpty())
+        adapter.release()
+    }
+
+    @Test
+    fun zeroQueryCollapsedBuildsToggleOnly() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(CandidateStripContent.ZeroQueryCollapsed)
+
+        assertEquals(
+            listOf(SuggestionAdapter.SuggestionDisplayItemKind.ZeroQueryCloseItem),
+            adapter.buildDisplayItemKindsForTesting()
+        )
+        assertEquals(
+            listOf("[ ... ]"),
+            adapter.buildZeroQueryDisplayTextsForTesting()
+        )
+        adapter.release()
+    }
+
+    @Test
     fun customLayoutPickerDoesNotShowShortcutEntry() {
         val adapter = SuggestionAdapter()
         adapter.submitContent(

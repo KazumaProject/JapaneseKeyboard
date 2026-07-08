@@ -161,6 +161,7 @@
     <string name="category_ng_word_summary">変換候補を長押しで登録できます。</string>
     <string name="category_learning_dictionary_title">学習辞書</string>
     <string name="category_user_dictionary_title">ユーザー辞書</string>
+    <string name="category_zero_query_suggestion_title">後続語候補</string>
     <string name="category_template_title">定型文</string>
     <string name="category_gemma_translation_title">Gemma 翻訳</string>
 
@@ -280,6 +281,9 @@
     <string name="user_template_title">定型文</string>
     <string name="user_template_summary_on">定型文を有効化\n登録した単語を変換候補に表示します</string>
     <string name="user_template_summary_off">定型文を無効化</string>
+    <string name="zero_query_suggestion_title">確定後の後続語候補</string>
+    <string name="zero_query_suggestion_summary_on">入力が空のとき、文字を確定した直後に後続語候補を表示します</string>
+    <string name="zero_query_suggestion_summary_off">文字を確定した直後の後続語候補を表示しません</string>
     <string name="gemma_translation_enable_title">Gemma 4 を有効にする</string>
     <string name="gemma_translation_enable_summary_on">Gemma 4 のモデル読み込みに成功したとき、変換候補の長押しメニューに翻訳を追加します</string>
     <string name="gemma_translation_enable_summary_off">Gemma による候補翻訳を無効にします</string>
