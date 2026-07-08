@@ -50,6 +50,8 @@ import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWor
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplate
 import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTemplateDao
+import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQueryDao
+import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQueryEntry
 
 @Database(
     entities = [
@@ -78,8 +80,9 @@ import com.kazumaproject.markdownhelperkeyboard.user_template.database.UserTempl
         CandidateOrderOverrideEntity::class,
         SumireSpecialKeyActionOverrideEntity::class,
         SumireSpecialKeyPlacementOverrideEntity::class,
+        CustomZeroQueryEntry::class,
     ],
-    version = 36,
+    version = 37,
     exportSchema = false
 )
 @TypeConverters(
@@ -106,6 +109,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun candidateOrderOverrideDao(): CandidateOrderOverrideDao
     abstract fun sumireSpecialKeyActionOverrideDao(): SumireSpecialKeyActionOverrideDao
     abstract fun sumireSpecialKeyPlacementOverrideDao(): SumireSpecialKeyPlacementOverrideDao
+    abstract fun customZeroQueryDao(): CustomZeroQueryDao
 
     companion object {
 
@@ -911,6 +915,37 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `flick_mappings` ADD COLUMN `iconValue` TEXT")
                 db.execSQL("ALTER TABLE `circular_flick_mappings` ADD COLUMN `iconType` TEXT")
                 db.execSQL("ALTER TABLE `circular_flick_mappings` ADD COLUMN `iconValue` TEXT")
+            }
+        }
+
+        val MIGRATION_36_37 = object : Migration(36, 37) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `custom_zero_query_entries` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `lookupKey` TEXT NOT NULL,
+                        `displayKey` TEXT NOT NULL,
+                        `candidate` TEXT NOT NULL,
+                        `rank` INTEGER NOT NULL,
+                        `enabled` INTEGER NOT NULL,
+                        `createdAt` INTEGER NOT NULL,
+                        `updatedAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE INDEX IF NOT EXISTS `index_custom_zero_query_entries_lookupKey_enabled`
+                    ON `custom_zero_query_entries`(`lookupKey`, `enabled`)
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS `index_custom_zero_query_entries_lookupKey_candidate`
+                    ON `custom_zero_query_entries`(`lookupKey`, `candidate`)
+                    """.trimIndent()
+                )
             }
         }
     }

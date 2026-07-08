@@ -50,6 +50,9 @@
             android:id="@+id/action_navigation_setting_to_candidateOrderOverrideFragment"
             app:destination="@id/candidateOrderOverrideFragment" />
         <action
+            android:id="@+id/action_navigation_setting_to_customZeroQueryDictionaryFragment"
+            app:destination="@id/customZeroQueryDictionaryFragment" />
+        <action
             android:id="@+id/action_navigation_setting_to_enableKeyboardFragment"
             app:destination="@id/enableKeyboardFragment" />
         <action
@@ -364,6 +367,24 @@
         android:name="com.kazumaproject.markdownhelperkeyboard.candidate_order.ui.CandidateOrderOverrideFragment"
         android:label="@string/candidate_order_override_fragment_title"
         tools:layout="@layout/fragment_candidate_order_override" />
+    <fragment
+        android:id="@+id/customZeroQueryDictionaryFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.ui.CustomZeroQueryDictionaryFragment"
+        android:label="@string/custom_zero_query_dictionary_title"
+        tools:layout="@layout/fragment_custom_zero_query_dictionary">
+        <action
+            android:id="@+id/action_customZeroQueryDictionaryFragment_to_customZeroQueryGroupFragment"
+            app:destination="@id/customZeroQueryGroupFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/customZeroQueryGroupFragment"
+        android:name="com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.ui.CustomZeroQueryGroupFragment"
+        android:label="@string/custom_zero_query_group_title"
+        tools:layout="@layout/fragment_custom_zero_query_group">
+        <argument
+            android:name="lookupKey"
+            app:argType="string" />
+    </fragment>
     <fragment
         android:id="@+id/enableKeyboardFragment"
         android:name="com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.enable_keyboard_setting.EnableKeyboardFragment"

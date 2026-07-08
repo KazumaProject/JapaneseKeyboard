@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?android:attr/selectableItemBackground"
+    android:minHeight="88dp"
+    android:paddingStart="16dp"
+    android:paddingTop="12dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="12dp">
+
+    <TextView
+        android:id="@+id/text_custom_zero_query_group_key"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="?attr/textAppearanceListItem"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toStartOf="@id/button_custom_zero_query_group_add"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="ありがとう" />
+
+    <TextView
+        android:id="@+id/text_custom_zero_query_group_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textAppearance="?attr/textAppearanceCaption"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/text_custom_zero_query_group_key"
+        tools:text="有効" />
+
+    <TextView
+        android:id="@+id/text_custom_zero_query_group_summary"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="?attr/textAppearanceCaption"
+        app:layout_constraintEnd_toStartOf="@id/button_custom_zero_query_group_add"
+        app:layout_constraintStart_toEndOf="@id/text_custom_zero_query_group_status"
+        app:layout_constraintTop_toBottomOf="@id/text_custom_zero_query_group_key"
+        tools:text="4件 / 有効 4件" />
+
+    <TextView
+        android:id="@+id/text_custom_zero_query_group_preview"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:textAppearance="?attr/textAppearanceBody2"
+        app:layout_constraintEnd_toStartOf="@id/button_custom_zero_query_group_add"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/text_custom_zero_query_group_status"
+        tools:text="ございます・ございました・！・🙏" />
+
+    <ImageButton
+        android:id="@+id/button_custom_zero_query_group_add"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/custom_zero_query_add_candidate"
+        android:padding="10dp"
+        app:layout_constraintEnd_toStartOf="@id/button_custom_zero_query_group_more"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/baseline_add_circle_outline_24" />
+
+    <ImageButton
+        android:id="@+id/button_custom_zero_query_group_more"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/custom_zero_query_more_actions"
+        android:padding="10dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:srcCompat="@drawable/more_vert_24px" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
