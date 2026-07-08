@@ -126,9 +126,25 @@ class SuggestionAdapterShortcutEntryClickTest {
     }
 
     @Test
-    fun zeroQueryCollapsedClickNotifiesDedicatedListenerOnly() {
+    fun hiddenZeroQueryToggleClickNotifiesDedicatedListenerOnly() {
         val adapter = SuggestionAdapter()
-        adapter.submitContent(CandidateStripContent.ZeroQueryCollapsed)
+        adapter.submitContent(
+            CandidateStripContent.EmptyState(
+                showShortcutEntry = false,
+                quickActions = QuickActionsState(
+                    incognitoVisible = false,
+                    undoEnabled = false,
+                    redoEnabled = false,
+                    reconvertEnabled = false,
+                    undoText = "",
+                    redoText = "",
+                ),
+                clipboardPreview = null,
+                shortcutItems = emptyList(),
+                showIntegratedShortcuts = false,
+                showZeroQueryToggle = true,
+            )
+        )
         drainMainUntilItemCount(adapter, expectedItemCount = 1)
 
         var normalCandidateClicked = false

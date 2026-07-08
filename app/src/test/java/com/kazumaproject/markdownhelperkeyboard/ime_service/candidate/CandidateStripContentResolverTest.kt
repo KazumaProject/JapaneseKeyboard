@@ -386,7 +386,7 @@ class CandidateStripContentResolverTest {
     }
 
     @Test
-    fun zeroQueryCollapsedShown_whenCandidatesAreRetainedButHidden() {
+    fun hiddenZeroQueryShowsReturnToggle_whenCandidatesAreRetained() {
         val state = baseState(
             zeroQueryVisible = false,
             zeroQueryCandidates = listOf(candidate("おめでとうございます")),
@@ -395,13 +395,17 @@ class CandidateStripContentResolverTest {
             tailEmpty = true
         )
 
-        val content = CandidateStripContentResolver.resolve(state)
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
 
-        assertTrue(content is CandidateStripContent.ZeroQueryCollapsed)
+        assertTrue(emptyState.showZeroQueryToggle)
+        assertFalse(emptyState.showShortcutEntry)
+        assertFalse(emptyState.quickActions.hasAnyAction)
+        assertNull(emptyState.clipboardPreview)
+        assertFalse(emptyState.showIntegratedShortcuts)
     }
 
     @Test
-    fun zeroQueryCollapsedWinsOverEmptyStateContent() {
+    fun hiddenZeroQueryKeepsEmptyStateContentWithReturnToggle() {
         val state = baseState(
             zeroQueryVisible = false,
             zeroQueryCandidates = listOf(candidate("おめでとうございます")),
@@ -416,9 +420,13 @@ class CandidateStripContentResolverTest {
             shortcutItems = listOf(ShortcutType.SETTINGS)
         )
 
-        val content = CandidateStripContentResolver.resolve(state)
+        val emptyState = CandidateStripContentResolver.resolve(state).asEmptyState()
 
-        assertTrue(content is CandidateStripContent.ZeroQueryCollapsed)
+        assertTrue(emptyState.showZeroQueryToggle)
+        assertTrue(emptyState.showShortcutEntry)
+        assertTrue(emptyState.quickActions.undoEnabled)
+        assertNotNull(emptyState.clipboardPreview)
+        assertFalse(emptyState.showIntegratedShortcuts)
     }
 
     @Test

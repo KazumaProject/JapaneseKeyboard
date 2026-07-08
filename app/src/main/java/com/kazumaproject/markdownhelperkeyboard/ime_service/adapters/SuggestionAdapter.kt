@@ -680,7 +680,6 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             is CandidateStripContent.Candidates -> buildCandidateItems(content)
             is CandidateStripContent.GemmaActions -> buildGemmaActionItems(content)
             is CandidateStripContent.ZeroQuerySuggestions -> buildZeroQueryItems(content)
-            CandidateStripContent.ZeroQueryCollapsed -> listOf(SuggestionDisplayItem.ZeroQueryCloseItem)
             is CandidateStripContent.CustomLayoutPicker -> buildCustomLayoutItems(content)
             is CandidateStripContent.ExpandedShortcutEntry -> buildExpandedShortcutEntryItems(content)
             is CandidateStripContent.EmptyState -> buildEmptyStateItems(content)
@@ -730,6 +729,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         content: CandidateStripContent.EmptyState
     ): List<SuggestionDisplayItem> =
         buildList {
+            if (content.showZeroQueryToggle) {
+                add(SuggestionDisplayItem.ZeroQueryCloseItem)
+            }
             if (content.showShortcutEntry) {
                 add(SuggestionDisplayItem.ShortcutEntryItem)
             }
@@ -877,7 +879,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
 
     private fun startAnchorSignatureFor(items: List<SuggestionDisplayItem>): StartAnchorSignature? {
-        return when (val first = items.firstOrNull()) {
+        return when (
+            val first = items.firstOrNull {
+                it !is SuggestionDisplayItem.ZeroQueryCloseItem
+            }
+        ) {
             is SuggestionDisplayItem.QuickActionsItem ->
                 StartAnchorSignature(
                     role = StartAnchorRole.QuickActions,
@@ -1203,7 +1209,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private fun CandidateStripContent.EmptyState.shouldCenterClipboardPreview(): Boolean {
         return !quickActions.hasAnyAction &&
-            !showIntegratedShortcuts
+            !showIntegratedShortcuts &&
+            !showZeroQueryToggle
     }
 
     private fun CandidateStripContent.EmptyState.shouldOffsetCenteredClipboardPreview(): Boolean {
@@ -1211,7 +1218,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private fun CandidateStripContent.EmptyState.shouldAddClipboardPreviewStartMargin(): Boolean {
-        return !shouldCenterClipboardPreview() && quickActions.hasAnyAction
+        return !shouldCenterClipboardPreview() && (quickActions.hasAnyAction || showZeroQueryToggle)
     }
 
     private fun View.updateClipboardPreviewLayout(

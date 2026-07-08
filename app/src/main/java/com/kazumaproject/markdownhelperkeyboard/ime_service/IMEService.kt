@@ -18138,8 +18138,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 selectedTextGemmaActionsShown = content is CandidateStripContent.GemmaActions,
                 suggestionsEmpty = content !is CandidateStripContent.Candidates &&
                     content !is CandidateStripContent.GemmaActions &&
-                    content !is CandidateStripContent.ZeroQuerySuggestions &&
-                    content !is CandidateStripContent.ZeroQueryCollapsed,
+                    content !is CandidateStripContent.ZeroQuerySuggestions,
                 customLayoutPickerShown = content is CandidateStripContent.CustomLayoutPicker,
                 symbolKeyboardShown = keyboardSymbolViewState.value.isShown,
                 shortcutToolbarHiddenForCandidates = shortcutToolbarHiddenForCandidates
