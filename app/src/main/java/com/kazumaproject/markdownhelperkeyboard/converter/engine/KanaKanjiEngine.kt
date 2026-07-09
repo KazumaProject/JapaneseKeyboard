@@ -966,6 +966,39 @@ class KanaKanjiEngine {
         return !(this.webYomiTrie == null || this.webTangoTrie == null || this.webTokenArray == null)
     }
 
+    private fun splitLeadingLatinPrefix(input: String): Pair<String, String>? {
+        if (input.length > UByte.MAX_VALUE.toInt()) return null
+        val bodyStart = input.indexOfFirst { it.isHiraganaForReading() }
+        if (bodyStart <= 0) return null
+        val prefix = input.substring(0, bodyStart)
+        if (!prefix.all { it.isLatinLetterForMixedPreedit() }) return null
+        return prefix to input.substring(bodyStart)
+    }
+
+    private fun Char.isHiraganaForReading(): Boolean =
+        this in '\u3041'..'\u3096' || this == 'ー'
+
+    private fun Char.isLatinLetterForMixedPreedit(): Boolean =
+        this in 'a'..'z' || this in 'A'..'Z' ||
+            this in 'ａ'..'ｚ' || this in 'Ａ'..'Ｚ'
+
+    private fun Candidate.withLatinPrefix(prefix: String): Candidate = copy(
+        string = prefix + string,
+        length = (prefix.length + length.toInt()).toUByte(),
+        yomi = yomi?.let { prefix + it },
+    )
+
+    private fun BunsetsuCandidateResult.withLatinPrefix(prefix: String): BunsetsuCandidateResult {
+        val shift = prefix.length
+        return copy(
+            candidates = candidates.map { it.withLatinPrefix(prefix) },
+            splitPatterns = splitPatterns.map { pattern -> pattern.map { it + shift } },
+            splitPatternByCandidateString = splitPatternByCandidateString
+                .mapKeys { prefix + it.key }
+                .mapValues { it.value.map { pos -> pos + shift } },
+        )
+    }
+
     suspend fun getCandidatesOriginal(
         input: String,
         n: Int,
@@ -983,6 +1016,14 @@ class KanaKanjiEngine {
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
     ): List<Candidate> {
+        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
+            return getCandidatesOriginal(
+                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
+                userDictionaryRepository, learnRepository, isOmissionSearchEnable,
+                enableTypoCorrectionJapaneseFlick, enableTypoCorrectionQwertyEnglish,
+                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
+            ).map { it.withLatinPrefix(prefix) }
+        }
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -1462,6 +1503,14 @@ class KanaKanjiEngine {
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
     ): BunsetsuCandidateResult {
+        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
+            return getCandidatesOriginalWithBunsetsu(
+                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
+                userDictionaryRepository, learnRepository, isOmissionSearchEnable,
+                enableTypoCorrectionJapaneseFlick, enableTypoCorrectionQwertyEnglish,
+                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
+            ).withLatinPrefix(prefix)
+        }
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -1966,6 +2015,14 @@ class KanaKanjiEngine {
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
     ): BunsetsuCandidateResult {
+        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
+            return getCandidatesWithBunsetsuSeparation(
+                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
+                userDictionaryRepository, learnRepository, isOmissionSearchEnable,
+                enableTypoCorrectionJapaneseFlick, enableTypoCorrectionQwertyEnglish,
+                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
+            ).withLatinPrefix(prefix)
+        }
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -2416,6 +2473,14 @@ class KanaKanjiEngine {
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
     ): List<Candidate> {
+        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
+            return getCandidates(
+                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
+                userDictionaryRepository, learnRepository, isOmissionSearchEnable,
+                enableTypoCorrectionJapaneseFlick, enableTypoCorrectionQwertyEnglish,
+                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
+            ).map { it.withLatinPrefix(prefix) }
+        }
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -2852,6 +2917,13 @@ class KanaKanjiEngine {
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
     ): List<Candidate> {
+        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
+            return getCandidatesWithoutPrediction(
+                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
+                userDictionaryRepository, learnRepository,
+                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
+            ).map { it.withLatinPrefix(prefix) }
+        }
 
         val graph = graphBuilder.constructGraph(
             input,
@@ -3316,6 +3388,13 @@ class KanaKanjiEngine {
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
     ): BunsetsuCandidateResult {
+        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
+            return getCandidatesWithoutPredictionWithBunsetsu(
+                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
+                userDictionaryRepository, learnRepository,
+                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
+            ).withLatinPrefix(prefix)
+        }
 
         val graph = graphBuilder.constructGraph(
             input,
