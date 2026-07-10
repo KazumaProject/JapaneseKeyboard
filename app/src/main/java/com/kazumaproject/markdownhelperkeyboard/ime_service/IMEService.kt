@@ -921,6 +921,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun invalidateZeroQueryForEditorMutation() {
+        clearZeroQueryAllState(refresh = true)
+    }
+
     private fun toggleZeroQueryVisibility() {
         if (zeroQueryCandidates.isEmpty()) {
             clearZeroQueryAllState(refresh = true)
@@ -21672,6 +21676,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * - カーソル直前の文字がそれ以外の場合：その単語を末尾まで削除します。
      */
     private fun deleteWordOrSymbolsBeforeCursor(insertString: String) {
+        invalidateZeroQueryForEditorMutation()
         val inputConnection = currentInputConnection ?: return
         if (isHenkan.get()) return
         if (stringInTail.get().isNotEmpty()) return
@@ -21720,6 +21725,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * - PreEdit / stringInTail がある場合は committed text を消さず、stringInTail を削除します。
      */
     private fun deleteWordOrSymbolsAfterCursor(insertString: String) {
+        invalidateZeroQueryForEditorMutation()
         val inputConnection = currentInputConnection ?: return
         if (isHenkan.get()) return
         if (insertString.isNotEmpty()) {
@@ -21756,6 +21762,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun deleteLongPress() {
+        invalidateZeroQueryForEditorMutation()
         if (isKeyboardLayoutEditModeActive()) return
         if (deleteLongPressJob?.isActive == true) return
         activeDeleteHistoryBatch = DeleteHistoryBatch(
@@ -22674,6 +22681,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * This correctly handles complex emojis and user text selections.
      */
     private fun deleteLastGraphemeOrSelection() {
+        invalidateZeroQueryForEditorMutation()
         sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
     }
 
@@ -22996,6 +23004,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun deleteStringCommon(insertString: String) {
+        invalidateZeroQueryForEditorMutation()
         clearFunctionKeyConversionSource()
         val length = insertString.length
         when {
