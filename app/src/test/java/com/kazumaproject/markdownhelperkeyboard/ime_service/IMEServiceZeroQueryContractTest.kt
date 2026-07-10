@@ -52,6 +52,37 @@ class IMEServiceZeroQueryContractTest {
         )
     }
 
+    @Test
+    fun editorDeletionMutationsInvalidateZeroQueryState() {
+        val source = imeServiceSource()
+
+        listOf(
+            "private fun deleteWordOrSymbolsBeforeCursor",
+            "private fun deleteWordOrSymbolsAfterCursor",
+            "private fun deleteLongPress",
+            "private fun deleteLastGraphemeOrSelection",
+            "private fun deleteStringCommon",
+        ).forEach { functionStart ->
+            assertTrue(
+                "$functionStart must invalidate zero-query before mutating editor text",
+                source.functionBody(
+                    start = functionStart,
+                    end = "\n    private fun"
+                ).contains("invalidateZeroQueryForEditorMutation()")
+            )
+        }
+    }
+
+    @Test
+    fun zeroQueryInvalidationForEditorMutationRefreshesCandidateStrip() {
+        val function = imeServiceSource().functionBody(
+            start = "private fun invalidateZeroQueryForEditorMutation",
+            end = "\n    private fun toggleZeroQueryVisibility"
+        )
+
+        assertTrue(function.contains("clearZeroQueryAllState(refresh = true)"))
+    }
+
     private fun imeServiceSource(): String =
         listOf(
             File("app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt"),
