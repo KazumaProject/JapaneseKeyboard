@@ -164,7 +164,9 @@ import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.Clipb
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
@@ -2109,6 +2111,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.showLearnedCandidatesInIncognitoPreference
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
+        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setShowDictionaryCandidateLabels(preferences.showDictionaryCandidateLabels)
+        }
         zeroQuerySuggestionPreference = preferences.zeroQuerySuggestionPreference
         if (!zeroQuerySuggestionPreference) {
             clearZeroQueryAllState(refresh = true)
@@ -21133,7 +21138,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 ).map {
                     Candidate(
                         string = it.word,
-                        type = (28).toByte(),
+                        type = CANDIDATE_TYPE_USER_DICTIONARY,
                         length = (it.reading.length).toUByte(),
                         score = it.posScore
                     )
@@ -21158,7 +21163,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ).map {
                         Candidate(
                             string = it.out,
-                            type = (34).toByte(),
+                            type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                             length = (it.input.length).toUByte(),
                             score = it.score.toInt()
                         )
@@ -21276,7 +21281,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ).map {
                         Candidate(
                             string = it.word,
-                            type = (28).toByte(),
+                            type = CANDIDATE_TYPE_USER_DICTIONARY,
                             length = (it.reading.length).toUByte(),
                             score = it.posScore
                         )
@@ -21306,7 +21311,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         ).map {
                             Candidate(
                                 string = it.out,
-                                type = (34).toByte(),
+                                type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                                 length = (it.input.length).toUByte(),
                                 score = it.score.toInt()
                             )
@@ -21459,7 +21464,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 ).map {
                     Candidate(
                         string = it.word,
-                        type = (28).toByte(),
+                        type = CANDIDATE_TYPE_USER_DICTIONARY,
                         length = (it.reading.length).toUByte(),
                         score = it.posScore
                     )
@@ -21484,7 +21489,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ).map {
                         Candidate(
                             string = it.out,
-                            type = (34).toByte(),
+                            type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                             length = (it.input.length).toUByte(),
                             score = it.score.toInt()
                         )

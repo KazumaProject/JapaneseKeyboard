@@ -2,11 +2,14 @@ package com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm
 
 import com.kazumaproject.core.domain.extensions.isAllFullWidthNumericSymbol
 import com.kazumaproject.core.domain.extensions.isAllHalfWidthNumericSymbol
+import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.graph.MozcNodeType
 import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.Other.BOS
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryCheckResult
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryChecker
@@ -105,11 +108,10 @@ class FindPath(
                 if (foundStrings.add(stringFromNode)) {
                     val candidate = Candidate(
                         string = stringFromNode,
-                        type = when {
-                            stringFromNode.isAllFullWidthNumericSymbol() -> 30.toByte()
-                            stringFromNode.isAllHalfWidthNumericSymbol() -> 31.toByte()
-                            else -> 1.toByte()
-                        },
+                        type = resolveCandidateType(
+                            string = stringFromNode,
+                            sources = candidateSourcesFromNode(node.first),
+                        ),
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
                         score = if (stringFromNode.any { it.isDigit() }) {
@@ -309,6 +311,42 @@ class FindPath(
         return result.dropLast(1).joinToString("")
     }
 
+    private fun candidateSourcesFromNode(node: Node): Sequence<CandidateSource> = sequence {
+        var current = node.next
+        while (current != null && current.tango != "EOS") {
+            yield(current.candidateSource)
+            current = current.next
+        }
+    }
+
+    private fun candidateSourcesFromPath(path: LinkedPathNode): Sequence<CandidateSource> =
+        generateSequence(path) { it.next }
+            .map { it.node }
+            .filter { it.tango != "BOS" && it.tango != "EOS" }
+            .map { it.candidateSource }
+
+    private fun resolveCandidateType(
+        string: String,
+        sources: Sequence<CandidateSource>,
+    ): Byte {
+        var containsUserDictionary = false
+        for (source in sources) {
+            when (source) {
+                CandidateSource.LEARNED_DICTIONARY ->
+                    return CANDIDATE_TYPE_LEARNED_DICTIONARY
+
+                CandidateSource.USER_DICTIONARY -> containsUserDictionary = true
+                CandidateSource.SYSTEM -> Unit
+            }
+        }
+        if (containsUserDictionary) return CANDIDATE_TYPE_USER_DICTIONARY
+        return when {
+            string.isAllFullWidthNumericSymbol() -> 30.toByte()
+            string.isAllHalfWidthNumericSymbol() -> 31.toByte()
+            else -> 1.toByte()
+        }
+    }
+
     private fun getYomiUsedFromNode(node: Node): String {
         var tempNode = node
         val result = mutableListOf<String>()
@@ -442,11 +480,10 @@ class FindPath(
 
                     val candidate = Candidate(
                         string = stringFromNode,
-                        type = when {
-                            stringFromNode.isAllFullWidthNumericSymbol() -> 30.toByte()
-                            stringFromNode.isAllHalfWidthNumericSymbol() -> 31.toByte()
-                            else -> 1.toByte()
-                        },
+                        type = resolveCandidateType(
+                            string = stringFromNode,
+                            sources = candidateSourcesFromPath(element.path),
+                        ),
                         length = length.toUByte(),
                         yomi = yomiUsedFromNode,
                         score = totalCost,
@@ -609,11 +646,10 @@ class FindPath(
 
                     val candidate = Candidate(
                         string = stringFromNode,
-                        type = when {
-                            stringFromNode.isAllFullWidthNumericSymbol() -> 30.toByte()
-                            stringFromNode.isAllHalfWidthNumericSymbol() -> 31.toByte()
-                            else -> 1.toByte()
-                        },
+                        type = resolveCandidateType(
+                            string = stringFromNode,
+                            sources = candidateSourcesFromNode(node.first),
+                        ),
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
                         score = if (stringFromNode.any { it.isDigit() }) {

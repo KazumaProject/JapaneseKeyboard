@@ -5,7 +5,9 @@ import android.os.Looper
 import android.widget.FrameLayout
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import org.junit.Assert.assertEquals
@@ -90,6 +92,78 @@ class SuggestionAdapterUserTemplateTypeTest {
 
         adapter.release()
     }
+
+    @Test
+    fun dictionaryCandidateLabelsAreHiddenByDefault() {
+        val adapter = SuggestionAdapter()
+        adapter.suggestions = dictionaryCandidates()
+        awaitItemCount(adapter, 3)
+        val holder = createHolder(adapter)
+
+        repeat(3) { position ->
+            adapter.onBindViewHolder(holder, position)
+            assertEquals("", holder.typeText.text.toString())
+        }
+
+        adapter.release()
+    }
+
+    @Test
+    fun dictionaryCandidateLabelsAreShownWhenEnabled() {
+        val adapter = SuggestionAdapter()
+        adapter.setShowDictionaryCandidateLabels(true)
+        adapter.suggestions = dictionaryCandidates()
+        awaitItemCount(adapter, 3)
+        val holder = createHolder(adapter)
+
+        val expected = listOf("学習", "ユーザー", "定型")
+        expected.forEachIndexed { position, label ->
+            adapter.onBindViewHolder(holder, position)
+            assertEquals(label, holder.typeText.text.toString())
+        }
+
+        adapter.release()
+    }
+
+    @Test
+    fun disablingDictionaryLabelsClearsRecycledHolderText() {
+        val adapter = SuggestionAdapter()
+        adapter.setShowDictionaryCandidateLabels(true)
+        adapter.suggestions = listOf(
+            candidate("ありがとうございます", CANDIDATE_TYPE_USER_TEMPLATE)
+        )
+        awaitItemCount(adapter, 1)
+        val holder = createHolder(adapter)
+
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals("定型", holder.typeText.text.toString())
+
+        adapter.setShowDictionaryCandidateLabels(false)
+        adapter.onBindViewHolder(holder, 0)
+        assertEquals("", holder.typeText.text.toString())
+
+        adapter.release()
+    }
+
+    @Test
+    fun numericType20IsNotMislabelledAsLearningCandidate() {
+        val adapter = SuggestionAdapter()
+        adapter.setShowDictionaryCandidateLabels(true)
+        adapter.suggestions = listOf(candidate("₁₂₃", 20.toByte()))
+        awaitItemCount(adapter, 1)
+        val holder = createHolder(adapter)
+
+        adapter.onBindViewHolder(holder, 0)
+
+        assertEquals("", holder.typeText.text.toString())
+        adapter.release()
+    }
+
+    private fun dictionaryCandidates(): List<Candidate> = listOf(
+        candidate("学習候補", CANDIDATE_TYPE_LEARNED_DICTIONARY),
+        candidate("ユーザー候補", CANDIDATE_TYPE_USER_DICTIONARY),
+        candidate("ありがとうございます", CANDIDATE_TYPE_USER_TEMPLATE),
+    )
 
     private fun candidate(string: String, type: Byte): Candidate {
         return Candidate(

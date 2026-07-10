@@ -69,6 +69,8 @@ object AppPreference {
     private val USER_DICTIONARY_PREFERENCE = Pair("user_dictionary_preference", true)
     private val USER_DICTIONARY_PREFIX_PREFERENCE = Pair("user_dictionary_prefix_match_number", 2)
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
+    private val SHOW_DICTIONARY_CANDIDATE_LABELS_PREFERENCE =
+        Pair("show_dictionary_candidate_labels_preference", false)
     private val ZERO_QUERY_SUGGESTION_PREFERENCE =
         Pair("zero_query_suggestion_preference", false)
     private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
@@ -1471,6 +1473,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(USER_TEMPLATE_PREFERENCE.first, value ?: true)
+        }
+
+    var show_dictionary_candidate_labels_preference: Boolean
+        get() = preferences.getBoolean(
+            SHOW_DICTIONARY_CANDIDATE_LABELS_PREFERENCE.first,
+            SHOW_DICTIONARY_CANDIDATE_LABELS_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SHOW_DICTIONARY_CANDIDATE_LABELS_PREFERENCE.first, value)
         }
 
     var zero_query_suggestion_preference: Boolean
