@@ -30,7 +30,9 @@ import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
@@ -38,9 +40,9 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeybo
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.ime_service.CandidateStripLayoutPolicy
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
-import com.kazumaproject.markdownhelperkeyboard.ime_service.measureDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.debugPrintCodePoints
+import com.kazumaproject.markdownhelperkeyboard.ime_service.measureDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.traceDebugSection
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import kotlinx.coroutines.CoroutineScope
@@ -98,9 +100,9 @@ internal fun resolveCandidateYomiPresentation(
     val yomi = suggestion.yomi
     val shouldShowYomi =
         showCandidateYomiForLiveConversion &&
-            isFirstCandidate &&
-            !yomi.isNullOrBlank() &&
-            yomi != suggestion.string
+                isFirstCandidate &&
+                !yomi.isNullOrBlank() &&
+                yomi != suggestion.string
     return CandidateYomiPresentation(
         isVisible = shouldShowYomi,
         text = if (shouldShowYomi) yomi.orEmpty() else "",
@@ -211,9 +213,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     ) {
         val hasVisibleAction: Boolean
             get() = undoEnabled ||
-                redoEnabled ||
-                reconvertEnabled ||
-                incognitoIconDrawable != null
+                    redoEnabled ||
+                    reconvertEnabled ||
+                    incognitoIconDrawable != null
     }
 
     private data class ClipboardPreviewState(
@@ -275,6 +277,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var candidateTextSize: Float = 14f
     private var candidateTextColor: Int? = null
     private var showCandidateYomiForLiveConversion: Boolean = false
+    private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = CandidateItemColorState()
 
     private var candidateEmptyDrawableColor: Int? = null
@@ -445,8 +448,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     fun setIntegratedShortcutEntryExpanded(expanded: Boolean) {
         val normalizedExpanded =
             expanded &&
-                showIntegratedShortcutEntry &&
-                shortcutItems.isNotEmpty()
+                    showIntegratedShortcutEntry &&
+                    shortcutItems.isNotEmpty()
         if (integratedShortcutEntryExpanded == normalizedExpanded) return
         integratedShortcutEntryExpanded = normalizedExpanded
         rebuildDisplayItems()
@@ -519,41 +522,41 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         ): Boolean {
             return when {
                 oldItem is SuggestionDisplayItem.CandidateItem &&
-                    newItem is SuggestionDisplayItem.CandidateItem ->
+                        newItem is SuggestionDisplayItem.CandidateItem ->
                     oldItem.candidateIndex == newItem.candidateIndex &&
-                        oldItem.candidate.string == newItem.candidate.string &&
-                        oldItem.candidate.type == newItem.candidate.type
+                            oldItem.candidate.string == newItem.candidate.string &&
+                            oldItem.candidate.type == newItem.candidate.type
 
                 oldItem is SuggestionDisplayItem.GemmaActionItem &&
-                    newItem is SuggestionDisplayItem.GemmaActionItem ->
+                        newItem is SuggestionDisplayItem.GemmaActionItem ->
                     oldItem.candidateIndex == newItem.candidateIndex &&
-                        oldItem.candidate.string == newItem.candidate.string &&
-                        oldItem.candidate.type == newItem.candidate.type
+                            oldItem.candidate.string == newItem.candidate.string &&
+                            oldItem.candidate.type == newItem.candidate.type
 
                 oldItem is SuggestionDisplayItem.ZeroQueryCloseItem &&
-                    newItem is SuggestionDisplayItem.ZeroQueryCloseItem -> true
+                        newItem is SuggestionDisplayItem.ZeroQueryCloseItem -> true
 
                 oldItem is SuggestionDisplayItem.ZeroQueryCandidateItem &&
-                    newItem is SuggestionDisplayItem.ZeroQueryCandidateItem ->
+                        newItem is SuggestionDisplayItem.ZeroQueryCandidateItem ->
                     oldItem.candidateIndex == newItem.candidateIndex &&
-                        oldItem.candidate.string == newItem.candidate.string &&
-                        oldItem.candidate.type == newItem.candidate.type
+                            oldItem.candidate.string == newItem.candidate.string &&
+                            oldItem.candidate.type == newItem.candidate.type
 
                 oldItem is SuggestionDisplayItem.QuickActionsItem &&
-                    newItem is SuggestionDisplayItem.QuickActionsItem -> true
+                        newItem is SuggestionDisplayItem.QuickActionsItem -> true
 
                 oldItem is SuggestionDisplayItem.ClipboardPreviewItem &&
-                    newItem is SuggestionDisplayItem.ClipboardPreviewItem -> true
+                        newItem is SuggestionDisplayItem.ClipboardPreviewItem -> true
 
                 oldItem is SuggestionDisplayItem.ShortcutEntryItem &&
-                    newItem is SuggestionDisplayItem.ShortcutEntryItem -> true
+                        newItem is SuggestionDisplayItem.ShortcutEntryItem -> true
 
                 oldItem is SuggestionDisplayItem.ShortcutItem &&
-                    newItem is SuggestionDisplayItem.ShortcutItem ->
+                        newItem is SuggestionDisplayItem.ShortcutItem ->
                     oldItem.shortcutType == newItem.shortcutType
 
                 oldItem is SuggestionDisplayItem.CustomLayoutItem &&
-                    newItem is SuggestionDisplayItem.CustomLayoutItem ->
+                        newItem is SuggestionDisplayItem.CustomLayoutItem ->
                     oldItem.layout.stableId == newItem.layout.stableId
 
                 else -> false
@@ -635,7 +638,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     fun submitContent(content: CandidateStripContent) {
         val layoutModeChanged =
             CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(currentContent) !=
-                CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(content)
+                    CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(content)
         val nextCandidates = content.candidatesForClicks()
         submitContent(
             content = content,
@@ -690,7 +693,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             is CandidateStripContent.GemmaActions -> buildGemmaActionItems(content)
             is CandidateStripContent.ZeroQuerySuggestions -> buildZeroQueryItems(content)
             is CandidateStripContent.CustomLayoutPicker -> buildCustomLayoutItems(content)
-            is CandidateStripContent.ExpandedShortcutEntry -> buildExpandedShortcutEntryItems(content)
+            is CandidateStripContent.ExpandedShortcutEntry -> buildExpandedShortcutEntryItems(
+                content
+            )
+
             is CandidateStripContent.EmptyState -> buildEmptyStateItems(content)
             CandidateStripContent.Empty -> emptyList()
         }
@@ -869,20 +875,28 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         when (this) {
             is SuggestionDisplayItem.CandidateItem ->
                 SuggestionDisplayItemKind.CandidateItem
+
             is SuggestionDisplayItem.GemmaActionItem ->
                 SuggestionDisplayItemKind.GemmaActionItem
+
             SuggestionDisplayItem.ZeroQueryCloseItem ->
                 SuggestionDisplayItemKind.ZeroQueryCloseItem
+
             is SuggestionDisplayItem.ZeroQueryCandidateItem ->
                 SuggestionDisplayItemKind.ZeroQueryCandidateItem
+
             is SuggestionDisplayItem.QuickActionsItem ->
                 SuggestionDisplayItemKind.QuickActionsItem
+
             is SuggestionDisplayItem.ClipboardPreviewItem ->
                 SuggestionDisplayItemKind.ClipboardPreviewItem
+
             SuggestionDisplayItem.ShortcutEntryItem ->
                 SuggestionDisplayItemKind.ShortcutEntryItem
+
             is SuggestionDisplayItem.ShortcutItem ->
                 SuggestionDisplayItemKind.ShortcutItem
+
             is SuggestionDisplayItem.CustomLayoutItem ->
                 SuggestionDisplayItemKind.CustomLayoutItem
         }
@@ -903,10 +917,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         reconvertVisible = first.state.reconvertEnabled
                     )
                 )
+
             SuggestionDisplayItem.ShortcutEntryItem ->
                 StartAnchorSignature(role = StartAnchorRole.ShortcutEntry)
+
             is SuggestionDisplayItem.ShortcutItem ->
                 StartAnchorSignature(role = StartAnchorRole.ShortcutItems)
+
             else -> null
         }
     }
@@ -933,7 +950,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val redoIconParent: ConstraintLayout? = itemView.findViewById(R.id.redo_icon_parent)
         val redoImageView: ImageView? = itemView.findViewById(R.id.redo_image_view)
         val redoIcon: MaterialTextView? = itemView.findViewById(R.id.redo_icon)
-        val reconvertIconParent: ConstraintLayout? = itemView.findViewById(R.id.reconvert_icon_parent)
+        val reconvertIconParent: ConstraintLayout? =
+            itemView.findViewById(R.id.reconvert_icon_parent)
         val reconvertIcon: MaterialTextView? = itemView.findViewById(R.id.reconvert_icon)
         val reconvertImageView: ImageView? = itemView.findViewById(R.id.reconvert_image_view)
         val incognitoIcon: AppCompatImageButton? = itemView.findViewById(R.id.incognito_icon)
@@ -1054,10 +1072,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 holder as QuickActionsViewHolder,
                 (item as SuggestionDisplayItem.QuickActionsItem).state,
             )
+
             VIEW_TYPE_CLIPBOARD_PREVIEW -> onBindClipboardPreviewViewHolder(
                 holder as ClipboardPreviewViewHolder,
                 (item as SuggestionDisplayItem.ClipboardPreviewItem).state,
             )
+
             VIEW_TYPE_SUGGESTION -> {
                 val suggestionHolder = holder as SuggestionViewHolder
                 when (item) {
@@ -1065,9 +1085,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         suggestionHolder,
                         item,
                     )
+
                     else -> Unit
                 }
             }
+
             VIEW_TYPE_ZERO_QUERY_CLOSE -> onBindZeroQueryCloseViewHolder(
                 holder as ZeroQueryViewHolder,
             )
@@ -1098,7 +1120,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         }
     }
 
-    private fun onBindQuickActionsViewHolder(holder: QuickActionsViewHolder, state: QuickActionsState) {
+    private fun onBindQuickActionsViewHolder(
+        holder: QuickActionsViewHolder,
+        state: QuickActionsState
+    ) {
         val isDynamicColorEnable = DynamicColors.isDynamicColorAvailable()
         holder.apply {
             incognitoIcon?.apply {
@@ -1238,8 +1263,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private fun CandidateStripContent.EmptyState.shouldCenterClipboardPreview(): Boolean {
         return !quickActions.hasAnyAction &&
-            !showIntegratedShortcuts &&
-            !showZeroQueryToggle
+                !showIntegratedShortcuts &&
+                !showZeroQueryToggle
     }
 
     private fun CandidateStripContent.EmptyState.shouldOffsetCenteredClipboardPreview(): Boolean {
@@ -1396,6 +1421,12 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     fun setShowCandidateYomiForLiveConversion(enabled: Boolean) {
         if (showCandidateYomiForLiveConversion == enabled) return
         showCandidateYomiForLiveConversion = enabled
+        notifyItemRangeChanged(0, itemCount)
+    }
+
+    fun setShowDictionaryCandidateLabels(enabled: Boolean) {
+        if (showDictionaryCandidateLabels == enabled) return
+        showDictionaryCandidateLabels = enabled
         notifyItemRangeChanged(0, itemCount)
     }
 
@@ -1560,21 +1591,24 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (26).toByte() -> ""
             /** Mozc UT Web **/
             (27).toByte() -> ""
-            (28).toByte() -> ""
+            CANDIDATE_TYPE_USER_DICTIONARY ->
+                if (showDictionaryCandidateLabels) "[ユーザー]" else ""
             /** 英語 **/
             (29).toByte() -> ""
             /** 全角 **/
             (30).toByte() -> "[全]"
             CANDIDATE_TYPE_TIME -> ""
             CANDIDATE_TYPE_ERA -> ""
-            CANDIDATE_TYPE_USER_TEMPLATE -> ""
+            CANDIDATE_TYPE_USER_TEMPLATE ->
+                if (showDictionaryCandidateLabels) "[定型]" else ""
             /** 半角 **/
             (31).toByte() -> "[半]"
             /** 漢数字 **/
             (32).toByte() -> ""
             /** Zenz **/
             (33).toByte() -> "[AI]"
-            (34).toByte() -> "[履歴]"
+            CANDIDATE_TYPE_LEARNED_DICTIONARY ->
+                if (showDictionaryCandidateLabels) "[学習]" else ""
             /** Typo Correction QWERTY **/
             (35).toByte() -> "[修正]"
 
@@ -1771,7 +1805,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private fun Candidate.isSelectedTextGemmaActionCandidate(): Boolean {
         return type == GemmaTranslationManager.SELECTION_TRANSLATE_ACTION_CANDIDATE_TYPE.toByte() ||
-            type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
+                type == GemmaTranslationManager.SELECTION_PROMPT_ACTION_CANDIDATE_TYPE.toByte()
     }
 
 }

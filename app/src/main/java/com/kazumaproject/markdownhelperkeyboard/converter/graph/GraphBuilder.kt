@@ -4,6 +4,7 @@ import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.core.domain.extensions.hasNConsecutiveChars
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.graph.MozcNodeAttributes
 import com.kazumaproject.graph.MozcNodeType
 import com.kazumaproject.graph.Node
@@ -208,6 +209,7 @@ class GraphBuilder {
                     len = userWord.reading.length.toShort(),
                     sPos = i,
                     mozcAttributes = mozcAttributesFor(contextId),
+                    candidateSource = CandidateSource.USER_DICTIONARY,
                 )
                 addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "USER")
             }
@@ -228,6 +230,7 @@ class GraphBuilder {
                     len = learnedWord.input.length.toShort(),
                     sPos = i,
                     mozcAttributes = mozcAttributesFor(learnedWord.leftId ?: 1851.toShort()),
+                    candidateSource = CandidateSource.LEARNED_DICTIONARY,
                 )
                 addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "LEARN")
             }
