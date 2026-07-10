@@ -17450,6 +17450,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 candidateColumnsLandscape ?: "1"
             }
 
+            val recyclerView = mainView.suggestionRecyclerView
+            val adapter = recyclerView.adapter ?: run {
+                // Do not cache a layout created before the active adapter is attached.
+                // Grid span lookup needs the adapter to keep shortcut items on one row.
+                lastSuggestionLayoutKey = null
+                return@measureDebugSection
+            }
+
             val key = SuggestionLayoutKey(
                 isPortrait = isPortrait,
                 columnNum = columnNum,
@@ -17459,14 +17467,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ),
                 isKeyboardFloatingMode = isKeyboardFloatingMode == true
             )
-            val recyclerView = mainView.suggestionRecyclerView
             if (lastSuggestionLayoutKey == key && recyclerView.layoutManager != null) {
                 return@measureDebugSection
             }
 
             lastSuggestionLayoutKey = key
 
-            val adapter = recyclerView.adapter
             recyclerView.adapter = null
 
             mainSuggestionGridSpacingDecoration?.let { decoration ->
@@ -17495,7 +17501,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                         override fun getSpanSize(position: Int): Int {
-                            return when (adapter?.getItemViewType(position)) {
+                            return when (adapter.getItemViewType(position)) {
                                 SuggestionAdapter.VIEW_TYPE_EMPTY,
                                 SuggestionAdapter.VIEW_TYPE_CLIPBOARD_PREVIEW,
                                 SuggestionAdapter.VIEW_TYPE_SHORTCUT_ENTRY,
