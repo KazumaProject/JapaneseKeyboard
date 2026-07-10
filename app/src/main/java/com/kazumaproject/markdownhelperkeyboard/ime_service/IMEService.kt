@@ -163,9 +163,14 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.buildRomajiCandidates
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.toUserTemplateCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
@@ -20086,6 +20091,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             14,
             28,
             30,
+            CANDIDATE_TYPE_TIME.toInt(),
+            CANDIDATE_TYPE_ERA.toInt(),
+            CANDIDATE_TYPE_USER_TEMPLATE.toInt(),
             GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE,
             GemmaTranslationManager.PROMPT_RESULT_CANDIDATE_TYPE -> {
                 commitAndClearInput(candidate.string)
@@ -21135,22 +21143,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
-        val resultFromUserTemplate = if (isUserTemplateEnable == true) {
-            withContext(Dispatchers.IO) {
-                userTemplateRepository.searchByReading(
-                    reading = insertString, limit = 8
-                ).map {
-                    Candidate(
-                        string = it.word,
-                        type = (30).toByte(),
-                        length = (it.reading.length).toUByte(),
-                        score = it.posScore
-                    )
-                }.sortedBy { it.score }
-            }
-        } else {
-            emptyList()
-        }
+        val resultFromUserTemplate = getUserTemplateCandidates(insertString)
 
         val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
@@ -21294,24 +21287,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
-        val resultFromUserTemplate = if (isUserTemplateEnable == true) {
+        val resultFromUserTemplate =
             measureDebugStage("IMEService.getSuggestionList.userTemplate") {
-                withContext(Dispatchers.IO) {
-                    userTemplateRepository.searchByReading(
-                        reading = insertString, limit = 8
-                    ).map {
-                        Candidate(
-                            string = it.word,
-                            type = (30).toByte(),
-                            length = (it.reading.length).toUByte(),
-                            score = it.posScore
-                        )
-                    }.sortedBy { it.score }
-                }
+                getUserTemplateCandidates(insertString)
             }
-        } else {
-            emptyList()
-        }
 
         val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
@@ -21490,22 +21469,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
-        val resultFromUserTemplate = if (isUserTemplateEnable == true) {
-            withContext(Dispatchers.IO) {
-                userTemplateRepository.searchByReading(
-                    reading = insertString, limit = 8
-                ).map {
-                    Candidate(
-                        string = it.word,
-                        type = (30).toByte(),
-                        length = (it.reading.length).toUByte(),
-                        score = it.posScore
-                    )
-                }.sortedBy { it.score }
-            }
-        } else {
-            emptyList()
-        }
+        val resultFromUserTemplate = getUserTemplateCandidates(insertString)
 
         val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
@@ -21619,55 +21583,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return engineCandidates.distinctBy { it.string }
     }
 
-    private fun getRomajiCandidates(insertString: String): List<Candidate> {
-        val conversionString = romajiConverter?.hiraganaToRomaji(insertString)
-        if (conversionString != null) {
-            val conversionFirstCapitalString =
-                conversionString.replaceFirstChar { it.uppercaseChar() }
-            val conversionFirstCapitalStringHankaku =
-                conversionFirstCapitalString.toHankakuAlphabet()
-            val conversionHankaku = conversionString.toHankakuAlphabet()
-            return listOf(
-                Candidate(
-                    string = conversionString,
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29000
-                ),
-                Candidate(
-                    string = conversionHankaku,
-                    type = (31).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29001
-                ),
-                Candidate(
-                    string = conversionFirstCapitalString,
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29002
-                ),
-                Candidate(
-                    string = conversionFirstCapitalStringHankaku,
-                    type = (31).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29003
-                ),
-                Candidate(
-                    string = conversionString.uppercase(),
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29004
-                ),
-                Candidate(
-                    string = conversionHankaku.uppercase(),
-                    type = (31).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29005
-                ),
-            )
-        } else {
-            return emptyList()
+    private suspend fun getUserTemplateCandidates(insertString: String): List<Candidate> {
+        if (isUserTemplateEnable != true) return emptyList()
+        return withContext(Dispatchers.IO) {
+            userTemplateRepository.searchByReading(
+                reading = insertString,
+                limit = 8
+            ).toUserTemplateCandidates()
         }
+    }
+
+    private fun getRomajiCandidates(insertString: String): List<Candidate> {
+        val romaji = romajiConverter?.hiraganaToRomaji(insertString) ?: return emptyList()
+        return buildRomajiCandidates(
+            readingLength = insertString.length,
+            romaji = romaji
+        )
     }
 
     /**

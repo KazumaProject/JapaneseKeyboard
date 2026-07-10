@@ -20,6 +20,8 @@ import com.kazumaproject.hiraToKata
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphNodeDedupMode
@@ -4125,7 +4127,7 @@ class KanaKanjiEngine {
             return listOf(
                 Candidate(
                     string = "${number.second}$unit",
-                    type = if (isTimeLike) 30 else 18,
+                    type = if (isTimeLike) CANDIDATE_TYPE_TIME else 18,
                     length = input.length.toUByte(),
                     score = 8000,
                     leftId = connectionId,
@@ -4297,7 +4299,7 @@ class KanaKanjiEngine {
         // 2つのフォーマットの候補を作成
         val candidate1 = Candidate(
             string = "$hoursStr:$minutesStr",
-            type = 30,
+            type = CANDIDATE_TYPE_TIME,
             length = length,
             score = 8000,
             leftId = 1851,
@@ -4306,7 +4308,7 @@ class KanaKanjiEngine {
 
         val candidate2 = Candidate(
             string = "${hoursStr}時${minutesStr}分",
-            type = 30,
+            type = CANDIDATE_TYPE_TIME,
             length = length,
             score = 8000,
             leftId = 1851,
@@ -4354,7 +4356,7 @@ class KanaKanjiEngine {
 
         // 候補を作成
         val candidate = Candidate(
-            string = dateString, type = 40, // 時刻(30)とは別のタイプ番号を割り当て（例: 40）
+            string = dateString, type = 40,
             length = length, score = 8000, leftId = 1851, // 必要に応じて日付用のIDに変更
             rightId = 1851  // 必要に応じて日付用のIDに変更
         )
@@ -4385,7 +4387,7 @@ class KanaKanjiEngine {
             val eraYear = year - start + 1
             Candidate(
                 string = formatEra(name, eraYear),
-                type = 30,
+                type = CANDIDATE_TYPE_ERA,
                 length = length,
                 score = 70000,
                 leftId = 1851,
