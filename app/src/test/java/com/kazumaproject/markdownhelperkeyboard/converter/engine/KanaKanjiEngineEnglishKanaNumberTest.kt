@@ -1,6 +1,10 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.engine
 
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -55,6 +59,46 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         assertTrue(engine.getCandidatesEnglishKana("にじゅっふん").any { it.string == "20分" })
         assertTrue(engine.getCandidatesEnglishKana("ろくじ").any { it.string == "6時" })
         assertTrue(engine.getCandidatesEnglishKana("にじゅうよじ").any { it.string == "24時" })
+    }
+
+    @Test
+    fun timeCandidatesDoNotUseFullWidthCandidateType() {
+        val candidates = engine.getCandidatesEnglishKana("1234")
+
+        assertEquals(
+            CANDIDATE_TYPE_TIME,
+            candidates.first { it.string == "12:34" }.type
+        )
+        assertEquals(
+            CANDIDATE_TYPE_TIME,
+            candidates.first { it.string == "12時34分" }.type
+        )
+        assertFalse(candidates.any { it.string in setOf("12:34", "12時34分") && it.type == 30.toByte() })
+    }
+
+    @Test
+    fun halfWidthTimeUnitUsesTimeTypeAndFullWidthVariantKeepsFullWidthType() {
+        val candidates = engine.getCandidatesEnglishKana("にじゅっぷん")
+
+        assertTrue(candidates.any { it.string == "20分" && it.type == CANDIDATE_TYPE_TIME })
+        assertFalse(candidates.any { it.string == "20分" && it.type == 30.toByte() })
+        assertTrue(candidates.any { it.string == "２０分" && it.type == 30.toByte() })
+    }
+
+    @Test
+    fun eraCandidatesUseDedicatedType() {
+        val method = KanaKanjiEngine::class.java.getDeclaredMethod(
+            "createCandidatesForEra",
+            Int::class.javaPrimitiveType,
+            String::class.java
+        ).apply { isAccessible = true }
+
+        @Suppress("UNCHECKED_CAST")
+        val candidates = method.invoke(engine, 2024, "2024ねん") as List<Candidate>
+
+        assertTrue(candidates.isNotEmpty())
+        assertTrue(candidates.all { it.type == CANDIDATE_TYPE_ERA })
+        assertFalse(candidates.any { it.type == 30.toByte() })
     }
 
     @Test
