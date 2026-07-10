@@ -33,6 +33,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
+import com.kazumaproject.markdownhelperkeyboard.ime_service.CandidateStripLayoutPolicy
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.measureDebugSection
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
@@ -114,6 +115,8 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         const val VIEW_TYPE_SHORTCUT = 4
         const val VIEW_TYPE_CLIPBOARD_PREVIEW = 5
         const val VIEW_TYPE_SHORTCUT_ENTRY = 6
+        const val VIEW_TYPE_ZERO_QUERY_CLOSE = 7
+        const val VIEW_TYPE_ZERO_QUERY_CANDIDATE = 8
 
         private val diffThreadIndex = AtomicInteger(0)
         private val diffExecutor: Executor = Executors.newFixedThreadPool(2) { runnable ->
@@ -627,10 +630,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     fun submitContent(content: CandidateStripContent) {
+        val layoutModeChanged =
+            CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(currentContent) !=
+                CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(content)
         val nextCandidates = content.candidatesForClicks()
         submitContent(
             content = content,
-            onCommitted = if (candidateSuggestions != nextCandidates) {
+            onCommitted = if (layoutModeChanged || candidateSuggestions != nextCandidates) {
                 { onListUpdated?.invoke() }
             } else {
                 null
@@ -913,6 +919,10 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         val actionText: MaterialTextView = itemView.findViewById(R.id.suggestion_gemma_action_text)
     }
 
+    inner class ZeroQueryViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
+        val text: MaterialTextView = itemView.findViewById(R.id.zero_query_item_text_view)
+    }
+
     inner class QuickActionsViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val undoIconParent: ConstraintLayout? = itemView.findViewById(R.id.undo_icon_parent)
         val undoImageView: ImageView? = itemView.findViewById(R.id.imageView)
@@ -948,10 +958,14 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     override fun getItemViewType(position: Int): Int {
-        return when (displayItems[position]) {
+        return viewTypeFor(displayItems[position])
+    }
+
+    private fun viewTypeFor(item: SuggestionDisplayItem): Int {
+        return when (item) {
             is SuggestionDisplayItem.CandidateItem -> VIEW_TYPE_SUGGESTION
-            SuggestionDisplayItem.ZeroQueryCloseItem -> VIEW_TYPE_SUGGESTION
-            is SuggestionDisplayItem.ZeroQueryCandidateItem -> VIEW_TYPE_SUGGESTION
+            SuggestionDisplayItem.ZeroQueryCloseItem -> VIEW_TYPE_ZERO_QUERY_CLOSE
+            is SuggestionDisplayItem.ZeroQueryCandidateItem -> VIEW_TYPE_ZERO_QUERY_CANDIDATE
             is SuggestionDisplayItem.GemmaActionItem -> VIEW_TYPE_GEMMA_ACTION
             is SuggestionDisplayItem.QuickActionsItem -> VIEW_TYPE_EMPTY
             is SuggestionDisplayItem.ClipboardPreviewItem -> VIEW_TYPE_CLIPBOARD_PREVIEW
@@ -984,6 +998,16 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                 val customView = LayoutInflater.from(parent.context)
                     .inflate(R.layout.suggestion_custom_layout_item, parent, false)
                 CustomLayoutViewHolder(customView)
+            }
+
+            VIEW_TYPE_ZERO_QUERY_CLOSE,
+            VIEW_TYPE_ZERO_QUERY_CANDIDATE -> {
+                val itemView = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.suggestion_zero_query_item, parent, false)
+                itemView.setBackgroundResource(
+                    if (isDynamicColorEnable) com.kazumaproject.core.R.drawable.recyclerview_item_bg_material else com.kazumaproject.core.R.drawable.recyclerview_item_bg
+                )
+                ZeroQueryViewHolder(itemView)
             }
 
             VIEW_TYPE_SUGGESTION -> {
@@ -1038,16 +1062,18 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         suggestionHolder,
                         item,
                     )
-                    SuggestionDisplayItem.ZeroQueryCloseItem -> onBindZeroQueryCloseViewHolder(
-                        suggestionHolder,
-                    )
-                    is SuggestionDisplayItem.ZeroQueryCandidateItem -> onBindZeroQueryCandidateViewHolder(
-                        suggestionHolder,
-                        item,
-                    )
                     else -> Unit
                 }
             }
+            VIEW_TYPE_ZERO_QUERY_CLOSE -> onBindZeroQueryCloseViewHolder(
+                holder as ZeroQueryViewHolder,
+            )
+
+            VIEW_TYPE_ZERO_QUERY_CANDIDATE -> onBindZeroQueryCandidateViewHolder(
+                holder as ZeroQueryViewHolder,
+                item as SuggestionDisplayItem.ZeroQueryCandidateItem,
+            )
+
             VIEW_TYPE_GEMMA_ACTION -> onBindGemmaActionViewHolder(
                 holder as GemmaActionViewHolder,
                 item as SuggestionDisplayItem.GemmaActionItem,
@@ -1569,18 +1595,13 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private fun onBindZeroQueryCloseViewHolder(
-        holder: SuggestionViewHolder,
+        holder: ZeroQueryViewHolder,
     ) {
         applyCandidateItemBackground(holder.itemView)
         holder.text.text = "[ ... ]"
         holder.text.textSize = candidateTextSize
-        holder.yomiText.isVisible = false
-        holder.yomiText.text = ""
-        holder.typeText.text = ""
         candidateTextColor?.let { color ->
             holder.text.setTextColor(color)
-            holder.typeText.setTextColor(color)
-            holder.yomiText.setTextColor(color)
         }
         holder.itemView.isPressed = false
         holder.itemView.setOnClickListener {
@@ -1592,22 +1613,45 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     }
 
     private fun onBindZeroQueryCandidateViewHolder(
-        holder: SuggestionViewHolder,
+        holder: ZeroQueryViewHolder,
         item: SuggestionDisplayItem.ZeroQueryCandidateItem,
     ) {
-        onBindSuggestionViewHolder(
-            holder,
-            SuggestionDisplayItem.CandidateItem(
-                candidate = item.candidate,
-                candidateIndex = item.candidateIndex,
-            )
+        applyCandidateItemBackground(holder.itemView)
+        holder.text.text = formatZeroQueryCandidateText(
+            suggestion = item.candidate,
+            position = item.candidateIndex,
         )
+        holder.text.textSize = candidateTextSize
+        candidateTextColor?.let { color ->
+            holder.text.setTextColor(color)
+        }
         holder.itemView.isPressed = false
         holder.itemView.setOnClickListener {
             onZeroQueryCandidateClickListener?.invoke(item.candidate)
         }
         holder.itemView.setOnLongClickListener {
             true
+        }
+    }
+
+    private fun formatZeroQueryCandidateText(
+        suggestion: Candidate,
+        position: Int,
+    ): CharSequence {
+        val paddingLength = when {
+            position == 0 -> 4
+            suggestion.string.length == 1 -> 4
+            suggestion.string.length == 2 -> 2
+            else -> 1
+        }
+        return if (suggestion.type == (15).toByte()) {
+            val readingCorrectionString = suggestion.string.correctReading()
+            readingCorrectionString.first.padStart(
+                readingCorrectionString.first.length + paddingLength
+            ).plus(" ".repeat(paddingLength))
+        } else {
+            suggestion.string.padStart(suggestion.string.length + paddingLength)
+                .plus(" ".repeat(paddingLength))
         }
     }
 

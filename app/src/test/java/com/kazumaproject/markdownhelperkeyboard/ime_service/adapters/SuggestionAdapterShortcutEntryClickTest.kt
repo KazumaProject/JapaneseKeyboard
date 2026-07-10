@@ -2,7 +2,9 @@ package com.kazumaproject.markdownhelperkeyboard.ime_service.adapters
 
 import android.content.Context
 import android.os.Looper
+import android.view.Gravity
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
@@ -86,13 +88,45 @@ class SuggestionAdapterShortcutEntryClickTest {
             zeroQueryClicked = candidate
         }
 
-        val holder = createSuggestionHolder(adapter)
+        assertEquals(
+            SuggestionAdapter.VIEW_TYPE_ZERO_QUERY_CANDIDATE,
+            adapter.getItemViewType(1)
+        )
+
+        val holder = createSuggestionHolder(
+            adapter,
+            SuggestionAdapter.VIEW_TYPE_ZERO_QUERY_CANDIDATE
+        )
         adapter.onBindViewHolder(holder, 1)
 
         holder.itemView.performClick()
 
         assertEquals(zeroQueryCandidate, zeroQueryClicked)
         assertFalse(normalCandidateClicked)
+        adapter.release()
+    }
+
+    @Test
+    fun zeroQueryItemsUseFixedCenteredLayout() {
+        val adapter = SuggestionAdapter()
+        adapter.submitContent(
+            CandidateStripContent.ZeroQuerySuggestions(
+                candidates = listOf(candidate("おめでとうございます"))
+            )
+        )
+        drainMainUntilItemCount(adapter, expectedItemCount = 2)
+
+        val closeHolder = createSuggestionHolder(
+            adapter,
+            SuggestionAdapter.VIEW_TYPE_ZERO_QUERY_CLOSE
+        )
+        val candidateHolder = createSuggestionHolder(
+            adapter,
+            SuggestionAdapter.VIEW_TYPE_ZERO_QUERY_CANDIDATE
+        )
+
+        assertFixedCenteredZeroQueryItem(closeHolder.itemView as LinearLayout)
+        assertFixedCenteredZeroQueryItem(candidateHolder.itemView as LinearLayout)
         adapter.release()
     }
 
@@ -115,7 +149,12 @@ class SuggestionAdapterShortcutEntryClickTest {
             closeClicked = true
         }
 
-        val holder = createSuggestionHolder(adapter)
+        assertEquals(
+            SuggestionAdapter.VIEW_TYPE_ZERO_QUERY_CLOSE,
+            adapter.getItemViewType(0)
+        )
+
+        val holder = createSuggestionHolder(adapter, SuggestionAdapter.VIEW_TYPE_ZERO_QUERY_CLOSE)
         adapter.onBindViewHolder(holder, 0)
 
         holder.itemView.performClick()
@@ -156,7 +195,12 @@ class SuggestionAdapterShortcutEntryClickTest {
             closeClicked = true
         }
 
-        val holder = createSuggestionHolder(adapter)
+        assertEquals(
+            SuggestionAdapter.VIEW_TYPE_ZERO_QUERY_CLOSE,
+            adapter.getItemViewType(0)
+        )
+
+        val holder = createSuggestionHolder(adapter, SuggestionAdapter.VIEW_TYPE_ZERO_QUERY_CLOSE)
         adapter.onBindViewHolder(holder, 0)
 
         holder.itemView.performClick()
@@ -181,7 +225,10 @@ class SuggestionAdapterShortcutEntryClickTest {
             normalCandidateLongClicked = true
         }
 
-        val holder = createSuggestionHolder(adapter)
+        val holder = createSuggestionHolder(
+            adapter,
+            SuggestionAdapter.VIEW_TYPE_ZERO_QUERY_CANDIDATE
+        )
         adapter.onBindViewHolder(holder, 1)
 
         assertTrue(holder.itemView.performLongClick())
@@ -189,13 +236,26 @@ class SuggestionAdapterShortcutEntryClickTest {
         adapter.release()
     }
 
-    private fun createSuggestionHolder(adapter: SuggestionAdapter): androidx.recyclerview.widget.RecyclerView.ViewHolder {
+    private fun createSuggestionHolder(
+        adapter: SuggestionAdapter,
+        viewType: Int = SuggestionAdapter.VIEW_TYPE_SUGGESTION
+    ): androidx.recyclerview.widget.RecyclerView.ViewHolder {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val parent = FrameLayout(context)
         return adapter.onCreateViewHolder(
             parent,
-            SuggestionAdapter.VIEW_TYPE_SUGGESTION
+            viewType
         )
+    }
+
+    private fun assertFixedCenteredZeroQueryItem(view: LinearLayout) {
+        assertEquals(dp(58), view.layoutParams.height)
+        assertTrue(view.gravity and Gravity.CENTER_VERTICAL == Gravity.CENTER_VERTICAL)
+    }
+
+    private fun dp(value: Int): Int {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        return (value * context.resources.displayMetrics.density).toInt()
     }
 
     private fun candidate(text: String): Candidate =

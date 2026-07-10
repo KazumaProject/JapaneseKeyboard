@@ -426,7 +426,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private data class SuggestionLayoutKey(
         val isPortrait: Boolean,
         val columnNum: String,
-        val useSelectedTextGemmaActionLayout: Boolean,
+        val useLinearHorizontalLayout: Boolean,
         val isKeyboardFloatingMode: Boolean
     )
 
@@ -757,6 +757,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             includeZeroQuery = false
         )
         currentCandidateStripContent = content
+        if (isKeyboardFloatingMode != true) {
+            mainLayoutBinding?.let { binding ->
+                setMainSuggestionColumn(binding)
+            }
+        }
         suggestionAdapter?.submitContent(content)
         suggestionAdapterFull?.submitContent(fullContent)
         val presentation = resolveCandidateStripPresentation(
@@ -17438,7 +17443,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val key = SuggestionLayoutKey(
                 isPortrait = isPortrait,
                 columnNum = columnNum,
-                useSelectedTextGemmaActionLayout = shouldUseSelectedTextGemmaActionLayout(),
+                useLinearHorizontalLayout =
+                    CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(
+                        currentCandidateStripContent
+                    ),
                 isKeyboardFloatingMode = isKeyboardFloatingMode == true
             )
             val recyclerView = mainView.suggestionRecyclerView
@@ -17456,7 +17464,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainSuggestionGridSpacingDecoration = null
             }
 
-            if (key.useSelectedTextGemmaActionLayout) {
+            if (key.useLinearHorizontalLayout) {
                 recyclerView.layoutManager =
                     LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
                 recyclerView.adapter = adapter
@@ -17501,10 +17509,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             recyclerView.adapter = adapter
         }
-    }
-
-    private fun shouldUseSelectedTextGemmaActionLayout(): Boolean {
-        return currentCandidateStripCandidates.isSelectedTextGemmaActionCandidates()
     }
 
     private fun toggleKeyboardLayoutEditMode(mainView: MainLayoutBinding) {
