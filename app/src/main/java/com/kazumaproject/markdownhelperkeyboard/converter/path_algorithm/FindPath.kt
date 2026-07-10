@@ -17,12 +17,15 @@ import com.kazumaproject.markdownhelperkeyboard.converter.trace.CandidateTrace
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.ForwardDpTrace
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.PenaltyTrace
 import timber.log.Timber
+import java.math.BigInteger
+import java.util.IdentityHashMap
 import java.util.PriorityQueue
 
 class FindPath(
     private val ngramRuleScorerProvider: () -> NgramRuleScorer = { defaultNgramRuleScorer },
     private var mozcSegmenterProvider: () -> MozcSegmenter? = { null },
     private var mozcBoundaryModeProvider: () -> MozcBoundaryMode = { MozcBoundaryMode.STRICT },
+    private val equivalentPathPruningEnabled: Boolean = true,
 ) {
 
     private data class PathQueueElement(
@@ -30,12 +33,118 @@ class FindPath(
         val priorityCost: Int,
         val backwardCost: Int,
         val path: LinkedPathNode,
+        val state: PathState,
+        val equivalentKey: EquivalentPathKey?,
     )
 
     private data class LinkedPathNode(
         val node: Node,
         val next: LinkedPathNode?,
     )
+
+    private data class NodeStateKey(
+        val leftId: Short,
+        val rightId: Short,
+        val score: Int,
+        val forwardCost: Int,
+        val tango: String,
+        val length: Short,
+        val yomiUsed: String,
+        val startPosition: Int,
+        val adjustedScore: Int,
+        val mozcNodeType: MozcNodeType,
+        val mozcAttributes: Int,
+    )
+
+    private data class PathState(
+        val surface: TextPath?,
+        val yomi: TextPath?,
+        val boundaries: BigInteger,
+        val readingLength: Int,
+    )
+
+    private data class EquivalentPathKey(
+        val node: NodeStateKey,
+        val nextNode: NodeStateKey,
+        val surface: TextPath?,
+        val yomi: TextPath?,
+        val boundaries: BigInteger,
+        val readingLength: Int,
+    )
+
+    private class NodePairKey(
+        private val left: Node,
+        private val right: Node,
+    ) {
+        private val cachedHash =
+            System.identityHashCode(left) * 31 + System.identityHashCode(right)
+
+        override fun hashCode(): Int = cachedHash
+
+        override fun equals(other: Any?): Boolean =
+            other is NodePairKey && left === other.left && right === other.right
+    }
+
+    private class TextPath(
+        private val piece: String,
+        private val next: TextPath?,
+        val length: Int,
+        private val contentHash: Int,
+    ) {
+        override fun hashCode(): Int = contentHash
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is TextPath) return false
+            if (length != other.length || contentHash != other.contentHash) return false
+
+            var left: TextPath? = this
+            var right: TextPath? = other
+            var leftOffset = 0
+            var rightOffset = 0
+            while (left != null && right != null) {
+                val count = minOf(
+                    left.piece.length - leftOffset,
+                    right.piece.length - rightOffset,
+                )
+                for (index in 0 until count) {
+                    if (left.piece[leftOffset + index] != right.piece[rightOffset + index]) {
+                        return false
+                    }
+                }
+                leftOffset += count
+                rightOffset += count
+                if (leftOffset == left.piece.length) {
+                    left = left.next
+                    leftOffset = 0
+                }
+                if (rightOffset == right.piece.length) {
+                    right = right.next
+                    rightOffset = 0
+                }
+            }
+            return left == null && right == null
+        }
+    }
+
+    private class TextPathFactory {
+        private val powersOf31 = mutableListOf(1)
+
+        fun prepend(piece: String, next: TextPath?): TextPath? {
+            if (piece.isEmpty()) return next
+            val suffixLength = next?.length ?: 0
+            while (powersOf31.size <= suffixLength) {
+                powersOf31.add(powersOf31.last() * 31)
+            }
+            return TextPath(
+                piece = piece,
+                next = next,
+                length = piece.length + suffixLength,
+                contentHash = piece.hashCode() * powersOf31[suffixLength] +
+                    (next?.hashCode() ?: 0),
+            )
+        }
+    }
 
     companion object {
         private val defaultNgramRuleScorer: NgramRuleScorer = NgramRuleScorer.createDefault()
@@ -391,6 +500,72 @@ class FindPath(
         val splitPatternByCandidateString = linkedMapOf<String, List<Int>>()
         val foundStrings = HashSet<String>()
         val ngramRuleScorer = ngramRuleScorerProvider()
+        val pruneEquivalentPaths = equivalentPathPruningEnabled &&
+            penaltyTrace == null &&
+            forwardDpTrace == null &&
+            boundaryTrace == null &&
+            candidateTrace == null
+        val textPathFactory = TextPathFactory()
+        val nodeStateKeys = IdentityHashMap<Node, NodeStateKey>()
+        val boundaryByEdge = HashMap<NodePairKey, Boolean>()
+        val bestBackwardCostByEquivalentPath = HashMap<EquivalentPathKey, Int>()
+        val emptyPathState = PathState(
+            surface = null,
+            yomi = null,
+            boundaries = BigInteger.ZERO,
+            readingLength = 0,
+        )
+
+        fun nodeStateKey(node: Node): NodeStateKey = nodeStateKeys.getOrPut(node) {
+            NodeStateKey(
+                leftId = node.l,
+                rightId = node.r,
+                score = node.score,
+                forwardCost = node.f,
+                tango = node.tango,
+                length = node.len,
+                yomiUsed = node.yomiUsed,
+                startPosition = node.sPos,
+                adjustedScore = node.adjustedScore,
+                mozcNodeType = node.mozcNodeType,
+                mozcAttributes = node.mozcAttributes,
+            )
+        }
+
+        fun isBunsetsuBoundary(left: Node, right: Node): Boolean {
+            if (left.tango == "BOS" || right.tango == "EOS") return false
+            return boundaryByEdge.getOrPut(NodePairKey(left, right)) {
+                if (mozcSegmenter != null) {
+                    mozcSegmenter.isBoundary(
+                        left = left,
+                        right = right,
+                        isSingleSegment = false,
+                    )
+                } else {
+                    isIndependentWord(right.l)
+                }
+            }
+        }
+
+        fun prependPathState(
+            node: Node,
+            nextNode: Node,
+            suffix: PathState,
+        ): PathState {
+            if (node.tango == "BOS" || node.tango == "EOS") return suffix
+
+            val nodeLength = node.len.toInt()
+            var boundaries = suffix.boundaries.shiftLeft(nodeLength)
+            if (isBunsetsuBoundary(node, nextNode)) {
+                boundaries = boundaries.setBit(nodeLength)
+            }
+            return PathState(
+                surface = textPathFactory.prepend(node.tango, suffix.surface),
+                yomi = textPathFactory.prepend(node.yomiUsed, suffix.yomi),
+                boundaries = boundaries,
+                readingLength = nodeLength + suffix.readingLength,
+            )
+        }
 
         val pQueue: PriorityQueue<PathQueueElement> =
             PriorityQueue(
@@ -407,6 +582,8 @@ class FindPath(
                     priorityCost = 0,
                     backwardCost = 0,
                     path = LinkedPathNode(it, null),
+                    state = emptyPathState,
+                    equivalentKey = null,
                 ),
             )
         }
@@ -414,6 +591,12 @@ class FindPath(
 
         while (pQueue.isNotEmpty()) {
             val element = pQueue.poll() ?: break
+            if (pruneEquivalentPaths) {
+                val key = element.equivalentKey
+                if (key != null && bestBackwardCostByEquivalentPath[key] != element.backwardCost) {
+                    continue
+                }
+            }
             val currentNode = element.node
 
             if (currentNode.tango == "BOS") {
@@ -514,12 +697,36 @@ class FindPath(
                     prevNode.g = backwardCost
                     prevNode.next = currentNode
 
+                    val path = LinkedPathNode(prevNode, element.path)
+                    val state = prependPathState(prevNode, currentNode, element.state)
+                    val equivalentKey = if (pruneEquivalentPaths) {
+                        EquivalentPathKey(
+                            node = nodeStateKey(prevNode),
+                            nextNode = nodeStateKey(currentNode),
+                            surface = state.surface,
+                            yomi = state.yomi,
+                            boundaries = state.boundaries,
+                            readingLength = state.readingLength,
+                        )
+                    } else {
+                        null
+                    }
+                    if (equivalentKey != null) {
+                        val bestCost = bestBackwardCostByEquivalentPath[equivalentKey]
+                        if (bestCost != null && bestCost <= backwardCost) {
+                            continue
+                        }
+                        bestBackwardCostByEquivalentPath[equivalentKey] = backwardCost
+                    }
+
                     pQueue.add(
                         PathQueueElement(
                             node = prevNode,
                             priorityCost = backwardCost + prevNode.f,
                             backwardCost = backwardCost,
-                            path = LinkedPathNode(prevNode, element.path),
+                            path = path,
+                            state = state,
+                            equivalentKey = equivalentKey,
                         ),
                     )
                 }
