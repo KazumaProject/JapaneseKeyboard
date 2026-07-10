@@ -83,6 +83,22 @@ class IMEServiceZeroQueryContractTest {
         assertTrue(function.contains("clearZeroQueryAllState(refresh = true)"))
     }
 
+    @Test
+    fun candidateStripLayoutIsNotCachedBeforeAdapterIsAttached() {
+        val function = imeServiceSource().functionBody(
+            start = "private fun setMainSuggestionColumn",
+            end = "\n    private fun toggleKeyboardLayoutEditMode"
+        )
+        val adapterGuard = function.indexOf("val adapter = recyclerView.adapter ?: run")
+        val cacheWrite = function.indexOf("lastSuggestionLayoutKey = key")
+
+        assertTrue(adapterGuard >= 0)
+        assertTrue(cacheWrite > adapterGuard)
+        assertTrue(function.contains("return@measureDebugSection"))
+        assertTrue(function.contains("adapter.getItemViewType(position)"))
+        assertFalse(function.contains("adapter?.getItemViewType(position)"))
+    }
+
     private fun imeServiceSource(): String =
         listOf(
             File("app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt"),
