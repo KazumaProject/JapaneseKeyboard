@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="58dp"
+    android:layout_gravity="center_vertical"
+    android:background="@drawable/recyclerview_item_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="5dp">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/zero_query_item_text_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:textAlignment="viewStart"
+        android:textColor="@color/main_text_color"
+        android:textSize="14sp" />
+
+</LinearLayout>
