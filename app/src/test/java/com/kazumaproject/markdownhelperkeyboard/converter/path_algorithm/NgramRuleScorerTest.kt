@@ -100,6 +100,126 @@ class NgramRuleScorerTest {
     }
 
     @Test
+    fun score_appliesFourNodeRule_whenMatched() {
+        val scorer = NgramRuleScorer(
+            listOf(
+                NgramRule(
+                    nodes = listOf("私", "は", "布", "を").map { NodeFeature(word = it) },
+                    adjustment = -1400,
+                ),
+            ),
+        )
+        val nodes = listOf("私", "は", "布", "を").map(::createNode)
+
+        assertEquals(
+            -1400,
+            scorer.score(nodes[0], nodes[1], nodes[2], nodes[3]),
+        )
+    }
+
+    @Test
+    fun score_appliesFiveNodeRule_whenMatched() {
+        val scorer = NgramRuleScorer(
+            listOf(
+                NgramRule(
+                    nodes = listOf("私", "は", "布", "を", "拭く").map { NodeFeature(word = it) },
+                    adjustment = -1500,
+                ),
+            ),
+        )
+        val nodes = listOf("私", "は", "布", "を", "拭く").map(::createNode)
+
+        assertEquals(
+            -1500,
+            scorer.score(nodes[0], nodes[1], nodes[2], nodes[3], nodes[4]),
+        )
+    }
+
+    @Test
+    fun score_doesNotApplyLongRule_whenSuffixIsMissingOrContainsEos() {
+        val scorer = NgramRuleScorer(
+            listOf(
+                NgramRule(
+                    nodes = listOf("私", "は", "布", "を", "拭く").map { NodeFeature(word = it) },
+                    adjustment = -1500,
+                ),
+            ),
+        )
+        val prev = createNode("私")
+        val current = createNode("は")
+        val third = createNode("布")
+        val eos = createNode("EOS")
+
+        assertEquals(0, scorer.score(prev, current, third, null, null))
+        assertEquals(0, scorer.score(prev, current, third, eos, null))
+    }
+
+    @Test
+    fun score_usesExplicitSuffix_insteadOfSharedNodeNext() {
+        val scorer = NgramRuleScorer(
+            listOf(
+                NgramRule(
+                    nodes = listOf("私", "は", "正しい", "経路").map { NodeFeature(word = it) },
+                    adjustment = -900,
+                ),
+            ),
+        )
+        val prev = createNode("私")
+        val current = createNode("は").also { it.next = createNode("誤った") }
+
+        assertEquals(
+            -900,
+            scorer.score(prev, current, createNode("正しい"), createNode("経路")),
+        )
+    }
+
+    @Test
+    fun score_accumulatesMatchingRulesFromTwoThroughFiveNodes() {
+        val words = listOf("私", "は", "布", "を", "拭く")
+        val scorer = NgramRuleScorer(
+            (2..5).map { order ->
+                NgramRule(words.take(order).map { NodeFeature(word = it) }, -order * 100)
+            },
+        )
+        val nodes = words.map(::createNode)
+
+        assertEquals(-1400, scorer.score(nodes[0], nodes[1], nodes[2], nodes[3], nodes[4]))
+    }
+
+    @Test
+    fun conversion_prioritizesFiveNodePath_whenFiveNodeRuleMatches() {
+        fun graph(): MutableMap<Int, MutableList<Node>> = mutableMapOf(
+            0 to mutableListOf(createNode("BOS", l = 0, r = 0, len = 0, sPos = 0)),
+            1 to mutableListOf(
+                createNode("僕", score = 0, sPos = 0),
+                createNode("私", score = 100, sPos = 0),
+            ),
+            2 to mutableListOf(createNode("は", sPos = 1)),
+            3 to mutableListOf(createNode("布", sPos = 2)),
+            4 to mutableListOf(createNode("を", sPos = 3)),
+            5 to mutableListOf(createNode("拭く", sPos = 4)),
+            6 to mutableListOf(createNode("EOS", l = 0, r = 0, len = 0, sPos = 6)),
+        )
+        val baseline = FindPath(ngramRuleScorerProvider = { NgramRuleScorer(emptyList()) })
+            .backwardAStar(graph(), 5, createConnectionIds(), TEST_CONNECTION_MATRIX_SIZE, 2)
+            .first().string
+        val scorer = NgramRuleScorer(
+            listOf(
+                NgramRule(
+                    listOf("私", "は", "布", "を", "拭く").map { NodeFeature(word = it) },
+                    -1000,
+                ),
+            ),
+        )
+        val corrected = FindPath(ngramRuleScorerProvider = { scorer })
+            .backwardAStar(graph(), 5, createConnectionIds(), TEST_CONNECTION_MATRIX_SIZE, 2)
+            .first().string
+
+        assertEquals("僕は布を拭く", baseline)
+        assertEquals("私は布を拭く", corrected)
+    }
+
+    @Test
     fun score_appliesTwoAndThreeNodeRules_whenMatched() {
         val scorer = NgramRuleScorer(
             twoNodeRules = listOf(

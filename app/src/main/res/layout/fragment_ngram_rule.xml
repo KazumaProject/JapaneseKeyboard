@@ -31,6 +31,28 @@
                 android:text="@string/ngram_rule_add_three_node" />
         </LinearLayout>
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/button_add_four_node"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/ngram_rule_add_four_node" />
+
+            <Button
+                android:id="@+id/button_add_five_node"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:text="@string/ngram_rule_add_five_node" />
+        </LinearLayout>
+
         <TextView
             android:id="@+id/text_empty"
             android:layout_width="match_parent"
@@ -50,4 +72,3 @@
     </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
-

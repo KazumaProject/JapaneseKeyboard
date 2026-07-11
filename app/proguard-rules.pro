@@ -34,6 +34,8 @@
 -keep class com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.system_user_dictionary.database.SystemUserDictionaryEntry { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NgramRuleBackup { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NgramRuleBackupItem { *; }
+-keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.LegacyNgramRuleBackup { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.TwoNodeRuleBackup { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.ThreeNodeRuleBackup { *; }
 -keep class com.kazumaproject.markdownhelperkeyboard.ngram_rule.ui.NodeFeatureInput { *; }

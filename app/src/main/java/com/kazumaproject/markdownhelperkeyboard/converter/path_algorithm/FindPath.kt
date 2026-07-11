@@ -152,6 +152,9 @@ class FindPath(
                     val ngramAdjustment = ngramRuleScorer.score(
                         prevNode = prevNode,
                         currentNode = node.first,
+                        nextNode1 = node.first.next,
+                        nextNode2 = node.first.next?.next,
+                        nextNode3 = node.first.next?.next?.next,
                     )
 
                     prevNode.g = node.first.g + edgeScore + node.first.adjustedScore + ngramAdjustment
@@ -600,6 +603,9 @@ class FindPath(
                     val ngramAdjustment = ngramRuleScorer.score(
                         prevNode = prevNode,
                         currentNode = currentNode,
+                        nextNode1 = element.next?.node,
+                        nextNode2 = element.next?.next?.node,
+                        nextNode3 = element.next?.next?.next?.node,
                     )
 
                     val backwardCost = element.backwardCost +
@@ -747,6 +753,9 @@ class FindPath(
                     val ngramAdjustment = ngramRuleScorer.score(
                         prevNode = prevNode,
                         currentNode = node.first,
+                        nextNode1 = node.first.next,
+                        nextNode2 = node.first.next?.next,
+                        nextNode3 = node.first.next?.next?.next,
                     )
 
                     prevNode.g = node.first.g + edgeScore + node.first.adjustedScore + ngramAdjustment

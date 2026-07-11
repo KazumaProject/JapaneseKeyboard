@@ -1042,14 +1042,19 @@
     <string name="n_gram_rule_preference_summary">Add N-gram rules to adjust conversion candidate</string>
     <string name="ngram_rule_add_two_node">Add 2-node rule</string>
     <string name="ngram_rule_add_three_node">Add 3-node rule</string>
+    <string name="ngram_rule_add_four_node">Add 4-node rule</string>
+    <string name="ngram_rule_add_five_node">Add 5-node rule</string>
     <string name="ngram_rule_two_node_title">2-node rule</string>
     <string name="ngram_rule_three_node_title">3-node rule</string>
+    <string name="ngram_rule_node_count_title">%1$d-node rule</string>
     <string name="ngram_rule_edit_two_node">Edit 2-node rule</string>
     <string name="ngram_rule_edit_three_node">Edit 3-node rule</string>
     <string name="ngram_rule_empty">No N-gram rules registered.</string>
     <string name="ngram_rule_node_1">Node 1</string>
     <string name="ngram_rule_node_2">Node 2</string>
     <string name="ngram_rule_node_3">Node 3</string>
+    <string name="ngram_rule_node_4">Node 4</string>
+    <string name="ngram_rule_node_5">Node 5</string>
     <string name="ngram_rule_word_hint">word (blank = wildcard)</string>
     <string name="ngram_rule_left_id_hint">leftId (blank = wildcard)</string>
     <string name="ngram_rule_right_id_hint">rightId (blank = wildcard)</string>
