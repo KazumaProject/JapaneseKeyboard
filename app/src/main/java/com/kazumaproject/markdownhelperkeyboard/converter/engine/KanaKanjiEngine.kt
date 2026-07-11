@@ -67,6 +67,8 @@ import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.toFullWidthDigitsEfficient
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import timber.log.Timber
 import java.io.BufferedInputStream
 import java.io.File
@@ -2026,6 +2028,8 @@ class KanaKanjiEngine {
             ).withLatinPrefix(prefix)
         }
 
+        val conversionContext = currentCoroutineContext()
+
         val graph = graphBuilder.constructGraph(
             input,
             systemYomiTrie,
@@ -2092,6 +2096,7 @@ class KanaKanjiEngine {
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
+                cancellationCheck = { conversionContext.ensureActive() },
             )
         }
 

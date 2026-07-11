@@ -1,0 +1,11 @@
+# Kana-kanji conversion hot path. These rules are compiled into assets/dexopt/baseline.prof.
+HSPLcom/kazumaproject/markdownhelperkeyboard/converter/engine/KanaKanjiEngine;->getCandidatesWithBunsetsuSeparation(**)**
+HSPLcom/kazumaproject/markdownhelperkeyboard/converter/graph/GraphBuilder;->constructGraph(**)**
+HSPLcom/kazumaproject/markdownhelperkeyboard/converter/graph/GraphBuilder;->addOrUpdateNode(**)**
+HSPLcom/kazumaproject/markdownhelperkeyboard/converter/path_algorithm/FindPath;->backwardAStarWithBunsetsu(**)**
+HSPLcom/kazumaproject/markdownhelperkeyboard/converter/path_algorithm/FindPath;->forwardDp(**)**
+HSPLcom/kazumaproject/markdownhelperkeyboard/converter/path_algorithm/NgramRuleScorer;->score(**)**
+HSPLcom/kazumaproject/markdownhelperkeyboard/converter/mozc/MozcBoundaryChecker;->check(**)**
+HSPLcom/kazumaproject/markdownhelperkeyboard/converter/ConnectionMatrix$CostTable;->cost(**)**
+HSPLcom/kazumaproject/dictionary/TokenArray;->forEachDictionaryByYomiTermId(**)**
+HSPLcom/kazumaproject/Louds/with_term_id/LOUDSWithTermId;->commonPrefixSearchWithNodeIndex(**)**

@@ -11,6 +11,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCand
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.graph.IncrementalGraphMetadata
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryCheckResult
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryChecker
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
@@ -28,16 +29,22 @@ class FindPath(
     private var mozcBoundaryModeProvider: () -> MozcBoundaryMode = { MozcBoundaryMode.STRICT },
 ) {
 
+    private data class ForwardDpCache(
+        val inputLength: Int,
+        val conversionSignature: Int,
+        val connectionMatrixIdentity: Int,
+        val beamWidth: Int,
+        val nodesBeforePreviousEnd: Map<Int, MutableList<Node>>,
+    )
+
+    @Volatile
+    private var forwardDpCache: ForwardDpCache? = null
+
     private data class PathQueueElement(
         val node: Node,
         val priorityCost: Int,
         val backwardCost: Int,
-        val path: LinkedPathNode,
-    )
-
-    private data class LinkedPathNode(
-        val node: Node,
-        val next: LinkedPathNode?,
+        val next: PathQueueElement?,
     )
 
     companion object {
@@ -164,8 +171,11 @@ class FindPath(
         length: Int,
         connectionMatrix: ConnectionMatrix.CostTable,
         beamWidth: Int = 20,
+        startPosition: Int = 1,
+        cancellationCheck: () -> Unit = {},
     ) {
-        for (i in 1..length + 1) {
+        for (i in startPosition..length + 1) {
+            cancellationCheck()
             val nodes = graph[i] ?: continue
 
             for (node in nodes) {
@@ -319,7 +329,7 @@ class FindPath(
         }
     }
 
-    private fun candidateSourcesFromPath(path: LinkedPathNode): Sequence<CandidateSource> =
+    private fun candidateSourcesFromPath(path: PathQueueElement): Sequence<CandidateSource> =
         generateSequence(path) { it.next }
             .map { it.node }
             .filter { it.tango != "BOS" && it.tango != "EOS" }
@@ -394,7 +404,9 @@ class FindPath(
         forwardDpTrace: MutableList<ForwardDpTrace>? = null,
         boundaryTrace: MutableList<BoundaryTrace>? = null,
         candidateTrace: MutableList<CandidateTrace>? = null,
+        cancellationCheck: () -> Unit = {},
     ): BunsetsuCandidateResult {
+        cancellationCheck()
         val mozcSegmenter = mozcSegmenterProvider()
         if (mozcSegmenter != null) {
             applyMozcPrefixSuffixPenalty(
@@ -405,16 +417,52 @@ class FindPath(
             )
         }
 
+        val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
+        val incrementalMetadata = graph as? IncrementalGraphMetadata
+        val reusableForwardDp = forwardDpCache?.takeIf { cached ->
+            forwardDpTrace == null &&
+                incrementalMetadata != null &&
+                incrementalMetadata.reusedThroughEndIndex == cached.inputLength &&
+                incrementalMetadata.conversionSignature == cached.conversionSignature &&
+                length == cached.inputLength + 1 &&
+                cached.connectionMatrixIdentity == System.identityHashCode(connectionMatrix) &&
+                cached.beamWidth == effectiveBeamWidth
+        }
+        val forwardDpStartPosition = if (reusableForwardDp != null) {
+            reusableForwardDp.nodesBeforePreviousEnd.forEach { (position, nodes) ->
+                graph[position] = nodes
+            }
+            reusableForwardDp.inputLength
+        } else {
+            1
+        }
+
         forwardDpTraceSink = forwardDpTrace
         try {
             forwardDp(
                 graph = graph,
                 length = length,
                 connectionMatrix = connectionMatrix,
-                beamWidth = beamWidth.coerceAtLeast(1),
+                beamWidth = effectiveBeamWidth,
+                startPosition = forwardDpStartPosition,
+                cancellationCheck = cancellationCheck,
             )
         } finally {
             forwardDpTraceSink = null
+        }
+
+        if (incrementalMetadata != null) {
+            forwardDpCache = ForwardDpCache(
+                inputLength = length,
+                conversionSignature = incrementalMetadata.conversionSignature,
+                connectionMatrixIdentity = System.identityHashCode(connectionMatrix),
+                beamWidth = effectiveBeamWidth,
+                nodesBeforePreviousEnd = (0 until length).associateWithTo(LinkedHashMap()) { position ->
+                    graph[position]?.toMutableList() ?: mutableListOf()
+                },
+            )
+        } else {
+            forwardDpCache = null
         }
 
         val boundaryChecker = mozcSegmenter?.let {
@@ -452,19 +500,21 @@ class FindPath(
                     node = it,
                     priorityCost = 0,
                     backwardCost = 0,
-                    path = LinkedPathNode(it, null),
+                    next = null,
                 ),
             )
         }
             ?: return BunsetsuCandidateResult(emptyList(), emptyList())
 
+        var cancellationPollCounter = 0
         while (pQueue.isNotEmpty()) {
+            if (cancellationPollCounter++ and 0x3f == 0) cancellationCheck()
             val element = pQueue.poll() ?: break
             val currentNode = element.node
 
             if (currentNode.tango == "BOS") {
-                val stringFromNode = getStringFromPath(element.path)
-                val yomiUsedFromNode = getYomiUsedFromPath(element.path)
+                val stringFromNode = getStringFromPath(element)
+                val yomiUsedFromNode = getYomiUsedFromPath(element)
                 val totalCost = if (stringFromNode.any { it.isDigit() }) {
                     element.priorityCost + 2000
                 } else {
@@ -475,12 +525,12 @@ class FindPath(
                         candidate = stringFromNode,
                         yomi = yomiUsedFromNode,
                         totalCost = totalCost,
-                        path = getPathStringsFromPath(element.path),
+                        path = getPathStringsFromPath(element),
                     ),
                 )
 
                 if (foundStrings.add(stringFromNode)) {
-                    val bunsetsuPositions = getBunsetsuPositionsFromPath(element.path, mozcSegmenter)
+                    val bunsetsuPositions = getBunsetsuPositionsFromPath(element, mozcSegmenter)
                     if (splitPatterns.none { it == bunsetsuPositions } && splitPatterns.size < 4) {
                         splitPatterns.add(bunsetsuPositions)
                     }
@@ -490,13 +540,13 @@ class FindPath(
                         string = stringFromNode,
                         type = resolveCandidateType(
                             string = stringFromNode,
-                            sources = candidateSourcesFromPath(element.path),
+                            sources = candidateSourcesFromPath(element),
                         ),
                         length = length.toUByte(),
                         yomi = yomiUsedFromNode,
                         score = totalCost,
-                        leftId = element.path.next?.node?.l,
-                        rightId = element.path.next?.node?.r,
+                        leftId = element.next?.node?.l,
+                        rightId = element.next?.node?.r,
                     )
                     resultFinal.add(candidate)
                 }
@@ -546,7 +596,7 @@ class FindPath(
                         connectionMatrix = connectionMatrix,
                     )
 
-                    currentNode.next = element.path.next?.node
+                    currentNode.next = element.next?.node
                     val ngramAdjustment = ngramRuleScorer.score(
                         prevNode = prevNode,
                         currentNode = currentNode,
@@ -564,7 +614,7 @@ class FindPath(
                             node = prevNode,
                             priorityCost = backwardCost + prevNode.f,
                             backwardCost = backwardCost,
-                            path = LinkedPathNode(prevNode, element.path),
+                            next = element,
                         ),
                     )
                 }
@@ -777,9 +827,9 @@ class FindPath(
         return result
     }
 
-    private fun getStringFromPath(path: LinkedPathNode): String {
+    private fun getStringFromPath(path: PathQueueElement): String {
         val result = StringBuilder()
-        var current: LinkedPathNode? = path
+        var current: PathQueueElement? = path
         while (current != null) {
             val node = current.node
             if (node.tango != "BOS" && node.tango != "EOS") {
@@ -790,9 +840,9 @@ class FindPath(
         return result.toString()
     }
 
-    private fun getYomiUsedFromPath(path: LinkedPathNode): String {
+    private fun getYomiUsedFromPath(path: PathQueueElement): String {
         val result = StringBuilder()
-        var current: LinkedPathNode? = path
+        var current: PathQueueElement? = path
         while (current != null) {
             val node = current.node
             if (node.tango != "BOS" && node.tango != "EOS") {
@@ -803,9 +853,9 @@ class FindPath(
         return result.toString()
     }
 
-    private fun getPathStringsFromPath(path: LinkedPathNode): List<String> {
+    private fun getPathStringsFromPath(path: PathQueueElement): List<String> {
         val result = mutableListOf<String>()
-        var current: LinkedPathNode? = path
+        var current: PathQueueElement? = path
         while (current != null) {
             val node = current.node
             if (node.tango != "BOS" && node.tango != "EOS") {
@@ -817,14 +867,14 @@ class FindPath(
     }
 
     private fun getBunsetsuPositionsFromPath(
-        path: LinkedPathNode,
+        path: PathQueueElement,
         mozcSegmenter: MozcSegmenter?,
     ): List<Int> {
         val positions = mutableListOf<Int>()
         var currentPosition = 0
         var previousNode: Node? = null
 
-        var current: LinkedPathNode? = path
+        var current: PathQueueElement? = path
         while (current != null) {
             val node = current.node
             if (node.tango != "BOS" && node.tango != "EOS") {
