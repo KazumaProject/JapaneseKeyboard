@@ -1,6 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideValidator
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
@@ -37,7 +44,7 @@ class ConversionPerformanceProbeTest {
             ?: System.getenv("CONVERSION_PERF_ITERATIONS")?.toIntOrNull()
             ?: 100
         val inputs = listOf(
-            "みにゅうりょくじ",
+            "きょう",
             "きょうはいいてんきですね",
             "とうきょうとちよだく",
             "けいたいでにほんごをへんかんする",
@@ -45,9 +52,26 @@ class ConversionPerformanceProbeTest {
             "このあぷりのへんかんこうほをこうそくにしたい",
         )
 
-        val engine = TestEngineFactory.create()
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val reader = productionDictionaryReader(context)
+        lateinit var connectionMatrix: ConnectionMatrix.CostTable
+        val coldConnectionMatrixInitNs = measureNanoTime {
+            connectionMatrix = reader.loadConnectionMatrix(DictionaryFileKey.CONNECTION_ID)
+        }
+        val cachedConnectionMatrix = reader.loadConnectionMatrix(DictionaryFileKey.CONNECTION_ID)
+        lateinit var engine: com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+        val coldEngineInitNs = measureNanoTime {
+            engine = TestEngineFactory.create(connectionMatrix = connectionMatrix)
+        }
         val userDictionaryRepository = mock<UserDictionaryRepository>()
         whenever(userDictionaryRepository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
+
+        val firstResults = LinkedHashMap<String, List<Candidate>>()
+        val firstConversionNs = inputs.associateWith { input ->
+            measureNanoTime {
+                firstResults[input] = engine.convertForProbe(input, userDictionaryRepository)
+            }
+        }
 
         repeat(warmup) {
             inputs.forEach { input ->
@@ -62,16 +86,23 @@ class ConversionPerformanceProbeTest {
         val allocatedBefore = allocationMeter?.currentAllocatedBytes() ?: -1L
         val usedHeapBefore = usedHeapBytes()
         val results = LinkedHashMap<String, List<Candidate>>()
-        val elapsedNs = measureNanoTime {
-            repeat(iterations) {
-                inputs.forEach { input ->
+        val warmConversionNs = inputs.associateWith { input ->
+            measureNanoTime {
+                repeat(iterations) {
                     results[input] = engine.convertForProbe(input, userDictionaryRepository)
                 }
             }
         }
+        val continuousInput = "このあぷりのへんかんこうほをこうそくにしたい"
+        var continuousResult: List<Candidate> = emptyList()
+        val continuousElapsedNs = measureNanoTime {
+            repeat(iterations) {
+                continuousResult = engine.convertForProbe(continuousInput, userDictionaryRepository)
+            }
+        }
         val usedHeapAfter = usedHeapBytes()
         val allocatedAfter = allocationMeter?.currentAllocatedBytes() ?: -1L
-        val conversions = iterations * inputs.size
+        val conversions = iterations * (inputs.size + 1)
         val allocatedBytes = if (allocatedBefore >= 0 && allocatedAfter >= allocatedBefore) {
             allocatedAfter - allocatedBefore
         } else {
@@ -84,23 +115,56 @@ class ConversionPerformanceProbeTest {
             appendLine("iterations=$iterations")
             appendLine("inputCount=${inputs.size}")
             appendLine("conversions=$conversions")
-            appendLine("totalTimeNs=$elapsedNs")
-            appendLine("avgTimeUs=${elapsedNs / conversions / 1_000.0}")
+            appendLine("connectionMatrixColdInitNs=$coldConnectionMatrixInitNs")
+            appendLine("engineColdInitNs=$coldEngineInitNs")
+            appendLine("connectionMatrixCachedSameInstance=${connectionMatrix === cachedConnectionMatrix}")
+            appendLine("connectionMatrixMatrixSize=${connectionMatrix.matrixSize}")
+            appendLine("connectionMatrixEntryCount=${connectionMatrix.entryCount}")
             appendLine("totalAllocatedBytes=$allocatedBytes")
             appendLine("avgAllocatedBytes=${if (allocatedBytes >= 0) allocatedBytes / conversions else -1}")
             appendLine("heapGrowthBytes=${usedHeapAfter - usedHeapBefore}")
             appendLine("fingerprint=${results.fingerprint()}")
-            appendLine("candidates")
+            appendLine("firstConversionUs")
+            firstConversionNs.forEach { (input, elapsedNs) ->
+                appendLine("$input\t${elapsedNs / 1_000.0}")
+            }
+            appendLine("warmAvgConversionUs")
+            warmConversionNs.forEach { (input, elapsedNs) ->
+                appendLine("$input\t${elapsedNs / iterations / 1_000.0}")
+            }
+            appendLine("sameInputContinuousAvgUs")
+            appendLine("$continuousInput\t${continuousElapsedNs / iterations / 1_000.0}")
+            appendLine("firstCandidates")
+            firstResults.forEach { (input, candidates) ->
+                append(input)
+                append('\t')
+                append(candidates.take(12).joinToString(" / ") { "${it.string}:${it.score}" })
+                appendLine()
+            }
+            appendLine("warmCandidates")
             results.forEach { (input, candidates) ->
                 append(input)
                 append('\t')
                 append(candidates.take(12).joinToString(" / ") { "${it.string}:${it.score}" })
                 appendLine()
             }
+            appendLine("sameInputContinuousCandidates")
+            append(continuousInput)
+            append('\t')
+            append(continuousResult.take(12).joinToString(" / ") { "${it.string}:${it.score}" })
+            appendLine()
         }
 
         val reportDir = File("build/reports/conversion-perf").apply { mkdirs() }
         File(reportDir, "$label.txt").writeText(report)
+    }
+
+    private fun productionDictionaryReader(context: Context): DictionaryBinaryReader {
+        val store = DictionaryOverrideStore(context, DictionaryOverrideValidator())
+        return DictionaryBinaryReader(
+            resolver = DictionarySourceResolver(context, store),
+            store = store,
+        )
     }
 
     private suspend fun com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine.convertForProbe(
