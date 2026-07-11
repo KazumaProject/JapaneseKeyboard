@@ -10,6 +10,7 @@ enum class MozcNodeType {
 
 enum class CandidateSource {
     SYSTEM,
+    UNKNOWN,
     USER_DICTIONARY,
     LEARNED_DICTIONARY,
 }

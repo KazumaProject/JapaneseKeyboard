@@ -346,7 +346,7 @@ class FindPath(
                     return CANDIDATE_TYPE_LEARNED_DICTIONARY
 
                 CandidateSource.USER_DICTIONARY -> containsUserDictionary = true
-                CandidateSource.SYSTEM -> Unit
+                CandidateSource.SYSTEM, CandidateSource.UNKNOWN -> Unit
             }
         }
         if (containsUserDictionary) return CANDIDATE_TYPE_USER_DICTIONARY
