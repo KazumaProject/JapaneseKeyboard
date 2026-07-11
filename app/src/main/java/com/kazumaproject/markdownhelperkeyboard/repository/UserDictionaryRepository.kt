@@ -3,6 +3,8 @@ package com.kazumaproject.markdownhelperkeyboard.repository
 import androidx.lifecycle.LiveData
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWordDao
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -16,6 +18,13 @@ import javax.inject.Singleton
 class UserDictionaryRepository @Inject constructor(
     private val userWordDao: UserWordDao
 ) {
+    @Volatile
+    private var conversionSnapshot: Map<Char, List<UserWord>>? = null
+    @Volatile
+    var conversionRevision: Long = 0
+        private set
+    private val conversionSnapshotMutex = Mutex()
+
     val allWords: LiveData<List<UserWord>> = userWordDao.getAll()
 
     fun searchByReadingPrefix(prefix: String): LiveData<List<UserWord>> {
@@ -35,7 +44,12 @@ class UserDictionaryRepository @Inject constructor(
     }
 
     suspend fun commonPrefixSearchInUserDict(prefix: String): List<UserWord> {
-        return userWordDao.commonPrefixSearchInUserDict(prefix)
+        val firstCharacter = prefix.firstOrNull() ?: return emptyList()
+        return getConversionSnapshot()[firstCharacter]
+            ?.asSequence()
+            ?.filter { prefix.startsWith(it.reading) }
+            ?.toList()
+            .orEmpty()
     }
 
     suspend fun allWordsSuspend(): List<UserWord> {
@@ -44,22 +58,44 @@ class UserDictionaryRepository @Inject constructor(
 
     suspend fun insert(userWord: UserWord) {
         userWordDao.insert(userWord)
+        invalidateConversionSnapshot()
     }
 
     suspend fun insertAll(words: List<UserWord>) {
         userWordDao.insertAll(words)
+        invalidateConversionSnapshot()
     }
 
     suspend fun update(userWord: UserWord) {
         userWordDao.update(userWord)
+        invalidateConversionSnapshot()
     }
 
     suspend fun delete(id: Int) {
         userWordDao.delete(id)
+        invalidateConversionSnapshot()
     }
 
     suspend fun deleteAll() {
         userWordDao.deleteAll()
+        invalidateConversionSnapshot()
+    }
+
+    private suspend fun getConversionSnapshot(): Map<Char, List<UserWord>> {
+        conversionSnapshot?.let { return it }
+        return conversionSnapshotMutex.withLock {
+            conversionSnapshot ?: userWordDao.getAllSuspend()
+                .asSequence()
+                .filter { it.reading.isNotEmpty() }
+                .groupBy { it.reading.first() }
+                .mapValues { (_, words) -> words.sortedByDescending { it.reading.length } }
+                .also { conversionSnapshot = it }
+        }
+    }
+
+    private fun invalidateConversionSnapshot() {
+        conversionSnapshot = null
+        conversionRevision++
     }
 
 }
