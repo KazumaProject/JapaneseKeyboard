@@ -1,7 +1,5 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
-import java.nio.ByteBuffer
-import java.nio.ByteOrder
 import kotlin.math.sqrt
 
 object ConnectionMatrix {
@@ -30,17 +28,6 @@ object ConnectionMatrix {
             ?: error("connectionId.dat size ${connectionIds.size} is not a valid square matrix"),
     ): CostTable = ShortArrayCostTable(connectionIds, matrixSize)
 
-    fun fromByteBuffer(byteBuffer: ByteBuffer): CostTable {
-        val buffer = byteBuffer.slice().asReadOnlyBuffer().order(ByteOrder.BIG_ENDIAN)
-        require(buffer.remaining() % Short.SIZE_BYTES == 0) {
-            "connectionId.dat byte size ${buffer.remaining()} is not divisible by ${Short.SIZE_BYTES}"
-        }
-        val entryCount = buffer.remaining() / Short.SIZE_BYTES
-        val matrixSize = inferMatrixSize(entryCount)
-            ?: error("connectionId.dat entry count $entryCount is not a valid square matrix")
-        return ByteBufferCostTable(buffer, matrixSize, entryCount)
-    }
-
     private class ShortArrayCostTable(
         private val connectionIds: ShortArray,
         override val matrixSize: Int,
@@ -50,17 +37,6 @@ object ConnectionMatrix {
         override fun cost(rid: Int, lid: Int): Int {
             val index = indexOf(rid, lid, matrixSize, entryCount)
             return connectionIds[index].toInt()
-        }
-    }
-
-    private class ByteBufferCostTable(
-        private val buffer: ByteBuffer,
-        override val matrixSize: Int,
-        override val entryCount: Int,
-    ) : CostTable {
-        override fun cost(rid: Int, lid: Int): Int {
-            val index = indexOf(rid, lid, matrixSize, entryCount)
-            return buffer.getShort(index * Short.SIZE_BYTES).toInt()
         }
     }
 

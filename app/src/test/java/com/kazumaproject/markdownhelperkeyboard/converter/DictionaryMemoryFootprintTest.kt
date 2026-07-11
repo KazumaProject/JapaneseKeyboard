@@ -2,16 +2,14 @@ package com.kazumaproject.markdownhelperkeyboard.converter
 
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
-import java.io.FileOutputStream
 import java.io.InputStream
-import java.io.RandomAccessFile
-import java.nio.channels.FileChannel
 
 class DictionaryMemoryFootprintTest {
 
@@ -30,7 +28,7 @@ class DictionaryMemoryFootprintTest {
         report += "start" to usedHeapBytes()
         retained.add(posTable)
         report += "posTable" to usedHeapBytes()
-        retained.add(loadMappedConnectionMatrix(assetsDir))
+        retained.add(loadConnectionMatrix(assetsDir))
         report += "connectionMatrix" to usedHeapBytes()
 
         retained.addAll(listOf(
@@ -100,21 +98,19 @@ class DictionaryMemoryFootprintTest {
         )
     }
 
-    private fun loadMappedConnectionMatrix(assetsDir: File): ConnectionMatrix.CostTable {
-        val rawFile = File(appDir(assetsDir), "build/tmp/dictionary-memory/connectionId.raw")
-        rawFile.parentFile?.mkdirs()
+    private fun loadConnectionMatrix(assetsDir: File): ConnectionMatrix.CostTable =
         assetsDir.open("connectionId.dat.zip").use { input ->
-            DictionaryBinaryReader.openZipAwareRaw(input, "connectionId.dat.zip").use { raw ->
-                FileOutputStream(rawFile, false).use { output ->
-                    raw.copyTo(output)
+            DictionaryBinaryReader.openZipAwareRaw(input, "connectionId.dat.zip") { raw, byteSize ->
+                raw.use {
+                    ConnectionMatrix.fromShortArray(
+                        ConnectionIdBuilder().readShortArrayFromBytes(
+                            inputStream = it,
+                            expectedByteSize = byteSize,
+                        )
+                    )
                 }
             }
         }
-        val mapped = RandomAccessFile(rawFile, "r").channel.use { channel ->
-            channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size())
-        }
-        return ConnectionMatrix.fromByteBuffer(mapped)
-    }
 
     private fun readPosTable(assetsDir: File): PosTableFootprint =
         assetsDir.open("pos_table.dat").use { input ->
