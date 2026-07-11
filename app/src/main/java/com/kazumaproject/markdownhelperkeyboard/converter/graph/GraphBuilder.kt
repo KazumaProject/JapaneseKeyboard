@@ -203,6 +203,8 @@ class GraphBuilder {
         )
         val reusable = cachedGraph?.takeIf {
             graphNodeTrace == null &&
+                !isOmissionSearchEnable &&
+                !enableTypoCorrectionJapaneseFlick &&
                 it.signature == signature &&
                 str.length == it.input.length + 1 &&
                 str.startsWith(it.input)
@@ -845,6 +847,18 @@ class GraphBuilder {
                 }
             }
 
+            // An append can complete a dictionary word that did not exist in the previous
+            // prefix. Remove the now-invalid unknown fallback retained by the incremental graph.
+            if (foundInAnyDictionary && reusablePrefixLength >= 0) {
+                val fallbackEndIndex = i + 1
+                graph[fallbackEndIndex]?.removeAll {
+                    it.candidateSource == CandidateSource.UNKNOWN && it.sPos == i
+                }
+                if (graph[fallbackEndIndex]?.isEmpty() == true) {
+                    graph.remove(fallbackEndIndex)
+                }
+            }
+
             // 9. どの辞書にもヒットしなかった場合のフォールバック
             if (!foundInAnyDictionary && i < str.length) {
                 val yomiStr = str.substring(i, i + 1) // 1文字だけを未知語として切り出す
@@ -861,6 +875,7 @@ class GraphBuilder {
                     len = yomiStr.length.toShort(),
                     sPos = i,
                     mozcAttributes = mozcAttributesFor(0),
+                    candidateSource = CandidateSource.UNKNOWN,
                 )
                 // 未知語は重複を考慮せずそのまま追加する
                 graph.computeIfAbsent(endIndex) { mutableListOf() }.add(unknownNode)
