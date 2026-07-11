@@ -109,7 +109,9 @@ internal object TestEngineFactory {
         ).firstOrNull { it.exists() } ?: error("Missing assets directory")
     }
 
-    fun create(): KanaKanjiEngine {
+    fun create(
+        connectionMatrix: ConnectionMatrix.CostTable = ConnectionMatrix.fromShortArray(readConnectionIds()),
+    ): KanaKanjiEngine {
         val englishEngine = mock<EnglishEngine>()
         whenever(englishEngine.getCandidates(any(), any())).thenReturn(emptyList<Candidate>())
 
@@ -147,7 +149,7 @@ internal object TestEngineFactory {
             it.buildEngine(
                 graphBuilder = GraphBuilder(),
                 findPath = FindPath(),
-                connectionMatrix = ConnectionMatrix.fromShortArray(readConnectionIds()),
+                connectionMatrix = connectionMatrix,
                 systemTangoTrie = system.tangoTrie,
                 systemYomiTrie = system.yomiTrie,
                 systemTokenArray = system.tokenArray,

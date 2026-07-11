@@ -130,6 +130,44 @@ class NgramRuleScorerTest {
     }
 
     @Test
+    fun score_preservesExactThenWildcardRuleAccumulation() {
+        val scorer = NgramRuleScorer(
+            twoNodeRules = listOf(
+                TwoNodeRule(
+                    prev = NodeFeature(word = "布"),
+                    current = NodeFeature(word = "で"),
+                    adjustment = -300,
+                ),
+                TwoNodeRule(
+                    prev = NodeFeature(word = "布"),
+                    current = NodeFeature(),
+                    adjustment = -100,
+                ),
+            ),
+            threeNodeRules = listOf(
+                ThreeNodeRule(
+                    first = NodeFeature(word = "布"),
+                    second = NodeFeature(word = "で"),
+                    third = NodeFeature(word = "拭く"),
+                    adjustment = -1200,
+                ),
+                ThreeNodeRule(
+                    first = NodeFeature(word = "布"),
+                    second = NodeFeature(),
+                    third = NodeFeature(word = "拭く"),
+                    adjustment = -200,
+                ),
+            ),
+        )
+        val prev = createNode(tango = "布")
+        val current = createNode(tango = "で").also {
+            it.next = createNode(tango = "拭く")
+        }
+
+        assertEquals(-1800, scorer.score(prevNode = prev, currentNode = current))
+    }
+
+    @Test
     fun benchmark_twoNodeRules_scaling() {
         val results = benchmarkRuleScaling(mode = BenchmarkMode.TWO_NODE_ONLY)
 

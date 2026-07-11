@@ -431,12 +431,20 @@ class FindPath(
         val ngramRuleScorer = ngramRuleScorerProvider()
 
         val pQueue: PriorityQueue<PathQueueElement> =
-            PriorityQueue(
-                compareBy<PathQueueElement> { it.priorityCost }
-                    .thenBy { it.node.sPos }
-                    .thenBy { it.node.len }
-                    .thenBy { System.identityHashCode(it.node) },
-            )
+            PriorityQueue { first, second ->
+                var comparison = first.priorityCost.compareTo(second.priorityCost)
+                if (comparison == 0) {
+                    comparison = first.node.sPos.compareTo(second.node.sPos)
+                }
+                if (comparison == 0) {
+                    comparison = first.node.len.compareTo(second.node.len)
+                }
+                if (comparison == 0) {
+                    comparison = System.identityHashCode(first.node)
+                        .compareTo(System.identityHashCode(second.node))
+                }
+                comparison
+            }
 
         graph[length + 1]?.get(0)?.let {
             pQueue.add(

@@ -23,6 +23,12 @@ class NgramRuleScorer(
     private val threeNodeRulesBySecondWord: Map<String?, List<ThreeNodeRule>> =
         threeNodeRules.groupBy { it.second.word }
 
+    private val wildcardTwoNodeRules: List<TwoNodeRule> =
+        twoNodeRulesByCurrentWord[null].orEmpty()
+
+    private val wildcardThreeNodeRules: List<ThreeNodeRule> =
+        threeNodeRulesBySecondWord[null].orEmpty()
+
     fun score(
         prevNode: Node,
         currentNode: Node,
@@ -31,11 +37,12 @@ class NgramRuleScorer(
 
         var total = 0
 
-        val twoNodeCandidates = buildList {
-            addAll(twoNodeRulesByCurrentWord[currentNode.tango].orEmpty())
-            addAll(twoNodeRulesByCurrentWord[null].orEmpty())
+        for (rule in twoNodeRulesByCurrentWord[currentNode.tango].orEmpty()) {
+            if (rule.prev.matches(prevNode) && rule.current.matches(currentNode)) {
+                total += rule.adjustment
+            }
         }
-        for (rule in twoNodeCandidates) {
+        for (rule in wildcardTwoNodeRules) {
             if (rule.prev.matches(prevNode) && rule.current.matches(currentNode)) {
                 total += rule.adjustment
             }
@@ -43,11 +50,16 @@ class NgramRuleScorer(
 
         val nextNode = currentNode.next
         if (nextNode != null && nextNode.tango != "EOS") {
-            val threeNodeCandidates = buildList {
-                addAll(threeNodeRulesBySecondWord[currentNode.tango].orEmpty())
-                addAll(threeNodeRulesBySecondWord[null].orEmpty())
+            for (rule in threeNodeRulesBySecondWord[currentNode.tango].orEmpty()) {
+                if (
+                    rule.first.matches(prevNode) &&
+                    rule.second.matches(currentNode) &&
+                    rule.third.matches(nextNode)
+                ) {
+                    total += rule.adjustment
+                }
             }
-            for (rule in threeNodeCandidates) {
+            for (rule in wildcardThreeNodeRules) {
                 if (
                     rule.first.matches(prevNode) &&
                     rule.second.matches(currentNode) &&
