@@ -2,74 +2,94 @@ package com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm
 
 import com.kazumaproject.graph.Node
 
-/**
- * 2ノード / 3ノード補正の判定とスコア加算を担当する。
- *
- * backward 探索時には
- *   prevNode -> currentNode -> currentNode.next
- * の形で見られるので、
- * 3ノード補正は currentNode.next を third として評価する。
- *
- * 速度面を考慮して、まず word をキーにした粗い絞り込みを行い、
- * その後で NodeFeature.matches(...) で最終判定する。
- */
+/** 2〜5ノード補正の判定とスコア加算を担当する。 */
 class NgramRuleScorer(
-    twoNodeRules: List<TwoNodeRule>,
-    threeNodeRules: List<ThreeNodeRule>,
+    rules: List<NgramRule>,
 ) {
-    private val twoNodeRulesByCurrentWord: Map<String?, List<TwoNodeRule>> =
-        twoNodeRules.groupBy { it.current.word }
+    private val rulesByOrderAndCurrentWord: Array<Map<String, List<NgramRule>>> =
+        Array(NgramRule.MAX_NODE_COUNT + 1) { emptyMap() }
+    private val wildcardRulesByOrder: Array<List<NgramRule>> =
+        Array(NgramRule.MAX_NODE_COUNT + 1) { emptyList() }
+    private val maxOrderWithRules: Int
 
-    private val threeNodeRulesBySecondWord: Map<String?, List<ThreeNodeRule>> =
-        threeNodeRules.groupBy { it.second.word }
+    init {
+        for (order in NgramRule.MIN_NODE_COUNT..NgramRule.MAX_NODE_COUNT) {
+            val rulesOfOrder = rules.filter { it.nodes.size == order }
+            rulesByOrderAndCurrentWord[order] = rulesOfOrder
+                .filter { it.nodes[1].word != null }
+                .groupBy { requireNotNull(it.nodes[1].word) }
+            wildcardRulesByOrder[order] = rulesOfOrder.filter { it.nodes[1].word == null }
+        }
+        maxOrderWithRules = rules.maxOfOrNull { it.nodes.size } ?: 0
+    }
 
-    private val wildcardTwoNodeRules: List<TwoNodeRule> =
-        twoNodeRulesByCurrentWord[null].orEmpty()
-
-    private val wildcardThreeNodeRules: List<ThreeNodeRule> =
-        threeNodeRulesBySecondWord[null].orEmpty()
+    /** Compatibility constructor while callers migrate to the common model. */
+    constructor(
+        twoNodeRules: List<TwoNodeRule>,
+        threeNodeRules: List<ThreeNodeRule>,
+    ) : this(
+        rules = twoNodeRules.map {
+            NgramRule(listOf(it.prev, it.current), it.adjustment)
+        } + threeNodeRules.map {
+            NgramRule(listOf(it.first, it.second, it.third), it.adjustment)
+        },
+    )
 
     fun score(
         prevNode: Node,
         currentNode: Node,
+        nextNode1: Node? = currentNode.next,
+        nextNode2: Node? = nextNode1?.next,
+        nextNode3: Node? = nextNode2?.next,
     ): Int {
         if (prevNode.tango == "BOS" || currentNode.tango == "EOS") return 0
+        if (maxOrderWithRules == 0) return 0
 
-        var total = 0
+        var total = 0L
+        for (order in NgramRule.MIN_NODE_COUNT..maxOrderWithRules) {
+            if (order >= 3 && (nextNode1 == null || nextNode1.tango == "EOS")) continue
+            if (order >= 4 && (nextNode2 == null || nextNode2.tango == "EOS")) continue
+            if (order >= 5 && (nextNode3 == null || nextNode3.tango == "EOS")) continue
 
-        for (rule in twoNodeRulesByCurrentWord[currentNode.tango].orEmpty()) {
-            if (rule.prev.matches(prevNode) && rule.current.matches(currentNode)) {
-                total += rule.adjustment
-            }
-        }
-        for (rule in wildcardTwoNodeRules) {
-            if (rule.prev.matches(prevNode) && rule.current.matches(currentNode)) {
-                total += rule.adjustment
-            }
-        }
-
-        val nextNode = currentNode.next
-        if (nextNode != null && nextNode.tango != "EOS") {
-            for (rule in threeNodeRulesBySecondWord[currentNode.tango].orEmpty()) {
-                if (
-                    rule.first.matches(prevNode) &&
-                    rule.second.matches(currentNode) &&
-                    rule.third.matches(nextNode)
-                ) {
-                    total += rule.adjustment
-                }
-            }
-            for (rule in wildcardThreeNodeRules) {
-                if (
-                    rule.first.matches(prevNode) &&
-                    rule.second.matches(currentNode) &&
-                    rule.third.matches(nextNode)
-                ) {
-                    total += rule.adjustment
-                }
-            }
+            total += scoreBucket(
+                rulesByOrderAndCurrentWord[order][currentNode.tango],
+                prevNode,
+                currentNode,
+                nextNode1,
+                nextNode2,
+                nextNode3,
+            )
+            total += scoreBucket(
+                wildcardRulesByOrder[order],
+                prevNode,
+                currentNode,
+                nextNode1,
+                nextNode2,
+                nextNode3,
+            )
         }
 
+        return total.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
+    }
+
+    private fun scoreBucket(
+        rules: List<NgramRule>?,
+        node0: Node,
+        node1: Node,
+        node2: Node?,
+        node3: Node?,
+        node4: Node?,
+    ): Long {
+        if (rules.isNullOrEmpty()) return 0L
+        var total = 0L
+        for (rule in rules) {
+            val features = rule.nodes
+            if (!features[0].matches(node0) || !features[1].matches(node1)) continue
+            if (features.size >= 3 && !features[2].matches(node2 ?: continue)) continue
+            if (features.size >= 4 && !features[3].matches(node3 ?: continue)) continue
+            if (features.size >= 5 && !features[4].matches(node4 ?: continue)) continue
+            total += rule.adjustment.toLong()
+        }
         return total
     }
 
@@ -83,11 +103,14 @@ class NgramRuleScorer(
          * 必要に応じてここへルールを追加していく。
          */
         fun createDefault(): NgramRuleScorer {
-            return NgramRuleScorer(
-                twoNodeRules = defaultTwoNodeRules(),
-                threeNodeRules = defaultThreeNodeRules(),
-            )
+            return NgramRuleScorer(defaultRules())
         }
+
+        fun defaultRules(): List<NgramRule> =
+            defaultTwoNodeRules().map { NgramRule(listOf(it.prev, it.current), it.adjustment) } +
+                defaultThreeNodeRules().map {
+                    NgramRule(listOf(it.first, it.second, it.third), it.adjustment)
+                }
 
         fun defaultTwoNodeRules(): List<TwoNodeRule> = listOf(
                 TwoNodeRule(

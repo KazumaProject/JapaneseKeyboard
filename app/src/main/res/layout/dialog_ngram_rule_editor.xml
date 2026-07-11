@@ -129,6 +129,96 @@
                 android:hint="@string/ngram_rule_right_id_hint" />
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/layout_node_4"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/ngram_rule_node_4" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/edit_word_4"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/ngram_rule_word_hint" />
+
+                <Button
+                    android:id="@+id/button_search_word_4"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/ngram_rule_search" />
+            </LinearLayout>
+
+            <AutoCompleteTextView
+                android:id="@+id/edit_left_id_4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/ngram_rule_left_id_hint" />
+
+            <AutoCompleteTextView
+                android:id="@+id/edit_right_id_4"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/ngram_rule_right_id_hint" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_node_5"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/ngram_rule_node_5" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/edit_word_5"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:hint="@string/ngram_rule_word_hint" />
+
+                <Button
+                    android:id="@+id/button_search_word_5"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/ngram_rule_search" />
+            </LinearLayout>
+
+            <AutoCompleteTextView
+                android:id="@+id/edit_left_id_5"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/ngram_rule_left_id_hint" />
+
+            <AutoCompleteTextView
+                android:id="@+id/edit_right_id_5"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/ngram_rule_right_id_hint" />
+        </LinearLayout>
+
         <EditText
             android:id="@+id/edit_adjustment"
             android:layout_width="match_parent"
@@ -139,4 +229,3 @@
     </LinearLayout>
 
 </ScrollView>
-

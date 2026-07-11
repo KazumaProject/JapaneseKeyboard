@@ -4,44 +4,32 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NgramRuleDao {
-    @Query("SELECT * FROM two_node_rule ORDER BY id DESC")
-    fun observeTwoNodeRules(): Flow<List<TwoNodeRuleEntity>>
+    @Query("SELECT * FROM ngram_rule ORDER BY nodeCount, id DESC")
+    fun observeRules(): Flow<List<NgramRuleEntity>>
 
-    @Query("SELECT * FROM three_node_rule ORDER BY id DESC")
-    fun observeThreeNodeRules(): Flow<List<ThreeNodeRuleEntity>>
-
-    @Query("SELECT * FROM two_node_rule ORDER BY id DESC")
-    suspend fun getAllTwoNodeRules(): List<TwoNodeRuleEntity>
-
-    @Query("SELECT * FROM three_node_rule ORDER BY id DESC")
-    suspend fun getAllThreeNodeRules(): List<ThreeNodeRuleEntity>
+    @Query("SELECT * FROM ngram_rule ORDER BY nodeCount, id DESC")
+    suspend fun getAllRules(): List<NgramRuleEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertTwoNodeRule(entity: TwoNodeRuleEntity)
+    suspend fun upsertRule(entity: NgramRuleEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertThreeNodeRule(entity: ThreeNodeRuleEntity)
+    suspend fun insertAllRules(entities: List<NgramRuleEntity>)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAllTwoNodeRules(entities: List<TwoNodeRuleEntity>)
+    @Query("DELETE FROM ngram_rule WHERE id = :id")
+    suspend fun deleteRule(id: Int)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAllThreeNodeRules(entities: List<ThreeNodeRuleEntity>)
+    @Query("DELETE FROM ngram_rule")
+    suspend fun deleteAllRules()
 
-    @Query("DELETE FROM two_node_rule WHERE id = :id")
-    suspend fun deleteTwoNodeRule(id: Int)
-
-    @Query("DELETE FROM three_node_rule WHERE id = :id")
-    suspend fun deleteThreeNodeRule(id: Int)
-
-    @Query("DELETE FROM two_node_rule")
-    suspend fun deleteAllTwoNodeRules()
-
-    @Query("DELETE FROM three_node_rule")
-    suspend fun deleteAllThreeNodeRules()
+    @Transaction
+    suspend fun replaceAll(entities: List<NgramRuleEntity>) {
+        deleteAllRules()
+        insertAllRules(entities)
+    }
 }
-

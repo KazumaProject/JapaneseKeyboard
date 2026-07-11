@@ -57,12 +57,5 @@ data class NgramRuleListItem(
     val title: String,
     val detail: String,
     val adjustment: Int,
-    val kind: NgramRuleKind,
     val id: Int,
 )
-
-enum class NgramRuleKind {
-    TWO_NODE,
-    THREE_NODE,
-}
-

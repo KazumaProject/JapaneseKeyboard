@@ -1,8 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.ngram_rule
 
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.NgramRuleScorer
-import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.ThreeNodeRule
-import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.TwoNodeRule
+import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.NgramRule
 import com.kazumaproject.markdownhelperkeyboard.repository.NgramRuleRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,8 +21,8 @@ class NgramRuleScorerManager @Inject constructor(
 
     init {
         scope.launch {
-            repository.observeDomainRules().collectLatest { (twoRules, threeRules) ->
-                setScorer(twoRules, threeRules)
+            repository.observeDomainRules().collectLatest { rules ->
+                setScorer(rules)
             }
         }
     }
@@ -31,17 +30,12 @@ class NgramRuleScorerManager @Inject constructor(
     fun currentScorer(): NgramRuleScorer = scorerRef.get()
 
     suspend fun refreshNow() {
-        val (twoRules, threeRules) = repository.loadDomainRules()
-        setScorer(twoRules, threeRules)
+        setScorer(repository.loadDomainRules())
     }
 
-    private fun setScorer(twoRules: List<TwoNodeRule>, threeRules: List<ThreeNodeRule>) {
+    private fun setScorer(rules: List<NgramRule>) {
         scorerRef.set(
-            NgramRuleScorer(
-                twoNodeRules = NgramRuleScorer.defaultTwoNodeRules() + twoRules,
-                threeNodeRules = NgramRuleScorer.defaultThreeNodeRules() + threeRules,
-            )
+            NgramRuleScorer(NgramRuleScorer.defaultRules() + rules)
         )
     }
 }
-
