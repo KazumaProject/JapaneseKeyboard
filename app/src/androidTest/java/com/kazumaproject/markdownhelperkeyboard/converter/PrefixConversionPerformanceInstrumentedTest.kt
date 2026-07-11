@@ -12,6 +12,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryReposit
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
@@ -27,7 +28,11 @@ class PrefixConversionPerformanceInstrumentedTest {
         assumeTrue(arguments.getString("prefixConversionPerfProbe") == "true")
         val label = arguments.getString("conversionPerfLabel") ?: "prefix-conversion"
         val sessions = arguments.getString("conversionPerfIterations")?.toIntOrNull() ?: 30
-        val input = "わたしのなまえはなかのかもしれないですね"
+        val candidateReportLimit = arguments.getString("conversionPerfCandidateLimit")?.toIntOrNull() ?: 12
+        val omissionSearchEnabled = arguments.getString("conversionPerfOmission") == "true"
+        val optionalDictionariesEnabled = arguments.getString("conversionPerfMozcOptional") == "true"
+        val input = arguments.getString("conversionPerfInput")
+            ?: "わたしのなまえはなかのかもしれないですね"
         val prefixes = input.indices.map { input.substring(0, it + 1) }
         val context = ApplicationProvider.getApplicationContext<Context>()
         val entryPoint = EntryPointAccessors.fromApplication(
@@ -37,8 +42,12 @@ class PrefixConversionPerformanceInstrumentedTest {
         val engine = entryPoint.kanaKanjiEngine()
         val repository = entryPoint.userDictionaryRepository()
 
-        val firstElapsed = runSession(engine, repository, prefixes).first
-        repeat(2) { runSession(engine, repository, prefixes) }
+        val firstElapsed = runSession(
+            engine, repository, prefixes, omissionSearchEnabled, optionalDictionariesEnabled
+        ).first
+        repeat(2) {
+            runSession(engine, repository, prefixes, omissionSearchEnabled, optionalDictionariesEnabled)
+        }
         Runtime.getRuntime().gc()
         val bytesBefore = runtimeStat("art.gc.bytes-allocated")
         val gcBefore = runtimeStat("art.gc.gc-count")
@@ -46,7 +55,9 @@ class PrefixConversionPerformanceInstrumentedTest {
         val perPrefix = Array(prefixes.size) { ArrayList<Double>(sessions) }
         var finalCandidates: List<Candidate> = emptyList()
         repeat(sessions) {
-            val (totalMs, measurements) = runSession(engine, repository, prefixes)
+            val (totalMs, measurements) = runSession(
+                engine, repository, prefixes, omissionSearchEnabled, optionalDictionariesEnabled
+            )
             sessionTotals += totalMs
             measurements.forEachIndexed { index, measurement ->
                 perPrefix[index] += measurement.elapsedMs
@@ -55,6 +66,14 @@ class PrefixConversionPerformanceInstrumentedTest {
         }
         val allocatedBytes = runtimeStat("art.gc.bytes-allocated") - bytesBefore
         val gcCount = runtimeStat("art.gc.gc-count") - gcBefore
+        engine.convertForProbe("ん", repository, omissionSearchEnabled, optionalDictionariesEnabled)
+        val coldRebuildCandidates = engine.convertForProbe(
+            input, repository, omissionSearchEnabled, optionalDictionariesEnabled
+        )
+        assertEquals(
+            coldRebuildCandidates.take(12).candidateFingerprint(),
+            finalCandidates.take(12).candidateFingerprint(),
+        )
 
         val report = buildString {
             appendLine("label=$label")
@@ -62,6 +81,8 @@ class PrefixConversionPerformanceInstrumentedTest {
             appendLine("input=$input")
             appendLine("prefixCount=${prefixes.size}")
             appendLine("sessions=$sessions")
+            appendLine("omissionSearchEnabled=$omissionSearchEnabled")
+            appendLine("optionalDictionariesEnabled=$optionalDictionariesEnabled")
             appendLine("firstTypingTotalMs=$firstElapsed")
             appendLine("warmTypingTotalP50Ms=${percentile(sessionTotals, 0.50)}")
             appendLine("warmTypingTotalP95Ms=${percentile(sessionTotals, 0.95)}")
@@ -69,13 +90,16 @@ class PrefixConversionPerformanceInstrumentedTest {
             appendLine("allocatedBytesPerSession=${allocatedBytes / sessions}")
             appendLine("allocatedBytesPerConversion=${allocatedBytes / (sessions * prefixes.size)}")
             appendLine("gcCount=$gcCount")
+            appendLine("incrementalMatchesColdRebuild=true")
             appendLine("prefixMeasurementsMs")
             prefixes.forEachIndexed { index, prefix ->
                 val values = perPrefix[index]
                 appendLine("${prefix.length}\t$prefix\tavg=${values.average()}\tp50=${percentile(values, 0.50)}\tp95=${percentile(values, 0.95)}\tmax=${values.maxOrNull()}")
             }
             appendLine("finalCandidates")
-            finalCandidates.take(12).forEach { appendLine("${it.string}\t${it.score}\t${it.yomi.orEmpty()}") }
+            finalCandidates.take(candidateReportLimit).forEach {
+                appendLine("${it.string}\t${it.score}\t${it.yomi.orEmpty()}\ttype=${it.type}\tlength=${it.length}")
+            }
         }
         val outputDir = File(context.filesDir, "conversion-perf").apply { mkdirs() }
         File(outputDir, "$label.txt").writeText(report)
@@ -86,12 +110,18 @@ class PrefixConversionPerformanceInstrumentedTest {
         engine: KanaKanjiEngine,
         repository: UserDictionaryRepository,
         prefixes: List<String>,
+        omissionSearchEnabled: Boolean,
+        optionalDictionariesEnabled: Boolean,
     ): Pair<Double, List<Measurement>> {
         val measurements = ArrayList<Measurement>(prefixes.size)
         val totalNs = measureNanoTime {
             prefixes.forEach { prefix ->
                 lateinit var candidates: List<Candidate>
-                val elapsedNs = measureNanoTime { candidates = engine.convertForProbe(prefix, repository) }
+                val elapsedNs = measureNanoTime {
+                    candidates = engine.convertForProbe(
+                        prefix, repository, omissionSearchEnabled, optionalDictionariesEnabled
+                    )
+                }
                 measurements += Measurement(elapsedNs / 1_000_000.0, candidates)
             }
         }
@@ -101,17 +131,19 @@ class PrefixConversionPerformanceInstrumentedTest {
     private suspend fun KanaKanjiEngine.convertForProbe(
         input: String,
         repository: UserDictionaryRepository,
+        omissionSearchEnabled: Boolean,
+        optionalDictionariesEnabled: Boolean,
     ): List<Candidate> = getCandidatesWithBunsetsuSeparation(
         input = input,
         n = 4,
-        mozcUtPersonName = false,
-        mozcUTPlaces = false,
-        mozcUTWiki = false,
-        mozcUTNeologd = false,
-        mozcUTWeb = false,
+        mozcUtPersonName = optionalDictionariesEnabled,
+        mozcUTPlaces = optionalDictionariesEnabled,
+        mozcUTWiki = optionalDictionariesEnabled,
+        mozcUTNeologd = optionalDictionariesEnabled,
+        mozcUTWeb = optionalDictionariesEnabled,
         userDictionaryRepository = repository,
         learnRepository = null,
-        isOmissionSearchEnable = false,
+        isOmissionSearchEnable = omissionSearchEnabled,
         enableTypoCorrectionJapaneseFlick = false,
         enableTypoCorrectionQwertyEnglish = false,
         typoCorrectionOffsetScore = 3000,
@@ -128,4 +160,8 @@ class PrefixConversionPerformanceInstrumentedTest {
     }
 
     private data class Measurement(val elapsedMs: Double, val candidates: List<Candidate>)
+
+    private fun List<Candidate>.candidateFingerprint(): List<String> = map {
+        "${it.string}\u001f${it.score}\u001f${it.yomi.orEmpty()}\u001f${it.type}"
+    }
 }
