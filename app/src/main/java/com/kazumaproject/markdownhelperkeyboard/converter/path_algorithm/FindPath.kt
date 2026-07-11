@@ -33,7 +33,7 @@ class FindPath(
         val priorityCost: Int,
         val backwardCost: Int,
         val path: LinkedPathNode,
-        val state: PathState,
+        val state: PathState?,
         val equivalentKey: EquivalentPathKey?,
     )
 
@@ -45,8 +45,6 @@ class FindPath(
     private data class NodeStateKey(
         val leftId: Short,
         val rightId: Short,
-        val score: Int,
-        val forwardCost: Int,
         val tango: String,
         val length: Short,
         val yomiUsed: String,
@@ -60,30 +58,13 @@ class FindPath(
         val surface: TextPath?,
         val yomi: TextPath?,
         val boundaries: BigInteger,
-        val readingLength: Int,
     )
 
     private data class EquivalentPathKey(
         val node: NodeStateKey,
         val nextNode: NodeStateKey,
-        val surface: TextPath?,
-        val yomi: TextPath?,
-        val boundaries: BigInteger,
-        val readingLength: Int,
+        val state: PathState,
     )
-
-    private class NodePairKey(
-        private val left: Node,
-        private val right: Node,
-    ) {
-        private val cachedHash =
-            System.identityHashCode(left) * 31 + System.identityHashCode(right)
-
-        override fun hashCode(): Int = cachedHash
-
-        override fun equals(other: Any?): Boolean =
-            other is NodePairKey && left === other.left && right === other.right
-    }
 
     private class TextPath(
         private val piece: String,
@@ -501,27 +482,25 @@ class FindPath(
         val foundStrings = HashSet<String>()
         val ngramRuleScorer = ngramRuleScorerProvider()
         val pruneEquivalentPaths = equivalentPathPruningEnabled &&
-            penaltyTrace == null &&
-            forwardDpTrace == null &&
             boundaryTrace == null &&
             candidateTrace == null
         val textPathFactory = TextPathFactory()
         val nodeStateKeys = IdentityHashMap<Node, NodeStateKey>()
-        val boundaryByEdge = HashMap<NodePairKey, Boolean>()
         val bestBackwardCostByEquivalentPath = HashMap<EquivalentPathKey, Int>()
-        val emptyPathState = PathState(
-            surface = null,
-            yomi = null,
-            boundaries = BigInteger.ZERO,
-            readingLength = 0,
-        )
+        val emptyPathState = if (pruneEquivalentPaths) {
+            PathState(
+                surface = null,
+                yomi = null,
+                boundaries = BigInteger.ZERO,
+            )
+        } else {
+            null
+        }
 
         fun nodeStateKey(node: Node): NodeStateKey = nodeStateKeys.getOrPut(node) {
             NodeStateKey(
                 leftId = node.l,
                 rightId = node.r,
-                score = node.score,
-                forwardCost = node.f,
                 tango = node.tango,
                 length = node.len,
                 yomiUsed = node.yomiUsed,
@@ -534,16 +513,14 @@ class FindPath(
 
         fun isBunsetsuBoundary(left: Node, right: Node): Boolean {
             if (left.tango == "BOS" || right.tango == "EOS") return false
-            return boundaryByEdge.getOrPut(NodePairKey(left, right)) {
-                if (mozcSegmenter != null) {
-                    mozcSegmenter.isBoundary(
-                        left = left,
-                        right = right,
-                        isSingleSegment = false,
-                    )
-                } else {
-                    isIndependentWord(right.l)
-                }
+            return if (mozcSegmenter != null) {
+                mozcSegmenter.isBoundary(
+                    left = left,
+                    right = right,
+                    isSingleSegment = false,
+                )
+            } else {
+                isIndependentWord(right.l)
             }
         }
 
@@ -563,7 +540,6 @@ class FindPath(
                 surface = textPathFactory.prepend(node.tango, suffix.surface),
                 yomi = textPathFactory.prepend(node.yomiUsed, suffix.yomi),
                 boundaries = boundaries,
-                readingLength = nodeLength + suffix.readingLength,
             )
         }
 
@@ -698,18 +674,21 @@ class FindPath(
                     prevNode.next = currentNode
 
                     val path = LinkedPathNode(prevNode, element.path)
-                    val state = prependPathState(prevNode, currentNode, element.state)
-                    val equivalentKey = if (pruneEquivalentPaths) {
-                        EquivalentPathKey(
-                            node = nodeStateKey(prevNode),
-                            nextNode = nodeStateKey(currentNode),
-                            surface = state.surface,
-                            yomi = state.yomi,
-                            boundaries = state.boundaries,
-                            readingLength = state.readingLength,
+                    val state = if (pruneEquivalentPaths) {
+                        prependPathState(
+                            node = prevNode,
+                            nextNode = currentNode,
+                            suffix = requireNotNull(element.state),
                         )
                     } else {
                         null
+                    }
+                    val equivalentKey = state?.let {
+                        EquivalentPathKey(
+                            node = nodeStateKey(prevNode),
+                            nextNode = nodeStateKey(currentNode),
+                            state = it,
+                        )
                     }
                     if (equivalentKey != null) {
                         val bestCost = bestBackwardCostByEquivalentPath[equivalentKey]

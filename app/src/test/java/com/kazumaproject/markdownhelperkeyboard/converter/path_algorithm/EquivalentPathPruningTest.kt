@@ -25,28 +25,7 @@ class EquivalentPathPruningTest {
                 n = 2,
             )
 
-        assertEquals(
-            unpruned.candidates.map { candidate ->
-                listOf(
-                    candidate.string,
-                    candidate.score,
-                    candidate.yomi,
-                    candidate.leftId,
-                    candidate.rightId,
-                )
-            },
-            pruned.candidates.map { candidate ->
-                listOf(
-                    candidate.string,
-                    candidate.score,
-                    candidate.yomi,
-                    candidate.leftId,
-                    candidate.rightId,
-                )
-            },
-        )
-        assertEquals(unpruned.splitPatterns, pruned.splitPatterns)
-        assertEquals(unpruned.splitPatternByCandidateString, pruned.splitPatternByCandidateString)
+        assertEquals(unpruned, pruned)
         assertEquals(listOf("pxab", "pxac"), pruned.candidates.map { it.string })
     }
 
