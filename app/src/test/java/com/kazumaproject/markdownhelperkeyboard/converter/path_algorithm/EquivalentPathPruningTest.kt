@@ -1,32 +1,31 @@
 package com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm
 
 import com.kazumaproject.graph.Node
+import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class EquivalentPathPruningTest {
 
     @Test
     fun equivalentPathPruning_preservesCandidatesAndOrdering() {
-        val unpruned = FindPath(equivalentPathPruningEnabled = false)
-            .backwardAStarWithBunsetsu(
-                graph = graphWithDominatedEquivalentPath(),
-                length = 4,
-                connectionIds = ShortArray(1),
-                connectionMatrixSize = 1,
-                n = 2,
-            )
-        val pruned = FindPath(equivalentPathPruningEnabled = true)
-            .backwardAStarWithBunsetsu(
-                graph = graphWithDominatedEquivalentPath(),
-                length = 4,
-                connectionIds = ShortArray(1),
-                connectionMatrixSize = 1,
-                n = 2,
-            )
+        val result = FindPath().backwardAStarWithBunsetsu(
+            graph = graphWithDominatedEquivalentPath(),
+            length = 4,
+            connectionIds = ShortArray(1),
+            connectionMatrixSize = 1,
+            n = 2,
+        )
 
-        assertEquals(unpruned, pruned)
-        assertEquals(listOf("pxab", "pxac"), pruned.candidates.map { it.string })
+        assertEquals(listOf("pxab", "pxac"), result.candidates.map { it.string })
+        assertEquals(listOf(0, 200), result.candidates.map { it.score })
+        assertEquals(listOf("pxab", "pxac"), result.candidates.map { it.yomi })
+        assertEquals(listOf(emptyList<Int>()), result.splitPatterns)
+        assertEquals(
+            mapOf("pxab" to emptyList<Int>(), "pxac" to emptyList()),
+            result.splitPatternByCandidateString,
+        )
     }
 
     private fun graphWithDominatedEquivalentPath(): MutableMap<Int, MutableList<Node>> =
@@ -45,28 +44,47 @@ class EquivalentPathPruningTest {
 
     @Test
     fun equivalentPathPruning_preservesCandidatesWhenSameSurfaceHasDifferentYomi() {
-        val graph = graphWithSameSurfaceDifferentYomi()
-        val unpruned = FindPath(equivalentPathPruningEnabled = false)
-            .backwardAStarWithBunsetsu(
-                graph = graph,
-                length = 4,
-                connectionIds = ShortArray(1),
-                connectionMatrixSize = 1,
-                n = 2,
-            )
-        val pruned = FindPath(equivalentPathPruningEnabled = true)
-            .backwardAStarWithBunsetsu(
-                graph = graph,
-                length = 4,
-                connectionIds = ShortArray(1),
-                connectionMatrixSize = 1,
-                n = 2,
-            )
+        val result = FindPath().backwardAStarWithBunsetsu(
+            graph = graphWithSameSurfaceDifferentYomi(),
+            length = 4,
+            connectionIds = ShortArray(1),
+            connectionMatrixSize = 1,
+            n = 2,
+        )
 
-        assertEquals(unpruned, pruned)
-        assertEquals(listOf("pxab", "pxac"), pruned.candidates.map { it.string })
-        assertEquals("pxあば", pruned.candidates[0].yomi)
-        assertEquals("pxあき", pruned.candidates[1].yomi)
+        assertEquals(listOf("pxab", "pxac"), result.candidates.map { it.string })
+        assertEquals(listOf(0, 200), result.candidates.map { it.score })
+        assertEquals(listOf("pxあば", "pxあき"), result.candidates.map { it.yomi })
+        assertEquals(listOf(emptyList<Int>()), result.splitPatterns)
+        assertEquals(
+            mapOf("pxab" to emptyList<Int>(), "pxac" to emptyList()),
+            result.splitPatternByCandidateString,
+        )
+    }
+
+    @Test
+    fun equivalentPathPruning_reducesEvaluatedTransitions() {
+        val unprunedConnectionMatrix = CountingCostTable()
+        FindPath().backwardAStarWithBunsetsu(
+            graph = graphWithDominatedEquivalentPath(),
+            length = 4,
+            connectionMatrix = unprunedConnectionMatrix,
+            n = 2,
+            candidateTrace = mutableListOf(),
+        )
+        val prunedConnectionMatrix = CountingCostTable()
+        FindPath().backwardAStarWithBunsetsu(
+            graph = graphWithDominatedEquivalentPath(),
+            length = 4,
+            connectionMatrix = prunedConnectionMatrix,
+            n = 2,
+        )
+
+        assertTrue(
+            "Expected pruning to reduce evaluated transitions: " +
+                "${prunedConnectionMatrix.callCount} >= ${unprunedConnectionMatrix.callCount}",
+            prunedConnectionMatrix.callCount < unprunedConnectionMatrix.callCount,
+        )
     }
 
     private fun graphWithSameSurfaceDifferentYomi(): MutableMap<Int, MutableList<Node>> =
@@ -101,4 +119,16 @@ class EquivalentPathPruningTest {
             yomiUsed = yomiUsed,
             sPos = start,
         )
+
+    private class CountingCostTable : ConnectionMatrix.CostTable {
+        override val matrixSize: Int = 1
+        override val entryCount: Int = 1
+        var callCount: Int = 0
+            private set
+
+        override fun cost(rid: Int, lid: Int): Int {
+            callCount++
+            return 0
+        }
+    }
 }

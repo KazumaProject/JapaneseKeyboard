@@ -24,7 +24,6 @@ class FindPath(
     private val ngramRuleScorerProvider: () -> NgramRuleScorer = { defaultNgramRuleScorer },
     private var mozcSegmenterProvider: () -> MozcSegmenter? = { null },
     private var mozcBoundaryModeProvider: () -> MozcBoundaryMode = { MozcBoundaryMode.STRICT },
-    private val equivalentPathPruningEnabled: Boolean = true,
 ) {
 
     private data class PathQueueElement(
@@ -411,8 +410,7 @@ class FindPath(
         val splitPatternByCandidateString = linkedMapOf<String, List<Int>>()
         val foundStrings = HashSet<String>()
         val ngramRuleScorer = ngramRuleScorerProvider()
-        val pruneEquivalentPaths = equivalentPathPruningEnabled &&
-            boundaryTrace == null &&
+        val pruneEquivalentPaths = boundaryTrace == null &&
             candidateTrace == null
         val nodeStateKeys = IdentityHashMap<Node, NodeStateKey>()
         val bestBackwardCostByEquivalentPath = HashMap<EquivalentPathKey, Int>()
