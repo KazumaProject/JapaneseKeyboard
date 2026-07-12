@@ -21,6 +21,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.trace.CandidateTrace
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.ForwardDpTrace
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.PenaltyTrace
 import timber.log.Timber
+import java.util.IdentityHashMap
 import java.util.PriorityQueue
 
 class FindPath(
@@ -45,7 +46,80 @@ class FindPath(
         val priorityCost: Int,
         val backwardCost: Int,
         val next: PathQueueElement?,
+        val outputPath: OutputPath?,
+        val sourceMask: Int,
     )
+
+    private data class NormalPathQueueElement(
+        val node: Node,
+        val priorityCost: Int,
+        val backwardCost: Int,
+        val next: NormalPathQueueElement?,
+        val outputPath: OutputPath?,
+        val sourceMask: Int,
+    )
+
+    private data class NormalPathStateKey(
+        val nodeIdentity: Int,
+        val nextIdentity1: Int,
+        val nextIdentity2: Int,
+        val nextIdentity3: Int,
+        val outputPath: OutputPath?,
+        val sourceMask: Int,
+    )
+
+    private class OutputPath(
+        private val segment: String,
+        private val next: OutputPath?,
+    ) {
+        private val contentLength: Int = segment.length + (next?.contentLength ?: 0)
+        private val power31: Int = pow31(segment.length) * (next?.power31 ?: 1)
+        private val contentHash: Int =
+            segment.hashCode() * (next?.power31 ?: 1) + (next?.contentHash ?: 0)
+
+        override fun hashCode(): Int = contentHash
+
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is OutputPath || contentLength != other.contentLength || contentHash != other.contentHash) {
+                return false
+            }
+            var left: OutputPath? = this
+            var right: OutputPath? = other
+            var leftIndex = 0
+            var rightIndex = 0
+            while (left != null && right != null) {
+                if (left.segment[leftIndex] != right.segment[rightIndex]) return false
+                leftIndex++
+                rightIndex++
+                if (leftIndex == left.segment.length) {
+                    left = left.next
+                    leftIndex = 0
+                }
+                if (rightIndex == right.segment.length) {
+                    right = right.next
+                    rightIndex = 0
+                }
+            }
+            return left == null && right == null
+        }
+
+        fun asString(): String = buildString(contentLength) {
+            var current: OutputPath? = this@OutputPath
+            while (current != null) {
+                append(current.segment)
+                current = current.next
+            }
+        }
+
+        private companion object {
+            fun pow31(length: Int): Int {
+                var result = 1
+                repeat(length) { result *= 31 }
+                return result
+            }
+        }
+    }
 
     companion object {
         private val defaultNgramRuleScorer: NgramRuleScorer = NgramRuleScorer.createDefault()
@@ -68,12 +142,14 @@ class FindPath(
         connectionMatrixSize: Int,
         n: Int,
         beamWidth: Int = 20,
+        cancellationCheck: () -> Unit = {},
     ): MutableList<Candidate> = backwardAStar(
         graph = graph,
         length = length,
         connectionMatrix = ConnectionMatrix.fromShortArray(connectionIds, connectionMatrixSize),
         n = n,
         beamWidth = beamWidth,
+        cancellationCheck = cancellationCheck,
     )
 
     fun backwardAStar(
@@ -82,52 +158,108 @@ class FindPath(
         connectionMatrix: ConnectionMatrix.CostTable,
         n: Int,
         beamWidth: Int = 20,
+        cancellationCheck: () -> Unit = {},
     ): MutableList<Candidate> {
+        cancellationCheck()
+        val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
+        val incrementalMetadata = graph as? IncrementalGraphMetadata
+        val reusableForwardDp = forwardDpCache?.takeIf { cached ->
+            incrementalMetadata != null &&
+                incrementalMetadata.reusedThroughEndIndex == cached.inputLength &&
+                incrementalMetadata.conversionSignature == cached.conversionSignature &&
+                length == cached.inputLength + 1 &&
+                cached.connectionMatrixIdentity == System.identityHashCode(connectionMatrix) &&
+                cached.beamWidth == effectiveBeamWidth
+        }
+        val forwardDpStartPosition = if (reusableForwardDp != null) {
+            reusableForwardDp.nodesBeforePreviousEnd.forEach { (position, nodes) ->
+                graph[position] = nodes
+            }
+            reusableForwardDp.inputLength
+        } else {
+            1
+        }
         forwardDp(
             graph = graph,
             length = length,
             connectionMatrix = connectionMatrix,
-            beamWidth = beamWidth.coerceAtLeast(1),
+            beamWidth = effectiveBeamWidth,
+            startPosition = forwardDpStartPosition,
+            cancellationCheck = cancellationCheck,
         )
+        forwardDpCache = incrementalMetadata?.let {
+            ForwardDpCache(
+                inputLength = length,
+                conversionSignature = it.conversionSignature,
+                connectionMatrixIdentity = System.identityHashCode(connectionMatrix),
+                beamWidth = effectiveBeamWidth,
+                nodesBeforePreviousEnd = (0 until length).associateWithTo(LinkedHashMap()) { position ->
+                    graph[position]?.toMutableList() ?: mutableListOf()
+                },
+            )
+        }
 
         val resultFinal = mutableListOf<Candidate>()
         val foundStrings = HashSet<String>()
         val ngramRuleScorer = ngramRuleScorerProvider()
 
-        val pQueue: PriorityQueue<Pair<Node, Int>> =
-            PriorityQueue(
-                compareBy<Pair<Node, Int>> { it.second }
-                    .thenBy { it.first.sPos }
-                    .thenBy { it.first.len }
-                    .thenBy { System.identityHashCode(it.first) },
+        val pQueue: PriorityQueue<NormalPathQueueElement> =
+            PriorityQueue { first, second ->
+                var comparison = first.priorityCost.compareTo(second.priorityCost)
+                if (comparison == 0) comparison = first.node.sPos.compareTo(second.node.sPos)
+                if (comparison == 0) comparison = first.node.len.compareTo(second.node.len)
+                if (comparison == 0) {
+                    comparison = System.identityHashCode(first.node)
+                        .compareTo(System.identityHashCode(second.node))
+                }
+                comparison
+            }
+
+        graph[length + 1]?.get(0)?.let { eos ->
+            pQueue.add(
+                NormalPathQueueElement(
+                    node = eos,
+                    priorityCost = 0,
+                    backwardCost = 0,
+                    next = null,
+                    outputPath = null,
+                    sourceMask = 0,
+                )
             )
+        } ?: return resultFinal
+        val nodeIds = IdentityHashMap<Node, Int>()
+        nodeIds[BOS] = nodeIds.size
+        graph.values.asSequence().flatten().forEach { node ->
+            if (!nodeIds.containsKey(node)) nodeIds[node] = nodeIds.size
+        }
+        val bestBackwardCostByState = HashMap<NormalPathStateKey, Int>()
 
-        val eos = Pair(graph[length + 1]?.get(0) ?: return resultFinal, 0)
-        pQueue.add(eos)
-
+        var cancellationPollCounter = 0
         while (pQueue.isNotEmpty()) {
-            val node = pQueue.poll() ?: break
+            if (cancellationPollCounter++ and 0x3f == 0) cancellationCheck()
+            val element = pQueue.poll() ?: break
+            val currentNode = element.node
 
-            if (node.first.tango == "BOS") {
-                val stringFromNode = getStringFromNode(node.first)
-                val yomiUsedFromNode = getYomiUsedFromNode(node.first)
+            if (currentNode.tango == "BOS") {
+                val stringFromNode = element.outputPath?.asString().orEmpty()
+                val yomiUsedFromNode = getYomiUsedFromNormalPath(element)
 
                 if (foundStrings.add(stringFromNode)) {
                     val candidate = Candidate(
                         string = stringFromNode,
                         type = resolveCandidateType(
                             string = stringFromNode,
-                            sources = candidateSourcesFromNode(node.first),
+                            sources = candidateSourcesFromMask(element.sourceMask),
                         ),
                         yomi = yomiUsedFromNode,
                         length = length.toUByte(),
                         score = if (stringFromNode.any { it.isDigit() }) {
-                            node.second + 2000
+                            element.priorityCost + 2000
                         } else {
-                            node.second
+                            element.priorityCost
                         },
-                        leftId = node.first.next?.l,
-                        rightId = node.first.next?.r,
+                        leftId = element.next?.node?.l,
+                        rightId = element.next?.node?.r,
                     )
                     resultFinal.add(candidate)
                 }
@@ -138,30 +270,56 @@ class FindPath(
             } else {
                 val prevNodes = getPrevNodes2(
                     graph = graph,
-                    node = node.first,
-                    startPosition = node.first.sPos,
+                    node = currentNode,
+                    startPosition = currentNode.sPos,
                 )
 
                 for (prevNode in prevNodes) {
                     val edgeScore = getEdgeCost(
                         rid = prevNode.r.toInt(),
-                        lid = node.first.l.toInt(),
+                        lid = currentNode.l.toInt(),
                         connectionMatrix = connectionMatrix,
                     )
 
                     val ngramAdjustment = ngramRuleScorer.score(
                         prevNode = prevNode,
-                        currentNode = node.first,
-                        nextNode1 = node.first.next,
-                        nextNode2 = node.first.next?.next,
-                        nextNode3 = node.first.next?.next?.next,
+                        currentNode = currentNode,
+                        nextNode1 = element.next?.node,
+                        nextNode2 = element.next?.next?.node,
+                        nextNode3 = element.next?.next?.next?.node,
                     )
 
-                    prevNode.g = node.first.g + edgeScore + node.first.adjustedScore + ngramAdjustment
-                    prevNode.next = node.first
-
-                    val result2 = Pair(prevNode, prevNode.g + prevNode.f)
-                    pQueue.add(result2)
+                    val backwardCost = element.backwardCost +
+                        edgeScore +
+                        currentNode.adjustedScore +
+                        ngramAdjustment
+                    val outputPath = if (prevNode.tango == "BOS") {
+                        element.outputPath
+                    } else {
+                        OutputPath(prevNode.tango, element.outputPath)
+                    }
+                    val sourceMask = element.sourceMask or prevNode.candidateSource.toMask()
+                    val stateKey = NormalPathStateKey(
+                        nodeIdentity = nodeIds.getValue(prevNode),
+                        nextIdentity1 = nodeIds.getValue(element.node),
+                        nextIdentity2 = element.next?.node?.let(nodeIds::getValue) ?: -1,
+                        nextIdentity3 = element.next?.next?.node?.let(nodeIds::getValue) ?: -1,
+                        outputPath = outputPath,
+                        sourceMask = sourceMask,
+                    )
+                    val previousBest = bestBackwardCostByState[stateKey]
+                    if (previousBest != null && previousBest <= backwardCost) continue
+                    bestBackwardCostByState[stateKey] = backwardCost
+                    pQueue.add(
+                        NormalPathQueueElement(
+                            node = prevNode,
+                            priorityCost = backwardCost + prevNode.f,
+                            backwardCost = backwardCost,
+                            next = element,
+                            outputPath = outputPath,
+                            sourceMask = sourceMask,
+                        )
+                    )
                 }
             }
         }
@@ -338,6 +496,17 @@ class FindPath(
             .filter { it.tango != "BOS" && it.tango != "EOS" }
             .map { it.candidateSource }
 
+    private fun CandidateSource.toMask(): Int = when (this) {
+        CandidateSource.LEARNED_DICTIONARY -> 1
+        CandidateSource.USER_DICTIONARY -> 2
+        CandidateSource.SYSTEM, CandidateSource.UNKNOWN -> 0
+    }
+
+    private fun candidateSourcesFromMask(mask: Int): Sequence<CandidateSource> = sequence {
+        if (mask and 1 != 0) yield(CandidateSource.LEARNED_DICTIONARY)
+        if (mask and 2 != 0) yield(CandidateSource.USER_DICTIONARY)
+    }
+
     private fun resolveCandidateType(
         string: String,
         sources: Sequence<CandidateSource>,
@@ -385,6 +554,7 @@ class FindPath(
         forwardDpTrace: MutableList<ForwardDpTrace>? = null,
         boundaryTrace: MutableList<BoundaryTrace>? = null,
         candidateTrace: MutableList<CandidateTrace>? = null,
+        cancellationCheck: () -> Unit = {},
     ): BunsetsuCandidateResult = backwardAStarWithBunsetsu(
         graph = graph,
         length = length,
@@ -395,6 +565,7 @@ class FindPath(
         forwardDpTrace = forwardDpTrace,
         boundaryTrace = boundaryTrace,
         candidateTrace = candidateTrace,
+        cancellationCheck = cancellationCheck,
     )
 
     fun backwardAStarWithBunsetsu(
@@ -504,10 +675,18 @@ class FindPath(
                     priorityCost = 0,
                     backwardCost = 0,
                     next = null,
+                    outputPath = null,
+                    sourceMask = 0,
                 ),
             )
         }
             ?: return BunsetsuCandidateResult(emptyList(), emptyList())
+        val nodeIds = IdentityHashMap<Node, Int>()
+        nodeIds[BOS] = nodeIds.size
+        graph.values.asSequence().flatten().forEach { node ->
+            if (!nodeIds.containsKey(node)) nodeIds[node] = nodeIds.size
+        }
+        val bestBackwardCostByState = HashMap<NormalPathStateKey, Int>()
 
         var cancellationPollCounter = 0
         while (pQueue.isNotEmpty()) {
@@ -516,7 +695,7 @@ class FindPath(
             val currentNode = element.node
 
             if (currentNode.tango == "BOS") {
-                val stringFromNode = getStringFromPath(element)
+                val stringFromNode = element.outputPath?.asString().orEmpty()
                 val yomiUsedFromNode = getYomiUsedFromPath(element)
                 val totalCost = if (stringFromNode.any { it.isDigit() }) {
                     element.priorityCost + 2000
@@ -543,7 +722,7 @@ class FindPath(
                         string = stringFromNode,
                         type = resolveCandidateType(
                             string = stringFromNode,
-                            sources = candidateSourcesFromPath(element),
+                            sources = candidateSourcesFromMask(element.sourceMask),
                         ),
                         length = length.toUByte(),
                         yomi = yomiUsedFromNode,
@@ -612,8 +791,23 @@ class FindPath(
                         edgeScore +
                         currentNode.adjustedScore +
                         ngramAdjustment
-                    prevNode.g = backwardCost
-                    prevNode.next = currentNode
+                    val outputPath = if (prevNode.tango == "BOS") {
+                        element.outputPath
+                    } else {
+                        OutputPath(prevNode.tango, element.outputPath)
+                    }
+                    val sourceMask = element.sourceMask or prevNode.candidateSource.toMask()
+                    val stateKey = NormalPathStateKey(
+                        nodeIdentity = nodeIds.getValue(prevNode),
+                        nextIdentity1 = nodeIds.getValue(element.node),
+                        nextIdentity2 = element.next?.node?.let(nodeIds::getValue) ?: -1,
+                        nextIdentity3 = element.next?.next?.node?.let(nodeIds::getValue) ?: -1,
+                        outputPath = outputPath,
+                        sourceMask = sourceMask,
+                    )
+                    val previousBest = bestBackwardCostByState[stateKey]
+                    if (previousBest != null && previousBest <= backwardCost) continue
+                    bestBackwardCostByState[stateKey] = backwardCost
 
                     pQueue.add(
                         PathQueueElement(
@@ -621,6 +815,8 @@ class FindPath(
                             priorityCost = backwardCost + prevNode.f,
                             backwardCost = backwardCost,
                             next = element,
+                            outputPath = outputPath,
+                            sourceMask = sourceMask,
                         ),
                     )
                 }
@@ -857,6 +1053,17 @@ class FindPath(
             if (node.tango != "BOS" && node.tango != "EOS") {
                 result.append(node.yomiUsed)
             }
+            current = current.next
+        }
+        return result.toString()
+    }
+
+    private fun getYomiUsedFromNormalPath(path: NormalPathQueueElement): String {
+        val result = StringBuilder()
+        var current: NormalPathQueueElement? = path
+        while (current != null) {
+            val node = current.node
+            if (node.tango != "BOS" && node.tango != "EOS") result.append(node.yomiUsed)
             current = current.next
         }
         return result.toString()

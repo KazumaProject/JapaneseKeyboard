@@ -5,9 +5,38 @@ import com.kazumaproject.graph.Node
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class FindPathConnectionMatrixTest {
+
+    @Test
+    fun backwardAStar_stopsWhenCancellationIsRequested() {
+        assertThrows(TestCancellation::class.java) {
+            FindPath().backwardAStar(
+                graph = singleWordGraph(),
+                length = 1,
+                connectionIds = ShortArray(4),
+                connectionMatrixSize = 2,
+                n = 1,
+                cancellationCheck = { throw TestCancellation() },
+            )
+        }
+    }
+
+    @Test
+    fun backwardAStarWithBunsetsu_stopsWhenCancellationIsRequested() {
+        assertThrows(TestCancellation::class.java) {
+            FindPath().backwardAStarWithBunsetsu(
+                graph = singleWordGraph(),
+                length = 1,
+                connectionIds = ShortArray(4),
+                connectionMatrixSize = 2,
+                n = 1,
+                cancellationCheck = { throw TestCancellation() },
+            )
+        }
+    }
 
     @Test
     fun backwardAStar_usesPassed2672ConnectionMatrixWidth() {
@@ -125,4 +154,6 @@ class FindPathConnectionMatrixTest {
             next = null,
             candidateSource = candidateSource,
         )
+
+    private class TestCancellation : RuntimeException()
 }

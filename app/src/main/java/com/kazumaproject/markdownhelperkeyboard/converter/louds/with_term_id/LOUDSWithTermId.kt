@@ -34,6 +34,28 @@ class LOUDSWithTermId {
         val nodeIndex: Int,
     )
 
+    data class OmissionSearchState(
+        val nodeIndex: Int,
+        val omissionOccurred: Boolean,
+    )
+
+    data class OmissionSearchProgress(
+        val results: List<OmissionSearchResult>,
+        val terminalStates: List<OmissionSearchState>,
+    )
+
+    data class TypoSearchState(
+        val nodeIndex: Int,
+        val penaltyUsed: Int,
+        val depth: Int,
+    )
+
+    data class TypoSearchProgress(
+        val results: List<TypoCorrectionResult>,
+        val terminalStates: List<TypoSearchState>,
+        val acceptedPenalties: Map<String, Int>,
+    )
+
     val LBSTemp: MutableList<Boolean> = arrayListOf()
     var LBS: BitSet = BitSet()
     var labels: CharArray = charArrayOf()
@@ -608,63 +630,84 @@ class LOUDSWithTermId {
      */
     fun commonPrefixSearchWithOmission(
         str: String, succinctBitVector: SuccinctBitVector
-    ): List<OmissionSearchResult> { // ★ 戻り値を List<String> から List<OmissionSearchResult> に変更
-        val results =
-            mutableSetOf<OmissionSearchResult>() // ★ 型を MutableSet<OmissionSearchResult> に変更
-        // ★ 5番目の引数として「省略発生フラグ」の初期値 false を渡す
-        searchRecursiveWithOmission(str, 0, 0, "", false, results, succinctBitVector)
-        return results.toList()
-    }
+    ): List<OmissionSearchResult> = commonPrefixSearchWithOmissionProgress(
+        str = str,
+        startIndex = 0,
+        succinctBitVector = succinctBitVector,
+    ).results
 
     /**
-     * 修飾キー省略検索のための再帰的なヘルパー関数。
-     *
-     * @param omissionOccurred これまでの探索パスで省略が発生したか
+     * 省略検索の候補と、入力末尾での探索状態を同時に返す。
+     * 探索状態は1文字追加時に [advanceOmissionSearch] へ渡せる。
      */
-    private fun searchRecursiveWithOmission(
-        originalStr: String,
-        strIndex: Int,
-        currentNodeIndex: Int,
-        currentYomi: String,
-        omissionOccurred: Boolean, // ★「省略発生フラグ」を引数に追加
-        results: MutableSet<OmissionSearchResult>, // ★ 型を OmissionSearchResult に変更
-        succinctBitVector: SuccinctBitVector
-    ) {
-        if (isLeaf[currentNodeIndex]) {
-            // ★ OmissionSearchResult オブジェクトを追加
-            results.add(OmissionSearchResult(currentYomi, omissionOccurred))
+    fun commonPrefixSearchWithOmissionProgress(
+        str: CharSequence,
+        startIndex: Int,
+        succinctBitVector: SuccinctBitVector,
+    ): OmissionSearchProgress {
+        if (startIndex !in str.indices) {
+            return OmissionSearchProgress(emptyList(), emptyList())
         }
-
-        if (strIndex >= originalStr.length) {
-            return
-        }
-
-        val charToMatch = originalStr[strIndex]
-        val charVariations = getCharVariations(charToMatch)
-
-        for (variant in charVariations) {
-            // ★ 現在のパスで省略が発生したかを計算 (元のフラグ || 今回の文字が元と違うか)
-            val newOmissionOccurred = omissionOccurred || (variant != charToMatch)
-
-            var childPos = firstChild(currentNodeIndex, succinctBitVector)
-            while (childPos >= 0 && LBS[childPos]) {
-                val labelNodeId = succinctBitVector.rank1(childPos)
-                if (labelNodeId < labels.size && labels[labelNodeId] == variant) {
-
-                    searchRecursiveWithOmission(
-                        originalStr,
-                        strIndex + 1,
-                        childPos,
-                        currentYomi + variant,
-                        newOmissionOccurred, // ★ 更新したフラグを再帰呼び出しに渡す
-                        results,
-                        succinctBitVector
+        var states = listOf(OmissionSearchState(nodeIndex = 0, omissionOccurred = false))
+        val results = linkedSetOf<OmissionSearchResult>()
+        for (index in startIndex until str.length) {
+            states = advanceOmissionStates(states, str[index], succinctBitVector)
+            if (states.isEmpty()) break
+            states.forEach { state ->
+                if (isLeaf[state.nodeIndex]) {
+                    results.add(
+                        OmissionSearchResult(
+                            yomi = getLetter(state.nodeIndex),
+                            omissionOccurred = state.omissionOccurred,
+                        )
                     )
-                    break
                 }
-                childPos++
             }
         }
+        return OmissionSearchProgress(results.toList(), states)
+    }
+
+    /** 保持した省略探索状態を1文字だけ進める。 */
+    fun advanceOmissionSearch(
+        states: List<OmissionSearchState>,
+        char: Char,
+        succinctBitVector: SuccinctBitVector,
+    ): OmissionSearchProgress {
+        val advanced = advanceOmissionStates(states, char, succinctBitVector)
+        val results = advanced.mapNotNullTo(ArrayList()) { state ->
+            if (!isLeaf[state.nodeIndex]) {
+                null
+            } else {
+                OmissionSearchResult(
+                    yomi = getLetter(state.nodeIndex),
+                    omissionOccurred = state.omissionOccurred,
+                )
+            }
+        }
+        return OmissionSearchProgress(results, advanced)
+    }
+
+    private fun advanceOmissionStates(
+        states: List<OmissionSearchState>,
+        char: Char,
+        succinctBitVector: SuccinctBitVector,
+    ): List<OmissionSearchState> {
+        if (states.isEmpty()) return emptyList()
+        val advanced = ArrayList<OmissionSearchState>(states.size * 2)
+        states.forEach { state ->
+            forEachCharVariation(char) { variant ->
+                val child = traverse(state.nodeIndex, variant, succinctBitVector)
+                if (child >= 0) {
+                    advanced.add(
+                        OmissionSearchState(
+                            nodeIndex = child,
+                            omissionOccurred = state.omissionOccurred || variant != char,
+                        )
+                    )
+                }
+            }
+        }
+        return advanced
     }
 
     /**
@@ -674,37 +717,55 @@ class LOUDSWithTermId {
      * @param char 変換元の文字
      * @return 変換後の文字のリスト
      */
-    private fun getCharVariations(char: Char): List<Char> {
-        return when (char) {
-            'か' -> listOf('か', 'が')
-            'き' -> listOf('き', 'ぎ')
-            'く' -> listOf('く', 'ぐ')
-            'け' -> listOf('け', 'げ')
-            'こ' -> listOf('こ', 'ご')
-            'さ' -> listOf('さ', 'ざ')
-            'し' -> listOf('し', 'じ')
-            'す' -> listOf('す', 'ず')
-            'せ' -> listOf('せ', 'ぜ')
-            'そ' -> listOf('そ', 'ぞ')
-            'た' -> listOf('た', 'だ')
-            'ち' -> listOf('ち', 'ぢ')
-            'つ' -> listOf('つ', 'づ', 'っ')
-            'て' -> listOf('て', 'で')
-            'と' -> listOf('と', 'ど')
-            'は' -> listOf('は', 'ば', 'ぱ')
-            'ひ' -> listOf('ひ', 'び', 'ぴ')
-            'ふ' -> listOf('ふ', 'ぶ', 'ぷ')
-            'へ' -> listOf('へ', 'べ', 'ぺ')
-            'ほ' -> listOf('ほ', 'ぼ', 'ぽ')
-            'や' -> listOf('や', 'ゃ')
-            'ゆ' -> listOf('ゆ', 'ゅ')
-            'よ' -> listOf('よ', 'ょ')
-            'あ' -> listOf('あ', 'ぁ')
-            'い' -> listOf('い', 'ぃ')
-            'う' -> listOf('う', 'ぅ')
-            'え' -> listOf('え', 'ぇ')
-            'お' -> listOf('お', 'ぉ')
-            else -> listOf(char)
+    private inline fun forEachCharVariation(char: Char, block: (Char) -> Unit) {
+        block(char)
+        when (char) {
+            'か' -> block('が')
+            'き' -> block('ぎ')
+            'く' -> block('ぐ')
+            'け' -> block('げ')
+            'こ' -> block('ご')
+            'さ' -> block('ざ')
+            'し' -> block('じ')
+            'す' -> block('ず')
+            'せ' -> block('ぜ')
+            'そ' -> block('ぞ')
+            'た' -> block('だ')
+            'ち' -> block('ぢ')
+            'つ' -> {
+                block('づ')
+                block('っ')
+            }
+            'て' -> block('で')
+            'と' -> block('ど')
+            'は' -> {
+                block('ば')
+                block('ぱ')
+            }
+            'ひ' -> {
+                block('び')
+                block('ぴ')
+            }
+            'ふ' -> {
+                block('ぶ')
+                block('ぷ')
+            }
+            'へ' -> {
+                block('べ')
+                block('ぺ')
+            }
+            'ほ' -> {
+                block('ぼ')
+                block('ぽ')
+            }
+            'や' -> block('ゃ')
+            'ゆ' -> block('ゅ')
+            'よ' -> block('ょ')
+            'あ' -> block('ぁ')
+            'い' -> block('ぃ')
+            'う' -> block('ぅ')
+            'え' -> block('ぇ')
+            'お' -> block('ぉ')
         }
     }
 
@@ -714,11 +775,31 @@ class LOUDSWithTermId {
         maxPenalty: Int = 2,
         maxLen: Int = 12,
         maxResults: Int = 64, // 任意: 暴発防止
-    ): List<TypoCorrectionResult> {
+    ): List<TypoCorrectionResult> = commonPrefixSearchWithTypoCorrectionProgress(
+        str = str,
+        startIndex = 0,
+        succinctBitVector = succinctBitVector,
+        maxPenalty = maxPenalty,
+        maxLen = maxLen,
+        maxResults = maxResults,
+    ).results
+
+    fun commonPrefixSearchWithTypoCorrectionProgress(
+        str: CharSequence,
+        startIndex: Int,
+        succinctBitVector: SuccinctBitVector,
+        maxPenalty: Int = 2,
+        maxLen: Int = 12,
+        maxResults: Int = 64,
+    ): TypoSearchProgress {
+        if (startIndex !in str.indices) {
+            return TypoSearchProgress(emptyList(), emptyList(), emptyMap())
+        }
 
         // 同一yomiの重複を最小penaltyで集約
         val bestPenaltyByYomi = HashMap<String, Int>(128)
         val sb = StringBuilder(maxLen)
+        val terminalStates = ArrayList<TypoSearchState>()
 
         fun acceptIfLeaf(nodeIndex: Int, penaltyUsed: Int) {
             if (sb.isEmpty()) return
@@ -740,7 +821,10 @@ class LOUDSWithTermId {
             acceptIfLeaf(nodeIndex, penaltyUsed)
 
             // 入力を使い切ったら終了（prefixなのでここで止める）
-            if (strIndex >= str.length) return
+            if (strIndex >= str.length) {
+                terminalStates.add(TypoSearchState(nodeIndex, penaltyUsed, sb.length))
+                return
+            }
             if (sb.length >= maxLen) return
 
             val ch = str[strIndex]
@@ -767,16 +851,60 @@ class LOUDSWithTermId {
         }
 
         // ルート開始
-        dfs(strIndex = 0, nodeIndex = 0, penaltyUsed = 0)
+        dfs(strIndex = startIndex, nodeIndex = 0, penaltyUsed = 0)
 
         // 出力整形: penalty昇順 → 長さ降順（好み）→ 文字列昇順
-        return bestPenaltyByYomi.entries
+        val results = bestPenaltyByYomi.entries
             .sortedWith(
                 compareBy<Map.Entry<String, Int>> { it.value }
                     .thenByDescending { it.key.length }
                     .thenBy { it.key }
             )
             .map { TypoCorrectionResult(it.key, it.value) }
+        return TypoSearchProgress(results, terminalStates, bestPenaltyByYomi)
+    }
+
+    fun advanceTypoCorrectionSearch(
+        previous: TypoSearchProgress,
+        char: Char,
+        succinctBitVector: SuccinctBitVector,
+        maxPenalty: Int = 2,
+        maxLen: Int = 12,
+        maxResults: Int = 64,
+    ): TypoSearchProgress {
+        if (previous.acceptedPenalties.size >= maxResults || previous.terminalStates.isEmpty()) {
+            return TypoSearchProgress(emptyList(), emptyList(), previous.acceptedPenalties)
+        }
+        val bestPenaltyByYomi = HashMap(previous.acceptedPenalties)
+        val terminalStates = ArrayList<TypoSearchState>()
+        val newResults = LinkedHashMap<String, Int>()
+        val typoCandidates = getTypoCandidates(char)
+        for (state in previous.terminalStates) {
+            if (bestPenaltyByYomi.size >= maxResults) break
+            if (state.depth >= maxLen) continue
+            for (candidate in typoCandidates) {
+                val nextPenalty = state.penaltyUsed + candidate.penalty
+                if (nextPenalty > maxPenalty) continue
+                val child = traverse(state.nodeIndex, candidate.ch, succinctBitVector)
+                if (child < 0) continue
+                terminalStates.add(TypoSearchState(child, nextPenalty, state.depth + 1))
+                if (!isLeaf[child]) continue
+                val yomi = getLetter(child)
+                val oldPenalty = bestPenaltyByYomi[yomi]
+                if (oldPenalty == null || nextPenalty < oldPenalty) {
+                    bestPenaltyByYomi[yomi] = nextPenalty
+                    newResults[yomi] = nextPenalty
+                }
+            }
+        }
+        val results = newResults.entries
+            .sortedWith(
+                compareBy<Map.Entry<String, Int>> { it.value }
+                    .thenByDescending { it.key.length }
+                    .thenBy { it.key }
+            )
+            .map { TypoCorrectionResult(it.key, it.value) }
+        return TypoSearchProgress(results, terminalStates, bestPenaltyByYomi)
     }
 
     private fun getTypoCandidates(ch: Char): List<TypoCandidate> {

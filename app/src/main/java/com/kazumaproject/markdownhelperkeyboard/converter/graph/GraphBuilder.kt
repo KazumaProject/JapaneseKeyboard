@@ -26,6 +26,10 @@ class GraphBuilder {
         val input: String,
         val signature: Int,
         val graph: MutableMap<Int, MutableList<Node>>,
+        val systemOmissionStates: Map<Int, List<LOUDSWithTermId.OmissionSearchState>>,
+        val systemUserOmissionStates: Map<Int, List<LOUDSWithTermId.OmissionSearchState>>,
+        val systemTypoProgress: Map<Int, LOUDSWithTermId.TypoSearchProgress>,
+        val systemUserTypoProgress: Map<Int, LOUDSWithTermId.TypoSearchProgress>,
     )
 
     private class IncrementalGraph(
@@ -203,13 +207,15 @@ class GraphBuilder {
         )
         val reusable = cachedGraph?.takeIf {
             graphNodeTrace == null &&
-                !isOmissionSearchEnable &&
-                !enableTypoCorrectionJapaneseFlick &&
                 it.signature == signature &&
                 str.length == it.input.length + 1 &&
                 str.startsWith(it.input)
         }
         val reusablePrefixLength = reusable?.input?.length ?: -1
+        val systemOmissionStates = LinkedHashMap<Int, List<LOUDSWithTermId.OmissionSearchState>>()
+        val systemUserOmissionStates = LinkedHashMap<Int, List<LOUDSWithTermId.OmissionSearchState>>()
+        val systemTypoProgress = LinkedHashMap<Int, LOUDSWithTermId.TypoSearchProgress>()
+        val systemUserTypoProgress = LinkedHashMap<Int, LOUDSWithTermId.TypoSearchProgress>()
         val graph: MutableMap<Int, MutableList<Node>> = if (reusable != null) {
             IncrementalGraph(reusablePrefixLength, signature).apply {
                 reusable.graph.forEach { (endIndex, nodes) ->
@@ -358,12 +364,36 @@ class GraphBuilder {
 
                 // 1.x システムユーザー辞書 (Typo Correction Prefix)
                 if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
-                    val typoPrefixResults = localSystemUserYomiTrie.commonPrefixSearchWithTypoCorrectionPrefix(
-                        str = subStr(),
-                        succinctBitVector = localSystemUserLBSYomi,
-                        maxResults = 98,
-                        maxLen = 12,
-                    )
+                    val typoProgress = if (reusablePrefixLength >= 0) {
+                        val previous = reusable?.systemUserTypoProgress?.get(i)
+                        if (previous == null) {
+                            localSystemUserYomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
+                                str = str,
+                                startIndex = i,
+                                succinctBitVector = localSystemUserLBSYomi,
+                                maxResults = 98,
+                                maxLen = 12,
+                            )
+                        } else {
+                            localSystemUserYomiTrie.advanceTypoCorrectionSearch(
+                                previous = previous,
+                                char = str.last(),
+                                succinctBitVector = localSystemUserLBSYomi,
+                                maxResults = 98,
+                                maxLen = 12,
+                            )
+                        }
+                    } else {
+                        localSystemUserYomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
+                            str = str,
+                            startIndex = i,
+                            succinctBitVector = localSystemUserLBSYomi,
+                            maxResults = 98,
+                            maxLen = 12,
+                        )
+                    }
+                    systemUserTypoProgress[i] = typoProgress
+                    val typoPrefixResults = typoProgress.results
                     if (typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
 
                     for (typo in typoPrefixResults) {
@@ -429,10 +459,28 @@ class GraphBuilder {
 
                 // 1.y システムユーザー辞書 (Omission Search)
                 if (isOmissionSearchEnable && !subStr().hasNConsecutiveChars(4)) {
-                    val omissionSearchResults = localSystemUserYomiTrie.commonPrefixSearchWithOmission(
-                        str = subStr(),
-                        succinctBitVector = localSystemUserLBSYomi,
-                    )
+                    val omissionProgress = if (reusablePrefixLength >= 0) {
+                        val previousStates = reusable?.systemUserOmissionStates?.get(i)
+                            ?: listOf(
+                                LOUDSWithTermId.OmissionSearchState(
+                                    nodeIndex = 0,
+                                    omissionOccurred = false,
+                                )
+                            )
+                        localSystemUserYomiTrie.advanceOmissionSearch(
+                            states = previousStates,
+                            char = str.last(),
+                            succinctBitVector = localSystemUserLBSYomi,
+                        )
+                    } else {
+                        localSystemUserYomiTrie.commonPrefixSearchWithOmissionProgress(
+                            str = str,
+                            startIndex = i,
+                            succinctBitVector = localSystemUserLBSYomi,
+                        )
+                    }
+                    systemUserOmissionStates[i] = omissionProgress.terminalStates
+                    val omissionSearchResults = omissionProgress.results
                     if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
 
                     for (omissionResult in omissionSearchResults) {
@@ -535,12 +583,36 @@ class GraphBuilder {
 
             // 3.x システム辞書 (Typo Correction Prefix)
             if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
-                val typoPrefixResults = yomiTrie.commonPrefixSearchWithTypoCorrectionPrefix(
-                    str = subStr(),
-                    succinctBitVector = succinctBitVectorLBSYomi,
-                    maxResults = 98,
-                    maxLen = 12, // ここは調整（予測変換の最大長に合わせる）
-                )
+                val typoProgress = if (reusablePrefixLength >= 0) {
+                    val previous = reusable?.systemTypoProgress?.get(i)
+                    if (previous == null) {
+                        yomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
+                            str = str,
+                            startIndex = i,
+                            succinctBitVector = succinctBitVectorLBSYomi,
+                            maxResults = 98,
+                            maxLen = 12,
+                        )
+                    } else {
+                        yomiTrie.advanceTypoCorrectionSearch(
+                            previous = previous,
+                            char = str.last(),
+                            succinctBitVector = succinctBitVectorLBSYomi,
+                            maxResults = 98,
+                            maxLen = 12,
+                        )
+                    }
+                } else {
+                    yomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
+                        str = str,
+                        startIndex = i,
+                        succinctBitVector = succinctBitVectorLBSYomi,
+                        maxResults = 98,
+                        maxLen = 12,
+                    )
+                }
+                systemTypoProgress[i] = typoProgress
+                val typoPrefixResults = typoProgress.results
 
                 // 見つかったら辞書ヒット扱いにして未知語フォールバック抑制
                 if (typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
@@ -601,11 +673,28 @@ class GraphBuilder {
 
             // 4. システム辞書 (Omission Search)
             if (isOmissionSearchEnable && !subStr().hasNConsecutiveChars(4)) {
-                val omissionSearchResults: List<OmissionSearchResult> =
-                    yomiTrie.commonPrefixSearchWithOmission(
-                        str = subStr(),
-                        succinctBitVector = succinctBitVectorLBSYomi
-                    )
+                val omissionProgress = if (reusablePrefixLength >= 0) {
+                        val previousStates = reusable?.systemOmissionStates?.get(i)
+                            ?: listOf(
+                                LOUDSWithTermId.OmissionSearchState(
+                                    nodeIndex = 0,
+                                    omissionOccurred = false,
+                                )
+                            )
+                        yomiTrie.advanceOmissionSearch(
+                            states = previousStates,
+                            char = str.last(),
+                            succinctBitVector = succinctBitVectorLBSYomi,
+                        )
+                    } else {
+                        yomiTrie.commonPrefixSearchWithOmissionProgress(
+                            str = str,
+                            startIndex = i,
+                            succinctBitVector = succinctBitVectorLBSYomi,
+                        )
+                    }
+                systemOmissionStates[i] = omissionProgress.terminalStates
+                val omissionSearchResults: List<OmissionSearchResult> = omissionProgress.results
                 if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
                 for (omissionResult in omissionSearchResults) {
                     val yomiStr = omissionResult.yomi
@@ -886,6 +975,10 @@ class GraphBuilder {
             input = str,
             signature = signature,
             graph = graph.deepCopyForGraphBuild(),
+            systemOmissionStates = systemOmissionStates,
+            systemUserOmissionStates = systemUserOmissionStates,
+            systemTypoProgress = systemTypoProgress,
+            systemUserTypoProgress = systemUserTypoProgress,
         )
         return graph
     }
