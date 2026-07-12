@@ -91,6 +91,18 @@ class RuntimeInputBehaviorPolicyTest {
     }
 
     @Test
+    fun forcedDirectCommitWinsOverComposingShortcutOverride() {
+        assertEquals(
+            ResolvedInputBehavior.DIRECT_COMMIT,
+            RuntimeInputBehaviorPolicy.effective(
+                baseline = ResolvedInputBehavior.COMPOSING_TEXT,
+                shortcutOverride = ResolvedInputBehavior.COMPOSING_TEXT,
+                forceDirectCommit = true,
+            )
+        )
+    }
+
+    @Test
     fun toggleFlipsCurrentBehavior() {
         assertEquals(
             ResolvedInputBehavior.COMPOSING_TEXT,

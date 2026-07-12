@@ -29,7 +29,9 @@ internal object RuntimeInputBehaviorPolicy {
     fun effective(
         baseline: ResolvedInputBehavior,
         shortcutOverride: ResolvedInputBehavior?,
+        forceDirectCommit: Boolean = false,
     ): ResolvedInputBehavior {
+        if (forceDirectCommit) return ResolvedInputBehavior.DIRECT_COMMIT
         return shortcutOverride ?: baseline
     }
 
