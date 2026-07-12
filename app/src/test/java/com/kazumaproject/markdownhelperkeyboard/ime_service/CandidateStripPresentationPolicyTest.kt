@@ -1,5 +1,6 @@
 package com.kazumaproject.markdownhelperkeyboard.ime_service
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -183,6 +184,48 @@ class CandidateStripPresentationPolicyTest {
         )
 
         assertTrue(presentation.showCandidateTab)
+    }
+
+    @Test
+    fun visibleCandidateTabAlwaysReservesItsHeight() {
+        val presentation = CandidateStripPresentationPolicy.resolve(
+            baseState(candidateTabVisible = true, candidatesShown = true)
+        )
+
+        assertEquals(36, resolveCandidateTabOffsetPx(presentation, 36))
+    }
+
+    @Test
+    fun hiddenCandidateTabDoesNotReserveHeight() {
+        val presentation = CandidateStripPresentationPolicy.resolve(
+            baseState(candidateTabVisible = true, candidatesShown = false)
+        )
+
+        assertEquals(0, resolveCandidateTabOffsetPx(presentation, 36))
+    }
+
+    @Test
+    fun candidatesUseConfiguredCandidateStripHeight() {
+        assertEquals(
+            160,
+            resolveCandidateStripHeightDp(
+                candidatesShown = true,
+                candidateHeightDp = 160,
+                emptyHeightDp = 110
+            )
+        )
+    }
+
+    @Test
+    fun emptyStateUsesConfiguredEmptyStripHeight() {
+        assertEquals(
+            110,
+            resolveCandidateStripHeightDp(
+                candidatesShown = false,
+                candidateHeightDp = 160,
+                emptyHeightDp = 110
+            )
+        )
     }
 
     @Test
