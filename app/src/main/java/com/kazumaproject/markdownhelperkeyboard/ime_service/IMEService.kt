@@ -163,9 +163,16 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ClipboardHistoryItem
 import com.kazumaproject.markdownhelperkeyboard.clipboard_history.database.ItemType
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.buildRomajiCandidates
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.toUserTemplateCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
@@ -426,7 +433,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private data class SuggestionLayoutKey(
         val isPortrait: Boolean,
         val columnNum: String,
-        val useSelectedTextGemmaActionLayout: Boolean,
+        val useLinearHorizontalLayout: Boolean,
         val isKeyboardFloatingMode: Boolean
     )
 
@@ -757,6 +764,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             includeZeroQuery = false
         )
         currentCandidateStripContent = content
+        if (isKeyboardFloatingMode != true) {
+            mainLayoutBinding?.let { binding ->
+                setMainSuggestionColumn(binding)
+            }
+        }
         suggestionAdapter?.submitContent(content)
         suggestionAdapterFull?.submitContent(fullContent)
         val presentation = resolveCandidateStripPresentation(
@@ -914,6 +926,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (refresh && changed) {
             refreshCandidateStripContent()
         }
+    }
+
+    private fun invalidateZeroQueryForEditorMutation() {
+        clearZeroQueryAllState(refresh = true)
     }
 
     private fun toggleZeroQueryVisibility() {
@@ -2095,6 +2111,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.showLearnedCandidatesInIncognitoPreference
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
+        listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
+            adapter.setShowDictionaryCandidateLabels(preferences.showDictionaryCandidateLabels)
+        }
         zeroQuerySuggestionPreference = preferences.zeroQuerySuggestionPreference
         if (!zeroQuerySuggestionPreference) {
             clearZeroQueryAllState(refresh = true)
@@ -17435,20 +17454,29 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 candidateColumnsLandscape ?: "1"
             }
 
+            val recyclerView = mainView.suggestionRecyclerView
+            val adapter = recyclerView.adapter ?: run {
+                // Do not cache a layout created before the active adapter is attached.
+                // Grid span lookup needs the adapter to keep shortcut items on one row.
+                lastSuggestionLayoutKey = null
+                return@measureDebugSection
+            }
+
             val key = SuggestionLayoutKey(
                 isPortrait = isPortrait,
                 columnNum = columnNum,
-                useSelectedTextGemmaActionLayout = shouldUseSelectedTextGemmaActionLayout(),
+                useLinearHorizontalLayout =
+                    CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(
+                        currentCandidateStripContent
+                    ),
                 isKeyboardFloatingMode = isKeyboardFloatingMode == true
             )
-            val recyclerView = mainView.suggestionRecyclerView
             if (lastSuggestionLayoutKey == key && recyclerView.layoutManager != null) {
                 return@measureDebugSection
             }
 
             lastSuggestionLayoutKey = key
 
-            val adapter = recyclerView.adapter
             recyclerView.adapter = null
 
             mainSuggestionGridSpacingDecoration?.let { decoration ->
@@ -17456,7 +17484,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainSuggestionGridSpacingDecoration = null
             }
 
-            if (key.useSelectedTextGemmaActionLayout) {
+            if (key.useLinearHorizontalLayout) {
                 recyclerView.layoutManager =
                     LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
                 recyclerView.adapter = adapter
@@ -17477,7 +17505,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     gridLayoutManager.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
                         override fun getSpanSize(position: Int): Int {
-                            return when (adapter?.getItemViewType(position)) {
+                            return when (adapter.getItemViewType(position)) {
                                 SuggestionAdapter.VIEW_TYPE_EMPTY,
                                 SuggestionAdapter.VIEW_TYPE_CLIPBOARD_PREVIEW,
                                 SuggestionAdapter.VIEW_TYPE_SHORTCUT_ENTRY,
@@ -17501,10 +17529,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             recyclerView.adapter = adapter
         }
-    }
-
-    private fun shouldUseSelectedTextGemmaActionLayout(): Boolean {
-        return currentCandidateStripCandidates.isSelectedTextGemmaActionCandidates()
     }
 
     private fun toggleKeyboardLayoutEditMode(mainView: MainLayoutBinding) {
@@ -20078,6 +20102,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             14,
             28,
             30,
+            CANDIDATE_TYPE_TIME.toInt(),
+            CANDIDATE_TYPE_ERA.toInt(),
+            CANDIDATE_TYPE_USER_TEMPLATE.toInt(),
             GemmaTranslationManager.TRANSLATED_CANDIDATE_TYPE,
             GemmaTranslationManager.PROMPT_RESULT_CANDIDATE_TYPE -> {
                 commitAndClearInput(candidate.string)
@@ -21117,7 +21144,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 ).map {
                     Candidate(
                         string = it.word,
-                        type = (28).toByte(),
+                        type = CANDIDATE_TYPE_USER_DICTIONARY,
                         length = (it.reading.length).toUByte(),
                         score = it.posScore
                     )
@@ -21127,22 +21154,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
-        val resultFromUserTemplate = if (isUserTemplateEnable == true) {
-            withContext(Dispatchers.IO) {
-                userTemplateRepository.searchByReading(
-                    reading = insertString, limit = 8
-                ).map {
-                    Candidate(
-                        string = it.word,
-                        type = (30).toByte(),
-                        length = (it.reading.length).toUByte(),
-                        score = it.posScore
-                    )
-                }.sortedBy { it.score }
-            }
-        } else {
-            emptyList()
-        }
+        val resultFromUserTemplate = getUserTemplateCandidates(insertString)
 
         val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
@@ -21157,7 +21169,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ).map {
                         Candidate(
                             string = it.out,
-                            type = (34).toByte(),
+                            type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                             length = (it.input.length).toUByte(),
                             score = it.score.toInt()
                         )
@@ -21275,7 +21287,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ).map {
                         Candidate(
                             string = it.word,
-                            type = (28).toByte(),
+                            type = CANDIDATE_TYPE_USER_DICTIONARY,
                             length = (it.reading.length).toUByte(),
                             score = it.posScore
                         )
@@ -21286,24 +21298,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
-        val resultFromUserTemplate = if (isUserTemplateEnable == true) {
+        val resultFromUserTemplate =
             measureDebugStage("IMEService.getSuggestionList.userTemplate") {
-                withContext(Dispatchers.IO) {
-                    userTemplateRepository.searchByReading(
-                        reading = insertString, limit = 8
-                    ).map {
-                        Candidate(
-                            string = it.word,
-                            type = (30).toByte(),
-                            length = (it.reading.length).toUByte(),
-                            score = it.posScore
-                        )
-                    }.sortedBy { it.score }
-                }
+                getUserTemplateCandidates(insertString)
             }
-        } else {
-            emptyList()
-        }
 
         val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
@@ -21319,7 +21317,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         ).map {
                             Candidate(
                                 string = it.out,
-                                type = (34).toByte(),
+                                type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                                 length = (it.input.length).toUByte(),
                                 score = it.score.toInt()
                             )
@@ -21472,7 +21470,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 ).map {
                     Candidate(
                         string = it.word,
-                        type = (28).toByte(),
+                        type = CANDIDATE_TYPE_USER_DICTIONARY,
                         length = (it.reading.length).toUByte(),
                         score = it.posScore
                     )
@@ -21482,22 +21480,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             emptyList()
         }
 
-        val resultFromUserTemplate = if (isUserTemplateEnable == true) {
-            withContext(Dispatchers.IO) {
-                userTemplateRepository.searchByReading(
-                    reading = insertString, limit = 8
-                ).map {
-                    Candidate(
-                        string = it.word,
-                        type = (30).toByte(),
-                        length = (it.reading.length).toUByte(),
-                        score = it.posScore
-                    )
-                }.sortedBy { it.score }
-            }
-        } else {
-            emptyList()
-        }
+        val resultFromUserTemplate = getUserTemplateCandidates(insertString)
 
         val suggestionLearnRepository = learnedRepositoryForSuggestion()
         val resultFromLearnDictionary =
@@ -21512,7 +21495,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     ).map {
                         Candidate(
                             string = it.out,
-                            type = (34).toByte(),
+                            type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                             length = (it.input.length).toUByte(),
                             score = it.score.toInt()
                         )
@@ -21611,55 +21594,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return engineCandidates.distinctBy { it.string }
     }
 
-    private fun getRomajiCandidates(insertString: String): List<Candidate> {
-        val conversionString = romajiConverter?.hiraganaToRomaji(insertString)
-        if (conversionString != null) {
-            val conversionFirstCapitalString =
-                conversionString.replaceFirstChar { it.uppercaseChar() }
-            val conversionFirstCapitalStringHankaku =
-                conversionFirstCapitalString.toHankakuAlphabet()
-            val conversionHankaku = conversionString.toHankakuAlphabet()
-            return listOf(
-                Candidate(
-                    string = conversionString,
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29000
-                ),
-                Candidate(
-                    string = conversionHankaku,
-                    type = (31).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29001
-                ),
-                Candidate(
-                    string = conversionFirstCapitalString,
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29002
-                ),
-                Candidate(
-                    string = conversionFirstCapitalStringHankaku,
-                    type = (31).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29003
-                ),
-                Candidate(
-                    string = conversionString.uppercase(),
-                    type = (30).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29004
-                ),
-                Candidate(
-                    string = conversionHankaku.uppercase(),
-                    type = (31).toByte(),
-                    length = insertString.length.toUByte(),
-                    score = 29005
-                ),
-            )
-        } else {
-            return emptyList()
+    private suspend fun getUserTemplateCandidates(insertString: String): List<Candidate> {
+        if (isUserTemplateEnable != true) return emptyList()
+        return withContext(Dispatchers.IO) {
+            userTemplateRepository.searchByReading(
+                reading = insertString,
+                limit = 8
+            ).toUserTemplateCandidates()
         }
+    }
+
+    private fun getRomajiCandidates(insertString: String): List<Candidate> {
+        val romaji = romajiConverter?.hiraganaToRomaji(insertString) ?: return emptyList()
+        return buildRomajiCandidates(
+            readingLength = insertString.length,
+            romaji = romaji
+        )
     }
 
     /**
@@ -21668,6 +21618,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * - カーソル直前の文字がそれ以外の場合：その単語を末尾まで削除します。
      */
     private fun deleteWordOrSymbolsBeforeCursor(insertString: String) {
+        invalidateZeroQueryForEditorMutation()
         val inputConnection = currentInputConnection ?: return
         if (isHenkan.get()) return
         if (stringInTail.get().isNotEmpty()) return
@@ -21716,6 +21667,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * - PreEdit / stringInTail がある場合は committed text を消さず、stringInTail を削除します。
      */
     private fun deleteWordOrSymbolsAfterCursor(insertString: String) {
+        invalidateZeroQueryForEditorMutation()
         val inputConnection = currentInputConnection ?: return
         if (isHenkan.get()) return
         if (insertString.isNotEmpty()) {
@@ -21752,6 +21704,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun deleteLongPress() {
+        invalidateZeroQueryForEditorMutation()
         if (isKeyboardLayoutEditModeActive()) return
         if (deleteLongPressJob?.isActive == true) return
         activeDeleteHistoryBatch = DeleteHistoryBatch(
@@ -22670,6 +22623,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      * This correctly handles complex emojis and user text selections.
      */
     private fun deleteLastGraphemeOrSelection() {
+        invalidateZeroQueryForEditorMutation()
         sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
     }
 
@@ -22992,6 +22946,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun deleteStringCommon(insertString: String) {
+        invalidateZeroQueryForEditorMutation()
         clearFunctionKeyConversionSource()
         val length = insertString.length
         when {

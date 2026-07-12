@@ -9,6 +9,8 @@ import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.model.LearnResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -17,9 +19,22 @@ import javax.inject.Singleton
 class LearnRepository @Inject constructor(
     private val learnDao: LearnDao
 ) {
-    suspend fun insertLearnedData(learnData: LearnEntity) = learnDao.insert(learnData)
+    @Volatile
+    private var conversionSnapshot: Map<Char, List<LearnEntity>>? = null
+    @Volatile
+    var conversionRevision: Long = 0
+        private set
+    private val conversionSnapshotMutex = Mutex()
 
-    suspend fun insertAll(learnDataList: List<LearnEntity>) = learnDao.insertAll(learnDataList)
+    suspend fun insertLearnedData(learnData: LearnEntity) {
+        learnDao.insert(learnData)
+        invalidateConversionSnapshot()
+    }
+
+    suspend fun insertAll(learnDataList: List<LearnEntity>) {
+        learnDao.insertAll(learnDataList)
+        invalidateConversionSnapshot()
+    }
 
     suspend fun findLearnDataByInput(input: String): List<LearnResult>? =
         learnDao.findByInput(input)?.sortedBy { it.score }
@@ -58,6 +73,7 @@ class LearnRepository @Inject constructor(
                 )
             )
         }
+        invalidateConversionSnapshot()
     }
 
     /**
@@ -76,23 +92,42 @@ class LearnRepository @Inject constructor(
      * @param searchTerm The term to search with.
      * @return A list of matching LearnEntity objects.
      */
-    suspend fun findCommonPrefixes(searchTerm: String): List<LearnEntity> =
-        learnDao.findCommonPrefixes(searchTerm)
+    suspend fun findCommonPrefixes(searchTerm: String): List<LearnEntity> {
+        val firstCharacter = searchTerm.firstOrNull() ?: return emptyList()
+        return getConversionSnapshot()[firstCharacter]
+            ?.asSequence()
+            ?.filter { searchTerm.startsWith(it.input) }
+            ?.toList()
+            .orEmpty()
+    }
 
     fun all(): Flow<List<LearnEntity>> = learnDao.all()
 
     suspend fun allSuspend(): List<LearnEntity> = learnDao.getAllSuspend()
 
-    suspend fun delete(learnData: LearnEntity) = learnDao.delete(learnData)
+    suspend fun delete(learnData: LearnEntity) {
+        learnDao.delete(learnData)
+        invalidateConversionSnapshot()
+    }
 
-    suspend fun deleteAll() = learnDao.deleteAll()
+    suspend fun deleteAll() {
+        learnDao.deleteAll()
+        invalidateConversionSnapshot()
+    }
 
-    suspend fun deleteByInput(input: String) = learnDao.deleteByInput(input)
+    suspend fun deleteByInput(input: String): Int {
+        return learnDao.deleteByInput(input).also { invalidateConversionSnapshot() }
+    }
 
-    suspend fun deleteByInputAndOutput(input: String, output: String) =
-        learnDao.deleteByInputAndOutput(input, output)
+    suspend fun deleteByInputAndOutput(input: String, output: String): Int {
+        return learnDao.deleteByInputAndOutput(input, output)
+            .also { invalidateConversionSnapshot() }
+    }
 
-    suspend fun update(learnData: LearnEntity) = learnDao.updateLearnedData(learnData)
+    suspend fun update(learnData: LearnEntity) {
+        learnDao.updateLearnedData(learnData)
+        invalidateConversionSnapshot()
+    }
 
     suspend fun updateSafely(learnData: LearnEntity): LearnUpdateResult {
         return try {
@@ -109,6 +144,23 @@ class LearnRepository @Inject constructor(
         } catch (_: Exception) {
             LearnUpdateResult.Error
         }
+    }
+
+    private suspend fun getConversionSnapshot(): Map<Char, List<LearnEntity>> {
+        conversionSnapshot?.let { return it }
+        return conversionSnapshotMutex.withLock {
+            conversionSnapshot ?: learnDao.getAllSuspend()
+                .asSequence()
+                .filter { it.input.isNotEmpty() }
+                .groupBy { it.input.first() }
+                .mapValues { (_, words) -> words.sortedByDescending { it.input.length } }
+                .also { conversionSnapshot = it }
+        }
+    }
+
+    private fun invalidateConversionSnapshot() {
+        conversionSnapshot = null
+        conversionRevision++
     }
 }
 

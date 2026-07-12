@@ -4,6 +4,7 @@ import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.core.domain.extensions.hasNConsecutiveChars
 import com.kazumaproject.dictionary.TokenArray
+import com.kazumaproject.graph.CandidateSource
 import com.kazumaproject.graph.MozcNodeAttributes
 import com.kazumaproject.graph.MozcNodeType
 import com.kazumaproject.graph.Node
@@ -16,8 +17,28 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalf
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.PosMapper
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 class GraphBuilder {
+
+    private data class CachedGraph(
+        val input: String,
+        val signature: Int,
+        val graph: MutableMap<Int, MutableList<Node>>,
+        val systemOmissionStates: Map<Int, List<LOUDSWithTermId.OmissionSearchState>>,
+        val systemUserOmissionStates: Map<Int, List<LOUDSWithTermId.OmissionSearchState>>,
+        val systemTypoProgress: Map<Int, LOUDSWithTermId.TypoSearchProgress>,
+        val systemUserTypoProgress: Map<Int, LOUDSWithTermId.TypoSearchProgress>,
+    )
+
+    private class IncrementalGraph(
+        override val reusedThroughEndIndex: Int,
+        override val conversionSignature: Int,
+    ) : LinkedHashMap<Int, MutableList<Node>>(), IncrementalGraphMetadata
+
+    @Volatile
+    private var cachedGraph: CachedGraph? = null
 
     private var systemUserYomiTrie: LOUDSWithTermId? = null
     private var systemUserTangoTrie: LOUDS? = null
@@ -36,6 +57,7 @@ class GraphBuilder {
         succinctBitVectorTokenArray: SuccinctBitVector?,
         succinctBitVectorTangoLBS: SuccinctBitVector?,
     ) {
+        cachedGraph = null
         systemUserYomiTrie = yomiTrie
         systemUserTangoTrie = tangoTrie
         systemUserTokenArray = tokenArray
@@ -64,6 +86,8 @@ class GraphBuilder {
         input: String,
         source: String,
     ) {
+        val reusedThroughEndIndex = (graph as? IncrementalGraph)?.reusedThroughEndIndex ?: -1
+        if (endIndex <= reusedThroughEndIndex) return
         val nodes = graph.computeIfAbsent(endIndex) { mutableListOf() }
 
         when (mode) {
@@ -166,8 +190,43 @@ class GraphBuilder {
         fun mozcAttributesFor(leftId: Short): Int =
             mozcNodeAttributeTable?.attributesFor(leftId.toInt()) ?: MozcNodeAttributes.NONE
 
-        val graph: MutableMap<Int, MutableList<Node>> = LinkedHashMap()
-        graph[0] = mutableListOf(BOS)
+        val signature = conversionSignature(
+            yomiTrie = yomiTrie,
+            wikiYomiTrie = wikiYomiTrie,
+            webYomiTrie = webYomiTrie,
+            personYomiTrie = personYomiTrie,
+            neologdYomiTrie = neologdYomiTrie,
+            userDictionaryRepository = userDictionaryRepository,
+            learnRepository = learnRepository,
+            isOmissionSearchEnable = isOmissionSearchEnable,
+            enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
+            typoCorrectionOffsetScore = typoCorrectionOffsetScore,
+            omissionSearchOffSetScore = omissionSearchOffSetScore,
+            graphNodeDedupMode = graphNodeDedupMode,
+            mozcNodeAttributeTable = mozcNodeAttributeTable,
+        )
+        val reusable = cachedGraph?.takeIf {
+            graphNodeTrace == null &&
+                it.signature == signature &&
+                str.length == it.input.length + 1 &&
+                str.startsWith(it.input)
+        }
+        val reusablePrefixLength = reusable?.input?.length ?: -1
+        val systemOmissionStates = LinkedHashMap<Int, List<LOUDSWithTermId.OmissionSearchState>>()
+        val systemUserOmissionStates = LinkedHashMap<Int, List<LOUDSWithTermId.OmissionSearchState>>()
+        val systemTypoProgress = LinkedHashMap<Int, LOUDSWithTermId.TypoSearchProgress>()
+        val systemUserTypoProgress = LinkedHashMap<Int, LOUDSWithTermId.TypoSearchProgress>()
+        val graph: MutableMap<Int, MutableList<Node>> = if (reusable != null) {
+            IncrementalGraph(reusablePrefixLength, signature).apply {
+                reusable.graph.forEach { (endIndex, nodes) ->
+                    if (endIndex != reusablePrefixLength + 1) {
+                        put(endIndex, nodes.mapTo(mutableListOf()) { it.copyForGraphBuild() })
+                    }
+                }
+            }
+        } else {
+            IncrementalGraph(-1, signature).apply { put(0, mutableListOf(BOS)) }
+        }
         graph[str.length + 1] = mutableListOf(
             Node(
                 l = 0,
@@ -183,6 +242,7 @@ class GraphBuilder {
             )
         )
         for (i in str.indices) {
+            currentCoroutineContext().ensureActive()
             var subStrCache: String? = null
             fun subStr(): String {
                 val cached = subStrCache
@@ -208,6 +268,7 @@ class GraphBuilder {
                     len = userWord.reading.length.toShort(),
                     sPos = i,
                     mozcAttributes = mozcAttributesFor(contextId),
+                    candidateSource = CandidateSource.USER_DICTIONARY,
                 )
                 addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "USER")
             }
@@ -228,6 +289,7 @@ class GraphBuilder {
                     len = learnedWord.input.length.toShort(),
                     sPos = i,
                     mozcAttributes = mozcAttributesFor(learnedWord.leftId ?: 1851.toShort()),
+                    candidateSource = CandidateSource.LEARNED_DICTIONARY,
                 )
                 addOrUpdateNode(graph, endIndex, node, graphNodeDedupMode, graphNodeTrace, str, "LEARN")
             }
@@ -261,6 +323,7 @@ class GraphBuilder {
                     if (nodeIndex <= 0) continue
                     val termId = localSystemUserYomiTrie.getTermId(nodeIndex, localSystemUserIsLeaf)
                     val endIndex = i + yomiStr.length
+                    if (endIndex <= reusablePrefixLength) continue
                     localSystemUserTokenArray.forEachDictionaryByYomiTermId(
                         termId,
                         localSystemUserTokenBitVector,
@@ -301,12 +364,36 @@ class GraphBuilder {
 
                 // 1.x システムユーザー辞書 (Typo Correction Prefix)
                 if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
-                    val typoPrefixResults = localSystemUserYomiTrie.commonPrefixSearchWithTypoCorrectionPrefix(
-                        str = subStr(),
-                        succinctBitVector = localSystemUserLBSYomi,
-                        maxResults = 98,
-                        maxLen = 12,
-                    )
+                    val typoProgress = if (reusablePrefixLength >= 0) {
+                        val previous = reusable?.systemUserTypoProgress?.get(i)
+                        if (previous == null) {
+                            localSystemUserYomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
+                                str = str,
+                                startIndex = i,
+                                succinctBitVector = localSystemUserLBSYomi,
+                                maxResults = 98,
+                                maxLen = 12,
+                            )
+                        } else {
+                            localSystemUserYomiTrie.advanceTypoCorrectionSearch(
+                                previous = previous,
+                                char = str.last(),
+                                succinctBitVector = localSystemUserLBSYomi,
+                                maxResults = 98,
+                                maxLen = 12,
+                            )
+                        }
+                    } else {
+                        localSystemUserYomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
+                            str = str,
+                            startIndex = i,
+                            succinctBitVector = localSystemUserLBSYomi,
+                            maxResults = 98,
+                            maxLen = 12,
+                        )
+                    }
+                    systemUserTypoProgress[i] = typoProgress
+                    val typoPrefixResults = typoProgress.results
                     if (typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
 
                     for (typo in typoPrefixResults) {
@@ -328,6 +415,7 @@ class GraphBuilder {
                             localSystemUserTokenBitVector,
                         )
                         val endIndex = i + yomiStr.length
+                        if (endIndex <= reusablePrefixLength) continue
                         val penalty = typoCorrectionOffsetScore * typo.penaltyUsed
 
                         listToken
@@ -371,10 +459,28 @@ class GraphBuilder {
 
                 // 1.y システムユーザー辞書 (Omission Search)
                 if (isOmissionSearchEnable && !subStr().hasNConsecutiveChars(4)) {
-                    val omissionSearchResults = localSystemUserYomiTrie.commonPrefixSearchWithOmission(
-                        str = subStr(),
-                        succinctBitVector = localSystemUserLBSYomi,
-                    )
+                    val omissionProgress = if (reusablePrefixLength >= 0) {
+                        val previousStates = reusable?.systemUserOmissionStates?.get(i)
+                            ?: listOf(
+                                LOUDSWithTermId.OmissionSearchState(
+                                    nodeIndex = 0,
+                                    omissionOccurred = false,
+                                )
+                            )
+                        localSystemUserYomiTrie.advanceOmissionSearch(
+                            states = previousStates,
+                            char = str.last(),
+                            succinctBitVector = localSystemUserLBSYomi,
+                        )
+                    } else {
+                        localSystemUserYomiTrie.commonPrefixSearchWithOmissionProgress(
+                            str = str,
+                            startIndex = i,
+                            succinctBitVector = localSystemUserLBSYomi,
+                        )
+                    }
+                    systemUserOmissionStates[i] = omissionProgress.terminalStates
+                    val omissionSearchResults = omissionProgress.results
                     if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
 
                     for (omissionResult in omissionSearchResults) {
@@ -392,6 +498,7 @@ class GraphBuilder {
                             localSystemUserTokenBitVector,
                         )
                         val endIndex = i + yomiStr.length
+                        if (endIndex <= reusablePrefixLength) continue
 
                         listToken.sortedBy { it.wordCost }.take(5).forEach { token ->
                             val tango = when (token.nodeId) {
@@ -443,6 +550,7 @@ class GraphBuilder {
                 if (nodeIndex > 0) {
                     val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
                     val endIndex = i + yomiStr.length
+                    if (endIndex <= reusablePrefixLength) continue
                     tokenArray.forEachDictionaryByYomiTermId(
                         termId,
                         succinctBitVectorTokenArray
@@ -475,12 +583,36 @@ class GraphBuilder {
 
             // 3.x システム辞書 (Typo Correction Prefix)
             if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
-                val typoPrefixResults = yomiTrie.commonPrefixSearchWithTypoCorrectionPrefix(
-                    str = subStr(),
-                    succinctBitVector = succinctBitVectorLBSYomi,
-                    maxResults = 98,
-                    maxLen = 12, // ここは調整（予測変換の最大長に合わせる）
-                )
+                val typoProgress = if (reusablePrefixLength >= 0) {
+                    val previous = reusable?.systemTypoProgress?.get(i)
+                    if (previous == null) {
+                        yomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
+                            str = str,
+                            startIndex = i,
+                            succinctBitVector = succinctBitVectorLBSYomi,
+                            maxResults = 98,
+                            maxLen = 12,
+                        )
+                    } else {
+                        yomiTrie.advanceTypoCorrectionSearch(
+                            previous = previous,
+                            char = str.last(),
+                            succinctBitVector = succinctBitVectorLBSYomi,
+                            maxResults = 98,
+                            maxLen = 12,
+                        )
+                    }
+                } else {
+                    yomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
+                        str = str,
+                        startIndex = i,
+                        succinctBitVector = succinctBitVectorLBSYomi,
+                        maxResults = 98,
+                        maxLen = 12,
+                    )
+                }
+                systemTypoProgress[i] = typoProgress
+                val typoPrefixResults = typoProgress.results
 
                 // 見つかったら辞書ヒット扱いにして未知語フォールバック抑制
                 if (typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
@@ -500,6 +632,7 @@ class GraphBuilder {
                     )
 
                     val endIndex = i + yomiStr.length
+                    if (endIndex <= reusablePrefixLength) continue
                     val penalty = typoCorrectionOffsetScore * typo.penaltyUsed
 
                     listToken
@@ -540,11 +673,28 @@ class GraphBuilder {
 
             // 4. システム辞書 (Omission Search)
             if (isOmissionSearchEnable && !subStr().hasNConsecutiveChars(4)) {
-                val omissionSearchResults: List<OmissionSearchResult> =
-                    yomiTrie.commonPrefixSearchWithOmission(
-                        str = subStr(),
-                        succinctBitVector = succinctBitVectorLBSYomi
-                    )
+                val omissionProgress = if (reusablePrefixLength >= 0) {
+                        val previousStates = reusable?.systemOmissionStates?.get(i)
+                            ?: listOf(
+                                LOUDSWithTermId.OmissionSearchState(
+                                    nodeIndex = 0,
+                                    omissionOccurred = false,
+                                )
+                            )
+                        yomiTrie.advanceOmissionSearch(
+                            states = previousStates,
+                            char = str.last(),
+                            succinctBitVector = succinctBitVectorLBSYomi,
+                        )
+                    } else {
+                        yomiTrie.commonPrefixSearchWithOmissionProgress(
+                            str = str,
+                            startIndex = i,
+                            succinctBitVector = succinctBitVectorLBSYomi,
+                        )
+                    }
+                systemOmissionStates[i] = omissionProgress.terminalStates
+                val omissionSearchResults: List<OmissionSearchResult> = omissionProgress.results
                 if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
                 for (omissionResult in omissionSearchResults) {
                     val yomiStr = omissionResult.yomi
@@ -557,6 +707,7 @@ class GraphBuilder {
                             succinctBitVectorTokenArray
                         )
                         val endIndex = i + yomiStr.length
+                        if (endIndex <= reusablePrefixLength) continue
                         listToken.sortedBy { it.wordCost }.take(5).forEach { token ->
                             val tango = when (token.nodeId) {
                                 -2 -> yomiStr
@@ -603,6 +754,7 @@ class GraphBuilder {
                         val termId =
                             wikiYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafWikiYomi)
                         val endIndex = i + yomiStr.length
+                        if (endIndex <= reusablePrefixLength) continue
                         wikiTokenArray.forEachDictionaryByYomiTermId(
                             termId,
                             succinctBitVectorWikiTokenArray
@@ -652,6 +804,7 @@ class GraphBuilder {
                         val termId =
                             webYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafwebYomi)
                         val endIndex = i + yomiStr.length
+                        if (endIndex <= reusablePrefixLength) continue
                         webTokenArray.forEachDictionaryByYomiTermId(
                             termId,
                             succinctBitVectorwebTokenArray
@@ -701,6 +854,7 @@ class GraphBuilder {
                         val termId =
                             personYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafpersonYomi)
                         val endIndex = i + yomiStr.length
+                        if (endIndex <= reusablePrefixLength) continue
                         personTokenArray.forEachDictionaryByYomiTermId(
                             termId,
                             succinctBitVectorpersonTokenArray
@@ -750,6 +904,7 @@ class GraphBuilder {
                         val termId =
                             neologdYomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafneologdYomi)
                         val endIndex = i + yomiStr.length
+                        if (endIndex <= reusablePrefixLength) continue
                         neologdTokenArray.forEachDictionaryByYomiTermId(
                             termId,
                             succinctBitVectorneologdTokenArray
@@ -781,10 +936,23 @@ class GraphBuilder {
                 }
             }
 
+            // An append can complete a dictionary word that did not exist in the previous
+            // prefix. Remove the now-invalid unknown fallback retained by the incremental graph.
+            if (foundInAnyDictionary && reusablePrefixLength >= 0) {
+                val fallbackEndIndex = i + 1
+                graph[fallbackEndIndex]?.removeAll {
+                    it.candidateSource == CandidateSource.UNKNOWN && it.sPos == i
+                }
+                if (graph[fallbackEndIndex]?.isEmpty() == true) {
+                    graph.remove(fallbackEndIndex)
+                }
+            }
+
             // 9. どの辞書にもヒットしなかった場合のフォールバック
             if (!foundInAnyDictionary && i < str.length) {
                 val yomiStr = str.substring(i, i + 1) // 1文字だけを未知語として切り出す
                 val endIndex = i + yomiStr.length
+                if (endIndex <= reusablePrefixLength) continue
                 val unknownNode = Node(
                     l = 0, // 未知語用のID (一般名詞など)
                     r = 0, // 未知語用のID (一般名詞など)
@@ -796,12 +964,70 @@ class GraphBuilder {
                     len = yomiStr.length.toShort(),
                     sPos = i,
                     mozcAttributes = mozcAttributesFor(0),
+                    candidateSource = CandidateSource.UNKNOWN,
                 )
                 // 未知語は重複を考慮せずそのまま追加する
                 graph.computeIfAbsent(endIndex) { mutableListOf() }.add(unknownNode)
                 graphNodeTrace?.add(unknownNode.toTrace(str, endIndex, "UNKNOWN", "ADDED"))
             }
         }
+        cachedGraph = CachedGraph(
+            input = str,
+            signature = signature,
+            graph = graph.deepCopyForGraphBuild(),
+            systemOmissionStates = systemOmissionStates,
+            systemUserOmissionStates = systemUserOmissionStates,
+            systemTypoProgress = systemTypoProgress,
+            systemUserTypoProgress = systemUserTypoProgress,
+        )
         return graph
+    }
+
+    private fun Node.copyForGraphBuild(): Node = copy(
+        f = score,
+        g = score,
+        prev = null,
+        next = null,
+        adjustedScore = score,
+    )
+
+    private fun MutableMap<Int, MutableList<Node>>.deepCopyForGraphBuild(): MutableMap<Int, MutableList<Node>> =
+        LinkedHashMap<Int, MutableList<Node>>(size).also { copy ->
+            forEach { (endIndex, nodes) ->
+                copy[endIndex] = nodes.mapTo(mutableListOf()) { it.copyForGraphBuild() }
+            }
+        }
+
+    private fun conversionSignature(
+        yomiTrie: LOUDSWithTermId,
+        wikiYomiTrie: LOUDSWithTermId?,
+        webYomiTrie: LOUDSWithTermId?,
+        personYomiTrie: LOUDSWithTermId?,
+        neologdYomiTrie: LOUDSWithTermId?,
+        userDictionaryRepository: UserDictionaryRepository?,
+        learnRepository: LearnRepository?,
+        isOmissionSearchEnable: Boolean,
+        enableTypoCorrectionJapaneseFlick: Boolean,
+        typoCorrectionOffsetScore: Int,
+        omissionSearchOffSetScore: Int,
+        graphNodeDedupMode: GraphNodeDedupMode,
+        mozcNodeAttributeTable: MozcNodeAttributeTable?,
+    ): Int {
+        var result = System.identityHashCode(yomiTrie)
+        result = 31 * result + System.identityHashCode(wikiYomiTrie)
+        result = 31 * result + System.identityHashCode(webYomiTrie)
+        result = 31 * result + System.identityHashCode(personYomiTrie)
+        result = 31 * result + System.identityHashCode(neologdYomiTrie)
+        result = 31 * result + System.identityHashCode(userDictionaryRepository)
+        result = 31 * result + (userDictionaryRepository?.conversionRevision?.hashCode() ?: 0)
+        result = 31 * result + System.identityHashCode(learnRepository)
+        result = 31 * result + (learnRepository?.conversionRevision?.hashCode() ?: 0)
+        result = 31 * result + isOmissionSearchEnable.hashCode()
+        result = 31 * result + enableTypoCorrectionJapaneseFlick.hashCode()
+        result = 31 * result + typoCorrectionOffsetScore
+        result = 31 * result + omissionSearchOffSetScore
+        result = 31 * result + graphNodeDedupMode.hashCode()
+        result = 31 * result + System.identityHashCode(mozcNodeAttributeTable)
+        return result
     }
 }

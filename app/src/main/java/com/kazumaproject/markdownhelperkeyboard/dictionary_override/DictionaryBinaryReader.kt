@@ -9,13 +9,10 @@ import timber.log.Timber
 import java.io.BufferedInputStream
 import java.io.BufferedReader
 import java.io.ByteArrayInputStream
-import java.io.File
-import java.io.FileOutputStream
+import java.io.FileInputStream
 import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.ObjectInputStream
-import java.io.RandomAccessFile
-import java.nio.channels.FileChannel
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -79,8 +76,13 @@ class DictionaryBinaryReader @Inject constructor(
 
     fun loadConnectionIds(key: DictionaryFileKey = DictionaryFileKey.CONNECTION_ID): ShortArray =
         loadWithBundledFallback(key) { input ->
-            openZipAwareRawInputStream(input, key.name).use { raw ->
-                ConnectionIdBuilder().readShortArrayFromBytes(raw)
+            openZipAwareRaw(input, key.name) { raw, byteSize ->
+                raw.use {
+                    ConnectionIdBuilder().readShortArrayFromBytes(
+                        inputStream = it,
+                        expectedByteSize = byteSize,
+                    )
+                }
             }
         }
 
@@ -94,7 +96,7 @@ class DictionaryBinaryReader @Inject constructor(
             connectionMatrixCache
                 ?.takeIf { it.revision == revision && it.key == key }
                 ?.costTable
-                ?: createMappedConnectionMatrix(key, revision)
+                ?: createConnectionMatrix(key)
                     .also { connectionMatrixCache = ConnectionMatrixCache(revision, key, it) }
         }
     }
@@ -174,36 +176,8 @@ class DictionaryBinaryReader @Inject constructor(
         val rightIds: ShortArray,
     )
 
-    private fun createMappedConnectionMatrix(
-        key: DictionaryFileKey,
-        revision: Long,
-    ): ConnectionMatrix.CostTable {
-        val cacheFile = mappedConnectionMatrixFile(key, revision)
-        cacheFile.parentFile?.mkdirs()
-        loadWithBundledFallback(key) { input ->
-            openZipAwareRawInputStream(input, key.name).use { raw ->
-                FileOutputStream(cacheFile, false).use { output ->
-                    raw.copyTo(output)
-                }
-            }
-        }
-        cacheFile.parentFile
-            ?.listFiles { file -> file.name.startsWith("${key.name}_") && file != cacheFile }
-            ?.forEach { file -> runCatching { file.delete() } }
-
-        val mappedBuffer = RandomAccessFile(cacheFile, "r").channel.use { channel ->
-            channel.map(FileChannel.MapMode.READ_ONLY, 0, channel.size())
-        }
-        return ConnectionMatrix.fromByteBuffer(mappedBuffer)
-    }
-
-    private fun mappedConnectionMatrixFile(
-        key: DictionaryFileKey,
-        revision: Long,
-    ): File {
-        val baseDir = store.directory.parentFile ?: store.directory
-        return File(baseDir, "dictionary_runtime_cache/${key.name}_$revision.bin")
-    }
+    private fun createConnectionMatrix(key: DictionaryFileKey): ConnectionMatrix.CostTable =
+        ConnectionMatrix.fromShortArray(loadConnectionIds(key))
 
     private data class ConnectionMatrixCache(
         val revision: Long,
@@ -221,6 +195,15 @@ class DictionaryBinaryReader @Inject constructor(
             BufferedReader(InputStreamReader(openZipAwareRaw(input, debugName), Charsets.UTF_8))
 
         fun openZipAwareRaw(input: InputStream, debugName: String): InputStream {
+            return openZipAwareRaw(input, debugName) { raw, _ -> raw }
+        }
+
+        fun <T> openZipAwareRaw(
+            input: InputStream,
+            debugName: String,
+            block: (InputStream, Long?) -> T,
+        ): T {
+            val rawByteSize = input.rawByteSizeOrNull()
             val buffered = if (input.markSupported()) input else BufferedInputStream(input)
             buffered.mark(ZIP_SIGNATURE.size)
             val header = ByteArray(ZIP_SIGNATURE.size)
@@ -233,9 +216,16 @@ class DictionaryBinaryReader @Inject constructor(
                     entry = zipInputStream.nextEntry
                 }
                 require(entry != null) { "No readable entry found in $debugName" }
-                return zipInputStream
+                return block(zipInputStream, entry.size.takeIf { it >= 0L })
             }
-            return buffered
+            return block(buffered, rawByteSize)
+        }
+
+        private fun InputStream.rawByteSizeOrNull(): Long? {
+            val fileInputStream = this as? FileInputStream ?: return null
+            return runCatching {
+                fileInputStream.channel.size() - fileInputStream.channel.position()
+            }.getOrNull()?.takeIf { it >= 0L }
         }
     }
 }

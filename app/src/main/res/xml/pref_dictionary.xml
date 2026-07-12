@@ -21,6 +21,17 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/dictionary_candidate_label_category_title">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="show_dictionary_candidate_labels_preference"
+            android:title="@string/show_dictionary_candidate_labels_title"
+            app:iconSpaceReserved="false"
+            app:summary="@string/show_dictionary_candidate_labels_summary" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/conversion_beam_width_category_title">
 
         <SeekBarPreference

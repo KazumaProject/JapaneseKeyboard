@@ -29,6 +29,11 @@ import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.state.TenKeyQWERTYMode
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -193,6 +198,7 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var candidateTextSize: Float = 14f
     private var candidateTextColor: Int? = null
     private var showCandidateYomiForLiveConversion: Boolean = false
+    private var showDictionaryCandidateLabels: Boolean = false
     private val candidateItemColorState = PreviewCandidateItemColorState()
 
     private var candidateEmptyDrawableColor: Int? = null
@@ -878,6 +884,12 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         notifyItemRangeChanged(0, itemCount)
     }
 
+    fun setShowDictionaryCandidateLabels(enabled: Boolean) {
+        if (showDictionaryCandidateLabels == enabled) return
+        showDictionaryCandidateLabels = enabled
+        notifyItemRangeChanged(0, itemCount)
+    }
+
     fun setCandidateTextColor(color: Int) {
         if (candidateTextColor == color) return
         candidateTextColor = color
@@ -994,13 +1006,19 @@ class SuggestionAdapter2 : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
             (25).toByte() -> ""
             (26).toByte() -> ""
             (27).toByte() -> ""
-            (28).toByte() -> ""
+            CANDIDATE_TYPE_USER_DICTIONARY ->
+                if (showDictionaryCandidateLabels) "ユーザー" else ""
             (29).toByte() -> ""
             (30).toByte() -> "[全]"
+            CANDIDATE_TYPE_TIME -> ""
+            CANDIDATE_TYPE_ERA -> ""
+            CANDIDATE_TYPE_USER_TEMPLATE ->
+                if (showDictionaryCandidateLabels) "定型" else ""
             (31).toByte() -> "[半]"
             (32).toByte() -> ""
             (33).toByte() -> "[AI]"
-            (34).toByte() -> "[履歴]"
+            CANDIDATE_TYPE_LEARNED_DICTIONARY ->
+                if (showDictionaryCandidateLabels) "学習" else ""
             (35).toByte() -> "[修正]"
             (36).toByte() -> ""
             (37).toByte() -> "[AI]"
