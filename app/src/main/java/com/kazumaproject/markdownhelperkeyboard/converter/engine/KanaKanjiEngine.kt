@@ -1029,6 +1029,8 @@ class KanaKanjiEngine {
             ).map { it.withLatinPrefix(prefix) }
         }
 
+        val conversionContext = currentCoroutineContext()
+
         val graph = graphBuilder.constructGraph(
             input,
             systemYomiTrie,
@@ -1093,8 +1095,10 @@ class KanaKanjiEngine {
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
+                cancellationCheck = { conversionContext.ensureActive() },
             )
         }
+        conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
@@ -1516,6 +1520,8 @@ class KanaKanjiEngine {
             ).withLatinPrefix(prefix)
         }
 
+        val conversionContext = currentCoroutineContext()
+
         val graph = graphBuilder.constructGraph(
             input,
             systemYomiTrie,
@@ -1582,8 +1588,10 @@ class KanaKanjiEngine {
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
+                cancellationCheck = { conversionContext.ensureActive() },
             )
         }
+        conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
@@ -2099,6 +2107,7 @@ class KanaKanjiEngine {
                 cancellationCheck = { conversionContext.ensureActive() },
             )
         }
+        conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
@@ -2489,6 +2498,8 @@ class KanaKanjiEngine {
             ).map { it.withLatinPrefix(prefix) }
         }
 
+        val conversionContext = currentCoroutineContext()
+
         val graph = graphBuilder.constructGraph(
             input,
             systemYomiTrie,
@@ -2553,8 +2564,10 @@ class KanaKanjiEngine {
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
+                cancellationCheck = { conversionContext.ensureActive() },
             )
         }
+        conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
@@ -2932,6 +2945,8 @@ class KanaKanjiEngine {
             ).map { it.withLatinPrefix(prefix) }
         }
 
+        val conversionContext = currentCoroutineContext()
+
         val graph = graphBuilder.constructGraph(
             input,
             systemYomiTrie,
@@ -2995,8 +3010,10 @@ class KanaKanjiEngine {
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
+                cancellationCheck = { conversionContext.ensureActive() },
             )
         }
+        conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
@@ -3403,6 +3420,8 @@ class KanaKanjiEngine {
             ).withLatinPrefix(prefix)
         }
 
+        val conversionContext = currentCoroutineContext()
+
         val graph = graphBuilder.constructGraph(
             input,
             systemYomiTrie,
@@ -3468,8 +3487,10 @@ class KanaKanjiEngine {
                 connectionMatrix = connectionMatrix.costTable,
                 n = n,
                 beamWidth = beamWidth,
+                cancellationCheck = { conversionContext.ensureActive() },
             )
         }
+        conversionContext.ensureActive()
 
         if (input.isDigitsOnly()) {
             // 1. Generate full-width, time, and date candidates as before.
