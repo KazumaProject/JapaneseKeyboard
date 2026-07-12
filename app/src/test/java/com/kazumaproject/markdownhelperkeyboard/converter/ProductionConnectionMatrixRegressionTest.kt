@@ -60,6 +60,21 @@ class ProductionConnectionMatrixRegressionTest {
         }
     }
 
+    @Test
+    fun bunsetsuConversionExposesSequentialSplitPositionWithMozcParityEnabled() = runBlocking {
+        val engine = TestEngineFactory.create()
+        val userDictionaryRepository = mock<UserDictionaryRepository>()
+        whenever(userDictionaryRepository.commonPrefixSearchInUserDict(any())).thenReturn(emptyList())
+
+        val result = engine.convertForRegression(
+            input = "きょうはいいてんきですね",
+            userDictionaryRepository = userDictionaryRepository,
+        )
+
+        assertEquals("今日はいい天気ですね", result.candidates.first().string)
+        assertEquals(listOf(4), result.primarySplitPositions)
+    }
+
     private suspend fun KanaKanjiEngine.convertForRegression(
         input: String,
         userDictionaryRepository: UserDictionaryRepository,

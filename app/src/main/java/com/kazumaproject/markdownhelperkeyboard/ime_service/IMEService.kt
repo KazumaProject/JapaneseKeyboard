@@ -1808,6 +1808,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val widthPref: Int,
         val bottomMargin: Int,
         val positionIsEnd: Boolean, // true: End, false: Start
+        val candidateHeight: Int,
         val candidateEmptyHeight: Int,
         val qwertyHeightPref: Int,
         val qwertyWidthPref: Int,
@@ -13900,7 +13901,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     mainView.suggestionVisibility, true
                                 )
                             }
-                            setKeyboardHeightWithAdditional(mainView)
                         }
 
                         (physicalKeyboardEnable.replayCache.isNotEmpty() && !physicalKeyboardEnable.replayCache.first()) &&
@@ -13909,7 +13909,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             animateSuggestionImageViewVisibility(
                                 mainView.suggestionVisibility, true
                             )
-                            setKeyboardHeightWithAdditional(mainView)
                         }
 
                     }
@@ -13993,6 +13992,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         clearZeroQueryAllState(refresh = false)
                         shortcutToolbarHiddenForCandidates = true
                         refreshCandidateStripContent(candidatesShown = true)
+                        val softwareKeyboardVisible =
+                            physicalKeyboardEnable.replayCache.firstOrNull() != true
+                        val normalKeyboardSurfaceVisible =
+                            mainView.keyboardView.isVisible ||
+                                mainView.tabletView.isVisible ||
+                                mainView.qwertyView.isVisible ||
+                                mainView.customLayoutDefault.isVisible
+                        if (
+                            softwareKeyboardVisible &&
+                            isKeyboardFloatingMode != true &&
+                            normalKeyboardSurfaceVisible
+                        ) {
+                            // SharedFlow の最初の通知が Updating でも候補欄の高さを保証する。
+                            setKeyboardHeightWithAdditional(mainView)
+                        }
                         setSuggestionOnView(insertString, mainView)
                     }
                 }
@@ -14930,6 +14944,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 widthPref = tenkeyWidthPreferenceValue ?: 100,
                 bottomMargin = tenkeyBottomMarginPreferenceValue ?: 0,
                 positionIsEnd = tenkeyPositionPreferenceValue ?: true,
+                candidateHeight = candidateViewHeightPreferenceValue ?: 110,
                 candidateEmptyHeight = candidateViewHeightEmptyPreferenceValue ?: 110,
                 qwertyHeightPref = qwertyHeightPreferenceValue ?: 280,
                 qwertyWidthPref = qwertyWidthPreferenceValue ?: 100,
@@ -14946,6 +14961,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 widthPref = tenkeyWidthLandScapePreferenceValue ?: 100,
                 bottomMargin = tenkeyLandScapeBottomMarginPreferenceValue ?: 0,
                 positionIsEnd = tenkeyLandScapePositionPreferenceValue ?: true,
+                candidateHeight = candidateViewLandScapeHeightPreferenceValue ?: 110,
                 candidateEmptyHeight = candidateViewLandScapeHeightEmptyPreferenceValue ?: 110,
                 qwertyHeightPref = qwertyHeightLandScapePreferenceValue ?: 280,
                 qwertyWidthPref = qwertyWidthLandScapePreferenceValue ?: 100,
@@ -15022,23 +15038,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         // 3. 最終的な高さ、幅、Gravity、マージンの決定
+        val candidatesShown = addCandidateTabHeight || shortcutToolbarHiddenForCandidates
+        val presentation = resolveCandidateStripPresentation(candidatesShown = candidatesShown)
+        val candidateStripHeightDp = resolveCandidateStripHeightDp(
+            candidatesShown = candidatesShown,
+            candidateHeightDp = prefs.candidateHeight,
+            emptyHeightDp = prefs.candidateEmptyHeight
+        )
         val baseKeyboardHeight = if (isPortrait) {
             if (isSymbol) heightPx + applicationContext.dpToPx(50) else heightPx + applicationContext.dpToPx(
-                prefs.candidateEmptyHeight
+                candidateStripHeightDp
             )
         } else {
-            if (isSymbol) heightPx else heightPx + applicationContext.dpToPx(prefs.candidateEmptyHeight)
+            if (isSymbol) heightPx else heightPx + applicationContext.dpToPx(candidateStripHeightDp)
         }
 
-        val presentation = resolveCandidateStripPresentation(
-            candidatesShown = addCandidateTabHeight || shortcutToolbarHiddenForCandidates
+        // Insets や画面構成の変化による再計算でも、現在表示中の候補タブ領域を
+        // 失わないよう、呼び出し元のフラグではなく実際の表示状態から決定する。
+        val candidateTabOffset = resolveCandidateTabOffsetPx(
+            presentation = presentation,
+            candidateTabHeightPx = candidateTabHeightPx(mainView)
         )
-        val candidateTabOffset =
-            if (addCandidateTabHeight && presentation.showCandidateTab) {
-                candidateTabHeightPx(mainView)
-            } else {
-                0
-            }
         val finalKeyboardHeight = when {
             candidateTabOffset > 0 ->
                 baseKeyboardHeight + candidateTabOffset
@@ -15341,11 +15361,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         val presentation = resolveCandidateStripPresentation(candidatesShown = true)
-        val candidateTabOffset = if (presentation.showCandidateTab) {
-            candidateTabHeightPx(mainView)
-        } else {
-            0
-        }
+        val candidateTabOffset = resolveCandidateTabOffsetPx(
+            presentation = presentation,
+            candidateTabHeightPx = candidateTabHeightPx(mainView)
+        )
         val finalKeyboardHeight = keyboardHeight + candidateTabOffset
         val backgroundSurfaceHeight = finalKeyboardHeight - candidateTabOffset
 
