@@ -2083,8 +2083,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyImePreferences(preferences)
         resetKeyboard()
         initializeMozcDictionaries(preferences)
-        suggestionAdapter?.updateCustomTabVisibility(preferences.customKeyboardSuggestionPreference)
+        syncCustomKeyboardSuggestionPreference()
         refreshCandidateStripContent()
+    }
+
+    private fun syncCustomKeyboardSuggestionPreference() {
+        val latestPreference = appPreference.custom_keyboard_suggestion_preference ?: true
+        customKeyboardSuggestionPreference = latestPreference
+        suggestionAdapter?.updateCustomTabVisibility(latestPreference)
     }
 
     private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
@@ -3792,6 +3798,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
         clearZeroQueryAllState(refresh = false)
+        // The input view can restart without onStartInput() after returning from settings.
+        // Re-read this preference before rebuilding the empty candidate strip.
+        syncCustomKeyboardSuggestionPreference()
         isInputViewActive = true
         collapseShortcutEntryExpansion()
         shortcutInputBehaviorOverride = null

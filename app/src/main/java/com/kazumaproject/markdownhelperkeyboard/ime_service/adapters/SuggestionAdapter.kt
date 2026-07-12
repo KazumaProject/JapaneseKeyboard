@@ -110,7 +110,9 @@ internal fun resolveCandidateYomiPresentation(
     )
 }
 
-class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class SuggestionAdapter internal constructor(
+    private val backgroundDiffExecutor: Executor = diffExecutor
+) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     companion object {
         const val VIEW_TYPE_EMPTY = 0
@@ -286,6 +288,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var displayGeneration: Int = 0
     private var committedStartAnchorSignature: StartAnchorSignature? = null
     private var currentContent: CandidateStripContent = CandidateStripContent.Empty
+    private var lastSubmittedDisplayItems: List<SuggestionDisplayItem> = emptyList()
 
     fun setOnItemClickListener(onItemClick: (Candidate, Int) -> Unit) {
         this.onItemClickListener = onItemClick
@@ -591,7 +594,7 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
         displayListUpdateCallback,
         AsyncDifferConfig.Builder(displayItemCallback)
             .setBackgroundThreadExecutor { command ->
-                diffExecutor.execute {
+                backgroundDiffExecutor.execute {
                     measureDebugSection("SuggestionAdapter.DiffUtil.calculateDiff") {
                         command.run()
                     }
@@ -632,7 +635,9 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
     private var highlightedPosition: Int = RecyclerView.NO_POSITION
 
     init {
-        differ.submitList(buildDisplayItems())
+        val initialItems = buildDisplayItems()
+        lastSubmittedDisplayItems = initialItems
+        differ.submitList(initialItems)
     }
 
     fun submitContent(content: CandidateStripContent) {
@@ -667,7 +672,11 @@ class SuggestionAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         measureDebugSection("SuggestionAdapter.rebuildDisplayItems") {
             val newItems = buildDisplayItems()
-            if (displayItems == newItems) return@measureDebugSection
+            // differ.currentList is the last committed list, not necessarily the latest submitted
+            // list. Comparing against it can drop A in a rapid A -> B -> A transition while the
+            // diff for B is still pending, allowing the stale B result to become visible.
+            if (lastSubmittedDisplayItems == newItems) return@measureDebugSection
+            lastSubmittedDisplayItems = newItems
 
             val newStartAnchorSignature = startAnchorSignatureFor(newItems)
             val generation = ++displayGeneration
