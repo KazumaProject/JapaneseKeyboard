@@ -223,6 +223,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.Suminag
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.DirectCommitHandler
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.InputBehaviorResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.KeyInputBehaviorDispatcher
+import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.QwertyEnglishDirectInputPolicy
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.ResolvedInputBehavior
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.RuntimeInputBehaviorPolicy
 import com.kazumaproject.markdownhelperkeyboard.ime_service.input_behavior.RuntimeInputBehaviorSafetyState
@@ -1236,6 +1237,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var qwertyShowCursorButtonsPreference: Boolean? = false
     private var qwertyShowNumberButtonsPreference: Boolean? = false
     private var qwertyShowSwitchRomajiEnglishPreference: Boolean? = false
+    private var qwertyEnglishDirectInputPreference: Boolean = false
     private var qwertyShowKutoutenButtonsPreference: Boolean? = false
     private var qwertyShowKeymapSymbolsPreference: Boolean? = false
     private var qwertyRomajiShiftConversionPreference: Boolean? = false
@@ -2094,6 +2096,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.updateCustomTabVisibility(latestPreference)
     }
 
+    private fun syncQwertyEnglishDirectInputPreference() {
+        qwertyEnglishDirectInputPreference = appPreference.qwerty_english_direct_input_preference
+    }
+
     private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
         val deleteKeyFlickPreferencesChanged =
             isDeleteLeftFlickPreference != preferences.isDeleteLeftFlickPreference ||
@@ -2147,6 +2153,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowNumberButtonsPreference = preferences.qwertyShowNumberButtonsPreference
         qwertyShowSwitchRomajiEnglishPreference =
             preferences.qwertyShowSwitchRomajiEnglishPreference
+        qwertyEnglishDirectInputPreference = preferences.qwertyEnglishDirectInputPreference
         qwertyGlideInputPreference = preferences.qwertyGlideInputPreference
         qwertyGlideCommitPreviousCandidateOnNewGlidePreference =
             preferences.qwertyGlideCommitPreviousCandidateOnNewGlidePreference
@@ -3800,8 +3807,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onStartInputView(editorInfo, restarting)
         clearZeroQueryAllState(refresh = false)
         // The input view can restart without onStartInput() after returning from settings.
-        // Re-read this preference before rebuilding the empty candidate strip.
+        // Re-read preferences that may change while the existing input session is retained.
         syncCustomKeyboardSuggestionPreference()
+        syncQwertyEnglishDirectInputPreference()
         isInputViewActive = true
         collapseShortcutEntryExpansion()
         shortcutInputBehaviorOverride = null
@@ -4250,6 +4258,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyShowCursorButtonsPreference = null
         qwertyShowNumberButtonsPreference = null
         qwertyShowSwitchRomajiEnglishPreference = null
+        qwertyEnglishDirectInputPreference = false
         qwertyGlideInputPreference = false
         qwertyRomajiShiftConversionPreference = null
         qwertyShowPopupWindowPreference = null
@@ -7004,6 +7013,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun calculateQwertyGlideInputMode(): Boolean {
+        if (isQwertyEnglishDirectInputForced()) return false
         val surface = getActiveKeyboardSurface()
         return QwertyGlideInputModeResolver.resolve(
             qwertyGlideInputPreference = qwertyGlideInputPreference,
@@ -7029,6 +7039,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         setInputModeOnActiveSurface(currentInputModeForSession)
         renderDynamicKeysOnActiveSurface()
         renderQwertyStateOnActiveSurface()
+        refreshBaselineInputBehaviorForCurrentKeyboard("keyboard state rendered")
     }
 
     private fun refreshActiveSumireLayoutIfNeeded() {
@@ -16661,15 +16672,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    private fun isQwertyEnglishDirectInputForced(): Boolean {
+        return QwertyEnglishDirectInputPolicy.shouldForceDirectCommit(
+            preferenceEnabled = qwertyEnglishDirectInputPreference,
+            qwertyMode = qwertyMode.value,
+            inputMode = currentInputModeForSession,
+            currentQwertyRomajiModeForSession = currentQwertyRomajiModeForSession,
+        )
+    }
+
+    private fun prepareForForcedQwertyEnglishDirectInput() {
+        if (!isQwertyEnglishDirectInputForced()) return
+        if (currentInputBehavior == ResolvedInputBehavior.DIRECT_COMMIT) return
+
+        if (inputString.value.isNotEmpty() || stringInTail.get().isNotEmpty()) {
+            finishComposingText()
+        }
+        clearDirectCommitCompositionState("forced qwerty english direct input")
+    }
+
     private fun applyEffectiveInputBehavior(reason: String) {
         val previousInputBehavior = currentInputBehavior
+        val forceQwertyEnglishDirectInput = isQwertyEnglishDirectInputForced()
         currentInputBehavior = RuntimeInputBehaviorPolicy.effective(
             baseline = baselineInputBehavior,
             shortcutOverride = shortcutInputBehaviorOverride,
+            forceDirectCommit = forceQwertyEnglishDirectInput,
         )
         Timber.d(
             "applyEffectiveInputBehavior: reason=$reason baseline=$baselineInputBehavior " +
-                    "override=$shortcutInputBehaviorOverride current=$currentInputBehavior"
+                    "override=$shortcutInputBehaviorOverride " +
+                    "forceQwertyEnglishDirectInput=$forceQwertyEnglishDirectInput " +
+                    "current=$currentInputBehavior"
         )
 
         if (
@@ -16697,11 +16731,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun refreshBaselineInputBehaviorForCurrentKeyboard(reason: String) {
+        prepareForForcedQwertyEnglishDirectInput()
         baselineInputBehavior = resolveBaselineInputBehavior()
         applyEffectiveInputBehavior(reason)
     }
 
     private fun toggleRuntimeInputBehaviorFromShortcut() {
+        if (isQwertyEnglishDirectInputForced()) {
+            return
+        }
         if (!canToggleRuntimeInputBehaviorSafely()) {
             return
         }
@@ -18742,6 +18780,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 setCurrentInputModeForSession(InputMode.ModeJapanese)
                                 setQwertyRomajiSwitchTextOnActiveSurface(true)
                             }
+                            refreshBaselineInputBehaviorForCurrentKeyboard(
+                                "qwerty romaji english switch"
+                            )
                         }
 
                         QWERTYKey.QWERTYKeySwitchNumberKey -> {
