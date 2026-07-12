@@ -1,0 +1,3 @@
+enabled	rules	storageBytes	heapDeltaBytes	nativeHeapDeltaBytes	pssDeltaBytes	allocatedBytesPerConversion	gcCount	p50Ms	p95Ms	p99Ms	firstCandidate	firstScore	matched
+false	0	0	0	1840	17408	155648	0	2.679972	3.145955	3.205973	服を切る	10440	false
+true	100000	6175023	6176768	-96	6182912	155648	0	2.754760	3.265991	3.352336	服を着る	10691	true
