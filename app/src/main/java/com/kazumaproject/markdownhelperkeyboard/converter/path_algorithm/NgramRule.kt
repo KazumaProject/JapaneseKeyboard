@@ -22,6 +22,28 @@ data class NodeFeature(
 }
 
 /**
+ * 2〜5 ノードの補正ルール。
+ *
+ * nodes[0] -> nodes[1] の辺を展開するときに評価し、nodes[2] 以降は
+ * 後方探索で確定済みの suffix と照合する。
+ */
+data class NgramRule(
+    val nodes: List<NodeFeature>,
+    val adjustment: Int,
+) {
+    init {
+        require(nodes.size in MIN_NODE_COUNT..MAX_NODE_COUNT) {
+            "N-gram node count must be between $MIN_NODE_COUNT and $MAX_NODE_COUNT: ${nodes.size}"
+        }
+    }
+
+    companion object {
+        const val MIN_NODE_COUNT = 2
+        const val MAX_NODE_COUNT = 5
+    }
+}
+
+/**
  * 2ノード補正ルール。
  *
  * prev -> current

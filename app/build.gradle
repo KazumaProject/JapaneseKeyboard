@@ -31,8 +31,8 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 786
-        versionName "1.7.93"
+        versionCode 787
+        versionName "1.7.94"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -487,6 +487,7 @@ tasks.named("preBuild").configure {
 }
 
 dependencies {
+    implementation 'androidx.profileinstaller:profileinstaller:1.4.0'
     implementation 'androidx.appcompat:appcompat:1.7.1'
     implementation 'com.google.android.material:material:1.13.0'
 

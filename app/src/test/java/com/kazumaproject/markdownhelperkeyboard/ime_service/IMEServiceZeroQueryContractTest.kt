@@ -52,6 +52,53 @@ class IMEServiceZeroQueryContractTest {
         )
     }
 
+    @Test
+    fun editorDeletionMutationsInvalidateZeroQueryState() {
+        val source = imeServiceSource()
+
+        listOf(
+            "private fun deleteWordOrSymbolsBeforeCursor",
+            "private fun deleteWordOrSymbolsAfterCursor",
+            "private fun deleteLongPress",
+            "private fun deleteLastGraphemeOrSelection",
+            "private fun deleteStringCommon",
+        ).forEach { functionStart ->
+            assertTrue(
+                "$functionStart must invalidate zero-query before mutating editor text",
+                source.functionBody(
+                    start = functionStart,
+                    end = "\n    private fun"
+                ).contains("invalidateZeroQueryForEditorMutation()")
+            )
+        }
+    }
+
+    @Test
+    fun zeroQueryInvalidationForEditorMutationRefreshesCandidateStrip() {
+        val function = imeServiceSource().functionBody(
+            start = "private fun invalidateZeroQueryForEditorMutation",
+            end = "\n    private fun toggleZeroQueryVisibility"
+        )
+
+        assertTrue(function.contains("clearZeroQueryAllState(refresh = true)"))
+    }
+
+    @Test
+    fun candidateStripLayoutIsNotCachedBeforeAdapterIsAttached() {
+        val function = imeServiceSource().functionBody(
+            start = "private fun setMainSuggestionColumn",
+            end = "\n    private fun toggleKeyboardLayoutEditMode"
+        )
+        val adapterGuard = function.indexOf("val adapter = recyclerView.adapter ?: run")
+        val cacheWrite = function.indexOf("lastSuggestionLayoutKey = key")
+
+        assertTrue(adapterGuard >= 0)
+        assertTrue(cacheWrite > adapterGuard)
+        assertTrue(function.contains("return@measureDebugSection"))
+        assertTrue(function.contains("adapter.getItemViewType(position)"))
+        assertFalse(function.contains("adapter?.getItemViewType(position)"))
+    }
+
     private fun imeServiceSource(): String =
         listOf(
             File("app/src/main/java/com/kazumaproject/markdownhelperkeyboard/ime_service/IMEService.kt"),

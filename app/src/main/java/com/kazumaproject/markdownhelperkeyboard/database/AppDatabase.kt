@@ -32,8 +32,7 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTempla
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleDao
-import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.ThreeNodeRuleEntity
-import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.TwoNodeRuleEntity
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleEntity
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.database.PhysicalKeyboardShortcutDao
@@ -71,8 +70,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         NgWord::class,
         ShortcutItem::class,
         SystemUserDictionaryEntry::class,
-        TwoNodeRuleEntity::class,
-        ThreeNodeRuleEntity::class,
+        NgramRuleEntity::class,
         GemmaPromptTemplate::class,
         DeleteKeyFlickDeleteTarget::class,
         PhysicalKeyboardShortcutItem::class,
@@ -82,7 +80,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         SumireSpecialKeyPlacementOverrideEntity::class,
         CustomZeroQueryEntry::class,
     ],
-    version = 37,
+    version = 38,
     exportSchema = false
 )
 @TypeConverters(
@@ -944,6 +942,98 @@ abstract class AppDatabase : RoomDatabase() {
                     """
                     CREATE UNIQUE INDEX IF NOT EXISTS `index_custom_zero_query_entries_lookupKey_candidate`
                     ON `custom_zero_query_entries`(`lookupKey`, `candidate`)
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_37_38 = object : Migration(37, 38) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `ngram_rule` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `nodeCount` INTEGER NOT NULL,
+                        `node1Word` TEXT NOT NULL,
+                        `node1LeftId` INTEGER NOT NULL,
+                        `node1RightId` INTEGER NOT NULL,
+                        `node2Word` TEXT NOT NULL,
+                        `node2LeftId` INTEGER NOT NULL,
+                        `node2RightId` INTEGER NOT NULL,
+                        `node3Word` TEXT NOT NULL,
+                        `node3LeftId` INTEGER NOT NULL,
+                        `node3RightId` INTEGER NOT NULL,
+                        `node4Word` TEXT NOT NULL,
+                        `node4LeftId` INTEGER NOT NULL,
+                        `node4RightId` INTEGER NOT NULL,
+                        `node5Word` TEXT NOT NULL,
+                        `node5LeftId` INTEGER NOT NULL,
+                        `node5RightId` INTEGER NOT NULL,
+                        `adjustment` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT OR IGNORE INTO `ngram_rule` (
+                        `nodeCount`,
+                        `node1Word`, `node1LeftId`, `node1RightId`,
+                        `node2Word`, `node2LeftId`, `node2RightId`,
+                        `node3Word`, `node3LeftId`, `node3RightId`,
+                        `node4Word`, `node4LeftId`, `node4RightId`,
+                        `node5Word`, `node5LeftId`, `node5RightId`,
+                        `adjustment`
+                    )
+                    SELECT
+                        2,
+                        `prevWord`, `prevLeftId`, `prevRightId`,
+                        `currentWord`, `currentLeftId`, `currentRightId`,
+                        '', -1, -1,
+                        '', -1, -1,
+                        '', -1, -1,
+                        `adjustment`
+                    FROM `two_node_rule`
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    INSERT OR IGNORE INTO `ngram_rule` (
+                        `nodeCount`,
+                        `node1Word`, `node1LeftId`, `node1RightId`,
+                        `node2Word`, `node2LeftId`, `node2RightId`,
+                        `node3Word`, `node3LeftId`, `node3RightId`,
+                        `node4Word`, `node4LeftId`, `node4RightId`,
+                        `node5Word`, `node5LeftId`, `node5RightId`,
+                        `adjustment`
+                    )
+                    SELECT
+                        3,
+                        `firstWord`, `firstLeftId`, `firstRightId`,
+                        `secondWord`, `secondLeftId`, `secondRightId`,
+                        `thirdWord`, `thirdLeftId`, `thirdRightId`,
+                        '', -1, -1,
+                        '', -1, -1,
+                        `adjustment`
+                    FROM `three_node_rule`
+                    """.trimIndent()
+                )
+                db.execSQL("DROP TABLE `two_node_rule`")
+                db.execSQL("DROP TABLE `three_node_rule`")
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_ngram_rule_nodeCount_id` ON `ngram_rule` (`nodeCount`, `id`)"
+                )
+                db.execSQL(
+                    """
+                    CREATE UNIQUE INDEX IF NOT EXISTS
+                    `index_ngram_rule_nodeCount_node1Word_node1LeftId_node1RightId_node2Word_node2LeftId_node2RightId_node3Word_node3LeftId_node3RightId_node4Word_node4LeftId_node4RightId_node5Word_node5LeftId_node5RightId`
+                    ON `ngram_rule` (
+                        `nodeCount`,
+                        `node1Word`, `node1LeftId`, `node1RightId`,
+                        `node2Word`, `node2LeftId`, `node2RightId`,
+                        `node3Word`, `node3LeftId`, `node3RightId`,
+                        `node4Word`, `node4LeftId`, `node4RightId`,
+                        `node5Word`, `node5LeftId`, `node5RightId`
+                    )
                     """.trimIndent()
                 )
             }

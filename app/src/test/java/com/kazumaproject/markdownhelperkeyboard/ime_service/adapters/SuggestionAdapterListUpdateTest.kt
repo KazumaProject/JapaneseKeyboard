@@ -114,6 +114,45 @@ class SuggestionAdapterListUpdateTest {
         adapter.release()
     }
 
+    @Test
+    fun zeroQueryLayoutModeChangesNotifyListUpdatedWithoutClickCandidates() {
+        val adapter = SuggestionAdapter()
+        val enterZeroQuery = CountDownLatch(1)
+        val updateCount = AtomicInteger(0)
+        adapter.onListUpdated = {
+            updateCount.incrementAndGet()
+            enterZeroQuery.countDown()
+        }
+
+        adapter.submitContent(
+            CandidateStripContent.ZeroQuerySuggestions(
+                candidates = listOf(candidate("候補1"), candidate("候補2"))
+            )
+        )
+
+        drainMainUntil(enterZeroQuery)
+        assertTrue(
+            "entering zero-query should reconfigure the candidate strip layout",
+            enterZeroQuery.await(0, TimeUnit.MILLISECONDS)
+        )
+        assertEquals(emptyList<Candidate>(), adapter.suggestions)
+
+        val leaveZeroQuery = CountDownLatch(1)
+        adapter.onListUpdated = {
+            updateCount.incrementAndGet()
+            leaveZeroQuery.countDown()
+        }
+        adapter.submitContent(CandidateStripContent.Empty)
+
+        drainMainUntil(leaveZeroQuery)
+        assertTrue(
+            "leaving zero-query should reconfigure the candidate strip layout",
+            leaveZeroQuery.await(0, TimeUnit.MILLISECONDS)
+        )
+        assertEquals(2, updateCount.get())
+        adapter.release()
+    }
+
     private fun drainMainUntil(latch: CountDownLatch) {
         drainMainUntil { latch.count == 0L }
     }
