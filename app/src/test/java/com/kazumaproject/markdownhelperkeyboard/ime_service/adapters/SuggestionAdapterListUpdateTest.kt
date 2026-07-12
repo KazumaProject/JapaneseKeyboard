@@ -4,6 +4,7 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Looper
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.QuickActionsState
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
@@ -14,13 +15,47 @@ import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
+import java.util.ArrayDeque
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class SuggestionAdapterListUpdateTest {
+
+    @Test
+    fun pendingEmptyDiffDoesNotReplaceResubmittedCustomLayoutPicker() {
+        val executor = QueuedExecutor()
+        val adapter = SuggestionAdapter(executor)
+        val picker = CandidateStripContent.CustomLayoutPicker(
+            layouts = listOf(
+                CustomKeyboardLayout(name = "Custom", columnCount = 5, rowCount = 4)
+            )
+        )
+
+        adapter.submitContent(picker)
+        executor.runAll()
+        shadowOf(Looper.getMainLooper()).idle()
+        assertEquals(1, adapter.itemCount)
+
+        adapter.submitContent(CandidateStripContent.Empty)
+        adapter.submitContent(picker)
+
+        assertEquals(
+            "both sides of Picker -> Empty -> Picker must be submitted while Empty is pending",
+            2,
+            executor.pendingTaskCount
+        )
+
+        executor.runAll()
+        shadowOf(Looper.getMainLooper()).idle()
+
+        assertEquals(1, adapter.itemCount)
+        assertEquals(SuggestionAdapter.VIEW_TYPE_CUSTOM_LAYOUT_PICKER, adapter.getItemViewType(0))
+        adapter.release()
+    }
 
     @Test
     fun settingEqualSuggestionListDoesNotNotifyListUpdated() {
@@ -173,5 +208,22 @@ class SuggestionAdapterListUpdateTest {
             score = 0,
             yomi = string
         )
+    }
+
+    private class QueuedExecutor : Executor {
+        private val tasks = ArrayDeque<Runnable>()
+
+        val pendingTaskCount: Int
+            get() = tasks.size
+
+        override fun execute(command: Runnable) {
+            tasks.addLast(command)
+        }
+
+        fun runAll() {
+            while (tasks.isNotEmpty()) {
+                tasks.removeFirst().run()
+            }
+        }
     }
 }
