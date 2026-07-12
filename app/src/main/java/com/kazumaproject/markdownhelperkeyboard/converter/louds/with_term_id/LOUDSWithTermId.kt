@@ -25,6 +25,7 @@ import java.io.IOException
 import java.io.ObjectInput
 import java.io.ObjectOutput
 import java.util.BitSet
+import java.util.concurrent.ConcurrentHashMap
 
 
 class LOUDSWithTermId {
@@ -37,6 +38,7 @@ class LOUDSWithTermId {
     data class OmissionSearchState(
         val nodeIndex: Int,
         val omissionOccurred: Boolean,
+        val yomi: String = "",
     )
 
     data class OmissionSearchProgress(
@@ -48,6 +50,7 @@ class LOUDSWithTermId {
         val nodeIndex: Int,
         val penaltyUsed: Int,
         val depth: Int,
+        val yomi: String = "",
     )
 
     data class TypoSearchProgress(
@@ -64,6 +67,7 @@ class LOUDSWithTermId {
     var termIdsSaved: IntArray = intArrayOf()
     var isLeaf: BitSet = BitSet()
     val isLeafTemp: MutableList<Boolean> = arrayListOf()
+    private val typoCandidateCache = ConcurrentHashMap<Char, List<TypoCandidate>>(64)
 
     init {
         LBSTemp.apply {
@@ -657,7 +661,7 @@ class LOUDSWithTermId {
                 if (isLeaf[state.nodeIndex]) {
                     results.add(
                         OmissionSearchResult(
-                            yomi = getLetter(state.nodeIndex),
+                            yomi = state.yomi,
                             omissionOccurred = state.omissionOccurred,
                         )
                     )
@@ -679,7 +683,7 @@ class LOUDSWithTermId {
                 null
             } else {
                 OmissionSearchResult(
-                    yomi = getLetter(state.nodeIndex),
+                    yomi = state.yomi,
                     omissionOccurred = state.omissionOccurred,
                 )
             }
@@ -702,6 +706,7 @@ class LOUDSWithTermId {
                         OmissionSearchState(
                             nodeIndex = child,
                             omissionOccurred = state.omissionOccurred || variant != char,
+                            yomi = state.yomi + variant,
                         )
                     )
                 }
@@ -822,7 +827,9 @@ class LOUDSWithTermId {
 
             // 入力を使い切ったら終了（prefixなのでここで止める）
             if (strIndex >= str.length) {
-                terminalStates.add(TypoSearchState(nodeIndex, penaltyUsed, sb.length))
+                terminalStates.add(
+                    TypoSearchState(nodeIndex, penaltyUsed, sb.length, sb.toString())
+                )
                 return
             }
             if (sb.length >= maxLen) return
@@ -887,9 +894,9 @@ class LOUDSWithTermId {
                 if (nextPenalty > maxPenalty) continue
                 val child = traverse(state.nodeIndex, candidate.ch, succinctBitVector)
                 if (child < 0) continue
-                terminalStates.add(TypoSearchState(child, nextPenalty, state.depth + 1))
+                val yomi = state.yomi + candidate.ch
+                terminalStates.add(TypoSearchState(child, nextPenalty, state.depth + 1, yomi))
                 if (!isLeaf[child]) continue
-                val yomi = getLetter(child)
                 val oldPenalty = bestPenaltyByYomi[yomi]
                 if (oldPenalty == null || nextPenalty < oldPenalty) {
                     bestPenaltyByYomi[yomi] = nextPenalty
@@ -908,7 +915,10 @@ class LOUDSWithTermId {
     }
 
     private fun getTypoCandidates(ch: Char): List<TypoCandidate> {
-        val key = KanaFlickLayout.keyOf(ch) ?: return listOf(TypoCandidate(ch, TypoCategory.Exact))
+        typoCandidateCache[ch]?.let { return it }
+        val key = KanaFlickLayout.keyOf(ch) ?: return listOf(
+            TypoCandidate(ch, TypoCategory.Exact)
+        ).also { typoCandidateCache[ch] = it }
 
         val out = ArrayList<TypoCandidate>(16)
 
@@ -940,6 +950,7 @@ class LOUDSWithTermId {
         return out
             .distinctBy { it.ch to it.category } // 同じ文字が複数カテゴリに入る設計にしたいならここは要調整
             .sortedWith(compareBy<TypoCandidate> { it.penalty }.thenBy { it.ch })
+            .also { typoCandidateCache[ch] = it }
     }
 
 
