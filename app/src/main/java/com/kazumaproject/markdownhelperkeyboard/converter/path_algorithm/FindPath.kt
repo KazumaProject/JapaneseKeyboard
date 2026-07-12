@@ -712,7 +712,7 @@ class FindPath(
                 )
 
                 if (foundStrings.add(stringFromNode)) {
-                    val bunsetsuPositions = getBunsetsuPositionsFromPath(element, mozcSegmenter)
+                    val bunsetsuPositions = getBunsetsuPositionsFromPath(element)
                     if (splitPatterns.none { it == bunsetsuPositions } && splitPatterns.size < 4) {
                         splitPatterns.add(bunsetsuPositions)
                     }
@@ -1084,7 +1084,6 @@ class FindPath(
 
     private fun getBunsetsuPositionsFromPath(
         path: PathQueueElement,
-        mozcSegmenter: MozcSegmenter?,
     ): List<Int> {
         val positions = mutableListOf<Int>()
         var currentPosition = 0
@@ -1096,15 +1095,10 @@ class FindPath(
             if (node.tango != "BOS" && node.tango != "EOS") {
                 val prev = previousNode
                 if (currentPosition > 0 && prev != null) {
-                    val isBoundary = if (mozcSegmenter != null) {
-                        mozcSegmenter.isBoundary(
-                            left = prev,
-                            right = node,
-                            isSingleSegment = false,
-                        )
-                    } else {
-                        isIndependentWord(node.l)
-                    }
+                    // Mozc's boundary table constrains conversion paths; it does not represent
+                    // the split points used by the IME's sequential bunsetsu conversion UI.
+                    // Keep display splitting on the original POS-based rule.
+                    val isBoundary = isIndependentWord(node.l)
                     if (isBoundary) {
                         positions.add(currentPosition)
                     }
@@ -1120,7 +1114,6 @@ class FindPath(
 
     private fun getBunsetsuPositions(
         bosNode: Node,
-        mozcSegmenter: MozcSegmenter? = null,
     ): List<Int> {
         val positions = mutableListOf<Int>()
         var currentPosition = 0
@@ -1129,15 +1122,7 @@ class FindPath(
 
         while (tempNode != null && tempNode.tango != "EOS") {
             if (currentPosition > 0) {
-                val isBoundary = if (mozcSegmenter != null) {
-                    mozcSegmenter.isBoundary(
-                        left = previousNode,
-                        right = tempNode,
-                        isSingleSegment = false,
-                    )
-                } else {
-                    isIndependentWord(tempNode.l)
-                }
+                val isBoundary = isIndependentWord(tempNode.l)
                 if (isBoundary) {
                     positions.add(currentPosition)
                 }
