@@ -85,6 +85,21 @@ jobs:
             --no-daemon \
             --max-workers=1
 
+      - name: Verify system n-gram in release APKs
+        run: |
+          ./gradlew :app:verifySystemNgramAsset :app:verifySystemNgramAssetZip --no-daemon
+          for apk in app/build/outputs/apk/*/release/*.apk; do
+            unzip -l "$apk" | grep -q 'assets/ngram/system_ngram.dat'
+          done
+
+      - name: Upload system n-gram build report
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-ngram-release-verification
+          path: |
+            app/build/reports/system-ngram/asset.txt
+            app/build/distributions/system-ngram-assets.zip
+
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
