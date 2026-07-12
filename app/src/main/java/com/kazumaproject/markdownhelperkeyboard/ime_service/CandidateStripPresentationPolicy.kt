@@ -25,6 +25,17 @@ data class CandidateStripPresentation(
     val showIntegratedShortcutEntry: Boolean
 )
 
+internal fun resolveCandidateTabOffsetPx(
+    presentation: CandidateStripPresentation,
+    candidateTabHeightPx: Int
+): Int = if (presentation.showCandidateTab) candidateTabHeightPx.coerceAtLeast(0) else 0
+
+internal fun resolveCandidateStripHeightDp(
+    candidatesShown: Boolean,
+    candidateHeightDp: Int,
+    emptyHeightDp: Int
+): Int = if (candidatesShown) candidateHeightDp else emptyHeightDp
+
 object CandidateStripPresentationPolicy {
 
     fun resolve(state: CandidateStripPresentationState): CandidateStripPresentation {
