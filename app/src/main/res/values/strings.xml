@@ -630,6 +630,8 @@
     <string name="shortcut_toolbar_integrated_in_suggestion_summary">When there is no composing text and no clipboard preview or selected-text AI actions are shown, display shortcut icons inside the candidate bar.</string>
     <string name="qwerty_romaji_english_visibility_title">Romaji/English Switch Key</string>
     <string name="qwerty_romaji_english_visibility_summary">Show a key (あa) to switch between Romaji input and English input</string>
+    <string name="qwerty_english_direct_input_preference_title">Always use direct input in English QWERTY</string>
+    <string name="qwerty_english_direct_input_preference_summary">When QWERTY is not in Romaji mode, commit typed characters directly without showing input candidates.</string>
     <string name="qwerty_glide_input_preference_title">Glide input for English QWERTY β</string>
     <string name="qwerty_glide_input_preference_summary">Enable word suggestions from sliding gestures on the English QWERTY keyboard.</string>
     <string name="qwerty_glide_commit_previous_candidate_on_new_glide_preference_title">Commit previous glide candidate on new glide</string>
