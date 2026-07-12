@@ -103,6 +103,9 @@ class CandidateViewHeightSettingFragment : Fragment() {
 
         setupMenu()
         setupAdapter()
+        suggestionAdapter.setShowDictionaryCandidateLabels(
+            appPreference.show_dictionary_candidate_labels_preference
+        )
         setupInspectorBottomSheet()
         setupInspectorTabs()
         setupColumnControls()
