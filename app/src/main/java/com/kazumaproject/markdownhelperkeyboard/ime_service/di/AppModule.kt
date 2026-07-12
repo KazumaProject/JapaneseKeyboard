@@ -17,6 +17,10 @@ import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTableReader
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenterDataReader
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.EmptySystemNgramDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramAssetLoader
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
@@ -648,7 +652,16 @@ object AppModule {
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
         val graphBuilder = GraphBuilder()
-        val findPath = FindPath(ngramRuleScorerProvider = ngramRuleScorerManager::currentScorer)
+        val systemNgramDictionary = runCatching<SystemNgramDictionary> {
+            SystemNgramAssetLoader.load(context)
+        }.onFailure {
+            Timber.w(it, "System n-gram dictionary is unavailable; continuing without it.")
+        }.getOrDefault(EmptySystemNgramDictionary)
+        SystemNgramRuntime.install(systemNgramDictionary)
+        val findPath = FindPath(
+            ngramRuleScorerProvider = ngramRuleScorerManager::currentScorer,
+            systemNgramDictionaryProvider = SystemNgramRuntime::current,
+        )
         val bundledMozcDictionaryActive =
             dictionaryBinaryReader.resolveCategoryLoadState(DictionaryCategory.SYSTEM) == DictionaryCategoryLoadState.Bundled
         val mozcSegmenter = if (bundledMozcDictionaryActive) {

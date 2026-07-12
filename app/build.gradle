@@ -407,6 +407,80 @@ tasks.register("generateMozcSegmenterData") {
     }
 }
 
+def systemNgramAsset = file("src/main/assets/ngram/system_ngram.dat")
+def systemNgramBuildReport = layout.buildDirectory.file("reports/system-ngram/asset.txt")
+
+tasks.register("verifySystemNgramAsset") {
+    inputs.file(systemNgramAsset)
+    outputs.file(systemNgramBuildReport)
+    doLast {
+        byte[] bytes = systemNgramAsset.bytes
+        if (bytes.length < 80) throw new GradleException("Truncated system n-gram asset")
+        def littleInt = { int offset ->
+            ((bytes[offset] & 0xff) |
+                ((bytes[offset + 1] & 0xff) << 8) |
+                ((bytes[offset + 2] & 0xff) << 16) |
+                ((bytes[offset + 3] & 0xff) << 24)) as int
+        }
+        if (littleInt(0) != 0x4A4B4E47) throw new GradleException("Invalid system n-gram magic")
+        if (littleInt(4) != 3) throw new GradleException("System n-gram asset is not version 3")
+        if (littleInt(56) != bytes.length) throw new GradleException("System n-gram file size mismatch")
+        def crc = new java.util.zip.CRC32()
+        crc.update(bytes, 80, bytes.length - 80)
+        if (Integer.toUnsignedLong(littleInt(60)) != crc.value) {
+            throw new GradleException("System n-gram CRC mismatch")
+        }
+        def digest = java.security.MessageDigest.getInstance("SHA-256").digest(bytes)
+            .collect { String.format("%02x", it & 0xff) }.join()
+        def report = systemNgramBuildReport.get().asFile
+        report.parentFile.mkdirs()
+        report.text = "version=3\nruleCount=${littleInt(8)}\nbytes=${bytes.length}\nsha256=${digest}\n"
+    }
+}
+
+tasks.register("installSystemNgramAsset", Copy) {
+    def configuredSource = providers.gradleProperty("systemNgramSource")
+    doFirst {
+        if (!configuredSource.isPresent()) {
+            throw new GradleException("Pass -PsystemNgramSource=/path/to/generated/system_ngram.dat")
+        }
+    }
+    from(configuredSource)
+    into(systemNgramAsset.parentFile)
+    rename { "system_ngram.dat" }
+    finalizedBy("verifySystemNgramAsset")
+}
+
+def systemNgramZip = layout.buildDirectory.file("distributions/system-ngram-assets.zip")
+tasks.register("packageSystemNgramAssetZip", Zip) {
+    dependsOn("verifySystemNgramAsset")
+    from(systemNgramAsset) {
+        into("app/src/main/assets/ngram")
+    }
+    archiveFileName = "system-ngram-assets.zip"
+    destinationDirectory = layout.buildDirectory.dir("distributions")
+}
+
+tasks.register("verifySystemNgramAssetZip") {
+    dependsOn("packageSystemNgramAssetZip")
+    inputs.file(systemNgramZip)
+    doLast {
+        new java.util.zip.ZipFile(systemNgramZip.get().asFile).withCloseable { zip ->
+            def entry = zip.getEntry("app/src/main/assets/ngram/system_ngram.dat")
+            if (entry == null || entry.size != systemNgramAsset.length()) {
+                throw new GradleException("ZIP does not contain the generated system n-gram asset")
+            }
+            if (!Arrays.equals(zip.getInputStream(entry).bytes, systemNgramAsset.bytes)) {
+                throw new GradleException("ZIP system n-gram content differs from the generated asset")
+            }
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn("verifySystemNgramAsset")
+}
+
 tasks.register("verifyMozcSegmenterData") {
     dependsOn("generateMozcSegmenterData")
 
