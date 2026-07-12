@@ -1087,14 +1087,12 @@ class FindPath(
     ): List<Int> {
         val positions = mutableListOf<Int>()
         var currentPosition = 0
-        var previousNode: Node? = null
 
         var current: PathQueueElement? = path
         while (current != null) {
             val node = current.node
             if (node.tango != "BOS" && node.tango != "EOS") {
-                val prev = previousNode
-                if (currentPosition > 0 && prev != null) {
+                if (currentPosition > 0) {
                     // Mozc's boundary table constrains conversion paths; it does not represent
                     // the split points used by the IME's sequential bunsetsu conversion UI.
                     // Keep display splitting on the original POS-based rule.
@@ -1104,7 +1102,6 @@ class FindPath(
                     }
                 }
                 currentPosition += node.len.toInt()
-                previousNode = node
             }
             current = current.next
         }
@@ -1117,7 +1114,6 @@ class FindPath(
     ): List<Int> {
         val positions = mutableListOf<Int>()
         var currentPosition = 0
-        var previousNode = bosNode
         var tempNode = bosNode.next
 
         while (tempNode != null && tempNode.tango != "EOS") {
@@ -1128,7 +1124,6 @@ class FindPath(
                 }
             }
             currentPosition += tempNode.len.toInt()
-            previousNode = tempNode
             tempNode = tempNode.next
         }
 
