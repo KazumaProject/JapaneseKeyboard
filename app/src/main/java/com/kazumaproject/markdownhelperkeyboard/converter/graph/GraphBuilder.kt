@@ -486,6 +486,7 @@ class GraphBuilder {
                     for (omissionResult in omissionSearchResults) {
                         val yomiStr = omissionResult.yomi
                         val didOmit = omissionResult.omissionOccurred
+                        if (!didOmit) continue
                         val nodeIndex = localSystemUserYomiTrie.getNodeIndex(
                             yomiStr,
                             localSystemUserLBSYomi,
@@ -699,6 +700,7 @@ class GraphBuilder {
                 for (omissionResult in omissionSearchResults) {
                     val yomiStr = omissionResult.yomi
                     val didOmit = omissionResult.omissionOccurred
+                    if (!didOmit) continue
                     val nodeIndex = yomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSYomi)
                     if (nodeIndex > 0) {
                         val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
