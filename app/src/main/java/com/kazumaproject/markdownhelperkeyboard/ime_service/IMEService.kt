@@ -3892,11 +3892,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 renderCurrentKeyboardStateOnActiveSurface()
             } else {
                 Timber.d("current input type in OnStartView passwordTypesWithOutNumber else: [$currentInputType] [$restarting]")
-                if (isTabletGojuonSurface()) {
-                    mainLayoutBinding?.tabletView?.currentInputMode?.set(InputMode.ModeEnglish)
-                } else {
-                    setCurrentInputModeForSession(InputMode.ModeEnglish)
-                }
+                setCurrentInputModeForSession(InputMode.ModeEnglish)
             }
         } else if (isNumberInputType) {
             Timber.d("current input type in OnStartView number: [$currentInputType] [$restarting]")
