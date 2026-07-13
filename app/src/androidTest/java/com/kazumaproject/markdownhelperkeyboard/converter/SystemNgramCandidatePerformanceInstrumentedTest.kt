@@ -113,6 +113,114 @@ class SystemNgramCandidatePerformanceInstrumentedTest {
         )
     }
 
+    @Test
+    fun measureSystemAndCustomToggleMatrix() = runBlocking {
+        val arguments = InstrumentationRegistry.getArguments()
+        assumeTrue(arguments.getString("ngramTogglePerf") == "true")
+        val iterations = arguments.getString("ngramToggleIterations")?.toIntOrNull() ?: 100
+        require(iterations >= 100)
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entry = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            KanaKanjiEngineEntryPoint::class.java,
+        )
+        val engine = entry.kanaKanjiEngine()
+        val repository = entry.userDictionaryRepository()
+        val scorerManager = entry.ngramRuleScorerManager()
+        SystemNgramRuntime.resetForTesting()
+        SystemNgramRuntime.setEnabled(context, false)
+        forceGc()
+        val coldOffMemory = Triple(
+            usedHeap(),
+            Debug.getNativeHeapAllocatedSize(),
+            usedPssBytes(),
+        )
+        SystemNgramRuntime.setEnabled(context, true)
+        forceGc()
+        val coldOnMemory = Triple(
+            usedHeap(),
+            Debug.getNativeHeapAllocatedSize(),
+            usedPssBytes(),
+        )
+        val dictionary = SystemNgramRuntime.loadedDictionary()
+        val configurations = listOf(
+            ToggleConfiguration(system = false, custom = false),
+            ToggleConfiguration(system = false, custom = true),
+            ToggleConfiguration(system = true, custom = false),
+            ToggleConfiguration(system = true, custom = true),
+        )
+
+        fun apply(configuration: ToggleConfiguration) {
+            if (configuration.system) SystemNgramRuntime.install(dictionary) else SystemNgramRuntime.disable()
+            scorerManager.setEnabled(configuration.custom)
+        }
+
+        repeat(30) { round ->
+            repeat(configurations.size) { offset ->
+                val configuration = configurations[(round + offset) % configurations.size]
+                apply(configuration)
+                convert(engine, repository)
+            }
+        }
+        forceGc()
+
+        val raw = configurations.associateWith { configuration ->
+            apply(configuration)
+            forceGc()
+            val javaHeap = usedHeap()
+            val nativeHeap = Debug.getNativeHeapAllocatedSize()
+            val pss = usedPssBytes()
+            val allocatedBefore = runtimeStat("art.gc.bytes-allocated")
+            val gcBefore = runtimeStat("art.gc.gc-count")
+            lateinit var result: BunsetsuCandidateResult
+            repeat(iterations) { result = convert(engine, repository) }
+            val allocatedAfter = runtimeStat("art.gc.bytes-allocated")
+            val gcAfter = runtimeStat("art.gc.gc-count")
+            ToggleMeasurement(
+                configuration = configuration,
+                rules = if (configuration.system) dictionary.ruleCount else 0,
+                dictionaryStorageBytes = dictionary.storageBytes,
+                javaHeapBytes = javaHeap,
+                nativeHeapBytes = nativeHeap,
+                pssBytes = pss,
+                allocatedBytesPerConversion = (allocatedAfter - allocatedBefore) / iterations,
+                gcCount = gcAfter - gcBefore,
+                timings = DoubleArray(0),
+                firstCandidate = result.candidates.first().string,
+                firstScore = result.candidates.first().score,
+                matched = result.candidates.first().string in result.systemNgramMatchedCandidates,
+            )
+        }
+        val timings = configurations.associateWith { DoubleArray(iterations) }
+        repeat(iterations) { round ->
+            repeat(configurations.size) { offset ->
+                val configuration = configurations[(round + offset) % configurations.size]
+                apply(configuration)
+                timings.getValue(configuration)[round] =
+                    measureNanoTime { convert(engine, repository) } / 1_000_000.0
+            }
+        }
+        val measurements = configurations.map { raw.getValue(it).copy(timings = timings.getValue(it)) }
+        val report = buildString {
+            appendLine("coldState\tjavaHeapBytes\tnativeHeapBytes\tpssBytes")
+            appendLine("systemOff\t${coldOffMemory.first}\t${coldOffMemory.second}\t${coldOffMemory.third}")
+            appendLine("systemOn\t${coldOnMemory.first}\t${coldOnMemory.second}\t${coldOnMemory.third}")
+            appendLine("systemEnabled\tcustomEnabled\trules\tdictionaryStorageBytes\tjavaHeapBytes\tnativeHeapBytes\tpssBytes\tallocatedBytesPerConversion\tgcCount\tp50Ms\tp95Ms\tp99Ms\tfirstCandidate\tfirstScore\tmatched")
+            measurements.forEach { appendLine(it.toTsv()) }
+        }
+        File(context.filesDir, "ngram-performance").apply { mkdirs() }
+            .resolve("ngram-toggle-matrix.tsv")
+            .writeText(report)
+        println(report)
+
+        measurements.forEach {
+            assertEquals(if (it.configuration.system) "服を着る" else "服を切る", it.firstCandidate)
+            assertEquals(it.configuration.system, it.matched)
+        }
+        SystemNgramRuntime.install(dictionary)
+        scorerManager.setEnabled(true)
+    }
+
     private suspend fun prewarmBothConfigurations(
         context: Context,
         engine: KanaKanjiEngine,
@@ -290,4 +398,44 @@ class SystemNgramCandidatePerformanceInstrumentedTest {
     }
 
     private data class PairedTimings(val without: DoubleArray, val with: DoubleArray)
+
+    private data class ToggleConfiguration(val system: Boolean, val custom: Boolean)
+
+    private data class ToggleMeasurement(
+        val configuration: ToggleConfiguration,
+        val rules: Int,
+        val dictionaryStorageBytes: Int,
+        val javaHeapBytes: Long,
+        val nativeHeapBytes: Long,
+        val pssBytes: Long,
+        val allocatedBytesPerConversion: Long,
+        val gcCount: Long,
+        val timings: DoubleArray,
+        val firstCandidate: String,
+        val firstScore: Int,
+        val matched: Boolean,
+    ) {
+        fun toTsv(): String = listOf(
+            configuration.system,
+            configuration.custom,
+            rules,
+            dictionaryStorageBytes,
+            javaHeapBytes,
+            nativeHeapBytes,
+            pssBytes,
+            allocatedBytesPerConversion,
+            gcCount,
+            percentile(timings, 0.50),
+            percentile(timings, 0.95),
+            percentile(timings, 0.99),
+            firstCandidate,
+            firstScore,
+            matched,
+        ).joinToString("\t")
+
+        private fun percentile(values: DoubleArray, fraction: Double): Double {
+            val sorted = values.sorted()
+            return sorted[(ceil(sorted.size * fraction).toInt() - 1).coerceIn(sorted.indices)]
+        }
+    }
 }
