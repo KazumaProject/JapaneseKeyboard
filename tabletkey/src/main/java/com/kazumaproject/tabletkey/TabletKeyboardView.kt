@@ -3447,6 +3447,7 @@ class TabletKeyboardView @JvmOverloads constructor(
             }
         }
         clearShiftCaps()
+        resetLayout()
     }
 
     private fun handleClickInputModeSwitch() {
