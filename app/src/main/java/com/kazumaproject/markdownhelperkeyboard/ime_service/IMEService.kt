@@ -176,6 +176,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.toUserTempla
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
@@ -267,6 +268,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.ShortcutRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserTemplateRepository
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionApplier
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
@@ -449,6 +451,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var kanaKanjiEngine: KanaKanjiEngine
+
+    @Inject
+    lateinit var ngramRuleScorerManager: NgramRuleScorerManager
 
     @Inject
     lateinit var dictionarySourceResolver: DictionarySourceResolver
@@ -2100,6 +2105,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertyEnglishDirectInputPreference = appPreference.qwerty_english_direct_input_preference
     }
 
+    private fun syncNgramDictionaryPreferences() {
+        SystemNgramRuntime.setEnabled(
+            this,
+            appPreference.system_ngram_dictionary_enable_preference,
+        )
+        ngramRuleScorerManager.setEnabled(
+            appPreference.custom_ngram_dictionary_enable_preference,
+        )
+    }
+
     private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
         val deleteKeyFlickPreferencesChanged =
             isDeleteLeftFlickPreference != preferences.isDeleteLeftFlickPreference ||
@@ -2124,6 +2139,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             preferences.showLearnedCandidatesInIncognitoPreference
         isUserDictionaryEnable = preferences.isUserDictionaryEnable
         isUserTemplateEnable = preferences.isUserTemplateEnable
+        SystemNgramRuntime.setEnabled(this, preferences.systemNgramDictionaryEnabled)
+        ngramRuleScorerManager.setEnabled(preferences.customNgramDictionaryEnabled)
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
             adapter.setShowDictionaryCandidateLabels(preferences.showDictionaryCandidateLabels)
         }
@@ -3810,6 +3827,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // Re-read preferences that may change while the existing input session is retained.
         syncCustomKeyboardSuggestionPreference()
         syncQwertyEnglishDirectInputPreference()
+        syncNgramDictionaryPreferences()
         isInputViewActive = true
         collapseShortcutEntryExpansion()
         shortcutInputBehaviorOverride = null
