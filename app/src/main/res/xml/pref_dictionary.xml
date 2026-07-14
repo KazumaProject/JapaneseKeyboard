@@ -48,6 +48,22 @@
     <PreferenceCategory
         android:title="N-gram">
 
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="system_ngram_dictionary_enable_preference"
+            android:summaryOff="@string/system_ngram_dictionary_enable_summary_off"
+            android:summaryOn="@string/system_ngram_dictionary_enable_summary_on"
+            android:title="@string/system_ngram_dictionary_enable_title"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="custom_ngram_dictionary_enable_preference"
+            android:summaryOff="@string/custom_ngram_dictionary_enable_summary_off"
+            android:summaryOn="@string/custom_ngram_dictionary_enable_summary_on"
+            android:title="@string/custom_ngram_dictionary_enable_title"
+            app:iconSpaceReserved="false" />
+
         <Preference
             android:key="n_gram_rule_preference"
             android:title="@string/n_gram_rule_preference_title"
