@@ -1031,6 +1031,12 @@
     <string name="direction_action_label">%1$s の設定</string>
     <string name="n_gram_rule_preference_title">N-gram補正</string>
     <string name="n_gram_rule_preference_summary">変換結果を調整するための n-gram 補正ルールを追加します</string>
+    <string name="system_ngram_dictionary_enable_title">システムN-gram辞書を使用</string>
+    <string name="system_ngram_dictionary_enable_summary_on">同梱されたスコアレス辞書に一致する候補を優先します。</string>
+    <string name="system_ngram_dictionary_enable_summary_off">システムN-gram辞書による候補の並べ替えを行いません。</string>
+    <string name="custom_ngram_dictionary_enable_title">カスタムN-gram辞書を使用</string>
+    <string name="custom_ngram_dictionary_enable_summary_on">カスタムルールと従来のN-gramスコア補正を適用します。</string>
+    <string name="custom_ngram_dictionary_enable_summary_off">カスタムルールと従来のN-gramスコア補正を適用しません。</string>
     <string name="ngram_rule_add_two_node">2ノードルール追加</string>
     <string name="ngram_rule_add_three_node">3ノードルール追加</string>
     <string name="ngram_rule_add_four_node">4ノードルール追加</string>

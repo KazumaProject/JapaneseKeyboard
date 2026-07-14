@@ -69,6 +69,10 @@ object AppPreference {
     private val USER_DICTIONARY_PREFERENCE = Pair("user_dictionary_preference", true)
     private val USER_DICTIONARY_PREFIX_PREFERENCE = Pair("user_dictionary_prefix_match_number", 2)
     private val USER_TEMPLATE_PREFERENCE = Pair("user_template_preference", true)
+    private val SYSTEM_NGRAM_DICTIONARY_ENABLE_PREFERENCE =
+        Pair("system_ngram_dictionary_enable_preference", true)
+    private val CUSTOM_NGRAM_DICTIONARY_ENABLE_PREFERENCE =
+        Pair("custom_ngram_dictionary_enable_preference", true)
     private val SHOW_DICTIONARY_CANDIDATE_LABELS_PREFERENCE =
         Pair("show_dictionary_candidate_labels_preference", false)
     private val ZERO_QUERY_SUGGESTION_PREFERENCE =
@@ -1485,6 +1489,24 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(USER_TEMPLATE_PREFERENCE.first, value ?: true)
+        }
+
+    var system_ngram_dictionary_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            SYSTEM_NGRAM_DICTIONARY_ENABLE_PREFERENCE.first,
+            SYSTEM_NGRAM_DICTIONARY_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SYSTEM_NGRAM_DICTIONARY_ENABLE_PREFERENCE.first, value)
+        }
+
+    var custom_ngram_dictionary_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            CUSTOM_NGRAM_DICTIONARY_ENABLE_PREFERENCE.first,
+            CUSTOM_NGRAM_DICTIONARY_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(CUSTOM_NGRAM_DICTIONARY_ENABLE_PREFERENCE.first, value)
         }
 
     var show_dictionary_candidate_labels_preference: Boolean

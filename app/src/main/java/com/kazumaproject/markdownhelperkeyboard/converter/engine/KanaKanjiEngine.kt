@@ -1999,13 +1999,19 @@ class KanaKanjiEngine {
         val resultList =
             resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
+        val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }) + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+            resultList.sortedWith(
+                compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
+                    .thenBy { it.score }
+                    .thenBy { it.string },
+            ) + kotowazaListDeferred + symbolHalfWidthListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
             candidates = resultListFinal,
             splitPatterns = resultNBestFinalDeferred.splitPatterns,
-            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+            systemNgramMatchedCandidates = systemNgramMatchedCandidates,
         )
 
     }
@@ -2458,8 +2464,12 @@ class KanaKanjiEngine {
         val resultList =
             resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + predictiveSearchResult + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
-        val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
+        val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
+        val resultListFinal = resultList.sortedWith(
+            compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
+                .thenBy { it.score }
+                .thenBy { it.string },
+        )
 
         val finalList =
             resultListFinal + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
@@ -2467,7 +2477,8 @@ class KanaKanjiEngine {
         return BunsetsuCandidateResult(
             candidates = finalList,
             splitPatterns = resultNBestFinalDeferred.splitPatterns,
-            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+            systemNgramMatchedCandidates = systemNgramMatchedCandidates,
         )
 
     }
@@ -3888,13 +3899,19 @@ class KanaKanjiEngine {
         val resultList =
             resultNBestFinalDeferred.candidates + readingCorrectionListDeferred + mozcUTPersonNames + mozcUTPlacesList + mozcUTWikiList + mozcUTNeologdList + mozcUTWebList + listOfDictionaryToday + numbersDeferred + convertYearToEra
 
+        val systemNgramMatchedCandidates = resultNBestFinalDeferred.systemNgramMatchedCandidates
         val resultListFinal =
-            resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string }) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
+            resultList.sortedWith(
+                compareByDescending<Candidate> { it.string in systemNgramMatchedCandidates }
+                    .thenBy { it.score }
+                    .thenBy { it.string },
+            ) + (englishDeferred + englishZenkaku).sortedBy { it.score } + symbolHalfWidthListDeferred + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + kotowazaListDeferred + hirakanaAndKana + yomiPartListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
             candidates = resultListFinal,
             splitPatterns = resultNBestFinalDeferred.splitPatterns,
-            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString
+            splitPatternByCandidateString = resultNBestFinalDeferred.splitPatternByCandidateString,
+            systemNgramMatchedCandidates = systemNgramMatchedCandidates,
         )
 
     }

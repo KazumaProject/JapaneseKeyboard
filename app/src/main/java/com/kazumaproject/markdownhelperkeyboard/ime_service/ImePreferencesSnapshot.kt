@@ -25,6 +25,8 @@ data class ImePreferencesSnapshot(
     val showLearnedCandidatesInIncognitoPreference: Boolean,
     val isUserDictionaryEnable: Boolean,
     val isUserTemplateEnable: Boolean,
+    val systemNgramDictionaryEnabled: Boolean,
+    val customNgramDictionaryEnabled: Boolean,
     val showDictionaryCandidateLabels: Boolean,
     val zeroQuerySuggestionPreference: Boolean,
     val hankakuPreference: Boolean,
@@ -281,6 +283,10 @@ data class ImePreferencesSnapshot(
                     appPreference.show_learned_candidates_in_incognito_preference,
                 isUserDictionaryEnable = appPreference.user_dictionary_preference ?: true,
                 isUserTemplateEnable = appPreference.user_template_preference ?: true,
+                systemNgramDictionaryEnabled =
+                    appPreference.system_ngram_dictionary_enable_preference,
+                customNgramDictionaryEnabled =
+                    appPreference.custom_ngram_dictionary_enable_preference,
                 showDictionaryCandidateLabels =
                     appPreference.show_dictionary_candidate_labels_preference,
                 zeroQuerySuggestionPreference = appPreference.zero_query_suggestion_preference,

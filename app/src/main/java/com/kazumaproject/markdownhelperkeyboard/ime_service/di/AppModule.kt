@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Context.INPUT_METHOD_SERVICE
 import android.view.inputmethod.InputMethodManager
 import androidx.room.Room
+import androidx.preference.PreferenceManager
 import com.kazumaproject.Louds.LOUDS
 import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.dictionary.TokenArray
@@ -17,6 +18,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcNodeAttributeTableReader
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenterDataReader
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime
 import com.kazumaproject.markdownhelperkeyboard.converter.path_algorithm.FindPath
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.database.KeyboardLayoutDao
 import com.kazumaproject.markdownhelperkeyboard.custom_romaji.database.RomajiMapDao
@@ -648,7 +650,21 @@ object AppModule {
     ): KanaKanjiEngine {
         val kanaKanjiEngine = KanaKanjiEngine()
         val graphBuilder = GraphBuilder()
-        val findPath = FindPath(ngramRuleScorerProvider = ngramRuleScorerManager::currentScorer)
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        val systemNgramEnabled = preferences.getBoolean(
+            "system_ngram_dictionary_enable_preference",
+            true,
+        )
+        val customNgramEnabled = preferences.getBoolean(
+            "custom_ngram_dictionary_enable_preference",
+            true,
+        )
+        SystemNgramRuntime.initialize(context, systemNgramEnabled)
+        ngramRuleScorerManager.setEnabled(customNgramEnabled)
+        val findPath = FindPath(
+            ngramRuleScorerProvider = ngramRuleScorerManager::currentScorer,
+            systemNgramDictionaryProvider = SystemNgramRuntime::current,
+        )
         val bundledMozcDictionaryActive =
             dictionaryBinaryReader.resolveCategoryLoadState(DictionaryCategory.SYSTEM) == DictionaryCategoryLoadState.Bundled
         val mozcSegmenter = if (bundledMozcDictionaryActive) {
