@@ -16,6 +16,8 @@ import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryCheck
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryChecker
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcSegmenter
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.EmptySystemNgramDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.BoundaryTrace
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.CandidateTrace
 import com.kazumaproject.markdownhelperkeyboard.converter.trace.ForwardDpTrace
@@ -26,6 +28,7 @@ import java.util.PriorityQueue
 
 class FindPath(
     private val ngramRuleScorerProvider: () -> NgramRuleScorer = { defaultNgramRuleScorer },
+    private val systemNgramDictionaryProvider: () -> SystemNgramDictionary = { EmptySystemNgramDictionary },
     private var mozcSegmenterProvider: () -> MozcSegmenter? = { null },
     private var mozcBoundaryModeProvider: () -> MozcBoundaryMode = { MozcBoundaryMode.STRICT },
 ) {
@@ -651,6 +654,13 @@ class FindPath(
         val splitPatternByCandidateString = linkedMapOf<String, List<Int>>()
         val foundStrings = HashSet<String>()
         val ngramRuleScorer = ngramRuleScorerProvider()
+        val systemNgramDictionary = systemNgramDictionaryProvider()
+        val systemNgramMatchedCandidates = SmallSystemNgramMatchSet()
+        val internalCandidateCount = if (systemNgramDictionary.ruleCount == 0) {
+            n
+        } else {
+            maxOf(n * 4, 32).coerceAtMost(64)
+        }
 
         val pQueue: PriorityQueue<PathQueueElement> =
             PriorityQueue { first, second ->
@@ -712,6 +722,9 @@ class FindPath(
                 )
 
                 if (foundStrings.add(stringFromNode)) {
+                    if (pathMatchesSystemNgram(element, systemNgramDictionary)) {
+                        systemNgramMatchedCandidates.add(stringFromNode)
+                    }
                     val bunsetsuPositions = getBunsetsuPositionsFromPath(element)
                     if (splitPatterns.none { it == bunsetsuPositions } && splitPatterns.size < 4) {
                         splitPatterns.add(bunsetsuPositions)
@@ -733,11 +746,18 @@ class FindPath(
                     resultFinal.add(candidate)
                 }
 
-                if (resultFinal.size >= n) {
+                val enoughCandidates = resultFinal.size >= n
+                val systemRuleAlreadyMatched = systemNgramMatchedCandidates.isNotEmpty()
+                if (
+                    resultFinal.size >= internalCandidateCount ||
+                    (enoughCandidates && systemRuleAlreadyMatched)
+                ) {
+                    val ranked = rankSystemNgramCandidates(resultFinal, systemNgramMatchedCandidates, n)
                     return BunsetsuCandidateResult(
-                        candidates = resultFinal,
+                        candidates = ranked,
                         splitPatterns = splitPatterns,
                         splitPatternByCandidateString = splitPatternByCandidateString,
+                        systemNgramMatchedCandidates = systemNgramMatchedCandidates,
                     )
                 }
             } else {
@@ -823,10 +843,12 @@ class FindPath(
             }
         }
 
+        val ranked = rankSystemNgramCandidates(resultFinal, systemNgramMatchedCandidates, n)
         return BunsetsuCandidateResult(
-            candidates = resultFinal.sortedBy { it.score },
+            candidates = ranked,
             splitPatterns = splitPatterns,
             splitPatternByCandidateString = splitPatternByCandidateString,
+            systemNgramMatchedCandidates = systemNgramMatchedCandidates,
         )
     }
 
@@ -1043,6 +1065,100 @@ class FindPath(
             current = current.next
         }
         return result.toString()
+    }
+
+    private fun rankSystemNgramCandidates(
+        candidates: List<Candidate>,
+        matched: Set<String>,
+        requested: Int,
+    ): List<Candidate> = candidates.sortedWith(
+        compareByDescending<Candidate> { it.string in matched }.thenBy { it.score },
+    ).take(requested)
+
+    private fun pathMatchesSystemNgram(
+        path: PathQueueElement,
+        dictionary: SystemNgramDictionary,
+    ): Boolean {
+        if (dictionary.ruleCount == 0) return false
+        var start = path.next
+        while (start != null && start.node.tango != "EOS") {
+            val second = start.next
+            if (second == null || second.node.tango == "EOS") return false
+            if (
+                dictionary.matches(
+                    node0 = start.node,
+                    node1 = second.node,
+                    node2 = second.next?.node,
+                    node3 = second.next?.next?.node,
+                    node4 = second.next?.next?.next?.node,
+                )
+            ) return true
+            start = start.next
+        }
+        return false
+    }
+
+    /** Avoids allocating a hash table for the common one-match conversion path. */
+    private class SmallSystemNgramMatchSet : AbstractMutableSet<String>() {
+        private var first: String? = null
+        private var second: String? = null
+        private var third: String? = null
+        private var fourth: String? = null
+        private var overflow: LinkedHashSet<String>? = null
+
+        override val size: Int
+            get() = inlineSize() + (overflow?.size ?: 0)
+
+        override fun contains(element: String): Boolean =
+            first == element || second == element || third == element || fourth == element ||
+                overflow?.contains(element) == true
+
+        override fun add(element: String): Boolean {
+            if (contains(element)) return false
+            when (inlineSize()) {
+                0 -> first = element
+                1 -> second = element
+                2 -> third = element
+                3 -> fourth = element
+                else -> return overflowSet().add(element)
+            }
+            return true
+        }
+
+        override fun iterator(): MutableIterator<String> = object : MutableIterator<String> {
+            private var index = 0
+            private val overflowIterator by lazy(LazyThreadSafetyMode.NONE) {
+                overflow?.iterator() ?: emptyList<String>().iterator()
+            }
+
+            override fun hasNext(): Boolean = index < inlineSize() || overflowIterator.hasNext()
+
+            override fun next(): String {
+                if (index < inlineSize()) {
+                    return when (index++) {
+                        0 -> checkNotNull(first)
+                        1 -> checkNotNull(second)
+                        2 -> checkNotNull(third)
+                        else -> checkNotNull(fourth)
+                    }
+                }
+                return overflowIterator.next()
+            }
+
+            override fun remove(): Unit = throw UnsupportedOperationException()
+        }
+
+        private fun inlineSize(): Int = when {
+            fourth != null -> 4
+            third != null -> 3
+            second != null -> 2
+            first != null -> 1
+            else -> 0
+        }
+
+        private fun overflowSet(): LinkedHashSet<String> = overflow ?: LinkedHashSet<String>().also {
+            overflow = it
+        }
     }
 
     private fun getYomiUsedFromPath(path: PathQueueElement): String {
