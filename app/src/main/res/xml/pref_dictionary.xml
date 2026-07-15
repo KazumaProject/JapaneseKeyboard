@@ -32,6 +32,17 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/dictionary_candidate_display_category_title">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="suppress_hentaigana_candidates_preference"
+            android:title="@string/suppress_hentaigana_candidates_title"
+            app:iconSpaceReserved="false"
+            app:summary="@string/suppress_hentaigana_candidates_summary" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/conversion_beam_width_category_title">
 
         <SeekBarPreference

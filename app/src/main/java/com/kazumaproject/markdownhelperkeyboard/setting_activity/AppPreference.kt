@@ -75,6 +75,8 @@ object AppPreference {
         Pair("custom_ngram_dictionary_enable_preference", true)
     private val SHOW_DICTIONARY_CANDIDATE_LABELS_PREFERENCE =
         Pair("show_dictionary_candidate_labels_preference", false)
+    private val SUPPRESS_HENTAIGANA_CANDIDATES_PREFERENCE =
+        Pair("suppress_hentaigana_candidates_preference", false)
     private val ZERO_QUERY_SUGGESTION_PREFERENCE =
         Pair("zero_query_suggestion_preference", false)
     private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
@@ -1516,6 +1518,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SHOW_DICTIONARY_CANDIDATE_LABELS_PREFERENCE.first, value)
+        }
+
+    var suppress_hentaigana_candidates_preference: Boolean
+        get() = preferences.getBoolean(
+            SUPPRESS_HENTAIGANA_CANDIDATES_PREFERENCE.first,
+            SUPPRESS_HENTAIGANA_CANDIDATES_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUPPRESS_HENTAIGANA_CANDIDATES_PREFERENCE.first, value)
         }
 
     var zero_query_suggestion_preference: Boolean
