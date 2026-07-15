@@ -147,6 +147,12 @@ fun Char.isPunctuationOrSymbol(): Boolean {
 fun String.containsSymbolNumberOrEmoji(): Boolean =
     any { it.isNumber() || it.isPunctuationOrSymbol() }
 
+fun String.containsHentaigana(): Boolean {
+    return codePoints().anyMatch { codePoint ->
+        codePoint in 0x1B000..0x1B0FF
+    }
+}
+
 /**
  * 絵文字などを含む文字列を「グラフェム単位」で逆順にする拡張関数
  */
