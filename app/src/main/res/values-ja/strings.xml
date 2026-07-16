@@ -164,6 +164,9 @@
     <string name="dictionary_candidate_label_category_title">候補ラベル</string>
     <string name="show_dictionary_candidate_labels_title">辞書候補のラベルを表示</string>
     <string name="show_dictionary_candidate_labels_summary">学習辞書、ユーザー辞書、定型文の候補に「学習」「ユーザー」「定型」を表示します</string>
+    <string name="dictionary_candidate_display_category_title">候補表示</string>
+    <string name="suppress_hentaigana_candidates_title">変体仮名の候補を抑制</string>
+    <string name="suppress_hentaigana_candidates_summary">ON にすると、変換候補に変体仮名を表示しません。</string>
     <string name="category_zero_query_suggestion_title">後続語候補</string>
     <string name="category_template_title">定型文</string>
     <string name="category_gemma_translation_title">Gemma 翻訳</string>
