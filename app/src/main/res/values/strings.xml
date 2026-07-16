@@ -162,6 +162,9 @@
     <string name="dictionary_candidate_label_category_title">Candidate labels</string>
     <string name="show_dictionary_candidate_labels_title">Show dictionary candidate labels</string>
     <string name="show_dictionary_candidate_labels_summary">Show Learned, User, or Template beside candidates from the learning dictionary, user dictionary, and templates</string>
+    <string name="dictionary_candidate_display_category_title">Candidate display</string>
+    <string name="suppress_hentaigana_candidates_title">Hide hentaigana candidates</string>
+    <string name="suppress_hentaigana_candidates_summary">Do not show hentaigana characters in conversion candidates.</string>
     <string name="category_zero_query_suggestion_title">Next-word Suggestions</string>
     <string name="category_template_title">Templates</string>
     <string name="category_gemma_translation_title">Gemma Translation</string>

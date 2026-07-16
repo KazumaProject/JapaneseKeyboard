@@ -1259,34 +1259,18 @@ class KanaKanjiEngine {
             type = 12
         )
 
-        val symbolListDeferred =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                ).filterNot { it.string.containsHentaigana() }
-            } else {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                )
-            }
+        val symbolListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = symbolCommonPrefixDeferred,
+            yomiTrie = symbolYomiTrie,
+            tokenArray = symbolTokenArray,
+            tangoTrie = symbolTangoTrie,
+            succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+            type = 13
+        )
 
         Timber.d("Candidate Symbols: ${symbolListDeferred.map { it.string }}")
 
@@ -1763,34 +1747,18 @@ class KanaKanjiEngine {
             type = 12
         )
 
-        val symbolListDeferred =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                ).filterNot { it.string.containsHentaigana() }
-            } else {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                )
-            }
+        val symbolListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = symbolCommonPrefixDeferred,
+            yomiTrie = symbolYomiTrie,
+            tokenArray = symbolTokenArray,
+            tangoTrie = symbolTangoTrie,
+            succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+            type = 13
+        )
 
         Timber.d("Candidate Symbols: ${symbolListDeferred.map { it.string }}")
 
@@ -2291,34 +2259,18 @@ class KanaKanjiEngine {
             succinctBitVector = symbolSuccinctBitVectorLBSYomi,
         )
 
-        val symbolListDeferred =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                ).filterNot { it.string.containsHentaigana() }
-            } else {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                )
-            }
+        val symbolListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = symbolCommonPrefixDeferred,
+            yomiTrie = symbolYomiTrie,
+            tokenArray = symbolTokenArray,
+            tangoTrie = symbolTangoTrie,
+            succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+            type = 13
+        )
 
         if (input.length == 1) {
             val finalListOneLetter =
@@ -2762,34 +2714,18 @@ class KanaKanjiEngine {
             succinctBitVector = symbolSuccinctBitVectorLBSYomi,
         )
 
-        val symbolListDeferred =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                ).filterNot { it.string.containsHentaigana() }
-            } else {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                )
-            }
+        val symbolListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = symbolCommonPrefixDeferred,
+            yomiTrie = symbolYomiTrie,
+            tokenArray = symbolTokenArray,
+            tangoTrie = symbolTangoTrie,
+            succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+            type = 13
+        )
 
         if (input.length == 1) return resultNBestFinalDeferred.sortedBy { it.score } + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + symbolListDeferred + singleKanjiListDeferred
 
@@ -3184,34 +3120,18 @@ class KanaKanjiEngine {
             type = 12
         )
 
-        val symbolListDeferred =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                ).filterNot { it.string.containsHentaigana() }
-            } else {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                )
-            }
+        val symbolListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = symbolCommonPrefixDeferred,
+            yomiTrie = symbolYomiTrie,
+            tokenArray = symbolTokenArray,
+            tangoTrie = symbolTangoTrie,
+            succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+            type = 13
+        )
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
             input = input,
@@ -3673,34 +3593,18 @@ class KanaKanjiEngine {
             type = 12
         )
 
-        val symbolListDeferred =
-            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                ).filterNot { it.string.containsHentaigana() }
-            } else {
-                deferredFromDictionarySymbols(
-                    input = input,
-                    commonPrefixListString = symbolCommonPrefixDeferred,
-                    yomiTrie = symbolYomiTrie,
-                    tokenArray = symbolTokenArray,
-                    tangoTrie = symbolTangoTrie,
-                    succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
-                    succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
-                    succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
-                    succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
-                    type = 13
-                )
-            }
+        val symbolListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = symbolCommonPrefixDeferred,
+            yomiTrie = symbolYomiTrie,
+            tokenArray = symbolTokenArray,
+            tangoTrie = symbolTangoTrie,
+            succinctBitVectorLBSYomi = symbolSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = symbolSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = symbolSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = symbolSuccinctBitVectorTangoLBS,
+            type = 13
+        )
 
         val singleKanjiListDeferred = deferredFromDictionarySingleKanji(
             input = input,
