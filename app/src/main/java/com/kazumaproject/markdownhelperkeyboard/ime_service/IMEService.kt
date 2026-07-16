@@ -195,6 +195,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateS
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContentResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
+import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsHentaigana
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getCurrentInputTypeForIME2
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.getEnterKeyIndexSumire
@@ -1214,6 +1215,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isLearnDictionaryMode: Boolean? = false
     private var isUserDictionaryEnable: Boolean? = false
     private var isUserTemplateEnable: Boolean? = false
+    private var suppressHentaiganaCandidates: Boolean = false
     private var zeroQuerySuggestionPreference: Boolean = false
     private var hankakuPreference: Boolean? = false
     private var customDirectModeSpaceHankakuPreference: Boolean = true
@@ -2144,6 +2146,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         listOfNotNull(suggestionAdapter, suggestionAdapterFull).forEach { adapter ->
             adapter.setShowDictionaryCandidateLabels(preferences.showDictionaryCandidateLabels)
         }
+        suppressHentaiganaCandidates = preferences.suppressHentaiganaCandidates
         zeroQuerySuggestionPreference = preferences.zeroQuerySuggestionPreference
         if (!zeroQuerySuggestionPreference) {
             clearZeroQueryAllState(refresh = true)
@@ -4257,6 +4260,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         showLearnedCandidatesInIncognitoPreference = true
         isUserDictionaryEnable = null
         isUserTemplateEnable = null
+        suppressHentaiganaCandidates = false
         hankakuPreference = null
         customDirectModeSpaceHankakuPreference = true
         isLiveConversionEnable = null
@@ -21329,7 +21333,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     !it.containsMatchIn(candidate.string)
                 }
             }
-        }.distinctBy { it.string }
+        }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
 
         val orderedCandidates =
             if (appPreference.candidate_order_override_enable_preference == true) {
@@ -21487,7 +21491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         !it.containsMatchIn(candidate.string)
                     }
                 }
-            }.distinctBy { it.string }
+            }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
         }
 
         val orderedCandidates =
@@ -21641,7 +21645,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     !it.containsMatchIn(candidate.string)
                 }
             }
-        }.distinctBy { it.string }
+        }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
 
         val orderedCandidates =
             if (appPreference.candidate_order_override_enable_preference == true) {
@@ -21670,7 +21674,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val engineCandidates = kanaKanjiEngine.getCandidatesEnglishKana(
             input = insertString,
         )
-        return engineCandidates.distinctBy { it.string }
+        return engineCandidates.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+    }
+
+    private fun List<Candidate>.withoutHentaiganaCandidatesIfNeeded(): List<Candidate> {
+        if (!suppressHentaiganaCandidates) return this
+        return filterNot { it.string.containsHentaigana() }
     }
 
     private suspend fun getUserTemplateCandidates(insertString: String): List<Candidate> {
