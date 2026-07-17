@@ -52,9 +52,9 @@ import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyVisualStyleResolver
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.ResolvedSumireSpecialKeyAction
-import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
@@ -361,8 +361,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     private fun resolveKeyVisualPalette(keyData: KeyData): KeyVisualPalette {
-        val usesSpecialSurface = keyData.isSpecialKey &&
-                keyData.specialKeyColorStyle == SpecialKeyColorStyle.SPECIAL
+        val usesSpecialSurface = KeyVisualStyleResolver.usesSpecialSurface(keyData)
         return if (usesSpecialSurface) {
             KeyVisualPalette(
                 usesSpecialSurface = true,
