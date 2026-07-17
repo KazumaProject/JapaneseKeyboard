@@ -98,6 +98,16 @@ enum class KeyIconType(val dbValue: String) {
     }
 }
 
+enum class SpecialKeyColorStyle(val dbValue: String) {
+    SPECIAL("SPECIAL"),
+    NORMAL("NORMAL");
+
+    companion object {
+        fun fromDbValue(value: String?): SpecialKeyColorStyle =
+            entries.firstOrNull { it.dbValue == value } ?: SPECIAL
+    }
+}
+
 data class KeyIconRef(
     val type: KeyIconType,
     val value: String? = null
@@ -124,7 +134,8 @@ data class KeyData(
     val isSpecialKey: Boolean = false,
     val isHiLighted: Boolean = false,
     val keyId: String? = null,
-    val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL
+    val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL,
+    val specialKeyColorStyle: SpecialKeyColorStyle = SpecialKeyColorStyle.SPECIAL
 )
 
 data class GridPlacement(

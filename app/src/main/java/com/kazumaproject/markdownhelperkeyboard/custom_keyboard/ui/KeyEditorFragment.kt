@@ -44,6 +44,7 @@ import com.kazumaproject.custom_keyboard.data.KeyIconResolver
 import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
 import com.kazumaproject.custom_keyboard.data.compatibleColumnSpan
 import com.kazumaproject.custom_keyboard.data.compatibleRowSpan
 import com.kazumaproject.custom_keyboard.data.toCircularFlickMap
@@ -296,6 +297,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // Special key: show category selector (single/flick)
             binding.textSpecialCategoryTitle.isVisible = isSpecialKey
             binding.specialCategoryChipGroup.isVisible = isSpecialKey
+            updateSpecialKeyColorStyleVisibility(isSpecialKey)
 
             // Normal UI blocks
             binding.textInputStyleTitle.isVisible = !isSpecialKey
@@ -322,6 +324,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 binding.keyActionLayout.isVisible = false
                 binding.customKeyboardTargetLayout.isVisible = false
                 binding.specialFlickEditorGroup.isVisible = false
+                updateSpecialKeyColorStyleVisibility(false)
 
                 // normal key: input style controls which editor is visible
                 handleInputStyleUi()
@@ -1025,6 +1028,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             // Key type: special / normal
             if (key.isSpecialKey) {
                 binding.keyTypeChipGroup.check(R.id.chip_special)
+                setSelectedSpecialKeyColorStyle(key.specialKeyColorStyle)
+                updateSpecialKeyColorStyleVisibility(true)
 
                 // Decide category: SINGLE or FLICK
                 val flickMap = state.layout.flickKeyMaps[key.keyId]?.firstOrNull() ?: emptyMap()
@@ -1068,6 +1073,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     (binding.specialCategoryChipGroup.checkedChipId == R.id.chip_special_flick)
             } else {
                 binding.keyTypeChipGroup.check(R.id.chip_normal)
+                setSelectedSpecialKeyColorStyle(SpecialKeyColorStyle.SPECIAL)
+                updateSpecialKeyColorStyleVisibility(false)
 
                 // hide special UI
                 binding.textSpecialCategoryTitle.isVisible = false
@@ -1225,6 +1232,29 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         binding.keyIconOverrideGroup.isVisible = isSpecial
         if (isSpecial) refreshIconPreview()
     }
+
+    private fun updateSpecialKeyColorStyleVisibility(isSpecial: Boolean) {
+        binding.textSpecialKeyColorStyleTitle.isVisible = isSpecial
+        binding.specialKeyColorStyleChipGroup.isVisible = isSpecial
+        if (isSpecial && binding.specialKeyColorStyleChipGroup.checkedChipId == View.NO_ID) {
+            binding.specialKeyColorStyleChipGroup.check(R.id.chip_special_key_color_style_special)
+        }
+    }
+
+    private fun setSelectedSpecialKeyColorStyle(style: SpecialKeyColorStyle) {
+        binding.specialKeyColorStyleChipGroup.check(
+            when (style) {
+                SpecialKeyColorStyle.SPECIAL -> R.id.chip_special_key_color_style_special
+                SpecialKeyColorStyle.NORMAL -> R.id.chip_special_key_color_style_normal
+            }
+        )
+    }
+
+    private fun selectedSpecialKeyColorStyle(): SpecialKeyColorStyle =
+        when (binding.specialKeyColorStyleChipGroup.checkedChipId) {
+            R.id.chip_special_key_color_style_normal -> SpecialKeyColorStyle.NORMAL
+            else -> SpecialKeyColorStyle.SPECIAL
+        }
 
     private fun replaceSelectedIcon(newIcon: KeyIconRef?) {
         selectedIconRef = newIcon
@@ -1671,6 +1701,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 currentColumnSpanUnits.toCellSpanCeilFromGridUnits()
             } else {
                 currentColSpan
+            },
+            specialKeyColorStyle = if (isSpecial) {
+                selectedSpecialKeyColorStyle()
+            } else {
+                SpecialKeyColorStyle.SPECIAL
             }
         )
 
