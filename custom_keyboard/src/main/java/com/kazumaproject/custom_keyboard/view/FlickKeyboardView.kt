@@ -37,6 +37,7 @@ import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.CustomAngleFlickController
+import com.kazumaproject.custom_keyboard.controller.FlickLongPressInputController
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
 import com.kazumaproject.custom_keyboard.controller.TfbiHierarchicalFlickController
 import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
@@ -95,6 +96,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
     private val tfbiControllers = mutableListOf<TfbiInputController>()
+    private val flickLongPressControllers = mutableListOf<FlickLongPressInputController>()
     private val stickyTfbiControllers = mutableListOf<TfbiStickyFlickController>()
     private val hierarchicalTfbiControllers = mutableListOf<TfbiHierarchicalFlickController>()
 
@@ -196,6 +198,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         standardFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         tfbiControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
+        flickLongPressControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         stickyTfbiControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         hierarchicalTfbiControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
     }
@@ -212,6 +215,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
         standardFlickControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.standard) }
         tfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
+        flickLongPressControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         stickyTfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
         hierarchicalTfbiControllers.forEach { it.applyPopupViewStyle(popupViewStyleSet.tfbi) }
     }
@@ -368,6 +372,9 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         tfbiControllers.forEach { it.cancel() }
         tfbiControllers.clear()
+
+        flickLongPressControllers.forEach { it.cancel() }
+        flickLongPressControllers.clear()
 
         stickyTfbiControllers.forEach { it.cancel() }
         stickyTfbiControllers.clear()
@@ -720,6 +727,24 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun extractInputMap(actionMap: Map<FlickDirection, FlickAction>): Map<FlickDirection, String> {
         return actionMap.mapValues { (_, flickAction) ->
             (flickAction as? FlickAction.Input)?.char ?: ""
+        }
+    }
+
+    private fun extractFlickLongPressMap(
+        actionMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>?
+    ): Map<TfbiFlickDirection, String> {
+        return actionMap.orEmpty().mapNotNull { (direction, innerMap) ->
+            innerMap[direction]
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { output -> direction to output }
+        }.toMap()
+    }
+
+    private fun textOutputFromAction(action: KeyAction?): String {
+        return when (action) {
+            is KeyAction.Text -> action.text
+            is KeyAction.InputText -> action.text
+            else -> ""
         }
     }
 
@@ -1960,6 +1985,69 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
             }
 
+            KeyType.FLICK_LONG_PRESS -> {
+                val flickLongPressMap = layout.twoStepFlickKeyMaps[keyData.keyId]
+                    ?: layout.twoStepFlickKeyMaps[keyData.label]
+                    ?: emptyMap()
+                val flickLongPressHoldMap = layout.twoStepLongPressKeyMaps[keyData.keyId]
+                    ?: layout.twoStepLongPressKeyMaps[keyData.label]
+                    ?: emptyMap()
+
+                val normalMap = extractFlickLongPressMap(flickLongPressMap).toMutableMap()
+                if (normalMap[TfbiFlickDirection.TAP].orEmpty().isEmpty()) {
+                    textOutputFromAction(keyData.action)
+                        .takeIf { it.isNotEmpty() }
+                        ?.let { normalMap[TfbiFlickDirection.TAP] = it }
+                }
+                val holdMap = extractFlickLongPressMap(flickLongPressHoldMap)
+
+                if (normalMap.isNotEmpty() || holdMap.isNotEmpty()) {
+                    if (keyView is AutoSizeButton) {
+                        applyTwoStepGuideLabels(keyView, keyData, flickLongPressMap)
+                    }
+
+                    val controller = FlickLongPressInputController(
+                        context,
+                        flickSensitivity = flickSensitivity.toFloat()
+                    ).apply {
+                        setLongPressTimeout(longPressTimeout)
+                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        applyPopupViewStyle(popupViewStyleSet.tfbi)
+                        this.listener = object : FlickLongPressInputController.Listener {
+                            override fun onPress(character: String) {
+                                notifyTextPress(character)
+                            }
+
+                            override fun onCommit(character: String, isFlick: Boolean) {
+                                this@FlickKeyboardView.listener?.onAction(
+                                    KeyAction.Text(character),
+                                    isFlick = isFlick
+                                )
+                            }
+                        }
+
+                        attach(
+                            view = keyView,
+                            normalMap = normalMap,
+                            longPressMap = holdMap
+                        )
+                    }
+
+                    when (themeMode) {
+                        "custom" -> {
+                            controller.setPopupColors(
+                                backgroundColor = customSpecialKeyColor,
+                                highlightedColor = manipulateColor(customSpecialKeyColor, 1.2f),
+                                textColor = customSpecialKeyTextColor
+                            )
+                        }
+                    }
+
+                    flickLongPressControllers.add(controller)
+                    return controller
+                }
+            }
+
             KeyType.STICKY_TWO_STEP_FLICK -> {
                 val twoStepMap = layout.twoStepFlickKeyMaps[keyData.keyId]
                     ?: layout.twoStepFlickKeyMaps[keyData.label]
@@ -2157,6 +2245,11 @@ class FlickKeyboardView @JvmOverloads constructor(
             is TfbiInputController -> {
                 controller.cancel()
                 tfbiControllers.remove(controller)
+            }
+
+            is FlickLongPressInputController -> {
+                controller.cancel()
+                flickLongPressControllers.remove(controller)
             }
 
             is TfbiStickyFlickController -> {
@@ -2562,6 +2655,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         crossFlickControllers.forEach { it.cancel() }
         standardFlickControllers.forEach { it.cancel() }
         tfbiControllers.forEach { it.cancel() }
+        flickLongPressControllers.forEach { it.cancel() }
         stickyTfbiControllers.forEach { it.cancel() }
         hierarchicalTfbiControllers.forEach { it.cancel() }
     }

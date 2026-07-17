@@ -581,7 +581,9 @@ enum class KeyType {
 
     STICKY_TWO_STEP_FLICK,
 
-    HIERARCHICAL_FLICK
+    HIERARCHICAL_FLICK,
+
+    FLICK_LONG_PRESS
 }
 
 enum class ShapeType {
