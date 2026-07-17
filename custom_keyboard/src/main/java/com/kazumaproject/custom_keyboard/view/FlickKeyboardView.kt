@@ -54,6 +54,7 @@ import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.ResolvedSumireSpecialKeyAction
+import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.SumireSpecialKeyDirection
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
@@ -164,6 +165,13 @@ class FlickKeyboardView @JvmOverloads constructor(
         cross = PopupViewStyle(100, 18f),
         standard = PopupViewStyle(100, 19f),
         tfbi = PopupViewStyle(100, 20f)
+    )
+
+    private data class KeyVisualPalette(
+        val usesSpecialSurface: Boolean,
+        val baseColor: Int,
+        val textColor: Int,
+        val highlightColor: Int
     )
 
     init {
@@ -350,6 +358,49 @@ class FlickKeyboardView @JvmOverloads constructor(
         val g = (Color.green(color) * factor).toInt().coerceIn(0, 255)
         val b = (Color.blue(color) * factor).toInt().coerceIn(0, 255)
         return Color.argb(a, r, g, b)
+    }
+
+    private fun resolveKeyVisualPalette(keyData: KeyData): KeyVisualPalette {
+        val usesSpecialSurface = keyData.isSpecialKey &&
+                keyData.specialKeyColorStyle == SpecialKeyColorStyle.SPECIAL
+        return if (usesSpecialSurface) {
+            KeyVisualPalette(
+                usesSpecialSurface = true,
+                baseColor = customSpecialKeyColor,
+                textColor = customSpecialKeyTextColor,
+                highlightColor = manipulateColor(customSpecialKeyColor, 1.2f)
+            )
+        } else {
+            KeyVisualPalette(
+                usesSpecialSurface = false,
+                baseColor = customKeyColor,
+                textColor = customKeyTextColor,
+                highlightColor = customSpecialKeyColor
+            )
+        }
+    }
+
+    private fun defaultKeyBackgroundDrawable(keyData: KeyData, isDarkTheme: Boolean): Drawable? {
+        val drawableResId = when {
+            resolveKeyVisualPalette(keyData).usesSpecialSurface -> {
+                if (isDarkTheme) {
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+                } else {
+                    com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                }
+            }
+
+            keyData.keyType != KeyType.STANDARD_FLICK -> {
+                if (isDarkTheme) {
+                    com.kazumaproject.core.R.drawable.ten_keys_center_bg_material
+                } else {
+                    com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+                }
+            }
+
+            else -> return null
+        }
+        return ContextCompat.getDrawable(context, drawableResId)
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -629,7 +680,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             keyData.isSpecialKey &&
             KeyIconResolver.shouldTintIcon(keyData)
         ) {
-            button.setColorFilter(customSpecialKeyTextColor)
+            button.setColorFilter(resolveKeyVisualPalette(keyData).textColor)
         } else {
             button.clearColorFilter()
         }
@@ -829,11 +880,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun getGuideTextColor(keyData: KeyData): Int {
         return when (themeMode) {
-            "custom" -> if (keyData.isSpecialKey) {
-                customSpecialKeyTextColor
-            } else {
-                customKeyTextColor
-            }
+            "custom" -> resolveKeyVisualPalette(keyData).textColor
 
             else -> context.getColorFromAttr(R.attr.colorOnSurface)
         }
@@ -953,6 +1000,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         val isDarkTheme = context.isDarkThemeOn()
         val commonCornerRadius = dpToPx(8).toFloat()
+        val visualPalette = resolveKeyVisualPalette(keyData)
 
         val keyView: View = if (KeyIconResolver.hasIcon(keyData)) {
             AppCompatImageButton(context).apply {
@@ -964,14 +1012,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                 applyImageButtonSizing(this, keyData)
 
-                val originalBg = ContextCompat.getDrawable(
-                    context,
-                    if (isDarkTheme) {
-                        com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
-                    } else {
-                        com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
-                    }
-                )
+                val originalBg = defaultKeyBackgroundDrawable(keyData, isDarkTheme)
 
                 val insetBg = android.graphics.drawable.InsetDrawable(
                     originalBg,
@@ -993,19 +1034,19 @@ class FlickKeyboardView @JvmOverloads constructor(
                 when (themeMode) {
                     "custom" -> {
                         if (customBorderEnable) {
-                            setDrawableSolidColor(customSpecialKeyColor)
+                            setDrawableSolidColor(visualPalette.baseColor)
                             setBorder(customBorderColor, borderWidth)
                         } else {
                             val neumorphDrawable = getDynamicNeumorphDrawable(
-                                baseColor = customSpecialKeyColor,
+                                baseColor = visualPalette.baseColor,
                                 radius = commonCornerRadius
                             )
 
                             val segmentedDrawable = SegmentedBackgroundDrawable(
                                 label = "",
                                 baseColor = Color.TRANSPARENT,
-                                highlightColor = customSpecialKeyColor,
-                                textColor = customSpecialKeyTextColor,
+                                highlightColor = visualPalette.highlightColor,
+                                textColor = visualPalette.textColor,
                                 cornerRadius = commonCornerRadius
                             )
 
@@ -1038,28 +1079,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                 applyButtonText(this, keyData)
 
-                val originalBg: Drawable? =
-                    if (keyData.isSpecialKey) {
-                        ContextCompat.getDrawable(
-                            context,
-                            if (isDarkTheme) {
-                                com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
-                            } else {
-                                com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
-                            }
-                        )
-                    } else if (keyData.keyType != KeyType.STANDARD_FLICK) {
-                        ContextCompat.getDrawable(
-                            context,
-                            if (isDarkTheme) {
-                                com.kazumaproject.core.R.drawable.ten_keys_center_bg_material
-                            } else {
-                                com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
-                            }
-                        )
-                    } else {
-                        null
-                    }
+                val originalBg: Drawable? = defaultKeyBackgroundDrawable(keyData, isDarkTheme)
 
                 originalBg?.let {
                     val insetBg = android.graphics.drawable.InsetDrawable(
@@ -1075,31 +1095,20 @@ class FlickKeyboardView @JvmOverloads constructor(
                 when (themeMode) {
                     "custom" -> {
                         if (customBorderEnable) {
-                            setDrawableSolidColor(customKeyColor)
-                            setTextColor(customKeyTextColor)
+                            setDrawableSolidColor(visualPalette.baseColor)
+                            setTextColor(visualPalette.textColor)
                             setBorder(customBorderColor, borderWidth)
                         } else {
-                            val targetBaseColor =
-                                if (keyData.isSpecialKey) customSpecialKeyColor else customKeyColor
-                            val targetTextColor =
-                                if (keyData.isSpecialKey) customSpecialKeyTextColor else customKeyTextColor
-                            val targetHighlightColor =
-                                if (keyData.isSpecialKey) {
-                                    manipulateColor(customSpecialKeyColor, 1.2f)
-                                } else {
-                                    customSpecialKeyColor
-                                }
-
                             val neumorphDrawable = getDynamicNeumorphDrawable(
-                                baseColor = targetBaseColor,
+                                baseColor = visualPalette.baseColor,
                                 radius = commonCornerRadius
                             )
 
                             val segmentedDrawable = SegmentedBackgroundDrawable(
                                 label = "",
                                 baseColor = Color.TRANSPARENT,
-                                highlightColor = targetHighlightColor,
-                                textColor = targetTextColor,
+                                highlightColor = visualPalette.highlightColor,
+                                textColor = visualPalette.textColor,
                                 cornerRadius = commonCornerRadius
                             )
 
@@ -1109,7 +1118,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                             layerDrawable.setLayerInset(1, inset, inset, inset, inset)
 
                             background = layerDrawable
-                            setTextColor(targetTextColor)
+                            setTextColor(visualPalette.textColor)
                         }
                     }
                 }

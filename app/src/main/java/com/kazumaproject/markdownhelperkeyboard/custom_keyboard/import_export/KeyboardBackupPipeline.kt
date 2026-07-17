@@ -10,6 +10,7 @@ import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyIconBuiltInDrawable
 import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
+import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -334,7 +335,10 @@ object KeyboardBackupNormalizer {
                 rowUnits = keyDto.rowUnits?.coerceAtLeast(0),
                 columnUnits = keyDto.columnUnits?.coerceAtLeast(0),
                 rowSpanUnits = keyDto.rowSpanUnits?.coerceAtLeast(1),
-                columnSpanUnits = keyDto.columnSpanUnits?.coerceAtLeast(1)
+                columnSpanUnits = keyDto.columnSpanUnits?.coerceAtLeast(1),
+                specialKeyColorStyle = SpecialKeyColorStyle
+                    .fromDbValue(keyDto.specialKeyColorStyle)
+                    .dbValue
             )
 
             ImportableKeyWithFlicks(

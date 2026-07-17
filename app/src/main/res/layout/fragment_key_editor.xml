@@ -80,6 +80,40 @@
             </com.google.android.material.chip.ChipGroup>
 
             <TextView
+                android:id="@+id/text_special_key_color_style_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/special_key_color_style_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/special_key_color_style_chip_group"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:visibility="gone"
+                app:singleSelection="true"
+                tools:visibility="visible">
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_special_key_color_style_special"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/special_key_color_style_special" />
+
+                <com.google.android.material.chip.Chip
+                    android:id="@+id/chip_special_key_color_style_normal"
+                    style="@style/Widget.Material3.Chip.Filter"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/special_key_color_style_normal" />
+            </com.google.android.material.chip.ChipGroup>
+
+            <TextView
                 android:id="@+id/text_input_style_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

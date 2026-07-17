@@ -45,4 +45,31 @@ class KeyActionMapperSpecialActionTest {
             KeyActionMapper.iconResIdForAction(KeyAction.MoveToCustomKeyboard("target"))
         )
     }
+
+    @Test
+    fun kanaAndCaseActionsUseNormalizedCustomKeyboardIcons() {
+        assertEquals(
+            com.kazumaproject.core.R.drawable.custom_key_kana_case_24,
+            KeyActionMapper.iconResIdForAction(KeyAction.ToggleDakuten)
+        )
+        assertEquals(
+            com.kazumaproject.core.R.drawable.custom_key_kana_case_24,
+            KeyActionMapper.iconResIdForAction(KeyAction.ToggleDakutenOnly)
+        )
+        assertEquals(
+            com.kazumaproject.core.R.drawable.custom_key_kana_case_24,
+            KeyActionMapper.iconResIdForAction(KeyAction.ToggleHandakutenOnly)
+        )
+        assertEquals(
+            com.kazumaproject.core.R.drawable.custom_key_english_case_24,
+            KeyActionMapper.iconResIdForAction(KeyAction.ToggleCase)
+        )
+    }
+
+    @Test
+    fun specialKeyColorStyleFallsBackToSpecialForLegacyValues() {
+        assertEquals(SpecialKeyColorStyle.SPECIAL, SpecialKeyColorStyle.fromDbValue(null))
+        assertEquals(SpecialKeyColorStyle.SPECIAL, SpecialKeyColorStyle.fromDbValue("unknown"))
+        assertEquals(SpecialKeyColorStyle.NORMAL, SpecialKeyColorStyle.fromDbValue("NORMAL"))
+    }
 }
