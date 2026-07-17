@@ -21,6 +21,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.DisplayActionUi
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickLongPressMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.SpecialFlickMappingItem
 
@@ -30,6 +31,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.Speci
 sealed class CellMode {
     data class Petal(val direction: FlickDirection) : CellMode()
     data class SpecialFlick(val direction: FlickDirection) : CellMode()
+    data class FlickLongPress(val direction: TfbiFlickDirection) : CellMode()
 }
 
 /**
@@ -37,7 +39,8 @@ sealed class CellMode {
  */
 enum class GridMode {
     PETAL,          // 通常キーの1段フリック
-    SPECIAL_FLICK   // 特殊キーの1段フリック
+    SPECIAL_FLICK,  // 特殊キーの1段フリック
+    FLICK_LONG_PRESS
 }
 
 /**
@@ -278,6 +281,7 @@ class FlickGridEditorView @JvmOverloads constructor(
         return when (mode) {
             is CellMode.Petal -> petalDirectionGrid[mode.direction] == pos
             is CellMode.SpecialFlick -> specialFlickDirectionGrid[mode.direction] == pos
+            is CellMode.FlickLongPress -> tfbiDirectionGrid[pos] == mode.direction
         }
     }
 
@@ -289,7 +293,8 @@ class FlickGridEditorView @JvmOverloads constructor(
         val mode = currentCellMode ?: return emptySet()
 
         return when {
-            gridMode == GridMode.PETAL || gridMode == GridMode.SPECIAL_FLICK -> {
+            gridMode == GridMode.PETAL || gridMode == GridMode.SPECIAL_FLICK ||
+                    gridMode == GridMode.FLICK_LONG_PRESS -> {
                 // TAPセル（常に経路の起点）はborder対象
                 setOf(tapPos)
             }
@@ -317,6 +322,13 @@ class FlickGridEditorView @JvmOverloads constructor(
                 enabledCells.filter { it != tapPos }.map { tapPos to it }.toSet()
             }
 
+
+            gridMode == GridMode.FLICK_LONG_PRESS -> {
+                tfbiDirectionGrid.keys
+                    .filter { it != tapPos }
+                    .map { tapPos to it }
+                    .toSet()
+            }
 
             else -> emptySet()
         }
@@ -382,6 +394,13 @@ class FlickGridEditorView @JvmOverloads constructor(
                 onCellSelected?.invoke(newMode)
             }
 
+            GridMode.FLICK_LONG_PRESS -> {
+                val tappedDir = tfbiDirectionGrid[pos] ?: return
+                val newMode = CellMode.FlickLongPress(tappedDir)
+                currentCellMode = newMode
+                invalidate()
+                onCellSelected?.invoke(newMode)
+            }
         }
     }
 
@@ -453,6 +472,20 @@ class FlickGridEditorView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setFlickLongPressContent(items: List<FlickLongPressMappingItem>) {
+        gridMode = GridMode.FLICK_LONG_PRESS
+        currentCellMode = null
+        cellLabels.clear()
+        cellEnabled.clear()
+        cellIconResId.clear()
+
+        for ((pos, direction) in tfbiDirectionGrid) {
+            cellEnabled[pos] = true
+            cellLabels[pos] = items.firstOrNull { it.direction == direction }?.output.orEmpty()
+        }
+        invalidate()
+    }
+
     /**
      * セルのラベルを更新（文字入力欄変更時）
      */
@@ -460,6 +493,7 @@ class FlickGridEditorView @JvmOverloads constructor(
         val pos: CellPos? = when (mode) {
             is CellMode.Petal -> petalDirectionGrid[mode.direction]
             is CellMode.SpecialFlick -> specialFlickDirectionGrid[mode.direction]
+            is CellMode.FlickLongPress -> tfbiDirectionGrid.entries.firstOrNull { it.value == mode.direction }?.key
         }
         if (pos != null) {
             cellLabels[pos] = label
@@ -501,6 +535,7 @@ class FlickGridEditorView @JvmOverloads constructor(
         val initialMode: CellMode = when (gridMode) {
             GridMode.PETAL -> CellMode.Petal(FlickDirection.TAP)
             GridMode.SPECIAL_FLICK -> CellMode.SpecialFlick(FlickDirection.TAP)
+            GridMode.FLICK_LONG_PRESS -> CellMode.FlickLongPress(TfbiFlickDirection.TAP)
         }
         currentCellMode = initialMode
         invalidate()
