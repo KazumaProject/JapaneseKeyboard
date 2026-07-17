@@ -883,6 +883,7 @@
     <string name="label_input_style">入力方式</string>
     <string name="input_style_petal">1段フリック</string>
     <string name="input_style_two_step">2段フリック</string>
+    <string name="input_style_flick_long_press">フリック長押し</string>
 
     <string name="setting_two_step_flick">2段フリック設定</string>
     <string name="two_step_output_label">出力文字</string>

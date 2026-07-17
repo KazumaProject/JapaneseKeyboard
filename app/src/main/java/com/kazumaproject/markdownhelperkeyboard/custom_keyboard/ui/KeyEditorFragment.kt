@@ -57,6 +57,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepMapp
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.CircularFlickMappingAdapter
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.CircularFlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.DisplayActionUi
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickLongPressMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.SpecialFlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentKeyEditorBinding
@@ -103,6 +104,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var currentLongPressFlickItems = mutableListOf<FlickMappingItem>()
     private var currentTwoStepItems = mutableListOf<TwoStepMappingItem>()
     private var currentTwoStepLongPressItems = mutableListOf<TwoStepMappingItem>()
+    private var currentFlickLongPressItems = mutableListOf<FlickLongPressMappingItem>()
+    private var currentFlickLongPressHoldItems = mutableListOf<FlickLongPressMappingItem>()
     private var currentSpecialFlickItems = mutableListOf<SpecialFlickMappingItem>()
     private var currentCircularFlickMaps = mutableListOf<MutableList<CircularFlickMappingItem>>()
     private var currentCircularMapIndex = 0
@@ -145,6 +148,18 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         FlickDirection.DOWN,
         FlickDirection.UP_LEFT,
         FlickDirection.UP_RIGHT
+    )
+
+    private val flickLongPressDirections: List<TfbiFlickDirection> = listOf(
+        TfbiFlickDirection.TAP,
+        TfbiFlickDirection.UP_LEFT,
+        TfbiFlickDirection.UP,
+        TfbiFlickDirection.UP_RIGHT,
+        TfbiFlickDirection.LEFT,
+        TfbiFlickDirection.RIGHT,
+        TfbiFlickDirection.DOWN_LEFT,
+        TfbiFlickDirection.DOWN,
+        TfbiFlickDirection.DOWN_RIGHT
     )
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -238,6 +253,12 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     val items = currentTwoStepItemsForOutputMode()
                     updateTwoStepOutput(items, mode.first, mode.second, text)
                     binding.flickGridEditorView.refreshTwoStepLabels(items.toList())
+                    updateDoneButtonState()
+                }
+                is CellMode.FlickLongPress -> {
+                    val items = currentFlickLongPressItemsForOutputMode()
+                    updateFlickLongPressOutput(items, mode.direction, text)
+                    binding.flickGridEditorView.updateCellLabel(mode, text)
                     updateDoneButtonState()
                 }
                 else -> Unit
@@ -517,6 +538,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         val selectedStyle = binding.inputStyleChipGroup.checkedChipId
         val isTwoStep = selectedStyle == R.id.chip_two_step_flick
         val isCircular = selectedStyle == R.id.chip_circular_flick
+        val isFlickLongPress = selectedStyle == R.id.chip_flick_long_press
 
         if (binding.outputModeChipGroup.checkedChipId == View.NO_ID) {
             binding.outputModeChipGroup.check(R.id.chip_normal_output)
@@ -542,6 +564,18 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
             refreshCircularMapSelector()
             refreshCircularEditor()
+        } else if (isFlickLongPress) {
+            if (currentFlickLongPressItems.isEmpty()) {
+                currentFlickLongPressItems = createDefaultFlickLongPressItems(
+                    initialFlickLongPressNormalOutputs()
+                )
+            }
+            if (currentFlickLongPressHoldItems.isEmpty()) {
+                currentFlickLongPressHoldItems = createDefaultFlickLongPressItems()
+            }
+            binding.flickGridEditorView.setFlickLongPressContent(
+                currentFlickLongPressItemsForOutputMode().toList()
+            )
         } else if (!isTwoStep) {
             if (currentFlickItems.isEmpty()) {
                 currentFlickItems = FlickDirectionMapper.allowedDirections.map { direction ->
@@ -629,6 +663,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             is CellMode.TwoStepSecond -> "${FlickDirectionMapper.toDisplayName(mode.first, requireContext())} → ${
                 FlickDirectionMapper.toDisplayName(mode.second, requireContext())
             }"
+            is CellMode.FlickLongPress -> tfbiToDisplayName(mode.direction)
         }
 
         binding.textSelectedDirection.text = if (isLongPressOutputMode() && mode !is CellMode.SpecialFlick) {
@@ -676,6 +711,20 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 binding.specialFlickEditorGroup.isVisible = false
                 setCharEditorValue(value)
             }
+            is CellMode.FlickLongPress -> {
+                val value = currentFlickLongPressItemsForOutputMode()
+                    .firstOrNull { it.direction == mode.direction }
+                    ?.output
+                    .orEmpty()
+                binding.textCharInputLayout.hint = if (isLongPressOutputMode()) {
+                    "フリック後に長押しした時の出力"
+                } else {
+                    getString(R.string.two_step_output_label)
+                }
+                binding.textCharInputLayout.isVisible = true
+                binding.specialFlickEditorGroup.isVisible = false
+                setCharEditorValue(value)
+            }
             is CellMode.SpecialFlick -> {
                 val currentAction = currentSpecialFlickItems
                     .firstOrNull { it.direction == mode.direction }?.action
@@ -700,6 +749,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private fun currentTwoStepItemsForOutputMode(): MutableList<TwoStepMappingItem> =
         if (isLongPressOutputMode()) currentTwoStepLongPressItems else currentTwoStepItems
 
+    private fun currentFlickLongPressItemsForOutputMode(): MutableList<FlickLongPressMappingItem> =
+        if (isLongPressOutputMode()) currentFlickLongPressHoldItems else currentFlickLongPressItems
+
     private fun updateTwoStepOutput(
         items: MutableList<TwoStepMappingItem>,
         first: TfbiFlickDirection,
@@ -707,6 +759,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         output: String
     ) {
         val idx = items.indexOfFirst { it.first == first && it.second == second }
+        if (idx != -1) {
+            items[idx] = items[idx].copy(output = output)
+        }
+    }
+
+    private fun updateFlickLongPressOutput(
+        items: MutableList<FlickLongPressMappingItem>,
+        direction: TfbiFlickDirection,
+        output: String
+    ) {
+        val idx = items.indexOfFirst { it.direction == direction }
         if (idx != -1) {
             items[idx] = items[idx].copy(output = output)
         }
@@ -950,12 +1013,23 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             R.id.chip_normal -> {
                 val isTwoStep =
                     binding.inputStyleChipGroup.checkedChipId == R.id.chip_two_step_flick
+                val isFlickLongPress =
+                    binding.inputStyleChipGroup.checkedChipId == R.id.chip_flick_long_press
                 if (isTwoStep) {
                     // TwoStep: base (TAP->TAP) must be filled
                     val base = currentTwoStepItems
                         .firstOrNull { it.first == TfbiFlickDirection.TAP && it.second == TfbiFlickDirection.TAP }
                         ?.output
                     !base.isNullOrEmpty()
+                } else if (isFlickLongPress) {
+                    val tapOutput = currentFlickLongPressItems
+                        .firstOrNull { it.direction == TfbiFlickDirection.TAP }
+                        ?.output
+                    val hasAnyOutput =
+                        currentFlickLongPressItems.any { it.output.isNotEmpty() } ||
+                                currentFlickLongPressHoldItems.any { it.output.isNotEmpty() }
+                    !tapOutput.isNullOrEmpty() ||
+                            (binding.keyLabelEdittext.text.toString().isNotEmpty() && hasAnyOutput)
                 } else {
                     // Petal: label must be filled
                     binding.keyLabelEdittext.text.toString().isNotEmpty()
@@ -1078,6 +1152,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 // Input style: petal or two-step
                 if (key.keyType == KeyType.TWO_STEP_FLICK) {
                     binding.inputStyleChipGroup.check(R.id.chip_two_step_flick)
+                } else if (key.keyType == KeyType.FLICK_LONG_PRESS) {
+                    binding.inputStyleChipGroup.check(R.id.chip_flick_long_press)
                 } else if (key.keyType == KeyType.CIRCULAR_FLICK) {
                     binding.inputStyleChipGroup.check(R.id.chip_circular_flick)
                 } else {
@@ -1098,6 +1174,22 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     applyTwoStepOutputs(currentTwoStepLongPressItems, longPressMap)
 
                     // グリッドはhandleInputStyleUi()で更新
+                } else if (key.keyType == KeyType.FLICK_LONG_PRESS) {
+                    binding.keyLabelEdittext.setText(key.label)
+
+                    val map = state.layout.twoStepFlickKeyMaps[key.keyId] ?: emptyMap()
+                    val mapWithTapFallback = extractFlickLongPressOutputs(map).toMutableMap()
+                    if (mapWithTapFallback[TfbiFlickDirection.TAP].orEmpty().isEmpty()) {
+                        textOutputFromAction(key.action)
+                            .takeIf { it.isNotEmpty() }
+                            ?.let { mapWithTapFallback[TfbiFlickDirection.TAP] = it }
+                    }
+                    currentFlickLongPressItems = createDefaultFlickLongPressItems(mapWithTapFallback)
+
+                    val longPressMap = state.layout.twoStepLongPressKeyMaps[key.keyId] ?: emptyMap()
+                    currentFlickLongPressHoldItems = createDefaultFlickLongPressItems(
+                        extractFlickLongPressOutputs(longPressMap)
+                    )
                 } else if (key.keyType == KeyType.CIRCULAR_FLICK) {
                     binding.keyLabelEdittext.setText(key.label)
                     val circularMaps = state.layout.circularFlickKeyMaps[key.keyId]
@@ -1145,6 +1237,51 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         }.toMutableList()
     }
 
+    private fun createDefaultFlickLongPressItems(
+        source: Map<TfbiFlickDirection, String> = emptyMap()
+    ): MutableList<FlickLongPressMappingItem> {
+        return flickLongPressDirections.map { direction ->
+            FlickLongPressMappingItem(
+                direction = direction,
+                output = source[direction].orEmpty()
+            )
+        }.toMutableList()
+    }
+
+    private fun initialFlickLongPressNormalOutputs(): Map<TfbiFlickDirection, String> {
+        val tapOutput = currentFlickItems
+            .firstOrNull { it.direction == FlickDirection.TAP }
+            ?.output
+            .orEmpty()
+            .ifEmpty {
+                currentTwoStepItems
+                    .firstOrNull {
+                        it.first == TfbiFlickDirection.TAP &&
+                                it.second == TfbiFlickDirection.TAP
+                    }
+                    ?.output
+                    .orEmpty()
+            }
+            .ifEmpty {
+                currentCircularFlickMaps
+                    .getOrNull(currentCircularMapIndex)
+                    ?.firstOrNull { it.direction == CircularFlickDirection.TAP }
+                    ?.output
+                    .orEmpty()
+            }
+            .ifEmpty {
+                textOutputFromAction(currentKeyData?.action)
+            }
+            .ifEmpty {
+                binding.keyLabelEdittext.text.toString()
+            }
+
+        return tapOutput
+            .takeIf { it.isNotEmpty() }
+            ?.let { mapOf(TfbiFlickDirection.TAP to it) }
+            ?: emptyMap()
+    }
+
     private fun applyTwoStepOutputs(
         items: MutableList<TwoStepMappingItem>,
         outputs: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
@@ -1155,6 +1292,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 updateTwoStepOutput(items, first, second, value)
             }
         }
+    }
+
+    private fun extractFlickLongPressOutputs(
+        outputs: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
+    ): Map<TfbiFlickDirection, String> {
+        return flickLongPressDirections.mapNotNull { direction ->
+            outputs[direction]
+                ?.get(direction)
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { output -> direction to output }
+        }.toMap()
     }
 
     private fun buildTwoStepOutputMap(
@@ -1181,6 +1329,16 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
 
         return firstMap.mapValues { it.value.toMap() }
+    }
+
+    private fun buildFlickLongPressOutputMap(
+        items: List<FlickLongPressMappingItem>
+    ): Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>> {
+        return items
+            .filter { it.output.isNotEmpty() }
+            .associate { item ->
+                item.direction to mapOf(item.direction to item.output)
+            }
     }
 
     private val requestRecordAudioPermission =
@@ -1539,13 +1697,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
             else -> {
                 isSpecial = false
-                newAction = null
                 newDrawableResId = null
 
                 val isTwoStep =
                     binding.inputStyleChipGroup.checkedChipId == R.id.chip_two_step_flick
                 val isCircular =
                     binding.inputStyleChipGroup.checkedChipId == R.id.chip_circular_flick
+                val isFlickLongPress =
+                    binding.inputStyleChipGroup.checkedChipId == R.id.chip_flick_long_press
 
                 if (isCircular) {
                     newKeyType = KeyType.CIRCULAR_FLICK
@@ -1574,6 +1733,25 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     newFlickMap = emptyMap()
                     newLongPressFlickMap = emptyMap()
                     newTwoStepLongPressMap = emptyMap()
+                } else if (isFlickLongPress) {
+                    newKeyType = KeyType.FLICK_LONG_PRESS
+
+                    val tapOutput = currentFlickLongPressItems
+                        .firstOrNull { it.direction == TfbiFlickDirection.TAP }
+                        ?.output
+                        .orEmpty()
+                    val configuredLabel = binding.keyLabelEdittext.text.toString().trim()
+                    newLabel = configuredLabel.ifEmpty { tapOutput }
+                    newAction = tapOutput
+                        .takeIf { it.isNotBlank() }
+                        ?.let { KeyAction.Text(it) }
+
+                    newFlickMap = emptyMap()
+                    newTwoStepMap = buildFlickLongPressOutputMap(currentFlickLongPressItems)
+                    newLongPressFlickMap = emptyMap()
+                    newTwoStepLongPressMap = buildFlickLongPressOutputMap(
+                        currentFlickLongPressHoldItems
+                    )
                 } else if (!isTwoStep) {
                     newLabel = binding.keyLabelEdittext.text.toString()
                     val tapOutput = currentFlickItems

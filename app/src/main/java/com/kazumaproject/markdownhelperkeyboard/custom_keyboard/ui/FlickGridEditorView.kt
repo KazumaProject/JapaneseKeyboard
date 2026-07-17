@@ -21,6 +21,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.DisplayActionUi
+import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickLongPressMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.FlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.ui.adapter.SpecialFlickMappingItem
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.TwoStepMappingItem
@@ -33,6 +34,7 @@ sealed class CellMode {
     data class SpecialFlick(val direction: FlickDirection) : CellMode()
     data class TwoStepFirst(val first: TfbiFlickDirection) : CellMode()
     data class TwoStepSecond(val first: TfbiFlickDirection, val second: TfbiFlickDirection) : CellMode()
+    data class FlickLongPress(val direction: TfbiFlickDirection) : CellMode()
 }
 
 /**
@@ -41,7 +43,8 @@ sealed class CellMode {
 enum class GridMode {
     PETAL,          // 通常キーの1段フリック
     TWO_STEP,       // 通常キーの2段フリック
-    SPECIAL_FLICK   // 特殊キーの1段フリック
+    SPECIAL_FLICK,  // 特殊キーの1段フリック
+    FLICK_LONG_PRESS
 }
 
 /**
@@ -292,6 +295,7 @@ class FlickGridEditorView @JvmOverloads constructor(
             is CellMode.SpecialFlick -> specialFlickDirectionGrid[mode.direction] == pos
             is CellMode.TwoStepFirst -> tfbiDirectionGrid[pos] == mode.first
             is CellMode.TwoStepSecond -> tfbiDirectionGrid[pos] == mode.second
+            is CellMode.FlickLongPress -> tfbiDirectionGrid[pos] == mode.direction
         }
     }
 
@@ -303,7 +307,8 @@ class FlickGridEditorView @JvmOverloads constructor(
         val mode = currentCellMode ?: return emptySet()
 
         return when {
-            gridMode == GridMode.PETAL || gridMode == GridMode.SPECIAL_FLICK -> {
+            gridMode == GridMode.PETAL || gridMode == GridMode.SPECIAL_FLICK ||
+                    gridMode == GridMode.FLICK_LONG_PRESS -> {
                 // TAPセル（常に経路の起点）はborder対象
                 setOf(tapPos)
             }
@@ -387,6 +392,13 @@ class FlickGridEditorView @JvmOverloads constructor(
                     }
                     else -> emptySet()
                 }
+            }
+
+            gridMode == GridMode.FLICK_LONG_PRESS -> {
+                tfbiDirectionGrid.keys
+                    .filter { it != tapPos }
+                    .map { tapPos to it }
+                    .toSet()
             }
 
             else -> emptySet()
@@ -496,6 +508,13 @@ class FlickGridEditorView @JvmOverloads constructor(
                 val newMode = computeNewTwoStepMode(tappedDir)
                 currentCellMode = newMode
                 updateTwoStepLabels(newMode)
+                invalidate()
+                onCellSelected?.invoke(newMode)
+            }
+            GridMode.FLICK_LONG_PRESS -> {
+                val tappedDir = tfbiDirectionGrid[pos] ?: return
+                val newMode = CellMode.FlickLongPress(tappedDir)
+                currentCellMode = newMode
                 invalidate()
                 onCellSelected?.invoke(newMode)
             }
@@ -621,6 +640,20 @@ class FlickGridEditorView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setFlickLongPressContent(items: List<FlickLongPressMappingItem>) {
+        gridMode = GridMode.FLICK_LONG_PRESS
+        currentCellMode = null
+        cellLabels.clear()
+        cellEnabled.clear()
+        cellIconResId.clear()
+
+        for ((pos, direction) in tfbiDirectionGrid) {
+            cellEnabled[pos] = true
+            cellLabels[pos] = items.firstOrNull { it.direction == direction }?.output.orEmpty()
+        }
+        invalidate()
+    }
+
     /**
      * セルのラベルを更新（文字入力欄変更時）
      */
@@ -630,6 +663,7 @@ class FlickGridEditorView @JvmOverloads constructor(
             is CellMode.SpecialFlick -> specialFlickDirectionGrid[mode.direction]
             is CellMode.TwoStepFirst -> tfbiDirectionGrid.entries.firstOrNull { it.value == mode.first }?.key
             is CellMode.TwoStepSecond -> tfbiDirectionGrid.entries.firstOrNull { it.value == mode.second }?.key
+            is CellMode.FlickLongPress -> tfbiDirectionGrid.entries.firstOrNull { it.value == mode.direction }?.key
         }
         if (pos != null) {
             cellLabels[pos] = label
@@ -672,6 +706,7 @@ class FlickGridEditorView @JvmOverloads constructor(
             GridMode.PETAL -> CellMode.Petal(FlickDirection.TAP)
             GridMode.SPECIAL_FLICK -> CellMode.SpecialFlick(FlickDirection.TAP)
             GridMode.TWO_STEP -> CellMode.TwoStepFirst(TfbiFlickDirection.TAP)
+            GridMode.FLICK_LONG_PRESS -> CellMode.FlickLongPress(TfbiFlickDirection.TAP)
         }
         currentCellMode = initialMode
         if (gridMode == GridMode.TWO_STEP) updateTwoStepLabels(initialMode)
