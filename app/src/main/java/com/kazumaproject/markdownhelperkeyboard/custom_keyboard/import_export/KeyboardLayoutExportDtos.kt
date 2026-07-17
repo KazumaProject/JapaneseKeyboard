@@ -101,7 +101,9 @@ data class KeyDefinitionDto(
     @SerializedName("rowSpanUnits")
     val rowSpanUnits: Int? = null,
     @SerializedName("columnSpanUnits")
-    val columnSpanUnits: Int? = null
+    val columnSpanUnits: Int? = null,
+    @SerializedName("specialKeyColorStyle")
+    val specialKeyColorStyle: String? = null
 )
 
 data class FlickMappingDto(

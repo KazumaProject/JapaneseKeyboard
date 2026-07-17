@@ -5,6 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
 
 /**
  * 個々のキーの定義を保存するエンティティ
@@ -39,5 +40,6 @@ data class KeyDefinition(
     val rowUnits: Int? = null,
     val columnUnits: Int? = null,
     val rowSpanUnits: Int? = null,
-    val columnSpanUnits: Int? = null
+    val columnSpanUnits: Int? = null,
+    val specialKeyColorStyle: String = SpecialKeyColorStyle.SPECIAL.dbValue
 )
