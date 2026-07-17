@@ -28,6 +28,7 @@ import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyIconResolver
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
+import com.kazumaproject.custom_keyboard.data.KeyVisualStyleResolver
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.SpacerItem
@@ -551,10 +552,9 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                 KeyIconResolver.setImage(this, keyData)
                 contentDescription = keyData.label
 
-                // ▼▼▼ 変更点2: InsetDrawable を使用 ▼▼▼
                 val originalBg = ContextCompat.getDrawable(
                     context,
-                    if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                    defaultKeyBackgroundDrawableRes(keyData, isDarkTheme)
                 )
                 val insetBg = android.graphics.drawable.InsetDrawable(
                     originalBg,
@@ -606,14 +606,13 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
                     gravity = Gravity.CENTER
                 }
 
-                // ▼▼▼ 変更点3: 背景設定ロジックを InsetDrawable を使うように変更 ▼▼▼
                 val originalBg = when {
-                    keyData.isSpecialKey -> {
+                    KeyVisualStyleResolver.usesSpecialSurface(keyData) -> {
                         elevation = 2f
                         setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
                         ContextCompat.getDrawable(
                             context,
-                            if (isDarkTheme) com.kazumaproject.core.R.drawable.ten_keys_side_bg_material else com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+                            defaultKeyBackgroundDrawableRes(keyData, isDarkTheme)
                         )
                     }
 
@@ -654,6 +653,22 @@ class EditableFlickKeyboardView @JvmOverloads constructor(
         }
 
         return keyView
+    }
+
+    private fun defaultKeyBackgroundDrawableRes(keyData: KeyData, isDarkTheme: Boolean): Int {
+        return if (KeyVisualStyleResolver.usesSpecialSurface(keyData)) {
+            if (isDarkTheme) {
+                com.kazumaproject.core.R.drawable.ten_keys_side_bg_material
+            } else {
+                com.kazumaproject.core.R.drawable.ten_keys_side_bg_material_light
+            }
+        } else {
+            if (isDarkTheme) {
+                com.kazumaproject.core.R.drawable.ten_keys_center_bg_material
+            } else {
+                com.kazumaproject.core.R.drawable.ten_keys_center_bg_material_light
+            }
+        }
     }
 
     private fun Context.getColorFromAttr(@AttrRes attrRes: Int): Int {

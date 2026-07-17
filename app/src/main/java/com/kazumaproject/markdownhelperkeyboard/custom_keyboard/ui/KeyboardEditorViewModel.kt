@@ -1093,7 +1093,8 @@ class KeyboardEditorViewModel @Inject constructor(
         finalTwoStepLongPressMaps: MutableMap<String, Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>>
     ) {
         when (newKeyData.keyType) {
-            KeyType.TWO_STEP_FLICK -> {
+            KeyType.TWO_STEP_FLICK,
+            KeyType.FLICK_LONG_PRESS -> {
                 finalFlickMaps.remove(keyId)
                 finalCircularFlickMaps.remove(keyId)
                 finalLongPressFlickMaps.remove(keyId)
