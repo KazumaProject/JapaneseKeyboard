@@ -15,6 +15,9 @@
     <string name="custom_key_icon_builtin_dialog_title">内蔵 drawable を選択</string>
     <string name="custom_key_icon_builtin_search_hint">drawable 名を検索</string>
     <string name="custom_key_icon_image_error">この画像は使用できませんでした。</string>
+    <string name="special_key_color_style_title">特殊キーの見た目色</string>
+    <string name="special_key_color_style_special">特殊キー色</string>
+    <string name="special_key_color_style_normal">通常キー色</string>
     <string name="hardware_keyboard_category_title">物理キーボード</string>
     <string name="keyboard_layouts_label">Sumire キーボード配列</string>
     <string name="physical_keyboard_layout_japanese_109a_os">Sumire 日本語109A</string>

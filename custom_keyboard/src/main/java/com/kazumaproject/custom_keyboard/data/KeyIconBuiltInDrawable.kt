@@ -18,6 +18,8 @@ object KeyIconBuiltInDrawable {
         BuiltInKeyIcon("content_copy_24dp", com.kazumaproject.core.R.drawable.content_copy_24dp),
         BuiltInKeyIcon("language_24dp", com.kazumaproject.core.R.drawable.language_24dp),
         BuiltInKeyIcon("baseline_emoji_emotions_24", com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24),
+        BuiltInKeyIcon("custom_key_kana_case_24", com.kazumaproject.core.R.drawable.custom_key_kana_case_24),
+        BuiltInKeyIcon("custom_key_english_case_24", com.kazumaproject.core.R.drawable.custom_key_english_case_24),
         BuiltInKeyIcon("kana_small", com.kazumaproject.core.R.drawable.kana_small),
         BuiltInKeyIcon("kana_small_custom", com.kazumaproject.core.R.drawable.kana_small_custom),
         BuiltInKeyIcon("english_small", com.kazumaproject.core.R.drawable.english_small),

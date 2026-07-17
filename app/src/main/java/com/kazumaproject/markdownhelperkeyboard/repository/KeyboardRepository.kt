@@ -16,6 +16,7 @@ import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
+import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
 import com.kazumaproject.custom_keyboard.data.SpacerItem
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
@@ -899,6 +900,7 @@ class KeyboardRepository @Inject constructor(
             }
 
             val iconRef = keyIconRefFromDb(dbKey.iconType, dbKey.iconValue)
+            val specialKeyColorStyle = SpecialKeyColorStyle.fromDbValue(dbKey.specialKeyColorStyle)
             val keyData = if (restoredAction == null) {
                 KeyData(
                     label = dbKey.label,
@@ -912,7 +914,8 @@ class KeyboardRepository @Inject constructor(
                     drawableResId = null,
                     icon = iconRef,
                     keyId = dbKey.keyIdentifier,
-                    action = null
+                    action = null,
+                    specialKeyColorStyle = specialKeyColorStyle
                 )
             } else {
                 KeyData(
@@ -927,7 +930,8 @@ class KeyboardRepository @Inject constructor(
                     drawableResId = if (dbKey.isSpecialKey) drawableResIdForAction(restoredAction) else null,
                     icon = iconRef,
                     keyId = dbKey.keyIdentifier,
-                    action = restoredAction
+                    action = restoredAction,
+                    specialKeyColorStyle = specialKeyColorStyle
                 )
             }
             val placement = GridPlacement(
@@ -1047,8 +1051,10 @@ class KeyboardRepository @Inject constructor(
             KeyAction.SwitchToKanaLayout -> com.kazumaproject.core.R.drawable.input_mode_japanese_select_custom
             KeyAction.SwitchToNextIme -> com.kazumaproject.core.R.drawable.language_24dp
             KeyAction.SwitchToNumberLayout -> com.kazumaproject.core.R.drawable.input_mode_number_select_custom
-            KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.english_small
-            KeyAction.ToggleDakuten -> com.kazumaproject.core.R.drawable.kana_small_custom
+            KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.custom_key_english_case_24
+            KeyAction.ToggleDakuten -> com.kazumaproject.core.R.drawable.custom_key_kana_case_24
+            KeyAction.ToggleDakutenOnly -> com.kazumaproject.core.R.drawable.custom_key_kana_case_24
+            KeyAction.ToggleHandakutenOnly -> com.kazumaproject.core.R.drawable.custom_key_kana_case_24
             KeyAction.ToggleKatakana -> com.kazumaproject.core.R.drawable.katakana
             KeyAction.VoiceInput -> com.kazumaproject.core.R.drawable.settings_voice_24px
             KeyAction.DeleteUntilSymbol -> com.kazumaproject.core.R.drawable.backspace_24px_until_symbol
@@ -1138,7 +1144,8 @@ class KeyboardRepository @Inject constructor(
                     rowUnits = placement.rowUnits,
                     columnUnits = placement.columnUnits,
                     rowSpanUnits = placement.rowSpanUnits,
-                    columnSpanUnits = placement.columnSpanUnits
+                    columnSpanUnits = placement.columnSpanUnits,
+                    specialKeyColorStyle = keyData.specialKeyColorStyle.dbValue
                 )
             )
 

@@ -90,22 +90,22 @@ object KeyActionMapper {
             DisplayAction(
                 KeyAction.ToggleDakuten,
                 context.getString(R.string.action_toggle_dakuten),
-                com.kazumaproject.core.R.drawable.kana_small
+                com.kazumaproject.core.R.drawable.custom_key_kana_case_24
             ),
             DisplayAction(
                 KeyAction.ToggleDakutenOnly,
                 context.getString(R.string.action_toggle_dakuten_only),
-                com.kazumaproject.core.R.drawable.kana_small
+                com.kazumaproject.core.R.drawable.custom_key_kana_case_24
             ),
             DisplayAction(
                 KeyAction.ToggleHandakutenOnly,
                 context.getString(R.string.action_toggle_handakuten_only),
-                com.kazumaproject.core.R.drawable.kana_small
+                com.kazumaproject.core.R.drawable.custom_key_kana_case_24
             ),
             DisplayAction(
                 KeyAction.ToggleCase,
                 context.getString(R.string.action_toggle_case),
-                com.kazumaproject.core.R.drawable.english_small
+                com.kazumaproject.core.R.drawable.custom_key_english_case_24
             ),
             DisplayAction(
                 KeyAction.ShiftKey,
@@ -202,8 +202,8 @@ object KeyActionMapper {
             KeyAction.ShowEmojiKeyboard -> com.kazumaproject.core.R.drawable.baseline_emoji_emotions_24
             KeyAction.ToggleDakuten,
             KeyAction.ToggleDakutenOnly,
-            KeyAction.ToggleHandakutenOnly -> com.kazumaproject.core.R.drawable.kana_small
-            KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.english_small
+            KeyAction.ToggleHandakutenOnly -> com.kazumaproject.core.R.drawable.custom_key_kana_case_24
+            KeyAction.ToggleCase -> com.kazumaproject.core.R.drawable.custom_key_english_case_24
             KeyAction.ShiftKey -> com.kazumaproject.core.R.drawable.shift_24px
             KeyAction.CapLockKey -> com.kazumaproject.core.R.drawable.caps_lock
             KeyAction.SwitchDirectMode -> com.kazumaproject.core.R.drawable.language_japanese_kana_left_24px
