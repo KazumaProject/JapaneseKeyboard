@@ -103,7 +103,8 @@ internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
             rowUnits = this.key.rowUnits,
             columnUnits = this.key.columnUnits,
             rowSpanUnits = this.key.rowSpanUnits,
-            columnSpanUnits = this.key.columnSpanUnits
+            columnSpanUnits = this.key.columnSpanUnits,
+            specialKeyColorStyle = this.key.specialKeyColorStyle
         ),
         flicks = this.flicks.map {
             FlickMappingDto(

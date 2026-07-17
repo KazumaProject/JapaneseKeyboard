@@ -80,7 +80,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         SumireSpecialKeyPlacementOverrideEntity::class,
         CustomZeroQueryEntry::class,
     ],
-    version = 38,
+    version = 39,
     exportSchema = false
 )
 @TypeConverters(
@@ -1035,6 +1035,14 @@ abstract class AppDatabase : RoomDatabase() {
                         `node5Word`, `node5LeftId`, `node5RightId`
                     )
                     """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_38_39 = object : Migration(38, 39) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `key_definitions` ADD COLUMN `specialKeyColorStyle` TEXT NOT NULL DEFAULT 'SPECIAL'"
                 )
             }
         }
