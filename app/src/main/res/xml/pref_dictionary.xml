@@ -43,6 +43,18 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/conversion_engine_category_title">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="incremental_conversion_session_preference"
+            android:summaryOff="@string/incremental_conversion_session_summary_off"
+            android:summaryOn="@string/incremental_conversion_session_summary_on"
+            android:title="@string/incremental_conversion_session_title"
+            app:iconSpaceReserved="false" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/conversion_beam_width_category_title">
 
         <SeekBarPreference

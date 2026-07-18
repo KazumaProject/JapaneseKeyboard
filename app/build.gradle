@@ -127,6 +127,10 @@ android {
         unitTests.includeAndroidResources = true
     }
 
+    sourceSets {
+        main.assets.srcDir(layout.buildDirectory.dir("generated/compactConnectionMatrix/assets"))
+    }
+
     applicationVariants.configureEach { variant ->
         variant.outputs.each { output ->
             def flavorPrefix = variant.flavorName ? "${variant.flavorName}-" : ""
@@ -152,6 +156,135 @@ android {
         }
     }
 
+}
+
+def bundledConnectionMatrixZip = file("src/main/assets/connectionId.dat.zip")
+def compactConnectionMatrixAsset = layout.buildDirectory.file(
+    "generated/compactConnectionMatrix/assets/connection/connection.compact"
+)
+
+tasks.register("generateCompactConnectionMatrix") {
+    inputs.file(bundledConnectionMatrixZip)
+    outputs.file(compactConnectionMatrixAsset)
+
+    doLast {
+        byte[] denseBytes
+        new java.util.zip.ZipInputStream(new FileInputStream(bundledConnectionMatrixZip)).withCloseable { zip ->
+            def entry = zip.nextEntry
+            while (entry != null && entry.directory) {
+                entry = zip.nextEntry
+            }
+            if (entry == null) {
+                throw new GradleException("connectionId.dat.zip has no readable entry")
+            }
+            denseBytes = zip.bytes
+        }
+        if ((denseBytes.length & 1) != 0) {
+            throw new GradleException("connection matrix byte size must be even: ${denseBytes.length}")
+        }
+        int entryCount = denseBytes.length / 2
+        int matrixSize = Math.sqrt(entryCount as double) as int
+        if (matrixSize * matrixSize != entryCount || matrixSize > 0xFFFF) {
+            throw new GradleException("connection matrix is not a UInt16-sized square: ${entryCount}")
+        }
+
+        def valueAt = { int rid, int lid ->
+            int offset = 2 * (rid * matrixSize + lid)
+            ((denseBytes[offset] & 0xFF) << 8) | (denseBytes[offset + 1] & 0xFF)
+        }
+        int[] modeValues = new int[matrixSize]
+        int[] counts = new int[0x10000]
+        int[] touchedValues = new int[matrixSize]
+        for (int rid = 0; rid < matrixSize; rid++) {
+            int touchedCount = 0
+            int mode = 0
+            int modeCount = -1
+            for (int lid = 0; lid < matrixSize; lid++) {
+                int value = valueAt(rid, lid)
+                if (value == 30000) continue
+                if (counts[value] == 0) {
+                    touchedValues[touchedCount++] = value
+                }
+                int count = ++counts[value]
+                if (count > modeCount) {
+                    mode = value
+                    modeCount = count
+                }
+            }
+            if (modeCount < 0) {
+                throw new GradleException("connection matrix row ${rid} contains only invalid costs")
+            }
+            modeValues[rid] = mode
+            for (int i = 0; i < touchedCount; i++) {
+                counts[touchedValues[i]] = 0
+            }
+        }
+
+        def writeUInt16Le = { ByteArrayOutputStream output, int value ->
+            if (value < 0 || value > 0xFFFF) {
+                throw new GradleException("UInt16 out of range: ${value}")
+            }
+            output.write(value & 0xFF)
+            output.write((value >>> 8) & 0xFF)
+        }
+        int chunkBitCount = (matrixSize + 7).intdiv(8)
+        int chunkBytes = (chunkBitCount + 31).intdiv(32) * 4
+        def output = new ByteArrayOutputStream()
+        output.write(0xAB)
+        output.write(0xCD)
+        writeUInt16Le(output, 1) // Exact costs: no quantization.
+        writeUInt16Le(output, matrixSize)
+        writeUInt16Le(output, matrixSize)
+        modeValues.each { writeUInt16Le(output, it as int) }
+        if ((matrixSize & 1) != 0) {
+            writeUInt16Le(output, 0)
+        }
+
+        for (int rid = 0; rid < matrixSize; rid++) {
+            byte[] chunkBits = new byte[chunkBytes]
+            def compactBits = new ByteArrayOutputStream()
+            def values = new ByteArrayOutputStream()
+            int valueCount = 0
+            for (int chunk = 0; chunk < chunkBitCount; chunk++) {
+                int compactByte = 0
+                int chunkStart = chunk * 8
+                for (int bit = 0; bit < 8 && chunkStart + bit < matrixSize; bit++) {
+                    int value = valueAt(rid, chunkStart + bit)
+                    if (value != modeValues[rid]) {
+                        compactByte |= 1 << bit
+                    }
+                }
+                if (compactByte == 0) continue
+                chunkBits[chunk >>> 3] = (byte) (chunkBits[chunk >>> 3] | (1 << (chunk & 7)))
+                compactBits.write(compactByte)
+                for (int bit = 0; bit < 8 && chunkStart + bit < matrixSize; bit++) {
+                    if ((compactByte & (1 << bit)) == 0) continue
+                    writeUInt16Le(values, valueAt(rid, chunkStart + bit))
+                    valueCount++
+                }
+            }
+            while ((compactBits.size() & 3) != 0) compactBits.write(0)
+            if ((valueCount & 1) != 0) writeUInt16Le(values, 0)
+            writeUInt16Le(output, compactBits.size())
+            writeUInt16Le(output, values.size())
+            output.write(chunkBits)
+            compactBits.writeTo(output)
+            values.writeTo(output)
+        }
+
+        def destination = compactConnectionMatrixAsset.get().asFile
+        destination.parentFile.mkdirs()
+        destination.bytes = output.toByteArray()
+        if (destination.length() >= denseBytes.length) {
+            throw new GradleException(
+                "compact connection matrix did not shrink: ${destination.length()} >= ${denseBytes.length}"
+            )
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn("generateCompactConnectionMatrix")
 }
 
 tasks.register("generateMozcSegmenterData") {
