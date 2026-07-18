@@ -28,6 +28,8 @@ class DictionarySourceResolver @Inject constructor(
     fun openBundledForKey(key: DictionaryFileKey): InputStream =
         context.assets.open(DictionaryFileSpecs.get(key).bundledAssetPath)
 
+    fun openBundledAsset(assetPath: String): InputStream = context.assets.open(assetPath)
+
     fun openOverrideForKey(key: DictionaryFileKey): InputStream = store.openOverride(key)
 
     fun shouldUseOverride(key: DictionaryFileKey): Boolean {

@@ -27,7 +27,7 @@ import org.robolectric.annotation.Config
 class ProductionConnectionMatrixRegressionTest {
 
     @Test
-    fun dictionaryBinaryReaderLoadsAndCachesShortArrayBackedConnectionMatrix() {
+    fun dictionaryBinaryReaderLoadsAndCachesExactCompactConnectionMatrix() {
         val reader = productionDictionaryReader()
 
         val first = reader.loadConnectionMatrix(DictionaryFileKey.CONNECTION_ID)
@@ -35,7 +35,7 @@ class ProductionConnectionMatrixRegressionTest {
 
         assertSame(first, second)
         assertEquals(first.matrixSize * first.matrixSize, first.entryCount)
-        assertFalse(first.javaClass.name.contains("ByteBuffer"))
+        assertFalse(first.javaClass.name.contains("ShortArrayCostTable"))
     }
 
     @Test

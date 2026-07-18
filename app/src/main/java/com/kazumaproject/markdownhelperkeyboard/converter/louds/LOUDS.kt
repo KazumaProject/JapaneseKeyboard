@@ -13,6 +13,7 @@ import com.kazumaproject.bitset.select1CommonShort
 import com.kazumaproject.connection_id.deflate
 import com.kazumaproject.connection_id.inflate
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.PackedCharArray
 import com.kazumaproject.toBitSet
 import com.kazumaproject.toByteArrayFromListChar
 import com.kazumaproject.toListChar
@@ -25,6 +26,7 @@ class LOUDS {
     val LBSTemp: MutableList<Boolean> = arrayListOf()
     var LBS: BitSet = BitSet()
     var labels: CharArray = charArrayOf()
+    private var packedLabels: PackedCharArray? = null
     val labelsTemp: MutableList<Char> = arrayListOf()
     var isLeaf: BitSet = BitSet()
     val isLeafTemp: MutableList<Boolean> = arrayListOf()
@@ -52,8 +54,25 @@ class LOUDS {
         isLeaf: BitSet,
     ) {
         this.LBS = LBS
-        this.labels = labels
+        installLabels(labels)
         this.isLeaf = isLeaf
+    }
+
+    private val labelCount: Int
+        get() = packedLabels?.size ?: labels.size
+
+    private fun labelAt(index: Int): Char = packedLabels?.get(index) ?: labels[index]
+
+    private fun allLabels(): CharArray = packedLabels?.toCharArray() ?: labels
+
+    private fun installLabels(values: CharArray) {
+        if (values.size >= PACKED_LABEL_THRESHOLD) {
+            packedLabels = PackedCharArray.from(values)
+            labels = charArrayOf()
+        } else {
+            packedLabels = null
+            labels = values
+        }
     }
 
     private fun firstChild(pos: Int): Int {
@@ -67,7 +86,7 @@ class LOUDS {
         var childPos = firstChild(pos)
         if (childPos == -1) return -1
         while (LBS[childPos]) {
-            if (c == labels[LBS.rank1(childPos)]) {
+            if (c == labelAt(LBS.rank1(childPos))) {
                 return childPos
             }
             childPos += 1
@@ -91,8 +110,8 @@ class LOUDS {
             n = traverse(n, c)
             val index = LBS.rank1(n)
             if (n == -1) return@forEachIndexed
-            if (index >= labels.size) return result
-            resultTemp.add(labels[index])
+            if (index >= labelCount) return result
+            resultTemp.add(labelAt(index))
             if (isLeaf[n]) {
                 val tempStr = resultTemp.joinToString("")
                 if (result.size >= 1) {
@@ -108,7 +127,7 @@ class LOUDS {
     }
 
     fun getAllLabels(): CharArray {
-        return labels
+        return allLabels()
     }
 
     fun getLetter(
@@ -121,7 +140,7 @@ class LOUDS {
 
         while (true) {
             val currentNodeId = LBS.rank1Common(currentNodeIndex, rank1Array)
-            val currentChar = labels[currentNodeId]
+            val currentChar = labelAt(currentNodeId)
 
             // Keep real spaces in words; skip LOUDS sentinels (node ids 0 and 1).
             if (currentNodeId > 1) {
@@ -145,7 +164,7 @@ class LOUDS {
 
         while (true) {
             val currentNodeId = succinctBitVector.rank1(currentNodeIndex)
-            val currentChar = labels[currentNodeId]
+            val currentChar = labelAt(currentNodeId)
 
             // Keep real spaces in words; skip LOUDS sentinels (node ids 0 and 1).
             if (currentNodeId > 1) {
@@ -167,7 +186,7 @@ class LOUDS {
         val list = mutableListOf<Char>()
         val firstNodeId = LBS.rank1CommonShort(nodeIndex, rank1Array)
         if (firstNodeId > 1) {
-            val firstChar = labels[firstNodeId.toInt()]
+            val firstChar = labelAt(firstNodeId.toInt())
             list.add(firstChar)
         }
         var parentNodeIndex = LBS.select1CommonShort(
@@ -177,7 +196,7 @@ class LOUDS {
         while (parentNodeIndex != 0) {
             val parentNodeId = LBS.rank1CommonShort(parentNodeIndex, rank1Array)
             if (parentNodeId > 1) {
-                val pair = labels[parentNodeId.toInt()]
+                val pair = labelAt(parentNodeId.toInt())
                 list.add(pair)
             }
             parentNodeIndex = LBS.select1CommonShort(
@@ -196,7 +215,7 @@ class LOUDS {
         val list = mutableListOf<Char>()
         val firstNodeId = succinctBitVector.rank1(nodeIndex)
         if (firstNodeId > 1) {
-            val firstChar = labels[firstNodeId]
+            val firstChar = labelAt(firstNodeId)
             list.add(firstChar)
         }
         val rank0 = succinctBitVector.rank0(nodeIndex)
@@ -204,7 +223,7 @@ class LOUDS {
         while (parentNodeIndex != 0) {
             val parentNodeId = succinctBitVector.rank1(parentNodeIndex)
             if (parentNodeId > 1) {
-                val pair = labels[parentNodeId]
+                val pair = labelAt(parentNodeId)
                 list.add(pair)
             }
             val rank0InLoop = succinctBitVector.rank0(parentNodeIndex)
@@ -219,7 +238,7 @@ class LOUDS {
         var parentNodeIndex = LBS.select1(nodeId)
         while (parentNodeIndex != 0) {
             val parentNodeId = LBS.rank1(parentNodeIndex)
-            val pair = labels[parentNodeId]
+            val pair = labelAt(parentNodeId)
             list.add(pair)
             parentNodeIndex = LBS.select1(LBS.rank0(parentNodeIndex))
         }
@@ -235,7 +254,7 @@ class LOUDS {
         var wordOffset2 = wordOffset
         var charIndex = LBS.rank1(index2)
         while (LBS[index2]) {
-            if (chars[wordOffset2] == labels[charIndex]) {
+            if (chars[wordOffset2] == labelAt(charIndex)) {
                 if (isLeaf[index2] && wordOffset2 + 1 == chars.size) {
                     return index2
                 } else if (wordOffset2 + 1 == chars.size) {
@@ -286,7 +305,7 @@ class LOUDS {
             out.apply {
                 writeObject(LBS)
                 writeObject(isLeaf)
-                writeObject(labels)
+                writeObject(allLabels())
                 flush()
                 close()
             }
@@ -322,6 +341,10 @@ class LOUDS {
             }
         }
         return LOUDS(LBS, labels, isLeaf)
+    }
+
+    private companion object {
+        const val PACKED_LABEL_THRESHOLD = 500_000
     }
 
 }

@@ -23,6 +23,34 @@ class PackedSystemNgramDictionaryTest {
     }
 
     @Test
+    fun firstPairIndexHasNoFalseNegativeAndRejectsMissingPrefix() {
+        val dictionary = dictionary()
+        assertTrue(dictionary.mayMatchFirstPair(node("服"), node("を")))
+        assertTrue(dictionary.mayMatchFirstPair(node("一"), node("二")))
+        assertFalse(dictionary.mayMatchFirstPair(node("存在しない前半"), node("存在しない後半")))
+        assertTrue(dictionary.mayMatchFirstNode(node("服")))
+        assertFalse(dictionary.mayMatchFirstNode(node("存在しない開始語")))
+    }
+
+    @Test
+    fun firstPairWordHashMatchesSupplementaryCharactersWithoutAllocatingQueryBytes() {
+        val method = PackedSystemNgramDictionary::class.java.getDeclaredMethod(
+            "utf8StringHash",
+            ByteArray::class.java,
+            Int::class.javaPrimitiveType,
+            Int::class.javaPrimitiveType,
+        ).apply { isAccessible = true }
+        val dictionary = dictionary()
+        listOf("日本語", "ASCII", "𠮷野家", "😀候補").forEach { value ->
+            val encoded = value.toByteArray(Charsets.UTF_8)
+            assertTrue(
+                "hash mismatch for $value",
+                method.invoke(dictionary, encoded, 0, encoded.size) == value.hashCode(),
+            )
+        }
+    }
+
+    @Test
     fun coarsePosRuleMatchesOnlyTheRequestedPos() {
         val dictionary = dictionary()
         assertTrue(

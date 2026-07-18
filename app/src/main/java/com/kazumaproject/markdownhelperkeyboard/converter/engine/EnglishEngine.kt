@@ -36,6 +36,10 @@ class EnglishEngine : QwertyGlideCandidateProvider {
     private lateinit var succinctBitVectorTokenArray: SuccinctBitVector
     private lateinit var succinctBitVectorLBSWord: SuccinctBitVector
     @Volatile
+    private var dictionariesReady: Boolean = false
+    @Volatile
+    private var dictionaryLoader: (() -> EnglishDictionaryData)? = null
+    @Volatile
     private var qwertyGlideDecoder: QwertyGlideDecoder? = null
     @Volatile
     private var qwertyFallbackGlideDecoder: QwertyGlideDecoder? = null
@@ -68,12 +72,26 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         this.succinctBitVectorLBSWord = englishSuccinctBitVectorLBSWord
         this.succinctBitVectorReadingIsLeaf = englishSuccinctBitVectorReadingIsLeaf
         this.succinctBitVectorTokenArray = englishSuccinctBitVectorTokenArray
+        dictionariesReady = true
+        dictionaryLoader = null
         qwertyGlideDictionaryReady = false
         qwertyGlideDecoder = null
         qwertyGlideInputEnabled = false
         qwertyFallbackGlideDecoder = createQwertyGlideDecoder(
             entries = fallbackGlideDictionaryEntries(),
             dictionaryReady = false
+        )
+    }
+
+    fun configureLazyDictionaryLoading(reader: DictionaryBinaryReader) {
+        dictionaryLoader = { loadDictionaryData(reader) }
+        dictionariesReady = false
+        qwertyGlideDictionaryReady = false
+        qwertyGlideDecoder = null
+        qwertyGlideInputEnabled = false
+        qwertyFallbackGlideDecoder = createQwertyGlideDecoder(
+            entries = fallbackGlideDictionaryEntries(),
+            dictionaryReady = false,
         )
     }
 
@@ -144,23 +162,10 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         qwertyGlidePrebuiltDictionaryLoader: QwertyGlidePrebuiltDictionaryLoader?,
         canUseBundledPrebuiltIndex: Boolean,
     ) {
-        val newReadingLOUDS = reader.loadEnglishReading(DictionaryFileKey.ENGLISH_READING)
-        val newWordLOUDS = reader.loadEnglishWord(DictionaryFileKey.ENGLISH_WORD)
-        val newTokenArray = reader.loadEnglishToken(DictionaryFileKey.ENGLISH_TOKEN)
-        val newSuccinctBitVectorLBSReading = SuccinctBitVector(newReadingLOUDS.LBS)
-        val newSuccinctBitVectorReadingIsLeaf = SuccinctBitVector(newReadingLOUDS.isLeaf)
-        val newSuccinctBitVectorTokenArray = SuccinctBitVector(newTokenArray.bitvector)
-        val newSuccinctBitVectorLBSWord = SuccinctBitVector(newWordLOUDS.LBS)
-
         synchronized(this) {
             cancelQwertyGlideWarmup()
-            readingLOUDS = newReadingLOUDS
-            wordLOUDS = newWordLOUDS
-            tokenArray = newTokenArray
-            succinctBitVectorLBSReading = newSuccinctBitVectorLBSReading
-            succinctBitVectorReadingIsLeaf = newSuccinctBitVectorReadingIsLeaf
-            succinctBitVectorTokenArray = newSuccinctBitVectorTokenArray
-            succinctBitVectorLBSWord = newSuccinctBitVectorLBSWord
+            dictionaryLoader = { loadDictionaryData(reader) }
+            dictionariesReady = false
             this.qwertyGlideInputEnabled = qwertyGlideInputEnabled
             qwertyGlideDictionaryReady = false
             qwertyGlideDecoder = null
@@ -334,6 +339,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
     }
 
     private fun buildGlideDictionaryEntries(): List<QwertyGlideDictionaryEntry> {
+        ensureDictionariesLoaded()
         val entries = linkedMapOf<String, QwertyGlideDictionaryEntry>()
         val readings = readingLOUDS.predictiveSearch(
             prefix = "",
@@ -383,6 +389,7 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         enableTypoCorrection: Boolean = false,
     ): List<Candidate> {
         if (input.isEmpty()) return emptyList()
+        ensureDictionariesLoaded()
 
         val defaultType = 29.toByte()
         val lowerInput = input.lowercase()
@@ -623,6 +630,54 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         }
         return prev[lb] <= maxEdits
     }
+
+    private fun ensureDictionariesLoaded() {
+        if (dictionariesReady) return
+        synchronized(this) {
+            if (dictionariesReady) return
+            val loader = checkNotNull(dictionaryLoader) {
+                "English dictionary loader is not configured"
+            }
+            installDictionaryData(loader())
+            dictionaryLoader = null
+            dictionariesReady = true
+        }
+    }
+
+    private fun loadDictionaryData(reader: DictionaryBinaryReader): EnglishDictionaryData {
+        val newReadingLOUDS = reader.loadEnglishReading(DictionaryFileKey.ENGLISH_READING)
+        val newWordLOUDS = reader.loadEnglishWord(DictionaryFileKey.ENGLISH_WORD)
+        val newTokenArray = reader.loadEnglishToken(DictionaryFileKey.ENGLISH_TOKEN)
+        return EnglishDictionaryData(
+            readingLOUDS = newReadingLOUDS,
+            wordLOUDS = newWordLOUDS,
+            tokenArray = newTokenArray,
+            succinctBitVectorLBSReading = SuccinctBitVector(newReadingLOUDS.LBS),
+            succinctBitVectorLBSWord = SuccinctBitVector(newWordLOUDS.LBS),
+            succinctBitVectorReadingIsLeaf = SuccinctBitVector(newReadingLOUDS.isLeaf),
+            succinctBitVectorTokenArray = SuccinctBitVector(newTokenArray.bitvector),
+        )
+    }
+
+    private fun installDictionaryData(data: EnglishDictionaryData) {
+        readingLOUDS = data.readingLOUDS
+        wordLOUDS = data.wordLOUDS
+        tokenArray = data.tokenArray
+        succinctBitVectorLBSReading = data.succinctBitVectorLBSReading
+        succinctBitVectorLBSWord = data.succinctBitVectorLBSWord
+        succinctBitVectorReadingIsLeaf = data.succinctBitVectorReadingIsLeaf
+        succinctBitVectorTokenArray = data.succinctBitVectorTokenArray
+    }
+
+    private data class EnglishDictionaryData(
+        val readingLOUDS: LOUDSWithTermId,
+        val wordLOUDS: LOUDS,
+        val tokenArray: TokenArray,
+        val succinctBitVectorLBSReading: SuccinctBitVector,
+        val succinctBitVectorLBSWord: SuccinctBitVector,
+        val succinctBitVectorReadingIsLeaf: SuccinctBitVector,
+        val succinctBitVectorTokenArray: SuccinctBitVector,
+    )
 
     private fun maxEditsByLength(len: Int): Int = when {
         len <= 3 -> 1
