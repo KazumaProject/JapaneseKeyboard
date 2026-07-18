@@ -80,11 +80,54 @@ import java.util.Locale
 
 class KanaKanjiEngine {
 
+    data class IncrementalPerformanceSnapshot(
+        val graphNs: Long,
+        val penaltyNs: Long,
+        val forwardDpNs: Long,
+        val backwardSearchNs: Long,
+        val queueElementCount: Int,
+        val stateRejectionCount: Int,
+        val expansionCacheHitCount: Int,
+        val expansionCacheMissCount: Int,
+    )
+
+    class IncrementalSessionState internal constructor(
+        internal val graphState: GraphBuilder.SessionState,
+        internal val pathState: FindPath.SessionState,
+    ) {
+        internal fun reset() {
+            graphState.reset()
+            pathState.reset()
+        }
+
+        internal fun enablePerformanceProbe() {
+            graphState.performanceProbeEnabled = true
+            pathState.performanceProbeEnabled = true
+        }
+
+        internal fun performanceSnapshot(): IncrementalPerformanceSnapshot =
+            IncrementalPerformanceSnapshot(
+                graphNs = graphState.lastConstructGraphNs,
+                penaltyNs = pathState.lastPenaltyNs,
+                forwardDpNs = pathState.lastForwardDpNs,
+                backwardSearchNs = pathState.lastBackwardSearchNs,
+                queueElementCount = pathState.lastQueueElementCount,
+                stateRejectionCount = pathState.lastStateRejectionCount,
+                expansionCacheHitCount = pathState.lastExpansionCacheHitCount,
+                expansionCacheMissCount = pathState.lastExpansionCacheMissCount,
+            )
+    }
+
     private lateinit var graphBuilder: GraphBuilder
     private lateinit var findPath: FindPath
     private var dictionaryBinaryReader: DictionaryBinaryReader? = null
 
     private lateinit var connectionMatrix: ConnectionMatrix.CostTable
+
+    fun createIncrementalSessionState(): IncrementalSessionState = IncrementalSessionState(
+        graphState = graphBuilder.createSessionState(),
+        pathState = findPath.createSessionState(),
+    )
 
     private lateinit var systemYomiTrie: LOUDSWithTermId
     private lateinit var systemTangoTrie: LOUDS
@@ -970,39 +1013,6 @@ class KanaKanjiEngine {
         return !(this.webYomiTrie == null || this.webTangoTrie == null || this.webTokenArray == null)
     }
 
-    private fun splitLeadingLatinPrefix(input: String): Pair<String, String>? {
-        if (input.length > UByte.MAX_VALUE.toInt()) return null
-        val bodyStart = input.indexOfFirst { it.isHiraganaForReading() }
-        if (bodyStart <= 0) return null
-        val prefix = input.substring(0, bodyStart)
-        if (!prefix.all { it.isLatinLetterForMixedPreedit() }) return null
-        return prefix to input.substring(bodyStart)
-    }
-
-    private fun Char.isHiraganaForReading(): Boolean =
-        this in '\u3041'..'\u3096' || this == 'ー'
-
-    private fun Char.isLatinLetterForMixedPreedit(): Boolean =
-        this in 'a'..'z' || this in 'A'..'Z' ||
-            this in 'ａ'..'ｚ' || this in 'Ａ'..'Ｚ'
-
-    private fun Candidate.withLatinPrefix(prefix: String): Candidate = copy(
-        string = prefix + string,
-        length = (prefix.length + length.toInt()).toUByte(),
-        yomi = yomi?.let { prefix + it },
-    )
-
-    private fun BunsetsuCandidateResult.withLatinPrefix(prefix: String): BunsetsuCandidateResult {
-        val shift = prefix.length
-        return copy(
-            candidates = candidates.map { it.withLatinPrefix(prefix) },
-            splitPatterns = splitPatterns.map { pattern -> pattern.map { it + shift } },
-            splitPatternByCandidateString = splitPatternByCandidateString
-                .mapKeys { prefix + it.key }
-                .mapValues { it.value.map { pos -> pos + shift } },
-        )
-    }
-
     suspend fun getCandidatesOriginal(
         input: String,
         n: Int,
@@ -1019,16 +1029,8 @@ class KanaKanjiEngine {
         typoCorrectionOffsetScore: Int,
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
     ): List<Candidate> {
-        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
-            return getCandidatesOriginal(
-                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
-                userDictionaryRepository, learnRepository, isOmissionSearchEnable,
-                enableTypoCorrectionJapaneseFlick, enableTypoCorrectionQwertyEnglish,
-                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
-            ).map { it.withLatinPrefix(prefix) }
-        }
-
         val conversionContext = currentCoroutineContext()
 
         val graph = graphBuilder.constructGraph(
@@ -1076,6 +1078,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            sessionState = incrementalSessionState?.graphState,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -1096,6 +1099,7 @@ class KanaKanjiEngine {
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
+                sessionState = incrementalSessionState?.pathState,
             )
         }
         conversionContext.ensureActive()
@@ -1494,16 +1498,8 @@ class KanaKanjiEngine {
         typoCorrectionOffsetScore: Int,
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
     ): BunsetsuCandidateResult {
-        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
-            return getCandidatesOriginalWithBunsetsu(
-                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
-                userDictionaryRepository, learnRepository, isOmissionSearchEnable,
-                enableTypoCorrectionJapaneseFlick, enableTypoCorrectionQwertyEnglish,
-                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
-            ).withLatinPrefix(prefix)
-        }
-
         val conversionContext = currentCoroutineContext()
 
         val graph = graphBuilder.constructGraph(
@@ -1551,6 +1547,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            sessionState = incrementalSessionState?.graphState,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -1573,6 +1570,7 @@ class KanaKanjiEngine {
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
+                sessionState = incrementalSessionState?.pathState,
             )
         }
         conversionContext.ensureActive()
@@ -2000,16 +1998,8 @@ class KanaKanjiEngine {
         typoCorrectionOffsetScore: Int,
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
     ): BunsetsuCandidateResult {
-        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
-            return getCandidatesWithBunsetsuSeparation(
-                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
-                userDictionaryRepository, learnRepository, isOmissionSearchEnable,
-                enableTypoCorrectionJapaneseFlick, enableTypoCorrectionQwertyEnglish,
-                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
-            ).withLatinPrefix(prefix)
-        }
-
         val conversionContext = currentCoroutineContext()
 
         val graph = graphBuilder.constructGraph(
@@ -2057,6 +2047,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            sessionState = incrementalSessionState?.graphState,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -2079,6 +2070,7 @@ class KanaKanjiEngine {
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
+                sessionState = incrementalSessionState?.pathState,
             )
         }
         conversionContext.ensureActive()
@@ -2451,16 +2443,8 @@ class KanaKanjiEngine {
         typoCorrectionOffsetScore: Int,
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
     ): List<Candidate> {
-        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
-            return getCandidates(
-                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
-                userDictionaryRepository, learnRepository, isOmissionSearchEnable,
-                enableTypoCorrectionJapaneseFlick, enableTypoCorrectionQwertyEnglish,
-                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
-            ).map { it.withLatinPrefix(prefix) }
-        }
-
         val conversionContext = currentCoroutineContext()
 
         val graph = graphBuilder.constructGraph(
@@ -2508,6 +2492,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            sessionState = incrementalSessionState?.graphState,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2528,6 +2513,7 @@ class KanaKanjiEngine {
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
+                sessionState = incrementalSessionState?.pathState,
             )
         }
         conversionContext.ensureActive()
@@ -2883,15 +2869,8 @@ class KanaKanjiEngine {
         typoCorrectionOffsetScore: Int,
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
     ): List<Candidate> {
-        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
-            return getCandidatesWithoutPrediction(
-                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
-                userDictionaryRepository, learnRepository,
-                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
-            ).map { it.withLatinPrefix(prefix) }
-        }
-
         val conversionContext = currentCoroutineContext()
 
         val graph = graphBuilder.constructGraph(
@@ -2938,6 +2917,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            sessionState = incrementalSessionState?.graphState,
         )
 
         val resultNBestFinalDeferred: List<Candidate> = if (graph.isEmpty()) {
@@ -2958,6 +2938,7 @@ class KanaKanjiEngine {
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
+                sessionState = incrementalSessionState?.pathState,
             )
         }
         conversionContext.ensureActive()
@@ -3342,15 +3323,8 @@ class KanaKanjiEngine {
         typoCorrectionOffsetScore: Int,
         omissionSearchOffsetScore: Int,
         beamWidth: Int = 20,
+        incrementalSessionState: IncrementalSessionState? = null,
     ): BunsetsuCandidateResult {
-        splitLeadingLatinPrefix(input)?.let { (prefix, body) ->
-            return getCandidatesWithoutPredictionWithBunsetsu(
-                body, n, mozcUtPersonName, mozcUTPlaces, mozcUTWiki, mozcUTNeologd, mozcUTWeb,
-                userDictionaryRepository, learnRepository,
-                typoCorrectionOffsetScore, omissionSearchOffsetScore, beamWidth,
-            ).withLatinPrefix(prefix)
-        }
-
         val conversionContext = currentCoroutineContext()
 
         val graph = graphBuilder.constructGraph(
@@ -3397,6 +3371,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            sessionState = incrementalSessionState?.graphState,
         )
 
         val resultNBestFinalDeferred: BunsetsuCandidateResult = if (graph.isEmpty()) {
@@ -3419,6 +3394,7 @@ class KanaKanjiEngine {
                 n = n,
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
+                sessionState = incrementalSessionState?.pathState,
             )
         }
         conversionContext.ensureActive()

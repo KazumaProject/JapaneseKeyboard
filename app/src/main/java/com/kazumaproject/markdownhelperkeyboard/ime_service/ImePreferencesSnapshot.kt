@@ -6,6 +6,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
+import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBackend
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
@@ -37,6 +38,7 @@ data class ImePreferencesSnapshot(
     val showLiveConversionCandidateYomi: Boolean,
     val nBest: Int,
     val conversionBeamWidth: Int,
+    val conversionBackend: ConversionBackend,
     val flickSensitivityPreferenceValue: Int,
     val longPressTimeoutPreferenceValue: Int,
     val qwertyShowIMEButtonPreference: Boolean,
@@ -303,6 +305,11 @@ data class ImePreferencesSnapshot(
                     appPreference.live_conversion_candidate_yomi_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
                 conversionBeamWidth = appPreference.conversion_beam_width_preference,
+                conversionBackend = if (appPreference.incremental_conversion_session_preference) {
+                    ConversionBackend.INCREMENTAL_SESSION
+                } else {
+                    ConversionBackend.LEGACY
+                },
                 flickSensitivityPreferenceValue = appPreference.flick_sensitivity_preference ?: 100,
                 longPressTimeoutPreferenceValue =
                     appPreference.long_press_timeout_preference ?: 300,

@@ -13,7 +13,9 @@ class SuccinctBitVector(private val bitSet: BitSet) {
     private val bigBlockRanks: IntArray
 
     // 各大ブロック内を小ブロックに分割したときの、ブロック開始からの 1 数の差分
-    private val smallBlockRanks: ShortArray
+    // A 256-bit big block contains at most 248 preceding one-bits at an
+    // 8-bit small-block boundary, so an unsigned byte is exact here.
+    private val smallBlockRanks: ByteArray
 
     // BitSet 全体の 1 の総数
     private val totalOnes: Int
@@ -25,7 +27,7 @@ class SuccinctBitVector(private val bitSet: BitSet) {
         val numBigBlocks = (n + bigBlockSize - 1) / bigBlockSize
         bigBlockRanks = IntArray(numBigBlocks)
         val numSmallBlocks = (n + smallBlockSize - 1) / smallBlockSize
-        smallBlockRanks = ShortArray(numSmallBlocks)
+        smallBlockRanks = ByteArray(numSmallBlocks)
 
         var rank = 0
         // 大ブロックごとに累積値を計算
@@ -40,7 +42,7 @@ class SuccinctBitVector(private val bitSet: BitSet) {
                 // 範囲外にならないようにチェック
                 if (globalSmallIndex >= numSmallBlocks) break
                 // 小ブロック開始時の「大ブロック内での累積 1 数」
-                smallBlockRanks[globalSmallIndex] = (rank - bigBlockRanks[big]).toShort()
+                smallBlockRanks[globalSmallIndex] = (rank - bigBlockRanks[big]).toByte()
                 val smallStart = bigStart + small * smallBlockSize
                 // 小ブロック内の各ビットを走査して 1 をカウント
                 for (j in 0 until smallBlockSize) {
@@ -72,7 +74,8 @@ class SuccinctBitVector(private val bitSet: BitSet) {
 
         // 大ブロックの累積値 + 小ブロック内での差分
         val rankBase =
-            bigBlockRanks[bigIndex] + smallBlockRanks[bigIndex * numSmallBlocksPerBig + smallIndex].toInt()
+            bigBlockRanks[bigIndex] +
+                smallBlockRanks[bigIndex * numSmallBlocksPerBig + smallIndex].toInt().and(0xFF)
         var additional = 0
         val smallBlockStart = bigIndex * bigBlockSize + smallIndex * smallBlockSize
         for (i in 0..offsetInSmall) {
@@ -122,7 +125,7 @@ class SuccinctBitVector(private val bitSet: BitSet) {
             val nextGlobalSmallIndex = baseSmallIndex + smallBlock + 1
             if (nextGlobalSmallIndex >= smallBlockRanks.size) break
 
-            if (smallBlockRanks[nextGlobalSmallIndex].toInt() < localTarget) {
+            if (smallBlockRanks[nextGlobalSmallIndex].toInt().and(0xFF) < localTarget) {
                 smallBlock++
 
             } else {
@@ -132,7 +135,8 @@ class SuccinctBitVector(private val bitSet: BitSet) {
 
         // 小ブロック内をビット単位に走査して正確な位置を求める
         val globalSmallIndex = baseSmallIndex + smallBlock
-        val offsetInSmallBlock = localTarget - smallBlockRanks[globalSmallIndex].toInt()
+        val offsetInSmallBlock =
+            localTarget - smallBlockRanks[globalSmallIndex].toInt().and(0xFF)
         val smallBlockStart = bigBlock * bigBlockSize + smallBlock * smallBlockSize
         var count = 0
         for (i in 0 until smallBlockSize) {
@@ -181,7 +185,7 @@ class SuccinctBitVector(private val bitSet: BitSet) {
         while (smallBlock < smallBlocksInThisBig - 1) {
             val nextZeros =
                 (smallBlock + 1) * smallBlockSize -
-                    smallBlockRanks[baseSmallIndex + smallBlock + 1].toInt()
+                    smallBlockRanks[baseSmallIndex + smallBlock + 1].toInt().and(0xFF)
             if (nextZeros < localTarget) {
                 smallBlock++
             } else {
@@ -189,7 +193,8 @@ class SuccinctBitVector(private val bitSet: BitSet) {
             }
         }
         val globalSmallIndex = baseSmallIndex + smallBlock
-        val zerosBeforeSmall = (smallBlock * smallBlockSize) - smallBlockRanks[globalSmallIndex].toInt()
+        val zerosBeforeSmall =
+            (smallBlock * smallBlockSize) - smallBlockRanks[globalSmallIndex].toInt().and(0xFF)
         val offsetInSmallBlock = localTarget - zerosBeforeSmall
 
         // 小ブロック内を 1 ビットずつ走査して目的の 0 を探す

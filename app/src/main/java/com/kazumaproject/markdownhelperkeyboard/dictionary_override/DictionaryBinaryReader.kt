@@ -176,8 +176,22 @@ class DictionaryBinaryReader @Inject constructor(
         val rightIds: ShortArray,
     )
 
-    private fun createConnectionMatrix(key: DictionaryFileKey): ConnectionMatrix.CostTable =
-        ConnectionMatrix.fromShortArray(loadConnectionIds(key))
+    private fun createConnectionMatrix(key: DictionaryFileKey): ConnectionMatrix.CostTable {
+        if (key == DictionaryFileKey.CONNECTION_ID && !resolver.shouldUseOverride(key)) {
+            runCatching {
+                resolver.openBundledAsset(COMPACT_CONNECTION_MATRIX_ASSET).use(
+                    ConnectionMatrix::fromCompactInputStream,
+                )
+            }.onSuccess { return it }
+                .onFailure { error ->
+                    Timber.w(
+                        error,
+                        "Exact compact connection matrix is unavailable. Falling back to dense matrix.",
+                    )
+                }
+        }
+        return ConnectionMatrix.fromShortArray(loadConnectionIds(key))
+    }
 
     private data class ConnectionMatrixCache(
         val revision: Long,
@@ -186,6 +200,7 @@ class DictionaryBinaryReader @Inject constructor(
     )
 
     companion object {
+        private const val COMPACT_CONNECTION_MATRIX_ASSET = "connection/connection.compact"
         private val ZIP_SIGNATURE = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 
         fun openZipAwareObject(input: InputStream, debugName: String): ObjectInputStream =

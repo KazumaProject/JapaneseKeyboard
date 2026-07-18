@@ -797,26 +797,9 @@ object AppModule {
     @Singleton
     @Provides
     fun providesEnglishEngine(
-        @EnglishReadingLOUDS englishReadingLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId,
-        @EnglishWordLOUDS englishWordLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS,
-        @EnglishTokenArray englishTokenArray: com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray,
-        @EnglishSuccinctBitVectorLBSReading englishSuccinctBitVectorLBSReading: SuccinctBitVector,
-        @EnglishSuccinctBitVectorLBSWord englishSuccinctBitVectorLBSWord: SuccinctBitVector,
-        @EnglishSuccinctBitVectorTokenArray englishSuccinctBitVectorLBSTokenArray: SuccinctBitVector,
-        @EnglishSuccinctBitVectorReadingIsLeaf englishSuccinctBitVectorLBSReadingIsLeaf: SuccinctBitVector
+        reader: DictionaryBinaryReader,
     ): EnglishEngine {
-        val englishEngine = EnglishEngine()
-        englishEngine.buildEngine(
-            englishReadingLOUDS = englishReadingLOUDS,
-            englishWordLOUDS = englishWordLOUDS,
-            englishTokenArray = englishTokenArray,
-            englishSuccinctBitVectorLBSReading = englishSuccinctBitVectorLBSReading,
-            englishSuccinctBitVectorLBSWord = englishSuccinctBitVectorLBSWord,
-            englishSuccinctBitVectorTokenArray = englishSuccinctBitVectorLBSTokenArray,
-            englishSuccinctBitVectorReadingIsLeaf = englishSuccinctBitVectorLBSReadingIsLeaf
-
-        )
-        return englishEngine
+        return EnglishEngine().apply { configureLazyDictionaryLoading(reader) }
     }
 
     @Singleton

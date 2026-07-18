@@ -82,6 +82,8 @@ object AppPreference {
     private val NG_WORD_ENABLE_PREFERENCE = Pair("ng_word_enable_preference", true)
     private val N_BEST_PREFERENCE = Pair("n_best_preference", 4)
     private val CONVERSION_BEAM_WIDTH_PREFERENCE = Pair("conversion_beam_width_preference", 20)
+    private val INCREMENTAL_CONVERSION_SESSION_PREFERENCE =
+        Pair("incremental_conversion_session_preference", false)
     private val CANDIDATE_ORDER_OVERRIDE_ENABLE =
         Pair("candidate_order_override_enable_preference", false)
     private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
@@ -1432,6 +1434,15 @@ object AppPreference {
         ).coerceIn(1, 100)
         set(value) = preferences.edit {
             it.putInt(CONVERSION_BEAM_WIDTH_PREFERENCE.first, value.coerceIn(1, 100))
+        }
+
+    var incremental_conversion_session_preference: Boolean
+        get() = preferences.getBoolean(
+            INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first,
+            INCREMENTAL_CONVERSION_SESSION_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
         }
 
     var candidate_order_override_enable_preference: Boolean?

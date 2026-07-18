@@ -72,6 +72,17 @@ class MozcBoundaryChecker(
     }
 
     private fun isBetweenAlphabetKeys(left: Node, right: Node): Boolean {
+        // Mozc's BOS/EOS nodes have an empty key.  Our graph keeps the readable sentinel names
+        // in yomiUsed, so without this guard an alphabet node followed by "EOS" is mistaken for
+        // an alphabet-to-alphabet edge and every mixed-input path is rejected at the end.
+        if (
+            left.mozcNodeType == MozcNodeType.BOS ||
+            left.mozcNodeType == MozcNodeType.EOS ||
+            right.mozcNodeType == MozcNodeType.BOS ||
+            right.mozcNodeType == MozcNodeType.EOS
+        ) {
+            return false
+        }
         val leftLast = left.yomiUsed.lastOrNull() ?: return false
         val rightFirst = right.yomiUsed.firstOrNull() ?: return false
         return leftLast.isAsciiAlphabet() && rightFirst.isAsciiAlphabet()

@@ -1415,4 +1415,8 @@
     <string name="conversion_beam_width_category_title">変換探索</string>
     <string name="conversion_beam_width_preference_title">変換探索幅</string>
     <string name="conversion_beam_width_preference_summary">かな漢字変換の探索中に保持するラティスノード数を設定します。デフォルトは20です。</string>
+    <string name="conversion_engine_category_title">変換エンジン</string>
+    <string name="incremental_conversion_session_title">セッション型変換エンジン</string>
+    <string name="incremental_conversion_session_summary_on">変換状態を保持し、差分更新で候補を生成します。次の入力セッションから反映されます。</string>
+    <string name="incremental_conversion_session_summary_off">従来の変換エンジンを使用します。</string>
 </resources>

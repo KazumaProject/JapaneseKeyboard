@@ -177,6 +177,11 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
 import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime
+import com.kazumaproject.markdownhelperkeyboard.converter.session.CandidateQueryMode
+import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBackend
+import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiConversionSession
+import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryRequest
+import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryResult
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.databinding.FloatingKeyboardLayoutBinding
 import com.kazumaproject.markdownhelperkeyboard.databinding.MainLayoutBinding
@@ -194,6 +199,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.resolveCand
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContent
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContentResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateQueryModeResolver
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestToken
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestTracker
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsHentaigana
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.correctReading
@@ -1412,6 +1420,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var candidateColumnsLandscape: String? = "1"
     private var candidateViewHeight: String? = "2"
     private var candidateTabVisibility: Boolean? = false
+    private var conversionBackend: ConversionBackend = ConversionBackend.LEGACY
+    private var kanaKanjiConversionSession: KanaKanjiConversionSession? = null
+    private val candidateRequestTracker = CandidateRequestTracker()
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
     private var userDictionaryPrefixMatchNumber: Int? = 2
     private var isTablet: Boolean? = false
@@ -2091,10 +2102,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         )
         applyImePreferences(preferences)
+        startKanaKanjiConversionSession(preferences.conversionBackend)
         resetKeyboard()
         initializeMozcDictionaries(preferences)
         syncCustomKeyboardSuggestionPreference()
         refreshCandidateStripContent()
+    }
+
+    private fun startKanaKanjiConversionSession(backend: ConversionBackend) {
+        conversionBackend = backend
+        kanaKanjiConversionSession = KanaKanjiConversionSession(
+            engine = kanaKanjiEngine,
+            backend = backend,
+        )
+        candidateRequestTracker.restart(backend)
     }
 
     private fun syncCustomKeyboardSuggestionPreference() {
@@ -2127,6 +2148,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         keyboardOrder = preferences.keyboardOrder
         candidateTabOrder = preferences.candidateTabOrder
+        conversionBackend = preferences.conversionBackend
         mozcUTPersonName = preferences.mozcUTPersonName
         mozcUTPlaces = preferences.mozcUTPlaces
         mozcUTWiki = preferences.mozcUTWiki
@@ -4178,6 +4200,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        candidateRequestTracker.invalidate()
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
         clearZeroQueryAllState(refresh = false)
@@ -14863,10 +14886,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun shouldApplyCandidateResult(requestInput: String): Boolean {
+    private fun shouldApplyCandidateResult(
+        requestInput: String,
+        token: CandidateRequestToken? = null,
+    ): Boolean {
         return !suppressSuggestions &&
                 requestInput.isNotEmpty() &&
-                inputString.value == requestInput
+                inputString.value == requestInput &&
+                (token == null || candidateRequestTracker.isCurrent(token))
     }
 
     private fun clearSuggestionStateAfterCommit() {
@@ -17187,41 +17214,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
                 override fun onTabSelected(tab: TabLayout.Tab?) {
                     tab?.let { t ->
-                        if (t.position > candidateTabOrder.size - 1) return
-                        when (candidateTabOrder[t.position]) {
-                            CandidateTab.PREDICTION -> {
-                                val input = inputString.value
-                                if (input.isNotEmpty()) {
-                                    ioScope.launch {
-                                        setCandidates(input, mainView)
-                                        withContext(Dispatchers.Main) {
-                                            hideFirstRowCandidatesInFullScreen(mainView)
-                                        }
-                                    }
-                                }
-                            }
-
-                            CandidateTab.CONVERSION -> {
-                                val input = inputString.value
-                                if (input.isNotEmpty()) {
-                                    ioScope.launch {
-                                        setCandidatesWithoutPrediction(input, mainView)
-                                        withContext(Dispatchers.Main) {
-                                            hideFirstRowCandidatesInFullScreen(mainView)
-                                        }
-                                    }
-                                }
-                            }
-
-                            CandidateTab.EISUKANA -> {
-                                val input = inputString.value
-                                if (input.isNotEmpty()) {
-                                    ioScope.launch {
-                                        setCandidatesEnglishKana(input)
-                                        withContext(Dispatchers.Main) {
-                                            hideFirstRowCandidatesInFullScreen(mainView)
-                                        }
-                                    }
+                        val input = inputString.value
+                        if (input.isNotEmpty()) {
+                            val mode = CandidateQueryModeResolver.resolve(
+                                tabVisible = true,
+                                tabOrder = candidateTabOrder,
+                                selectedPosition = t.position,
+                            )
+                            val token = candidateRequestTracker.begin(
+                                input = input,
+                                mode = mode,
+                                backend = conversionBackend,
+                            )
+                            ioScope.launch {
+                                setCandidatesForMode(input, mainView, mode, token)
+                                withContext(Dispatchers.Main) {
+                                    hideFirstRowCandidatesInFullScreen(mainView)
                                 }
                             }
                         }
@@ -20952,32 +20960,38 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (inputString.isEmpty() || suggestionClickNum > 0) return
         val tabPosition = mainView.candidateTabLayout.selectedTabPosition
         Timber.d("setSuggestionOnView: tabPosition: $tabPosition $bunsetsuPositionList")
-        if (candidateTabVisibility == true) {
-            if (candidateTabOrder.isNotEmpty() && tabPosition < candidateTabOrder.size) {
-                when (candidateTabOrder[tabPosition]) {
-                    CandidateTab.PREDICTION -> {
-                        setCandidates(inputString, mainView)
-                    }
-
-                    CandidateTab.CONVERSION -> {
-                        setCandidatesWithoutPrediction(inputString, mainView)
-                    }
-
-                    CandidateTab.EISUKANA -> {
-                        setCandidatesEnglishKana(inputString)
-                    }
-                }
-            } else {
-                setCandidates(inputString, mainView)
-            }
-        } else {
-            setCandidatesOriginal(inputString, mainView)
-        }
+        val mode = CandidateQueryModeResolver.resolve(
+            tabVisible = candidateTabVisibility == true,
+            tabOrder = candidateTabOrder,
+            selectedPosition = tabPosition,
+        )
+        val token = candidateRequestTracker.begin(
+            input = inputString,
+            mode = mode,
+            backend = conversionBackend,
+        )
+        setCandidatesForMode(inputString, mainView, mode, token)
         Timber.d("setSuggestionOnView auto: $inputString $stringInTail $tabPosition $bunsetsuPositionList ${isHenkan.get()} $henkanPressedWithBunsetsuDetect $bunsetusMultipleDetect")
     }
 
+    private suspend fun setCandidatesForMode(
+        input: String,
+        mainView: MainLayoutBinding,
+        mode: CandidateQueryMode,
+        token: CandidateRequestToken,
+    ) {
+        when (mode) {
+            CandidateQueryMode.NO_TAB_DEFAULT -> setCandidatesOriginal(input, mainView, token)
+            CandidateQueryMode.PREDICTION -> setCandidates(input, mainView, token)
+            CandidateQueryMode.CONVERSION -> setCandidatesWithoutPrediction(input, mainView, token)
+            CandidateQueryMode.EISUKANA -> setCandidatesEnglishKana(input, token)
+        }
+    }
+
     private suspend fun setCandidates(
-        insertString: String, mainView: MainLayoutBinding
+        insertString: String,
+        mainView: MainLayoutBinding,
+        token: CandidateRequestToken,
     ) {
         val requestToken = beginZenzRerankRequest()
         if (
@@ -20993,7 +21007,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) {
             emitZenzLiveRequest(insertString)
         }
-        val candidates = getSuggestionList(insertString, mainView)
+        val candidates = getSuggestionList(insertString, mainView, token)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
@@ -21002,14 +21016,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
         val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
         val displayedCandidates = cachedReranked ?: filtered
-        if (!shouldApplyCandidateResult(insertString)) {
+        if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
         updateDisplayedCandidates(insertString, displayedCandidates)
 
         if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
             delayBeforeApplyingLiveConversion()
-            if (!shouldApplyCandidateResult(insertString)) {
+            if (!shouldApplyCandidateResult(insertString, token)) {
                 return
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
@@ -21020,7 +21034,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return
             }
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
-            if (!shouldApplyCandidateResult(insertString)) {
+            if (!shouldApplyCandidateResult(insertString, token)) {
                 return
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
@@ -21041,7 +21055,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setCandidatesOriginal(
-        insertString: String, mainView: MainLayoutBinding
+        insertString: String,
+        mainView: MainLayoutBinding,
+        token: CandidateRequestToken,
     ) {
         val requestToken = beginZenzRerankRequest()
         if (
@@ -21057,7 +21073,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ) {
             emitZenzLiveRequest(insertString)
         }
-        val candidates = getSuggestionListOriginal(insertString, mainView)
+        val candidates = getSuggestionListOriginal(insertString, mainView, token)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
@@ -21066,14 +21082,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val rerankPlan = prepareZenzRerankPlan(insertString, filtered)
         val cachedReranked = rerankPlan?.let { getCachedZenzRerank(it.cacheKey) }
         val displayedCandidates = cachedReranked ?: filtered
-        if (!shouldApplyCandidateResult(insertString)) {
+        if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
         updateDisplayedCandidates(insertString, displayedCandidates)
 
         if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
             delayBeforeApplyingLiveConversion()
-            if (!shouldApplyCandidateResult(insertString)) {
+            if (!shouldApplyCandidateResult(insertString, token)) {
                 return
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
@@ -21084,7 +21100,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return
             }
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
-            if (!shouldApplyCandidateResult(insertString)) {
+            if (!shouldApplyCandidateResult(insertString, token)) {
                 return
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
@@ -21104,17 +21120,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun setCandidatesWithoutPrediction(
-        insertString: String, mainView: MainLayoutBinding
+        insertString: String,
+        mainView: MainLayoutBinding,
+        token: CandidateRequestToken,
     ) {
         beginZenzRerankRequest()
         clearZenzLiveSlot("candidate tab without Zenz live")
-        val candidates = getSuggestionListWithoutPrediction(insertString)
+        val candidates = getSuggestionListWithoutPrediction(insertString, token)
         val filtered = if (stringInTail.get().isNotEmpty()) {
             candidates.filter { it.length.toInt() == insertString.length }
         } else {
             candidates
         }
-        if (!shouldApplyCandidateResult(insertString)) {
+        if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
@@ -21136,7 +21154,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
             delayBeforeApplyingLiveConversion()
-            if (!shouldApplyCandidateResult(insertString)) {
+            if (!shouldApplyCandidateResult(insertString, token)) {
                 return
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
@@ -21147,7 +21165,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return
             }
         } else if (isLiveConversionEnable != true && !hasConvertedKatakana && henkanPressedWithBunsetsuDetect) {
-            if (!shouldApplyCandidateResult(insertString)) {
+            if (!shouldApplyCandidateResult(insertString, token)) {
                 return
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
@@ -21163,7 +21181,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             bunsetsuPositionList?.let {
                 if (bunsetusMultipleDetect && it.isNotEmpty()) {
                     withContext(Dispatchers.Main.immediate) {
-                        if (!shouldApplyCandidateResult(insertString)) return@withContext
+                        if (!shouldApplyCandidateResult(insertString, token)) return@withContext
                         handleJapaneseModeSpaceKeyWithBunsetsu(
                             mainView, filtered, insertString
                         )
@@ -21175,6 +21193,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private suspend fun setCandidatesEnglishKana(
         insertString: String,
+        token: CandidateRequestToken,
     ) {
         beginZenzRerankRequest()
         clearZenzLiveSlot("eisukana tab")
@@ -21184,7 +21203,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             candidates
         }
-        if (!shouldApplyCandidateResult(insertString)) {
+        if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
         if (physicalKeyboardEnable.replayCache.isNotEmpty() && physicalKeyboardEnable.replayCache.first()) {
@@ -21206,7 +21225,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
             delayBeforeApplyingLiveConversion()
-            if (!shouldApplyCandidateResult(insertString)) {
+            if (!shouldApplyCandidateResult(insertString, token)) {
                 return
             }
             if (!applyFirstSuggestionOnMainIfCurrent(
@@ -21220,7 +21239,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private suspend fun getSuggestionListOriginal(
-        insertString: String, mainView: MainLayoutBinding
+        insertString: String,
+        mainView: MainLayoutBinding,
+        token: CandidateRequestToken,
     ): List<Candidate> {
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
@@ -21276,49 +21297,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
                     (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !currentQwertyRomajiModeForSession))
 
-        var engineResult: BunsetsuCandidateResult? = null
-        val engineCandidates = withContext(Dispatchers.Default) {
-            if (bunsetsuSeparation == true) {
-                engineResult = kanaKanjiEngine.getCandidatesOriginalWithBunsetsu(
-                    input = insertString,
-                    n = nBest ?: 4,
-                    mozcUtPersonName = mozcUTPersonName,
-                    mozcUTPlaces = mozcUTPlaces,
-                    mozcUTWiki = mozcUTWiki,
-                    mozcUTNeologd = mozcUTNeologd,
-                    mozcUTWeb = mozcUTWeb,
-                    userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = suggestionLearnRepository,
-                    isOmissionSearchEnable = isOmissionSearchEnable ?: false,
-                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
-                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                        ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
-                    beamWidth = conversionBeamWidth,
-                )
-                engineResult?.candidates.orEmpty()
-            } else {
-                kanaKanjiEngine.getCandidatesOriginal(
-                    input = insertString,
-                    n = nBest ?: 4,
-                    mozcUtPersonName = mozcUTPersonName,
-                    mozcUTPlaces = mozcUTPlaces,
-                    mozcUTWiki = mozcUTWiki,
-                    mozcUTNeologd = mozcUTNeologd,
-                    mozcUTWeb = mozcUTWeb,
-                    userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = suggestionLearnRepository,
-                    isOmissionSearchEnable = isOmissionSearchEnable ?: false,
-                    enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                    enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
-                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                        ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
-                    beamWidth = conversionBeamWidth,
-                )
-            }
+        val coreResult = withContext(Dispatchers.Default) {
+            queryKanaKanjiCore(
+                input = insertString,
+                mode = CandidateQueryMode.NO_TAB_DEFAULT,
+                learnRepository = suggestionLearnRepository,
+                omissionSearchEnabled = isOmissionSearchEnable ?: false,
+                typoCorrectionJapaneseFlickEnabled = enableTypoCorrectionJapaneseFlick,
+                typoCorrectionQwertyEnglishEnabled = enableTypoCorrectionQwertyEnglish,
+            )
         }
+        val engineResult = coreResult.bunsetsuResult
+        val engineCandidates = coreResult.candidates
 
         val result = if (conversionCandidatesRomajiEnablePreference == true) {
             val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
@@ -21351,18 +21341,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 filteredCandidates
             }
 
-        updateBunsetsuStateAfterCandidateMerge(
-            input = insertString,
-            mergedCandidates = orderedCandidates,
-            engineResult = engineResult
-        )
+        if (candidateRequestTracker.isCurrent(token)) {
+            updateBunsetsuStateAfterCandidateMerge(
+                input = insertString,
+                mergedCandidates = orderedCandidates,
+                engineResult = engineResult
+            )
+        }
 
         return orderedCandidates
     }
 
     private suspend fun getSuggestionList(
         insertString: String,
-        mainView: MainLayoutBinding
+        mainView: MainLayoutBinding,
+        token: CandidateRequestToken? = null,
     ): List<Candidate> = measureDebugStage("IMEService.getSuggestionList") {
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             measureDebugStage("IMEService.getSuggestionList.userDictionary") {
@@ -21427,53 +21420,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
                     (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !currentQwertyRomajiModeForSession))
 
-        var engineResult: BunsetsuCandidateResult? = null
-        val engineCandidates = measureDebugStage("IMEService.getSuggestionList.kanaKanjiEngine") {
+        val coreResult = measureDebugStage("IMEService.getSuggestionList.kanaKanjiEngine") {
             withContext(Dispatchers.Default) {
-                if (bunsetsuSeparation == true) {
-                    engineResult = kanaKanjiEngine.getCandidatesWithBunsetsuSeparation(
-                        input = insertString,
-                        n = nBest ?: 4,
-                        mozcUtPersonName = mozcUTPersonName,
-                        mozcUTPlaces = mozcUTPlaces,
-                        mozcUTWiki = mozcUTWiki,
-                        mozcUTNeologd = mozcUTNeologd,
-                        mozcUTWeb = mozcUTWeb,
-                        userDictionaryRepository = userDictionaryRepository,
-                        learnRepository = suggestionLearnRepository,
-                        isOmissionSearchEnable = isOmissionSearchEnable ?: false,
-                        enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                        enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
-                        typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                            ?: 3000,
-                        omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
-                        beamWidth = conversionBeamWidth,
-                    )
-                    engineResult?.let {
-                        Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: ${it.primarySplitPositions} ${isHenkan.get()} $ngWords $insertString ${it.splitPatterns}")
-                    }
-                    engineResult?.candidates.orEmpty()
-                } else {
-                    kanaKanjiEngine.getCandidates(
-                        input = insertString,
-                        n = nBest ?: 4,
-                        mozcUtPersonName = mozcUTPersonName,
-                        mozcUTPlaces = mozcUTPlaces,
-                        mozcUTWiki = mozcUTWiki,
-                        mozcUTNeologd = mozcUTNeologd,
-                        mozcUTWeb = mozcUTWeb,
-                        userDictionaryRepository = userDictionaryRepository,
-                        learnRepository = suggestionLearnRepository,
-                        isOmissionSearchEnable = isOmissionSearchEnable ?: false,
-                        enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
-                        enableTypoCorrectionQwertyEnglish = enableTypoCorrectionQwertyEnglish,
-                        typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                            ?: 3000,
-                        omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
-                        beamWidth = conversionBeamWidth,
-                    )
-                }
+                queryKanaKanjiCore(
+                    input = insertString,
+                    mode = CandidateQueryMode.PREDICTION,
+                    learnRepository = suggestionLearnRepository,
+                    omissionSearchEnabled = isOmissionSearchEnable ?: false,
+                    typoCorrectionJapaneseFlickEnabled = enableTypoCorrectionJapaneseFlick,
+                    typoCorrectionQwertyEnglishEnabled = enableTypoCorrectionQwertyEnglish,
+                )
             }
+        }
+        val engineResult = coreResult.bunsetsuResult
+        val engineCandidates = coreResult.candidates
+        engineResult?.let {
+            Timber.d("handleJapaneseModeSpaceKeyWithBunsetsu: ${it.primarySplitPositions} ${isHenkan.get()} $ngWords $insertString ${it.splitPatterns}")
         }
         val result = if (conversionCandidatesRomajiEnablePreference == true) {
             val romajiConversionResultList: List<Candidate> =
@@ -21510,11 +21472,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 filteredCandidates
             }
 
-        updateBunsetsuStateAfterCandidateMerge(
-            input = insertString,
-            mergedCandidates = orderedCandidates,
-            engineResult = engineResult
-        )
+        if (token == null || candidateRequestTracker.isCurrent(token)) {
+            updateBunsetsuStateAfterCandidateMerge(
+                input = insertString,
+                mergedCandidates = orderedCandidates,
+                engineResult = engineResult
+            )
+        }
 
         orderedCandidates
     }
@@ -21547,6 +21511,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private suspend fun getSuggestionListWithoutPrediction(
         insertString: String,
+        token: CandidateRequestToken,
     ): List<Candidate> {
         val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
             withContext(Dispatchers.IO) {
@@ -21594,43 +21559,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        var engineResult: BunsetsuCandidateResult? = null
-        val engineCandidates = withContext(Dispatchers.Default) {
-            if (bunsetsuSeparation == true) {
-                engineResult = kanaKanjiEngine.getCandidatesWithoutPredictionWithBunsetsu(
-                    input = insertString,
-                    n = nBest ?: 4,
-                    mozcUtPersonName = mozcUTPersonName,
-                    mozcUTPlaces = mozcUTPlaces,
-                    mozcUTWiki = mozcUTWiki,
-                    mozcUTNeologd = mozcUTNeologd,
-                    mozcUTWeb = mozcUTWeb,
-                    userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = suggestionLearnRepository,
-                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                        ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
-                    beamWidth = conversionBeamWidth,
-                )
-                engineResult?.candidates.orEmpty()
-            } else {
-                kanaKanjiEngine.getCandidatesWithoutPrediction(
-                    input = insertString,
-                    n = nBest ?: 4,
-                    mozcUtPersonName = mozcUTPersonName,
-                    mozcUTPlaces = mozcUTPlaces,
-                    mozcUTWiki = mozcUTWiki,
-                    mozcUTNeologd = mozcUTNeologd,
-                    mozcUTWeb = mozcUTWeb,
-                    userDictionaryRepository = userDictionaryRepository,
-                    learnRepository = suggestionLearnRepository,
-                    typoCorrectionOffsetScore = enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference
-                        ?: 3000,
-                    omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
-                    beamWidth = conversionBeamWidth,
-                )
-            }
+        val coreResult = withContext(Dispatchers.Default) {
+            queryKanaKanjiCore(
+                input = insertString,
+                mode = CandidateQueryMode.CONVERSION,
+                learnRepository = suggestionLearnRepository,
+            )
         }
+        val engineResult = coreResult.bunsetsuResult
+        val engineCandidates = coreResult.candidates
 
         val result = if (conversionCandidatesRomajiEnablePreference == true) {
             val romajiConversionResultList: List<Candidate> = withContext(Dispatchers.Default) {
@@ -21663,22 +21600,66 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 filteredCandidates
             }
 
-        updateBunsetsuStateAfterCandidateMerge(
-            input = insertString,
-            mergedCandidates = orderedCandidates,
-            engineResult = engineResult
-        )
+        if (candidateRequestTracker.isCurrent(token)) {
+            updateBunsetsuStateAfterCandidateMerge(
+                input = insertString,
+                mergedCandidates = orderedCandidates,
+                engineResult = engineResult
+            )
+        }
 
         return orderedCandidates
     }
 
-    private fun getSuggestionListEnglishKana(
+    private suspend fun getSuggestionListEnglishKana(
         insertString: String,
     ): List<Candidate> {
-        val engineCandidates = kanaKanjiEngine.getCandidatesEnglishKana(
-            input = insertString,
-        )
+        val engineCandidates = withContext(Dispatchers.Default) {
+            queryKanaKanjiCore(
+                input = insertString,
+                mode = CandidateQueryMode.EISUKANA,
+                learnRepository = null,
+            ).candidates
+        }
         return engineCandidates.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
+    }
+
+    private suspend fun queryKanaKanjiCore(
+        input: String,
+        mode: CandidateQueryMode,
+        learnRepository: LearnRepository?,
+        omissionSearchEnabled: Boolean = false,
+        typoCorrectionJapaneseFlickEnabled: Boolean = false,
+        typoCorrectionQwertyEnglishEnabled: Boolean = false,
+    ): KanaKanjiQueryResult {
+        val session = kanaKanjiConversionSession ?: KanaKanjiConversionSession(
+            engine = kanaKanjiEngine,
+            backend = conversionBackend,
+        ).also {
+            kanaKanjiConversionSession = it
+        }
+        return session.query(
+            KanaKanjiQueryRequest(
+                input = input,
+                mode = mode,
+                bunsetsuSeparation = bunsetsuSeparation == true,
+                n = nBest ?: 4,
+                mozcUtPersonName = mozcUTPersonName,
+                mozcUtPlaces = mozcUTPlaces,
+                mozcUtWiki = mozcUTWiki,
+                mozcUtNeologd = mozcUTNeologd,
+                mozcUtWeb = mozcUTWeb,
+                userDictionaryRepository = userDictionaryRepository,
+                learnRepository = learnRepository,
+                omissionSearchEnabled = omissionSearchEnabled,
+                typoCorrectionJapaneseFlickEnabled = typoCorrectionJapaneseFlickEnabled,
+                typoCorrectionQwertyEnglishEnabled = typoCorrectionQwertyEnglishEnabled,
+                typoCorrectionOffsetScore =
+                    enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference ?: 3000,
+                omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
+                beamWidth = conversionBeamWidth,
+            )
+        )
     }
 
     private fun List<Candidate>.withoutHentaiganaCandidatesIfNeeded(): List<Candidate> {

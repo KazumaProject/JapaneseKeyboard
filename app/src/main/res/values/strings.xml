@@ -1417,4 +1417,8 @@
     <string name="conversion_beam_width_category_title">Conversion Search</string>
     <string name="conversion_beam_width_preference_title">Conversion beam width</string>
     <string name="conversion_beam_width_preference_summary">Sets how many lattice nodes are kept during kana-kanji conversion search. Default: 20.</string>
+    <string name="conversion_engine_category_title">Conversion Engine</string>
+    <string name="incremental_conversion_session_title">Session-based conversion engine</string>
+    <string name="incremental_conversion_session_summary_on">Keep conversion state and update candidates incrementally. Applies from the next input session.</string>
+    <string name="incremental_conversion_session_summary_off">Use the conventional conversion engine.</string>
 </resources>
