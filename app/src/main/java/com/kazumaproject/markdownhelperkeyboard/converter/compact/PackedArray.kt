@@ -23,6 +23,27 @@ class PackedIntArray private constructor(
     fun toIntArray(): IntArray = IntArray(size) { get(it) }
 
     companion object {
+        fun fromEncoded(
+            size: Int,
+            minimum: Int,
+            bitWidth: Int,
+            words: LongArray,
+        ): PackedIntArray {
+            require(size >= 0) { "PackedIntArray size must be non-negative: $size" }
+            require(bitWidth in 0..Int.SIZE_BITS) {
+                "PackedIntArray bit width must be in 0..32: $bitWidth"
+            }
+            val expectedWordCount = if (size == 0 || bitWidth == 0) {
+                0
+            } else {
+                ((size.toLong() * bitWidth + Long.SIZE_BITS - 1) / Long.SIZE_BITS).toInt()
+            }
+            require(words.size == expectedWordCount) {
+                "PackedIntArray word count mismatch: ${words.size} != $expectedWordCount"
+            }
+            return PackedIntArray(size, minimum, bitWidth, words)
+        }
+
         fun from(values: IntArray): PackedIntArray {
             val minimum = values.minOrNull() ?: 0
             val maximum = values.maxOrNull() ?: minimum
@@ -82,6 +103,13 @@ class PackedCharArray private constructor(
     fun toCharArray(): CharArray = CharArray(size) { get(it) }
 
     companion object {
+        fun fromEncoded(alphabet: CharArray, indices: PackedIntArray): PackedCharArray {
+            require(indices.size == 0 || alphabet.isNotEmpty()) {
+                "A non-empty PackedCharArray requires an alphabet"
+            }
+            return PackedCharArray(alphabet, indices)
+        }
+
         fun from(values: CharArray): PackedCharArray {
             if (values.isEmpty()) {
                 return PackedCharArray(charArrayOf(), PackedIntArray.from(intArrayOf()))

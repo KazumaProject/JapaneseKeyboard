@@ -652,10 +652,10 @@ class EnglishEngine : QwertyGlideCandidateProvider {
             readingLOUDS = newReadingLOUDS,
             wordLOUDS = newWordLOUDS,
             tokenArray = newTokenArray,
-            succinctBitVectorLBSReading = SuccinctBitVector(newReadingLOUDS.LBS),
-            succinctBitVectorLBSWord = SuccinctBitVector(newWordLOUDS.LBS),
-            succinctBitVectorReadingIsLeaf = SuccinctBitVector(newReadingLOUDS.isLeaf),
-            succinctBitVectorTokenArray = SuccinctBitVector(newTokenArray.bitvector),
+            succinctBitVectorLBSReading = reader.loadEnglishReadingLbsIndex(newReadingLOUDS),
+            succinctBitVectorLBSWord = reader.loadEnglishWordLbsIndex(newWordLOUDS),
+            succinctBitVectorReadingIsLeaf = reader.loadEnglishReadingLeafIndex(newReadingLOUDS),
+            succinctBitVectorTokenArray = reader.loadEnglishTokenIndex(newTokenArray),
         )
     }
 

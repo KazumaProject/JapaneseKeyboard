@@ -36,6 +36,10 @@ class TokenArray {
         return packedNodeIds?.toIntArray() ?: nodeIdList
     }
 
+    fun getPosTableIndices(): ShortArray = posTableIndexList.copyOf()
+
+    fun getWordCosts(): ShortArray = wordCostList.copyOf()
+
     private fun nodeIdAt(index: Int): Int = packedNodeIds?.get(index) ?: nodeIdList[index]
 
     fun maxPosTableIndex(): Int =
@@ -373,8 +377,33 @@ class TokenArray {
         return isNotEmpty() && all { it in 'ァ'..'ヶ' || it == 'ー' }
     }
 
-    private companion object {
-        const val PACKED_NODE_ID_THRESHOLD = 500_000
+    companion object {
+        private const val PACKED_NODE_ID_THRESHOLD = 500_000
+
+        fun fromPacked(
+            posTableIndices: ShortArray,
+            wordCosts: ShortArray,
+            nodeIds: PackedIntArray,
+            bitvector: BitSet,
+            leftIds: ShortArray,
+            rightIds: ShortArray,
+        ): TokenArray {
+            require(posTableIndices.size == wordCosts.size) {
+                "Token POS/cost size mismatch: ${posTableIndices.size} != ${wordCosts.size}"
+            }
+            require(posTableIndices.size == nodeIds.size) {
+                "Token/node size mismatch: ${posTableIndices.size} != ${nodeIds.size}"
+            }
+            return TokenArray().apply {
+                posTableIndexList = posTableIndices
+                wordCostList = wordCosts
+                nodeIdList = intArrayOf()
+                packedNodeIds = nodeIds
+                this.bitvector = bitvector
+                this.leftIds = leftIds
+                this.rightIds = rightIds
+            }
+        }
     }
 
 }

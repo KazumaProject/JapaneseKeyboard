@@ -343,8 +343,19 @@ class LOUDS {
         return LOUDS(LBS, labels, isLeaf)
     }
 
-    private companion object {
-        const val PACKED_LABEL_THRESHOLD = 500_000
+    companion object {
+        private const val PACKED_LABEL_THRESHOLD = 500_000
+
+        fun fromPacked(
+            LBS: BitSet,
+            labels: PackedCharArray,
+            isLeaf: BitSet,
+        ): LOUDS = LOUDS().apply {
+            this.LBS = LBS
+            this.labels = charArrayOf()
+            this.packedLabels = labels
+            this.isLeaf = isLeaf
+        }
     }
 
 }

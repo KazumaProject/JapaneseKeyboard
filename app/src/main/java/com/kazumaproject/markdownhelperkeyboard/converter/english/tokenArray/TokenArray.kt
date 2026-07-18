@@ -26,6 +26,8 @@ class TokenArray {
         return nodeIdList
     }
 
+    fun getWordCosts(): ShortArray = wordCostList.copyOf()
+
     fun getListDictionaryByYomiTermId(
         nodeId: Int, rank0ArrayTokenArrayBitvector: IntArray, rank1ArrayTokenArrayBitvector: IntArray
     ): List<TokenEntry> {
@@ -165,6 +167,23 @@ class TokenArray {
             }
         }
         return this
+    }
+
+    companion object {
+        fun fromArrays(
+            wordCosts: ShortArray,
+            nodeIds: IntArray,
+            bitvector: BitSet,
+        ): TokenArray {
+            require(wordCosts.size == nodeIds.size) {
+                "English token cost/node size mismatch: ${wordCosts.size} != ${nodeIds.size}"
+            }
+            return TokenArray().apply {
+                wordCostList = wordCosts
+                nodeIdList = nodeIds
+                this.bitvector = bitvector
+            }
+        }
     }
 
 }

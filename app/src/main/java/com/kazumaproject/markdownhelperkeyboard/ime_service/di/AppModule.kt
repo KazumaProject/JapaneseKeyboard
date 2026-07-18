@@ -292,26 +292,34 @@ object AppModule {
     @Singleton
     @Provides
     @SystemSuccinctBitVectorLBSYomi
-    fun provideSuccinctBitVectorLBSYomi(@SystemYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.LBS)
+    fun provideSuccinctBitVectorLBSYomi(
+        @SystemYomiTrie yomiTrie: LOUDSWithTermId,
+        reader: DictionaryBinaryReader,
+    ): SuccinctBitVector = reader.loadSystemYomiLbsIndex(yomiTrie)
 
     @Singleton
     @Provides
     @SystemSuccinctBitVectorIsLeafYomi
-    fun provideSuccinctBitVectorIsLeaf(@SystemYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.isLeaf)
+    fun provideSuccinctBitVectorIsLeaf(
+        @SystemYomiTrie yomiTrie: LOUDSWithTermId,
+        reader: DictionaryBinaryReader,
+    ): SuccinctBitVector = reader.loadSystemYomiLeafIndex(yomiTrie)
 
     @Singleton
     @Provides
     @SystemSuccinctBitVectorTokenArray
-    fun provideSystemSuccinctBitVectorTokenArray(@SystemTokenArray tokenArray: TokenArray): SuccinctBitVector =
-        SuccinctBitVector(tokenArray.bitvector)
+    fun provideSystemSuccinctBitVectorTokenArray(
+        @SystemTokenArray tokenArray: TokenArray,
+        reader: DictionaryBinaryReader,
+    ): SuccinctBitVector = reader.loadSystemTokenIndex(tokenArray)
 
     @Singleton
     @Provides
     @SystemSuccinctBitVectorTangoLBS
-    fun provideSystemSuccinctBitVectorTangoLBS(@SystemTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
-        SuccinctBitVector(tangoTrie.LBS)
+    fun provideSystemSuccinctBitVectorTangoLBS(
+        @SystemTangoTrie tangoTrie: LOUDS,
+        reader: DictionaryBinaryReader,
+    ): SuccinctBitVector = reader.loadSystemTangoLbsIndex(tangoTrie)
 
 
     @SingleKanjiTangoTrie
@@ -338,26 +346,26 @@ object AppModule {
     @Singleton
     @Provides
     @SingleKanjiSuccinctBitVectorLBSYomi
-    fun provideSingleKanjiSuccinctBitVectorLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.LBS)
+    fun provideSingleKanjiSuccinctBitVectorLBSYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLbsIndex(DictionaryFileKey.SINGLE_KANJI_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @SingleKanjiSuccinctBitVectorIsLeafYomi
-    fun provideSingleKanjiSuccinctBitVectorIsLeafYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.isLeaf)
+    fun provideSingleKanjiSuccinctBitVectorIsLeafYomi(@SingleKanjiYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLeafIndex(DictionaryFileKey.SINGLE_KANJI_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @SingleKanjiSuccinctBitVectorTokenArray
-    fun provideSingleKanjiSuccinctBitVectorTokenArray(@SingleKanjiTokenArray tokenArray: TokenArray): SuccinctBitVector =
-        SuccinctBitVector(tokenArray.bitvector)
+    fun provideSingleKanjiSuccinctBitVectorTokenArray(@SingleKanjiTokenArray tokenArray: TokenArray, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTokenIndex(DictionaryFileKey.SINGLE_KANJI_TOKEN, tokenArray)
 
     @Singleton
     @Provides
     @SingleKanjiSuccinctBitVectorTangoLBS
-    fun provideSSingleKanjiSuccinctBitVectorTangoLBS(@SingleKanjiTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
-        SuccinctBitVector(tangoTrie.LBS)
+    fun provideSSingleKanjiSuccinctBitVectorTangoLBS(@SingleKanjiTangoTrie tangoTrie: LOUDS, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTangoLbsIndex(DictionaryFileKey.SINGLE_KANJI_TANGO, tangoTrie)
 
     @EmojiTangoTrie
     @Singleton
@@ -383,26 +391,26 @@ object AppModule {
     @Singleton
     @Provides
     @EmojiSuccinctBitVectorLBSYomi
-    fun provideEmojiSuccinctBitVectorLBSYomi(@EmojiYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.LBS)
+    fun provideEmojiSuccinctBitVectorLBSYomi(@EmojiYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLbsIndex(DictionaryFileKey.EMOJI_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @EmojiSuccinctBitVectorIsLeafYomi
-    fun provideEmojiSuccinctBitVectorIsLeafYomi(@EmojiYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.isLeaf)
+    fun provideEmojiSuccinctBitVectorIsLeafYomi(@EmojiYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLeafIndex(DictionaryFileKey.EMOJI_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @EmojiSuccinctBitVectorTokenArray
-    fun provideEmojiSuccinctBitVectorTokenArray(@EmojiTokenArray tokenArray: TokenArray): SuccinctBitVector =
-        SuccinctBitVector(tokenArray.bitvector)
+    fun provideEmojiSuccinctBitVectorTokenArray(@EmojiTokenArray tokenArray: TokenArray, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTokenIndex(DictionaryFileKey.EMOJI_TOKEN, tokenArray)
 
     @Singleton
     @Provides
     @EmojiSuccinctBitVectorTangoLBS
-    fun provideEmojiSuccinctBitVectorTangoLBS(@EmojiTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
-        SuccinctBitVector(tangoTrie.LBS)
+    fun provideEmojiSuccinctBitVectorTangoLBS(@EmojiTangoTrie tangoTrie: LOUDS, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTangoLbsIndex(DictionaryFileKey.EMOJI_TANGO, tangoTrie)
 
     @EmoticonTangoTrie
     @Singleton
@@ -428,26 +436,26 @@ object AppModule {
     @Singleton
     @Provides
     @EmoticonSuccinctBitVectorLBSYomi
-    fun provideEmoticonSuccinctBitVectorLBSYomi(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.LBS)
+    fun provideEmoticonSuccinctBitVectorLBSYomi(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLbsIndex(DictionaryFileKey.EMOTICON_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @EmoticonSuccinctBitVectorIsLeafYomi
-    fun provideEmoticonSuccinctBitVectorIsLeafYomi(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.isLeaf)
+    fun provideEmoticonSuccinctBitVectorIsLeafYomi(@EmoticonYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLeafIndex(DictionaryFileKey.EMOTICON_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @EmoticonSuccinctBitVectorTokenArray
-    fun provideEmoticonSuccinctBitVectorTokenArray(@EmoticonTokenArray tokenArray: TokenArray): SuccinctBitVector =
-        SuccinctBitVector(tokenArray.bitvector)
+    fun provideEmoticonSuccinctBitVectorTokenArray(@EmoticonTokenArray tokenArray: TokenArray, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTokenIndex(DictionaryFileKey.EMOTICON_TOKEN, tokenArray)
 
     @Singleton
     @Provides
     @EmoticonSuccinctBitVectorTangoLBS
-    fun provideEmoticonSuccinctBitVectorTangoLBS(@EmoticonTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
-        SuccinctBitVector(tangoTrie.LBS)
+    fun provideEmoticonSuccinctBitVectorTangoLBS(@EmoticonTangoTrie tangoTrie: LOUDS, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTangoLbsIndex(DictionaryFileKey.EMOTICON_TANGO, tangoTrie)
 
     @SymbolTangoTrie
     @Singleton
@@ -473,26 +481,26 @@ object AppModule {
     @Singleton
     @Provides
     @SymbolSuccinctBitVectorLBSYomi
-    fun provideSymbolSuccinctBitVectorLBSYomi(@SymbolYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.LBS)
+    fun provideSymbolSuccinctBitVectorLBSYomi(@SymbolYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLbsIndex(DictionaryFileKey.SYMBOL_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @SymbolSuccinctBitVectorIsLeafYomi
-    fun provideSymbolSuccinctBitVectorIsLeafYomi(@SymbolYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.isLeaf)
+    fun provideSymbolSuccinctBitVectorIsLeafYomi(@SymbolYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLeafIndex(DictionaryFileKey.SYMBOL_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @SymbolSuccinctBitVectorTokenArray
-    fun provideSymbolSuccinctBitVectorTokenArray(@SymbolTokenArray tokenArray: TokenArray): SuccinctBitVector =
-        SuccinctBitVector(tokenArray.bitvector)
+    fun provideSymbolSuccinctBitVectorTokenArray(@SymbolTokenArray tokenArray: TokenArray, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTokenIndex(DictionaryFileKey.SYMBOL_TOKEN, tokenArray)
 
     @Singleton
     @Provides
     @SymbolSuccinctBitVectorTangoLBS
-    fun provideSymbolSuccinctBitVectorTangoLBS(@SymbolTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
-        SuccinctBitVector(tangoTrie.LBS)
+    fun provideSymbolSuccinctBitVectorTangoLBS(@SymbolTangoTrie tangoTrie: LOUDS, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTangoLbsIndex(DictionaryFileKey.SYMBOL_TANGO, tangoTrie)
 
 
     @ReadingCorrectionTangoTrie
@@ -519,26 +527,26 @@ object AppModule {
     @Singleton
     @Provides
     @ReadingCorrectionSuccinctBitVectorLBSYomi
-    fun provideReadingCorrectionSuccinctBitVectorLBSYomi(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.LBS)
+    fun provideReadingCorrectionSuccinctBitVectorLBSYomi(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLbsIndex(DictionaryFileKey.READING_CORRECTION_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @ReadingCorrectionSuccinctBitVectorIsLeafYomi
-    fun provideReadingCorrectionSuccinctBitVectorIsLeafYomi(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.isLeaf)
+    fun provideReadingCorrectionSuccinctBitVectorIsLeafYomi(@ReadingCorrectionYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLeafIndex(DictionaryFileKey.READING_CORRECTION_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @ReadingCorrectionSuccinctBitVectorTokenArray
-    fun provideReadingCorrectionSuccinctBitVectorTokenArray(@ReadingCorrectionTokenArray tokenArray: TokenArray): SuccinctBitVector =
-        SuccinctBitVector(tokenArray.bitvector)
+    fun provideReadingCorrectionSuccinctBitVectorTokenArray(@ReadingCorrectionTokenArray tokenArray: TokenArray, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTokenIndex(DictionaryFileKey.READING_CORRECTION_TOKEN, tokenArray)
 
     @Singleton
     @Provides
     @ReadingCorrectionSuccinctBitVectorTangoLBS
-    fun provideReadingCorrectionSuccinctBitVectorTangoLBS(@ReadingCorrectionTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
-        SuccinctBitVector(tangoTrie.LBS)
+    fun provideReadingCorrectionSuccinctBitVectorTangoLBS(@ReadingCorrectionTangoTrie tangoTrie: LOUDS, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTangoLbsIndex(DictionaryFileKey.READING_CORRECTION_TANGO, tangoTrie)
 
     @KotowazaTangoTrie
     @Singleton
@@ -564,26 +572,26 @@ object AppModule {
     @Singleton
     @Provides
     @KotowazaSuccinctBitVectorLBSYomi
-    fun provideKotowazaSuccinctBitVectorLBSYomi(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.LBS)
+    fun provideKotowazaSuccinctBitVectorLBSYomi(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLbsIndex(DictionaryFileKey.KOTOWAZA_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @KotowazaSuccinctBitVectorIsLeafYomi
-    fun provideKotowazaSuccinctBitVectorIsLeafYomi(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId): SuccinctBitVector =
-        SuccinctBitVector(yomiTrie.isLeaf)
+    fun provideKotowazaSuccinctBitVectorIsLeafYomi(@KotowazaYomiTrie yomiTrie: LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadYomiLeafIndex(DictionaryFileKey.KOTOWAZA_YOMI, yomiTrie)
 
     @Singleton
     @Provides
     @KotowazaSuccinctBitVectorTokenArray
-    fun provideKotowazaSuccinctBitVectorTokenArray(@KotowazaTokenArray tokenArray: TokenArray): SuccinctBitVector =
-        SuccinctBitVector(tokenArray.bitvector)
+    fun provideKotowazaSuccinctBitVectorTokenArray(@KotowazaTokenArray tokenArray: TokenArray, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTokenIndex(DictionaryFileKey.KOTOWAZA_TOKEN, tokenArray)
 
     @Singleton
     @Provides
     @KotowazaSuccinctBitVectorTangoLBS
-    fun provideKotowazaSuccinctBitVectorTangoLBS(@KotowazaTangoTrie tangoTrie: LOUDS): SuccinctBitVector =
-        SuccinctBitVector(tangoTrie.LBS)
+    fun provideKotowazaSuccinctBitVectorTangoLBS(@KotowazaTangoTrie tangoTrie: LOUDS, reader: DictionaryBinaryReader): SuccinctBitVector =
+        reader.loadTangoLbsIndex(DictionaryFileKey.KOTOWAZA_TANGO, tangoTrie)
 
     @Singleton
     @Provides
@@ -805,30 +813,30 @@ object AppModule {
     @Singleton
     @Provides
     @EnglishSuccinctBitVectorLBSReading
-    fun provideEnglishSuccinctBitVectorLBS(@EnglishReadingLOUDS englishLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId): SuccinctBitVector {
-        return SuccinctBitVector(englishLOUDS.LBS)
+    fun provideEnglishSuccinctBitVectorLBS(@EnglishReadingLOUDS englishLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector {
+        return reader.loadEnglishReadingLbsIndex(englishLOUDS)
     }
 
     @Singleton
     @Provides
     @EnglishSuccinctBitVectorReadingIsLeaf
-    fun provideEnglishSuccinctBitVectorIsLeaf(@EnglishReadingLOUDS englishLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId): SuccinctBitVector {
-        return SuccinctBitVector(englishLOUDS.isLeaf)
+    fun provideEnglishSuccinctBitVectorIsLeaf(@EnglishReadingLOUDS englishLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId, reader: DictionaryBinaryReader): SuccinctBitVector {
+        return reader.loadEnglishReadingLeafIndex(englishLOUDS)
     }
 
     @Singleton
     @Provides
     @EnglishSuccinctBitVectorLBSWord
-    fun provideEnglishSuccinctBitVectorWord(@EnglishWordLOUDS englishLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS): SuccinctBitVector {
-        return SuccinctBitVector(englishLOUDS.LBS)
+    fun provideEnglishSuccinctBitVectorWord(@EnglishWordLOUDS englishLOUDS: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS, reader: DictionaryBinaryReader): SuccinctBitVector {
+        return reader.loadEnglishWordLbsIndex(englishLOUDS)
     }
 
     @Singleton
     @Provides
     @EnglishSuccinctBitVectorTokenArray
-    fun provideEnglishSuccinctBitVectorTokenArray(@EnglishTokenArray englishTokenArray: com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray): SuccinctBitVector {
+    fun provideEnglishSuccinctBitVectorTokenArray(@EnglishTokenArray englishTokenArray: com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray, reader: DictionaryBinaryReader): SuccinctBitVector {
         Timber.d("provideEnglishSuccinctBitVectorTokenArray: ${englishTokenArray.bitvector.size()}")
-        return SuccinctBitVector(englishTokenArray.bitvector)
+        return reader.loadEnglishTokenIndex(englishTokenArray)
     }
 
 }
