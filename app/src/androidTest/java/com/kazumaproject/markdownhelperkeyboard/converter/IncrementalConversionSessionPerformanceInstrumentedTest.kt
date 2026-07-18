@@ -5,12 +5,18 @@ import android.os.Debug
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.kazumaproject.Louds.LOUDS
+import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.session.CandidateQueryMode
 import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBackend
 import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiConversionSession
 import com.kazumaproject.markdownhelperkeyboard.converter.session.KanaKanjiQueryRequest
 import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileKey
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFileSpecs
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import dagger.hilt.android.EntryPointAccessors
@@ -31,6 +37,282 @@ import kotlin.system.measureNanoTime
 
 @RunWith(AndroidJUnit4::class)
 class IncrementalConversionSessionPerformanceInstrumentedTest {
+
+    @Test
+    fun compactCoreDictionariesMatchSerializedAssetsOnDevice() {
+        val arguments = InstrumentationRegistry.getArguments()
+        assumeTrue(arguments.getString("compactDictionaryParityProbe") == "true")
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            KanaKanjiEngineEntryPoint::class.java,
+        )
+        val reader = entryPoint.dictionaryBinaryReader()
+        val triples = listOf(
+            Triple(DictionaryFileKey.SYSTEM_TANGO, DictionaryFileKey.SYSTEM_YOMI, DictionaryFileKey.SYSTEM_TOKEN),
+            Triple(DictionaryFileKey.SINGLE_KANJI_TANGO, DictionaryFileKey.SINGLE_KANJI_YOMI, DictionaryFileKey.SINGLE_KANJI_TOKEN),
+            Triple(DictionaryFileKey.EMOJI_TANGO, DictionaryFileKey.EMOJI_YOMI, DictionaryFileKey.EMOJI_TOKEN),
+            Triple(DictionaryFileKey.EMOTICON_TANGO, DictionaryFileKey.EMOTICON_YOMI, DictionaryFileKey.EMOTICON_TOKEN),
+            Triple(DictionaryFileKey.SYMBOL_TANGO, DictionaryFileKey.SYMBOL_YOMI, DictionaryFileKey.SYMBOL_TOKEN),
+            Triple(DictionaryFileKey.READING_CORRECTION_TANGO, DictionaryFileKey.READING_CORRECTION_YOMI, DictionaryFileKey.READING_CORRECTION_TOKEN),
+            Triple(DictionaryFileKey.KOTOWAZA_TANGO, DictionaryFileKey.KOTOWAZA_YOMI, DictionaryFileKey.KOTOWAZA_TOKEN),
+        )
+        val report = buildString {
+            appendLine("device=${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} API ${android.os.Build.VERSION.SDK_INT}")
+            triples.forEach { (tangoKey, yomiKey, tokenKey) ->
+                val originalTango = context.assets.open(DictionaryFileSpecs.get(tangoKey).bundledAssetPath).let { input ->
+                    LOUDS().readExternalNotCompress(reader.openZipAwareObjectInputStream(input, tangoKey.name))
+                }
+                val originalYomi = context.assets.open(DictionaryFileSpecs.get(yomiKey).bundledAssetPath).let { input ->
+                    LOUDSWithTermId().readExternalNotCompress(reader.openZipAwareObjectInputStream(input, yomiKey.name))
+                }
+                val originalToken = context.assets.open(DictionaryFileSpecs.get(tokenKey).bundledAssetPath).let { input ->
+                    TokenArray().also { tokenArray ->
+                        tokenArray.readExternal(reader.openZipAwareObjectInputStream(input, tokenKey.name))
+                    }
+                }.also(reader::readPosTableInto)
+                val compactTango = reader.loadLouds(tangoKey)
+                val compactYomi = reader.loadLoudsWithTermId(yomiKey)
+                val compactToken = reader.loadTokenArray(tokenKey)
+                val category = DictionaryFileSpecs.get(tangoKey).category
+
+                assertEquals("$category tango LBS", originalTango.LBS, compactTango.LBS)
+                assertEquals("$category tango leaves", originalTango.isLeaf, compactTango.isLeaf)
+                assertTrue("$category tango labels", originalTango.getAllLabels().contentEquals(compactTango.getAllLabels()))
+                assertEquals("$category yomi LBS", originalYomi.LBS, compactYomi.LBS)
+                assertEquals("$category yomi leaves", originalYomi.isLeaf, compactYomi.isLeaf)
+                assertTrue("$category yomi labels", originalYomi.getAllLabels().contentEquals(compactYomi.getAllLabels()))
+                assertTrue("$category term ids", originalYomi.getAllTermIds().contentEquals(compactYomi.getAllTermIds()))
+                assertTrue("$category POS indices", originalToken.getPosTableIndices().contentEquals(compactToken.getPosTableIndices()))
+                assertTrue("$category word costs", originalToken.getWordCosts().contentEquals(compactToken.getWordCosts()))
+                assertTrue("$category node ids", originalToken.getNodeIds().contentEquals(compactToken.getNodeIds()))
+                assertEquals("$category token bits", originalToken.bitvector, compactToken.bitvector)
+                assertTrue("$category left ids", originalToken.leftIds.contentEquals(compactToken.leftIds))
+                assertTrue("$category right ids", originalToken.rightIds.contentEquals(compactToken.rightIds))
+                appendLine(
+                    "$category=exact," +
+                        "tangoLabels=${compactTango.getAllLabels().size}," +
+                        "yomiLabels=${compactYomi.getAllLabels().size}," +
+                        "tokens=${compactToken.getNodeIds().size}",
+                )
+            }
+            val originalEnglishReading = context.assets.open(
+                DictionaryFileSpecs.get(DictionaryFileKey.ENGLISH_READING).bundledAssetPath,
+            ).let { input ->
+                com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId()
+                    .readExternalNotCompress(
+                        reader.openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_READING.name),
+                    )
+            }
+            val originalEnglishWord = context.assets.open(
+                DictionaryFileSpecs.get(DictionaryFileKey.ENGLISH_WORD).bundledAssetPath,
+            ).let { input ->
+                com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS()
+                    .readExternalNotCompress(
+                        reader.openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_WORD.name),
+                    )
+            }
+            val originalEnglishToken = context.assets.open(
+                DictionaryFileSpecs.get(DictionaryFileKey.ENGLISH_TOKEN).bundledAssetPath,
+            ).let { input ->
+                com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray()
+                    .readExternal(
+                        reader.openZipAwareObjectInputStream(input, DictionaryFileKey.ENGLISH_TOKEN.name),
+                    )
+            }
+            val compactEnglishReading = reader.loadEnglishReading(DictionaryFileKey.ENGLISH_READING)
+            val compactEnglishWord = reader.loadEnglishWord(DictionaryFileKey.ENGLISH_WORD)
+            val compactEnglishToken = reader.loadEnglishToken(DictionaryFileKey.ENGLISH_TOKEN)
+            assertEquals("ENGLISH reading LBS", originalEnglishReading.LBS, compactEnglishReading.LBS)
+            assertEquals("ENGLISH reading leaves", originalEnglishReading.isLeaf, compactEnglishReading.isLeaf)
+            assertTrue("ENGLISH reading labels", originalEnglishReading.labels.contentEquals(compactEnglishReading.labels))
+            assertTrue("ENGLISH term ids", originalEnglishReading.termIdsSaved.contentEquals(compactEnglishReading.termIdsSaved))
+            assertEquals("ENGLISH word LBS", originalEnglishWord.LBS, compactEnglishWord.LBS)
+            assertEquals("ENGLISH word leaves", originalEnglishWord.isLeaf, compactEnglishWord.isLeaf)
+            assertTrue("ENGLISH word labels", originalEnglishWord.labels.contentEquals(compactEnglishWord.labels))
+            assertTrue("ENGLISH word costs", originalEnglishToken.getWordCosts().contentEquals(compactEnglishToken.getWordCosts()))
+            assertTrue("ENGLISH node ids", originalEnglishToken.getNodeIds().contentEquals(compactEnglishToken.getNodeIds()))
+            assertEquals("ENGLISH token bits", originalEnglishToken.bitvector, compactEnglishToken.bitvector)
+            appendLine(
+                "ENGLISH=exact,readingLabels=${compactEnglishReading.labels.size}," +
+                    "wordLabels=${compactEnglishWord.labels.size}," +
+                    "tokens=${compactEnglishToken.getNodeIds().size}",
+            )
+            appendLine("allDictionaryFieldsExact=true")
+        }
+        File(context.filesDir, "conversion-perf").apply { mkdirs() }
+            .resolve("compact-dictionary-parity.txt")
+            .writeText(report)
+        println(report)
+    }
+
+    @Test
+    fun measureDictionaryColdLoadBreakdownOnDevice() {
+        val arguments = InstrumentationRegistry.getArguments()
+        assumeTrue(arguments.getString("dictionaryColdLoadProbe") == "true")
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            KanaKanjiEngineEntryPoint::class.java,
+        )
+        val reader = entryPoint.dictionaryBinaryReader()
+        val retained = ArrayList<Any>(64)
+        val phases = linkedMapOf<String, Double>()
+
+        fun measure(name: String, block: () -> Unit) {
+            phases[name] = measureNanoTime(block) / 1_000_000.0
+        }
+
+        fun loadTriple(
+            name: String,
+            tangoKey: DictionaryFileKey,
+            yomiKey: DictionaryFileKey,
+            tokenKey: DictionaryFileKey,
+        ) {
+            lateinit var tango: com.kazumaproject.Louds.LOUDS
+            lateinit var yomi: com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
+            lateinit var token: com.kazumaproject.dictionary.TokenArray
+            measure("$name.data") {
+                tango = reader.loadLouds(tangoKey)
+                yomi = reader.loadLoudsWithTermId(yomiKey)
+                token = reader.loadTokenArray(tokenKey)
+                retained += tango
+                retained += yomi
+                retained += token
+            }
+            measure("$name.indexes") {
+                retained += reader.loadYomiLbsIndex(yomiKey, yomi)
+                retained += reader.loadYomiLeafIndex(yomiKey, yomi)
+                retained += reader.loadTokenIndex(tokenKey, token)
+                retained += reader.loadTangoLbsIndex(tangoKey, tango)
+            }
+        }
+
+        forceGc()
+        measure("connection") { retained += reader.loadConnectionMatrix() }
+        loadTriple(
+            "system",
+            DictionaryFileKey.SYSTEM_TANGO,
+            DictionaryFileKey.SYSTEM_YOMI,
+            DictionaryFileKey.SYSTEM_TOKEN,
+        )
+        loadTriple(
+            "singleKanji",
+            DictionaryFileKey.SINGLE_KANJI_TANGO,
+            DictionaryFileKey.SINGLE_KANJI_YOMI,
+            DictionaryFileKey.SINGLE_KANJI_TOKEN,
+        )
+        loadTriple(
+            "emoji",
+            DictionaryFileKey.EMOJI_TANGO,
+            DictionaryFileKey.EMOJI_YOMI,
+            DictionaryFileKey.EMOJI_TOKEN,
+        )
+        loadTriple(
+            "emoticon",
+            DictionaryFileKey.EMOTICON_TANGO,
+            DictionaryFileKey.EMOTICON_YOMI,
+            DictionaryFileKey.EMOTICON_TOKEN,
+        )
+        loadTriple(
+            "symbol",
+            DictionaryFileKey.SYMBOL_TANGO,
+            DictionaryFileKey.SYMBOL_YOMI,
+            DictionaryFileKey.SYMBOL_TOKEN,
+        )
+        loadTriple(
+            "readingCorrection",
+            DictionaryFileKey.READING_CORRECTION_TANGO,
+            DictionaryFileKey.READING_CORRECTION_YOMI,
+            DictionaryFileKey.READING_CORRECTION_TOKEN,
+        )
+        loadTriple(
+            "kotowaza",
+            DictionaryFileKey.KOTOWAZA_TANGO,
+            DictionaryFileKey.KOTOWAZA_YOMI,
+            DictionaryFileKey.KOTOWAZA_TOKEN,
+        )
+        val report = buildString {
+            appendLine("device=${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} API ${android.os.Build.VERSION.SDK_INT}")
+            phases.forEach { (name, milliseconds) -> appendLine("$name=$milliseconds") }
+            appendLine("totalMs=${phases.values.sum()}")
+        }
+        File(context.filesDir, "conversion-perf").apply { mkdirs() }
+            .resolve("dictionary-cold-load-breakdown.txt")
+            .writeText(report)
+        println(report)
+        assertTrue(retained.isNotEmpty())
+    }
+
+    @Test
+    fun measureColdStartConversionOnDevice() = runBlocking {
+        val arguments = InstrumentationRegistry.getArguments()
+        assumeTrue(arguments.getString("conversionColdStartProbe") == "true")
+        val backend = arguments.getString("conversionColdStartBackend")
+            ?.let(ConversionBackend::valueOf)
+            ?: ConversionBackend.INCREMENTAL_SESSION
+        val firstInputKind = arguments.getString("conversionColdStartFirstInput")
+            ?: "JAPANESE"
+        val firstInput = when (firstInputKind) {
+            "ENGLISH" -> "andr"
+            else -> "このあぷりabc123へんかん"
+        }
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        forceGc()
+        lateinit var entryPoint: KanaKanjiEngineEntryPoint
+        val entryPointNs = measureNanoTime {
+            entryPoint = EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                KanaKanjiEngineEntryPoint::class.java,
+            )
+        }
+        lateinit var engine: KanaKanjiEngine
+        val engineInitializationNs = measureNanoTime {
+            engine = entryPoint.kanaKanjiEngine()
+        }
+        val repository = entryPoint.userDictionaryRepository()
+
+        suspend fun queryOnce(input: String): Pair<Long, List<Candidate>> {
+            lateinit var candidates: List<Candidate>
+            val elapsedNs = measureNanoTime {
+                candidates = KanaKanjiConversionSession(engine, backend).query(
+                    request(
+                        input = input,
+                        repository = repository,
+                        mode = CandidateQueryMode.PREDICTION,
+                        bunsetsuSeparation = true,
+                    ),
+                ).candidates
+            }
+            return elapsedNs to candidates
+        }
+
+        val (firstQueryNs, firstCandidates) = queryOnce(firstInput)
+        val (secondQueryNs, secondCandidates) = queryOnce(firstInput)
+        val report = buildString {
+            appendLine("device=${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} API ${android.os.Build.VERSION.SDK_INT}")
+            appendLine("backend=$backend")
+            appendLine("firstInputKind=$firstInputKind")
+            appendLine("firstInput=$firstInput")
+            appendLine("entryPointMs=${entryPointNs / 1_000_000.0}")
+            appendLine("engineInitializationMs=${engineInitializationNs / 1_000_000.0}")
+            appendLine("firstQueryMs=${firstQueryNs / 1_000_000.0}")
+            appendLine("secondQueryMs=${secondQueryNs / 1_000_000.0}")
+            appendLine("engineAndFirstQueryMs=${(engineInitializationNs + firstQueryNs) / 1_000_000.0}")
+            appendLine("firstCandidate=${firstCandidates.firstOrNull()?.string.orEmpty()}")
+            appendLine("candidateParity=${firstCandidates.take(20).map { it.fingerprint() } == secondCandidates.take(20).map { it.fingerprint() }}")
+        }
+        File(context.filesDir, "conversion-perf").apply { mkdirs() }
+            .resolve("cold-start-${backend.name.lowercase()}-${firstInputKind.lowercase()}.txt")
+            .writeText(report)
+        println(report)
+        assertTrue(firstCandidates.isNotEmpty())
+        assertEquals(
+            firstCandidates.take(20).map { it.fingerprint() },
+            secondCandidates.take(20).map { it.fingerprint() },
+        )
+    }
 
     @Test
     fun measureEngineRetainedPayloadOnDevice() {
@@ -153,7 +435,18 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
         forceGc()
         val warmed = DetailedMemorySnapshot.capture("warmedSession")
 
-        val snapshots = listOf(application, component, engineLoaded, warmed)
+        session.query(
+            request(
+                input = "andr",
+                repository = repository,
+                mode = CandidateQueryMode.PREDICTION,
+                bunsetsuSeparation = true,
+            ),
+        )
+        forceGc()
+        val englishLoaded = DetailedMemorySnapshot.capture("englishLoaded")
+
+        val snapshots = listOf(application, component, engineLoaded, warmed, englishLoaded)
         val report = buildString {
             appendLine(
                 "device=${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} " +
@@ -163,6 +456,7 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
             snapshots.forEach { appendLine(it.asReportLine()) }
             appendLine("engineDelta=${engineLoaded.deltaFrom(component).asReportLine()}")
             appendLine("warmupDelta=${warmed.deltaFrom(engineLoaded).asReportLine()}")
+            appendLine("englishDelta=${englishLoaded.deltaFrom(warmed).asReportLine()}")
         }
         File(context.filesDir, "conversion-perf").apply { mkdirs() }
             .resolve("engine-memory-breakdown.txt")

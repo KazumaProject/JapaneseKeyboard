@@ -3,7 +3,10 @@ package com.kazumaproject.markdownhelperkeyboard.converter.bitset
 import java.util.BitSet
 import kotlin.math.min
 
-class SuccinctBitVector(private val bitSet: BitSet) {
+class SuccinctBitVector private constructor(
+    private val bitSet: BitSet,
+    precomputed: Precomputed?,
+) {
     // 定数: 大ブロックサイズ = 256ビット、 小ブロックサイズ = 8ビット
     private val bigBlockSize = 256
     private val smallBlockSize = 8
@@ -22,39 +25,56 @@ class SuccinctBitVector(private val bitSet: BitSet) {
 
     private val n: Int = bitSet.size()
 
+    constructor(bitSet: BitSet) : this(bitSet, null)
+
     init {
         val n = bitSet.size()
         val numBigBlocks = (n + bigBlockSize - 1) / bigBlockSize
-        bigBlockRanks = IntArray(numBigBlocks)
         val numSmallBlocks = (n + smallBlockSize - 1) / smallBlockSize
-        smallBlockRanks = ByteArray(numSmallBlocks)
+        if (precomputed != null) {
+            require(precomputed.bigBlockRanks.size == numBigBlocks) {
+                "Succinct big-block rank size mismatch"
+            }
+            require(precomputed.smallBlockRanks.size == numSmallBlocks) {
+                "Succinct small-block rank size mismatch"
+            }
+            require(precomputed.totalOnes == bitSet.cardinality()) {
+                "Succinct total-one count mismatch"
+            }
+            bigBlockRanks = precomputed.bigBlockRanks
+            smallBlockRanks = precomputed.smallBlockRanks
+            totalOnes = precomputed.totalOnes
+        } else {
+            bigBlockRanks = IntArray(numBigBlocks)
+            smallBlockRanks = ByteArray(numSmallBlocks)
 
-        var rank = 0
-        // 大ブロックごとに累積値を計算
-        for (big in 0 until numBigBlocks) {
-            val bigStart = big * bigBlockSize
-            // この大ブロック開始時点での累積 1 数
-            bigBlockRanks[big] = rank
+            var rank = 0
+            // 大ブロックごとに累積値を計算
+            for (big in 0 until numBigBlocks) {
+                val bigStart = big * bigBlockSize
+                // この大ブロック開始時点での累積 1 数
+                bigBlockRanks[big] = rank
 
-            // 大ブロック内を小ブロック（8 ビット単位）に分割して計算
-            for (small in 0 until numSmallBlocksPerBig) {
-                val globalSmallIndex = big * numSmallBlocksPerBig + small
-                // 範囲外にならないようにチェック
-                if (globalSmallIndex >= numSmallBlocks) break
-                // 小ブロック開始時の「大ブロック内での累積 1 数」
-                smallBlockRanks[globalSmallIndex] = (rank - bigBlockRanks[big]).toByte()
-                val smallStart = bigStart + small * smallBlockSize
-                // 小ブロック内の各ビットを走査して 1 をカウント
-                for (j in 0 until smallBlockSize) {
-                    val pos = smallStart + j
-                    if (pos >= n) break
-                    if (bitSet.get(pos)) {
-                        rank++
+                // 大ブロック内を小ブロック（8 ビット単位）に分割して計算
+                for (small in 0 until numSmallBlocksPerBig) {
+                    val globalSmallIndex = big * numSmallBlocksPerBig + small
+                    // 範囲外にならないようにチェック
+                    if (globalSmallIndex >= numSmallBlocks) break
+                    // 小ブロック開始時の「大ブロック内での累積 1 数」
+                    smallBlockRanks[globalSmallIndex] = (rank - bigBlockRanks[big]).toByte()
+                    val smallStart = bigStart + small * smallBlockSize
+                    // 小ブロック内の各ビットを走査して 1 をカウント
+                    for (j in 0 until smallBlockSize) {
+                        val pos = smallStart + j
+                        if (pos >= n) break
+                        if (bitSet.get(pos)) {
+                            rank++
+                        }
                     }
                 }
             }
+            totalOnes = rank
         }
-        totalOnes = rank
     }
 
     fun size(): Int = n
@@ -212,4 +232,22 @@ class SuccinctBitVector(private val bitSet: BitSet) {
         }
         return -1 // 見つからなかった場合
     }
+
+    companion object {
+        fun fromPrecomputed(
+            bitSet: BitSet,
+            bigBlockRanks: IntArray,
+            smallBlockRanks: ByteArray,
+            totalOnes: Int,
+        ): SuccinctBitVector = SuccinctBitVector(
+            bitSet = bitSet,
+            precomputed = Precomputed(bigBlockRanks, smallBlockRanks, totalOnes),
+        )
+    }
+
+    private data class Precomputed(
+        val bigBlockRanks: IntArray,
+        val smallBlockRanks: ByteArray,
+        val totalOnes: Int,
+    )
 }

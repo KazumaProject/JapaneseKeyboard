@@ -128,6 +128,10 @@ class LOUDSWithTermId {
 
     private fun allTermIds(): IntArray = packedTermIds?.toIntArray() ?: termIdsSaved
 
+    fun getAllLabels(): CharArray = allLabels()
+
+    fun getAllTermIds(): IntArray = allTermIds()
+
     private fun installTermIds(values: IntArray) {
         if (values.size >= PACKED_ARRAY_THRESHOLD) {
             packedTermIds = PackedIntArray.from(values)
@@ -1030,7 +1034,22 @@ class LOUDSWithTermId {
             .also { typoCandidateCache[ch] = it }
     }
 
-    private companion object {
-        const val PACKED_ARRAY_THRESHOLD = 500_000
+    companion object {
+        private const val PACKED_ARRAY_THRESHOLD = 500_000
+
+        fun fromPacked(
+            LBS: BitSet,
+            labels: PackedCharArray,
+            isLeaf: BitSet,
+            termIds: PackedIntArray,
+        ): LOUDSWithTermId = LOUDSWithTermId().apply {
+            this.LBS = LBS
+            this.labels = charArrayOf()
+            this.packedLabels = labels
+            this.isLeaf = isLeaf
+            this.termIds = arrayListOf()
+            this.termIdsSaved = intArrayOf()
+            this.packedTermIds = termIds
+        }
     }
 }

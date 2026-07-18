@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
 import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.math.sqrt
 
 object ConnectionMatrix {
@@ -32,6 +34,12 @@ object ConnectionMatrix {
     fun fromCompactInputStream(input: InputStream): CostTable =
         CompactCostTable(input.readBytes())
 
+    fun fromCompactInputStreams(data: InputStream, index: InputStream): CostTable =
+        CompactCostTable(
+            data.readBytes(),
+            readCompactIndex(ByteBuffer.wrap(index.readBytes())),
+        )
+
     private class ShortArrayCostTable(
         private val connectionIds: ShortArray,
         override val matrixSize: Int,
@@ -53,6 +61,7 @@ object ConnectionMatrix {
      */
     private class CompactCostTable(
         private val data: ByteArray,
+        precomputed: CompactIndex? = null,
     ) : CostTable {
         override val matrixSize: Int
         override val entryCount: Int
@@ -86,58 +95,96 @@ object ConnectionMatrix {
             }
             matrixSize = rSize
             entryCount = rSize * lSize
-            defaultCosts = ShortArray(matrixSize)
-            var cursor = HEADER_SIZE
-            defaultCosts.indices.forEach { index ->
-                requireAvailable(cursor, Short.SIZE_BYTES)
-                defaultCosts[index] = readUInt16(cursor).toShort()
-                cursor += Short.SIZE_BYTES
-            }
-            if ((matrixSize and 1) != 0) {
-                requireAvailable(cursor, Short.SIZE_BYTES)
-                cursor += Short.SIZE_BYTES
-            }
-
-            val chunkBitCount = (matrixSize + 7) / 8
-            chunkBitsSize = ((chunkBitCount + 31) / 32) * Int.SIZE_BYTES
-            chunkBitsOffsets = IntArray(matrixSize)
-            compactBitsOffsets = IntArray(matrixSize)
-            valuesOffsets = IntArray(matrixSize)
-            val compactBitsSizes = IntArray(matrixSize)
-            for (rid in 0 until matrixSize) {
-                requireAvailable(cursor, 2 * Short.SIZE_BYTES)
-                val compactBitsSize = readUInt16(cursor)
-                val valuesSize = readUInt16(cursor + Short.SIZE_BYTES)
-                require(compactBitsSize % Int.SIZE_BYTES == 0) {
-                    "Compact bit vector for row $rid is not 32-bit aligned: $compactBitsSize"
+            if (precomputed != null) {
+                require(precomputed.matrixSize == matrixSize) {
+                    "Compact connection index matrix size mismatch"
                 }
-                require(valuesSize % Short.SIZE_BYTES == 0) {
-                    "Compact values for row $rid are not UInt16 aligned: $valuesSize"
+                require(precomputed.entryCount == entryCount) {
+                    "Compact connection index entry count mismatch"
                 }
-                cursor += 2 * Short.SIZE_BYTES
-                requireAvailable(cursor, chunkBitsSize + compactBitsSize + valuesSize)
-                chunkBitsOffsets[rid] = cursor
-                cursor += chunkBitsSize
-                compactBitsOffsets[rid] = cursor
-                compactBitsSizes[rid] = compactBitsSize
-                cursor += compactBitsSize
-                valuesOffsets[rid] = cursor
-                cursor += valuesSize
-            }
-            require(cursor == data.size) {
-                "Compact connection matrix has trailing bytes: parsed=$cursor size=${data.size}"
-            }
+                require(precomputed.defaultCosts.size == matrixSize) {
+                    "Compact connection default-cost size mismatch"
+                }
+                listOf(
+                    precomputed.chunkBitsOffsets,
+                    precomputed.compactBitsOffsets,
+                    precomputed.valuesOffsets,
+                    precomputed.chunkRankStarts,
+                    precomputed.compactRankStarts,
+                ).forEach { values ->
+                    require(values.size == matrixSize) {
+                        "Compact connection row-index size mismatch"
+                    }
+                }
+                precomputed.chunkBitsOffsets.forEach { requireAvailable(it, precomputed.chunkBitsSize) }
+                precomputed.compactBitsOffsets.forEach { requireAvailable(it, 0) }
+                precomputed.valuesOffsets.forEach { requireAvailable(it, 0) }
+                require(
+                    precomputed.chunkRankStarts.all { it in precomputed.rankPrefixes.indices } &&
+                        precomputed.compactRankStarts.all { it in precomputed.rankPrefixes.indices },
+                ) { "Compact connection rank index is out of range" }
+                defaultCosts = precomputed.defaultCosts
+                chunkBitsSize = precomputed.chunkBitsSize
+                chunkBitsOffsets = precomputed.chunkBitsOffsets
+                compactBitsOffsets = precomputed.compactBitsOffsets
+                valuesOffsets = precomputed.valuesOffsets
+                chunkRankStarts = precomputed.chunkRankStarts
+                compactRankStarts = precomputed.compactRankStarts
+                rankPrefixes = precomputed.rankPrefixes
+            } else {
+                defaultCosts = ShortArray(matrixSize)
+                var cursor = HEADER_SIZE
+                defaultCosts.indices.forEach { index ->
+                    requireAvailable(cursor, Short.SIZE_BYTES)
+                    defaultCosts[index] = readUInt16(cursor).toShort()
+                    cursor += Short.SIZE_BYTES
+                }
+                if ((matrixSize and 1) != 0) {
+                    requireAvailable(cursor, Short.SIZE_BYTES)
+                    cursor += Short.SIZE_BYTES
+                }
 
-            val rankBuilder = IntArrayBuilder()
-            chunkRankStarts = IntArray(matrixSize)
-            compactRankStarts = IntArray(matrixSize)
-            for (rid in 0 until matrixSize) {
-                chunkRankStarts[rid] = rankBuilder.size
-                appendRankPrefixes(chunkBitsOffsets[rid], chunkBitsSize, rankBuilder)
-                compactRankStarts[rid] = rankBuilder.size
-                appendRankPrefixes(compactBitsOffsets[rid], compactBitsSizes[rid], rankBuilder)
+                val chunkBitCount = (matrixSize + 7) / 8
+                chunkBitsSize = ((chunkBitCount + 31) / 32) * Int.SIZE_BYTES
+                chunkBitsOffsets = IntArray(matrixSize)
+                compactBitsOffsets = IntArray(matrixSize)
+                valuesOffsets = IntArray(matrixSize)
+                val compactBitsSizes = IntArray(matrixSize)
+                for (rid in 0 until matrixSize) {
+                    requireAvailable(cursor, 2 * Short.SIZE_BYTES)
+                    val compactBitsSize = readUInt16(cursor)
+                    val valuesSize = readUInt16(cursor + Short.SIZE_BYTES)
+                    require(compactBitsSize % Int.SIZE_BYTES == 0) {
+                        "Compact bit vector for row $rid is not 32-bit aligned: $compactBitsSize"
+                    }
+                    require(valuesSize % Short.SIZE_BYTES == 0) {
+                        "Compact values for row $rid are not UInt16 aligned: $valuesSize"
+                    }
+                    cursor += 2 * Short.SIZE_BYTES
+                    requireAvailable(cursor, chunkBitsSize + compactBitsSize + valuesSize)
+                    chunkBitsOffsets[rid] = cursor
+                    cursor += chunkBitsSize
+                    compactBitsOffsets[rid] = cursor
+                    compactBitsSizes[rid] = compactBitsSize
+                    cursor += compactBitsSize
+                    valuesOffsets[rid] = cursor
+                    cursor += valuesSize
+                }
+                require(cursor == data.size) {
+                    "Compact connection matrix has trailing bytes: parsed=$cursor size=${data.size}"
+                }
+
+                val rankBuilder = IntArrayBuilder()
+                chunkRankStarts = IntArray(matrixSize)
+                compactRankStarts = IntArray(matrixSize)
+                for (rid in 0 until matrixSize) {
+                    chunkRankStarts[rid] = rankBuilder.size
+                    appendRankPrefixes(chunkBitsOffsets[rid], chunkBitsSize, rankBuilder)
+                    compactRankStarts[rid] = rankBuilder.size
+                    appendRankPrefixes(compactBitsOffsets[rid], compactBitsSizes[rid], rankBuilder)
+                }
+                rankPrefixes = rankBuilder.toIntArray()
             }
-            rankPrefixes = rankBuilder.toIntArray()
         }
 
         override fun cost(rid: Int, lid: Int): Int {
@@ -243,6 +290,68 @@ object ConnectionMatrix {
         }
     }
 
+    private data class CompactIndex(
+        val matrixSize: Int,
+        val entryCount: Int,
+        val chunkBitsSize: Int,
+        val defaultCosts: ShortArray,
+        val chunkBitsOffsets: IntArray,
+        val compactBitsOffsets: IntArray,
+        val valuesOffsets: IntArray,
+        val chunkRankStarts: IntArray,
+        val compactRankStarts: IntArray,
+        val rankPrefixes: IntArray,
+    )
+
+    private fun readCompactIndex(data: ByteBuffer): CompactIndex {
+        val input = data.duplicate().order(ByteOrder.BIG_ENDIAN)
+        fun requireRemaining(byteCount: Int) {
+            require(byteCount >= 0 && input.remaining() >= byteCount) {
+                "Truncated compact connection index: need=$byteCount remaining=${input.remaining()}"
+            }
+        }
+        fun readInt(): Int {
+            requireRemaining(Int.SIZE_BYTES)
+            return input.int
+        }
+        fun readIntArray(): IntArray {
+            val size = readInt()
+            require(size >= 0 && size <= input.remaining() / Int.SIZE_BYTES) {
+                "Invalid compact connection IntArray size: $size"
+            }
+            return IntArray(size) { readInt() }
+        }
+        fun readShortArray(): ShortArray {
+            val size = readInt()
+            require(size >= 0 && size <= input.remaining() / Short.SIZE_BYTES) {
+                "Invalid compact connection ShortArray size: $size"
+            }
+            return ShortArray(size) {
+                requireRemaining(Short.SIZE_BYTES)
+                input.short
+            }
+        }
+
+        require(readInt() == INDEX_MAGIC) { "Invalid compact connection index magic" }
+        require(readInt() == INDEX_VERSION) { "Unsupported compact connection index version" }
+        val result = CompactIndex(
+            matrixSize = readInt(),
+            entryCount = readInt(),
+            chunkBitsSize = readInt(),
+            defaultCosts = readShortArray(),
+            chunkBitsOffsets = readIntArray(),
+            compactBitsOffsets = readIntArray(),
+            valuesOffsets = readIntArray(),
+            chunkRankStarts = readIntArray(),
+            compactRankStarts = readIntArray(),
+            rankPrefixes = readIntArray(),
+        )
+        require(!input.hasRemaining()) {
+            "Compact connection index has ${input.remaining()} trailing bytes"
+        }
+        return result
+    }
+
     private class IntArrayBuilder(initialCapacity: Int = 4096) {
         private var values = IntArray(initialCapacity)
         var size: Int = 0
@@ -276,6 +385,8 @@ object ConnectionMatrix {
     }
 
     private const val MAGIC = 0xCDAB
+    private const val INDEX_MAGIC = 0x4B434931
+    private const val INDEX_VERSION = 1
     private const val HEADER_SIZE = 8
     private const val RANK_BLOCK_BYTES = 32
     private const val CACHE_SIZE = 1024
