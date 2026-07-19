@@ -59,6 +59,7 @@ object SettingSearchIndex {
         R.id.keyboardDisplayPreferenceFragment,
         R.id.inputMethodPreferenceFragment,
         R.id.candidateConversionPreferenceFragment,
+        R.id.conversionEnginePreferenceFragment,
         R.id.aiConversionPreferenceFragment,
         R.id.operationFeedbackPreferenceFragment,
         R.id.clipboardShortcutPreferenceFragment,
@@ -282,6 +283,7 @@ object SettingSearchIndex {
         add(PreferenceXmlSource(R.xml.pref_keyboard_display, R.id.keyboardDisplayPreferenceFragment, SettingCategory.KEYBOARD_DISPLAY))
         add(PreferenceXmlSource(R.xml.pref_input_method, R.id.inputMethodPreferenceFragment, SettingCategory.INPUT_METHOD))
         add(PreferenceXmlSource(R.xml.pref_candidate_conversion, R.id.candidateConversionPreferenceFragment, SettingCategory.CANDIDATE_CONVERSION))
+        add(PreferenceXmlSource(R.xml.pref_conversion_engine, R.id.conversionEnginePreferenceFragment, SettingCategory.CONVERSION_ENGINE))
         add(PreferenceXmlSource(R.xml.pref_dictionary, R.id.dictionaryPreferenceFragment, SettingCategory.DICTIONARY))
         add(PreferenceXmlSource(R.xml.pref_ai_conversion, R.id.aiConversionPreferenceFragment, SettingCategory.AI_CONVERSION))
         if (AppVariantConfig.hasZenz) {
@@ -316,6 +318,7 @@ object SettingSearchIndex {
 
     private fun legacyCategoryForTab(tabKey: String): SettingCategory =
         when (tabKey) {
+            SettingTabRegistry.TAB_CONVERSION_ENGINE -> SettingCategory.CONVERSION_ENGINE
             SettingTabRegistry.TAB_DICTIONARY -> SettingCategory.DICTIONARY
             SettingTabRegistry.TAB_ZENZ,
             SettingTabRegistry.TAB_GEMMA -> SettingCategory.AI_CONVERSION

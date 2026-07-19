@@ -19,6 +19,11 @@ class CandidateConversionPreferenceFragment : CommonPreferenceFragment() {
 }
 
 @AndroidEntryPoint
+class ConversionEnginePreferenceFragment : CommonPreferenceFragment() {
+    override val preferencesXmlRes: Int = R.xml.pref_conversion_engine
+}
+
+@AndroidEntryPoint
 class AiConversionPreferenceFragment : CommonPreferenceFragment() {
     override val preferencesXmlRes: Int = R.xml.pref_ai_conversion
 }
