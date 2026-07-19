@@ -346,6 +346,7 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
         add(R.xml.pref_keyboard_display)
         add(R.xml.pref_input_method)
         add(R.xml.pref_candidate_conversion)
+        add(R.xml.pref_conversion_engine)
         add(R.xml.pref_clipboard_shortcut)
         add(R.xml.pref_operation_feedback)
         add(R.xml.pref_general_info)
@@ -370,6 +371,7 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
 
     private fun legacySettingXmlResources(): List<Int> = buildList {
         add(R.xml.pref_common_legacy)
+        add(R.xml.pref_conversion_engine)
         add(R.xml.pref_dictionary)
         add(R.xml.pref_kana)
         add(R.xml.pref_qwerty)

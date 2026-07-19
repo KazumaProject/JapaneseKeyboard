@@ -23,6 +23,12 @@
             android:title="@string/setting_category_candidate_conversion_title" />
 
         <Preference
+            android:icon="@drawable/swap_horiz_24px"
+            android:key="setting_route_conversion_engine"
+            android:summary="@string/setting_category_conversion_engine_summary"
+            android:title="@string/conversion_engine_category_title" />
+
+        <Preference
             android:icon="@drawable/dictionary_24px"
             android:key="setting_route_dictionary"
             android:summary="@string/setting_category_dictionary_summary"

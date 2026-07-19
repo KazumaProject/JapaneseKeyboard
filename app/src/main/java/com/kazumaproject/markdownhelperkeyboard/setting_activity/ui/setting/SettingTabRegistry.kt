@@ -19,6 +19,7 @@ data class SettingTabSpec(
 object SettingTabRegistry {
     const val TAB_COMMON = "common"
     const val TAB_THEME = "theme"
+    const val TAB_CONVERSION_ENGINE = "conversion_engine"
     const val TAB_DICTIONARY = "dictionary"
     const val TAB_KANA = "kana"
     const val TAB_QWERTY = "qwerty"
@@ -68,6 +69,13 @@ object SettingTabRegistry {
         }
 
         tabs += listOf(
+            SettingTabSpec(
+                key = TAB_CONVERSION_ENGINE,
+                title = { context -> context.getString(R.string.conversion_engine_category_title) },
+                xmlRes = R.xml.pref_conversion_engine,
+                destinationId = R.id.conversionEnginePreferenceFragment,
+                fragmentFactory = { ConversionEnginePreferenceFragment() },
+            ),
             SettingTabSpec(
                 key = TAB_DICTIONARY,
                 title = { context -> context.getString(R.string.category_dictionary) },
