@@ -175,6 +175,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.buildRomajiC
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.toUserTemplateCandidates
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.EnglishEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
 import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime
 import com.kazumaproject.markdownhelperkeyboard.converter.session.CandidateQueryMode
@@ -1421,6 +1422,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var candidateViewHeight: String? = "2"
     private var candidateTabVisibility: Boolean? = false
     private var conversionBackend: ConversionBackend = ConversionBackend.LEGACY
+    private var predictionConfig: PredictionConfig = PredictionConfig()
     private var kanaKanjiConversionSession: KanaKanjiConversionSession? = null
     private val candidateRequestTracker = CandidateRequestTracker()
     private var symbolKeyboardFirstItem: SymbolMode? = SymbolMode.EMOJI
@@ -1441,7 +1443,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var learnFirstCandidateDictionaryPreference: Boolean? = false
     private var enablePredictionSearchLearnDictionaryPreference: Boolean? = false
-    private var learnPredictionPreference: Int? = 2
+    private var learnPredictionPreference: Int? = 4
+    private var userDictionaryPredictionCandidateLimit: Int = 4
+    private var learnDictionaryPredictionCandidateLimit: Int = 4
     private var circularFlickWindowScale: Float? = 1.0f
     private var circularFlickDirectionCount: Int? = 4
     private var hierarchicalFlickModeSwitchAngleMargin: Int? = 20
@@ -2149,6 +2153,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         keyboardOrder = preferences.keyboardOrder
         candidateTabOrder = preferences.candidateTabOrder
         conversionBackend = preferences.conversionBackend
+        predictionConfig = preferences.predictionConfig
         mozcUTPersonName = preferences.mozcUTPersonName
         mozcUTPlaces = preferences.mozcUTPlaces
         mozcUTWiki = preferences.mozcUTWiki
@@ -2448,6 +2453,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         enablePredictionSearchLearnDictionaryPreference =
             preferences.enablePredictionSearchLearnDictionaryPreference
         learnPredictionPreference = preferences.learnPredictionPreference
+        userDictionaryPredictionCandidateLimit =
+            preferences.userDictionaryPredictionCandidateLimit.coerceIn(1, 8)
+        learnDictionaryPredictionCandidateLimit =
+            preferences.learnDictionaryPredictionCandidateLimit.coerceIn(1, 8)
         circularFlickWindowScale = preferences.circularFlickWindowScale
         circularFlickDirectionCount = preferences.circularFlickDirectionCount
         hierarchicalFlickModeSwitchAngleMargin = preferences.hierarchicalFlickModeSwitchAngleMargin
@@ -4289,6 +4298,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isLiveConversionEnable = null
         nBest = null
         conversionBeamWidth = 20
+        predictionConfig = PredictionConfig()
         lastCandidate = null
         flickSensitivityPreferenceValue = null
         longPressTimeoutPreferenceValue = null
@@ -4497,6 +4507,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         learnFirstCandidateDictionaryPreference = null
         enablePredictionSearchLearnDictionaryPreference = null
         learnPredictionPreference = null
+        userDictionaryPredictionCandidateLimit = 4
+        learnDictionaryPredictionCandidateLimit = 4
         circularFlickWindowScale = null
         customKeyBorderWidth = null
         qwertySwitchNumberKeyWithoutNumberPreference = null
@@ -21244,7 +21256,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
                 if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
                 userDictionaryRepository.searchByReadingPrefixSuspend(
-                    prefix = insertString, limit = 4
+                    prefix = insertString, limit = userDictionaryPredictionCandidateLimit
                 ).map {
                     Candidate(
                         string = it.word,
@@ -21266,10 +21278,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionLearnRepository != null
             ) {
                 withContext(Dispatchers.IO) {
-                    val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
+                    val prefixMatchNumber = (learnPredictionPreference ?: 4) - 1
                     if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
                     suggestionLearnRepository.predictiveSearchByInput(
-                        prefix = insertString, limit = 4
+                        prefix = insertString, limit = learnDictionaryPredictionCandidateLimit
                     ).map {
                         Candidate(
                             string = it.out,
@@ -21359,7 +21371,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
                     if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
                     userDictionaryRepository.searchByReadingPrefixSuspend(
-                        prefix = insertString, limit = 4
+                        prefix = insertString, limit = userDictionaryPredictionCandidateLimit
                     ).map {
                         Candidate(
                             string = it.word,
@@ -21386,10 +21398,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ) {
                 measureDebugStage("IMEService.getSuggestionList.learnDictionary") {
                     withContext(Dispatchers.IO) {
-                        val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
+                        val prefixMatchNumber = (learnPredictionPreference ?: 4) - 1
                         if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
                         suggestionLearnRepository.predictiveSearchByInput(
-                            prefix = insertString, limit = 4
+                            prefix = insertString, limit = learnDictionaryPredictionCandidateLimit
                         ).map {
                             Candidate(
                                 string = it.out,
@@ -21514,7 +21526,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
                 if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
                 userDictionaryRepository.searchByReadingPrefixSuspend(
-                    prefix = insertString, limit = 4
+                    prefix = insertString, limit = userDictionaryPredictionCandidateLimit
                 ).map {
                     Candidate(
                         string = it.word,
@@ -21536,10 +21548,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionLearnRepository != null
             ) {
                 withContext(Dispatchers.IO) {
-                    val prefixMatchNumber = (learnPredictionPreference ?: 2) - 1
+                    val prefixMatchNumber = (learnPredictionPreference ?: 4) - 1
                     if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
                     suggestionLearnRepository.predictiveSearchByInput(
-                        prefix = insertString, limit = 4
+                        prefix = insertString, limit = learnDictionaryPredictionCandidateLimit
                     ).map {
                         Candidate(
                             string = it.out,
@@ -21654,6 +21666,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     enableTypoCorrectionJapaneseFlickKeyboardOffsetScorePreference ?: 3000,
                 omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
                 beamWidth = conversionBeamWidth,
+                predictionConfig = predictionConfig,
             )
         )
     }
