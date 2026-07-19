@@ -113,6 +113,7 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
                 // 旧→新キー移行などがあるなら復元後に実行
                 AppPreference.migrateSumirePreferenceIfNeeded()
+                AppPreference.migratePredictionLookaheadPreferenceIfNeeded()
             }.onSuccess {
                 toast("Backup imported")
                 requireActivity().recreate()

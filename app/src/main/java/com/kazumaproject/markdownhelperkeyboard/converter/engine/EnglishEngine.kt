@@ -387,6 +387,16 @@ class EnglishEngine : QwertyGlideCandidateProvider {
     fun getCandidates(
         input: String,
         enableTypoCorrection: Boolean = false,
+    ): List<Candidate> = getCandidates(
+        input = input,
+        enableTypoCorrection = enableTypoCorrection,
+        enablePrediction = true,
+    )
+
+    fun getCandidates(
+        input: String,
+        enableTypoCorrection: Boolean,
+        enablePrediction: Boolean,
     ): List<Candidate> {
         if (input.isEmpty()) return emptyList()
         ensureDictionariesLoaded()
@@ -395,11 +405,15 @@ class EnglishEngine : QwertyGlideCandidateProvider {
         val lowerInput = input.lowercase()
         val limit = if (input.length <= 2) 6 else 12
 
-        val predictiveSearchReading = readingLOUDS.predictiveSearch(
-            prefix = lowerInput,
-            succinctBitVector = succinctBitVectorLBSReading,
-            limit = limit
-        )
+        val predictiveSearchReading = if (enablePrediction) {
+            readingLOUDS.predictiveSearch(
+                prefix = lowerInput,
+                succinctBitVector = succinctBitVectorLBSReading,
+                limit = limit
+            )
+        } else {
+            emptyList()
+        }
 
         // ★ typo はフラグが true のときだけ
         val typoCorrection = if (enableTypoCorrection && input.length > 2) {

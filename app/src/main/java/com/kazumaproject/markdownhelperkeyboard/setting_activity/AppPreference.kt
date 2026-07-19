@@ -12,6 +12,7 @@ import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.domain.EmojiSkinToneSupport
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectQuality
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.KeyboardTouchEffectType
@@ -41,6 +42,12 @@ object AppPreference {
     const val SHORTCUT_TOOLBAR_ICON_SIZE_DEFAULT_DP = 28
     const val SHORTCUT_TOOLBAR_ICON_SIZE_MIN_DP = 18
     const val SHORTCUT_TOOLBAR_ICON_SIZE_MAX_DP = 56
+    const val PREDICTION_LOOKAHEAD_CHARACTER_COUNT_MIN =
+        PredictionConfig.MIN_LOOKAHEAD_CHARACTER_COUNT
+    const val PREDICTION_LOOKAHEAD_CHARACTER_COUNT_MAX =
+        PredictionConfig.MAX_LOOKAHEAD_CHARACTER_COUNT
+    const val PREDICTION_LOOKAHEAD_CHARACTER_COUNT_DEFAULT =
+        PredictionConfig.DEFAULT_LOOKAHEAD_CHARACTER_COUNT
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -84,6 +91,30 @@ object AppPreference {
     private val CONVERSION_BEAM_WIDTH_PREFERENCE = Pair("conversion_beam_width_preference", 20)
     private val INCREMENTAL_CONVERSION_SESSION_PREFERENCE =
         Pair("incremental_conversion_session_preference", false)
+    private val JAPANESE_PREDICTION_ENABLE_PREFERENCE =
+        Pair("japanese_prediction_enable_preference", true)
+    private val ENGLISH_PREDICTION_ENABLE_PREFERENCE =
+        Pair("english_prediction_enable_preference", true)
+    private val SYSTEM_DICTIONARY_PREDICTION_ENABLE_PREFERENCE =
+        Pair("system_dictionary_prediction_enable_preference", true)
+    private val PREDICTION_MINIMUM_INPUT_LENGTH_PREFERENCE =
+        Pair("prediction_minimum_input_length_preference", 3)
+    private val SYSTEM_PREDICTION_CANDIDATE_LIMIT_PREFERENCE =
+        Pair("system_prediction_candidate_limit_preference", 4)
+    private val PREDICTION_LOOKAHEAD_CHARACTER_COUNT_PREFERENCE =
+        Pair("prediction_lookahead_preference", PREDICTION_LOOKAHEAD_CHARACTER_COUNT_DEFAULT)
+    private val PREDICTION_AGGRESSIVENESS_PREFERENCE =
+        Pair("prediction_aggressiveness_preference", "standard")
+    private val SYSTEM_USER_DICTIONARY_PREDICTION_ENABLE_PREFERENCE =
+        Pair("system_user_dictionary_prediction_enable_preference", true)
+    private val READING_CORRECTION_PREDICTION_ENABLE_PREFERENCE =
+        Pair("reading_correction_prediction_enable_preference", true)
+    private val PROVERB_PREDICTION_ENABLE_PREFERENCE =
+        Pair("proverb_prediction_enable_preference", true)
+    private val EXTERNAL_MOZC_PREDICTION_ENABLE_PREFERENCE =
+        Pair("external_mozc_prediction_enable_preference", true)
+    private val SYMBOL_EMOJI_PREDICTION_ENABLE_PREFERENCE =
+        Pair("symbol_emoji_prediction_enable_preference", true)
     private val CANDIDATE_ORDER_OVERRIDE_ENABLE =
         Pair("candidate_order_override_enable_preference", false)
     private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
@@ -589,7 +620,11 @@ object AppPreference {
     private val ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE =
         Pair("enable_prediction_search_learn_dictionary_preference", false)
 
-    private val LEARN_PREDICTION_PREFERENCE = Pair("learn_prediction_preference", 2)
+    private val LEARN_PREDICTION_PREFERENCE = Pair("learn_prediction_preference", 4)
+    private val LEARN_PREDICTION_CANDIDATE_LIMIT_PREFERENCE =
+        Pair("learn_dictionary_prediction_candidate_limit_preference", 4)
+    private val USER_DICTIONARY_PREDICTION_CANDIDATE_LIMIT_PREFERENCE =
+        Pair("user_dictionary_prediction_candidate_limit_preference", 4)
 
     private val PREF_UP_START = Pair("circular_flick_up_start", 225f)
     private val PREF_UP_SWEEP = Pair("circular_flick_up_sweep", 90f)
@@ -741,6 +776,7 @@ object AppPreference {
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        migratePredictionLookaheadPreferenceIfNeeded()
     }
 
     private inline fun SharedPreferences.edit(operation: (SharedPreferences.Editor) -> Unit) {
@@ -1445,6 +1481,150 @@ object AppPreference {
             it.putBoolean(INCREMENTAL_CONVERSION_SESSION_PREFERENCE.first, value)
         }
 
+    var japanese_prediction_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            JAPANESE_PREDICTION_ENABLE_PREFERENCE.first,
+            JAPANESE_PREDICTION_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(JAPANESE_PREDICTION_ENABLE_PREFERENCE.first, value)
+        }
+
+    var english_prediction_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            ENGLISH_PREDICTION_ENABLE_PREFERENCE.first,
+            ENGLISH_PREDICTION_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(ENGLISH_PREDICTION_ENABLE_PREFERENCE.first, value)
+        }
+
+    var system_dictionary_prediction_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            SYSTEM_DICTIONARY_PREDICTION_ENABLE_PREFERENCE.first,
+            SYSTEM_DICTIONARY_PREDICTION_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SYSTEM_DICTIONARY_PREDICTION_ENABLE_PREFERENCE.first, value)
+        }
+
+    var prediction_minimum_input_length_preference: Int
+        get() = preferences.getInt(
+            PREDICTION_MINIMUM_INPUT_LENGTH_PREFERENCE.first,
+            PREDICTION_MINIMUM_INPUT_LENGTH_PREFERENCE.second,
+        ).coerceIn(3, 8)
+        set(value) = preferences.edit {
+            it.putInt(PREDICTION_MINIMUM_INPUT_LENGTH_PREFERENCE.first, value.coerceIn(3, 8))
+        }
+
+    var system_prediction_candidate_limit_preference: Int
+        get() = preferences.getInt(
+            SYSTEM_PREDICTION_CANDIDATE_LIMIT_PREFERENCE.first,
+            SYSTEM_PREDICTION_CANDIDATE_LIMIT_PREFERENCE.second,
+        ).coerceIn(1, 16)
+        set(value) = preferences.edit {
+            it.putInt(SYSTEM_PREDICTION_CANDIDATE_LIMIT_PREFERENCE.first, value.coerceIn(1, 16))
+        }
+
+    var prediction_lookahead_character_count_preference: Int
+        get() = when (
+            val storedValue = preferences.all[PREDICTION_LOOKAHEAD_CHARACTER_COUNT_PREFERENCE.first]
+        ) {
+            is Number -> storedValue.toInt()
+            is String -> legacyPredictionLookaheadCharacterCount(storedValue)
+            else -> PREDICTION_LOOKAHEAD_CHARACTER_COUNT_PREFERENCE.second
+        }.coerceIn(
+            PREDICTION_LOOKAHEAD_CHARACTER_COUNT_MIN,
+            PREDICTION_LOOKAHEAD_CHARACTER_COUNT_MAX,
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                PREDICTION_LOOKAHEAD_CHARACTER_COUNT_PREFERENCE.first,
+                value.coerceIn(
+                    PREDICTION_LOOKAHEAD_CHARACTER_COUNT_MIN,
+                    PREDICTION_LOOKAHEAD_CHARACTER_COUNT_MAX,
+                ),
+            )
+        }
+
+    fun migratePredictionLookaheadPreferenceIfNeeded() {
+        val key = PREDICTION_LOOKAHEAD_CHARACTER_COUNT_PREFERENCE.first
+        val storedValue = preferences.all[key] ?: return
+        val normalizedValue = when (storedValue) {
+            is Number -> storedValue.toInt()
+            is String -> legacyPredictionLookaheadCharacterCount(storedValue)
+            else -> PREDICTION_LOOKAHEAD_CHARACTER_COUNT_PREFERENCE.second
+        }.coerceIn(
+            PREDICTION_LOOKAHEAD_CHARACTER_COUNT_MIN,
+            PREDICTION_LOOKAHEAD_CHARACTER_COUNT_MAX,
+        )
+        if (storedValue !is Int || storedValue != normalizedValue) {
+            preferences.edit { it.putInt(key, normalizedValue) }
+        }
+    }
+
+    private fun legacyPredictionLookaheadCharacterCount(value: String): Int =
+        when (value) {
+            "short" -> 1
+            "standard" -> PREDICTION_LOOKAHEAD_CHARACTER_COUNT_DEFAULT
+            "long" -> PREDICTION_LOOKAHEAD_CHARACTER_COUNT_MAX
+            else -> value.toIntOrNull() ?: PREDICTION_LOOKAHEAD_CHARACTER_COUNT_DEFAULT
+        }
+
+    var prediction_aggressiveness_preference: String
+        get() = preferences.getString(
+            PREDICTION_AGGRESSIVENESS_PREFERENCE.first,
+            PREDICTION_AGGRESSIVENESS_PREFERENCE.second,
+        ) ?: PREDICTION_AGGRESSIVENESS_PREFERENCE.second
+        set(value) = preferences.edit {
+            it.putString(PREDICTION_AGGRESSIVENESS_PREFERENCE.first, value)
+        }
+
+    var system_user_dictionary_prediction_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            SYSTEM_USER_DICTIONARY_PREDICTION_ENABLE_PREFERENCE.first,
+            SYSTEM_USER_DICTIONARY_PREDICTION_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SYSTEM_USER_DICTIONARY_PREDICTION_ENABLE_PREFERENCE.first, value)
+        }
+
+    var reading_correction_prediction_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            READING_CORRECTION_PREDICTION_ENABLE_PREFERENCE.first,
+            READING_CORRECTION_PREDICTION_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(READING_CORRECTION_PREDICTION_ENABLE_PREFERENCE.first, value)
+        }
+
+    var proverb_prediction_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            PROVERB_PREDICTION_ENABLE_PREFERENCE.first,
+            PROVERB_PREDICTION_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(PROVERB_PREDICTION_ENABLE_PREFERENCE.first, value)
+        }
+
+    var external_mozc_prediction_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            EXTERNAL_MOZC_PREDICTION_ENABLE_PREFERENCE.first,
+            EXTERNAL_MOZC_PREDICTION_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(EXTERNAL_MOZC_PREDICTION_ENABLE_PREFERENCE.first, value)
+        }
+
+    var symbol_emoji_prediction_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            SYMBOL_EMOJI_PREDICTION_ENABLE_PREFERENCE.first,
+            SYMBOL_EMOJI_PREDICTION_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SYMBOL_EMOJI_PREDICTION_ENABLE_PREFERENCE.first, value)
+        }
+
     var candidate_order_override_enable_preference: Boolean?
         get() = preferences.getBoolean(
             CANDIDATE_ORDER_OVERRIDE_ENABLE.first,
@@ -1494,6 +1674,18 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(USER_DICTIONARY_PREFIX_PREFERENCE.first, value ?: 2)
+        }
+
+    var user_dictionary_prediction_candidate_limit_preference: Int
+        get() = preferences.getInt(
+            USER_DICTIONARY_PREDICTION_CANDIDATE_LIMIT_PREFERENCE.first,
+            USER_DICTIONARY_PREDICTION_CANDIDATE_LIMIT_PREFERENCE.second,
+        ).coerceIn(1, 8)
+        set(value) = preferences.edit {
+            it.putInt(
+                USER_DICTIONARY_PREDICTION_CANDIDATE_LIMIT_PREFERENCE.first,
+                value.coerceIn(1, 8),
+            )
         }
 
     var user_template_preference: Boolean?
@@ -3152,6 +3344,18 @@ object AppPreference {
             LEARN_PREDICTION_PREFERENCE.second
         )
         set(value) = preferences.edit { it.putInt(LEARN_PREDICTION_PREFERENCE.first, value) }
+
+    var learn_dictionary_prediction_candidate_limit_preference: Int
+        get() = preferences.getInt(
+            LEARN_PREDICTION_CANDIDATE_LIMIT_PREFERENCE.first,
+            LEARN_PREDICTION_CANDIDATE_LIMIT_PREFERENCE.second,
+        ).coerceIn(1, 8)
+        set(value) = preferences.edit {
+            it.putInt(
+                LEARN_PREDICTION_CANDIDATE_LIMIT_PREFERENCE.first,
+                value.coerceIn(1, 8),
+            )
+        }
 
     var circular_flickWindow_scale: Float
         get() = preferences.getFloat(

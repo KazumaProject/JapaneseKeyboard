@@ -147,6 +147,16 @@
             app:min="1"
             app:showSeekBarValue="true" />
 
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:dependency="enable_prediction_search_learn_dictionary_preference"
+            android:key="learn_dictionary_prediction_candidate_limit_preference"
+            android:max="8"
+            android:summary="@string/learn_dictionary_prediction_candidate_limit_summary"
+            android:title="@string/dictionary_prediction_candidate_limit_title"
+            app:min="1"
+            app:showSeekBarValue="true" />
+
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/category_user_dictionary_title">
@@ -164,6 +174,16 @@
             android:max="8"
             android:title="@string/user_dictionary_prefix_match_title"
             app:min="2"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
+            android:defaultValue="4"
+            android:dependency="user_dictionary_preference"
+            android:key="user_dictionary_prediction_candidate_limit_preference"
+            android:max="8"
+            android:summary="@string/user_dictionary_prediction_candidate_limit_summary"
+            android:title="@string/dictionary_prediction_candidate_limit_title"
+            app:min="1"
             app:showSeekBarValue="true" />
     </PreferenceCategory>
 
