@@ -3,6 +3,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter.session
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import kotlinx.coroutines.sync.Mutex
@@ -38,6 +39,7 @@ data class KanaKanjiQueryRequest(
     val typoCorrectionOffsetScore: Int,
     val omissionSearchOffsetScore: Int,
     val beamWidth: Int,
+    val predictionConfig: PredictionConfig = PredictionConfig(),
 )
 
 data class KanaKanjiQueryResult(
@@ -74,7 +76,10 @@ class KanaKanjiConversionSession(
         try {
             when (request.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
-                    candidates = engine.getCandidatesEnglishKana(request.input),
+                    candidates = engine.getCandidatesEnglishKana(
+                        input = request.input,
+                        predictionConfig = request.predictionConfig,
+                    ),
                 )
 
                 CandidateQueryMode.NO_TAB_DEFAULT -> queryOriginal(request)
@@ -108,6 +113,7 @@ class KanaKanjiConversionSession(
                 omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                 beamWidth = request.beamWidth,
                 incrementalSessionState = incrementalState,
+                predictionConfig = request.predictionConfig,
             ).asQueryResult()
         } else {
             KanaKanjiQueryResult(
@@ -128,6 +134,7 @@ class KanaKanjiConversionSession(
                     omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                     beamWidth = request.beamWidth,
                     incrementalSessionState = incrementalState,
+                    predictionConfig = request.predictionConfig,
                 ),
             )
         }
@@ -151,6 +158,7 @@ class KanaKanjiConversionSession(
                 omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                 beamWidth = request.beamWidth,
                 incrementalSessionState = incrementalState,
+                predictionConfig = request.predictionConfig,
             ).asQueryResult()
         } else {
             KanaKanjiQueryResult(
@@ -171,6 +179,7 @@ class KanaKanjiConversionSession(
                     omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                     beamWidth = request.beamWidth,
                     incrementalSessionState = incrementalState,
+                    predictionConfig = request.predictionConfig,
                 ),
             )
         }
@@ -191,6 +200,10 @@ class KanaKanjiConversionSession(
                 omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                 beamWidth = request.beamWidth,
                 incrementalSessionState = incrementalState,
+                predictionConfig = request.predictionConfig.copy(
+                    japanesePredictionEnabled = false,
+                    englishPredictionEnabled = false,
+                ),
             ).asQueryResult()
         } else {
             KanaKanjiQueryResult(
@@ -208,6 +221,10 @@ class KanaKanjiConversionSession(
                     omissionSearchOffsetScore = request.omissionSearchOffsetScore,
                     beamWidth = request.beamWidth,
                     incrementalSessionState = incrementalState,
+                    predictionConfig = request.predictionConfig.copy(
+                        japanesePredictionEnabled = false,
+                        englishPredictionEnabled = false,
+                    ),
                 ),
             )
         }
