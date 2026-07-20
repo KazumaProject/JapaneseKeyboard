@@ -4,6 +4,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.NgramRuleRepository
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
+import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBinaryReader
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
@@ -15,4 +16,5 @@ interface KanaKanjiEngineEntryPoint {
     fun userDictionaryRepository(): UserDictionaryRepository
     fun ngramRuleRepository(): NgramRuleRepository
     fun ngramRuleScorerManager(): NgramRuleScorerManager
+    fun dictionaryBinaryReader(): DictionaryBinaryReader
 }

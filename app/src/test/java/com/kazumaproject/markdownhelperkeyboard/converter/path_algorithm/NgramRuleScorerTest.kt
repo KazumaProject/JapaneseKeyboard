@@ -470,6 +470,54 @@ class NgramRuleScorerTest {
         )
     }
 
+    @Test
+    fun requiredSuffixNodeCountTracksTheHighestRuleOrder() {
+        assertEquals(0, NgramRuleScorer(emptyList()).requiredSuffixNodeCount)
+        assertEquals(
+            0,
+            NgramRuleScorer(
+                listOf(NgramRule(listOf(NodeFeature(), NodeFeature()), -1)),
+            ).requiredSuffixNodeCount,
+        )
+        assertEquals(
+            1,
+            NgramRuleScorer(
+                listOf(NgramRule(List(3) { NodeFeature() }, -1)),
+            ).requiredSuffixNodeCount,
+        )
+        assertEquals(
+            3,
+            NgramRuleScorer(
+                listOf(NgramRule(List(5) { NodeFeature() }, -1)),
+            ).requiredSuffixNodeCount,
+        )
+    }
+
+    @Test
+    fun nodeClassesCollapseOnlyFeaturesThatCannotAffectRules() {
+        val scorer = NgramRuleScorer(
+            listOf(
+                NgramRule(
+                    listOf(
+                        NodeFeature(word = "対象", leftId = 2),
+                        NodeFeature(rightId = 3),
+                    ),
+                    -1,
+                ),
+            ),
+        )
+        val unrelatedA = createNode("無関係A", l = 4, r = 5)
+        val unrelatedB = createNode("無関係B", l = 6, r = 7)
+        val target = createNode("対象", l = 2, r = 3)
+
+        assertEquals(scorer.wordClass(unrelatedA), scorer.wordClass(unrelatedB))
+        assertEquals(scorer.leftIdClass(unrelatedA), scorer.leftIdClass(unrelatedB))
+        assertEquals(scorer.rightIdClass(unrelatedA), scorer.rightIdClass(unrelatedB))
+        assertTrue(scorer.wordClass(target) != scorer.wordClass(unrelatedA))
+        assertTrue(scorer.leftIdClass(target) != scorer.leftIdClass(unrelatedA))
+        assertTrue(scorer.rightIdClass(target) != scorer.rightIdClass(unrelatedA))
+    }
+
     private fun createConnectionIds(): ShortArray {
         // We only use IDs 0 and 1 in this synthetic graph.
         return ShortArray(TEST_CONNECTION_MATRIX_SIZE * TEST_CONNECTION_MATRIX_SIZE) { 0 }

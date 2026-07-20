@@ -8,6 +8,7 @@ import com.kazumaproject.dictionary.models.Dictionary
 import com.kazumaproject.dictionary.models.TokenEntry
 import com.kazumaproject.toBitSet
 import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.PackedIntArray
 import java.io.ObjectOutput
 import java.io.ObjectInput
 import java.io.ObjectInputStream
@@ -20,6 +21,7 @@ class TokenArray {
     private var posTableIndexList: ShortArray = shortArrayOf()
     private var wordCostList: ShortArray = shortArrayOf()
     private var nodeIdList: IntArray = intArrayOf()
+    private var packedNodeIds: PackedIntArray? = null
     private val posTableIndexListTemp: MutableList<Short> = arrayListOf()
     private val wordCostListTemp: MutableList<Short> = arrayListOf()
     private val nodeIdListTemp: MutableList<Int> = arrayListOf()
@@ -31,8 +33,14 @@ class TokenArray {
         private set
 
     fun getNodeIds(): IntArray {
-        return nodeIdList
+        return packedNodeIds?.toIntArray() ?: nodeIdList
     }
+
+    fun getPosTableIndices(): ShortArray = posTableIndexList.copyOf()
+
+    fun getWordCosts(): ShortArray = wordCostList.copyOf()
+
+    private fun nodeIdAt(index: Int): Int = packedNodeIds?.get(index) ?: nodeIdList[index]
 
     fun maxPosTableIndex(): Int =
         posTableIndexList.maxOrNull()?.toInt() ?: -1
@@ -62,7 +70,7 @@ class TokenArray {
                     TokenEntry(
                         posTableIndex = posTableIndexList[i],
                         wordCost = wordCostList[i],
-                        nodeId = nodeIdList[i]
+                        nodeId = nodeIdAt(i)
                     )
                 )
             }
@@ -85,7 +93,7 @@ class TokenArray {
                     TokenEntry(
                         posTableIndex = posTableIndexList[i],
                         wordCost = wordCostList[i],
-                        nodeId = nodeIdList[i]
+                        nodeId = nodeIdAt(i)
                     )
                 )
             }
@@ -104,7 +112,7 @@ class TokenArray {
         val endRank1 = succinctBitVector.rank1(endSelect0)
 
         for (i in startRank1 until endRank1) {
-            block(posTableIndexList[i], wordCostList[i], nodeIdList[i])
+            block(posTableIndexList[i], wordCostList[i], nodeIdAt(i))
         }
     }
 
@@ -131,7 +139,7 @@ class TokenArray {
                 TokenEntry(
                     posTableIndex = posTableIndexList[i],
                     wordCost = wordCostList[i],
-                    nodeId = nodeIdList[i],
+                    nodeId = nodeIdAt(i),
                 )
             )
         }
@@ -152,7 +160,7 @@ class TokenArray {
                 TokenEntry(
                     posTableIndex = posTableIndexList[i],
                     wordCost = wordCostList[i],
-                    nodeId = nodeIdList[i],
+                    nodeId = nodeIdAt(i),
                 )
             )
         }
@@ -170,7 +178,7 @@ class TokenArray {
         val endRank1 = succinctBitVector.rank1(endSelect0)
 
         for (i in startRank1 until endRank1) {
-            block(posTableIndexList[i], wordCostList[i], nodeIdList[i])
+            block(posTableIndexList[i], wordCostList[i], nodeIdAt(i))
         }
     }
 
@@ -181,7 +189,14 @@ class TokenArray {
             try {
                 posTableIndexList = readObject() as ShortArray
                 wordCostList = readObject() as ShortArray
-                nodeIdList = readObject() as IntArray
+                val loadedNodeIds = readObject() as IntArray
+                if (loadedNodeIds.size >= PACKED_NODE_ID_THRESHOLD) {
+                    packedNodeIds = PackedIntArray.from(loadedNodeIds)
+                    nodeIdList = intArrayOf()
+                } else {
+                    packedNodeIds = null
+                    nodeIdList = loadedNodeIds
+                }
                 bitvector = readObject() as BitSet
                 close()
             } catch (e: Exception) {
@@ -216,6 +231,7 @@ class TokenArray {
         posTableIndexList = posTableIndices.toShortArray()
         wordCostList = wordCosts.toShortArray()
         nodeIdList = nodeIds.toIntArray()
+        packedNodeIds = null
         bitvector = bits.toBitSet()
         writeExternalNotCompress(out)
     }
@@ -238,7 +254,7 @@ class TokenArray {
         out.apply {
             writeObject(posTableIndexList)
             writeObject(wordCostList)
-            writeObject(nodeIdList)
+            writeObject(packedNodeIds?.toIntArray() ?: nodeIdList)
             writeObject(bitvector)
             flush()
             close()
@@ -359,6 +375,35 @@ class TokenArray {
 
     private fun String.isKatakanaOnly(): Boolean {
         return isNotEmpty() && all { it in 'ァ'..'ヶ' || it == 'ー' }
+    }
+
+    companion object {
+        private const val PACKED_NODE_ID_THRESHOLD = 500_000
+
+        fun fromPacked(
+            posTableIndices: ShortArray,
+            wordCosts: ShortArray,
+            nodeIds: PackedIntArray,
+            bitvector: BitSet,
+            leftIds: ShortArray,
+            rightIds: ShortArray,
+        ): TokenArray {
+            require(posTableIndices.size == wordCosts.size) {
+                "Token POS/cost size mismatch: ${posTableIndices.size} != ${wordCosts.size}"
+            }
+            require(posTableIndices.size == nodeIds.size) {
+                "Token/node size mismatch: ${posTableIndices.size} != ${nodeIds.size}"
+            }
+            return TokenArray().apply {
+                posTableIndexList = posTableIndices
+                wordCostList = wordCosts
+                nodeIdList = intArrayOf()
+                packedNodeIds = nodeIds
+                this.bitvector = bitvector
+                this.leftIds = leftIds
+                this.rightIds = rightIds
+            }
+        }
     }
 
 }

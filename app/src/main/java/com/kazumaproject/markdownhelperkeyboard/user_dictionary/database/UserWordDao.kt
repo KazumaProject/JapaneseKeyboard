@@ -25,7 +25,14 @@ interface UserWordDao {
      * readingの前方一致で単語を検索する (バックグラウンド処理用)
      * @return 一致した単語のリスト
      */
-    @Query("SELECT * FROM user_word WHERE reading LIKE :prefix || '%' ORDER BY reading ASC LIMIT :limit")
+    @Query(
+        """
+        SELECT * FROM user_word
+        WHERE reading LIKE :prefix || '%'
+        ORDER BY posScore ASC, LENGTH(reading) ASC, id DESC
+        LIMIT :limit
+        """
+    )
     suspend fun searchByReadingPrefixSuspend(prefix: String, limit: Int): List<UserWord>
 
     /**
