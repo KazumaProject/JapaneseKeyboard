@@ -10547,12 +10547,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
-    /**
-     * 濁点モードを切り替えてキーボードを更新するメソッドの例
-     */
-    private fun setSumireKeyboardDakutenKey() {
-        // 0と1を交互に切り替える
-        currentDakutenKeyIndex = 1
+    private fun updateSumireDakutenKeyForCurrentInput() {
+        val isSumireJapaneseInput =
+            qwertyMode.value == TenKeyQWERTYMode.Sumire &&
+                currentInputModeForSession == InputMode.ModeJapanese
+        val canTransformLastCharacter =
+            inputString.value.lastOrNull()?.getDakutenSmallChar() != null
+        currentDakutenKeyIndex = if (isSumireJapaneseInput && canTransformLastCharacter) 1 else 0
         updateDynamicKeyOnActiveSurface("dakuten_toggle_key", currentDakutenKeyIndex)
     }
 
@@ -11647,6 +11648,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             TenKeyQWERTYMode.Sumire -> {
                                 Timber.d("TenKeyQWERTYMode.Sumire: $text $isFlick")
                                 handleOnKeyForSumire(text, mainView, isFlick)
+                                updateSumireDakutenKeyForCurrentInput()
                             }
 
                             TenKeyQWERTYMode.Number -> {
@@ -13993,7 +13995,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         updateQwertyOnActiveSurface { setReturnKeyText("done") }
                     }
                     if (mainView.customLayoutDefault.isVisible) {
-                        setSumireKeyboardDakutenKey()
+                        updateSumireDakutenKeyForCurrentInput()
                         setSumireKeyboardEnterKey(5)
                         when (currentInputModeForSession) {
                             InputMode.ModeJapanese -> {
