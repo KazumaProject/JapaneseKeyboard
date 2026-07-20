@@ -35,13 +35,21 @@ interface LearnDao {
     /**
      * Predictive Search: Finds entries where the 'input' column starts with a given prefix.
      * This is useful for autocompleting user input.
-     * The results are ordered by score in descending order to show the most likely candidates first.
+     * Lower scores are preferred by the conversion engine, so the most likely candidates are
+     * selected before applying the limit.
      *
      * @param prefix The prefix string to search for.
      * @param limit The maximum number of results to return.
      * @return A list of matching LearnEntity objects.
      */
-    @Query("SELECT * FROM learn_table WHERE input LIKE :prefix || '%' ORDER BY score DESC LIMIT :limit")
+    @Query(
+        """
+        SELECT * FROM learn_table
+        WHERE input LIKE :prefix || '%'
+        ORDER BY score ASC, LENGTH(input) ASC, id DESC
+        LIMIT :limit
+        """
+    )
     suspend fun predictiveSearchByInput(prefix: String, limit: Int): List<LearnEntity>
 
     /**

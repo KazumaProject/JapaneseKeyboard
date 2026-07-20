@@ -125,7 +125,7 @@ class ConnectionMatrixTest {
     }
 
     private fun loadBundledConnectionMatrix(): ConnectionMatrix.CostTable =
-        ConnectionMatrix.fromShortArray(readBundledConnectionIds())
+        FileInputStream(findCompactConnectionMatrix()).use(ConnectionMatrix::fromCompactInputStream)
 
     private fun readBundledConnectionIds(): ShortArray =
         openBundledConnectionIdRaw { raw, byteSize ->
@@ -170,4 +170,10 @@ class ConnectionMatrixTest {
             File("app/src/main/assets"),
             File("src/main/assets"),
         ).firstOrNull { it.exists() } ?: error("Missing assets directory")
+
+    private fun findCompactConnectionMatrix(): File =
+        listOf(
+            File("app/build/generated/compactConnectionMatrix/assets/connection/connection.compact"),
+            File("build/generated/compactConnectionMatrix/assets/connection/connection.compact"),
+        ).firstOrNull { it.isFile } ?: error("Missing generated compact connection matrix")
 }

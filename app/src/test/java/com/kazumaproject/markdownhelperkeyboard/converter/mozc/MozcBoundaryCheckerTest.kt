@@ -48,6 +48,28 @@ class MozcBoundaryCheckerTest {
         )
     }
 
+    @Test
+    fun readableSentinelNamesAreNotTreatedAsAlphabetKeys() {
+        val checker = MozcBoundaryChecker(boundarySegmenter(boundary = false), MozcBoundaryMode.STRICT)
+
+        assertEquals(
+            MozcBoundaryCheckResult.VALID,
+            checker.check(
+                node(yomi = "BOS", type = MozcNodeType.BOS),
+                node(yomi = "abc"),
+                isEdge = true,
+            ),
+        )
+        assertEquals(
+            MozcBoundaryCheckResult.VALID,
+            checker.check(
+                node(yomi = "abc"),
+                node(yomi = "EOS", type = MozcNodeType.EOS),
+                isEdge = true,
+            ),
+        )
+    }
+
     private fun boundarySegmenter(boundary: Boolean): MozcSegmenter {
         val bit = if (boundary) 0b00001000.toByte() else 0
         return MozcSegmenter(

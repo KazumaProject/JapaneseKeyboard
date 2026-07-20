@@ -22,7 +22,7 @@ import kotlinx.coroutines.ensureActive
 
 class GraphBuilder {
 
-    private data class CachedGraph(
+    internal data class CachedGraph(
         val input: String,
         val signature: Int,
         val graph: MutableMap<Int, MutableList<Node>>,
@@ -30,15 +30,41 @@ class GraphBuilder {
         val systemUserOmissionStates: Map<Int, List<LOUDSWithTermId.OmissionSearchState>>,
         val systemTypoProgress: Map<Int, LOUDSWithTermId.TypoSearchProgress>,
         val systemUserTypoProgress: Map<Int, LOUDSWithTermId.TypoSearchProgress>,
+        val systemPrefixStates: Map<Int, Int>,
+        val systemUserPrefixStates: Map<Int, Int>,
+        val wikiPrefixStates: Map<Int, Int>,
+        val webPrefixStates: Map<Int, Int>,
+        val personPrefixStates: Map<Int, Int>,
+        val neologdPrefixStates: Map<Int, Int>,
+        val unprunedFrontier: MutableList<Node>?,
     )
 
+    /**
+     * Incremental graph state owned by one IME conversion session.
+     *
+     * The legacy API keeps using [cachedGraph].  A session API supplies one of these states so
+     * candidate-tab requests and other input sessions cannot evict each other's append frontier.
+     */
+    class SessionState internal constructor() {
+        internal var cachedGraph: CachedGraph? = null
+        internal var performanceProbeEnabled: Boolean = false
+        internal var lastConstructGraphNs: Long = 0
+
+        internal fun reset() {
+            cachedGraph = null
+            lastConstructGraphNs = 0
+        }
+    }
+
     private class IncrementalGraph(
-        override val reusedThroughEndIndex: Int,
+        override var reusedThroughEndIndex: Int,
         override val conversionSignature: Int,
     ) : LinkedHashMap<Int, MutableList<Node>>(), IncrementalGraphMetadata
 
     @Volatile
     private var cachedGraph: CachedGraph? = null
+
+    fun createSessionState(): SessionState = SessionState()
 
     private var systemUserYomiTrie: LOUDSWithTermId? = null
     private var systemUserTangoTrie: LOUDS? = null
@@ -185,8 +211,19 @@ class GraphBuilder {
         graphNodeDedupMode: GraphNodeDedupMode = GraphNodeDedupMode.EXISTING_BY_TANGO_L_R,
         mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
         graphNodeTrace: MutableList<GraphNodeTrace>? = null,
+        sessionState: SessionState? = null,
     ): MutableMap<Int, MutableList<Node>> {
-        if (str.isAllHalfWidthAscii()) return mutableMapOf()
+        val performanceStartNs = if (sessionState?.performanceProbeEnabled == true) {
+            System.nanoTime()
+        } else {
+            0L
+        }
+        if (str.isAllHalfWidthAscii()) {
+            if (performanceStartNs != 0L) {
+                sessionState?.lastConstructGraphNs = System.nanoTime() - performanceStartNs
+            }
+            return mutableMapOf()
+        }
         fun mozcAttributesFor(leftId: Short): Int =
             mozcNodeAttributeTable?.attributesFor(leftId.toInt()) ?: MozcNodeAttributes.NONE
 
@@ -205,22 +242,84 @@ class GraphBuilder {
             graphNodeDedupMode = graphNodeDedupMode,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
         )
-        val reusable = cachedGraph?.takeIf {
+        val activeCache = if (sessionState != null) sessionState.cachedGraph else cachedGraph
+        val reusable = activeCache?.takeIf {
             graphNodeTrace == null &&
                 it.signature == signature &&
                 str.length == it.input.length + 1 &&
-                str.startsWith(it.input)
+                str.startsWith(it.input) &&
+                // Appending within an alphabet token changes every maximal-run node that starts
+                // in that token.  The current append cache can only preserve a fully stable
+                // prefix, so rebuild this transition instead of publishing a stale short token.
+                !(
+                    it.input.lastOrNull()?.isAsciiAlphabet() == true &&
+                        str.lastOrNull()?.isAsciiAlphabet() == true
+                    )
         }
         val reusablePrefixLength = reusable?.input?.length ?: -1
         val systemOmissionStates = LinkedHashMap<Int, List<LOUDSWithTermId.OmissionSearchState>>()
         val systemUserOmissionStates = LinkedHashMap<Int, List<LOUDSWithTermId.OmissionSearchState>>()
         val systemTypoProgress = LinkedHashMap<Int, LOUDSWithTermId.TypoSearchProgress>()
         val systemUserTypoProgress = LinkedHashMap<Int, LOUDSWithTermId.TypoSearchProgress>()
+        val systemPrefixStates = LinkedHashMap<Int, Int>()
+        val systemUserPrefixStates = LinkedHashMap<Int, Int>()
+        val wikiPrefixStates = LinkedHashMap<Int, Int>()
+        val webPrefixStates = LinkedHashMap<Int, Int>()
+        val personPrefixStates = LinkedHashMap<Int, Int>()
+        val neologdPrefixStates = LinkedHashMap<Int, Int>()
+
+        fun prefixSearch(
+            trie: LOUDSWithTermId,
+            bitVector: SuccinctBitVector,
+            start: Int,
+            previousStates: Map<Int, Int>?,
+            currentStates: MutableMap<Int, Int>,
+        ): List<LOUDSWithTermId.CommonPrefixSearchResult> {
+            val previousNodeIndex = previousStates?.get(start)
+            val progress = if (
+                sessionState != null &&
+                reusable != null &&
+                previousNodeIndex != null
+            ) {
+                trie.advanceCommonPrefixSearch(
+                    previousNodeIndex = previousNodeIndex,
+                    char = str.last(),
+                    input = str,
+                    start = start,
+                    succinctBitVector = bitVector,
+                )
+            } else {
+                trie.commonPrefixSearchWithProgress(
+                    str = str,
+                    start = start,
+                    succinctBitVector = bitVector,
+                )
+            }
+            currentStates[start] = progress.nodeIndex
+            return progress.results
+        }
         val graph: MutableMap<Int, MutableList<Node>> = if (reusable != null) {
-            IncrementalGraph(reusablePrefixLength, signature).apply {
-                reusable.graph.forEach { (endIndex, nodes) ->
-                    if (endIndex != reusablePrefixLength + 1) {
-                        put(endIndex, nodes.mapTo(mutableListOf()) { it.copyForGraphBuild() })
+            val sessionGraph = reusable.graph as? IncrementalGraph
+            if (sessionState != null && sessionGraph != null) {
+                // A session owns this graph exclusively.  Keep the already-pruned lattice and
+                // extend it in place instead of cloning every node twice for every typed letter.
+                // Clear the published cache first so cancellation cannot expose a partial append.
+                sessionState.cachedGraph = null
+                sessionGraph.reusedThroughEndIndex = reusablePrefixLength
+                sessionGraph.remove(reusablePrefixLength + 1) // previous EOS
+                // The previous final position was pruned while it still had a suffix penalty.
+                // It must be reconsidered after that penalty disappears on append.  Retain only
+                // this one unpruned frontier, not a deep copy of the whole lattice.
+                reusable.unprunedFrontier?.let { frontier ->
+                    sessionGraph[reusablePrefixLength] = frontier
+                }
+                sessionGraph
+            } else {
+                IncrementalGraph(reusablePrefixLength, signature).apply {
+                    reusable.graph.forEach { (endIndex, nodes) ->
+                        if (endIndex != reusablePrefixLength + 1) {
+                            put(endIndex, nodes.mapTo(mutableListOf()) { it.copyForGraphBuild() })
+                        }
                     }
                 }
             }
@@ -311,10 +410,12 @@ class GraphBuilder {
                 localSystemUserTokenBitVector != null &&
                 localSystemUserTangoLBS != null
             ) {
-                val systemUserPrefixSearch = localSystemUserYomiTrie.commonPrefixSearchWithNodeIndex(
-                    str = str,
+                val systemUserPrefixSearch = prefixSearch(
+                    trie = localSystemUserYomiTrie,
+                    bitVector = localSystemUserLBSYomi,
                     start = i,
-                    succinctBitVector = localSystemUserLBSYomi,
+                    previousStates = reusable?.systemUserPrefixStates,
+                    currentStates = systemUserPrefixStates,
                 )
                 if (systemUserPrefixSearch.isNotEmpty()) foundInAnyDictionary = true
                 for (prefixResult in systemUserPrefixSearch) {
@@ -539,10 +640,12 @@ class GraphBuilder {
             }
 
             // 3. システム辞書 (通常検索)
-            val commonPrefixSearchSystem = yomiTrie.commonPrefixSearchWithNodeIndex(
-                str = str,
+            val commonPrefixSearchSystem = prefixSearch(
+                trie = yomiTrie,
+                bitVector = succinctBitVectorLBSYomi,
                 start = i,
-                succinctBitVector = succinctBitVectorLBSYomi
+                previousStates = reusable?.systemPrefixStates,
+                currentStates = systemPrefixStates,
             )
             if (commonPrefixSearchSystem.isNotEmpty()) foundInAnyDictionary = true
             for (prefixResult in commonPrefixSearchSystem) {
@@ -743,10 +846,12 @@ class GraphBuilder {
                 succinctBitVectorLBSWikiYomi != null && succinctBitVectorWikiTangoLBS != null &&
                 succinctBitVectorWikiTokenArray != null && succinctBitVectorIsLeafWikiYomi != null
             ) {
-                val commonPrefixSearchWiki = wikiYomiTrie.commonPrefixSearchWithNodeIndex(
-                    str = str,
+                val commonPrefixSearchWiki = prefixSearch(
+                    trie = wikiYomiTrie,
+                    bitVector = succinctBitVectorLBSWikiYomi,
                     start = i,
-                    succinctBitVector = succinctBitVectorLBSWikiYomi
+                    previousStates = reusable?.wikiPrefixStates,
+                    currentStates = wikiPrefixStates,
                 )
                 if (commonPrefixSearchWiki.isNotEmpty()) foundInAnyDictionary = true
                 for (prefixResult in commonPrefixSearchWiki) {
@@ -793,10 +898,12 @@ class GraphBuilder {
                 succinctBitVectorLBSwebYomi != null && succinctBitVectorwebTangoLBS != null &&
                 succinctBitVectorwebTokenArray != null && succinctBitVectorIsLeafwebYomi != null
             ) {
-                val commonPrefixSearchWeb = webYomiTrie.commonPrefixSearchWithNodeIndex(
-                    str = str,
+                val commonPrefixSearchWeb = prefixSearch(
+                    trie = webYomiTrie,
+                    bitVector = succinctBitVectorLBSwebYomi,
                     start = i,
-                    succinctBitVector = succinctBitVectorLBSwebYomi
+                    previousStates = reusable?.webPrefixStates,
+                    currentStates = webPrefixStates,
                 )
                 if (commonPrefixSearchWeb.isNotEmpty()) foundInAnyDictionary = true
                 for (prefixResult in commonPrefixSearchWeb) {
@@ -843,10 +950,12 @@ class GraphBuilder {
                 succinctBitVectorLBSpersonYomi != null && succinctBitVectorpersonTangoLBS != null &&
                 succinctBitVectorpersonTokenArray != null && succinctBitVectorIsLeafpersonYomi != null
             ) {
-                val commonPrefixSearchPerson = personYomiTrie.commonPrefixSearchWithNodeIndex(
-                    str = str,
+                val commonPrefixSearchPerson = prefixSearch(
+                    trie = personYomiTrie,
+                    bitVector = succinctBitVectorLBSpersonYomi,
                     start = i,
-                    succinctBitVector = succinctBitVectorLBSpersonYomi
+                    previousStates = reusable?.personPrefixStates,
+                    currentStates = personPrefixStates,
                 )
                 if (commonPrefixSearchPerson.isNotEmpty()) foundInAnyDictionary = true
                 for (prefixResult in commonPrefixSearchPerson) {
@@ -893,10 +1002,12 @@ class GraphBuilder {
                 succinctBitVectorLBSneologdYomi != null && succinctBitVectorneologdTangoLBS != null &&
                 succinctBitVectorneologdTokenArray != null && succinctBitVectorIsLeafneologdYomi != null
             ) {
-                val commonPrefixSearchNeologd = neologdYomiTrie.commonPrefixSearchWithNodeIndex(
-                    str = str,
+                val commonPrefixSearchNeologd = prefixSearch(
+                    trie = neologdYomiTrie,
+                    bitVector = succinctBitVectorLBSneologdYomi,
                     start = i,
-                    succinctBitVector = succinctBitVectorLBSneologdYomi
+                    previousStates = reusable?.neologdPrefixStates,
+                    currentStates = neologdPrefixStates,
                 )
                 if (commonPrefixSearchNeologd.isNotEmpty()) foundInAnyDictionary = true
                 for (prefixResult in commonPrefixSearchNeologd) {
@@ -950,22 +1061,42 @@ class GraphBuilder {
                 }
             }
 
-            // 9. どの辞書にもヒットしなかった場合のフォールバック
-            if (!foundInAnyDictionary && i < str.length) {
-                val yomiStr = str.substring(i, i + 1) // 1文字だけを未知語として切り出す
+            // 9. Mozc-style alphabet group node / unknown fallback
+            if (i < str.length) {
+                val isAsciiAlphabet = str[i].isAsciiAlphabet()
+                // Mozc's ImmutableConverter::AddCharacterTypeBasedNodes runs after every
+                // dictionary lookup and adds a maximal same-script/form alphabet node in
+                // parallel with dictionary nodes.  Our old fallback ran only when no dictionary
+                // entry existed, so one-letter entries suppressed the `abc` group and the strict
+                // boundary checker severed the path between letters.
+                if (!isAsciiAlphabet && foundInAnyDictionary) continue
+                val endExclusive = if (isAsciiAlphabet) {
+                    var end = i + 1
+                    while (end < str.length && str[end].isAsciiAlphabet()) end++
+                    end
+                } else {
+                    i + 1
+                }
+                val yomiStr = str.substring(i, endExclusive)
                 val endIndex = i + yomiStr.length
                 if (endIndex <= reusablePrefixLength) continue
+                val wordCost = if (isAsciiAlphabet) {
+                    if (yomiStr.length > 1) MOZC_MAX_WORD_COST / 2 else MOZC_MAX_WORD_COST
+                } else {
+                    10000
+                }
+                val posId = if (isAsciiAlphabet) MOZC_UNKNOWN_POS_ID else 0
                 val unknownNode = Node(
-                    l = 0, // 未知語用のID (一般名詞など)
-                    r = 0, // 未知語用のID (一般名詞など)
-                    score = 10000, // 高いコスト
-                    f = 10000,
-                    g = 10000,
+                    l = posId,
+                    r = posId,
+                    score = wordCost,
+                    f = wordCost,
+                    g = wordCost,
                     tango = yomiStr, // 読みをそのまま単語とする
                     yomiUsed = yomiStr,
                     len = yomiStr.length.toShort(),
                     sPos = i,
-                    mozcAttributes = mozcAttributesFor(0),
+                    mozcAttributes = mozcAttributesFor(posId),
                     candidateSource = CandidateSource.UNKNOWN,
                 )
                 // 未知語は重複を考慮せずそのまま追加する
@@ -973,15 +1104,34 @@ class GraphBuilder {
                 graphNodeTrace?.add(unknownNode.toTrace(str, endIndex, "UNKNOWN", "ADDED"))
             }
         }
-        cachedGraph = CachedGraph(
+        val updatedCache = CachedGraph(
             input = str,
             signature = signature,
-            graph = graph.deepCopyForGraphBuild(),
+            graph = if (sessionState != null) graph else graph.deepCopyForGraphBuild(),
             systemOmissionStates = systemOmissionStates,
             systemUserOmissionStates = systemUserOmissionStates,
             systemTypoProgress = systemTypoProgress,
             systemUserTypoProgress = systemUserTypoProgress,
+            systemPrefixStates = systemPrefixStates,
+            systemUserPrefixStates = systemUserPrefixStates,
+            wikiPrefixStates = wikiPrefixStates,
+            webPrefixStates = webPrefixStates,
+            personPrefixStates = personPrefixStates,
+            neologdPrefixStates = neologdPrefixStates,
+            unprunedFrontier = if (sessionState != null) {
+                graph[str.length]?.toMutableList()
+            } else {
+                null
+            },
         )
+        if (sessionState != null) {
+            sessionState.cachedGraph = updatedCache
+            if (performanceStartNs != 0L) {
+                sessionState.lastConstructGraphNs = System.nanoTime() - performanceStartNs
+            }
+        } else {
+            cachedGraph = updatedCache
+        }
         return graph
     }
 
@@ -999,6 +1149,8 @@ class GraphBuilder {
                 copy[endIndex] = nodes.mapTo(mutableListOf()) { it.copyForGraphBuild() }
             }
         }
+
+    private fun Char.isAsciiAlphabet(): Boolean = this in 'a'..'z' || this in 'A'..'Z'
 
     private fun conversionSignature(
         yomiTrie: LOUDSWithTermId,
@@ -1020,6 +1172,7 @@ class GraphBuilder {
         result = 31 * result + System.identityHashCode(webYomiTrie)
         result = 31 * result + System.identityHashCode(personYomiTrie)
         result = 31 * result + System.identityHashCode(neologdYomiTrie)
+        result = 31 * result + System.identityHashCode(systemUserYomiTrie)
         result = 31 * result + System.identityHashCode(userDictionaryRepository)
         result = 31 * result + (userDictionaryRepository?.conversionRevision?.hashCode() ?: 0)
         result = 31 * result + System.identityHashCode(learnRepository)
@@ -1031,5 +1184,11 @@ class GraphBuilder {
         result = 31 * result + graphNodeDedupMode.hashCode()
         result = 31 * result + System.identityHashCode(mozcNodeAttributeTable)
         return result
+    }
+
+    private companion object {
+        // app/src/main/assets/id.def: 名詞,サ変接続,*,*,*,*,*
+        const val MOZC_UNKNOWN_POS_ID: Short = 1841
+        const val MOZC_MAX_WORD_COST = 32767
     }
 }

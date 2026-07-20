@@ -5,6 +5,13 @@ import com.kazumaproject.Louds.with_term_id.LOUDSWithTermId
 import com.kazumaproject.connection_id.ConnectionIdBuilder
 import com.kazumaproject.dictionary.TokenArray
 import com.kazumaproject.markdownhelperkeyboard.converter.ConnectionMatrix
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactDictionaryKind
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactDictionaryTriple
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactEnglishDictionaryReader
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionary
+import com.kazumaproject.markdownhelperkeyboard.converter.compact.CompactSystemDictionaryReader
+import com.kazumaproject.markdownhelperkeyboard.converter.bitset.SuccinctBitVector
 import timber.log.Timber
 import java.io.BufferedInputStream
 import java.io.BufferedReader
@@ -28,6 +35,18 @@ class DictionaryBinaryReader @Inject constructor(
     @Volatile
     private var connectionMatrixCache: ConnectionMatrixCache? = null
 
+    @Volatile
+    private var compactSystemDictionaryCache: CompactSystemDictionary? = null
+
+    @Volatile
+    private var compactSystemDictionaryLoadAttempted = false
+
+    @Volatile
+    private var compactEnglishDictionaryCache: CompactEnglishDictionary? = null
+
+    @Volatile
+    private var compactEnglishDictionaryLoadAttempted = false
+
     fun openZipAwareObjectInputStream(input: InputStream, debugName: String): ObjectInputStream =
         openZipAwareObject(input, debugName)
 
@@ -41,25 +60,55 @@ class DictionaryBinaryReader @Inject constructor(
     fun resolveCategoryLoadState(category: DictionaryCategory): DictionaryCategoryLoadState =
         resolver.resolveCategoryLoadState(category)
 
-    fun loadLouds(key: DictionaryFileKey): LOUDS =
-        loadWithBundledFallback(key) { input ->
+    fun loadLouds(key: DictionaryFileKey): LOUDS {
+        compactBundledDictionary(key)?.tangoTrie?.let { return it }
+        return loadWithBundledFallback(key) { input ->
             openZipAwareObjectInputStream(input, key.name).use {
                 LOUDS().readExternalNotCompress(it)
             }
         }
+    }
 
-    fun loadLoudsWithTermId(key: DictionaryFileKey): LOUDSWithTermId =
-        loadWithBundledFallback(key) { input ->
+    fun loadLoudsWithTermId(key: DictionaryFileKey): LOUDSWithTermId {
+        compactBundledDictionary(key)?.yomiTrie?.let { return it }
+        return loadWithBundledFallback(key) { input ->
             openZipAwareObjectInputStream(input, key.name).use {
                 LOUDSWithTermId().readExternalNotCompress(it)
             }
         }
+    }
 
-    fun loadTokenArray(key: DictionaryFileKey): TokenArray =
-        TokenArray().also { tokenArray ->
+    fun loadTokenArray(key: DictionaryFileKey): TokenArray {
+        compactBundledDictionary(key)?.tokenArray?.let { return it }
+        return TokenArray().also { tokenArray ->
             loadTokenArrayInto(key, tokenArray)
             readPosTableInto(tokenArray)
         }
+    }
+
+    fun loadSystemYomiLbsIndex(yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        loadYomiLbsIndex(DictionaryFileKey.SYSTEM_YOMI, yomiTrie)
+
+    fun loadSystemYomiLeafIndex(yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        loadYomiLeafIndex(DictionaryFileKey.SYSTEM_YOMI, yomiTrie)
+
+    fun loadSystemTokenIndex(tokenArray: TokenArray): SuccinctBitVector =
+        loadTokenIndex(DictionaryFileKey.SYSTEM_TOKEN, tokenArray)
+
+    fun loadSystemTangoLbsIndex(tangoTrie: LOUDS): SuccinctBitVector =
+        loadTangoLbsIndex(DictionaryFileKey.SYSTEM_TANGO, tangoTrie)
+
+    fun loadYomiLbsIndex(key: DictionaryFileKey, yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        compactBundledDictionary(key)?.yomiLbsIndex ?: SuccinctBitVector(yomiTrie.LBS)
+
+    fun loadYomiLeafIndex(key: DictionaryFileKey, yomiTrie: LOUDSWithTermId): SuccinctBitVector =
+        compactBundledDictionary(key)?.yomiLeafIndex ?: SuccinctBitVector(yomiTrie.isLeaf)
+
+    fun loadTokenIndex(key: DictionaryFileKey, tokenArray: TokenArray): SuccinctBitVector =
+        compactBundledDictionary(key)?.tokenIndex ?: SuccinctBitVector(tokenArray.bitvector)
+
+    fun loadTangoLbsIndex(key: DictionaryFileKey, tangoTrie: LOUDS): SuccinctBitVector =
+        compactBundledDictionary(key)?.tangoLbsIndex ?: SuccinctBitVector(tangoTrie.LBS)
 
     fun loadTokenArrayInto(key: DictionaryFileKey, tokenArray: TokenArray) {
         loadWithBundledFallback(key) { input ->
@@ -109,7 +158,7 @@ class DictionaryBinaryReader @Inject constructor(
     }
 
     fun loadEnglishReading(key: DictionaryFileKey): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId =
-        loadWithBundledFallback(key) { input ->
+        compactBundledEnglishDictionaryIfActive()?.readingTrie ?: loadWithBundledFallback(key) { input ->
             openZipAwareObjectInputStream(input, key.name).use {
                 com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId()
                     .readExternalNotCompress(it)
@@ -117,7 +166,7 @@ class DictionaryBinaryReader @Inject constructor(
         }
 
     fun loadEnglishWord(key: DictionaryFileKey): com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS =
-        loadWithBundledFallback(key) { input ->
+        compactBundledEnglishDictionaryIfActive()?.wordTrie ?: loadWithBundledFallback(key) { input ->
             openZipAwareObjectInputStream(input, key.name).use {
                 com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS()
                     .readExternalNotCompress(it)
@@ -125,12 +174,32 @@ class DictionaryBinaryReader @Inject constructor(
         }
 
     fun loadEnglishToken(key: DictionaryFileKey): com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray =
-        loadWithBundledFallback(key) { input ->
+        compactBundledEnglishDictionaryIfActive()?.tokenArray ?: loadWithBundledFallback(key) { input ->
             openZipAwareObjectInputStream(input, key.name).use {
                 com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray()
                     .readExternal(it)
             }
         }
+
+    fun loadEnglishReadingLbsIndex(
+        trie: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId,
+    ): SuccinctBitVector =
+        compactBundledEnglishDictionaryIfActive()?.readingLbsIndex ?: SuccinctBitVector(trie.LBS)
+
+    fun loadEnglishReadingLeafIndex(
+        trie: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.louds_with_term_id.LOUDSWithTermId,
+    ): SuccinctBitVector =
+        compactBundledEnglishDictionaryIfActive()?.readingLeafIndex ?: SuccinctBitVector(trie.isLeaf)
+
+    fun loadEnglishWordLbsIndex(
+        trie: com.kazumaproject.markdownhelperkeyboard.converter.english.louds.LOUDS,
+    ): SuccinctBitVector =
+        compactBundledEnglishDictionaryIfActive()?.wordLbsIndex ?: SuccinctBitVector(trie.LBS)
+
+    fun loadEnglishTokenIndex(
+        tokenArray: com.kazumaproject.markdownhelperkeyboard.converter.english.tokenArray.TokenArray,
+    ): SuccinctBitVector =
+        compactBundledEnglishDictionaryIfActive()?.tokenIndex ?: SuccinctBitVector(tokenArray.bitvector)
 
     private fun <T> loadWithBundledFallback(
         key: DictionaryFileKey,
@@ -176,8 +245,81 @@ class DictionaryBinaryReader @Inject constructor(
         val rightIds: ShortArray,
     )
 
-    private fun createConnectionMatrix(key: DictionaryFileKey): ConnectionMatrix.CostTable =
-        ConnectionMatrix.fromShortArray(loadConnectionIds(key))
+    private fun createConnectionMatrix(key: DictionaryFileKey): ConnectionMatrix.CostTable {
+        if (key == DictionaryFileKey.CONNECTION_ID && !resolver.shouldUseOverride(key)) {
+            runCatching {
+                resolver.openBundledAsset(COMPACT_CONNECTION_MATRIX_ASSET).use { data ->
+                    resolver.openBundledAsset(COMPACT_CONNECTION_MATRIX_INDEX_ASSET).use { index ->
+                        ConnectionMatrix.fromCompactInputStreams(data, index)
+                    }
+                }
+            }.onSuccess { return it }
+                .onFailure { error ->
+                    Timber.w(
+                        error,
+                        "Exact compact connection matrix is unavailable. Falling back to dense matrix.",
+                    )
+                }
+        }
+        return ConnectionMatrix.fromShortArray(loadConnectionIds(key))
+    }
+
+    private fun compactBundledSystemDictionary(): CompactSystemDictionary? {
+        compactSystemDictionaryCache?.let { return it }
+        if (compactSystemDictionaryLoadAttempted) return null
+        return synchronized(this) {
+            compactSystemDictionaryCache?.let { return@synchronized it }
+            if (compactSystemDictionaryLoadAttempted) return@synchronized null
+            compactSystemDictionaryLoadAttempted = true
+            runCatching {
+                resolver.openBundledAssetFileDescriptor(COMPACT_SYSTEM_DICTIONARY_ASSET).use(
+                    CompactSystemDictionaryReader::read,
+                )
+            }.onFailure { error ->
+                Timber.w(
+                    error,
+                    "Compact system dictionary is unavailable. Falling back to serialized assets.",
+                )
+            }.getOrNull()?.also { compactSystemDictionaryCache = it }
+        }
+    }
+
+    private fun compactBundledEnglishDictionaryIfActive(): CompactEnglishDictionary? {
+        if (resolver.shouldUseOverrideCategory(DictionaryCategory.ENGLISH)) return null
+        compactEnglishDictionaryCache?.let { return it }
+        if (compactEnglishDictionaryLoadAttempted) return null
+        return synchronized(this) {
+            compactEnglishDictionaryCache?.let { return@synchronized it }
+            if (compactEnglishDictionaryLoadAttempted) return@synchronized null
+            compactEnglishDictionaryLoadAttempted = true
+            runCatching {
+                resolver.openBundledAssetFileDescriptor(COMPACT_ENGLISH_DICTIONARY_ASSET).use(
+                    CompactEnglishDictionaryReader::read,
+                )
+            }.onFailure { error ->
+                Timber.w(
+                    error,
+                    "Compact English dictionary is unavailable. Falling back to serialized assets.",
+                )
+            }.getOrNull()?.also { compactEnglishDictionaryCache = it }
+        }
+    }
+
+    private fun compactBundledDictionary(key: DictionaryFileKey): CompactDictionaryTriple? {
+        val category = DictionaryFileSpecs.get(key).category
+        val kind = when (category) {
+            DictionaryCategory.SYSTEM -> CompactDictionaryKind.SYSTEM
+            DictionaryCategory.SINGLE_KANJI -> CompactDictionaryKind.SINGLE_KANJI
+            DictionaryCategory.EMOJI -> CompactDictionaryKind.EMOJI
+            DictionaryCategory.EMOTICON -> CompactDictionaryKind.EMOTICON
+            DictionaryCategory.SYMBOL -> CompactDictionaryKind.SYMBOL
+            DictionaryCategory.READING_CORRECTION -> CompactDictionaryKind.READING_CORRECTION
+            DictionaryCategory.KOTOWAZA -> CompactDictionaryKind.KOTOWAZA
+            else -> return null
+        }
+        if (resolver.shouldUseOverrideCategory(category)) return null
+        return compactBundledSystemDictionary()?.dictionaries?.get(kind)
+    }
 
     private data class ConnectionMatrixCache(
         val revision: Long,
@@ -186,6 +328,11 @@ class DictionaryBinaryReader @Inject constructor(
     )
 
     companion object {
+        private const val COMPACT_CONNECTION_MATRIX_ASSET = "connection/connection.compact"
+        private const val COMPACT_CONNECTION_MATRIX_INDEX_ASSET =
+            "connection/connection.compact.index"
+        private const val COMPACT_SYSTEM_DICTIONARY_ASSET = "system/system.compact.kdict"
+        private const val COMPACT_ENGLISH_DICTIONARY_ASSET = "english/english.compact.kdict"
         private val ZIP_SIGNATURE = byteArrayOf(0x50, 0x4B, 0x03, 0x04)
 
         fun openZipAwareObject(input: InputStream, debugName: String): ObjectInputStream =

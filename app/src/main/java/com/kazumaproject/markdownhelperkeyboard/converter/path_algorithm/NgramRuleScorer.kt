@@ -6,11 +6,33 @@ import com.kazumaproject.graph.Node
 class NgramRuleScorer(
     rules: List<NgramRule>,
 ) {
+    private val relevantWordClasses: Map<String, Int> = rules
+        .asSequence()
+        .flatMap { it.nodes.asSequence() }
+        .mapNotNull { it.word }
+        .distinct()
+        .withIndex()
+        .associate { (index, word) -> word to index + 1 }
+    private val relevantLeftIdClasses: Map<Short, Int> = rules
+        .asSequence()
+        .flatMap { it.nodes.asSequence() }
+        .mapNotNull { it.leftId }
+        .distinct()
+        .withIndex()
+        .associate { (index, id) -> id to index + 1 }
+    private val relevantRightIdClasses: Map<Short, Int> = rules
+        .asSequence()
+        .flatMap { it.nodes.asSequence() }
+        .mapNotNull { it.rightId }
+        .distinct()
+        .withIndex()
+        .associate { (index, id) -> id to index + 1 }
     private val rulesByOrderAndCurrentWord: Array<Map<String, List<NgramRule>>> =
         Array(NgramRule.MAX_NODE_COUNT + 1) { emptyMap() }
     private val wildcardRulesByOrder: Array<List<NgramRule>> =
         Array(NgramRule.MAX_NODE_COUNT + 1) { emptyList() }
     private val maxOrderWithRules: Int
+    internal val requiredSuffixNodeCount: Int
 
     init {
         for (order in NgramRule.MIN_NODE_COUNT..NgramRule.MAX_NODE_COUNT) {
@@ -21,6 +43,7 @@ class NgramRuleScorer(
             wildcardRulesByOrder[order] = rulesOfOrder.filter { it.nodes[1].word == null }
         }
         maxOrderWithRules = rules.maxOfOrNull { it.nodes.size } ?: 0
+        requiredSuffixNodeCount = (maxOrderWithRules - 2).coerceAtLeast(0)
     }
 
     /** Compatibility constructor while callers migrate to the common model. */
@@ -71,6 +94,13 @@ class NgramRuleScorer(
 
         return total.coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong()).toInt()
     }
+
+    /** Exact equivalence classes for every node feature observable by this scorer. */
+    internal fun wordClass(node: Node): Int = relevantWordClasses[node.tango] ?: 0
+
+    internal fun leftIdClass(node: Node): Int = relevantLeftIdClasses[node.l] ?: 0
+
+    internal fun rightIdClass(node: Node): Int = relevantRightIdClasses[node.r] ?: 0
 
     private fun scoreBucket(
         rules: List<NgramRule>?,

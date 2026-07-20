@@ -6,6 +6,9 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategoryLoadState
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
+import com.kazumaproject.markdownhelperkeyboard.converter.session.ConversionBackend
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionAggressiveness
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
@@ -37,6 +40,8 @@ data class ImePreferencesSnapshot(
     val showLiveConversionCandidateYomi: Boolean,
     val nBest: Int,
     val conversionBeamWidth: Int,
+    val conversionBackend: ConversionBackend,
+    val predictionConfig: PredictionConfig,
     val flickSensitivityPreferenceValue: Int,
     val longPressTimeoutPreferenceValue: Int,
     val qwertyShowIMEButtonPreference: Boolean,
@@ -220,6 +225,8 @@ data class ImePreferencesSnapshot(
     val learnFirstCandidateDictionaryPreference: Boolean,
     val enablePredictionSearchLearnDictionaryPreference: Boolean,
     val learnPredictionPreference: Int,
+    val userDictionaryPredictionCandidateLimit: Int,
+    val learnDictionaryPredictionCandidateLimit: Int,
     val circularFlickWindowScale: Float,
     val circularFlickDirectionCount: Int,
     val hierarchicalFlickModeSwitchAngleMargin: Int,
@@ -303,6 +310,37 @@ data class ImePreferencesSnapshot(
                     appPreference.live_conversion_candidate_yomi_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
                 conversionBeamWidth = appPreference.conversion_beam_width_preference,
+                conversionBackend = if (appPreference.incremental_conversion_session_preference) {
+                    ConversionBackend.INCREMENTAL_SESSION
+                } else {
+                    ConversionBackend.LEGACY
+                },
+                predictionConfig = PredictionConfig(
+                    japanesePredictionEnabled =
+                        appPreference.japanese_prediction_enable_preference,
+                    englishPredictionEnabled =
+                        appPreference.english_prediction_enable_preference,
+                    systemDictionaryEnabled =
+                        appPreference.system_dictionary_prediction_enable_preference,
+                    minimumInputLength =
+                        appPreference.prediction_minimum_input_length_preference,
+                    systemCandidateLimit =
+                        appPreference.system_prediction_candidate_limit_preference,
+                    lookaheadCharacterCount =
+                        appPreference.prediction_lookahead_character_count_preference,
+                    aggressiveness = PredictionAggressiveness.fromPreference(
+                        appPreference.prediction_aggressiveness_preference,
+                    ),
+                    systemUserDictionaryEnabled =
+                        appPreference.system_user_dictionary_prediction_enable_preference,
+                    readingCorrectionEnabled =
+                        appPreference.reading_correction_prediction_enable_preference,
+                    proverbEnabled = appPreference.proverb_prediction_enable_preference,
+                    externalMozcEnabled =
+                        appPreference.external_mozc_prediction_enable_preference,
+                    symbolEmojiEnabled =
+                        appPreference.symbol_emoji_prediction_enable_preference,
+                ),
                 flickSensitivityPreferenceValue = appPreference.flick_sensitivity_preference ?: 100,
                 longPressTimeoutPreferenceValue =
                     appPreference.long_press_timeout_preference ?: 300,
@@ -603,6 +641,10 @@ data class ImePreferencesSnapshot(
                 enablePredictionSearchLearnDictionaryPreference =
                     appPreference.enable_prediction_search_learn_dictionary_preference,
                 learnPredictionPreference = appPreference.learn_prediction_preference,
+                userDictionaryPredictionCandidateLimit =
+                    appPreference.user_dictionary_prediction_candidate_limit_preference,
+                learnDictionaryPredictionCandidateLimit =
+                    appPreference.learn_dictionary_prediction_candidate_limit_preference,
                 circularFlickWindowScale = appPreference.circular_flickWindow_scale,
                 circularFlickDirectionCount = appPreference.circularFlickDirectionCount,
                 hierarchicalFlickModeSwitchAngleMargin =
