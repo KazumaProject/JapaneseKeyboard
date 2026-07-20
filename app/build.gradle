@@ -31,8 +31,8 @@ android {
         applicationId "com.kazumaproject.markdownhelperkeyboard"
         minSdk 24
         targetSdk 36
-        versionCode 792
-        versionName "1.7.99"
+        versionCode 793
+        versionName "1.7.100"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -127,6 +127,17 @@ android {
         unitTests.includeAndroidResources = true
     }
 
+    androidResources {
+        // These assets are already compact binary images. Keeping them stored lets
+        // Android read them directly instead of inflating them on the IME's cold path.
+        noCompress += ['kdict', 'compact', 'index']
+    }
+
+    sourceSets {
+        main.assets.srcDir(layout.buildDirectory.dir("generated/compactConnectionMatrix/assets"))
+        main.assets.srcDir(layout.buildDirectory.dir("generated/compactSystemDictionary/assets"))
+    }
+
     applicationVariants.configureEach { variant ->
         variant.outputs.each { output ->
             def flavorPrefix = variant.flavorName ? "${variant.flavorName}-" : ""
@@ -152,6 +163,492 @@ android {
         }
     }
 
+}
+
+def bundledConnectionMatrixZip = file("src/main/assets/connectionId.dat.zip")
+def compactConnectionMatrixAsset = layout.buildDirectory.file(
+    "generated/compactConnectionMatrix/assets/connection/connection.compact"
+)
+def compactConnectionMatrixIndexAsset = layout.buildDirectory.file(
+    "generated/compactConnectionMatrix/assets/connection/connection.compact.index"
+)
+
+tasks.register("generateCompactConnectionMatrix") {
+    inputs.file(bundledConnectionMatrixZip)
+    outputs.files(compactConnectionMatrixAsset, compactConnectionMatrixIndexAsset)
+
+    doLast {
+        byte[] denseBytes
+        new java.util.zip.ZipInputStream(new FileInputStream(bundledConnectionMatrixZip)).withCloseable { zip ->
+            def entry = zip.nextEntry
+            while (entry != null && entry.directory) {
+                entry = zip.nextEntry
+            }
+            if (entry == null) {
+                throw new GradleException("connectionId.dat.zip has no readable entry")
+            }
+            denseBytes = zip.bytes
+        }
+        if ((denseBytes.length & 1) != 0) {
+            throw new GradleException("connection matrix byte size must be even: ${denseBytes.length}")
+        }
+        int entryCount = denseBytes.length / 2
+        int matrixSize = Math.sqrt(entryCount as double) as int
+        if (matrixSize * matrixSize != entryCount || matrixSize > 0xFFFF) {
+            throw new GradleException("connection matrix is not a UInt16-sized square: ${entryCount}")
+        }
+
+        def valueAt = { int rid, int lid ->
+            int offset = 2 * (rid * matrixSize + lid)
+            ((denseBytes[offset] & 0xFF) << 8) | (denseBytes[offset + 1] & 0xFF)
+        }
+        int[] modeValues = new int[matrixSize]
+        int[] counts = new int[0x10000]
+        int[] touchedValues = new int[matrixSize]
+        for (int rid = 0; rid < matrixSize; rid++) {
+            int touchedCount = 0
+            int mode = 0
+            int modeCount = -1
+            for (int lid = 0; lid < matrixSize; lid++) {
+                int value = valueAt(rid, lid)
+                if (value == 30000) continue
+                if (counts[value] == 0) {
+                    touchedValues[touchedCount++] = value
+                }
+                int count = ++counts[value]
+                if (count > modeCount) {
+                    mode = value
+                    modeCount = count
+                }
+            }
+            if (modeCount < 0) {
+                throw new GradleException("connection matrix row ${rid} contains only invalid costs")
+            }
+            modeValues[rid] = mode
+            for (int i = 0; i < touchedCount; i++) {
+                counts[touchedValues[i]] = 0
+            }
+        }
+
+        def writeUInt16Le = { ByteArrayOutputStream output, int value ->
+            if (value < 0 || value > 0xFFFF) {
+                throw new GradleException("UInt16 out of range: ${value}")
+            }
+            output.write(value & 0xFF)
+            output.write((value >>> 8) & 0xFF)
+        }
+        int chunkBitCount = (matrixSize + 7).intdiv(8)
+        int chunkBytes = (chunkBitCount + 31).intdiv(32) * 4
+        def output = new ByteArrayOutputStream()
+        output.write(0xAB)
+        output.write(0xCD)
+        writeUInt16Le(output, 1) // Exact costs: no quantization.
+        writeUInt16Le(output, matrixSize)
+        writeUInt16Le(output, matrixSize)
+        modeValues.each { writeUInt16Le(output, it as int) }
+        if ((matrixSize & 1) != 0) {
+            writeUInt16Le(output, 0)
+        }
+
+        int[] chunkBitsOffsets = new int[matrixSize]
+        int[] compactBitsOffsets = new int[matrixSize]
+        int[] valuesOffsets = new int[matrixSize]
+        int[] chunkRankStarts = new int[matrixSize]
+        int[] compactRankStarts = new int[matrixSize]
+        def rankPrefixes = new ArrayList<Integer>()
+        def appendRankPrefixes = { byte[] bits ->
+            int cumulative = 0
+            for (int blockOffset = 0; blockOffset < bits.length; blockOffset += 32) {
+                rankPrefixes.add(cumulative)
+                int blockEnd = Math.min(blockOffset + 32, bits.length)
+                for (int wordOffset = blockOffset; wordOffset < blockEnd; wordOffset += 4) {
+                    int word = (bits[wordOffset] & 0xFF) |
+                        ((bits[wordOffset + 1] & 0xFF) << 8) |
+                        ((bits[wordOffset + 2] & 0xFF) << 16) |
+                        ((bits[wordOffset + 3] & 0xFF) << 24)
+                    cumulative += Integer.bitCount(word)
+                }
+            }
+        }
+
+        for (int rid = 0; rid < matrixSize; rid++) {
+            byte[] chunkBits = new byte[chunkBytes]
+            def compactBits = new ByteArrayOutputStream()
+            def values = new ByteArrayOutputStream()
+            int valueCount = 0
+            for (int chunk = 0; chunk < chunkBitCount; chunk++) {
+                int compactByte = 0
+                int chunkStart = chunk * 8
+                for (int bit = 0; bit < 8 && chunkStart + bit < matrixSize; bit++) {
+                    int value = valueAt(rid, chunkStart + bit)
+                    if (value != modeValues[rid]) {
+                        compactByte |= 1 << bit
+                    }
+                }
+                if (compactByte == 0) continue
+                chunkBits[chunk >>> 3] = (byte) (chunkBits[chunk >>> 3] | (1 << (chunk & 7)))
+                compactBits.write(compactByte)
+                for (int bit = 0; bit < 8 && chunkStart + bit < matrixSize; bit++) {
+                    if ((compactByte & (1 << bit)) == 0) continue
+                    writeUInt16Le(values, valueAt(rid, chunkStart + bit))
+                    valueCount++
+                }
+            }
+            while ((compactBits.size() & 3) != 0) compactBits.write(0)
+            if ((valueCount & 1) != 0) writeUInt16Le(values, 0)
+            writeUInt16Le(output, compactBits.size())
+            writeUInt16Le(output, values.size())
+            chunkBitsOffsets[rid] = output.size()
+            output.write(chunkBits)
+            compactBitsOffsets[rid] = output.size()
+            compactBits.writeTo(output)
+            valuesOffsets[rid] = output.size()
+            values.writeTo(output)
+            chunkRankStarts[rid] = rankPrefixes.size()
+            appendRankPrefixes(chunkBits)
+            compactRankStarts[rid] = rankPrefixes.size()
+            appendRankPrefixes(compactBits.toByteArray())
+        }
+
+        def destination = compactConnectionMatrixAsset.get().asFile
+        destination.parentFile.mkdirs()
+        destination.bytes = output.toByteArray()
+        if (destination.length() >= denseBytes.length) {
+            throw new GradleException(
+                "compact connection matrix did not shrink: ${destination.length()} >= ${denseBytes.length}"
+            )
+        }
+
+        def indexDestination = compactConnectionMatrixIndexAsset.get().asFile
+        indexDestination.parentFile.mkdirs()
+        new DataOutputStream(new BufferedOutputStream(new FileOutputStream(indexDestination))).withCloseable { index ->
+            def writeShortArray = { int[] values ->
+                index.writeInt(values.length)
+                for (int value : values) index.writeShort(value)
+            }
+            def writeIntArray = { int[] values ->
+                index.writeInt(values.length)
+                for (int value : values) index.writeInt(value)
+            }
+            index.writeInt(0x4B434931) // KCI1
+            index.writeInt(1)
+            index.writeInt(matrixSize)
+            index.writeInt(entryCount)
+            index.writeInt(chunkBytes)
+            writeShortArray(modeValues)
+            writeIntArray(chunkBitsOffsets)
+            writeIntArray(compactBitsOffsets)
+            writeIntArray(valuesOffsets)
+            writeIntArray(chunkRankStarts)
+            writeIntArray(compactRankStarts)
+            index.writeInt(rankPrefixes.size())
+            rankPrefixes.each { value -> index.writeInt(value as int) }
+        }
+    }
+}
+
+def bundledPosTable = file("src/main/assets/pos_table.dat")
+def bundledCoreDictionaryTriples = [
+    [id: 0, zipped: true, tango: file("src/main/assets/system/tango.dat.zip"), yomi: file("src/main/assets/system/yomi.dat.zip"), token: file("src/main/assets/system/token.dat.zip")],
+    [id: 1, zipped: false, tango: file("src/main/assets/single_kanji/tango_singleKanji.dat"), yomi: file("src/main/assets/single_kanji/yomi_singleKanji.dat"), token: file("src/main/assets/single_kanji/token_singleKanji.dat")],
+    [id: 2, zipped: false, tango: file("src/main/assets/emoji/tango_emoji.dat"), yomi: file("src/main/assets/emoji/yomi_emoji.dat"), token: file("src/main/assets/emoji/token_emoji.dat")],
+    [id: 3, zipped: false, tango: file("src/main/assets/emoticon/tango_emoticon.dat"), yomi: file("src/main/assets/emoticon/yomi_emoticon.dat"), token: file("src/main/assets/emoticon/token_emoticon.dat")],
+    [id: 4, zipped: false, tango: file("src/main/assets/symbol/tango_symbol.dat"), yomi: file("src/main/assets/symbol/yomi_symbol.dat"), token: file("src/main/assets/symbol/token_symbol.dat")],
+    [id: 5, zipped: false, tango: file("src/main/assets/reading_correction/tango_reading_correction.dat"), yomi: file("src/main/assets/reading_correction/yomi_reading_correction.dat"), token: file("src/main/assets/reading_correction/token_reading_correction.dat")],
+    [id: 6, zipped: false, tango: file("src/main/assets/kotowaza/tango_kotowaza.dat"), yomi: file("src/main/assets/kotowaza/yomi_kotowaza.dat"), token: file("src/main/assets/kotowaza/token_kotowaza.dat")],
+]
+def compactSystemDictionaryAsset = layout.buildDirectory.file(
+    "generated/compactSystemDictionary/assets/system/system.compact.kdict"
+)
+def bundledEnglishReading = file("src/main/assets/english/reading.dat.zip")
+def bundledEnglishWord = file("src/main/assets/english/word.dat")
+def bundledEnglishToken = file("src/main/assets/english/token.dat.zip")
+def compactEnglishDictionaryAsset = layout.buildDirectory.file(
+    "generated/compactSystemDictionary/assets/english/english.compact.kdict"
+)
+
+tasks.register("generateCompactSystemDictionary") {
+    inputs.files(
+        bundledCoreDictionaryTriples.collectMany { [it.tango, it.yomi, it.token] } +
+            [bundledPosTable, bundledEnglishReading, bundledEnglishWord, bundledEnglishToken]
+    )
+    outputs.files(compactSystemDictionaryAsset, compactEnglishDictionaryAsset)
+
+    doLast {
+        def readObjects = { File source, boolean zipped, int objectCount ->
+            InputStream input = new BufferedInputStream(new FileInputStream(source))
+            if (zipped) {
+                def zip = new java.util.zip.ZipInputStream(input)
+                def entry = zip.nextEntry
+                while (entry != null && entry.directory) {
+                    entry = zip.nextEntry
+                }
+                if (entry == null) {
+                    zip.close()
+                    throw new GradleException("${source.name} has no readable ZIP entry")
+                }
+                input = zip
+            }
+            def result = new ArrayList(objectCount)
+            new ObjectInputStream(input).withCloseable { objectInput ->
+                for (int index = 0; index < objectCount; index++) {
+                    result.add(objectInput.readObject())
+                }
+            }
+            result
+        }
+
+        def packInts = { int[] values ->
+            int minimum = 0
+            int maximum = 0
+            if (values.length > 0) {
+                minimum = values[0]
+                maximum = values[0]
+                for (int index = 1; index < values.length; index++) {
+                    int value = values[index]
+                    if (value < minimum) minimum = value
+                    if (value > maximum) maximum = value
+                }
+            }
+            long range = ((long) maximum) - ((long) minimum)
+            int bitWidth = range == 0L ? 0 : Long.SIZE - Long.numberOfLeadingZeros(range)
+            int wordCount = bitWidth == 0 || values.length == 0
+                ? 0
+                : (int) ((((long) values.length) * bitWidth + 63L).intdiv(64L))
+            long[] words = new long[wordCount]
+            if (bitWidth > 0) {
+                for (int index = 0; index < values.length; index++) {
+                    long encoded = ((long) values[index]) - ((long) minimum)
+                    long bitIndex = ((long) index) * bitWidth
+                    int wordIndex = (int) (bitIndex >>> 6)
+                    int shift = (int) (bitIndex & 63L)
+                    words[wordIndex] = words[wordIndex] | (encoded << shift)
+                    if (shift + bitWidth > Long.SIZE) {
+                        words[wordIndex + 1] = words[wordIndex + 1] |
+                            (encoded >>> (Long.SIZE - shift))
+                    }
+                }
+            }
+            [size: values.length, minimum: minimum, bitWidth: bitWidth, words: words]
+        }
+
+        def packChars = { char[] values ->
+            boolean[] present = new boolean[Character.MAX_VALUE + 1]
+            for (int index = 0; index < values.length; index++) {
+                present[(int) values[index]] = true
+            }
+            int alphabetSize = 0
+            for (int index = 0; index < present.length; index++) {
+                if (present[index]) alphabetSize++
+            }
+            char[] alphabet = new char[alphabetSize]
+            int[] indexByChar = new int[present.length]
+            int alphabetIndex = 0
+            for (int charCode = 0; charCode < present.length; charCode++) {
+                if (!present[charCode]) continue
+                alphabet[alphabetIndex] = (char) charCode
+                indexByChar[charCode] = alphabetIndex++
+            }
+            int bitWidth = alphabetSize <= 1
+                ? 0
+                : Integer.SIZE - Integer.numberOfLeadingZeros(alphabetSize - 1)
+            int wordCount = bitWidth == 0 || values.length == 0
+                ? 0
+                : (int) ((((long) values.length) * bitWidth + 63L).intdiv(64L))
+            long[] words = new long[wordCount]
+            if (bitWidth > 0) {
+                for (int index = 0; index < values.length; index++) {
+                    long encoded = indexByChar[(int) values[index]]
+                    long bitIndex = ((long) index) * bitWidth
+                    int wordIndex = (int) (bitIndex >>> 6)
+                    int shift = (int) (bitIndex & 63L)
+                    words[wordIndex] = words[wordIndex] | (encoded << shift)
+                    if (shift + bitWidth > Long.SIZE) {
+                        words[wordIndex + 1] = words[wordIndex + 1] |
+                            (encoded >>> (Long.SIZE - shift))
+                    }
+                }
+            }
+            [
+                alphabet: alphabet,
+                indices: [size: values.length, minimum: 0, bitWidth: bitWidth, words: words],
+            ]
+        }
+
+        def buildSuccinctIndex = { BitSet bitSet ->
+            long[] bitWords = bitSet.toLongArray()
+            // CompactSystemDictionaryReader reconstructs with BitSet.valueOf(words), whose
+            // capacity is exactly the serialized word count on Android. Generate ranks for
+            // that representation, not the desktop JVM BitSet's spare internal capacity.
+            int bitSize = bitWords.length * Long.SIZE
+            int bigBlockCount = (bitSize + 255).intdiv(256)
+            int smallBlockCount = (bitSize + 7).intdiv(8)
+            int[] bigBlockRanks = new int[bigBlockCount]
+            byte[] smallBlockRanks = new byte[smallBlockCount]
+            int rank = 0
+            for (int smallIndex = 0; smallIndex < smallBlockCount; smallIndex++) {
+                int bigIndex = smallIndex.intdiv(32)
+                if ((smallIndex & 31) == 0) {
+                    bigBlockRanks[bigIndex] = rank
+                }
+                smallBlockRanks[smallIndex] = (byte) (rank - bigBlockRanks[bigIndex])
+                int wordIndex = smallIndex.intdiv(8)
+                int shift = (smallIndex & 7) * 8
+                long byteBits = wordIndex < bitWords.length
+                    ? (bitWords[wordIndex] >>> shift) & 0xFFL
+                    : 0L
+                rank += Long.bitCount(byteBits)
+            }
+            [totalOnes: rank, bigBlockRanks: bigBlockRanks, smallBlockRanks: smallBlockRanks]
+        }
+
+        def posTable = readObjects(bundledPosTable, false, 2)
+        def dictionaries = bundledCoreDictionaryTriples.collect { source ->
+            def tango = readObjects(source.tango as File, source.zipped as boolean, 3)
+            def yomi = readObjects(source.yomi as File, source.zipped as boolean, 4)
+            def token = readObjects(source.token as File, source.zipped as boolean, 4)
+            [
+                id: source.id,
+                tango: tango,
+                yomi: yomi,
+                token: token,
+                tangoLabels: packChars((char[]) tango[2]),
+                yomiLabels: packChars((char[]) yomi[2]),
+                termIds: packInts((int[]) yomi[3]),
+                nodeIds: packInts((int[]) token[2]),
+            ]
+        }
+
+        def destination = compactSystemDictionaryAsset.get().asFile
+        destination.parentFile.mkdirs()
+        new DataOutputStream(new BufferedOutputStream(new FileOutputStream(destination))).withCloseable { output ->
+            def writeLongArray = { long[] values ->
+                output.writeInt(values.length)
+                for (long value : values) output.writeLong(value)
+            }
+            def writeShortArray = { short[] values ->
+                output.writeInt(values.length)
+                for (short value : values) output.writeShort(value)
+            }
+            def writeIntArray = { int[] values ->
+                output.writeInt(values.length)
+                for (int value : values) output.writeInt(value)
+            }
+            def writeByteArray = { byte[] values ->
+                output.writeInt(values.length)
+                output.write(values)
+            }
+            def writeBitSet = { BitSet value -> writeLongArray(value.toLongArray()) }
+            def writePackedInt = { packed ->
+                output.writeInt(packed.size as int)
+                output.writeInt(packed.minimum as int)
+                output.writeInt(packed.bitWidth as int)
+                writeLongArray((long[]) packed.words)
+            }
+            def writePackedChar = { packed ->
+                char[] alphabet = (char[]) packed.alphabet
+                output.writeInt(alphabet.length)
+                for (char value : alphabet) output.writeChar((int) value)
+                writePackedInt(packed.indices)
+            }
+            def writeSuccinctIndex = { BitSet bitSet ->
+                def index = buildSuccinctIndex(bitSet)
+                output.writeInt(index.totalOnes as int)
+                writeIntArray((int[]) index.bigBlockRanks)
+                writeByteArray((byte[]) index.smallBlockRanks)
+            }
+
+            output.writeInt(0x4B445331) // KDS1
+            output.writeInt(3)
+            output.writeInt(dictionaries.size())
+            dictionaries.each { dictionary ->
+                def tango = dictionary.tango
+                def yomi = dictionary.yomi
+                def token = dictionary.token
+                output.writeInt(dictionary.id as int)
+                writeBitSet((BitSet) tango[0])
+                writeBitSet((BitSet) tango[1])
+                writePackedChar(dictionary.tangoLabels)
+                writeBitSet((BitSet) yomi[0])
+                writeBitSet((BitSet) yomi[1])
+                writePackedChar(dictionary.yomiLabels)
+                writePackedInt(dictionary.termIds)
+                writeShortArray((short[]) token[0])
+                writeShortArray((short[]) token[1])
+                writePackedInt(dictionary.nodeIds)
+                writeBitSet((BitSet) token[3])
+                writeShortArray((short[]) posTable[0])
+                writeShortArray((short[]) posTable[1])
+                writeSuccinctIndex((BitSet) yomi[0])
+                writeSuccinctIndex((BitSet) yomi[1])
+                writeSuccinctIndex((BitSet) token[3])
+                writeSuccinctIndex((BitSet) tango[0])
+            }
+        }
+        if (destination.length() <= 0L) {
+            throw new GradleException("Compact system dictionary was not generated")
+        }
+
+        def englishReading = readObjects(bundledEnglishReading, true, 4)
+        def englishWord = readObjects(bundledEnglishWord, false, 3)
+        def englishToken = readObjects(bundledEnglishToken, true, 3)
+        def englishDestination = compactEnglishDictionaryAsset.get().asFile
+        englishDestination.parentFile.mkdirs()
+        new DataOutputStream(new BufferedOutputStream(new FileOutputStream(englishDestination))).withCloseable { output ->
+            def writeLongArray = { long[] values ->
+                output.writeInt(values.length)
+                for (long value : values) output.writeLong(value)
+            }
+            def writeIntArray = { int[] values ->
+                output.writeInt(values.length)
+                for (int value : values) output.writeInt(value)
+            }
+            def writeShortArray = { short[] values ->
+                output.writeInt(values.length)
+                for (short value : values) output.writeShort(value)
+            }
+            def writeCharArray = { char[] values ->
+                output.writeInt(values.length)
+                for (char value : values) output.writeChar((int) value)
+            }
+            def writeByteArray = { byte[] values ->
+                output.writeInt(values.length)
+                output.write(values)
+            }
+            def writeBitSet = { BitSet value -> writeLongArray(value.toLongArray()) }
+            def writeSuccinctIndex = { BitSet bitSet ->
+                def index = buildSuccinctIndex(bitSet)
+                output.writeInt(index.totalOnes as int)
+                writeIntArray((int[]) index.bigBlockRanks)
+                writeByteArray((byte[]) index.smallBlockRanks)
+            }
+
+            output.writeInt(0x4B444531) // KDE1
+            output.writeInt(1)
+            writeBitSet((BitSet) englishReading[0])
+            writeBitSet((BitSet) englishReading[1])
+            writeCharArray((char[]) englishReading[2])
+            writeIntArray((int[]) englishReading[3])
+            writeBitSet((BitSet) englishWord[0])
+            writeBitSet((BitSet) englishWord[1])
+            writeCharArray((char[]) englishWord[2])
+            writeShortArray((short[]) englishToken[0])
+            writeIntArray((int[]) englishToken[1])
+            writeBitSet((BitSet) englishToken[2])
+            writeSuccinctIndex((BitSet) englishReading[0])
+            writeSuccinctIndex((BitSet) englishReading[1])
+            writeSuccinctIndex((BitSet) englishWord[0])
+            writeSuccinctIndex((BitSet) englishToken[2])
+        }
+        if (englishDestination.length() <= 0L) {
+            throw new GradleException("Compact English dictionary was not generated")
+        }
+    }
+}
+
+tasks.named("preBuild").configure {
+    dependsOn("generateCompactConnectionMatrix")
+    dependsOn("generateCompactSystemDictionary")
 }
 
 tasks.register("generateMozcSegmenterData") {

@@ -8,6 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramAssetLoader
+import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramDictionary
 import com.kazumaproject.markdownhelperkeyboard.converter.ngram.SystemNgramRuntime
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
@@ -51,6 +52,62 @@ class SystemNgramCandidatePerformanceInstrumentedTest {
         assertEquals(without.candidates.first().string, restored.candidates.first().string)
         assertEquals(original.score, restored.candidates.first { it.string == "服を着る" }.score)
         SystemNgramRuntime.install(SystemNgramAssetLoader.load(context))
+    }
+
+    @Test
+    fun packedPrefixPrefilterMatchesConservativeSearchAcrossCorpus() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entry = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            KanaKanjiEngineEntryPoint::class.java,
+        )
+        val engine = entry.kanaKanjiEngine()
+        val repository = entry.userDictionaryRepository()
+        val packed = SystemNgramAssetLoader.load(context)
+        val conservative = object : SystemNgramDictionary {
+            override val ruleCount: Int = packed.ruleCount
+            override val storageBytes: Int = packed.storageBytes
+
+            override fun matches(
+                node0: com.kazumaproject.graph.Node,
+                node1: com.kazumaproject.graph.Node,
+                node2: com.kazumaproject.graph.Node?,
+                node3: com.kazumaproject.graph.Node?,
+                node4: com.kazumaproject.graph.Node?,
+            ): Boolean = packed.matches(node0, node1, node2, node3, node4)
+            // The default mayMatch methods return true, reproducing the old conservative search.
+        }
+        val corpus = listOf(
+            "このあぷりのへんかんこうほをこうそくにしたい",
+            "ふくをきる",
+            "にほんごをにゅうりょくする",
+            "きょうはいいてんきです",
+            "せんたくきをつかう",
+        )
+
+        try {
+            corpus.forEach { input ->
+                SystemNgramRuntime.install(conservative)
+                val expected = convertInput(engine, repository, input)
+                SystemNgramRuntime.install(packed)
+                val actual = convertInput(engine, repository, input)
+                assertEquals("$input candidates", expected.candidates, actual.candidates)
+                assertEquals("$input splits", expected.splitPatterns, actual.splitPatterns)
+                val returnedCandidateStrings = actual.candidates.mapTo(HashSet()) { it.string }
+                assertEquals(
+                    "$input candidate splits",
+                    expected.splitPatternByCandidateString.filterKeys(returnedCandidateStrings::contains),
+                    actual.splitPatternByCandidateString.filterKeys(returnedCandidateStrings::contains),
+                )
+                assertEquals(
+                    "$input matched system n-grams",
+                    expected.systemNgramMatchedCandidates,
+                    actual.systemNgramMatchedCandidates,
+                )
+            }
+        } finally {
+            SystemNgramRuntime.install(packed)
+        }
     }
 
     @Test
@@ -329,6 +386,28 @@ class SystemNgramCandidatePerformanceInstrumentedTest {
     ): BunsetsuCandidateResult = engine.getCandidatesWithBunsetsuSeparation(
         input = "ふくをきる",
         n = candidates,
+        mozcUtPersonName = false,
+        mozcUTPlaces = false,
+        mozcUTWiki = false,
+        mozcUTNeologd = false,
+        mozcUTWeb = false,
+        userDictionaryRepository = repository,
+        learnRepository = null,
+        isOmissionSearchEnable = false,
+        enableTypoCorrectionJapaneseFlick = false,
+        enableTypoCorrectionQwertyEnglish = false,
+        typoCorrectionOffsetScore = 3000,
+        omissionSearchOffsetScore = 1900,
+        beamWidth = 20,
+    )
+
+    private suspend fun convertInput(
+        engine: KanaKanjiEngine,
+        repository: UserDictionaryRepository,
+        input: String,
+    ): BunsetsuCandidateResult = engine.getCandidatesWithBunsetsuSeparation(
+        input = input,
+        n = 4,
         mozcUtPersonName = false,
         mozcUTPlaces = false,
         mozcUTWiki = false,

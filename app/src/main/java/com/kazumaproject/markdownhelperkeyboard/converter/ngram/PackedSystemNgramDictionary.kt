@@ -26,9 +26,21 @@ class PackedSystemNgramDictionary private constructor(
     private val scratch = ThreadLocal.withInitial {
         Scratch(ByteArray(maxKeyBytes.coerceAtLeast(1)), ByteArray(maxKeyBytes.coerceAtLeast(1)))
     }
+    private val firstPairHashesByKinds: Array<LongHashSet?>
+    private val firstPairKindKeys: IntArray
+    private val firstNodeValuesByKind: Array<LongHashSet?>
+    private val firstNodeKindKeys: IntArray
 
     init {
         verify()
+        firstNodeValuesByKind = arrayOfNulls(4)
+        firstPairHashesByKinds = buildFirstPairHashes(firstNodeValuesByKind)
+        firstPairKindKeys = firstPairHashesByKinds.indices
+            .filter { firstPairHashesByKinds[it] != null }
+            .toIntArray()
+        firstNodeKindKeys = firstNodeValuesByKind.indices
+            .filter { firstNodeValuesByKind[it] != null }
+            .toIntArray()
     }
 
     override fun matches(
@@ -69,6 +81,166 @@ class PackedSystemNgramDictionary private constructor(
             signatureIndex++
         }
         return false
+    }
+
+    override fun mayMatchFirstPair(node0: Node, node1: Node): Boolean {
+        if (node0.tango == "BOS" || node1.tango == "EOS") return false
+        var node0WordHash = 0
+        var node1WordHash = 0
+        var node0WordHashReady = false
+        var node1WordHashReady = false
+        for (kindKey in firstPairKindKeys) {
+            val firstKind = kindKey ushr 2
+            val secondKind = kindKey and 0x3
+            val firstValue = when (firstKind) {
+                KIND_WORD -> {
+                    if (!node0WordHashReady) {
+                        node0WordHash = node0.tango.hashCode()
+                        node0WordHashReady = true
+                    }
+                    node0WordHash
+                }
+                KIND_POS -> coarsePos(node0) ?: continue
+                KIND_ANY -> 0
+                else -> continue
+            }
+            val secondValue = when (secondKind) {
+                KIND_WORD -> {
+                    if (!node1WordHashReady) {
+                        node1WordHash = node1.tango.hashCode()
+                        node1WordHashReady = true
+                    }
+                    node1WordHash
+                }
+                KIND_POS -> coarsePos(node1) ?: continue
+                KIND_ANY -> 0
+                else -> continue
+            }
+            if (firstPairHashesByKinds[kindKey]?.contains(pairKey(firstValue, secondValue)) == true) {
+                return true
+            }
+        }
+        return false
+    }
+
+    override fun mayMatchFirstNode(node: Node): Boolean {
+        if (node.tango == "BOS" || node.tango == "EOS") return false
+        var wordHash = 0
+        var wordHashReady = false
+        for (kind in firstNodeKindKeys) {
+            val value = when (kind) {
+                KIND_WORD -> {
+                    if (!wordHashReady) {
+                        wordHash = node.tango.hashCode()
+                        wordHashReady = true
+                    }
+                    wordHash
+                }
+                KIND_POS -> coarsePos(node) ?: continue
+                KIND_ANY -> 0
+                else -> continue
+            }
+            if (firstNodeValuesByKind[kind]?.contains(value.toLong()) == true) return true
+        }
+        return false
+    }
+
+    private fun buildFirstPairHashes(
+        firstNodeValues: Array<LongHashSet?>,
+    ): Array<LongHashSet?> {
+        val result = arrayOfNulls<LongHashSet>(16)
+        val record = ByteArray(maxKeyBytes.coerceAtLeast(1))
+        repeat(ruleCount) { recordId ->
+            val recordLength = decodeRecord(recordId, record)
+            val signature = (record[0].toInt() and 0xff) or
+                ((record[1].toInt() and 0xff) shl 8)
+            val firstKind = (signature ushr 3) and 0x3
+            val secondKind = (signature ushr 5) and 0x3
+            var position = 2
+            val first = readPrefixFeature(record, position, recordLength, firstKind)
+            position = first.nextPosition
+            val second = readPrefixFeature(record, position, recordLength, secondKind)
+            val kindKey = (firstKind shl 2) or secondKind
+            val firstNodeSet = firstNodeValues[firstKind]
+                ?: LongHashSet().also { firstNodeValues[firstKind] = it }
+            firstNodeSet.add(first.value.toLong())
+            val set = result[kindKey] ?: LongHashSet().also { result[kindKey] = it }
+            set.add(pairKey(first.value, second.value))
+        }
+        return result
+    }
+
+    private fun readPrefixFeature(
+        record: ByteArray,
+        start: Int,
+        recordLength: Int,
+        kind: Int,
+    ): PrefixFeature = when (kind) {
+        KIND_WORD -> {
+            val packed = readUVarint(record, start, recordLength)
+            val byteLength = packed.toInt()
+            val wordStart = (packed ushr 32).toInt()
+            require(byteLength >= 0 && wordStart + byteLength <= recordLength)
+            PrefixFeature(
+                value = utf8StringHash(record, wordStart, byteLength),
+                nextPosition = wordStart + byteLength,
+            )
+        }
+        KIND_POS -> {
+            require(start < recordLength)
+            PrefixFeature(record[start].toInt() and 0xff, start + 1)
+        }
+        KIND_ANY -> PrefixFeature(0, start)
+        else -> error("Invalid n-gram prefix kind")
+    }
+
+    private fun coarsePos(node: Node): Int? {
+        val contextId = node.l.toInt()
+        return if (contextId in 0 until contextCount) {
+            bytes[contextsOffset + contextId].toInt() and 0xff
+        } else {
+            null
+        }
+    }
+
+    private fun pairKey(first: Int, second: Int): Long =
+        (first.toLong() shl 32) xor (second.toLong() and 0xffffffffL)
+
+    private fun utf8StringHash(source: ByteArray, start: Int, length: Int): Int {
+        var hash = 0
+        var position = start
+        val end = start + length
+        while (position < end) {
+            val first = source[position++].toInt() and 0xff
+            val codePoint = when {
+                first < 0x80 -> first
+                first < 0xe0 -> {
+                    require(position < end)
+                    ((first and 0x1f) shl 6) or (source[position++].toInt() and 0x3f)
+                }
+                first < 0xf0 -> {
+                    require(position + 1 < end)
+                    ((first and 0x0f) shl 12) or
+                        ((source[position++].toInt() and 0x3f) shl 6) or
+                        (source[position++].toInt() and 0x3f)
+                }
+                else -> {
+                    require(position + 2 < end)
+                    ((first and 0x07) shl 18) or
+                        ((source[position++].toInt() and 0x3f) shl 12) or
+                        ((source[position++].toInt() and 0x3f) shl 6) or
+                        (source[position++].toInt() and 0x3f)
+                }
+            }
+            if (codePoint < 0x10000) {
+                hash = 31 * hash + codePoint
+            } else {
+                val adjusted = codePoint - 0x10000
+                hash = 31 * hash + (0xd800 or (adjusted ushr 10))
+                hash = 31 * hash + (0xdc00 or (adjusted and 0x3ff))
+            }
+        }
+        return hash
     }
 
     private fun contains(query: ByteArray, queryLength: Int, record: ByteArray): Boolean {
@@ -196,6 +368,21 @@ class PackedSystemNgramDictionary private constructor(
             val byte = bytes[position++].toInt() and 0xff
             value = value or ((byte and 0x7f) shl shift)
             if (byte and 0x80 == 0) return (position.toLong() shl 32) or (value.toLong() and 0xffffffffL)
+            shift += 7
+        }
+    }
+
+    private fun readUVarint(source: ByteArray, start: Int, limit: Int): Long {
+        var position = start
+        var shift = 0
+        var value = 0
+        while (true) {
+            require(position < limit && shift <= 28)
+            val byte = source[position++].toInt() and 0xff
+            value = value or ((byte and 0x7f) shl shift)
+            if (byte and 0x80 == 0) {
+                return (position.toLong() shl 32) or (value.toLong() and 0xffffffffL)
+            }
             shift += 7
         }
     }
@@ -400,6 +587,62 @@ class PackedSystemNgramDictionary private constructor(
     }
 
     private data class Scratch(val query: ByteArray, val record: ByteArray)
+    private data class PrefixFeature(val value: Int, val nextPosition: Int)
+
+    /** Open-addressed immutable set. Hash collisions are safe false positives for the prefilter. */
+    private class LongHashSet {
+        private var values = LongArray(16)
+        private var containsZero = false
+        private var entryCount = 0
+
+        fun add(value: Long) {
+            if (value == 0L) {
+                if (!containsZero) entryCount++
+                containsZero = true
+                return
+            }
+            if ((entryCount + 1) * 10 >= values.size * 6) grow()
+            var slot = mix(value) and (values.size - 1)
+            while (values[slot] != 0L) {
+                if (values[slot] == value) return
+                slot = (slot + 1) and (values.size - 1)
+            }
+            values[slot] = value
+            entryCount++
+        }
+
+        fun contains(value: Long): Boolean {
+            if (value == 0L) return containsZero
+            var slot = mix(value) and (values.size - 1)
+            while (true) {
+                val current = values[slot]
+                if (current == 0L) return false
+                if (current == value) return true
+                slot = (slot + 1) and (values.size - 1)
+            }
+        }
+
+        private fun grow() {
+            val previous = values
+            values = LongArray(previous.size * 2)
+            previous.forEach { value ->
+                if (value != 0L) {
+                    var slot = mix(value) and (values.size - 1)
+                    while (values[slot] != 0L) slot = (slot + 1) and (values.size - 1)
+                    values[slot] = value
+                }
+            }
+        }
+
+        private companion object {
+            fun mix(value: Long): Int {
+                var mixed = value
+                mixed = (mixed xor (mixed ushr 33)) * -49064778989728563L
+                mixed = (mixed xor (mixed ushr 33)) * -4265267296055464877L
+                return (mixed xor (mixed ushr 33)).toInt()
+            }
+        }
+    }
 
     companion object {
         private const val MAGIC = 0x4A4B4E47

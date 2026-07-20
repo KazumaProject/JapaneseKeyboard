@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.dictionary_override
 
 import android.content.Context
+import android.content.res.AssetFileDescriptor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.InputStream
 import javax.inject.Inject
@@ -27,6 +28,11 @@ class DictionarySourceResolver @Inject constructor(
 
     fun openBundledForKey(key: DictionaryFileKey): InputStream =
         context.assets.open(DictionaryFileSpecs.get(key).bundledAssetPath)
+
+    fun openBundledAsset(assetPath: String): InputStream = context.assets.open(assetPath)
+
+    fun openBundledAssetFileDescriptor(assetPath: String): AssetFileDescriptor =
+        context.assets.openFd(assetPath)
 
     fun openOverrideForKey(key: DictionaryFileKey): InputStream = store.openOverride(key)
 

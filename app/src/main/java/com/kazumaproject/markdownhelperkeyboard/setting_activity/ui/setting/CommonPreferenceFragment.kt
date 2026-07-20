@@ -113,6 +113,7 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
 
                 // 旧→新キー移行などがあるなら復元後に実行
                 AppPreference.migrateSumirePreferenceIfNeeded()
+                AppPreference.migratePredictionLookaheadPreferenceIfNeeded()
             }.onSuccess {
                 toast("Backup imported")
                 requireActivity().recreate()
@@ -984,6 +985,7 @@ open class CommonPreferenceFragment : PreferenceFragmentCompat() {
             "setting_route_keyboard_display" to R.id.keyboardDisplayPreferenceFragment,
             "setting_route_input_method" to R.id.inputMethodPreferenceFragment,
             "setting_route_candidate_conversion" to R.id.candidateConversionPreferenceFragment,
+            "setting_route_conversion_engine" to R.id.conversionEnginePreferenceFragment,
             "setting_route_dictionary" to R.id.dictionaryPreferenceFragment,
             "setting_route_ai_conversion" to R.id.aiConversionPreferenceFragment,
             "setting_route_clipboard_shortcut" to R.id.clipboardShortcutPreferenceFragment,
