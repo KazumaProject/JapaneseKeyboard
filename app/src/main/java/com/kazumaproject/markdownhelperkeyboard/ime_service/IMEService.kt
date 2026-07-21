@@ -201,6 +201,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateS
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContentResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateQueryModeResolver
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshRequest
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestToken
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestTracker
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
@@ -1118,7 +1120,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isContinuousTapInputEnabled.set(true)
         lastFlickConvertedNextHiragana.set(true)
         if (!hasConvertedKatakana) {
-            candidate?.let { applyFirstSuggestion(it) }
+            if (candidate != null) {
+                applyFirstSuggestion(candidate)
+            } else {
+                applyRawComposingFallback(insertString)
+            }
         }
         true
     }
@@ -1172,8 +1178,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var suppressedSelectionCleanupCount = 0
     private var preservePreEditOnNextSelectionUpdate: String? = null
     private val _dakutenPressed = MutableStateFlow(false)
-    private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>(replay = 0)
-    private val suggestionFlag = _suggestionFlag.asSharedFlow()
+    private val candidateRefreshCoordinator = CandidateRefreshCoordinator()
+    private val candidateRefreshRequests = candidateRefreshCoordinator.requests
+    private var defaultInputFinalizeJob: Job? = null
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val suggestionViewStatus = _suggestionViewStatus.asStateFlow()
     private val _keyboardSymbolViewState = MutableStateFlow(SymbolKeyboardState())
@@ -2120,6 +2127,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             backend = backend,
         )
         candidateRequestTracker.restart(backend)
+        candidateRefreshCoordinator.restart()
     }
 
     private fun syncCustomKeyboardSuggestionPreference() {
@@ -4210,6 +4218,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onFinishInputView(finishingInput: Boolean) {
         candidateRequestTracker.invalidate()
+        candidateRefreshCoordinator.invalidate()
+        defaultInputFinalizeJob?.cancel()
+        defaultInputFinalizeJob = null
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
         clearZeroQueryAllState(refresh = false)
@@ -8616,7 +8627,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     yomi = insertString, tango = candidate.string
                                 )
                                 withContext(Dispatchers.Main) {
-                                    _suggestionFlag.emit(CandidateShowFlag.Updating)
+                                    requestCandidateRefresh(CandidateShowFlag.Updating)
                                 }
                             }
                         }
@@ -13941,9 +13952,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
         launch {
             var prevFlag: CandidateShowFlag? = null
-            suggestionFlag.collectLatest { currentFlag ->
-                val insertString = inputString.value
-                Timber.d("suggestionFlag CandidateShowFlag.Idle: [$insertString] [$stringInTail] [$prevFlag] [$currentFlag]")
+            candidateRefreshRequests.collectLatest { request ->
+                val currentFlag = request.flag
+                val insertString = request.input
+                Timber.d(
+                    "candidateRefresh: session=%d revision=%d input=[%s] tail=[%s] previous=%s current=%s",
+                    request.sessionId,
+                    request.revision,
+                    insertString,
+                    stringInTail,
+                    prevFlag,
+                    currentFlag,
+                )
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     clearZeroQueryAllState(refresh = false)
                     shortcutToolbarHiddenForCandidates = true
@@ -14070,10 +14090,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             isKeyboardFloatingMode != true &&
                             normalKeyboardSurfaceVisible
                         ) {
-                            // SharedFlow の最初の通知が Updating でも候補欄の高さを保証する。
+                            // セッション最初の Updating でも候補欄の高さを保証する。
                             setKeyboardHeightWithAdditional(mainView)
                         }
-                        setSuggestionOnView(insertString, mainView)
+                        try {
+                            setSuggestionOnView(insertString, mainView)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.e(
+                                e,
+                                "Candidate refresh failed: session=%d revision=%d input=[%s]",
+                                request.sessionId,
+                                request.revision,
+                                insertString,
+                            )
+                            restoreRawComposingTextAfterCandidateFailure(request)
+                        }
                     }
                 }
                 prevFlag = currentFlag
@@ -14462,12 +14495,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
-            inputString.collectLatest { string ->
-                measureDebugStage("IMEService.input.total") {
-                    processInputString(string, mainView)
+            inputString.collect { string ->
+                try {
+                    measureDebugStage("IMEService.input.immediate") {
+                        processInputString(string, mainView)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Immediate input processing failed: input=[%s]", string)
+                    if (string.isNotEmpty() && inputString.value == string) {
+                        applyRawComposingFallback(string)
+                    }
                 }
             }
         }
+
     }
 
 
@@ -14919,9 +14962,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             listAdapter.updateHighlightPosition(-1)
             currentHighlightIndex = -1
         }
-        scope.launch {
-            _suggestionFlag.emit(CandidateShowFlag.Idle)
-        }
+        requestCandidateRefresh(CandidateShowFlag.Idle)
         refreshReconversionUi()
     }
 
@@ -15724,9 +15765,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private suspend fun processInputString(
+    private fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
+        defaultInputFinalizeJob?.cancel()
+        defaultInputFinalizeJob = null
         if (string.isNotEmpty()) {
             clearZeroQueryAllState(refresh = false)
             hasConvertedKatakana = false
@@ -15871,9 +15914,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     /**
      * TenKeyQWERTYモードの入力処理を担当します。
      */
-    private suspend fun handleTenKeyQwertyInput(string: String) {
+    private fun handleTenKeyQwertyInput(string: String) {
         val spannable = createSpannableWithTail(string)
-        _suggestionFlag.emit(CandidateShowFlag.Updating)
+        requestCandidateRefresh(CandidateShowFlag.Updating, string)
         if (!(shouldStartLiveConversion(string) && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
                 inputString = string,
@@ -15910,7 +15953,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     /**
      * TenKeyQWERTY以外のモードの入力処理を担当します。
      */
-    private suspend fun handleDefaultInput(string: String) {
+    private fun handleDefaultInput(string: String) {
         val spannable = createSpannableWithTail(string)
         if (!(shouldStartLiveConversion(string) && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
@@ -15925,17 +15968,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 textColor = if (customComposingTextPreference == true) inputCompositionTextColor else null
             )
         }
-        _suggestionFlag.emit(CandidateShowFlag.Updating)
-        val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
-        measureDebugStage("IMEService.handleDefaultInput.delay") {
-            delay(timeToDelay)
-        }
-
-        if (inputString.value != string) {
-            return
-        }
-
+        requestCandidateRefresh(CandidateShowFlag.Updating, string)
         if (isLiveConversionEnable != true) {
+            scheduleDefaultInputFinalize(string)
+        }
+    }
+
+    private fun scheduleDefaultInputFinalize(string: String) {
+        val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
+        defaultInputFinalizeJob = scope.launch {
+            measureDebugStage("IMEService.input.finalizeDelay") {
+                delay(timeToDelay)
+            }
+
+            if (inputString.value != string || isLiveConversionEnable == true) {
+                return@launch
+            }
+
             val shouldCommitOriginalText =
                 inputString.value.isNotEmpty() && !isHenkan.get() && !onDeleteLongPressUp.get() && !englishSpaceKeyPressed.get() && !deleteKeyLongKeyPressed.get() && !hasConvertedKatakana
 
@@ -15944,7 +15993,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 lastFlickConvertedNextHiragana.set(true)
                 setComposingTextAfterEdit(
                     inputString = string,
-                    spannableString = spannable,
+                    spannableString = createSpannableWithTail(string),
                     backgroundColor = if (customComposingTextPreference == true) {
                         inputCompositionAfterBackgroundColor
                             ?: getColor(com.kazumaproject.core.R.color.blue)
@@ -15975,6 +16024,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun shouldStartLiveConversion(input: String): Boolean {
         return isLiveConversionEnable == true && input.length >= liveConversionStartLength
+    }
+
+    private fun requestCandidateRefresh(
+        flag: CandidateShowFlag,
+        input: String = inputString.value,
+    ) {
+        candidateRefreshCoordinator.request(input = input, flag = flag)
+    }
+
+    private fun restoreRawComposingTextAfterCandidateFailure(
+        request: CandidateRefreshRequest,
+    ) {
+        if (!candidateRefreshCoordinator.isCurrent(request)) return
+        if (request.input.isEmpty() || inputString.value != request.input) return
+        if (!shouldStartLiveConversion(request.input) || isFlickOnlyMode != true) return
+
+        applyRawComposingFallback(request.input)
+    }
+
+    private fun applyRawComposingFallback(input: String) {
+        setComposingTextAfterEdit(
+            inputString = input,
+            spannableString = createSpannableWithTail(input),
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputCompositionAfterBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.blue)
+            } else {
+                getColor(com.kazumaproject.core.R.color.blue)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputCompositionTextColor
+            } else {
+                null
+            },
+        )
     }
 
     private fun liveConversionApplyDelayMillis(): Long {
@@ -16713,13 +16797,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return true
     }
 
-    private suspend fun resetInputString() {
+    private fun resetInputString() {
         Timber.d("resetInputString detect: $bunsetusMultipleDetect [${stringInTail.get()}]")
         val henkanActive = isHenkan.get()
         val tailIsEmpty = stringInTail.get().isEmpty()
         val shouldCommitIdle = !bunsetusMultipleDetect || tailIsEmpty
         if (!henkanActive && shouldCommitIdle) {
-            _suggestionFlag.emit(CandidateShowFlag.Idle)
+            requestCandidateRefresh(CandidateShowFlag.Idle)
         }
     }
 
@@ -20410,9 +20494,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
         listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
-        scope.launch {
-            _suggestionFlag.emit(CandidateShowFlag.Idle)
-        }
+        requestCandidateRefresh(CandidateShowFlag.Idle)
         refreshReconversionUi()
     }
 
@@ -21833,7 +21915,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             val flag = if (inputString.value.isEmpty()) CandidateShowFlag.Idle
             else CandidateShowFlag.Updating
-            _suggestionFlag.emit(flag)
+            requestCandidateRefresh(flag)
         }
         deleteLongPressJob?.invokeOnCompletion {
             if (selectMode.value || !isEditHistoryEnabled()) {
@@ -22830,7 +22912,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 delay(LONG_DELAY_TIME)
             }
-            _suggestionFlag.emit(
+            requestCandidateRefresh(
                 finalSuggestionFlag
                     ?: if (inputString.value.isEmpty()) CandidateShowFlag.Idle else CandidateShowFlag.Updating
             )
@@ -22850,7 +22932,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 actionInRightKeyPressed(insertString)
                 delay(LONG_DELAY_TIME)
             }
-            _suggestionFlag.emit(
+            requestCandidateRefresh(
                 finalSuggestionFlag
                     ?: if (inputString.value.isNotEmpty()) CandidateShowFlag.Updating else CandidateShowFlag.Idle
             )
