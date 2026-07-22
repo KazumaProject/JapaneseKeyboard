@@ -161,6 +161,8 @@
     <string name="category_ng_word_title">NG Words</string>
     <string name="category_ng_word_summary">You can register words by long-pressing a conversion candidate.</string>
     <string name="category_learning_dictionary_title">Learning Dictionary</string>
+    <string name="learn_dictionary_allow_mixed_symbols_numbers_title">Learn Japanese containing symbols and numbers</string>
+    <string name="learn_dictionary_allow_mixed_symbols_numbers_summary">Learn mixed phrases such as “令和8年” while excluding candidates made only of symbols or numbers.</string>
     <string name="category_user_dictionary_title">User Dictionary</string>
     <string name="dictionary_candidate_label_category_title">Candidate labels</string>
     <string name="show_dictionary_candidate_labels_title">Show dictionary candidate labels</string>
@@ -526,6 +528,12 @@
     <string name="confirm_delete_title">Confirm to delete</string>
     <string name="confirm_delete_message">\nAre you sure to delete the word?</string>
     <string name="score_edittext_title">Score (Lower values indicate higher priority)</string>
+    <string name="learn_dictionary_entry_metadata">Score %1$d · Used %2$d times · %3$s</string>
+    <string name="learn_dictionary_entry_phrase">Full phrase</string>
+    <string name="learn_dictionary_entry_segment">Segment</string>
+    <string name="candidate_action_forget_learning">Forget only this learned entry</string>
+    <string name="learning_paused_message">Learning paused</string>
+    <string name="learning_resumed_message">Learning resumed</string>
     <string name="score_string">Score</string>
     <string name="part_of_speech_string">Part of speech</string>
     <string name="data_not_found_string">Data not found</string>
@@ -1409,6 +1417,7 @@
     <string name="shortcut_toolbar_summary_keyboard_floating_toggle">Toggle floating mode.</string>
     <string name="shortcut_toolbar_summary_input_behavior_toggle">Temporarily switch between direct input and composing text.</string>
     <string name="shortcut_toolbar_summary_live_conversion_toggle">Toggle live conversion.</string>
+    <string name="shortcut_toolbar_summary_learning_pause">Pause or resume saving learning data.</string>
     <string name="shortcut_toolbar_summary_select_all">Select all text.</string>
     <string name="shortcut_toolbar_summary_copy">Copy the selected content.</string>
     <string name="shortcut_toolbar_summary_paste">Paste from the clipboard.</string>

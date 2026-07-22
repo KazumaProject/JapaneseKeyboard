@@ -51,7 +51,7 @@ class DictionaryLearnFragment : Fragment() {
     lateinit var learnRepository: LearnRepository
 
     private lateinit var learnDictionaryAdapter: LearnDictionaryAdapter
-    private var allLearnItems: List<Pair<String, List<String>>> = emptyList()
+    private var allLearnItems: List<Pair<String, List<LearnEntity>>> = emptyList()
     private var learnSearchQuery: String = ""
 
     // Export
@@ -156,7 +156,13 @@ class DictionaryLearnFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             learnRepository.all().collectLatest { data ->
                 allLearnItems = data.groupBy { it.input }.toSortedMap(compareBy { it })
-                    .map { (key, value) -> key to value.map { it.out } }
+                    .map { (key, value) ->
+                        key to value.sortedWith(
+                            compareByDescending<LearnEntity> { it.isPhrase }
+                                .thenBy { it.score }
+                                .thenByDescending { it.lastUsedAt }
+                        )
+                    }
                 applyLearnDictionaryFilter()
             }
         }
@@ -171,9 +177,9 @@ class DictionaryLearnFragment : Fragment() {
             allLearnItems
                 .filter { (input, outputs) ->
                     input.startsWith(query, ignoreCase = true) ||
-                        outputs.any { it.startsWith(query, ignoreCase = true) }
+                        outputs.any { it.out.startsWith(query, ignoreCase = true) }
                 }
-                .sortedWith(compareBy<Pair<String, List<String>>> {
+                .sortedWith(compareBy<Pair<String, List<LearnEntity>>> {
                     learnDictionarySearchRank(it, query)
                 }.thenBy {
                     learnDictionaryMatchedLength(it, query)
@@ -186,26 +192,29 @@ class DictionaryLearnFragment : Fragment() {
         }
     }
 
-    private fun learnDictionarySearchRank(item: Pair<String, List<String>>, query: String): Int {
+    private fun learnDictionarySearchRank(
+        item: Pair<String, List<LearnEntity>>,
+        query: String,
+    ): Int {
         val (input, outputs) = item
         return when {
             input.equals(query, ignoreCase = true) ||
-                outputs.any { it.equals(query, ignoreCase = true) } -> 0
+                outputs.any { it.out.equals(query, ignoreCase = true) } -> 0
 
             input.startsWith(query, ignoreCase = true) ||
-                outputs.any { it.startsWith(query, ignoreCase = true) } -> 1
+                outputs.any { it.out.startsWith(query, ignoreCase = true) } -> 1
 
             else -> 2
         }
     }
 
     private fun learnDictionaryMatchedLength(
-        item: Pair<String, List<String>>,
+        item: Pair<String, List<LearnEntity>>,
         query: String
     ): Int {
         val (input, outputs) = item
         return sequenceOf(input)
-            .plus(outputs.asSequence())
+            .plus(outputs.asSequence().map { it.out })
             .filter { it.startsWith(query, ignoreCase = true) }
             .minOfOrNull { it.length } ?: Int.MAX_VALUE
     }
@@ -284,7 +293,12 @@ class DictionaryLearnFragment : Fragment() {
                 if (jsonString != null) {
                     val type = object : TypeToken<List<LearnEntity>>() {}.type
                     val words: List<LearnEntity> = Gson().fromJson(jsonString, type)
-                    val wordsToInsert = words.map { it.copy(id = null) }
+                    val wordsToInsert = words.map {
+                        it.copy(
+                            id = null,
+                            usageCount = it.usageCount.coerceAtLeast(1),
+                        )
+                    }
                     learnRepository.insertAll(wordsToInsert)
                     Toast.makeText(
                         context,
@@ -334,7 +348,7 @@ class DictionaryLearnFragment : Fragment() {
                 .setPositiveButton(getString(R.string.save_string)) { _, _ ->
                     val newInput = editTextYomi.text.toString()
                     val newOutput = editTextTango.text.toString()
-                    val newScore = editTextScore.text.toString().toShortOrNull() ?: entity.score
+                    val newScore = editTextScore.text.toString().toIntOrNull() ?: entity.score
 
                     if (newInput.isNotBlank() && newOutput.isNotBlank()) {
                         updateLearnData(entity, newInput, newOutput, newScore)
@@ -380,7 +394,7 @@ class DictionaryLearnFragment : Fragment() {
         originalEntity: LearnEntity,
         newInput: String,
         newOutput: String,
-        newScore: Short
+        newScore: Int
     ) {
         lifecycleScope.launch {
             binding.progressBarLearnDictionaryFragment.isVisible = true

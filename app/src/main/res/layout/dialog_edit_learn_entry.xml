@@ -40,7 +40,7 @@
             android:id="@+id/edit_text_score"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:inputType="number" />
+            android:inputType="numberSigned" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
