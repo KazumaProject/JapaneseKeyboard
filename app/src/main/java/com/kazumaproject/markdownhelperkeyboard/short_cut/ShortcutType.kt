@@ -50,6 +50,12 @@ enum class ShortcutType(
         activeIconResId = com.kazumaproject.core.R.drawable.live_conversion_on_24px,
         description = "ライブ変換"
     ),
+    LEARNING_PAUSE(
+        "learning_pause",
+        com.kazumaproject.core.R.drawable.dictionary_24px,
+        activeIconResId = com.kazumaproject.core.R.drawable.incognito,
+        description = "学習を一時停止"
+    ),
     SELECT_ALL(
         "select_all",
         com.kazumaproject.core.R.drawable.text_select_start_24dp,

@@ -41,7 +41,7 @@ class LearnRepositoryTest {
         repository.insertLearnedData(learnData)
 
         val result = repository.findLearnDataByInputAndOutput("example", "output")
-        assertEquals(learnData.copy(learnData.input, learnData.out, 1), result)
+        assertEquals(learnData.copy(id = 1), result)
     }
 
     @Test
@@ -59,7 +59,10 @@ class LearnRepositoryTest {
         }
 
         val results = repository.findLearnDataByInput("example")
-        assertEquals(listOf("output1", "output2", "output3", "output4"), results)
+        assertEquals(
+            listOf("output1", "output2", "output3", "output4"),
+            results?.map { it.out },
+        )
     }
 
     @Test

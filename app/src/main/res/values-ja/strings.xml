@@ -163,6 +163,8 @@
     <string name="category_ng_word_title">NG ワード</string>
     <string name="category_ng_word_summary">変換候補を長押しで登録できます。</string>
     <string name="category_learning_dictionary_title">学習辞書</string>
+    <string name="learn_dictionary_allow_mixed_symbols_numbers_title">記号・数字を含む日本語を学習</string>
+    <string name="learn_dictionary_allow_mixed_symbols_numbers_summary">「令和8年」などを学習します。記号・数字だけの候補は学習しません。</string>
     <string name="category_user_dictionary_title">ユーザー辞書</string>
     <string name="dictionary_candidate_label_category_title">候補ラベル</string>
     <string name="show_dictionary_candidate_labels_title">辞書候補のラベルを表示</string>
@@ -525,6 +527,12 @@
     <string name="confirm_all_words_delete_message">登録されているすべての単語を削除します。この操作は元に戻せません。よろしいですか？</string>
     <string name="confirm_delete_message">を削除します。\n本当に辞書から削除しますか？</string>
     <string name="score_edittext_title">スコア (低いほど優先度が高い)</string>
+    <string name="learn_dictionary_entry_metadata">スコア %1$d・使用 %2$d回・%3$s</string>
+    <string name="learn_dictionary_entry_phrase">全文</string>
+    <string name="learn_dictionary_entry_segment">文節</string>
+    <string name="candidate_action_forget_learning">この学習だけ忘れる</string>
+    <string name="learning_paused_message">学習を一時停止しました</string>
+    <string name="learning_resumed_message">学習を再開しました</string>
     <string name="data_not_found_string">データが見つかりませんでした。</string>
     <string name="fail_to_import_string">インポートに失敗しました。ファイルの形式が正しくありません。</string>
     <string name="import_text_string"> 件の単語をインポートしました。</string>
@@ -1407,6 +1415,7 @@
     <string name="shortcut_toolbar_summary_keyboard_floating_toggle">フローティングモードを切り替えます</string>
     <string name="shortcut_toolbar_summary_input_behavior_toggle">直接入力と未確定入力を一時的に切り替えます</string>
     <string name="shortcut_toolbar_summary_live_conversion_toggle">ライブ変換をオン・オフします</string>
+    <string name="shortcut_toolbar_summary_learning_pause">学習データの保存を一時停止・再開します</string>
     <string name="shortcut_toolbar_summary_select_all">テキストをすべて選択します</string>
     <string name="shortcut_toolbar_summary_copy">選択中の内容をコピーします</string>
     <string name="shortcut_toolbar_summary_paste">クリップボードから貼り付けます</string>
