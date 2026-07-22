@@ -133,6 +133,13 @@
 
         <SwitchPreferenceCompat
             android:dependency="learn_dictionary_preference"
+            android:key="learn_dictionary_allow_mixed_symbols_numbers_preference"
+            android:title="@string/learn_dictionary_allow_mixed_symbols_numbers_title"
+            app:defaultValue="true"
+            app:summary="@string/learn_dictionary_allow_mixed_symbols_numbers_summary" />
+
+        <SwitchPreferenceCompat
+            android:dependency="learn_dictionary_preference"
             android:key="enable_prediction_search_learn_dictionary_preference"
             android:title="@string/enable_prediction_search_learn_dictionary_preference_titile"
             app:defaultValue="false"
