@@ -455,9 +455,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private data class SuggestionLayoutKey(
         val isPortrait: Boolean,
         val columnNum: String,
-        val useLinearHorizontalLayout: Boolean,
+        val layoutKind: SuggestionLayoutKind,
         val isKeyboardFloatingMode: Boolean
     )
+
+    private enum class SuggestionLayoutKind {
+        LinearHorizontal,
+        GridHorizontal
+    }
 
     @Inject
     lateinit var appPreference: AppPreference
@@ -2353,7 +2358,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         shortcutToolbarIntegratedInSuggestion = preferences.shortcutToolbarIntegratedInSuggestion
         shortcutToolbarHeightDp = preferences.shortcutToolbarHeightDp
         shortcutToolbarIconSizeDp = preferences.shortcutToolbarIconSizeDp
-        mainLayoutBinding?.let { applyShortcutToolbarSize(it) }
+        mainLayoutBinding?.let {
+            applyShortcutToolbarSize(
+                mainView = it,
+                forceLayout = true
+            )
+        }
         isDeleteLeftFlickPreference = preferences.isDeleteLeftFlickPreference
         isDeleteUpFlickPreference = preferences.isDeleteUpFlickPreference
         isDeleteDownFlickPreference = preferences.isDeleteDownFlickPreference
@@ -5113,7 +5123,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             text = "あ"
         }
 
-        mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
+        mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx)).also { binding ->
+            binding.root.fallbackTouchTargetProvider = {
+                sequenceOf(
+                    binding.keyboardView,
+                    binding.tabletView,
+                    binding.qwertyView,
+                    binding.customLayoutDefault
+                ).firstOrNull {
+                    it.isAttachedToWindow && it.isShown
+                }
+            }
+        }
 
         releaseFloatingKeyboardBackgroundVideoPlayer()
         floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
@@ -15226,7 +15247,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isSymbol = isSymbolOverride ?: keyboardSymbolViewState.value.isShown
-        applyShortcutToolbarSize(mainView)
+        applyShortcutToolbarSize(
+            mainView = mainView,
+            forceLayout = !addCandidateTabHeight
+        )
 
         // 2. ピクセル値の計算
         val heightPx = when {
@@ -15349,7 +15373,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             gravity = gravity,
             finalBottomMargin = finalBottomMargin,
             finalStartMargin = finalStartMargin,
-            finalEndMargin = finalEndMargin
+            finalEndMargin = finalEndMargin,
+            forceLayout = !addCandidateTabHeight
         )
 
         if (isSymbol) {
@@ -15370,8 +15395,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 5. 個別処理
         if (addCandidateTabHeight) {
             val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
-            params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
-            mainView.suggestionVisibility.layoutParams = params
+            if (params.bottomToBottom != ConstraintLayout.LayoutParams.UNSET) {
+                params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
+                mainView.suggestionVisibility.layoutParams = params
+            }
         }
     }
 
@@ -15437,12 +15464,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         gravity: Int,
         finalBottomMargin: Int,
         finalStartMargin: Int,
-        finalEndMargin: Int
+        finalEndMargin: Int,
+        forceLayout: Boolean
     ) {
         if (shouldUseIndependentShortcutToolbar()) {
             (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
-                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
-                mainView.shortcutToolbarRecyclerview.layoutParams = param
+                val bottomMargin = heightPx + mainView.suggestionViewParent.height
+                if (forceLayout || param.bottomMargin != bottomMargin) {
+                    param.bottomMargin = bottomMargin
+                    mainView.shortcutToolbarRecyclerview.layoutParams = param
+                }
             }
         }
 
@@ -15454,24 +15485,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.candidatesRowView
         ).forEach { view ->
             (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                var changed = false
                 if (view != mainView.suggestionViewParent) {
-                    params.height = heightPx
+                    if (forceLayout || params.height != heightPx) {
+                        params.height = heightPx
+                        changed = true
+                    }
                 } else {
-                    params.bottomMargin = heightPx
+                    if (forceLayout || params.bottomMargin != heightPx) {
+                        params.bottomMargin = heightPx
+                        changed = true
+                    }
                 }
-                params.gravity = gravity
-                view.layoutParams = params
+                if (forceLayout || params.gravity != gravity) {
+                    params.gravity = gravity
+                    changed = true
+                }
+                if (changed) {
+                    view.layoutParams = params
+                }
             }
         }
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = finalKeyboardHeight
-            params.width = finalKeyboardWidth
-            params.bottomMargin = finalBottomMargin
-            params.leftMargin = finalStartMargin
-            params.rightMargin = finalEndMargin
-            params.gravity = gravity
-            mainView.root.layoutParams = params
+            var changed = false
+            if (forceLayout || params.height != finalKeyboardHeight) {
+                params.height = finalKeyboardHeight
+                changed = true
+            }
+            if (forceLayout || params.width != finalKeyboardWidth) {
+                params.width = finalKeyboardWidth
+                changed = true
+            }
+            if (forceLayout || params.bottomMargin != finalBottomMargin) {
+                params.bottomMargin = finalBottomMargin
+                changed = true
+            }
+            if (forceLayout || params.leftMargin != finalStartMargin) {
+                params.leftMargin = finalStartMargin
+                changed = true
+            }
+            if (forceLayout || params.rightMargin != finalEndMargin) {
+                params.rightMargin = finalEndMargin
+                changed = true
+            }
+            if (forceLayout || params.gravity != gravity) {
+                params.gravity = gravity
+                changed = true
+            }
+            if (changed) {
+                mainView.root.layoutParams = params
+            }
         }
 
         updateNormalKeyboardBackgroundBounds(
@@ -15487,7 +15551,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             heightPx = heightPx
         )
 
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
+        if (
+            mainView.root.paddingLeft != 0 ||
+            mainView.root.paddingTop != 0 ||
+            mainView.root.paddingRight != 0 ||
+            mainView.root.paddingBottom != systemBottomInset
+        ) {
+            mainView.root.setPadding(0, 0, 0, systemBottomInset)
+        }
     }
 
     private fun setKeyboardHeightWithAdditionalOriginal(mainView: MainLayoutBinding) {
@@ -15688,7 +15759,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
         Timber.d("Keyboard Height: setKeyboardHeightWithAdditional called")
-        setKeyboardHeightWithAdditionalOriginal(mainView)
+        if (currentInputType.isPassword()) return
+        updateKeyboardLayout(
+            mainView = mainView,
+            addCandidateTabHeight = true
+        )
     }
 
     private fun setKeyboardHeightDefault(mainView: MainLayoutBinding) {
@@ -17781,10 +17856,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val key = SuggestionLayoutKey(
                 isPortrait = isPortrait,
                 columnNum = columnNum,
-                useLinearHorizontalLayout =
+                layoutKind = if (
+                    columnNum == "1" ||
                     CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(
                         currentCandidateStripContent
-                    ),
+                    )
+                ) {
+                    SuggestionLayoutKind.LinearHorizontal
+                } else {
+                    SuggestionLayoutKind.GridHorizontal
+                },
                 isKeyboardFloatingMode = isKeyboardFloatingMode == true
             )
             if (lastSuggestionLayoutKey == key && recyclerView.layoutManager != null) {
@@ -17793,17 +17874,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             lastSuggestionLayoutKey = key
 
-            recyclerView.adapter = null
-
             mainSuggestionGridSpacingDecoration?.let { decoration ->
                 recyclerView.removeItemDecoration(decoration)
                 mainSuggestionGridSpacingDecoration = null
             }
 
-            if (key.useLinearHorizontalLayout) {
+            if (key.layoutKind == SuggestionLayoutKind.LinearHorizontal) {
                 recyclerView.layoutManager =
                     LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-                recyclerView.adapter = adapter
                 return@measureDebugSection
             }
 
@@ -17843,7 +17921,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainSuggestionGridSpacingDecoration = decoration
                 }
             }
-            recyclerView.adapter = adapter
         }
     }
 
@@ -18465,17 +18542,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return applicationContext.dpToPx(iconSizeDp)
     }
 
-    private fun applyShortcutToolbarSize(mainView: MainLayoutBinding) {
+    private fun applyShortcutToolbarSize(
+        mainView: MainLayoutBinding,
+        forceLayout: Boolean
+    ) {
         val toolbarHeightDp = shortcutToolbarHeightDp.coerceIn(
             AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
             AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
         )
         val toolbarHeightPx = applicationContext.dpToPx(toolbarHeightDp)
         val iconSizePx = shortcutToolbarIconSizePx(toolbarHeightDp)
-        mainView.shortcutToolbarRecyclerview.layoutParams =
-            mainView.shortcutToolbarRecyclerview.layoutParams.apply {
-                height = toolbarHeightPx
-            }
+        val toolbarLayoutParams = mainView.shortcutToolbarRecyclerview.layoutParams
+        if (forceLayout || toolbarLayoutParams.height != toolbarHeightPx) {
+            mainView.shortcutToolbarRecyclerview.layoutParams =
+                toolbarLayoutParams.apply {
+                    height = toolbarHeightPx
+                }
+        }
         shortcutAdapter?.setShortcutToolbarSize(
             toolbarHeightPx = toolbarHeightPx,
             iconSizePx = iconSizePx
