@@ -301,6 +301,8 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.AndroidZeroQueryAssetR
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.LazyZeroQueryProvider
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryLookupUseCase
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryProvider
+import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeClient
+import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeConfig
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
 import com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
 import com.kazumaproject.tenkey.TenKey
@@ -314,7 +316,6 @@ import com.kazumaproject.tenkey.extensions.isHiragana
 import com.kazumaproject.tenkey.extensions.isLatinAlphabet
 import com.kazumaproject.tenkey.extensions.toggleDakutenWithSeion
 import com.kazumaproject.tenkey.extensions.toggleHandakutenWithSeion
-import com.kazumaproject.zenz.ZenzEngine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -531,9 +532,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     lateinit var gemmaPromptTemplateRepository: GemmaPromptTemplateRepository
 
     @Inject
-    lateinit var sumireSpecialKeyRepository: SumireSpecialKeyRepository
+    lateinit var zenzRuntimeClient: ZenzRuntimeClient
 
-    private var zenzEngine: ZenzEngine? = null
+    @Inject
+    lateinit var sumireSpecialKeyRepository: SumireSpecialKeyRepository
 
     private var shortcutAdapter: ShortcutAdapter? = null
 
@@ -543,6 +545,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var isClipboardHistoryFeatureEnabled: Boolean = false
     private val clipboardMutex = Mutex()
+    private val zenzModelPathMutex = Mutex()
+    private var cachedZenzModelSource: String? = null
+    private var cachedZenzModelPath: String? = null
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
     private var tenkeyUseThreeStateKeyboard: Boolean = true
@@ -1904,9 +1909,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
 
-        if (AppVariantConfig.hasZenz) {
-            zenzEngine = providesZenzEngine(this)
-        }
         if (AppVariantConfig.hasGemma) {
             scope.launch {
                 gemmaTranslationManager.initializeIfEnabled(forceReload = false)
@@ -3922,10 +3924,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        zenzEngine?.setRuntimeConfig(
-            nCtx = zenzMaximumContextSizePreference ?: 512,
-            nThreads = zenzMaximumThreadSizePreference ?: 4
-        )
         clearZenzLiveSlot("onStartInputView")
         setSuggestionAdapterSuggestionsOnMain(emptyList())
         suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
@@ -4325,7 +4323,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardViewFloating.cancelTenKeyScope()
             floatingSymbolKeyboard.release()
         }
-        zenzEngine = null
+        if (AppVariantConfig.hasZenz) {
+            zenzRuntimeClient.close()
+        }
+        cachedZenzModelSource = null
+        cachedZenzModelPath = null
         qwertyGlideInputCoordinator?.cancelPending()
         englishEngine.cancelQwertyGlideWarmup()
         clearZenzLiveSlot("onDestroy")
@@ -13582,6 +13584,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (invalidateRequest) {
             zenzLiveRequestToken += 1L
+            if (AppVariantConfig.hasZenz) {
+                zenzRuntimeClient.cancelActive()
+            }
         }
         _zenzLiveSlotState.value = null
         zenzLiveLocalCandidatesSnapshot = emptyList()
@@ -13627,6 +13632,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         zenzLiveRequestToken += 1L
+        if (AppVariantConfig.hasZenz) {
+            zenzRuntimeClient.cancelActive()
+        }
         val requestToken = zenzLiveRequestToken
         val localSnapshot = localCandidates.withoutZenzLiveSlot(displayInput)
 
@@ -14558,7 +14566,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             zenzRequest
-                .debounce((zenzDebounceTimePreference ?: 300).toLong())
+                .debounce { resolveZenzDebounceMillis(zenzDebounceTimePreference) }
                 .collectLatest { request ->
                     if (request.bunsetsuTarget == null) {
                         lastLocalUpdatedInput.first { completedInput ->
@@ -14652,8 +14660,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         try {
             // 処理直前にキャンセルされていないかチェック
             ensureActive()
+            val runtimeConfig = resolveZenzRuntimeConfig() ?: return@withContext emptyList()
 
-            val stringFromZenz = zenzEngine?.generateWithContextAndConditionsV32(
+            val stringFromZenz = zenzRuntimeClient.generate(
+                config = runtimeConfig,
                 profile = zenzProfilePreference ?: "",
                 topic = "",
                 style = "",
@@ -14662,7 +14672,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 rightContext = zenzContext.rightContext,
                 input = insertString.hiraganaToKatakana(),
                 maxTokens = zenzMaximumLetterSizePreference ?: 32
-            ) ?: ""
+            )
 
             // 生成後もチェック
             ensureActive()
@@ -14709,8 +14719,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 4. エンジンによる生成処理
         try {
             ensureActive()
+            val runtimeConfig = resolveZenzRuntimeConfig() ?: return@withContext emptyList()
 
-            val stringFromZenz = zenzEngine?.candidateEvaluateV32(
+            val stringFromZenz = zenzRuntimeClient.evaluate(
+                config = runtimeConfig,
                 profile = zenzProfilePreference ?: "",
                 topic = "",
                 style = "",
@@ -14719,7 +14731,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 rightContext = zenzContext.rightContext,
                 input = insertString.hiraganaToKatakana(),
                 candidate = firstCandidate
-            ) ?: ""
+            )
 
             ensureActive()
 
@@ -14758,7 +14770,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
 
                     val secondCandidateFromZenz = ZenzCandidate(
-                        string = (zenzEngine?.generateWithContextAndConditionsV32(
+                        string = zenzRuntimeClient.generate(
+                            config = runtimeConfig,
                             profile = zenzProfilePreference ?: "",
                             topic = "",
                             style = "",
@@ -14767,7 +14780,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             rightContext = zenzContext.rightContext,
                             input = insertString.hiraganaToKatakana(),
                             maxTokens = zenzMaximumLetterSizePreference ?: 32
-                        ) ?: ""),
+                        ),
                         type = (40).toByte(),
                         length = insertString.length.toUByte(),
                         score = 2000,
@@ -14872,7 +14885,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         plan: ZenzRerankPlan
     ): List<Candidate>? = measureDebugStage("IMEService.Zenz.rerank") {
         val rawScores = withContext(Dispatchers.Default) {
-            zenzEngine?.scoreCandidatesV32(
+            val runtimeConfig = resolveZenzRuntimeConfig()
+                ?: return@withContext FloatArray(0)
+            zenzRuntimeClient.score(
+                config = runtimeConfig,
                 profile = zenzProfilePreference ?: "",
                 topic = "",
                 style = "",
@@ -14881,7 +14897,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 rightContext = plan.rightContext,
                 input = insertString.hiraganaToKatakana(),
                 candidates = plan.rerankTargets.map { it.value.string }.toTypedArray()
-            ) ?: FloatArray(0)
+            )
         }
 
         if (rawScores.size != plan.rerankTargets.size) {
@@ -24361,13 +24377,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun providesZenzEngine(context: Context): ZenzEngine {
+    /**
+     * Resolves the model in the IME process, but does not load native code here. The returned
+     * internal-file path is readable by the private `:zenz` app process because it shares the
+     * application UID.
+     */
+    private suspend fun resolveZenzRuntimeConfig(): ZenzRuntimeConfig? {
+        if (!AppVariantConfig.hasZenz) return null
+
+        val modelSource = AppPreference.zenz_model_uri_preference
+        val modelPath = zenzModelPathMutex.withLock {
+            cachedZenzModelPath
+                ?.takeIf { cachedZenzModelSource == modelSource && File(it).isFile }
+                ?.let { return@withLock it }
+
+            val resolvedPath = withContext(Dispatchers.IO) {
+                resolveZenzModelPath(modelSource)
+            }
+            cachedZenzModelSource = modelSource
+            cachedZenzModelPath = resolvedPath
+            resolvedPath
+        } ?: return null
+
+        return ZenzRuntimeConfig(
+            modelPath = modelPath,
+            nCtx = zenzMaximumContextSizePreference ?: 512,
+            nThreads = zenzMaximumThreadSizePreference ?: 4,
+        )
+    }
+
+    private fun resolveZenzModelPath(customUri: String): String? {
         val defaultAssetFileName = "ggml-model-Q5_K_M.gguf"
-        val defaultDestFile = File(context.filesDir, defaultAssetFileName)
+        val defaultDestFile = File(filesDir, defaultAssetFileName)
 
         fun ensureDefaultModelCopied(): File {
             if (!defaultDestFile.exists()) {
-                context.assets.open(defaultAssetFileName).use { input ->
+                assets.open(defaultAssetFileName).use { input ->
                     FileOutputStream(defaultDestFile).use { output ->
                         input.copyTo(output)
                     }
@@ -24378,44 +24423,44 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         fun copyUriToInternalFile(uriString: String): File {
             val uri = uriString.toUri()
-            val dest = File(context.filesDir, "zenz_custom_model.gguf")
+            val dest = File(filesDir, "zenz_custom_model.gguf")
+            val temporary = File(filesDir, "zenz_custom_model.gguf.tmp")
 
-            context.contentResolver.openInputStream(uri).use { input ->
+            contentResolver.openInputStream(uri).use { input ->
                 requireNotNull(input) { "openInputStream returned null for uri=$uri" }
-                FileOutputStream(dest).use { output ->
+                FileOutputStream(temporary).use { output ->
                     input.copyTo(output)
                 }
+            }
+            if (dest.exists() && !dest.delete()) {
+                temporary.delete()
+                error("Could not replace the existing custom Zenz model.")
+            }
+            if (!temporary.renameTo(dest)) {
+                temporary.delete()
+                error("Could not install the custom Zenz model.")
             }
             return dest
         }
 
-        val customUri = AppPreference.zenz_model_uri_preference
-
-        // 1) まずユーザー指定があれば試す
         if (customUri.isNotBlank()) {
             try {
                 val customFile = copyUriToInternalFile(customUri)
-                ZenzEngine.initModel(customFile.absolutePath)
-                Timber.d("Zenz model initialized with custom file: ${customFile.absolutePath}")
-                return ZenzEngine
+                Timber.d("Zenz custom model prepared: %s", customFile.absolutePath)
+                return customFile.absolutePath
             } catch (e: Exception) {
-                Timber.e(e, "Zenz Failed to init Zenz with custom model. Fallback to default.")
-                // フォールバック継続
+                Timber.e(e, "Failed to prepare custom Zenz model. Falling back to default.")
             }
         }
 
-        // 2) デフォルトで初期化（ここも失敗し得るので try/catch）
-        try {
+        return try {
             val defaultFile = ensureDefaultModelCopied()
-            ZenzEngine.initModel(defaultFile.absolutePath)
-            Timber.d("Zenz model initialized with default asset file: ${defaultFile.absolutePath}")
+            Timber.d("Zenz default model prepared: %s", defaultFile.absolutePath)
+            defaultFile.absolutePath
         } catch (e: Exception) {
-            Timber.e(e, "Zenz Failed to init Zenz with default model as well.")
-            // ここまで失敗する場合は致命的。ZenzEngine が内部で未初期化でもアプリが落ちない設計なら return は可能。
-            // 必要ならここで例外を投げる/機能OFF扱いにするなど方針を決める。
+            Timber.e(e, "Failed to prepare the default Zenz model.")
+            null
         }
-
-        return ZenzEngine
     }
 
     override val lifecycle: Lifecycle
