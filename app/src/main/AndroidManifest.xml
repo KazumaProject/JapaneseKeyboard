@@ -40,6 +40,12 @@
             android:exported="true"
             android:label="@string/title_activity_main" />
 
+        <activity
+            android:name=".gemma.media.GemmaImagePickerActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@style/Theme.MarkdownKeyboard.PhotoPickerBridge" />
+
         <activity-alias
             android:name=".setting_activity.LaunchableMainActivity"
             android:targetActivity=".setting_activity.MainActivity"

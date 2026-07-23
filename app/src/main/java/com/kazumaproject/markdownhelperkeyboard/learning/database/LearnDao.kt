@@ -5,6 +5,7 @@ import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.kazumaproject.markdownhelperkeyboard.learning.model.LearnResult
 import kotlinx.coroutines.flow.Flow
@@ -45,12 +46,20 @@ interface LearnDao {
     @Query(
         """
         SELECT * FROM learn_table
-        WHERE input LIKE :prefix || '%'
-        ORDER BY score ASC, LENGTH(input) ASC, id DESC
+        WHERE input >= :prefix AND input < :prefixUpperBound
+        ORDER BY CASE WHEN input = :prefix THEN 0 ELSE 1 END,
+                 score ASC,
+                 lastUsedAt DESC,
+                 LENGTH(input) ASC,
+                 id DESC
         LIMIT :limit
         """
     )
-    suspend fun predictiveSearchByInput(prefix: String, limit: Int): List<LearnEntity>
+    suspend fun predictiveSearchByInput(
+        prefix: String,
+        prefixUpperBound: String,
+        limit: Int,
+    ): List<LearnEntity>
 
     /**
      * Common Prefix Search: Finds entries where the 'input' value is a prefix of the given searchTerm.
@@ -64,8 +73,52 @@ interface LearnDao {
     @Query("SELECT * FROM learn_table WHERE :searchTerm LIKE input || '%' ORDER BY LENGTH(input) DESC")
     suspend fun findCommonPrefixes(searchTerm: String): List<LearnEntity>
 
+    @Query(
+        """
+        SELECT * FROM learn_table
+        WHERE input >= :prefix AND input < :prefixUpperBound
+        ORDER BY LENGTH(input) DESC
+        """
+    )
+    suspend fun findByInputPrefix(
+        prefix: String,
+        prefixUpperBound: String,
+    ): List<LearnEntity>
+
     @Update
     suspend fun updateLearnedData(learnData: LearnEntity)
+
+    /**
+     * A conversion can produce both segment entries and one complete phrase entry. Room generates
+     * the transaction boundary for this default DAO method, so readers never observe a partial
+     * learning session.
+     */
+    @Transaction
+    suspend fun upsertLearningEntries(learnDataList: List<LearnEntity>) {
+        learnDataList.forEach { incoming ->
+            val existing = findByInputAndOutput(incoming.input, incoming.out)
+            if (existing == null) {
+                insert(incoming)
+            } else {
+                updateLearnedData(
+                    existing.copy(
+                        score = LearningScorePolicy.reinforce(
+                            existingScore = existing.score,
+                            incomingScore = incoming.score,
+                        ),
+                        leftId = incoming.leftId ?: existing.leftId,
+                        rightId = incoming.rightId ?: existing.rightId,
+                        usageCount = (
+                            existing.usageCount.toLong() +
+                                incoming.usageCount.coerceAtLeast(1).toLong()
+                            ).coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                        lastUsedAt = maxOf(existing.lastUsedAt, incoming.lastUsedAt),
+                        isPhrase = existing.isPhrase || incoming.isPhrase,
+                    )
+                )
+            }
+        }
+    }
 
     @Delete
     suspend fun delete(learnData: LearnEntity)

@@ -58,7 +58,11 @@ class PredictionDictionaryQueryTest {
             )
         )
 
-        val result = database.learnDao().predictiveSearchByInput("かな", limit = 2)
+        val result = database.learnDao().predictiveSearchByInput(
+            prefix = "かな",
+            prefixUpperBound = "かな\uFFFF",
+            limit = 2,
+        )
 
         assertEquals(listOf("low", "middle"), result.map { it.out })
     }

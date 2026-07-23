@@ -8,6 +8,7 @@ internal fun resolveShortcutActiveTypes(
     keyboardFloatingActive: Boolean,
     inputBehavior: ResolvedInputBehavior,
     liveConversionEnabled: Boolean,
+    learningPaused: Boolean = false,
 ): Set<ShortcutType> = buildSet {
     if (keyboardLayoutEditActive) {
         add(ShortcutType.KEYBOARD_LAYOUT_EDIT)
@@ -23,5 +24,9 @@ internal fun resolveShortcutActiveTypes(
 
     if (liveConversionEnabled) {
         add(ShortcutType.LIVE_CONVERSION_TOGGLE)
+    }
+
+    if (learningPaused) {
+        add(ShortcutType.LEARNING_PAUSE)
     }
 }

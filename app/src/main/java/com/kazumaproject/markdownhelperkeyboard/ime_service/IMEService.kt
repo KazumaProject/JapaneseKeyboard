@@ -21,6 +21,7 @@ import android.os.Bundle
 import android.os.CombinedVibration
 import android.os.Handler
 import android.os.Looper
+import android.os.ResultReceiver
 import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -62,6 +63,8 @@ import android.widget.ListView
 import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.Toast
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.annotation.ColorInt
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -192,6 +195,8 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOv
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
+import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImagePickerActivity
+import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImeMediaPanelController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
@@ -201,6 +206,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateS
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripContentResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateStripInputState
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateQueryModeResolver
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshRequest
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestToken
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestTracker
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
@@ -256,8 +263,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.romaji_kana.RomajiKa
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.InputTypeForIME
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
-import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
-import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
+import com.kazumaproject.markdownhelperkeyboard.learning.session.ConversionLearningSession
+import com.kazumaproject.markdownhelperkeyboard.learning.session.LearningFragment
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWord
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutAction
 import com.kazumaproject.markdownhelperkeyboard.physical_keyboard.shortcut.PhysicalKeyboardShortcutContext
@@ -294,6 +301,8 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.AndroidZeroQueryAssetR
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.LazyZeroQueryProvider
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryLookupUseCase
 import com.kazumaproject.markdownhelperkeyboard.zeroquery.ZeroQueryProvider
+import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeClient
+import com.kazumaproject.markdownhelperkeyboard.zenz.runtime.ZenzRuntimeConfig
 import com.kazumaproject.qwerty_keyboard.ui.QWERTYKeyboardView
 import com.kazumaproject.symbol_keyboard.CustomSymbolKeyboardView
 import com.kazumaproject.tenkey.TenKey
@@ -307,7 +316,6 @@ import com.kazumaproject.tenkey.extensions.isHiragana
 import com.kazumaproject.tenkey.extensions.isLatinAlphabet
 import com.kazumaproject.tenkey.extensions.toggleDakutenWithSeion
 import com.kazumaproject.tenkey.extensions.toggleHandakutenWithSeion
-import com.kazumaproject.zenz.ZenzEngine
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -362,6 +370,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ClipboardHistoryToggleListener, InputManager.InputDeviceListener {
 
     private sealed class CandidateLongPressAction {
+        object ForgetLearnedEntry : CandidateLongPressAction()
         object HideWord : CandidateLongPressAction()
         object Translate : CandidateLongPressAction()
         data class CustomPrompt(
@@ -446,12 +455,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private data class SuggestionLayoutKey(
         val isPortrait: Boolean,
         val columnNum: String,
-        val useLinearHorizontalLayout: Boolean,
+        val layoutKind: SuggestionLayoutKind,
         val isKeyboardFloatingMode: Boolean
     )
 
-    @Inject
-    lateinit var learnMultiple: LearnMultiple
+    private enum class SuggestionLayoutKind {
+        LinearHorizontal,
+        GridHorizontal
+    }
 
     @Inject
     lateinit var appPreference: AppPreference
@@ -526,9 +537,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     lateinit var gemmaPromptTemplateRepository: GemmaPromptTemplateRepository
 
     @Inject
-    lateinit var sumireSpecialKeyRepository: SumireSpecialKeyRepository
+    lateinit var zenzRuntimeClient: ZenzRuntimeClient
 
-    private var zenzEngine: ZenzEngine? = null
+    @Inject
+    lateinit var sumireSpecialKeyRepository: SumireSpecialKeyRepository
 
     private var shortcutAdapter: ShortcutAdapter? = null
 
@@ -538,6 +550,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var isClipboardHistoryFeatureEnabled: Boolean = false
     private val clipboardMutex = Mutex()
+    private val zenzModelPathMutex = Mutex()
+    private var cachedZenzModelSource: String? = null
+    private var cachedZenzModelPath: String? = null
     private var isCustomKeyboardTwoWordsOutputEnable: Boolean? = false
     private var tenkeyQWERTYSwitchNumber: Boolean? = false
     private var tenkeyUseThreeStateKeyboard: Boolean = true
@@ -1118,7 +1133,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isContinuousTapInputEnabled.set(true)
         lastFlickConvertedNextHiragana.set(true)
         if (!hasConvertedKatakana) {
-            candidate?.let { applyFirstSuggestion(it) }
+            if (candidate != null) {
+                applyFirstSuggestion(candidate)
+            } else {
+                applyRawComposingFallback(insertString)
+            }
         }
         true
     }
@@ -1163,6 +1182,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var selectedTextGemmaSession: SelectedTextGemmaSession? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
+    private var gemmaMediaPanelController: GemmaImeMediaPanelController? = null
+    private var pendingGemmaPickedImagePath: String? = null
+    private val gemmaImagePickerResultReceiver = object : ResultReceiver(mainHandler) {
+        override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+            when (resultCode) {
+                GemmaImagePickerActivity.RESULT_SELECTED -> {
+                    val path = resultData?.getString(GemmaImagePickerActivity.KEY_IMAGE_PATH)
+                    if (path.isNullOrBlank()) {
+                        showToastMessage(getString(R.string.gemma_device_image_import_failed))
+                        return
+                    }
+                    pendingGemmaPickedImagePath?.let { previousPath ->
+                        if (previousPath != path) runCatching { File(previousPath).delete() }
+                    }
+                    pendingGemmaPickedImagePath = path
+                    showToastMessage(
+                        getString(R.string.gemma_device_image_ready_tap_input),
+                    )
+                }
+
+                GemmaImagePickerActivity.RESULT_ERROR -> {
+                    showToastMessage(getString(R.string.gemma_device_image_import_failed))
+                }
+            }
+        }
+    }
+    private var gemmaInputSessionId: Long = 0L
+    private var restoreFloatingModeAfterGemmaPanel: Boolean = false
+    private var consumeGemmaBackKeyUp: Boolean = false
+    private var gemmaBackInvokedCallback: OnBackInvokedCallback? = null
+    private var isGemmaBackInvokedCallbackRegistered: Boolean = false
     private val suggestionProgressReasons = mutableSetOf<SuggestionProgressReason>()
     private var isInputViewActive: Boolean = false
     private val _inputString = MutableStateFlow("")
@@ -1172,8 +1222,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var suppressedSelectionCleanupCount = 0
     private var preservePreEditOnNextSelectionUpdate: String? = null
     private val _dakutenPressed = MutableStateFlow(false)
-    private val _suggestionFlag = MutableSharedFlow<CandidateShowFlag>(replay = 0)
-    private val suggestionFlag = _suggestionFlag.asSharedFlow()
+    private val candidateRefreshCoordinator = CandidateRefreshCoordinator()
+    private val candidateRefreshRequests = candidateRefreshCoordinator.requests
+    private var defaultInputFinalizeJob: Job? = null
     private val _suggestionViewStatus = MutableStateFlow(true)
     private val suggestionViewStatus = _suggestionViewStatus.asStateFlow()
     private val _keyboardSymbolViewState = MutableStateFlow(SymbolKeyboardState())
@@ -1442,10 +1493,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var enableZenzRightContextPreference: Boolean? = false
 
     private var learnFirstCandidateDictionaryPreference: Boolean? = false
+    private var learnDictionaryAllowMixedSymbolsNumbersPreference: Boolean = true
     private var enablePredictionSearchLearnDictionaryPreference: Boolean? = false
     private var learnPredictionPreference: Int? = 4
     private var userDictionaryPredictionCandidateLimit: Int = 4
     private var learnDictionaryPredictionCandidateLimit: Int = 4
+    private val conversionLearningSession = ConversionLearningSession()
+    private var learningPausedForSession: Boolean = false
     private var circularFlickWindowScale: Float? = 1.0f
     private var circularFlickDirectionCount: Int? = 4
     private var hierarchicalFlickModeSwitchAngleMargin: Int? = 20
@@ -1860,9 +1914,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
 
-        if (AppVariantConfig.hasZenz) {
-            zenzEngine = providesZenzEngine(this)
-        }
         if (AppVariantConfig.hasGemma) {
             scope.launch {
                 gemmaTranslationManager.initializeIfEnabled(forceReload = false)
@@ -2088,6 +2139,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        gemmaInputSessionId += 1L
+        gemmaMediaPanelController?.onInputSessionChanged()
         Timber.d("onStartInput: ${Build.MANUFACTURER}")
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
@@ -2120,6 +2173,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             backend = backend,
         )
         candidateRequestTracker.restart(backend)
+        candidateRefreshCoordinator.restart()
     }
 
     private fun syncCustomKeyboardSuggestionPreference() {
@@ -2304,7 +2358,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         shortcutToolbarIntegratedInSuggestion = preferences.shortcutToolbarIntegratedInSuggestion
         shortcutToolbarHeightDp = preferences.shortcutToolbarHeightDp
         shortcutToolbarIconSizeDp = preferences.shortcutToolbarIconSizeDp
-        mainLayoutBinding?.let { applyShortcutToolbarSize(it) }
+        mainLayoutBinding?.let {
+            applyShortcutToolbarSize(
+                mainView = it,
+                forceLayout = true
+            )
+        }
         isDeleteLeftFlickPreference = preferences.isDeleteLeftFlickPreference
         isDeleteUpFlickPreference = preferences.isDeleteUpFlickPreference
         isDeleteDownFlickPreference = preferences.isDeleteDownFlickPreference
@@ -2450,6 +2509,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         enableZenzRightContextPreference = preferences.enableZenzRightContextPreference
         learnFirstCandidateDictionaryPreference =
             preferences.learnFirstCandidateDictionaryPreference
+        learnDictionaryAllowMixedSymbolsNumbersPreference =
+            preferences.learnDictionaryAllowMixedSymbolsNumbersPreference
         enablePredictionSearchLearnDictionaryPreference =
             preferences.enablePredictionSearchLearnDictionaryPreference
         learnPredictionPreference = preferences.learnPredictionPreference
@@ -3873,10 +3934,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasPhysicalKeyboard = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        zenzEngine?.setRuntimeConfig(
-            nCtx = zenzMaximumContextSizePreference ?: 512,
-            nThreads = zenzMaximumThreadSizePreference ?: 4
-        )
         clearZenzLiveSlot("onStartInputView")
         setSuggestionAdapterSuggestionsOnMain(emptyList())
         suggestionAdapter?.setCandidateTextSize(appPreference.candidate_letter_size ?: 14.0f)
@@ -4206,10 +4263,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ensurePhysicalKeyboardPopupWindows()
         }
         refreshBaselineInputBehaviorForCurrentKeyboard("start input keyboard layout settled")
+        consumePendingGemmaPickedImage()
+    }
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        consumePendingGemmaPickedImage()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        gemmaMediaPanelController?.onInputViewHidden()
         candidateRequestTracker.invalidate()
+        candidateRefreshCoordinator.invalidate()
+        defaultInputFinalizeJob?.cancel()
+        defaultInputFinalizeJob = null
         super.onFinishInputView(finishingInput)
         Timber.d("onUpdate onFinishInputView")
         clearZeroQueryAllState(refresh = false)
@@ -4235,12 +4302,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        gemmaMediaPanelController?.onInputViewHidden()
         clearAndPauseSuminagashiInkEffects()
         super.onWindowHidden()
     }
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
+        updateGemmaBackInvokedCallback(registered = false)
+        gemmaMediaPanelController?.destroy()
+        gemmaMediaPanelController = null
+        pendingGemmaPickedImagePath?.let { path ->
+            runCatching { File(path).delete() }
+        }
+        pendingGemmaPickedImagePath = null
         clearZeroQueryAllState(refresh = false)
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
@@ -4258,7 +4333,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardViewFloating.cancelTenKeyScope()
             floatingSymbolKeyboard.release()
         }
-        zenzEngine = null
+        if (AppVariantConfig.hasZenz) {
+            zenzRuntimeClient.close()
+        }
+        cachedZenzModelSource = null
+        cachedZenzModelPath = null
         qwertyGlideInputCoordinator?.cancelPending()
         englishEngine.cancelQwertyGlideWarmup()
         clearZenzLiveSlot("onDestroy")
@@ -4505,6 +4584,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         conversionCandidatesRomajiEnablePreference = null
         enableZenzRightContextPreference = null
         learnFirstCandidateDictionaryPreference = null
+        learnDictionaryAllowMixedSymbolsNumbersPreference = true
         enablePredictionSearchLearnDictionaryPreference = null
         learnPredictionPreference = null
         userDictionaryPredictionCandidateLimit = 4
@@ -5043,7 +5123,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             text = "あ"
         }
 
-        mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx))
+        mainLayoutBinding = MainLayoutBinding.inflate(LayoutInflater.from(ctx)).also { binding ->
+            binding.root.fallbackTouchTargetProvider = {
+                sequenceOf(
+                    binding.keyboardView,
+                    binding.tabletView,
+                    binding.qwertyView,
+                    binding.customLayoutDefault
+                ).firstOrNull {
+                    it.isAttachedToWindow && it.isShown
+                }
+            }
+        }
 
         releaseFloatingKeyboardBackgroundVideoPlayer()
         floatingKeyboardBinding = FloatingKeyboardLayoutBinding.inflate(LayoutInflater.from(ctx))
@@ -5116,6 +5207,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             container.removeAllViews()
             mainLayoutBinding?.root?.let { newRootView ->
                 container.addView(newRootView)
+                gemmaMediaPanelController?.attachTo(container)
                 mainLayoutBinding?.let { mainView ->
                     when (keyboardThemeMode) {
                         "default" -> {
@@ -5387,6 +5479,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK &&
+            gemmaMediaPanelController?.handleBack() == true
+        ) {
+            consumeGemmaBackKeyUp = true
+            return true
+        }
         mainLayoutBinding?.let { mainView ->
             event?.let { e ->
                 logPhysicalKeyEventForDebug(keyCode, e)
@@ -6315,6 +6413,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK && consumeGemmaBackKeyUp) {
+            consumeGemmaBackKeyUp = false
+            return true
+        }
         when (keyCode) {
             KeyEvent.KEYCODE_ENTER -> {
                 Timber.d("onKeyUp KEYCODE_ENTER: ${inputString.value} ${isHenkan.get()}")
@@ -8533,8 +8635,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var keyboardSelectionPopupWindow: PopupWindow? = null
 
-    private fun shouldShowCandidateLongPressActions(): Boolean {
-        return isNgWordEnable == true || gemmaTranslationManager.isTranslationAvailable()
+    private fun shouldShowCandidateLongPressActions(candidate: Candidate): Boolean {
+        return candidate.type == CANDIDATE_TYPE_LEARNED_DICTIONARY ||
+            isNgWordEnable == true ||
+            gemmaTranslationManager.isTranslationAvailable()
     }
 
     private fun showCandidateLongPressActions(
@@ -8572,6 +8676,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             listView.choiceMode = ListView.CHOICE_MODE_SINGLE
 
             val actions = buildList {
+                if (candidate.type == CANDIDATE_TYPE_LEARNED_DICTIONARY) {
+                    add(CandidateLongPressAction.ForgetLearnedEntry)
+                }
                 if (isNgWordEnable == true) {
                     add(CandidateLongPressAction.HideWord)
                 }
@@ -8586,6 +8693,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             val items = actions.map { action ->
                 when (action) {
+                    CandidateLongPressAction.ForgetLearnedEntry ->
+                        getString(R.string.candidate_action_forget_learning)
                     CandidateLongPressAction.HideWord -> "この単語を非表示"
                     CandidateLongPressAction.Translate -> getString(R.string.candidate_action_translate)
                     is CandidateLongPressAction.CustomPrompt -> action.template.title
@@ -8606,6 +8715,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 Timber.d("candidate long click: $candidate $candidatePosition")
                 val selectedAction = actions.getOrNull(position)
                 when (selectedAction) {
+                    CandidateLongPressAction.ForgetLearnedEntry -> {
+                        val reading = resolveLearnedCandidateReading(insertString, candidate)
+                        if (reading.isNotEmpty()) {
+                            ioScope.launch {
+                                learnRepository.deleteByInputAndOutput(
+                                    input = reading,
+                                    output = candidate.string,
+                                )
+                                withContext(Dispatchers.Main) {
+                                    requestCandidateRefresh(CandidateShowFlag.Updating)
+                                }
+                            }
+                        }
+                    }
+
                     CandidateLongPressAction.HideWord -> {
                         ioScope.launch {
                             val exist = ngWordRepository.exists(
@@ -8616,7 +8740,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                     yomi = insertString, tango = candidate.string
                                 )
                                 withContext(Dispatchers.Main) {
-                                    _suggestionFlag.emit(CandidateShowFlag.Updating)
+                                    requestCandidateRefresh(CandidateShowFlag.Updating)
                                 }
                             }
                         }
@@ -8649,6 +8773,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
+    }
+
+    private fun resolveLearnedCandidateReading(
+        insertString: String,
+        candidate: Candidate,
+    ): String {
+        val session = bunsetsuConversionSession
+        if (session != null && isBunsetsuCursorMoveSessionActive() && session.segments.isNotEmpty()) {
+            return session.segments[
+                session.focusedIndex.coerceIn(0, session.segments.lastIndex)
+            ].reading
+        }
+        candidate.yomi?.takeIf { it.isNotEmpty() }?.let { return it }
+        val readingLength = candidate.length.toInt().coerceAtMost(insertString.length)
+        return insertString.take(readingLength)
     }
 
     private fun showSelectedTextGemmaActions(selectedText: String) {
@@ -13466,6 +13605,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         if (invalidateRequest) {
             zenzLiveRequestToken += 1L
+            if (AppVariantConfig.hasZenz) {
+                zenzRuntimeClient.cancelActive()
+            }
         }
         _zenzLiveSlotState.value = null
         zenzLiveLocalCandidatesSnapshot = emptyList()
@@ -13511,6 +13653,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         zenzLiveRequestToken += 1L
+        if (AppVariantConfig.hasZenz) {
+            zenzRuntimeClient.cancelActive()
+        }
         val requestToken = zenzLiveRequestToken
         val localSnapshot = localCandidates.withoutZenzLiveSlot(displayInput)
 
@@ -13941,9 +14086,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun startScope(mainView: MainLayoutBinding) = scope.launch {
         launch {
             var prevFlag: CandidateShowFlag? = null
-            suggestionFlag.collectLatest { currentFlag ->
-                val insertString = inputString.value
-                Timber.d("suggestionFlag CandidateShowFlag.Idle: [$insertString] [$stringInTail] [$prevFlag] [$currentFlag]")
+            candidateRefreshRequests.collectLatest { request ->
+                val currentFlag = request.flag
+                val insertString = request.input
+                Timber.d(
+                    "candidateRefresh: session=%d revision=%d input=[%s] tail=[%s] previous=%s current=%s",
+                    request.sessionId,
+                    request.revision,
+                    insertString,
+                    stringInTail,
+                    prevFlag,
+                    currentFlag,
+                )
                 if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
                     clearZeroQueryAllState(refresh = false)
                     shortcutToolbarHiddenForCandidates = true
@@ -14070,10 +14224,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             isKeyboardFloatingMode != true &&
                             normalKeyboardSurfaceVisible
                         ) {
-                            // SharedFlow の最初の通知が Updating でも候補欄の高さを保証する。
+                            // セッション最初の Updating でも候補欄の高さを保証する。
                             setKeyboardHeightWithAdditional(mainView)
                         }
-                        setSuggestionOnView(insertString, mainView)
+                        try {
+                            setSuggestionOnView(insertString, mainView)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Timber.e(
+                                e,
+                                "Candidate refresh failed: session=%d revision=%d input=[%s]",
+                                request.sessionId,
+                                request.revision,
+                                insertString,
+                            )
+                            restoreRawComposingTextAfterCandidateFailure(request)
+                        }
                     }
                 }
                 prevFlag = currentFlag
@@ -14420,7 +14587,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             zenzRequest
-                .debounce((zenzDebounceTimePreference ?: 300).toLong())
+                .debounce { resolveZenzDebounceMillis(zenzDebounceTimePreference) }
                 .collectLatest { request ->
                     if (request.bunsetsuTarget == null) {
                         lastLocalUpdatedInput.first { completedInput ->
@@ -14462,12 +14629,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         launch {
-            inputString.collectLatest { string ->
-                measureDebugStage("IMEService.input.total") {
-                    processInputString(string, mainView)
+            inputString.collect { string ->
+                try {
+                    measureDebugStage("IMEService.input.immediate") {
+                        processInputString(string, mainView)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Immediate input processing failed: input=[%s]", string)
+                    if (string.isNotEmpty() && inputString.value == string) {
+                        applyRawComposingFallback(string)
+                    }
                 }
             }
         }
+
     }
 
 
@@ -14504,8 +14681,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         try {
             // 処理直前にキャンセルされていないかチェック
             ensureActive()
+            val runtimeConfig = resolveZenzRuntimeConfig() ?: return@withContext emptyList()
 
-            val stringFromZenz = zenzEngine?.generateWithContextAndConditionsV32(
+            val stringFromZenz = zenzRuntimeClient.generate(
+                config = runtimeConfig,
                 profile = zenzProfilePreference ?: "",
                 topic = "",
                 style = "",
@@ -14514,7 +14693,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 rightContext = zenzContext.rightContext,
                 input = insertString.hiraganaToKatakana(),
                 maxTokens = zenzMaximumLetterSizePreference ?: 32
-            ) ?: ""
+            )
 
             // 生成後もチェック
             ensureActive()
@@ -14561,8 +14740,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 4. エンジンによる生成処理
         try {
             ensureActive()
+            val runtimeConfig = resolveZenzRuntimeConfig() ?: return@withContext emptyList()
 
-            val stringFromZenz = zenzEngine?.candidateEvaluateV32(
+            val stringFromZenz = zenzRuntimeClient.evaluate(
+                config = runtimeConfig,
                 profile = zenzProfilePreference ?: "",
                 topic = "",
                 style = "",
@@ -14571,7 +14752,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 rightContext = zenzContext.rightContext,
                 input = insertString.hiraganaToKatakana(),
                 candidate = firstCandidate
-            ) ?: ""
+            )
 
             ensureActive()
 
@@ -14610,7 +14791,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     )
 
                     val secondCandidateFromZenz = ZenzCandidate(
-                        string = (zenzEngine?.generateWithContextAndConditionsV32(
+                        string = zenzRuntimeClient.generate(
+                            config = runtimeConfig,
                             profile = zenzProfilePreference ?: "",
                             topic = "",
                             style = "",
@@ -14619,7 +14801,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             rightContext = zenzContext.rightContext,
                             input = insertString.hiraganaToKatakana(),
                             maxTokens = zenzMaximumLetterSizePreference ?: 32
-                        ) ?: ""),
+                        ),
                         type = (40).toByte(),
                         length = insertString.length.toUByte(),
                         score = 2000,
@@ -14724,7 +14906,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         plan: ZenzRerankPlan
     ): List<Candidate>? = measureDebugStage("IMEService.Zenz.rerank") {
         val rawScores = withContext(Dispatchers.Default) {
-            zenzEngine?.scoreCandidatesV32(
+            val runtimeConfig = resolveZenzRuntimeConfig()
+                ?: return@withContext FloatArray(0)
+            zenzRuntimeClient.score(
+                config = runtimeConfig,
                 profile = zenzProfilePreference ?: "",
                 topic = "",
                 style = "",
@@ -14733,7 +14918,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 rightContext = plan.rightContext,
                 input = insertString.hiraganaToKatakana(),
                 candidates = plan.rerankTargets.map { it.value.string }.toTypedArray()
-            ) ?: FloatArray(0)
+            )
         }
 
         if (rawScores.size != plan.rerankTargets.size) {
@@ -14919,9 +15104,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             listAdapter.updateHighlightPosition(-1)
             currentHighlightIndex = -1
         }
-        scope.launch {
-            _suggestionFlag.emit(CandidateShowFlag.Idle)
-        }
+        requestCandidateRefresh(CandidateShowFlag.Idle)
         refreshReconversionUi()
     }
 
@@ -15064,7 +15247,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isSymbol = isSymbolOverride ?: keyboardSymbolViewState.value.isShown
-        applyShortcutToolbarSize(mainView)
+        applyShortcutToolbarSize(
+            mainView = mainView,
+            forceLayout = !addCandidateTabHeight
+        )
 
         // 2. ピクセル値の計算
         val heightPx = when {
@@ -15187,7 +15373,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             gravity = gravity,
             finalBottomMargin = finalBottomMargin,
             finalStartMargin = finalStartMargin,
-            finalEndMargin = finalEndMargin
+            finalEndMargin = finalEndMargin,
+            forceLayout = !addCandidateTabHeight
         )
 
         if (isSymbol) {
@@ -15208,8 +15395,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         // 5. 個別処理
         if (addCandidateTabHeight) {
             val params = mainView.suggestionVisibility.layoutParams as ConstraintLayout.LayoutParams
-            params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
-            mainView.suggestionVisibility.layoutParams = params
+            if (params.bottomToBottom != ConstraintLayout.LayoutParams.UNSET) {
+                params.bottomToBottom = ConstraintLayout.LayoutParams.UNSET
+                mainView.suggestionVisibility.layoutParams = params
+            }
         }
     }
 
@@ -15275,12 +15464,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         gravity: Int,
         finalBottomMargin: Int,
         finalStartMargin: Int,
-        finalEndMargin: Int
+        finalEndMargin: Int,
+        forceLayout: Boolean
     ) {
         if (shouldUseIndependentShortcutToolbar()) {
             (mainView.shortcutToolbarRecyclerview.layoutParams as? FrameLayout.LayoutParams)?.let { param ->
-                param.bottomMargin = heightPx + mainView.suggestionViewParent.height
-                mainView.shortcutToolbarRecyclerview.layoutParams = param
+                val bottomMargin = heightPx + mainView.suggestionViewParent.height
+                if (forceLayout || param.bottomMargin != bottomMargin) {
+                    param.bottomMargin = bottomMargin
+                    mainView.shortcutToolbarRecyclerview.layoutParams = param
+                }
             }
         }
 
@@ -15292,24 +15485,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.candidatesRowView
         ).forEach { view ->
             (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                var changed = false
                 if (view != mainView.suggestionViewParent) {
-                    params.height = heightPx
+                    if (forceLayout || params.height != heightPx) {
+                        params.height = heightPx
+                        changed = true
+                    }
                 } else {
-                    params.bottomMargin = heightPx
+                    if (forceLayout || params.bottomMargin != heightPx) {
+                        params.bottomMargin = heightPx
+                        changed = true
+                    }
                 }
-                params.gravity = gravity
-                view.layoutParams = params
+                if (forceLayout || params.gravity != gravity) {
+                    params.gravity = gravity
+                    changed = true
+                }
+                if (changed) {
+                    view.layoutParams = params
+                }
             }
         }
 
         (mainView.root.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-            params.height = finalKeyboardHeight
-            params.width = finalKeyboardWidth
-            params.bottomMargin = finalBottomMargin
-            params.leftMargin = finalStartMargin
-            params.rightMargin = finalEndMargin
-            params.gravity = gravity
-            mainView.root.layoutParams = params
+            var changed = false
+            if (forceLayout || params.height != finalKeyboardHeight) {
+                params.height = finalKeyboardHeight
+                changed = true
+            }
+            if (forceLayout || params.width != finalKeyboardWidth) {
+                params.width = finalKeyboardWidth
+                changed = true
+            }
+            if (forceLayout || params.bottomMargin != finalBottomMargin) {
+                params.bottomMargin = finalBottomMargin
+                changed = true
+            }
+            if (forceLayout || params.leftMargin != finalStartMargin) {
+                params.leftMargin = finalStartMargin
+                changed = true
+            }
+            if (forceLayout || params.rightMargin != finalEndMargin) {
+                params.rightMargin = finalEndMargin
+                changed = true
+            }
+            if (forceLayout || params.gravity != gravity) {
+                params.gravity = gravity
+                changed = true
+            }
+            if (changed) {
+                mainView.root.layoutParams = params
+            }
         }
 
         updateNormalKeyboardBackgroundBounds(
@@ -15325,7 +15551,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             heightPx = heightPx
         )
 
-        mainView.root.setPadding(0, 0, 0, systemBottomInset)
+        if (
+            mainView.root.paddingLeft != 0 ||
+            mainView.root.paddingTop != 0 ||
+            mainView.root.paddingRight != 0 ||
+            mainView.root.paddingBottom != systemBottomInset
+        ) {
+            mainView.root.setPadding(0, 0, 0, systemBottomInset)
+        }
     }
 
     private fun setKeyboardHeightWithAdditionalOriginal(mainView: MainLayoutBinding) {
@@ -15526,7 +15759,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setKeyboardHeightWithAdditional(mainView: MainLayoutBinding) {
         Timber.d("Keyboard Height: setKeyboardHeightWithAdditional called")
-        setKeyboardHeightWithAdditionalOriginal(mainView)
+        if (currentInputType.isPassword()) return
+        updateKeyboardLayout(
+            mainView = mainView,
+            addCandidateTabHeight = true
+        )
     }
 
     private fun setKeyboardHeightDefault(mainView: MainLayoutBinding) {
@@ -15724,9 +15961,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private suspend fun processInputString(
+    private fun processInputString(
         string: String, mainView: MainLayoutBinding,
     ) {
+        defaultInputFinalizeJob?.cancel()
+        defaultInputFinalizeJob = null
         if (string.isNotEmpty()) {
             clearZeroQueryAllState(refresh = false)
             hasConvertedKatakana = false
@@ -15871,9 +16110,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     /**
      * TenKeyQWERTYモードの入力処理を担当します。
      */
-    private suspend fun handleTenKeyQwertyInput(string: String) {
+    private fun handleTenKeyQwertyInput(string: String) {
         val spannable = createSpannableWithTail(string)
-        _suggestionFlag.emit(CandidateShowFlag.Updating)
+        requestCandidateRefresh(CandidateShowFlag.Updating, string)
         if (!(shouldStartLiveConversion(string) && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
                 inputString = string,
@@ -15910,7 +16149,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     /**
      * TenKeyQWERTY以外のモードの入力処理を担当します。
      */
-    private suspend fun handleDefaultInput(string: String) {
+    private fun handleDefaultInput(string: String) {
         val spannable = createSpannableWithTail(string)
         if (!(shouldStartLiveConversion(string) && isFlickOnlyMode == true)) {
             setComposingTextPreEdit(
@@ -15925,17 +16164,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 textColor = if (customComposingTextPreference == true) inputCompositionTextColor else null
             )
         }
-        _suggestionFlag.emit(CandidateShowFlag.Updating)
-        val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
-        measureDebugStage("IMEService.handleDefaultInput.delay") {
-            delay(timeToDelay)
-        }
-
-        if (inputString.value != string) {
-            return
-        }
-
+        requestCandidateRefresh(CandidateShowFlag.Updating, string)
         if (isLiveConversionEnable != true) {
+            scheduleDefaultInputFinalize(string)
+        }
+    }
+
+    private fun scheduleDefaultInputFinalize(string: String) {
+        val timeToDelay = delayTime?.toLong() ?: DEFAULT_DELAY_MS
+        defaultInputFinalizeJob = scope.launch {
+            measureDebugStage("IMEService.input.finalizeDelay") {
+                delay(timeToDelay)
+            }
+
+            if (inputString.value != string || isLiveConversionEnable == true) {
+                return@launch
+            }
+
             val shouldCommitOriginalText =
                 inputString.value.isNotEmpty() && !isHenkan.get() && !onDeleteLongPressUp.get() && !englishSpaceKeyPressed.get() && !deleteKeyLongKeyPressed.get() && !hasConvertedKatakana
 
@@ -15944,7 +16189,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 lastFlickConvertedNextHiragana.set(true)
                 setComposingTextAfterEdit(
                     inputString = string,
-                    spannableString = spannable,
+                    spannableString = createSpannableWithTail(string),
                     backgroundColor = if (customComposingTextPreference == true) {
                         inputCompositionAfterBackgroundColor
                             ?: getColor(com.kazumaproject.core.R.color.blue)
@@ -15975,6 +16220,41 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun shouldStartLiveConversion(input: String): Boolean {
         return isLiveConversionEnable == true && input.length >= liveConversionStartLength
+    }
+
+    private fun requestCandidateRefresh(
+        flag: CandidateShowFlag,
+        input: String = inputString.value,
+    ) {
+        candidateRefreshCoordinator.request(input = input, flag = flag)
+    }
+
+    private fun restoreRawComposingTextAfterCandidateFailure(
+        request: CandidateRefreshRequest,
+    ) {
+        if (!candidateRefreshCoordinator.isCurrent(request)) return
+        if (request.input.isEmpty() || inputString.value != request.input) return
+        if (!shouldStartLiveConversion(request.input) || isFlickOnlyMode != true) return
+
+        applyRawComposingFallback(request.input)
+    }
+
+    private fun applyRawComposingFallback(input: String) {
+        setComposingTextAfterEdit(
+            inputString = input,
+            spannableString = createSpannableWithTail(input),
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputCompositionAfterBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.blue)
+            } else {
+                getColor(com.kazumaproject.core.R.color.blue)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputCompositionTextColor
+            } else {
+                null
+            },
+        )
     }
 
     private fun liveConversionApplyDelayMillis(): Long {
@@ -16651,6 +16931,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val session = bunsetsuConversionSession ?: return false
         val commitString = session.segments.joinToString(separator = "") { it.displayText }
         val tailText = session.tailText
+        recordBunsetsuLearning(
+            originalReading = session.rawInput,
+            segments = session.segments,
+            complete = tailText.isEmpty(),
+        )
         val shouldRememberZeroQuery = tailText.isEmpty() && commitString.isNotBlank()
         if (tailText.isEmpty()) {
             finalizeBunsetsuReconversion(
@@ -16713,13 +16998,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return true
     }
 
-    private suspend fun resetInputString() {
+    private fun resetInputString() {
         Timber.d("resetInputString detect: $bunsetusMultipleDetect [${stringInTail.get()}]")
         val henkanActive = isHenkan.get()
         val tailIsEmpty = stringInTail.get().isEmpty()
         val shouldCommitIdle = !bunsetusMultipleDetect || tailIsEmpty
         if (!henkanActive && shouldCommitIdle) {
-            _suggestionFlag.emit(CandidateShowFlag.Idle)
+            requestCandidateRefresh(CandidateShowFlag.Idle)
         }
     }
 
@@ -17287,7 +17572,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (candidate.isZenzLiveLoadingSlot(inputString.value)) return@setOnItemLongClickListener
                 if (isSelectedTextGemmaActionCandidate(candidate)) return@setOnItemLongClickListener
                 val insertString = inputString.value
-                if (shouldShowCandidateLongPressActions()) {
+                if (shouldShowCandidateLongPressActions(candidate)) {
                     val candidatePosition = resolveCandidateLongPressPosition(
                         candidate = candidate,
                         position = i,
@@ -17420,7 +17705,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 if (candidate.isZenzLiveLoadingSlot(inputString.value)) return@setOnItemLongClickListener
                 if (isSelectedTextGemmaActionCandidate(candidate)) return@setOnItemLongClickListener
                 val insertString = inputString.value
-                if (shouldShowCandidateLongPressActions()) {
+                if (shouldShowCandidateLongPressActions(candidate)) {
                     val candidatePosition = resolveCandidateLongPressPosition(
                         candidate = candidate,
                         position = i,
@@ -17571,10 +17856,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             val key = SuggestionLayoutKey(
                 isPortrait = isPortrait,
                 columnNum = columnNum,
-                useLinearHorizontalLayout =
+                layoutKind = if (
+                    columnNum == "1" ||
                     CandidateStripLayoutPolicy.shouldUseLinearHorizontalLayout(
                         currentCandidateStripContent
-                    ),
+                    )
+                ) {
+                    SuggestionLayoutKind.LinearHorizontal
+                } else {
+                    SuggestionLayoutKind.GridHorizontal
+                },
                 isKeyboardFloatingMode = isKeyboardFloatingMode == true
             )
             if (lastSuggestionLayoutKey == key && recyclerView.layoutManager != null) {
@@ -17583,17 +17874,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             lastSuggestionLayoutKey = key
 
-            recyclerView.adapter = null
-
             mainSuggestionGridSpacingDecoration?.let { decoration ->
                 recyclerView.removeItemDecoration(decoration)
                 mainSuggestionGridSpacingDecoration = null
             }
 
-            if (key.useLinearHorizontalLayout) {
+            if (key.layoutKind == SuggestionLayoutKind.LinearHorizontal) {
                 recyclerView.layoutManager =
                     LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-                recyclerView.adapter = adapter
                 return@measureDebugSection
             }
 
@@ -17633,7 +17921,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     mainSuggestionGridSpacingDecoration = decoration
                 }
             }
-            recyclerView.adapter = adapter
         }
     }
 
@@ -17806,6 +18093,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardFloatingActive = isKeyboardFloatingMode == true,
             inputBehavior = currentInputBehavior,
             liveConversionEnabled = isLiveConversionEnable == true,
+            learningPaused = learningPausedForSession,
         )
 
         shortcutAdapter?.setActiveShortcutTypes(activeTypes)
@@ -17823,6 +18111,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         updateShortcutActiveStates()
         refreshCandidateStripContent()
+    }
+
+    private fun toggleLearningPauseFromShortcut() {
+        learningPausedForSession = !learningPausedForSession
+        if (learningPausedForSession) {
+            conversionLearningSession.cancel()
+        }
+        updateShortcutActiveStates()
+        Toast.makeText(
+            this,
+            if (learningPausedForSession) {
+                R.string.learning_paused_message
+            } else {
+                R.string.learning_resumed_message
+            },
+            Toast.LENGTH_SHORT,
+        ).show()
     }
 
     private fun toggleKeyboardFloatingModeFromShortcut() {
@@ -18237,17 +18542,23 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return applicationContext.dpToPx(iconSizeDp)
     }
 
-    private fun applyShortcutToolbarSize(mainView: MainLayoutBinding) {
+    private fun applyShortcutToolbarSize(
+        mainView: MainLayoutBinding,
+        forceLayout: Boolean
+    ) {
         val toolbarHeightDp = shortcutToolbarHeightDp.coerceIn(
             AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MIN_DP,
             AppPreference.SHORTCUT_TOOLBAR_HEIGHT_MAX_DP
         )
         val toolbarHeightPx = applicationContext.dpToPx(toolbarHeightDp)
         val iconSizePx = shortcutToolbarIconSizePx(toolbarHeightDp)
-        mainView.shortcutToolbarRecyclerview.layoutParams =
-            mainView.shortcutToolbarRecyclerview.layoutParams.apply {
-                height = toolbarHeightPx
-            }
+        val toolbarLayoutParams = mainView.shortcutToolbarRecyclerview.layoutParams
+        if (forceLayout || toolbarLayoutParams.height != toolbarHeightPx) {
+            mainView.shortcutToolbarRecyclerview.layoutParams =
+                toolbarLayoutParams.apply {
+                    height = toolbarHeightPx
+                }
+        }
         shortcutAdapter?.setShortcutToolbarSize(
             toolbarHeightPx = toolbarHeightPx,
             iconSizePx = iconSizePx
@@ -18383,6 +18694,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 toggleLiveConversionFromShortcut()
             }
 
+            ShortcutType.LEARNING_PAUSE -> {
+                toggleLearningPauseFromShortcut()
+            }
+
             ShortcutType.SELECT_ALL -> {
                 selectAllText()
             }
@@ -18403,6 +18718,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 startVoiceInput(mainView)
             }
 
+            ShortcutType.GEMMA_IMAGE -> {
+                launchGemmaImageAction()
+            }
+
+            ShortcutType.GEMMA_AUDIO -> {
+                launchGemmaAudioAction()
+            }
+
             ShortcutType.CLIP_BOARD -> {
                 vibrate()
                 _keyboardSymbolViewState.value = SymbolKeyboardState(
@@ -18413,6 +18736,142 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 finishComposingText()
                 setComposingText("", 0)
             }
+        }
+    }
+
+    private fun launchGemmaImageAction() {
+        prepareForGemmaMediaPanel()
+        ensureGemmaMediaPanelController().openImage()
+    }
+
+    private fun launchGemmaAudioAction() {
+        prepareForGemmaMediaPanel()
+        ensureGemmaMediaPanelController().openAudio()
+    }
+
+    private fun launchGemmaDeviceImagePicker() {
+        Timber.i("Launching the permission-free Gemma device image picker")
+        val intent = Intent(this, GemmaImagePickerActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(
+                GemmaImagePickerActivity.EXTRA_RESULT_RECEIVER,
+                gemmaImagePickerResultReceiver,
+            )
+        }
+        runCatching { startActivity(intent) }
+            .onFailure {
+                Timber.e(it, "Failed to launch the Gemma device image picker")
+                showToastMessage(getString(R.string.gemma_device_image_import_failed))
+            }
+    }
+
+    private fun consumePendingGemmaPickedImage() {
+        val path = pendingGemmaPickedImagePath ?: return
+        if (!isInputViewActive || currentInputConnection == null || keyboardContainer == null) return
+        pendingGemmaPickedImagePath = null
+        prepareForGemmaMediaPanel()
+        ensureGemmaMediaPanelController().openPickedImage(path)
+    }
+
+    private fun prepareForGemmaMediaPanel() {
+        stopAllOngoingKeyLongPresses()
+        disableKeyboardLayoutEditMode(updateSurface = false)
+        collapseShortcutEntryExpansion()
+        if (keyboardSymbolViewState.value.isShown) {
+            _keyboardSymbolViewState.value = SymbolKeyboardState()
+        }
+        finishComposingText()
+        _inputString.update { "" }
+        stringInTail.set("")
+    }
+
+    private fun ensureGemmaMediaPanelController(): GemmaImeMediaPanelController {
+        gemmaMediaPanelController?.let { controller ->
+            keyboardContainer?.let(controller::attachTo)
+            return controller
+        }
+        return GemmaImeMediaPanelController(
+            context = this,
+            actionRepository = gemmaPromptTemplateRepository,
+            gemmaManager = gemmaTranslationManager,
+            appPreference = appPreference,
+            clipboardUtil = clipboardUtil,
+            callbacks = object : GemmaImeMediaPanelController.Callbacks {
+                override fun onVisibilityChanged(visible: Boolean) {
+                    setGemmaMediaPanelVisibility(visible)
+                }
+
+                override fun currentInputSessionId(): Long = gemmaInputSessionId
+
+                override fun insertResult(text: String, inputSessionId: Long): Boolean {
+                    if (inputSessionId != gemmaInputSessionId) return false
+                    val inputConnection = currentInputConnection ?: return false
+                    finishComposingText()
+                    inputConnection.commitText(text, 1)
+                    showToastMessage(getString(R.string.gemma_result_ready))
+                    return true
+                }
+
+                override fun onDeviceImageRequested() {
+                    launchGemmaDeviceImagePicker()
+                }
+
+                override fun onAudioPermissionRequired() {
+                    showToastMessage(getString(R.string.gemma_audio_permission_settings_hint))
+                }
+
+                override fun showMessage(message: String) {
+                    showToastMessage(message)
+                }
+            },
+        ).also { controller ->
+            gemmaMediaPanelController = controller
+            keyboardContainer?.let(controller::attachTo)
+        }
+    }
+
+    private fun setGemmaMediaPanelVisibility(visible: Boolean) {
+        val mainView = mainLayoutBinding ?: return
+        if (visible) {
+            restoreFloatingModeAfterGemmaPanel = isKeyboardFloatingMode == true
+            if (restoreFloatingModeAfterGemmaPanel) {
+                applyFloatingModeState(false)
+            }
+            mainView.root.isVisible = true
+            mainView.root.alpha = 1f
+            mainView.root.isInvisible = true
+            updateGemmaBackInvokedCallback(registered = true)
+        } else {
+            updateGemmaBackInvokedCallback(registered = false)
+            mainView.root.isInvisible = false
+            mainView.root.isVisible = true
+            mainView.root.alpha = 1f
+            if (restoreFloatingModeAfterGemmaPanel) {
+                restoreFloatingModeAfterGemmaPanel = false
+                applyFloatingModeState(true)
+            } else {
+                renderCurrentKeyboardStateOnActiveSurface()
+            }
+        }
+    }
+
+    private fun updateGemmaBackInvokedCallback(registered: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val dispatcher = window.window?.onBackInvokedDispatcher ?: return
+        if (registered) {
+            if (isGemmaBackInvokedCallbackRegistered) return
+            val callback = gemmaBackInvokedCallback ?: OnBackInvokedCallback {
+                gemmaMediaPanelController?.handleBack()
+            }.also { gemmaBackInvokedCallback = it }
+            dispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_OVERLAY,
+                callback,
+            )
+            isGemmaBackInvokedCallbackRegistered = true
+        } else {
+            if (!isGemmaBackInvokedCallbackRegistered) return
+            gemmaBackInvokedCallback?.let(dispatcher::unregisterOnBackInvokedCallback)
+            isGemmaBackInvokedCallbackRegistered = false
         }
     }
 
@@ -19388,7 +19847,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (
             handleBunsetsuCandidateClick(
                 candidate = candidate,
-                currentInputMode = currentInputMode,
                 position = position,
                 displayedCandidates = displayedCandidates
             )
@@ -19424,7 +19882,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun handleBunsetsuCandidateClick(
         candidate: Candidate,
-        currentInputMode: InputMode,
         position: Int,
         displayedCandidates: List<Candidate>
     ): Boolean {
@@ -19497,28 +19954,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val segmentCandidate = segmentSelection.candidate
         val candidateDisplayText = displayTextFromCandidate(segmentCandidate)
 
-        if (currentInputMode == InputMode.ModeJapanese &&
-            isLearnDictionaryMode == true &&
-            !isPrivateMode &&
-            segmentIndex != 0
-        ) {
-            ioScope.launch {
-                try {
-                    learnRepository.upsertLearnedData(
-                        LearnEntity(
-                            input = targetSegment.reading,
-                            out = segmentCandidate.string,
-                            score = ((segmentCandidate.score - 500 * segmentIndex).coerceAtLeast(0)).toShort(),
-                            leftId = segmentCandidate.leftId,
-                            rightId = segmentCandidate.rightId
-                        )
-                    )
-                } catch (e: Exception) {
-                    Timber.e(e, "upsertLearnDictionary for bunsetsu tap failed")
-                }
-            }
-        }
-
         val updatedSegments = session.segments.toMutableList()
         updatedSegments[focusedIndex] = targetSegment.copy(
             displayText = candidateDisplayText,
@@ -19558,6 +19993,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ""
         }
         val shouldRememberZeroQuery = nextInput.isEmpty() && committedText.isNotBlank()
+
+        recordBunsetsuLearning(
+            originalReading = session.rawInput,
+            segments = session.segments.take(focusedIndex + 1),
+            complete = nextInput.isEmpty(),
+        )
 
         if (nextInput.isEmpty()) {
             finalizeBunsetsuReconversion(
@@ -19625,7 +20066,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFirstClickHasStringTail = false
         _inputString.update { nextInput }
         clearBunsetsuConversionSession()
-        learnMultiple.stop()
 
         if (nextInput.isNotEmpty()) {
             scope.launch {
@@ -19889,7 +20329,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         clearBunsetsuConversionSession()
-        learnMultiple.stop()
+        conversionLearningSession.cancel()
     }
 
     private fun restoreCompositionState(input: String, tail: String) {
@@ -20058,31 +20498,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         currentInputMode: InputMode,
         position: Int
     ) {
-        if (!learnMultiple.enabled()) {
-            learnMultiple.start()
-            learnMultiple.setInput(insertString)
-            learnMultiple.setWordToStringBuilder(candidateString)
-            upsertLearnDictionaryWhenTapCandidate(
-                currentInputMode = currentInputMode,
-                insertString = insertString,
-                candidate = candidate,
-                position = position
-            )
-        } else {
-            learnMultiple.setInput(learnMultiple.getInput() + insertString)
-            learnMultiple.setWordToStringBuilder(candidateString)
-            upsertLearnDictionaryMultipleTapCandidate(
-                currentInputMode = currentInputMode,
-                input = learnMultiple.getInput(),
-                output = learnMultiple.getInputAndStringBuilder().second,
-                candidate = candidate,
-                insertString = insertString,
-                position = position
-            )
-        }
-        if (stringInTail.get().isNullOrEmpty()) {
-            learnMultiple.stop()
-        }
+        recordCandidateLearning(
+            currentInputMode = currentInputMode,
+            originalReading = insertString + stringInTail.get(),
+            segmentReading = insertString,
+            output = candidateString,
+            candidate = candidate,
+            candidateIndex = position,
+            complete = stringInTail.get().isEmpty(),
+        )
+        commitLearnedCandidate(insertString, candidateString)
     }
 
     private fun commitAndClearInput(candidateString: String) {
@@ -20145,25 +20570,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun handlePartialOrExcessLength(
-        insertString: String, candidate: Candidate, currentInputMode: InputMode
+        insertString: String,
+        candidate: Candidate,
+        currentInputMode: InputMode,
+        position: Int,
     ) {
         val candidateLength = candidate.length.toInt()
         val candidateString = candidate.string
         if (insertString.length > candidateLength) {
+            recordCandidateLearning(
+                currentInputMode = currentInputMode,
+                originalReading = insertString,
+                segmentReading = insertString.substring(0, candidateLength),
+                output = candidateString,
+                candidate = candidate,
+                candidateIndex = position,
+                complete = false,
+            )
             stringInTail.set(insertString.substring(candidateLength))
-            if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode) {
-                ioScope.launch {
-                    learnRepository.upsertLearnedData(
-                        LearnEntity(
-                            input = insertString.substring(0, candidateLength),
-                            out = candidateString,
-                            score = candidate.score.toShort(),
-                            leftId = candidate.leftId,
-                            rightId = candidate.rightId
-                        )
-                    )
-                }
-            }
         }
         commitAndClearInput(candidateString)
     }
@@ -20232,92 +20656,104 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     handlePartialOrExcessLength(
                         insertString = insertString,
                         candidate = candidate,
-                        currentInputMode = currentInputMode
+                        currentInputMode = currentInputMode,
+                        position = position,
                     )
                 }
             }
         }
     }
 
-    private fun upsertLearnDictionaryWhenTapCandidate(
-        currentInputMode: InputMode, insertString: String, candidate: Candidate, position: Int
-    ) {
-        // 1) 学習モードかつ日本語モードかつ position!=0 のみ upsert
-        val isFirstCandidateLearn: Boolean =
-            if (enablePredictionSearchLearnDictionaryPreference == true) {
-                true
-            } else {
-                position != 0
-            }
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && isFirstCandidateLearn && !isPrivateMode) {
-            ioScope.launch {
-                try {
-                    learnRepository.upsertLearnedData(
-                        LearnEntity(
-                            input = insertString,
-                            out = candidate.string,
-                            score = ((candidate.score - 500 * position).coerceAtLeast(0)).toShort(),
-                            leftId = candidate.leftId,
-                            rightId = candidate.rightId
-                        )
-                    )
-                } catch (e: Exception) {
-                    Timber.e(e, "upsertLearnDictionary failed")
-                }
-            }
-        }
-        // 2) 共通の後処理（入力クリア＋コミット）
+    private fun commitLearnedCandidate(insertString: String, candidateString: String) {
         if (insertString.isNotEmpty() && stringInTail.get().isEmpty()) {
             rememberCommittedTextForReconversion(
                 reading = insertString,
-                committedText = candidate.string
+                committedText = candidateString
             )
         }
-        if (candidate.string.isNotBlank() && stringInTail.get().isEmpty()) {
-            rememberZeroQueryKeyAfterCommit(candidate.string)
+        if (candidateString.isNotBlank() && stringInTail.get().isEmpty()) {
+            rememberZeroQueryKeyAfterCommit(candidateString)
         }
         _inputString.update { "" }
-        commitText(candidate.string, 1)
+        commitText(candidateString, 1)
     }
 
+    private fun isLearningWriteEnabled(): Boolean =
+        isLearnDictionaryMode == true && !isPrivateMode && !learningPausedForSession
 
-    private fun upsertLearnDictionaryMultipleTapCandidate(
+    private fun recordCandidateLearning(
         currentInputMode: InputMode,
-        input: String,
+        originalReading: String,
+        segmentReading: String,
         output: String,
         candidate: Candidate,
-        insertString: String,
-        position: Int
+        candidateIndex: Int,
+        complete: Boolean,
     ) {
-        if (currentInputMode == InputMode.ModeJapanese && isLearnDictionaryMode == true && !isPrivateMode && position != 0) {
-            ioScope.launch {
-                try {
-                    learnRepository.upsertLearnedData(
-                        LearnEntity(
-                            input = insertString,
-                            out = candidate.string,
-                            score = ((candidate.score - 500 * insertString.length).coerceAtLeast(0)).toShort(),
-                            leftId = candidate.leftId,
-                            rightId = candidate.rightId
-                        )
-                    )
-                } catch (e: Exception) {
-                    Timber.e(e, "upsertLearnDictionaryMultipleTap failed")
-                }
-            }
+        if (currentInputMode != InputMode.ModeJapanese || !isLearningWriteEnabled()) {
+            conversionLearningSession.cancel()
+            return
         }
-        // 共通後処理
-        if (insertString.isNotEmpty() && stringInTail.get().isEmpty()) {
-            rememberCommittedTextForReconversion(
-                reading = insertString,
-                committedText = candidate.string
+        conversionLearningSession.beginIfNeeded(originalReading)
+        conversionLearningSession.record(
+            LearningFragment(
+                reading = segmentReading,
+                output = output,
+                candidateScore = candidate.score,
+                candidateIndex = candidateIndex,
+                leftId = candidate.leftId,
+                rightId = candidate.rightId,
+            )
+        )
+        if (complete) persistCompletedLearningSession()
+    }
+
+    private fun recordBunsetsuLearning(
+        originalReading: String,
+        segments: List<BunsetsuSegmentState>,
+        complete: Boolean,
+    ) {
+        if (!isLearningWriteEnabled()) {
+            conversionLearningSession.cancel()
+            return
+        }
+        conversionLearningSession.beginIfNeeded(originalReading)
+        segments.forEach { segment ->
+            val candidate = segment.overrideDisplayCandidate
+                ?: segment.candidates.getOrNull(segment.selectedIndex)
+            conversionLearningSession.record(
+                LearningFragment(
+                    reading = segment.reading,
+                    output = segment.displayText,
+                    candidateScore = candidate?.score ?: 3000,
+                    candidateIndex = segment.selectedIndex,
+                    leftId = candidate?.leftId,
+                    rightId = candidate?.rightId,
+                    explicitlySelected = segment.overrideDisplayCandidate != null,
+                )
             )
         }
-        if (candidate.string.isNotBlank() && stringInTail.get().isEmpty()) {
-            rememberZeroQueryKeyAfterCommit(candidate.string)
+        if (complete) persistCompletedLearningSession()
+    }
+
+    private fun persistCompletedLearningSession() {
+        val entries = conversionLearningSession.finish(
+            learnFirstCandidate = learnFirstCandidateDictionaryPreference == true,
+        )
+        if (entries.isEmpty()) return
+        val allowMixedSymbolsAndNumbers = learnDictionaryAllowMixedSymbolsNumbersPreference
+        ioScope.launch {
+            try {
+                learnRepository.upsertLearnedDataBatch(
+                    learnDataList = entries,
+                    allowJapaneseWithSymbolsAndNumbers = allowMixedSymbolsAndNumbers,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.e(e, "Saving conversion learning session failed")
+            }
         }
-        _inputString.update { "" }
-        commitText(candidate.string, 1)
     }
 
     private fun resetAllFlags() {
@@ -20356,7 +20792,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFirstClickHasStringTail = false
         lastCandidate = ""
         _keyboardSymbolViewState.update { SymbolKeyboardState() }
-        learnMultiple.stop()
+        conversionLearningSession.cancel()
         stopDeleteLongPress()
         clearDeletedBuffer()
         refreshEditHistoryUi()
@@ -20410,9 +20846,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         suggestionAdapterFull?.updateHighlightPosition(RecyclerView.NO_POSITION)
         listAdapter.updateHighlightPosition(RecyclerView.NO_POSITION)
-        scope.launch {
-            _suggestionFlag.emit(CandidateShowFlag.Idle)
-        }
+        requestCandidateRefresh(CandidateShowFlag.Idle)
         refreshReconversionUi()
     }
 
@@ -20533,7 +20967,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.updateHighlightPosition(RecyclerView.NO_POSITION)
         isFirstClickHasStringTail = false
         clearBunsetsuConversionSession()
-        learnMultiple.stop()
+        conversionLearningSession.cancel()
         refreshReconversionUi()
     }
 
@@ -20546,6 +20980,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resetFlagsDeleteKey() {
+        conversionLearningSession.cancel()
         suggestionClickNum = 0
         _dakutenPressed.value = false
         englishSpaceKeyPressed.set(false)
@@ -21293,7 +21728,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             string = it.out,
                             type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                             length = (it.input.length).toUByte(),
-                            score = it.score.toInt()
+                            score = it.score,
+                            yomi = it.input,
                         )
                     }.sortedBy { it.score }
                 }
@@ -21413,7 +21849,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 string = it.out,
                                 type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                                 length = (it.input.length).toUByte(),
-                                score = it.score.toInt()
+                                score = it.score,
+                                yomi = it.input,
                             )
                         }.sortedBy { it.score }
                     }
@@ -21563,7 +22000,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                             string = it.out,
                             type = CANDIDATE_TYPE_LEARNED_DICTIONARY,
                             length = (it.input.length).toUByte(),
-                            score = it.score.toInt()
+                            score = it.score,
+                            yomi = it.input,
                         )
                     }.sortedBy { it.score }
                 }
@@ -21833,7 +22271,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             val flag = if (inputString.value.isEmpty()) CandidateShowFlag.Idle
             else CandidateShowFlag.Updating
-            _suggestionFlag.emit(flag)
+            requestCandidateRefresh(flag)
         }
         deleteLongPressJob?.invokeOnCompletion {
             if (selectMode.value || !isEditHistoryEnabled()) {
@@ -22830,7 +23268,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 delay(LONG_DELAY_TIME)
             }
-            _suggestionFlag.emit(
+            requestCandidateRefresh(
                 finalSuggestionFlag
                     ?: if (inputString.value.isEmpty()) CandidateShowFlag.Idle else CandidateShowFlag.Updating
             )
@@ -22850,7 +23288,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 actionInRightKeyPressed(insertString)
                 delay(LONG_DELAY_TIME)
             }
-            _suggestionFlag.emit(
+            requestCandidateRefresh(
                 finalSuggestionFlag
                     ?: if (inputString.value.isNotEmpty()) CandidateShowFlag.Updating else CandidateShowFlag.Idle
             )
@@ -24022,13 +24460,42 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun providesZenzEngine(context: Context): ZenzEngine {
+    /**
+     * Resolves the model in the IME process, but does not load native code here. The returned
+     * internal-file path is readable by the private `:zenz` app process because it shares the
+     * application UID.
+     */
+    private suspend fun resolveZenzRuntimeConfig(): ZenzRuntimeConfig? {
+        if (!AppVariantConfig.hasZenz) return null
+
+        val modelSource = AppPreference.zenz_model_uri_preference
+        val modelPath = zenzModelPathMutex.withLock {
+            cachedZenzModelPath
+                ?.takeIf { cachedZenzModelSource == modelSource && File(it).isFile }
+                ?.let { return@withLock it }
+
+            val resolvedPath = withContext(Dispatchers.IO) {
+                resolveZenzModelPath(modelSource)
+            }
+            cachedZenzModelSource = modelSource
+            cachedZenzModelPath = resolvedPath
+            resolvedPath
+        } ?: return null
+
+        return ZenzRuntimeConfig(
+            modelPath = modelPath,
+            nCtx = zenzMaximumContextSizePreference ?: 512,
+            nThreads = zenzMaximumThreadSizePreference ?: 4,
+        )
+    }
+
+    private fun resolveZenzModelPath(customUri: String): String? {
         val defaultAssetFileName = "ggml-model-Q5_K_M.gguf"
-        val defaultDestFile = File(context.filesDir, defaultAssetFileName)
+        val defaultDestFile = File(filesDir, defaultAssetFileName)
 
         fun ensureDefaultModelCopied(): File {
             if (!defaultDestFile.exists()) {
-                context.assets.open(defaultAssetFileName).use { input ->
+                assets.open(defaultAssetFileName).use { input ->
                     FileOutputStream(defaultDestFile).use { output ->
                         input.copyTo(output)
                     }
@@ -24039,44 +24506,44 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         fun copyUriToInternalFile(uriString: String): File {
             val uri = uriString.toUri()
-            val dest = File(context.filesDir, "zenz_custom_model.gguf")
+            val dest = File(filesDir, "zenz_custom_model.gguf")
+            val temporary = File(filesDir, "zenz_custom_model.gguf.tmp")
 
-            context.contentResolver.openInputStream(uri).use { input ->
+            contentResolver.openInputStream(uri).use { input ->
                 requireNotNull(input) { "openInputStream returned null for uri=$uri" }
-                FileOutputStream(dest).use { output ->
+                FileOutputStream(temporary).use { output ->
                     input.copyTo(output)
                 }
+            }
+            if (dest.exists() && !dest.delete()) {
+                temporary.delete()
+                error("Could not replace the existing custom Zenz model.")
+            }
+            if (!temporary.renameTo(dest)) {
+                temporary.delete()
+                error("Could not install the custom Zenz model.")
             }
             return dest
         }
 
-        val customUri = AppPreference.zenz_model_uri_preference
-
-        // 1) まずユーザー指定があれば試す
         if (customUri.isNotBlank()) {
             try {
                 val customFile = copyUriToInternalFile(customUri)
-                ZenzEngine.initModel(customFile.absolutePath)
-                Timber.d("Zenz model initialized with custom file: ${customFile.absolutePath}")
-                return ZenzEngine
+                Timber.d("Zenz custom model prepared: %s", customFile.absolutePath)
+                return customFile.absolutePath
             } catch (e: Exception) {
-                Timber.e(e, "Zenz Failed to init Zenz with custom model. Fallback to default.")
-                // フォールバック継続
+                Timber.e(e, "Failed to prepare custom Zenz model. Falling back to default.")
             }
         }
 
-        // 2) デフォルトで初期化（ここも失敗し得るので try/catch）
-        try {
+        return try {
             val defaultFile = ensureDefaultModelCopied()
-            ZenzEngine.initModel(defaultFile.absolutePath)
-            Timber.d("Zenz model initialized with default asset file: ${defaultFile.absolutePath}")
+            Timber.d("Zenz default model prepared: %s", defaultFile.absolutePath)
+            defaultFile.absolutePath
         } catch (e: Exception) {
-            Timber.e(e, "Zenz Failed to init Zenz with default model as well.")
-            // ここまで失敗する場合は致命的。ZenzEngine が内部で未初期化でもアプリが落ちない設計なら return は可能。
-            // 必要ならここで例外を投げる/機能OFF扱いにするなど方針を決める。
+            Timber.e(e, "Failed to prepare the default Zenz model.")
+            null
         }
-
-        return ZenzEngine
     }
 
     override val lifecycle: Lifecycle
