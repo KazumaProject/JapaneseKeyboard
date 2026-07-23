@@ -6,5 +6,10 @@
             android:exported="false"
             android:process=":gemma"
             android:stopWithTask="false" />
+        <service
+            android:name=".zenz.runtime.ZenzRuntimeService"
+            android:exported="false"
+            android:process=":zenz"
+            android:stopWithTask="false" />
     </application>
 </manifest>
