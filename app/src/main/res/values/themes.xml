@@ -38,4 +38,15 @@
 
     <style name="Theme.App.ImeDialog" parent="Theme.MaterialComponents.DayNight.Dialog.Alert" />
 
+    <style
+        name="Theme.MarkdownKeyboard.PhotoPickerBridge"
+        parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:colorBackground">@android:color/transparent</item>
+    </style>
+
 </resources>

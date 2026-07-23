@@ -53,6 +53,8 @@ import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.M
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_36_37
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_37_38
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_38_39
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_39_40
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_40_41
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_2_3
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_3_4
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase.Companion.MIGRATION_4_5
@@ -71,7 +73,6 @@ import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTempla
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
 import com.kazumaproject.markdownhelperkeyboard.ime_service.models.PressedKeyStatus
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
-import com.kazumaproject.markdownhelperkeyboard.learning.multiple.LearnMultiple
 import com.kazumaproject.markdownhelperkeyboard.ng_word.database.NgWordDao
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.NgramRuleScorerManager
 import com.kazumaproject.markdownhelperkeyboard.ngram_rule.database.NgramRuleDao
@@ -148,6 +149,8 @@ object AppModule {
             MIGRATION_36_37,
             MIGRATION_37_38,
             MIGRATION_38_39,
+            MIGRATION_39_40,
+            MIGRATION_40_41,
         )
         .build()
 
@@ -242,10 +245,6 @@ object AppModule {
                 if (mapData.isNullOrEmpty()) repository.getDefaultMapData() else mapData
             }
     }
-
-    @Singleton
-    @Provides
-    fun providesLearnMultiple(): LearnMultiple = LearnMultiple()
 
     @Singleton
     @Provides

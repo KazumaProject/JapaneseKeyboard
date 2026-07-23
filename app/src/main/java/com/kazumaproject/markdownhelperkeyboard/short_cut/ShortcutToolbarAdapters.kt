@@ -238,11 +238,14 @@ fun ShortcutType.summary(context: android.content.Context): String =
         ShortcutType.KEYBOARD_FLOATING_TOGGLE -> context.getString(R.string.shortcut_toolbar_summary_keyboard_floating_toggle)
         ShortcutType.INPUT_BEHAVIOR_TOGGLE -> context.getString(R.string.shortcut_toolbar_summary_input_behavior_toggle)
         ShortcutType.LIVE_CONVERSION_TOGGLE -> context.getString(R.string.shortcut_toolbar_summary_live_conversion_toggle)
+        ShortcutType.LEARNING_PAUSE -> context.getString(R.string.shortcut_toolbar_summary_learning_pause)
         ShortcutType.SELECT_ALL -> context.getString(R.string.shortcut_toolbar_summary_select_all)
         ShortcutType.COPY -> context.getString(R.string.shortcut_toolbar_summary_copy)
         ShortcutType.PASTE -> context.getString(R.string.shortcut_toolbar_summary_paste)
         ShortcutType.DATE_PICKER -> context.getString(R.string.shortcut_toolbar_summary_date_picker)
         ShortcutType.VOICE_INPUT -> context.getString(R.string.shortcut_toolbar_summary_voice_input)
+        ShortcutType.GEMMA_IMAGE -> context.getString(R.string.shortcut_toolbar_summary_gemma_image)
+        ShortcutType.GEMMA_AUDIO -> context.getString(R.string.shortcut_toolbar_summary_gemma_audio)
         ShortcutType.CLIP_BOARD -> context.getString(R.string.shortcut_toolbar_summary_clip_board)
     }
 
