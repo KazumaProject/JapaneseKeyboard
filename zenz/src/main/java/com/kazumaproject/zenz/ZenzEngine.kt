@@ -7,7 +7,10 @@ object ZenzEngine {
         System.loadLibrary("zenz")
     }
 
-    external fun initModel(modelPath: String)
+    external fun initModel(modelPath: String): Boolean
+    external fun cancelCurrent()
+    external fun closeModel()
+
     external fun setRuntimeConfig(
         nCtx: Int,
         nThreads: Int
