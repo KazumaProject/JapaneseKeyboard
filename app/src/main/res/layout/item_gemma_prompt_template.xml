@@ -31,6 +31,20 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
+        android:id="@+id/text_modality"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:background="@drawable/shortcut_toolbar_icon_background"
+        android:paddingHorizontal="8dp"
+        android:paddingVertical="2dp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:textSize="12sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/text_title"
+        tools:text="画像 · 複数行" />
+
+    <TextView
         android:id="@+id/text_prompt"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -41,7 +55,7 @@
         android:textSize="14sp"
         app:layout_constraintEnd_toStartOf="@id/button_edit"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/text_title"
+        app:layout_constraintTop_toBottomOf="@id/text_modality"
         tools:text="次の文を自然なビジネス文体に変換してください。結果だけ返してください。" />
 
     <ImageButton

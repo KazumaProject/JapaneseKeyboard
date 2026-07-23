@@ -81,6 +81,16 @@ enum class ShortcutType(
         com.kazumaproject.core.R.drawable.settings_voice_24px,
         description = "音声入力"
     ),
+    GEMMA_IMAGE(
+        "gemma_image",
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_image_24,
+        description = "Gemma画像"
+    ),
+    GEMMA_AUDIO(
+        "gemma_audio",
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_audio_24,
+        description = "Gemma音声"
+    ),
     CLIP_BOARD(
         "clip_board",
         com.kazumaproject.core.R.drawable.clip_board,
