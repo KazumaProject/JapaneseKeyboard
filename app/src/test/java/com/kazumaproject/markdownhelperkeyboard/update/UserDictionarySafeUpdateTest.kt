@@ -187,11 +187,21 @@ private class FakeLearnDao(
         learnDataList.forEach { insert(it) }
     }
 
-    override suspend fun predictiveSearchByInput(prefix: String, limit: Int): List<LearnEntity> =
+    override suspend fun predictiveSearchByInput(
+        prefix: String,
+        prefixUpperBound: String,
+        limit: Int,
+    ): List<LearnEntity> =
         entries.filter { it.input.startsWith(prefix) }.take(limit)
 
     override suspend fun findCommonPrefixes(searchTerm: String): List<LearnEntity> =
         entries.filter { searchTerm.startsWith(it.input) }
+
+    override suspend fun findByInputPrefix(
+        prefix: String,
+        prefixUpperBound: String,
+    ): List<LearnEntity> =
+        entries.filter { it.input.startsWith(prefix) }.sortedByDescending { it.input.length }
 
     override suspend fun updateLearnedData(learnData: LearnEntity) {
         val id = learnData.id ?: return
