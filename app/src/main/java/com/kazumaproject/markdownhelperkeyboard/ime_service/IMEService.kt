@@ -21,6 +21,7 @@ import android.os.Bundle
 import android.os.CombinedVibration
 import android.os.Handler
 import android.os.Looper
+import android.os.ResultReceiver
 import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
@@ -62,6 +63,8 @@ import android.widget.ListView
 import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.Toast
+import android.window.OnBackInvokedCallback
+import android.window.OnBackInvokedDispatcher
 import androidx.annotation.ColorInt
 import androidx.appcompat.view.ContextThemeWrapper
 import androidx.constraintlayout.widget.ConstraintLayout
@@ -192,9 +195,8 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOv
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
-import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaInputModality
-import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaMediaActionActivity
-import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaMediaResultStore
+import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImagePickerActivity
+import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImeMediaPanelController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
@@ -527,9 +529,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var gemmaPromptTemplateRepository: GemmaPromptTemplateRepository
-
-    @Inject
-    lateinit var gemmaMediaResultStore: GemmaMediaResultStore
 
     @Inject
     lateinit var sumireSpecialKeyRepository: SumireSpecialKeyRepository
@@ -1173,6 +1172,37 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var selectedTextGemmaSession: SelectedTextGemmaSession? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
+    private var gemmaMediaPanelController: GemmaImeMediaPanelController? = null
+    private var pendingGemmaPickedImagePath: String? = null
+    private val gemmaImagePickerResultReceiver = object : ResultReceiver(mainHandler) {
+        override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
+            when (resultCode) {
+                GemmaImagePickerActivity.RESULT_SELECTED -> {
+                    val path = resultData?.getString(GemmaImagePickerActivity.KEY_IMAGE_PATH)
+                    if (path.isNullOrBlank()) {
+                        showToastMessage(getString(R.string.gemma_device_image_import_failed))
+                        return
+                    }
+                    pendingGemmaPickedImagePath?.let { previousPath ->
+                        if (previousPath != path) runCatching { File(previousPath).delete() }
+                    }
+                    pendingGemmaPickedImagePath = path
+                    showToastMessage(
+                        getString(R.string.gemma_device_image_ready_tap_input),
+                    )
+                }
+
+                GemmaImagePickerActivity.RESULT_ERROR -> {
+                    showToastMessage(getString(R.string.gemma_device_image_import_failed))
+                }
+            }
+        }
+    }
+    private var gemmaInputSessionId: Long = 0L
+    private var restoreFloatingModeAfterGemmaPanel: Boolean = false
+    private var consumeGemmaBackKeyUp: Boolean = false
+    private var gemmaBackInvokedCallback: OnBackInvokedCallback? = null
+    private var isGemmaBackInvokedCallbackRegistered: Boolean = false
     private val suggestionProgressReasons = mutableSetOf<SuggestionProgressReason>()
     private var isInputViewActive: Boolean = false
     private val _inputString = MutableStateFlow("")
@@ -2102,6 +2132,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        gemmaInputSessionId += 1L
+        gemmaMediaPanelController?.onInputSessionChanged()
         Timber.d("onStartInput: ${Build.MANUFACTURER}")
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
@@ -4223,24 +4255,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ensurePhysicalKeyboardPopupWindows()
         }
         refreshBaselineInputBehaviorForCurrentKeyboard("start input keyboard layout settled")
-        consumePendingGemmaMediaResult()
+        consumePendingGemmaPickedImage()
     }
 
     override fun onWindowShown() {
         super.onWindowShown()
-        consumePendingGemmaMediaResult()
-    }
-
-    private fun consumePendingGemmaMediaResult() {
-        val inputConnection = currentInputConnection ?: return
-        gemmaMediaResultStore.consume()?.takeIf { it.isNotBlank() }?.let { result ->
-            finishComposingText()
-            inputConnection.commitText(result, 1)
-            showToastMessage(getString(R.string.gemma_result_ready))
-        }
+        consumePendingGemmaPickedImage()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        gemmaMediaPanelController?.onInputViewHidden()
         candidateRequestTracker.invalidate()
         candidateRefreshCoordinator.invalidate()
         defaultInputFinalizeJob?.cancel()
@@ -4270,12 +4294,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        gemmaMediaPanelController?.onInputViewHidden()
         clearAndPauseSuminagashiInkEffects()
         super.onWindowHidden()
     }
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
+        updateGemmaBackInvokedCallback(registered = false)
+        gemmaMediaPanelController?.destroy()
+        gemmaMediaPanelController = null
+        pendingGemmaPickedImagePath?.let { path ->
+            runCatching { File(path).delete() }
+        }
+        pendingGemmaPickedImagePath = null
         clearZeroQueryAllState(refresh = false)
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
@@ -5152,6 +5184,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             container.removeAllViews()
             mainLayoutBinding?.root?.let { newRootView ->
                 container.addView(newRootView)
+                gemmaMediaPanelController?.attachTo(container)
                 mainLayoutBinding?.let { mainView ->
                     when (keyboardThemeMode) {
                         "default" -> {
@@ -5423,6 +5456,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK &&
+            gemmaMediaPanelController?.handleBack() == true
+        ) {
+            consumeGemmaBackKeyUp = true
+            return true
+        }
         mainLayoutBinding?.let { mainView ->
             event?.let { e ->
                 logPhysicalKeyEventForDebug(keyCode, e)
@@ -6351,6 +6390,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == KeyEvent.KEYCODE_BACK && consumeGemmaBackKeyUp) {
+            consumeGemmaBackKeyUp = false
+            return true
+        }
         when (keyCode) {
             KeyEvent.KEYCODE_ENTER -> {
                 Timber.d("onKeyUp KEYCODE_ENTER: ${inputString.value} ${isHenkan.get()}")
@@ -18581,7 +18624,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
 
             ShortcutType.GEMMA_AUDIO -> {
-                launchGemmaMediaAction(GemmaInputModality.AUDIO)
+                launchGemmaAudioAction()
             }
 
             ShortcutType.CLIP_BOARD -> {
@@ -18598,55 +18641,139 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun launchGemmaImageAction() {
-        val clipboardImage = clipboardUtil.getPrimaryClipContent() as? ClipboardItem.Image
-        if (clipboardImage == null) {
-            showToastMessage(getString(R.string.gemma_clipboard_image_unavailable))
-            launchGemmaMediaAction(GemmaInputModality.IMAGE)
-            return
-        }
-        ioScope.launch {
-            val directory = File(cacheDir, "gemma_media").apply { mkdirs() }
-            val file = File(directory, "clipboard_${System.currentTimeMillis()}.png")
-            val saved = runCatching {
-                file.outputStream().buffered().use { output ->
-                    check(clipboardImage.bitmap.compress(Bitmap.CompressFormat.PNG, 100, output))
-                }
-                file
-            }.getOrNull()
-            withContext(Dispatchers.Main) {
-                launchGemmaMediaAction(GemmaInputModality.IMAGE, saved?.absolutePath)
-            }
-        }
+        prepareForGemmaMediaPanel()
+        ensureGemmaMediaPanelController().openImage()
     }
 
-    private fun launchGemmaMediaAction(
-        modality: GemmaInputModality,
-        mediaPath: String? = null,
-    ) {
-        if (!gemmaTranslationManager.isTranslationAvailable()) {
-            ioScope.launch {
-                gemmaTranslationManager.initializeIfEnabled(forceReload = false)
-                withContext(Dispatchers.Main) {
-                    if (gemmaTranslationManager.isTranslationAvailable()) {
-                        startGemmaMediaActivity(modality, mediaPath)
-                    } else {
-                        showToastMessage(gemmaTranslationManager.getModelSummary())
-                    }
-                }
-            }
-            return
-        }
-        startGemmaMediaActivity(modality, mediaPath)
+    private fun launchGemmaAudioAction() {
+        prepareForGemmaMediaPanel()
+        ensureGemmaMediaPanelController().openAudio()
     }
 
-    private fun startGemmaMediaActivity(modality: GemmaInputModality, mediaPath: String?) {
-        val intent = Intent(this, GemmaMediaActionActivity::class.java).apply {
+    private fun launchGemmaDeviceImagePicker() {
+        Timber.i("Launching the permission-free Gemma device image picker")
+        val intent = Intent(this, GemmaImagePickerActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            putExtra(GemmaMediaActionActivity.EXTRA_MODALITY, modality.name)
-            mediaPath?.let { putExtra(GemmaMediaActionActivity.EXTRA_MEDIA_PATH, it) }
+            putExtra(
+                GemmaImagePickerActivity.EXTRA_RESULT_RECEIVER,
+                gemmaImagePickerResultReceiver,
+            )
         }
         runCatching { startActivity(intent) }
-            .onFailure { showToastMessage(it.localizedMessage ?: getString(R.string.gemma_media_action_failed)) }
+            .onFailure {
+                Timber.e(it, "Failed to launch the Gemma device image picker")
+                showToastMessage(getString(R.string.gemma_device_image_import_failed))
+            }
+    }
+
+    private fun consumePendingGemmaPickedImage() {
+        val path = pendingGemmaPickedImagePath ?: return
+        if (!isInputViewActive || currentInputConnection == null || keyboardContainer == null) return
+        pendingGemmaPickedImagePath = null
+        prepareForGemmaMediaPanel()
+        ensureGemmaMediaPanelController().openPickedImage(path)
+    }
+
+    private fun prepareForGemmaMediaPanel() {
+        stopAllOngoingKeyLongPresses()
+        disableKeyboardLayoutEditMode(updateSurface = false)
+        collapseShortcutEntryExpansion()
+        if (keyboardSymbolViewState.value.isShown) {
+            _keyboardSymbolViewState.value = SymbolKeyboardState()
+        }
+        finishComposingText()
+        _inputString.update { "" }
+        stringInTail.set("")
+    }
+
+    private fun ensureGemmaMediaPanelController(): GemmaImeMediaPanelController {
+        gemmaMediaPanelController?.let { controller ->
+            keyboardContainer?.let(controller::attachTo)
+            return controller
+        }
+        return GemmaImeMediaPanelController(
+            context = this,
+            actionRepository = gemmaPromptTemplateRepository,
+            gemmaManager = gemmaTranslationManager,
+            appPreference = appPreference,
+            clipboardUtil = clipboardUtil,
+            callbacks = object : GemmaImeMediaPanelController.Callbacks {
+                override fun onVisibilityChanged(visible: Boolean) {
+                    setGemmaMediaPanelVisibility(visible)
+                }
+
+                override fun currentInputSessionId(): Long = gemmaInputSessionId
+
+                override fun insertResult(text: String, inputSessionId: Long): Boolean {
+                    if (inputSessionId != gemmaInputSessionId) return false
+                    val inputConnection = currentInputConnection ?: return false
+                    finishComposingText()
+                    inputConnection.commitText(text, 1)
+                    showToastMessage(getString(R.string.gemma_result_ready))
+                    return true
+                }
+
+                override fun onDeviceImageRequested() {
+                    launchGemmaDeviceImagePicker()
+                }
+
+                override fun onAudioPermissionRequired() {
+                    showToastMessage(getString(R.string.gemma_audio_permission_settings_hint))
+                }
+
+                override fun showMessage(message: String) {
+                    showToastMessage(message)
+                }
+            },
+        ).also { controller ->
+            gemmaMediaPanelController = controller
+            keyboardContainer?.let(controller::attachTo)
+        }
+    }
+
+    private fun setGemmaMediaPanelVisibility(visible: Boolean) {
+        val mainView = mainLayoutBinding ?: return
+        if (visible) {
+            restoreFloatingModeAfterGemmaPanel = isKeyboardFloatingMode == true
+            if (restoreFloatingModeAfterGemmaPanel) {
+                applyFloatingModeState(false)
+            }
+            mainView.root.isVisible = true
+            mainView.root.alpha = 1f
+            mainView.root.isInvisible = true
+            updateGemmaBackInvokedCallback(registered = true)
+        } else {
+            updateGemmaBackInvokedCallback(registered = false)
+            mainView.root.isInvisible = false
+            mainView.root.isVisible = true
+            mainView.root.alpha = 1f
+            if (restoreFloatingModeAfterGemmaPanel) {
+                restoreFloatingModeAfterGemmaPanel = false
+                applyFloatingModeState(true)
+            } else {
+                renderCurrentKeyboardStateOnActiveSurface()
+            }
+        }
+    }
+
+    private fun updateGemmaBackInvokedCallback(registered: Boolean) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val dispatcher = window.window?.onBackInvokedDispatcher ?: return
+        if (registered) {
+            if (isGemmaBackInvokedCallbackRegistered) return
+            val callback = gemmaBackInvokedCallback ?: OnBackInvokedCallback {
+                gemmaMediaPanelController?.handleBack()
+            }.also { gemmaBackInvokedCallback = it }
+            dispatcher.registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_OVERLAY,
+                callback,
+            )
+            isGemmaBackInvokedCallbackRegistered = true
+        } else {
+            if (!isGemmaBackInvokedCallbackRegistered) return
+            gemmaBackInvokedCallback?.let(dispatcher::unregisterOnBackInvokedCallback)
+            isGemmaBackInvokedCallbackRegistered = false
+        }
     }
 
     private fun setShortCutAdapter(
