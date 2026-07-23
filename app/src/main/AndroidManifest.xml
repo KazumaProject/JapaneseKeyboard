@@ -40,6 +40,12 @@
             android:exported="true"
             android:label="@string/title_activity_main" />
 
+        <activity
+            android:name=".gemma.media.GemmaMediaActionActivity"
+            android:exported="false"
+            android:label="@string/gemma_image_action_title"
+            android:windowSoftInputMode="adjustResize" />
+
         <activity-alias
             android:name=".setting_activity.LaunchableMainActivity"
             android:targetActivity=".setting_activity.MainActivity"

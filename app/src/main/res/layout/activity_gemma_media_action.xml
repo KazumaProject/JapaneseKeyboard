@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <ImageView
+            android:id="@+id/image_preview"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:adjustViewBounds="true"
+            android:contentDescription="@string/dialog_image_description"
+            android:scaleType="centerInside" />
+
+        <Button
+            android:id="@+id/button_choose_image"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/gemma_choose_another_image" />
+
+        <LinearLayout
+            android:id="@+id/audio_controls"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/button_record"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/gemma_audio_start_recording" />
+
+            <Button
+                android:id="@+id/button_stop_recording"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:enabled="false"
+                android:text="@string/gemma_audio_stop_recording" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/media_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:text="@string/gemma_media_not_selected"
+            android:textColor="?android:attr/textColorSecondary" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/gemma_choose_action"
+            android:textStyle="bold" />
+
+        <Spinner
+            android:id="@+id/spinner_action"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="48dp" />
+
+        <TextView
+            android:id="@+id/empty_actions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/gemma_no_media_actions"
+            android:textColor="?android:attr/textColorSecondary"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/button_run"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/gemma_run_action" />
+
+        <ProgressBar
+            android:id="@+id/progress"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:id="@+id/result_group"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <Spinner
+                android:id="@+id/result_candidates"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:visibility="gone" />
+
+            <EditText
+                android:id="@+id/edit_result"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="top|start"
+                android:inputType="textCapSentences|textMultiLine"
+                android:minLines="4" />
+
+            <Button
+                android:id="@+id/button_send_to_keyboard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gemma_send_to_keyboard" />
+
+            <Button
+                android:id="@+id/button_copy_result"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/gemma_copy_result" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/button_cancel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/cancel_string" />
+    </LinearLayout>
+</ScrollView>

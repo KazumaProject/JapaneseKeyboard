@@ -7,10 +7,36 @@
     android:paddingTop="20dp"
     android:paddingBottom="8dp">
 
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/gemma_action_starter_label"
+        android:textStyle="bold" />
+
+    <Spinner
+        android:id="@+id/spinner_starter"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/gemma_action_input_label"
+        android:textStyle="bold" />
+
+    <Spinner
+        android:id="@+id/spinner_modality"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp" />
+
     <EditText
         android:id="@+id/edit_text_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
         android:hint="@string/gemma_prompt_template_title_hint"
         android:imeOptions="actionNext"
         android:inputType="textCapSentences"
@@ -25,6 +51,32 @@
         android:hint="@string/gemma_prompt_template_prompt_hint"
         android:inputType="textCapSentences|textMultiLine"
         android:minLines="5" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/gemma_action_output_label"
+        android:textStyle="bold" />
+
+    <Spinner
+        android:id="@+id/spinner_output_mode"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/gemma_action_language_label"
+        android:textStyle="bold" />
+
+    <Spinner
+        android:id="@+id/spinner_output_language"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp" />
 
     <com.google.android.material.switchmaterial.SwitchMaterial
         android:id="@+id/switch_enable"

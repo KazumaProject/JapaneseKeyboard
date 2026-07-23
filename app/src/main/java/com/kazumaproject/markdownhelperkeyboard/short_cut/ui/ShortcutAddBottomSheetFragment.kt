@@ -24,6 +24,7 @@ import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentShortcutAddB
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutToolbarAddAdapter
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import com.kazumaproject.markdownhelperkeyboard.short_cut.summary
+import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 
 class ShortcutAddBottomSheetFragment : BottomSheetDialogFragment() {
 
@@ -130,7 +131,7 @@ class ShortcutAddBottomSheetFragment : BottomSheetDialogFragment() {
     }
 
     private fun addWithPermissionIfNeeded(type: ShortcutType) {
-        if (type != ShortcutType.VOICE_INPUT) {
+        if (type != ShortcutType.VOICE_INPUT && type != ShortcutType.GEMMA_AUDIO) {
             add(type)
             return
         }
@@ -160,6 +161,7 @@ class ShortcutAddBottomSheetFragment : BottomSheetDialogFragment() {
     private fun renderCandidates() {
         val query = binding.shortcutAddSearchInput.text?.toString().orEmpty().trim()
         val available = ShortcutType.entries
+            .filterNot { !AppVariantConfig.hasGemma && it in GEMMA_SHORTCUTS }
             .filterNot { it.id in selectedTypeIds }
             .filter { type ->
                 query.isBlank() ||
@@ -173,6 +175,7 @@ class ShortcutAddBottomSheetFragment : BottomSheetDialogFragment() {
     }
 
     companion object {
+        private val GEMMA_SHORTCUTS = setOf(ShortcutType.GEMMA_IMAGE, ShortcutType.GEMMA_AUDIO)
         const val REQUEST_KEY_ADD_SHORTCUT = "request_key_add_shortcut"
         const val KEY_SHORTCUT_TYPE_ID = "key_shortcut_type_id"
 
@@ -186,4 +189,3 @@ class ShortcutAddBottomSheetFragment : BottomSheetDialogFragment() {
         }
     }
 }
-

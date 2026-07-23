@@ -192,6 +192,9 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOv
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaInputModality
+import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaMediaActionActivity
+import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaMediaResultStore
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.GridSpacingItemDecoration
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.ShortcutAdapter
@@ -524,6 +527,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     @Inject
     lateinit var gemmaPromptTemplateRepository: GemmaPromptTemplateRepository
+
+    @Inject
+    lateinit var gemmaMediaResultStore: GemmaMediaResultStore
 
     @Inject
     lateinit var sumireSpecialKeyRepository: SumireSpecialKeyRepository
@@ -4217,6 +4223,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ensurePhysicalKeyboardPopupWindows()
         }
         refreshBaselineInputBehaviorForCurrentKeyboard("start input keyboard layout settled")
+        consumePendingGemmaMediaResult()
+    }
+
+    override fun onWindowShown() {
+        super.onWindowShown()
+        consumePendingGemmaMediaResult()
+    }
+
+    private fun consumePendingGemmaMediaResult() {
+        val inputConnection = currentInputConnection ?: return
+        gemmaMediaResultStore.consume()?.takeIf { it.isNotBlank() }?.let { result ->
+            finishComposingText()
+            inputConnection.commitText(result, 1)
+            showToastMessage(getString(R.string.gemma_result_ready))
+        }
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -18555,6 +18576,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 startVoiceInput(mainView)
             }
 
+            ShortcutType.GEMMA_IMAGE -> {
+                launchGemmaImageAction()
+            }
+
+            ShortcutType.GEMMA_AUDIO -> {
+                launchGemmaMediaAction(GemmaInputModality.AUDIO)
+            }
+
             ShortcutType.CLIP_BOARD -> {
                 vibrate()
                 _keyboardSymbolViewState.value = SymbolKeyboardState(
@@ -18566,6 +18595,58 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setComposingText("", 0)
             }
         }
+    }
+
+    private fun launchGemmaImageAction() {
+        val clipboardImage = clipboardUtil.getPrimaryClipContent() as? ClipboardItem.Image
+        if (clipboardImage == null) {
+            showToastMessage(getString(R.string.gemma_clipboard_image_unavailable))
+            launchGemmaMediaAction(GemmaInputModality.IMAGE)
+            return
+        }
+        ioScope.launch {
+            val directory = File(cacheDir, "gemma_media").apply { mkdirs() }
+            val file = File(directory, "clipboard_${System.currentTimeMillis()}.png")
+            val saved = runCatching {
+                file.outputStream().buffered().use { output ->
+                    check(clipboardImage.bitmap.compress(Bitmap.CompressFormat.PNG, 100, output))
+                }
+                file
+            }.getOrNull()
+            withContext(Dispatchers.Main) {
+                launchGemmaMediaAction(GemmaInputModality.IMAGE, saved?.absolutePath)
+            }
+        }
+    }
+
+    private fun launchGemmaMediaAction(
+        modality: GemmaInputModality,
+        mediaPath: String? = null,
+    ) {
+        if (!gemmaTranslationManager.isTranslationAvailable()) {
+            ioScope.launch {
+                gemmaTranslationManager.initializeIfEnabled(forceReload = false)
+                withContext(Dispatchers.Main) {
+                    if (gemmaTranslationManager.isTranslationAvailable()) {
+                        startGemmaMediaActivity(modality, mediaPath)
+                    } else {
+                        showToastMessage(gemmaTranslationManager.getModelSummary())
+                    }
+                }
+            }
+            return
+        }
+        startGemmaMediaActivity(modality, mediaPath)
+    }
+
+    private fun startGemmaMediaActivity(modality: GemmaInputModality, mediaPath: String?) {
+        val intent = Intent(this, GemmaMediaActionActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            putExtra(GemmaMediaActionActivity.EXTRA_MODALITY, modality.name)
+            mediaPath?.let { putExtra(GemmaMediaActionActivity.EXTRA_MEDIA_PATH, it) }
+        }
+        runCatching { startActivity(intent) }
+            .onFailure { showToastMessage(it.localizedMessage ?: getString(R.string.gemma_media_action_failed)) }
     }
 
     private fun setShortCutAdapter(
