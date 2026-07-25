@@ -19,6 +19,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.Keyboar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
+import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingLanguage
+import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
@@ -48,6 +50,20 @@ object AppPreference {
         PredictionConfig.MAX_LOOKAHEAD_CHARACTER_COUNT
     const val PREDICTION_LOOKAHEAD_CHARACTER_COUNT_DEFAULT =
         PredictionConfig.DEFAULT_LOOKAHEAD_CHARACTER_COUNT
+    const val GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_KEY =
+        "gemma_handwriting_auto_recognition_delay_preference"
+    const val GEMMA_HANDWRITING_PROMPT_KEY =
+        "gemma_handwriting_prompt_preference"
+    const val GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_KEY =
+        "gemma_handwriting_recognition_language_preference"
+    const val GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_KEY =
+        "gemma_handwriting_additional_instruction_preference"
+    const val GEMMA_HANDWRITING_RESET_PROMPT_KEY =
+        "gemma_handwriting_reset_prompt_preference"
+    const val GEMMA_HANDWRITING_PEN_SIZE_KEY =
+        "gemma_handwriting_pen_size_preference"
+    const val GEMMA_HANDWRITING_PEN_COLOR_KEY =
+        "gemma_handwriting_pen_color_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -683,6 +699,31 @@ object AppPreference {
         Pair("gemma_translation_target_language_preference", "en")
     private val GEMMA_TRANSLATION_MODEL_PATH_PREFERENCE =
         Pair("gemma_translation_model_path_preference", "")
+    private val GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_PREFERENCE =
+        Pair(
+            GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_KEY,
+            GemmaHandwritingSettings.DEFAULT_AUTO_RECOGNITION_DELAY_MS.toInt(),
+        )
+    private val GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_PREFERENCE =
+        Pair(
+            GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_KEY,
+            GemmaHandwritingLanguage.AUTO.preferenceValue,
+        )
+    private val GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE =
+        Pair(
+            GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_KEY,
+            "",
+        )
+    private val GEMMA_HANDWRITING_PEN_SIZE_PREFERENCE =
+        Pair(
+            GEMMA_HANDWRITING_PEN_SIZE_KEY,
+            GemmaHandwritingSettings.DEFAULT_PEN_SIZE_DP,
+        )
+    private val GEMMA_HANDWRITING_PEN_COLOR_PREFERENCE =
+        Pair(
+            GEMMA_HANDWRITING_PEN_COLOR_KEY,
+            GemmaHandwritingSettings.AUTOMATIC_PEN_COLOR,
+        )
     private val KEYBOARD_BACKGROUND_IMAGE_URI_PREFERENCE =
         Pair("keyboard_background_image_uri_preference", "")
     private val KEYBOARD_BACKGROUND_IMAGE_DISPLAY_MODE_PREFERENCE =
@@ -779,7 +820,15 @@ object AppPreference {
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        removeUnsafeLegacyGemmaHandwritingPrompt()
         migratePredictionLookaheadPreferenceIfNeeded()
+    }
+
+    private fun removeUnsafeLegacyGemmaHandwritingPrompt() {
+        if (!preferences.contains(GEMMA_HANDWRITING_PROMPT_KEY)) return
+        preferences.edit {
+            it.remove(GEMMA_HANDWRITING_PROMPT_KEY)
+        }
     }
 
     private inline fun SharedPreferences.edit(operation: (SharedPreferences.Editor) -> Unit) {
@@ -3598,6 +3647,100 @@ object AppPreference {
         ) ?: GEMMA_TRANSLATION_TARGET_LANGUAGE_PREFERENCE.second
         set(value) = preferences.edit {
             it.putString(GEMMA_TRANSLATION_TARGET_LANGUAGE_PREFERENCE.first, value)
+        }
+
+    var gemma_handwriting_auto_recognition_delay_preference: Int
+        get() = preferences.getInt(
+            GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_PREFERENCE.first,
+            GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_PREFERENCE.second,
+        ).coerceIn(
+            GemmaHandwritingSettings.MIN_AUTO_RECOGNITION_DELAY_MS,
+            GemmaHandwritingSettings.MAX_AUTO_RECOGNITION_DELAY_MS,
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_PREFERENCE.first,
+                value.coerceIn(
+                    GemmaHandwritingSettings.MIN_AUTO_RECOGNITION_DELAY_MS,
+                    GemmaHandwritingSettings.MAX_AUTO_RECOGNITION_DELAY_MS,
+                ),
+            )
+        }
+
+    var gemma_handwriting_recognition_language_preference: String
+        get() = preferences.getString(
+            GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_PREFERENCE.first,
+            GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_PREFERENCE.second,
+        )
+            ?.let(GemmaHandwritingLanguage::fromPreference)
+            ?.preferenceValue
+            ?: GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_PREFERENCE.second
+        set(value) = preferences.edit {
+            it.putString(
+                GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_PREFERENCE.first,
+                GemmaHandwritingLanguage.fromPreference(value).preferenceValue,
+            )
+        }
+
+    var gemma_handwriting_additional_instruction_preference: String
+        get() = preferences.getString(
+            GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE.first,
+            GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE.second,
+        )
+            .orEmpty()
+            .trim()
+            .take(GemmaHandwritingSettings.MAX_ADDITIONAL_INSTRUCTION_LENGTH)
+        set(value) = preferences.edit {
+            val normalized = value
+                .trim()
+                .take(GemmaHandwritingSettings.MAX_ADDITIONAL_INSTRUCTION_LENGTH)
+            if (normalized.isEmpty()) {
+                it.remove(GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE.first)
+            } else {
+                it.putString(
+                    GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE.first,
+                    normalized,
+                )
+            }
+        }
+
+    fun resetGemmaHandwritingPromptToDefault() {
+        preferences.edit {
+            it.remove(GEMMA_HANDWRITING_PROMPT_KEY)
+            it.remove(GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE.first)
+        }
+    }
+
+    var gemma_handwriting_pen_size_preference: Int
+        get() = preferences.getInt(
+            GEMMA_HANDWRITING_PEN_SIZE_PREFERENCE.first,
+            GEMMA_HANDWRITING_PEN_SIZE_PREFERENCE.second,
+        ).coerceIn(
+            GemmaHandwritingSettings.MIN_PEN_SIZE_DP,
+            GemmaHandwritingSettings.MAX_PEN_SIZE_DP,
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                GEMMA_HANDWRITING_PEN_SIZE_PREFERENCE.first,
+                value.coerceIn(
+                    GemmaHandwritingSettings.MIN_PEN_SIZE_DP,
+                    GemmaHandwritingSettings.MAX_PEN_SIZE_DP,
+                ),
+            )
+        }
+
+    var gemma_handwriting_pen_color_preference: Int
+        get() = GemmaHandwritingSettings.normalizePenColor(
+            preferences.getInt(
+                GEMMA_HANDWRITING_PEN_COLOR_PREFERENCE.first,
+                GEMMA_HANDWRITING_PEN_COLOR_PREFERENCE.second,
+            ),
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                GEMMA_HANDWRITING_PEN_COLOR_PREFERENCE.first,
+                GemmaHandwritingSettings.normalizePenColor(value),
+            )
         }
 
     var keyboard_background_image_uri: String
