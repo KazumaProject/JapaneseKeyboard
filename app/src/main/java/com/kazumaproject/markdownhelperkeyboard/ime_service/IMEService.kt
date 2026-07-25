@@ -122,6 +122,8 @@ import com.kazumaproject.core.domain.extensions.toRomajiQwertyOutputChar
 import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
 import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
+import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
+import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
@@ -722,6 +724,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val runtimeGestureSettingsSource = MutableRuntimeGestureSettingsSource(
+        RuntimeGestureSettings()
+    )
     private lateinit var runtimeInputSharedPreferences: SharedPreferences
     private var runtimeInputPreferenceListenerRegistered = false
     private val runtimeInputPreferenceKeys = setOf(
@@ -2252,6 +2257,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isKeySoundEnabled = appPreference.key_sound_preference ?: false
         keySoundVolumePercent =
             (appPreference.key_sound_volume_percent_preference ?: 0).coerceIn(0, 100)
+        runtimeGestureSettingsSource.update(
+            flickSensitivity = sensitivity,
+            longPressTimeoutMillis = longPressTimeout.toLong()
+        )
 
         mainLayoutBinding?.apply {
             keyboardView.setFlickSensitivityValue(sensitivity)
@@ -2260,16 +2269,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tabletView.setLongPressTimeout(longPressTimeout.toLong())
             qwertyView.setFlickSensitivityValue(sensitivity)
             qwertyView.setLongPressTimeout(longPressTimeout.toLong())
-            customLayoutDefault.setFlickSensitivityValue(sensitivity)
-            customLayoutDefault.setLongPressTimeout(longPressTimeout.toLong())
         }
         floatingKeyboardBinding?.apply {
             keyboardViewFloating.setFlickSensitivityValue(sensitivity)
             keyboardViewFloating.setLongPressTimeout(longPressTimeout.toLong())
             qwertyViewFloating.setFlickSensitivityValue(sensitivity)
             qwertyViewFloating.setLongPressTimeout(longPressTimeout.toLong())
-            customLayoutFloating.setFlickSensitivityValue(sensitivity)
-            customLayoutFloating.setLongPressTimeout(longPressTimeout.toLong())
         }
     }
 
@@ -4266,10 +4271,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 tabletView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
-                customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
-                customLayoutDefault.setLongPressTimeout(
-                    (longPressTimeoutPreferenceValue ?: 300).toLong()
-                )
                 customLayoutDefault.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
                 customLayoutDefault.setFlickGuideTextSizeSp(
                     (flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat()
@@ -10928,6 +10929,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         isFloatingView: Boolean
     ) {
+        flickView.bindRuntimeGestureSettings(runtimeGestureSettingsSource)
         if (isFloatingView) {
             Timber.d("Configuring floating FlickKeyboardView mirror surface")
             // Floating ON のときだけ、popup の window anchor を IME decorView (or floating root)
