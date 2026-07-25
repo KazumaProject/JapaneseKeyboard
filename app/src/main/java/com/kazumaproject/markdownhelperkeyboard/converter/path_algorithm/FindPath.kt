@@ -1998,10 +1998,10 @@ class FindPath(
                 return@nodeLoop
             }
 
-            val prefixPenalty = if (node.sPos == 0) {
-                segmenter.getPrefixPenalty(node.l.toInt())
-            } else {
-                0
+            val prefixPenalty = when {
+                node.sPos != 0 -> 0
+                ExactInputPenaltyPolicy.shouldZeroPrefixPenalty(node, length) -> 0
+                else -> segmenter.getPrefixPenalty(node.l.toInt())
             }
             val suffixPenalty = if (node.sPos + node.len.toInt() == length) {
                 segmenter.getSuffixPenalty(node.r.toInt())
