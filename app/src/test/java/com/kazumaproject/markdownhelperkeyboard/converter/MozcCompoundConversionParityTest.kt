@@ -90,6 +90,24 @@ class MozcCompoundConversionParityTest {
         )
     }
 
+    @Test
+    fun niteExactInputKeepsLiteralCandidateFirst() {
+        val trace = engine.convertWithTrace("にて")
+        val exactNodes = trace.graphNodes.filter {
+            it.startPos == 0 &&
+                it.endPos == 2 &&
+                it.yomiUsed == "にて" &&
+                it.tango == "にて"
+        }
+
+        assertTrue(trace.graphNodes.take(40).joinToString("\n"), exactNodes.isNotEmpty())
+        assertEquals(
+            trace.finalCandidates.take(10).joinToString("\n"),
+            "にて",
+            trace.finalCandidates.first().candidate,
+        )
+    }
+
     companion object {
         private lateinit var engine: KanaKanjiEngine
 
