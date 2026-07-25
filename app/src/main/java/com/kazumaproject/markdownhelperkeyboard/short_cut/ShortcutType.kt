@@ -91,6 +91,13 @@ enum class ShortcutType(
         com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_audio_24,
         description = "Gemma音声"
     ),
+    GEMMA_HANDWRITING(
+        "gemma_handwriting",
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_handwriting_24,
+        activeIconResId =
+            com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_handwriting_active_24,
+        description = "Gemma手書き"
+    ),
     CLIP_BOARD(
         "clip_board",
         com.kazumaproject.core.R.drawable.clip_board,
