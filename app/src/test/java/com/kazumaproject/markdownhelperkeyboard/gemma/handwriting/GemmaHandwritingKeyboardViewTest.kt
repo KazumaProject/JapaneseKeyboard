@@ -92,8 +92,8 @@ class GemmaHandwritingKeyboardViewTest {
         assertEquals(1, store.strokes.size)
         val points = store.strokes.single().points
         assertTrue(points.size >= 4)
-        assertTrue(points.first().x < 0.1f)
-        assertTrue(points.last().x > 0.9f)
+        assertEquals(30f, points.first().x * canvas.height, 1f)
+        assertEquals(320f, points.last().x * canvas.height, 1f)
     }
 
     private fun createView(): GemmaHandwritingKeyboardView {

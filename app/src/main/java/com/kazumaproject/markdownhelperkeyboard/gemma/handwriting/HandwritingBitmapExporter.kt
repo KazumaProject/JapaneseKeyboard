@@ -9,11 +9,13 @@ import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 
 object HandwritingBitmapExporter {
     private const val DEFAULT_WIDTH = 768
     private const val DEFAULT_HEIGHT = 384
-    private const val CONTENT_PADDING_RATIO = 0.08f
+    private const val MAX_INK_WIDTH_RATIO = 0.90f
+    private const val MAX_INK_HEIGHT_RATIO = 0.60f
 
     fun createBitmap(
         strokes: List<HandwritingStroke>,
@@ -28,15 +30,14 @@ object HandwritingBitmapExporter {
         val allPoints = strokes.flatMap(HandwritingStroke::points)
         require(allPoints.isNotEmpty()) { "At least one handwriting point is required." }
 
-        val minX = allPoints.minOf { it.x }.coerceIn(0f, 1f)
-        val maxX = allPoints.maxOf { it.x }.coerceIn(0f, 1f)
-        val minY = allPoints.minOf { it.y }.coerceIn(0f, 1f)
-        val maxY = allPoints.maxOf { it.y }.coerceIn(0f, 1f)
+        val minX = allPoints.minOf { it.x }
+        val maxX = allPoints.maxOf { it.x }
+        val minY = allPoints.minOf { it.y }
+        val maxY = allPoints.maxOf { it.y }
         val sourceWidth = max(maxX - minX, 0.04f)
         val sourceHeight = max(maxY - minY, 0.04f)
-        val padding = min(width, height) * CONTENT_PADDING_RATIO
-        val availableWidth = max(1f, width - padding * 2f)
-        val availableHeight = max(1f, height - padding * 2f)
+        val availableWidth = max(1f, width * MAX_INK_WIDTH_RATIO)
+        val availableHeight = max(1f, height * MAX_INK_HEIGHT_RATIO)
         val scale = min(availableWidth / sourceWidth, availableHeight / sourceHeight)
         val sourceCenterX = (minX + maxX) / 2f
         val sourceCenterY = (minY + maxY) / 2f
@@ -51,14 +52,16 @@ object HandwritingBitmapExporter {
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
             color = strokeColor
+            val configuredPenScale = sqrt(
+                penSizeDp.coerceIn(
+                    GemmaHandwritingSettings.MIN_PEN_SIZE_DP,
+                    GemmaHandwritingSettings.MAX_PEN_SIZE_DP,
+                ).toFloat() / GemmaHandwritingSettings.DEFAULT_PEN_SIZE_DP,
+            ).coerceIn(MIN_CONFIGURED_PEN_SCALE, MAX_CONFIGURED_PEN_SCALE)
             strokeWidth = (
                 min(width, height) *
                     DEFAULT_STROKE_WIDTH_RATIO *
-                    penSizeDp.coerceIn(
-                        GemmaHandwritingSettings.MIN_PEN_SIZE_DP,
-                        GemmaHandwritingSettings.MAX_PEN_SIZE_DP,
-                    ) /
-                    GemmaHandwritingSettings.DEFAULT_PEN_SIZE_DP
+                    configuredPenScale
                 ).coerceAtLeast(MIN_STROKE_WIDTH_PX)
         }
 
@@ -129,12 +132,28 @@ object HandwritingBitmapExporter {
         val path = Path()
         val first = points.first()
         path.moveTo(mapX(first.x), mapY(first.y))
-        points.drop(1).forEach { point ->
-            path.lineTo(mapX(point.x), mapY(point.y))
+        if (points.size == 2) {
+            val last = points.last()
+            path.lineTo(mapX(last.x), mapY(last.y))
+        } else {
+            for (index in 1 until points.lastIndex) {
+                val current = points[index]
+                val next = points[index + 1]
+                path.quadTo(
+                    mapX(current.x),
+                    mapY(current.y),
+                    (mapX(current.x) + mapX(next.x)) / 2f,
+                    (mapY(current.y) + mapY(next.y)) / 2f,
+                )
+            }
+            val last = points.last()
+            path.lineTo(mapX(last.x), mapY(last.y))
         }
         canvas.drawPath(path, paint)
     }
 
-    private const val DEFAULT_STROKE_WIDTH_RATIO = 0.035f
+    private const val DEFAULT_STROKE_WIDTH_RATIO = 0.018f
+    private const val MIN_CONFIGURED_PEN_SCALE = 0.65f
+    private const val MAX_CONFIGURED_PEN_SCALE = 1.50f
     private const val MIN_STROKE_WIDTH_PX = 2f
 }

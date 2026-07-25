@@ -27,7 +27,17 @@ data class GemmaHandwritingSettings(
         }
     }
 
-    fun resolvedRecognitionPenColor(): Int = resolvedPenColor(darkMode = false)
+    /**
+     * Recognition input is normalized independently from the user's display color so Gemma
+     * always receives the same high-contrast black-on-white representation.
+     */
+    fun resolvedRecognitionPenColor(): Int = LIGHT_MODE_AUTOMATIC_PEN_COLOR
+
+    /**
+     * Display pen thickness is a UI preference. Recognition uses a stable thickness so changing
+     * that preference cannot alter the image presented to Gemma.
+     */
+    fun resolvedRecognitionPenSizeDp(): Int = DEFAULT_PEN_SIZE_DP
 
     companion object {
         const val MIN_AUTO_RECOGNITION_DELAY_MS = 300

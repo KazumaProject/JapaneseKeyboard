@@ -3,11 +3,16 @@ package com.kazumaproject.markdownhelperkeyboard.gemma.handwriting
 import androidx.preference.PreferenceManager
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import android.os.SystemClock
+import android.view.MotionEvent
+import android.view.View
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaMediaType
 import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaRuntimeClient
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 import java.io.File
+import kotlin.math.ceil
+import kotlin.math.hypot
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -68,18 +73,20 @@ class GemmaHandwritingKanjiInstrumentedTest {
             assertTrue(settings.recognitionPrompt.contains(additionalInstruction))
 
             HandwritingBitmapExporter.writePng(
-                strokes = listOf(
-                    // 日
-                    stroke(0.10f, 0.20f, 0.10f, 0.80f),
-                    stroke(0.10f, 0.20f, 0.40f, 0.20f, 0.40f, 0.80f),
-                    stroke(0.10f, 0.50f, 0.40f, 0.50f),
-                    stroke(0.10f, 0.80f, 0.40f, 0.80f),
-                    // 本
-                    stroke(0.56f, 0.30f, 0.92f, 0.30f),
-                    stroke(0.74f, 0.12f, 0.74f, 0.85f),
-                    stroke(0.73f, 0.40f, 0.54f, 0.72f),
-                    stroke(0.75f, 0.40f, 0.94f, 0.72f),
-                    stroke(0.62f, 0.66f, 0.86f, 0.66f),
+                strokes = captureThroughProductionView(
+                    physicalStrokes = listOf(
+                        // 日
+                        pixelStroke(300f, 60f, 300f, 250f),
+                        pixelStroke(300f, 60f, 440f, 60f, 440f, 250f),
+                        pixelStroke(300f, 155f, 440f, 155f),
+                        pixelStroke(300f, 250f, 440f, 250f),
+                        // 本
+                        pixelStroke(550f, 95f, 760f, 95f),
+                        pixelStroke(655f, 35f, 655f, 270f),
+                        pixelStroke(650f, 125f, 550f, 225f),
+                        pixelStroke(660f, 125f, 760f, 225f),
+                        pixelStroke(585f, 210f, 725f, 210f),
+                    ),
                 ),
                 target = imageFile,
             )
@@ -93,7 +100,10 @@ class GemmaHandwritingKanjiInstrumentedTest {
                 mediaPath = imageFile.absolutePath,
                 mediaType = GemmaMediaType.IMAGE,
             )
-            val candidates = GemmaHandwritingPrompt.parseCandidates(raw)
+            val candidates = GemmaHandwritingPrompt.parseCandidates(
+                raw = raw,
+                language = settings.recognitionLanguage,
+            )
             println("Consecutive Japanese handwriting candidates: $candidates")
 
             assertTrue(
@@ -194,7 +204,10 @@ class GemmaHandwritingKanjiInstrumentedTest {
                 mediaPath = imageFile.absolutePath,
                 mediaType = GemmaMediaType.IMAGE,
             )
-            val candidates = GemmaHandwritingPrompt.parseCandidates(raw)
+            val candidates = GemmaHandwritingPrompt.parseCandidates(
+                raw = raw,
+                language = settings.recognitionLanguage,
+            )
 
             assertTrue(
                 "Expected the Japanese kanji 山, raw result: $raw",
@@ -230,5 +243,98 @@ class GemmaHandwritingKanjiInstrumentedTest {
         return HandwritingStroke(
             coordinates.toList().chunked(2).map { (x, y) -> HandwritingPoint(x, y) },
         )
+    }
+
+    private fun pixelStroke(vararg coordinates: Float): List<PixelPoint> {
+        return coordinates.toList().chunked(2).map { (x, y) -> PixelPoint(x, y) }
+    }
+
+    private fun captureThroughProductionView(
+        physicalStrokes: List<List<PixelPoint>>,
+    ): List<HandwritingStroke> {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val store = HandwritingStrokeStore()
+        instrumentation.runOnMainSync {
+            val view = HandwritingCanvasView(instrumentation.targetContext).apply {
+                bindStore(store)
+                measure(
+                    View.MeasureSpec.makeMeasureSpec(
+                        PHYSICAL_VIEW_WIDTH,
+                        View.MeasureSpec.EXACTLY,
+                    ),
+                    View.MeasureSpec.makeMeasureSpec(
+                        PHYSICAL_VIEW_HEIGHT,
+                        View.MeasureSpec.EXACTLY,
+                    ),
+                )
+                layout(0, 0, PHYSICAL_VIEW_WIDTH, PHYSICAL_VIEW_HEIGHT)
+            }
+            var eventTime = SystemClock.uptimeMillis()
+            physicalStrokes.forEach { points ->
+                val downTime = eventTime
+                dispatch(view, downTime, eventTime, MotionEvent.ACTION_DOWN, points.first())
+                points.zipWithNext().forEach { (start, end) ->
+                    val steps = ceil(
+                        hypot(end.x - start.x, end.y - start.y) / MOTION_SAMPLE_DISTANCE_PX,
+                    ).toInt().coerceAtLeast(1)
+                    for (step in 1..steps) {
+                        val progress = step.toFloat() / steps
+                        eventTime += MOTION_EVENT_INTERVAL_MS
+                        dispatch(
+                            view = view,
+                            downTime = downTime,
+                            eventTime = eventTime,
+                            action = MotionEvent.ACTION_MOVE,
+                            point = PixelPoint(
+                                x = start.x + (end.x - start.x) * progress,
+                                y = start.y + (end.y - start.y) * progress,
+                            ),
+                        )
+                    }
+                }
+                eventTime += MOTION_EVENT_INTERVAL_MS
+                dispatch(
+                    view = view,
+                    downTime = downTime,
+                    eventTime = eventTime,
+                    action = MotionEvent.ACTION_UP,
+                    point = points.last(),
+                )
+                eventTime += MOTION_EVENT_INTERVAL_MS
+            }
+        }
+        return store.strokes
+    }
+
+    private fun dispatch(
+        view: View,
+        downTime: Long,
+        eventTime: Long,
+        action: Int,
+        point: PixelPoint,
+    ) {
+        MotionEvent.obtain(
+            downTime,
+            eventTime,
+            action,
+            point.x,
+            point.y,
+            0,
+        ).also { event ->
+            view.dispatchTouchEvent(event)
+            event.recycle()
+        }
+    }
+
+    private data class PixelPoint(
+        val x: Float,
+        val y: Float,
+    )
+
+    private companion object {
+        const val PHYSICAL_VIEW_WIDTH = 1_048
+        const val PHYSICAL_VIEW_HEIGHT = 310
+        const val MOTION_SAMPLE_DISTANCE_PX = 8f
+        const val MOTION_EVENT_INTERVAL_MS = 4L
     }
 }
