@@ -1,8 +1,15 @@
 package com.kazumaproject.markdownhelperkeyboard.gemma.handwriting
 
 data class HandwritingPoint(
+    /**
+     * Ink-space coordinates. Both axes use the source canvas height as one unit so physical
+     * aspect ratio is preserved; x can therefore be greater than 1 on a wide canvas.
+     */
     val x: Float,
     val y: Float,
+    val eventTimeMillis: Long = 0L,
+    val pressure: Float = 1f,
+    val toolType: Int = 0,
 )
 
 data class HandwritingStroke(

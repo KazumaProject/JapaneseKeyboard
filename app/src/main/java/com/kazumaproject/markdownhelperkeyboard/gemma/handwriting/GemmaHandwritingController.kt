@@ -188,7 +188,7 @@ class GemmaHandwritingController(
                     HandwritingBitmapExporter.writePng(
                         strokes = strokes,
                         target = imageFile,
-                        penSizeDp = settings.penSizeDp,
+                        penSizeDp = settings.resolvedRecognitionPenSizeDp(),
                         strokeColor = settings.resolvedRecognitionPenColor(),
                     )
                 }
@@ -199,34 +199,10 @@ class GemmaHandwritingController(
                         mediaType = GemmaMediaType.IMAGE,
                     )
                 }
-                val fullImageCandidates = GemmaHandwritingPrompt.parseCandidates(raw)
-                val segments = HandwritingStrokeSegmenter.segment(strokes)
-                val fullCandidateMissesSegments = fullImageCandidates.firstOrNull()?.let {
-                    candidate -> candidate.codePointCount(0, candidate.length) < segments.size
-                } == true
-                candidates = if (
-                    shouldRunSegmentFallback(
-                        candidates = fullImageCandidates,
-                        segmentCount = segments.size,
-                    )
-                ) {
-                    recognizeSegmentsWithTimeout(
-                        segments,
-                        sessionId,
-                        revision,
-                        settings,
-                    ).let { segmentedCandidate ->
-                        if (segmentedCandidate == null) {
-                            fullImageCandidates
-                        } else if (fullCandidateMissesSegments) {
-                            listOf(segmentedCandidate) + fullImageCandidates
-                        } else {
-                            fullImageCandidates + segmentedCandidate
-                        }
-                    }.distinct()
-                } else {
-                    fullImageCandidates
-                }
+                candidates = GemmaHandwritingPrompt.parseCandidates(
+                    raw = raw,
+                    language = settings.recognitionLanguage,
+                )
                 if (
                     !isActive ||
                     strokeStore.revision != revision ||
@@ -270,89 +246,6 @@ class GemmaHandwritingController(
         inferenceJob = recognitionJob
         render(recognizing = true)
         recognitionJob.start()
-    }
-
-    private suspend fun recognizeSegmentsWithTimeout(
-        segments: List<List<HandwritingStroke>>,
-        sessionId: Long,
-        revision: Long,
-        settings: GemmaHandwritingSettings,
-    ): String? {
-        return try {
-            withTimeout(SEGMENT_FALLBACK_TIMEOUT_MS) {
-                recognizeSegments(segments, sessionId, revision, settings)
-            }
-        } catch (error: TimeoutCancellationException) {
-            gemmaManager.cancelActiveTranslation()
-            Timber.w("Gemma handwriting character-segment fallback timed out")
-            null
-        }
-    }
-
-    private suspend fun recognizeSegments(
-        segments: List<List<HandwritingStroke>>,
-        sessionId: Long,
-        revision: Long,
-        settings: GemmaHandwritingSettings,
-    ): String? {
-        val recognized = mutableListOf<String>()
-        segments.forEachIndexed { index, segment ->
-            val segmentFile = File(
-                context.cacheDir,
-                "gemma_handwriting/handwriting_${sessionId}_${revision}_segment_$index.png",
-            )
-            temporaryImage = segmentFile
-            try {
-                withContext(Dispatchers.IO) {
-                    HandwritingBitmapExporter.writePng(
-                        strokes = segment,
-                        target = segmentFile,
-                        penSizeDp = settings.penSizeDp,
-                        strokeColor = settings.resolvedRecognitionPenColor(),
-                    )
-                }
-                val raw = withTimeout(RECOGNITION_TIMEOUT_MS) {
-                    gemmaManager.runMediaPrompt(
-                        prompt = settings.singleCharacterRecognitionPrompt,
-                        mediaPath = segmentFile.absolutePath,
-                        mediaType = GemmaMediaType.IMAGE,
-                    )
-                }
-                val symbol = GemmaHandwritingPrompt.parseCandidates(raw).firstOrNull()
-                    ?: return null
-                recognized += symbol
-            } finally {
-                runCatching { segmentFile.delete() }
-                if (temporaryImage == segmentFile) temporaryImage = null
-            }
-        }
-        return recognized.joinToString(separator = "").takeIf(String::isNotBlank)
-    }
-
-    private fun shouldRunSegmentFallback(
-        candidates: List<String>,
-        segmentCount: Int,
-    ): Boolean {
-        if (segmentCount <= 1) return false
-        val mostLikely = candidates.firstOrNull() ?: return true
-        return mostLikely.codePointCount(0, mostLikely.length) < segmentCount ||
-            mostLikely.containsHanCharacter()
-    }
-
-    private fun String.containsHanCharacter(): Boolean {
-        var index = 0
-        while (index < length) {
-            val codePoint = codePointAt(index)
-            if (
-                codePoint in 0x3400..0x4DBF ||
-                codePoint in 0x4E00..0x9FFF ||
-                codePoint in 0xF900..0xFAFF
-            ) {
-                return true
-            }
-            index += Character.charCount(codePoint)
-        }
-        return false
     }
 
     private fun commitCandidate(candidate: String) {
@@ -421,6 +314,5 @@ class GemmaHandwritingController(
 
     private companion object {
         const val RECOGNITION_TIMEOUT_MS = 30_000L
-        const val SEGMENT_FALLBACK_TIMEOUT_MS = 30_000L
     }
 }

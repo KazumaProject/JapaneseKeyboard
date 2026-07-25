@@ -93,4 +93,26 @@ class GemmaHandwritingSettingsTest {
             settings.resolvedPenColor(darkMode = true),
         )
     }
+
+    @Test
+    fun recognitionColorIsAlwaysNormalizedToBlack() {
+        val settings = GemmaHandwritingSettings(penColorArgb = 0xFFFF0000.toInt())
+
+        assertEquals(
+            GemmaHandwritingSettings.LIGHT_MODE_AUTOMATIC_PEN_COLOR,
+            settings.resolvedRecognitionPenColor(),
+        )
+    }
+
+    @Test
+    fun recognitionPenSizeIsIndependentFromDisplayPenSize() {
+        val settings = GemmaHandwritingSettings(
+            penSizeDp = GemmaHandwritingSettings.MAX_PEN_SIZE_DP,
+        )
+
+        assertEquals(
+            GemmaHandwritingSettings.DEFAULT_PEN_SIZE_DP,
+            settings.resolvedRecognitionPenSizeDp(),
+        )
+    }
 }

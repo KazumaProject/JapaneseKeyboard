@@ -59,4 +59,14 @@ class GemmaHandwritingPromptTest {
 
         assertEquals(listOf("今日は晴れ。"), candidates)
     }
+
+    @Test
+    fun removesHallucinatedSpacesBetweenJapaneseCharacters() {
+        val candidates = GemmaHandwritingPrompt.parseCandidates(
+            raw = "<CANDIDATE>日 本 語</CANDIDATE>",
+            language = GemmaHandwritingLanguage.JAPANESE,
+        )
+
+        assertEquals(listOf("日本語"), candidates)
+    }
 }
