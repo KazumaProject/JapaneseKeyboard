@@ -9,6 +9,9 @@ import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.GestureSessionConfig
+import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.controller.getLocationRelativeToWindowAnchor
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -23,8 +26,24 @@ enum class TfbiFlickDirection {
 @SuppressLint("ClickableViewAccessibility")
 class TfbiInputController(
     private val context: Context,
-    private val flickSensitivity: Float
+    private val gestureConfigSource: GestureSessionConfigSource
 ) {
+
+    constructor(
+        context: Context,
+        flickSensitivity: Float
+    ) : this(
+        context = context,
+        gestureConfigSource = FixedGestureSessionConfigSource(
+            GestureSessionConfig(
+                settingsRevision = 0L,
+                flickSensitivity = 100,
+                flickThresholdPx = flickSensitivity.coerceAtLeast(1f),
+                longPressTimeoutMillis =
+                    ViewConfiguration.getLongPressTimeout().toLong().coerceIn(100L, 2_000L)
+            )
+        )
+    )
 
     interface TfbiListener {
         fun onPress(first: TfbiFlickDirection, second: TfbiFlickDirection)
@@ -47,6 +66,7 @@ class TfbiInputController(
     private var intermediateTouchX = 0f
     private var intermediateTouchY = 0f
     private var isLongPressModeActive = false
+    private var activeGestureConfig: GestureSessionConfig? = null
 
     var listener: TfbiListener? = null
     private var characterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
@@ -58,7 +78,6 @@ class TfbiInputController(
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
 
-    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
     private var isTouchActive = false
     private val longPressRunnable = Runnable {
         val view = attachedView ?: return@Runnable
@@ -94,10 +113,6 @@ class TfbiInputController(
         popupView?.applyPopupViewStyle(popupStyle)
     }
 
-    fun setLongPressTimeout(timeoutMillis: Long) {
-        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
-    }
-
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
         popupWindowAnchorProvider = provider
     }
@@ -115,6 +130,7 @@ class TfbiInputController(
     }
 
     fun cancel() {
+        activeGestureConfig = null
         clearLongPressCallback(attachedView)
         isTouchActive = false
         resetState()
@@ -143,6 +159,7 @@ class TfbiInputController(
                 isTouchActive = false
                 clearLongPressCallback(attachedView)
                 resetState()
+                activeGestureConfig = null
             }
         }
         return true
@@ -150,6 +167,8 @@ class TfbiInputController(
 
     private fun handleTouchDown(event: MotionEvent, view: View) {
         resetState()
+        val gestureConfig = gestureConfigSource.snapshot()
+        activeGestureConfig = gestureConfig
         flickState = FlickState.NEUTRAL
         isLongPressModeActive = false
         isTouchActive = true
@@ -159,7 +178,7 @@ class TfbiInputController(
 
         showPopup(view, TfbiFlickDirection.TAP, false)
         view.removeCallbacks(longPressRunnable)
-        view.postDelayed(longPressRunnable, longPressTimeout)
+        view.postDelayed(longPressRunnable, gestureConfig.longPressTimeoutMillis)
     }
 
     private fun handleTouchMove(event: MotionEvent, view: View) {
@@ -168,10 +187,10 @@ class TfbiInputController(
             val dy = event.y - initialTouchY
             val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
 
-            if (distance >= flickSensitivity) {
+            if (distance >= currentFlickThreshold()) {
                 val enabledFirstDirections = getEnabledFirstFlickDirections()
                 val determinedDirection =
-                    calculateDirection(dx, dy, flickSensitivity, enabledFirstDirections)
+                    calculateDirection(dx, dy, currentFlickThreshold(), enabledFirstDirections)
                 if (determinedDirection == TfbiFlickDirection.TAP) return
 
                 firstFlickDirection = determinedDirection
@@ -202,7 +221,7 @@ class TfbiInputController(
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
 
             var highlightTargetDirection =
-                calculateDirection(dx, dy, flickSensitivity, enabledSecondDirections)
+                calculateDirection(dx, dy, currentFlickThreshold(), enabledSecondDirections)
 
             if (highlightTargetDirection == TfbiFlickDirection.TAP) {
                 highlightTargetDirection = firstFlickDirection
@@ -225,7 +244,7 @@ class TfbiInputController(
             val dy = event.y - intermediateTouchY
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
             finalSecondDirection =
-                calculateDirection(dx, dy, flickSensitivity, enabledSecondDirections)
+                calculateDirection(dx, dy, currentFlickThreshold(), enabledSecondDirections)
 
             if (finalSecondDirection == TfbiFlickDirection.TAP && currentSecondFlickDirection != TfbiFlickDirection.TAP) {
                 finalSecondDirection = currentSecondFlickDirection
@@ -235,7 +254,7 @@ class TfbiInputController(
             val dy = event.y - initialTouchY
             val enabledFirstDirections = getEnabledFirstFlickDirections()
             firstFlickDirection =
-                calculateDirection(dx, dy, flickSensitivity, enabledFirstDirections)
+                calculateDirection(dx, dy, currentFlickThreshold(), enabledFirstDirections)
             finalSecondDirection = if (firstFlickDirection == TfbiFlickDirection.TAP) {
                 TfbiFlickDirection.TAP
             } else {
@@ -252,6 +271,12 @@ class TfbiInputController(
             listener?.onFlick(firstFlickDirection, finalSecondDirection)
         }
         resetState()
+        activeGestureConfig = null
+    }
+
+    private fun currentFlickThreshold(): Float {
+        return activeGestureConfig?.flickThresholdPx
+            ?: gestureConfigSource.snapshot().flickThresholdPx
     }
 
     private fun showPopup(
