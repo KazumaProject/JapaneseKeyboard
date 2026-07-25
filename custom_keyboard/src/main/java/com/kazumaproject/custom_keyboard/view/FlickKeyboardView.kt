@@ -36,6 +36,7 @@ import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
+import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.CustomAngleFlickController
 import com.kazumaproject.custom_keyboard.controller.FlickLongPressInputController
@@ -239,7 +240,17 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     fun setFlickSensitivityValue(sensitivity: Int) {
-        flickSensitivity = sensitivity
+        flickSensitivity = sensitivity.coerceIn(1, 200)
+    }
+
+    private fun resolvedFlickThresholdPx(): Int {
+        return FlickGestureMath.thresholdPxForSensitivity(
+            sensitivity = flickSensitivity,
+            scaledTouchSlopPx = ViewConfiguration.get(context).scaledTouchSlop,
+            sensitiveMultiplier = 1.5f,
+            normalMultiplier = 3.5f,
+            stableMultiplier = 4.25f
+        ).roundToInt()
     }
 
     fun setLongPressTimeout(timeoutMillis: Long) {
@@ -1193,7 +1204,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 )?.let { mapOf(keyData.label to it).toCircularFlickKeyMaps()[keyData.label] }
                 Log.d("FlickKeyboardView KeyType.CIRCULAR_FLICK", "$circularKeyMapsList")
                 if (!circularKeyMapsList.isNullOrEmpty()) {
-                    val controller = CustomAngleFlickController(context, flickSensitivity).apply {
+                    val controller = CustomAngleFlickController(
+                        context,
+                        resolvedFlickThresholdPx()
+                    ).apply {
                         setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         val secondaryColor =
@@ -1365,7 +1379,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                         buildSumireSpecialKeyDisplayActionMap(keyData, flickActionMap) { data, direction ->
                             resolveSumireSpecialKeyOverride(data, direction)
                         }
-                    val controller = CrossFlickInputController(context).apply {
+                    val controller = CrossFlickInputController(
+                        context,
+                        resolvedFlickThresholdPx()
+                    ).apply {
                         setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         applyPopupViewStyleSet(
@@ -1695,7 +1712,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                     ?: layout.flickKeyMaps[keyData.label]?.firstOrNull()
                 Log.d("FlickKeyboardView KeyType.PETAL_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
-                    val controller = CrossFlickInputController(context, flickSensitivity).apply {
+                    val controller = CrossFlickInputController(
+                        context,
+                        resolvedFlickThresholdPx()
+                    ).apply {
                         setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         applyPopupViewStyleSet(
@@ -1922,7 +1942,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     val controller = TfbiInputController(
                         context,
-                        flickSensitivity = flickSensitivity.toFloat()
+                        flickSensitivity = resolvedFlickThresholdPx().toFloat()
                     ).apply {
                         setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
@@ -2017,7 +2037,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     val controller = FlickLongPressInputController(
                         context,
-                        flickSensitivity = flickSensitivity.toFloat()
+                        flickSensitivity = resolvedFlickThresholdPx().toFloat()
                     ).apply {
                         setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
@@ -2067,7 +2087,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     val controller = TfbiStickyFlickController(
                         context,
-                        flickSensitivity = flickSensitivity.toFloat()
+                        flickSensitivity = resolvedFlickThresholdPx().toFloat()
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
@@ -2125,7 +2145,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     val controller = TfbiHierarchicalFlickController(
                         context,
-                        flickSensitivity = flickSensitivity.toFloat()
+                        flickSensitivity = resolvedFlickThresholdPx().toFloat()
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setModeSwitchAngleMargin(hierarchicalFlickModeSwitchAngleMargin)

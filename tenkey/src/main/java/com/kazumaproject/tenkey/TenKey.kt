@@ -47,6 +47,8 @@ import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
 import com.kazumaproject.core.domain.state.toInputMode
 import com.kazumaproject.core.domain.state.toTwoStateNumberReturnTargetOrNull
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
+import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
@@ -133,6 +135,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var qwertyNumberModeRequestedListener: (() -> Unit)? = null
 
     private var flickSensitivity: Int = 100
+    private var flickThresholdPx: Float = resolveFlickThresholdPx(flickSensitivity)
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var keySizeDelta = 0
@@ -1423,14 +1426,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         )
                     }
 
-                    Log.d("TenKey: ACTION_DOWN", "called ${pressedKey.key}")
-
                     if (isCursorMode) {
                         return true
                     }
 
                     setKeyPressed()
-                    longPressJob = CoroutineScope(Dispatchers.Main).launch {
+                    longPressJob = scope.launch {
                         delay(longPressTimeout)
                         if (pressedKey.key != Key.NotSelected) {
                             longPressListener?.onLongPress(pressedKey.key)
@@ -1731,7 +1732,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         )
                         setKeyPressed()
-                        longPressJob = CoroutineScope(Dispatchers.Main).launch {
+                        longPressJob = scope.launch {
                             delay(longPressTimeout)
                             if (pressedKey.key != Key.NotSelected) {
                                 longPressListener?.onLongPress(pressedKey.key)
@@ -1875,7 +1876,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     fun setFlickSensitivityValue(sensitivity: Int) {
-        flickSensitivity = sensitivity
+        flickSensitivity = sensitivity.coerceIn(1, 200)
+        flickThresholdPx = resolveFlickThresholdPx(flickSensitivity)
     }
 
     fun setLongPressTimeout(timeoutMillis: Long) {
@@ -2103,14 +2105,29 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
-        return when {
-            abs(distanceX) < flickSensitivity && abs(distanceY) < flickSensitivity -> GestureType.Tap
-            abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
-            abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
-            abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight
-            abs(distanceX) <= abs(distanceY) && pressedKey.initialY < finalY -> GestureType.FlickBottom
-            else -> GestureType.Null
+        return when (
+            FlickGestureMath.cardinalDirection(
+                deltaX = distanceX,
+                deltaY = distanceY,
+                thresholdPx = flickThresholdPx
+            )
+        ) {
+            CoreFlickDirection.Tap -> GestureType.Tap
+            CoreFlickDirection.Left -> GestureType.FlickLeft
+            CoreFlickDirection.Top -> GestureType.FlickTop
+            CoreFlickDirection.Right -> GestureType.FlickRight
+            CoreFlickDirection.Bottom -> GestureType.FlickBottom
         }
+    }
+
+    private fun resolveFlickThresholdPx(sensitivity: Int): Float {
+        return FlickGestureMath.thresholdPxForSensitivity(
+            sensitivity = sensitivity,
+            scaledTouchSlopPx = ViewConfiguration.get(context).scaledTouchSlop,
+            sensitiveMultiplier = 1.5f,
+            normalMultiplier = 3.5f,
+            stableMultiplier = 4.25f
+        )
     }
 
     /** Visually indicate which key is pressed **/

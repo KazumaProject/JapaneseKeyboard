@@ -55,6 +55,8 @@ import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setMarginStart
 import com.kazumaproject.core.domain.extensions.toZenkaku
+import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
+import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
@@ -230,10 +232,9 @@ class QWERTYKeyboardView @JvmOverloads constructor(
      */
     private val flickLockedPointers = mutableSetOf<Int>()
 
-    /**
-     * フリックと判定するための最小Y軸移動距離 (px)
-     */
-    private val flickThreshold by lazy { ViewConfiguration.get(context).scaledTouchSlop.toFloat() * 1.5f }
+    /** Persisted 1..200 sensitivity setting and its density-scaled runtime threshold. */
+    private var flickSensitivity = 100
+    private var flickThreshold = resolveFlickThresholdPx(flickSensitivity)
 
     /**
      * Delte キーの左フリックを有効にするフラグ
@@ -1072,6 +1073,11 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         updateNumberKeyFlickGuides()
     }
 
+    fun setFlickSensitivityValue(sensitivity: Int) {
+        flickSensitivity = sensitivity.coerceIn(1, 200)
+        flickThreshold = resolveFlickThresholdPx(flickSensitivity)
+    }
+
     fun setNumberKeyFlickUpChars(map: Map<String, String>) {
         numberKeyFlickUpChars = map
         updateNumberKeyFlickGuides()
@@ -1527,6 +1533,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 if (suppressedPointerId == pointerId) {
                     suppressedPointerId = null
                 }
+                if (!flickLockedPointers.contains(pointerId)) {
+                    tryHandleFlickAt(
+                        pointerId = pointerId,
+                        x = event.getX(pointerIndex),
+                        y = event.getY(pointerIndex)
+                    )
+                }
                 pointerStartCoords.remove(pointerId)
 
                 if (!flickLockedPointers.contains(pointerId)) {
@@ -1571,7 +1584,19 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     variationPopup = null
                     variationPopupView = null
                     longPressedPointerId = null
-                } else if (!flickLockedPointers.contains(liftedId)) {
+                } else {
+                    if (!flickLockedPointers.contains(liftedId)) {
+                        tryHandleFlickAt(
+                            pointerId = liftedId,
+                            x = event.getX(event.actionIndex),
+                            y = event.getY(event.actionIndex)
+                        )
+                    }
+                    if (flickLockedPointers.contains(liftedId)) {
+                        clearAllPressed()
+                        lastNonGlideKeyUpTime = SystemClock.uptimeMillis()
+                        return true
+                    }
                     val liftedId2 = event.getPointerId(event.actionIndex)
                     if (suppressedPointerId == liftedId2) {
                         suppressedPointerId = null
@@ -2114,12 +2139,29 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     ): FlickDirection {
         val dx = x - startX
         val dy = y - startY
-        if (abs(dx) > abs(dy)) {
-            if (abs(dx) > threshold && dx < 0) return FlickDirection.LEFT
-        } else {
-            if (abs(dy) > threshold) return if (dy < 0) FlickDirection.UP else FlickDirection.DOWN
+        return when (
+            FlickGestureMath.cardinalDirection(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = threshold
+            )
+        ) {
+            CoreFlickDirection.Left -> FlickDirection.LEFT
+            CoreFlickDirection.Top -> FlickDirection.UP
+            CoreFlickDirection.Bottom -> FlickDirection.DOWN
+            CoreFlickDirection.Tap,
+            CoreFlickDirection.Right -> FlickDirection.NONE
         }
-        return FlickDirection.NONE
+    }
+
+    private fun resolveFlickThresholdPx(sensitivity: Int): Float {
+        return FlickGestureMath.thresholdPxForSensitivity(
+            sensitivity = sensitivity,
+            scaledTouchSlopPx = ViewConfiguration.get(context).scaledTouchSlop,
+            sensitiveMultiplier = 1.5f,
+            normalMultiplier = 2f,
+            stableMultiplier = 2.5f
+        )
     }
 
     private fun applyCommonFlickEffects(pointerId: Int, previousView: View) {
@@ -2196,47 +2238,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val y = event.getY(pointerIndex)
         val previousView = pointerButtonMap[pointerId]
 
-        pointerStartCoords[pointerId]?.let { (startX, startY) ->
-            val flickDirection = detectFlickDirection(x, y, startX, startY, flickThreshold)
-            when (flickDirection) {
-                FlickDirection.UP -> {
-                    // Delete キーの上フリックを優先 (左フリックと同じ流儀)
-                    if (enableDeleteUpFlick && previousView != null && previousView.id == binding.keyDelete.id) {
-                        applyCommonFlickEffects(pointerId, previousView)
-                        onDeleteUpFlickListener?.invoke()
-                        return
-                    }
-                    if (isQwertyUpFlickEnabledForCurrentGesture() && previousView is QWERTYButton) {
-                        applyCommonFlickEffects(pointerId, previousView)
-                        handleUpFlick(previousView)
-                        return
-                    }
-                }
-
-                FlickDirection.DOWN -> {
-                    // Delete キーの下フリックを優先 (左フリックと同じ流儀)
-                    if (enableDeleteDownFlick && previousView != null && previousView.id == binding.keyDelete.id) {
-                        applyCommonFlickEffects(pointerId, previousView)
-                        onDeleteDownFlickListener?.invoke()
-                        return
-                    }
-                    if (isQwertyDownFlickEnabledForCurrentGesture() && previousView is QWERTYButton) {
-                        applyCommonFlickEffects(pointerId, previousView)
-                        handleDownFlick(previousView)
-                        return
-                    }
-                }
-
-                FlickDirection.LEFT -> {
-                    if (enableDeleteLeftFlick && previousView != null && previousView.id == binding.keyDelete.id) {
-                        applyCommonFlickEffects(pointerId, previousView)
-                        onDeleteLeftFlickListener?.invoke()
-                        return
-                    }
-                }
-
-                FlickDirection.NONE -> {}
-            }
+        if (tryHandleFlickAt(pointerId, x, y)) {
+            return
         }
 
         val currentView = findButtonUnder(x.toInt(), y.toInt())
@@ -2269,6 +2272,72 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 pointerStartCoords.remove(pointerId)
                 cancelLongPressForPointer(pointerId)
             }
+        }
+    }
+
+    private fun tryHandleFlickAt(pointerId: Int, x: Float, y: Float): Boolean {
+        if (pointerId == suppressedPointerId || pointerId == lockedPointerId) return false
+        if (flickLockedPointers.contains(pointerId)) return true
+
+        val (startX, startY) = pointerStartCoords[pointerId] ?: return false
+        val previousView = pointerButtonMap[pointerId]
+        return when (detectFlickDirection(x, y, startX, startY, flickThreshold)) {
+            FlickDirection.UP -> {
+                when {
+                    enableDeleteUpFlick &&
+                        previousView != null &&
+                        previousView.id == binding.keyDelete.id -> {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        onDeleteUpFlickListener?.invoke()
+                        true
+                    }
+
+                    isQwertyUpFlickEnabledForCurrentGesture() &&
+                        previousView is QWERTYButton -> {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        handleUpFlick(previousView)
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+
+            FlickDirection.DOWN -> {
+                when {
+                    enableDeleteDownFlick &&
+                        previousView != null &&
+                        previousView.id == binding.keyDelete.id -> {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        onDeleteDownFlickListener?.invoke()
+                        true
+                    }
+
+                    isQwertyDownFlickEnabledForCurrentGesture() &&
+                        previousView is QWERTYButton -> {
+                        applyCommonFlickEffects(pointerId, previousView)
+                        handleDownFlick(previousView)
+                        true
+                    }
+
+                    else -> false
+                }
+            }
+
+            FlickDirection.LEFT -> {
+                if (enableDeleteLeftFlick &&
+                    previousView != null &&
+                    previousView.id == binding.keyDelete.id
+                ) {
+                    applyCommonFlickEffects(pointerId, previousView)
+                    onDeleteLeftFlickListener?.invoke()
+                    true
+                } else {
+                    false
+                }
+            }
+
+            FlickDirection.NONE -> false
         }
     }
 
