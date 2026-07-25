@@ -64,6 +64,12 @@ object AppPreference {
         "gemma_handwriting_pen_size_preference"
     const val GEMMA_HANDWRITING_PEN_COLOR_KEY =
         "gemma_handwriting_pen_color_preference"
+    const val FLICK_SENSITIVITY_KEY = "flick_sensitivity_preference"
+    const val LONG_PRESS_TIMEOUT_KEY = "long_press_timeout_preference"
+    const val VIBRATION_KEY = "vibration_preference"
+    const val VIBRATION_TIMING_KEY = "vibration_timing"
+    const val KEY_SOUND_KEY = "key_sound_preference"
+    const val KEY_SOUND_VOLUME_PERCENT_KEY = "key_sound_volume_percent_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -77,13 +83,13 @@ object AppPreference {
 
     private val CLIPBOARD_HISTORY_ENABLE = Pair("clipboard_history_preference", false)
     private val TIME_SAME_PRONOUNCE_TYPING = Pair("time_same_pronounce_typing_preference", 1000)
-    private val FLICK_SENSITIVITY = Pair("flick_sensitivity_preference", 100)
-    private val LONG_PRESS_TIMEOUT = Pair("long_press_timeout_preference", 300)
-    private val VIBRATION_PREFERENCE = Pair("vibration_preference", true)
-    private val VIBRATION_TIMING_PREFERENCE = Pair("vibration_timing", "both")
-    private val KEY_SOUND_PREFERENCE = Pair("key_sound_preference", false)
+    private val FLICK_SENSITIVITY = Pair(FLICK_SENSITIVITY_KEY, 100)
+    private val LONG_PRESS_TIMEOUT = Pair(LONG_PRESS_TIMEOUT_KEY, 300)
+    private val VIBRATION_PREFERENCE = Pair(VIBRATION_KEY, true)
+    private val VIBRATION_TIMING_PREFERENCE = Pair(VIBRATION_TIMING_KEY, "both")
+    private val KEY_SOUND_PREFERENCE = Pair(KEY_SOUND_KEY, false)
     private val KEY_SOUND_VOLUME_PERCENT_PREFERENCE =
-        Pair("key_sound_volume_percent_preference", 0)
+        Pair(KEY_SOUND_VOLUME_PERCENT_KEY, 0)
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
     private val INCOGNITO_MODE_DETECTION_PREFERENCE =
         Pair("incognito_mode_detection_preference", true)
