@@ -36,11 +36,18 @@ import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
+import com.kazumaproject.core.domain.flick.DelegatingRuntimeGestureSettingsSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.GestureSessionConfig
+import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
+import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
+import com.kazumaproject.core.domain.flick.RuntimeGestureSettingsSource
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.CustomAngleFlickController
 import com.kazumaproject.custom_keyboard.controller.FlickLongPressInputController
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
+import com.kazumaproject.custom_keyboard.controller.TapLongPressInputController
 import com.kazumaproject.custom_keyboard.controller.TfbiHierarchicalFlickController
 import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
@@ -102,12 +109,30 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val flickLongPressControllers = mutableListOf<FlickLongPressInputController>()
     private val stickyTfbiControllers = mutableListOf<TfbiStickyFlickController>()
     private val hierarchicalTfbiControllers = mutableListOf<TfbiHierarchicalFlickController>()
+    private val tapLongPressControllers = mutableListOf<TapLongPressInputController>()
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
 
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
+    private val localRuntimeGestureSettings = MutableRuntimeGestureSettingsSource(
+        RuntimeGestureSettings(
+            flickSensitivity = flickSensitivity,
+            longPressTimeoutMillis = longPressTimeout
+        )
+    )
+    private val runtimeGestureSettings =
+        DelegatingRuntimeGestureSettingsSource(localRuntimeGestureSettings)
+    private val gestureSessionConfigSource = GestureSessionConfigSource {
+        val settings = runtimeGestureSettings.snapshot()
+        GestureSessionConfig(
+            settingsRevision = settings.revision,
+            flickSensitivity = settings.flickSensitivity,
+            flickThresholdPx = resolvedFlickThresholdPx(settings.flickSensitivity),
+            longPressTimeoutMillis = settings.longPressTimeoutMillis
+        )
+    }
     private var defaultTextSize = 14f
     private var specialKeyTextSizeSp = SPECIAL_KEY_BASE_TEXT_SIZE_SP
 
@@ -243,26 +268,32 @@ class FlickKeyboardView @JvmOverloads constructor(
         val normalized = sensitivity.coerceIn(1, 200)
         if (flickSensitivity == normalized) return
         flickSensitivity = normalized
-        // Controllers retain the threshold passed to their constructors, so an existing
-        // Sumire/custom keyboard must be rebuilt when this runtime setting changes.
-        currentLayout?.let { setKeyboard(it) }
+        localRuntimeGestureSettings.update(flickSensitivity = normalized)
     }
 
-    private fun resolvedFlickThresholdPx(): Int {
+    /**
+     * Binds this surface to the IME-wide runtime source. Existing controllers retain this View's
+     * stable [gestureSessionConfigSource], so binding never recreates keys or controllers.
+     */
+    fun bindRuntimeGestureSettings(source: RuntimeGestureSettingsSource?) {
+        runtimeGestureSettings.bind(source)
+    }
+
+    private fun resolvedFlickThresholdPx(sensitivity: Int): Float {
         return FlickGestureMath.thresholdPxForSensitivity(
-            sensitivity = flickSensitivity,
+            sensitivity = sensitivity,
             scaledTouchSlopPx = ViewConfiguration.get(context).scaledTouchSlop,
             sensitiveMultiplier = 1.5f,
             normalMultiplier = 3.5f,
             stableMultiplier = 4.25f
-        ).roundToInt()
+        )
     }
 
     fun setLongPressTimeout(timeoutMillis: Long) {
         val normalized = timeoutMillis.coerceIn(100L, 2000L)
         if (longPressTimeout == normalized) return
         longPressTimeout = normalized
-        currentLayout?.let { setKeyboard(it) }
+        localRuntimeGestureSettings.update(longPressTimeoutMillis = normalized)
     }
 
     fun setDefaultTextSize(textSize: Float) {
@@ -448,6 +479,9 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         hierarchicalTfbiControllers.forEach { it.cancel() }
         hierarchicalTfbiControllers.clear()
+
+        tapLongPressControllers.forEach { it.cancel() }
+        tapLongPressControllers.clear()
 
         dynamicKeyMap.clear()
         currentLayout = layout
@@ -1210,10 +1244,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                 Log.d("FlickKeyboardView KeyType.CIRCULAR_FLICK", "$circularKeyMapsList")
                 if (!circularKeyMapsList.isNullOrEmpty()) {
                     val controller = CustomAngleFlickController(
-                        context,
-                        resolvedFlickThresholdPx()
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
                     ).apply {
-                        setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
@@ -1385,10 +1418,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                             resolveSumireSpecialKeyOverride(data, direction)
                         }
                     val controller = CrossFlickInputController(
-                        context,
-                        resolvedFlickThresholdPx()
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
                     ).apply {
-                        setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         applyPopupViewStyleSet(
                             popupViewStyleSet.directional,
@@ -1617,7 +1649,10 @@ class FlickKeyboardView @JvmOverloads constructor(
                         keyView.setDrawableAlpha(liquidGlassKeyAlphaEnable)
                     }
 
-                    val controller = StandardFlickInputController(context).apply {
+                    val controller = StandardFlickInputController(
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
+                    ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         applyPopupViewStyle(popupViewStyleSet.standard)
                         this.listener =
@@ -1718,10 +1753,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                 Log.d("FlickKeyboardView KeyType.PETAL_FLICK", "$flickActionMap")
                 if (flickActionMap != null) {
                     val controller = CrossFlickInputController(
-                        context,
-                        resolvedFlickThresholdPx()
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
                     ).apply {
-                        setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         applyPopupViewStyleSet(
                             popupViewStyleSet.directional,
@@ -1854,82 +1888,88 @@ class FlickKeyboardView @JvmOverloads constructor(
             KeyType.NORMAL -> {
                 keyData.action?.let { action ->
                     Log.d("FlickKeyboardView KeyType.NORMAL", "key data: $keyData")
+                    fun currentAction(): KeyAction {
+                        return keyData.keyId
+                            ?.let { dynamicKeyMap[it]?.keyData?.action }
+                            ?: action
+                    }
 
-                    var isLongPressTriggered = false
+                    val controller = TapLongPressInputController(
+                        gestureConfigSource = gestureSessionConfigSource
+                    ).apply {
+                        attach(
+                            keyView,
+                            object : TapLongPressInputController.Listener {
+                                override fun onPress() {
+                                    when (
+                                        val resolved = resolveSumireSpecialKeyOverride(
+                                            keyData,
+                                            SumireSpecialKeyDirection.TAP
+                                        )
+                                    ) {
+                                        ResolvedSumireSpecialKeyAction.Default ->
+                                            this@FlickKeyboardView.listener?.onPress(
+                                                currentAction()
+                                            )
 
-                    keyView.setOnClickListener {
-                        val currentAction =
-                            dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
-                        if (
-                            dispatchResolvedSumireSpecialKeyAction(
-                                resolveSumireSpecialKeyOverride(
-                                    keyData,
-                                    SumireSpecialKeyDirection.TAP
-                                ),
-                                isFlick = false
-                            )
-                        ) {
-                            return@setOnClickListener
-                        }
-                        Log.d("FlickKeyboardView KeyType.NORMAL", "currentAction: $currentAction")
-                        this@FlickKeyboardView.listener?.onAction(
-                            currentAction,
-                            isFlick = false
+                                        ResolvedSumireSpecialKeyAction.None -> Unit
+                                        is ResolvedSumireSpecialKeyAction.Action ->
+                                            this@FlickKeyboardView.listener?.onPress(
+                                                resolved.action
+                                            )
+
+                                        is ResolvedSumireSpecialKeyAction.InputText ->
+                                            this@FlickKeyboardView.listener?.onPress(
+                                                KeyAction.Text(resolved.text)
+                                            )
+                                    }
+                                }
+
+                                override fun onTap() {
+                                    if (
+                                        dispatchResolvedSumireSpecialKeyAction(
+                                            resolveSumireSpecialKeyOverride(
+                                                keyData,
+                                                SumireSpecialKeyDirection.TAP
+                                            ),
+                                            isFlick = false
+                                        )
+                                    ) {
+                                        return
+                                    }
+                                    val currentAction = currentAction()
+                                    Log.d(
+                                        "FlickKeyboardView KeyType.NORMAL",
+                                        "currentAction: $currentAction"
+                                    )
+                                    this@FlickKeyboardView.listener?.onAction(
+                                        currentAction,
+                                        isFlick = false
+                                    )
+                                }
+
+                                override fun onLongPress() {
+                                    this@FlickKeyboardView.listener?.onActionLongPress(
+                                        currentAction()
+                                    )
+                                }
+
+                                override fun onUpAfterLongPress() {
+                                    this@FlickKeyboardView.listener?.onActionUpAfterLongPress(
+                                        currentAction()
+                                    )
+                                }
+
+                                override fun onLongPressCanceled() {
+                                    this@FlickKeyboardView.listener?.onLongPressActionCanceled(
+                                        currentAction()
+                                    )
+                                }
+                            }
                         )
                     }
-
-                    keyView.setOnLongClickListener {
-                        val currentAction =
-                            dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
-                        isLongPressTriggered = true
-                        this@FlickKeyboardView.listener?.onActionLongPress(currentAction)
-                        true
-                    }
-
-                    keyView.setOnTouchListener { _, event ->
-                        if (event.action == MotionEvent.ACTION_DOWN) {
-                            val currentAction =
-                                dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
-                            when (
-                                val resolved = resolveSumireSpecialKeyOverride(
-                                    keyData,
-                                    SumireSpecialKeyDirection.TAP
-                                )
-                            ) {
-                                ResolvedSumireSpecialKeyAction.Default ->
-                                    this@FlickKeyboardView.listener?.onPress(currentAction)
-
-                                ResolvedSumireSpecialKeyAction.None -> Unit
-                                is ResolvedSumireSpecialKeyAction.Action ->
-                                    this@FlickKeyboardView.listener?.onPress(resolved.action)
-
-                                is ResolvedSumireSpecialKeyAction.InputText ->
-                                    this@FlickKeyboardView.listener?.onPress(
-                                        KeyAction.Text(resolved.text)
-                                    )
-                            }
-                        }
-                        if (event.action == MotionEvent.ACTION_UP) {
-                            if (isLongPressTriggered) {
-                                val currentAction =
-                                    dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
-                                this@FlickKeyboardView.listener?.onActionUpAfterLongPress(
-                                    currentAction
-                                )
-                                isLongPressTriggered = false
-                            }
-                        } else if (event.action == MotionEvent.ACTION_CANCEL) {
-                            if (isLongPressTriggered) {
-                                val currentAction =
-                                    dynamicKeyMap[keyData.keyId]?.keyData?.action ?: action
-                                this@FlickKeyboardView.listener?.onLongPressActionCanceled(
-                                    currentAction
-                                )
-                                isLongPressTriggered = false
-                            }
-                        }
-                        false
-                    }
+                    tapLongPressControllers.add(controller)
+                    return controller
                 }
                 return null
             }
@@ -1946,10 +1986,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
 
                     val controller = TfbiInputController(
-                        context,
-                        flickSensitivity = resolvedFlickThresholdPx().toFloat()
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
                     ).apply {
-                        setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : TfbiInputController.TfbiListener {
@@ -2041,10 +2080,9 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
 
                     val controller = FlickLongPressInputController(
-                        context,
-                        flickSensitivity = resolvedFlickThresholdPx().toFloat()
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
                     ).apply {
-                        setLongPressTimeout(longPressTimeout)
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : FlickLongPressInputController.Listener {
@@ -2091,8 +2129,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                     }
 
                     val controller = TfbiStickyFlickController(
-                        context,
-                        flickSensitivity = resolvedFlickThresholdPx().toFloat()
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
@@ -2149,8 +2187,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                     )
 
                     val controller = TfbiHierarchicalFlickController(
-                        context,
-                        flickSensitivity = resolvedFlickThresholdPx().toFloat()
+                        context = context,
+                        gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setModeSwitchAngleMargin(hierarchicalFlickModeSwitchAngleMargin)
@@ -2294,6 +2332,11 @@ class FlickKeyboardView @JvmOverloads constructor(
             is TfbiHierarchicalFlickController -> {
                 controller.cancel()
                 hierarchicalTfbiControllers.remove(controller)
+            }
+
+            is TapLongPressInputController -> {
+                controller.cancel()
+                tapLongPressControllers.remove(controller)
             }
         }
     }
@@ -2705,6 +2748,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         flickLongPressControllers.forEach { it.cancel() }
         stickyTfbiControllers.forEach { it.cancel() }
         hierarchicalTfbiControllers.forEach { it.cancel() }
+        tapLongPressControllers.forEach { it.cancel() }
     }
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {

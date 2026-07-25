@@ -6,6 +6,7 @@ internal object ExactInputPenaltyPolicy {
     private val zeroPrefixPenaltyWords: Set<String> = setOf(
         "にて",
         "しか",
+        "ての",
     )
 
     fun shouldZeroPrefixPenalty(

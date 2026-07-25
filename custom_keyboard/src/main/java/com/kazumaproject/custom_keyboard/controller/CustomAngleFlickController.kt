@@ -7,6 +7,9 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
+import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.GestureSessionConfig
+import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -24,11 +27,26 @@ import kotlinx.coroutines.launch
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
-// flickSensitivity はあくまで「距離の閾値」として保持
 class CustomAngleFlickController(
     context: Context,
-    private val flickSensitivity: Int
+    private val gestureConfigSource: GestureSessionConfigSource
 ) {
+
+    constructor(
+        context: Context,
+        flickSensitivity: Int
+    ) : this(
+        context = context,
+        gestureConfigSource = FixedGestureSessionConfigSource(
+            GestureSessionConfig(
+                settingsRevision = 0L,
+                flickSensitivity = 100,
+                flickThresholdPx = flickSensitivity.toFloat().coerceAtLeast(1f),
+                longPressTimeoutMillis =
+                    ViewConfiguration.getLongPressTimeout().toLong().coerceIn(100L, 2_000L)
+            )
+        )
+    )
 
     interface FlickListener {
         fun onPress(action: FlickAction?)
@@ -70,7 +88,7 @@ class CustomAngleFlickController(
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private var longPressJob: Job? = null
     private var isLongPressModeActive = false
-    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
+    private var activeGestureConfig: GestureSessionConfig? = null
 
     init {
         // デフォルトの見た目サイズを設定（必要に応じて setPopupViewSize で上書きしてください）
@@ -108,10 +126,6 @@ class CustomAngleFlickController(
         popupView.setUiSize(orbit, centerRadius, textSize)
     }
 
-    fun setLongPressTimeout(timeoutMillis: Long) {
-        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
-    }
-
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
         popupWindowAnchorProvider = provider
     }
@@ -130,6 +144,7 @@ class CustomAngleFlickController(
     }
 
     fun cancel() {
+        activeGestureConfig = null
         hidePopup()
         controllerScope.cancel()
     }
@@ -189,6 +204,8 @@ class CustomAngleFlickController(
 
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                val gestureConfig = gestureConfigSource.snapshot()
+                activeGestureConfig = gestureConfig
                 anchorView = view
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
@@ -211,7 +228,7 @@ class CustomAngleFlickController(
 
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
-                    delay(longPressTimeout)
+                    delay(gestureConfig.longPressTimeoutMillis)
                     isLongPressModeActive = true
                     popupView.setFullUIMode(true)
                     popupView.invalidate()
@@ -284,6 +301,7 @@ class CustomAngleFlickController(
                 }
 
                 hidePopup()
+                activeGestureConfig = null
                 return true
             }
 
@@ -292,6 +310,7 @@ class CustomAngleFlickController(
                 isLongPressModeActive = false
                 previousDirection = CircularFlickDirection.TAP
                 hidePopup()
+                activeGestureConfig = null
                 return true
             }
         }
@@ -343,8 +362,9 @@ class CustomAngleFlickController(
         val dy = currentY - initialTouchY
         val distance = sqrt(dx * dx + dy * dy)
 
-        // 判定はコンストラクタで渡された flickSensitivity を使用
-        if (distance < flickSensitivity) return CircularFlickDirection.TAP
+        val threshold = activeGestureConfig?.flickThresholdPx
+            ?: gestureConfigSource.snapshot().flickThresholdPx
+        if (distance < threshold) return CircularFlickDirection.TAP
 
         val angle = (Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) + 360) % 360
         return popupView.getDirectionForAngle(angle)

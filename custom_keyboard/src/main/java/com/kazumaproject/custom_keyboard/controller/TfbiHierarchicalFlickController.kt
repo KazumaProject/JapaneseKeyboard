@@ -3,13 +3,16 @@ package com.kazumaproject.custom_keyboard.controller
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
-import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.GestureSessionConfig
+import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.data.KeyMode
 import com.kazumaproject.custom_keyboard.data.ModeSwitchBoundary
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
@@ -28,8 +31,24 @@ import kotlin.math.hypot
 @SuppressLint("ClickableViewAccessibility")
 class TfbiHierarchicalFlickController(
     private val context: Context,
-    private val flickSensitivity: Float
+    private val gestureConfigSource: GestureSessionConfigSource
 ) {
+
+    constructor(
+        context: Context,
+        flickSensitivity: Float
+    ) : this(
+        context = context,
+        gestureConfigSource = FixedGestureSessionConfigSource(
+            GestureSessionConfig(
+                settingsRevision = 0L,
+                flickSensitivity = 100,
+                flickThresholdPx = flickSensitivity.coerceAtLeast(1f),
+                longPressTimeoutMillis =
+                    ViewConfiguration.getLongPressTimeout().toLong().coerceIn(100L, 2_000L)
+            )
+        )
+    )
     /**
      * リスナー：最終的に入力が決定した文字を通知します。
      */
@@ -79,11 +98,11 @@ class TfbiHierarchicalFlickController(
     // 現在のハイライト方向（全階層共通）
     private var currentHighlight: TfbiFlickDirection = TfbiFlickDirection.TAP
     private var isJitterGuardActive = false
+    private var activeGestureConfig: GestureSessionConfig? = null
 
     // ポップアップView関連
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
-    private lateinit var gestureDetector: GestureDetector
     private var popupStyle = PopupViewStyle(100, 20f)
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
@@ -93,6 +112,12 @@ class TfbiHierarchicalFlickController(
     private var popupHighlightedColor: Int? = null
     private var popupTextColor: Int? = null
     private var modeSwitchAngleMargin = MODE_SWITCH_ANGLE_MARGIN
+    private val longPressRunnable = Runnable {
+        val view = attachedView ?: return@Runnable
+        if (activeGestureConfig == null || mapStack.size > 1) return@Runnable
+        popupWindow?.dismiss()
+        showPopup(view, true)
+    }
 
     /**
      * ▼▼▼ 追加: 色を設定するメソッド ▼▼▼
@@ -135,17 +160,6 @@ class TfbiHierarchicalFlickController(
         // ★ 内部状態に基づいて、アタッチするマップを決定する
         this.rootMap = getMapForCurrentMode(node)
 
-        gestureDetector =
-            GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-                override fun onLongPress(e: MotionEvent) {
-                    // 第1階層（スタックサイズが1）でのみ長押しポップアップを許可
-                    if (mapStack.size <= 1) {
-                        popupWindow?.dismiss()
-                        showPopup(view, true) // Petal付きで表示
-                    }
-                }
-            })
-
         view.setOnTouchListener { _, event -> handleTouchEvent(event) }
     }
 
@@ -172,7 +186,6 @@ class TfbiHierarchicalFlickController(
     // --- タッチイベント処理 ---
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
-        gestureDetector.onTouchEvent(event)
         val view = attachedView ?: return false
         when (event.action) {
             MotionEvent.ACTION_DOWN -> handleTouchDown(event, view)
@@ -185,6 +198,8 @@ class TfbiHierarchicalFlickController(
 
     private fun handleTouchDown(event: MotionEvent, view: View) {
         resetState()
+        val gestureConfig = gestureConfigSource.snapshot()
+        activeGestureConfig = gestureConfig
 
         val node = rootNode ?: return
         // ★ 状態に基づいて rootMap を決定
@@ -204,6 +219,7 @@ class TfbiHierarchicalFlickController(
         }
 
         showPopup(view, false)
+        view.postDelayed(longPressRunnable, gestureConfig.longPressTimeoutMillis)
     }
 
     private fun handleTouchMove(event: MotionEvent, view: View) {
@@ -216,7 +232,12 @@ class TfbiHierarchicalFlickController(
         val enabledDirections = currentM.keys
 
         // 現在のフリック方向を計算
-        val direction = calculateDirection(dx, dy, flickSensitivity, enabledDirections)
+        val direction = calculateDirection(
+            dx,
+            dy,
+            currentFlickThreshold(),
+            enabledDirections
+        )
 
         if (direction == TfbiFlickDirection.TAP) {
             // 指が中央に戻った
@@ -259,6 +280,8 @@ class TfbiHierarchicalFlickController(
             popupView?.highlightDirection(currentHighlight)
             return
         }
+
+        view.removeCallbacks(longPressRunnable)
 
 
         // --- (direction != TAP) の場合の標準フリック処理 ---
@@ -618,6 +641,7 @@ class TfbiHierarchicalFlickController(
     }
 
     private fun resetState() {
+        attachedView?.removeCallbacks(longPressRunnable)
         popupWindow?.dismiss()
         popupWindow = null
         popupView = null
@@ -627,6 +651,7 @@ class TfbiHierarchicalFlickController(
         currentMap = null
         currentHighlight = TfbiFlickDirection.TAP
         isJitterGuardActive = false
+        activeGestureConfig = null
 
         if (currentMode != KeyMode.NORMAL) {
             currentMode = KeyMode.NORMAL
@@ -637,6 +662,11 @@ class TfbiHierarchicalFlickController(
                 listener?.onModeChanged(rNode.label, activeRootMap)
             }
         }
+    }
+
+    private fun currentFlickThreshold(): Float {
+        return activeGestureConfig?.flickThresholdPx
+            ?: gestureConfigSource.snapshot().flickThresholdPx
     }
 
     private fun calculateDirection(
