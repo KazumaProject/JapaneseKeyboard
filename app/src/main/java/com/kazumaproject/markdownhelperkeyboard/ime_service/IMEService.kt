@@ -193,8 +193,12 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBi
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
+import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaImageCapability
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
+import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingController
+import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingSettings
+import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImagePickerActivity
 import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImeMediaPanelController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
@@ -697,6 +701,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             bundledProviderHolder = zeroQueryProviderHolder,
         )
     }
+    private var configuredShortcutItems: List<ShortcutType> = emptyList()
     private var currentShortcutItems: List<ShortcutType> = emptyList()
     private var candidateStripIncognitoIconDrawable: Drawable? = null
     private var candidateStripIncognitoVisible: Boolean = false
@@ -1183,6 +1188,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var mainLayoutBinding: MainLayoutBinding? = null
     private var gemmaMediaPanelController: GemmaImeMediaPanelController? = null
+    private var gemmaHandwritingController: GemmaHandwritingController? = null
+    private var handwritingModeActive: Boolean = false
+    private var restoreFloatingModeAfterHandwriting: Boolean = false
     private var pendingGemmaPickedImagePath: String? = null
     private val gemmaImagePickerResultReceiver = object : ResultReceiver(mainHandler) {
         override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
@@ -1904,6 +1912,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val tabletView: View?,
         val qwertyView: QWERTYKeyboardView?,
         val customLayout: FlickKeyboardView?,
+        val handwritingView: GemmaHandwritingKeyboardView?,
         val suggestionRecyclerView: RecyclerView?,
         val symbolKeyboard: CustomSymbolKeyboardView?
     )
@@ -2141,6 +2150,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onStartInput(attribute, restarting)
         gemmaInputSessionId += 1L
         gemmaMediaPanelController?.onInputSessionChanged()
+        gemmaHandwritingController?.onInputSessionChanged()
         Timber.d("onStartInput: ${Build.MANUFACTURER}")
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
@@ -4273,6 +4283,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onFinishInputView(finishingInput: Boolean) {
         gemmaMediaPanelController?.onInputViewHidden()
+        gemmaHandwritingController?.onInputViewHidden()
         candidateRequestTracker.invalidate()
         candidateRefreshCoordinator.invalidate()
         defaultInputFinalizeJob?.cancel()
@@ -4303,6 +4314,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onWindowHidden() {
         gemmaMediaPanelController?.onInputViewHidden()
+        gemmaHandwritingController?.onInputViewHidden()
         clearAndPauseSuminagashiInkEffects()
         super.onWindowHidden()
     }
@@ -4312,6 +4324,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateGemmaBackInvokedCallback(registered = false)
         gemmaMediaPanelController?.destroy()
         gemmaMediaPanelController = null
+        gemmaHandwritingController?.destroy()
+        gemmaHandwritingController = null
+        handwritingModeActive = false
         pendingGemmaPickedImagePath?.let { path ->
             runCatching { File(path).delete() }
         }
@@ -5129,11 +5144,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     binding.keyboardView,
                     binding.tabletView,
                     binding.qwertyView,
-                    binding.customLayoutDefault
+                    binding.customLayoutDefault,
+                    binding.gemmaHandwritingKeyboard,
                 ).firstOrNull {
                     it.isAttachedToWindow && it.isShown
                 }
             }
+            ensureGemmaHandwritingController().bindView(binding.gemmaHandwritingKeyboard)
         }
 
         releaseFloatingKeyboardBackgroundVideoPlayer()
@@ -5482,6 +5499,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (keyCode == KeyEvent.KEYCODE_BACK &&
             gemmaMediaPanelController?.handleBack() == true
         ) {
+            consumeGemmaBackKeyUp = true
+            return true
+        }
+        if (keyCode == KeyEvent.KEYCODE_BACK &&
+            gemmaHandwritingController?.isActive == true
+        ) {
+            gemmaHandwritingController?.close()
             consumeGemmaBackKeyUp = true
             return true
         }
@@ -6736,6 +6760,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tabletView = mainView.tabletView,
             qwertyView = mainView.qwertyView,
             customLayout = mainView.customLayoutDefault,
+            handwritingView = mainView.gemmaHandwritingKeyboard,
             suggestionRecyclerView = mainView.suggestionRecyclerView,
             symbolKeyboard = mainView.keyboardSymbolView
         )
@@ -6749,6 +6774,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tabletView = null,
             qwertyView = floatingView.qwertyViewFloating,
             customLayout = floatingView.customLayoutFloating,
+            handwritingView = null,
             suggestionRecyclerView = floatingView.suggestionRecyclerView,
             symbolKeyboard = floatingView.floatingSymbolKeyboard
         )
@@ -6771,6 +6797,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         surface.tabletView?.isVisible = false
         surface.qwertyView?.isVisible = false
         surface.customLayout?.isVisible = false
+        surface.handwritingView?.isVisible = false
     }
 
     private fun renderKeyboardMode(
@@ -6779,6 +6806,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFloating: Boolean
     ) {
         hideKeyboardViews(surface)
+        if (handwritingModeActive && !isFloating) {
+            surface.handwritingView?.isVisible = true
+            return
+        }
         when (mode) {
             TenKeyQWERTYMode.Default -> {
                 if (!isFloating && isTabletGojuonSurface()) {
@@ -9963,6 +9994,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyView.isVisible = false
             tabletView.isVisible = false
             customLayoutDefault.isVisible = false
+            gemmaHandwritingKeyboard.isVisible = false
             keyboardSymbolView.isVisible = false
             candidatesRowView.isVisible = false
         }
@@ -14570,12 +14602,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             shortCurRepository.enabledShortcutsFlow.collectLatest {
-                currentShortcutItems = it
-                shortcutAdapter?.submitList(it) {
-                    updateShortcutActiveStates()
-                }
-                updateShortcutActiveStates()
-                refreshCandidateStripContent()
+                configuredShortcutItems = it
+                refreshShortcutAvailability()
+            }
+        }
+
+        launch {
+            gemmaTranslationManager.loadState.collectLatest {
+                val capability = gemmaTranslationManager.imageInputCapability()
+                gemmaHandwritingController?.onImageCapabilityChanged(capability)
+                refreshShortcutAvailability()
             }
         }
 
@@ -15482,6 +15518,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.keyboardView,
             mainView.customLayoutDefault,
             mainView.qwertyView,
+            mainView.gemmaHandwritingKeyboard,
             mainView.candidatesRowView
         ).forEach { view ->
             (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
@@ -15704,7 +15741,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.suggestionViewParent,
             mainView.keyboardView,
             mainView.customLayoutDefault,
-            mainView.qwertyView
+            mainView.qwertyView,
+            mainView.gemmaHandwritingKeyboard,
         ).forEach { view ->
             (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                 if (view != mainView.suggestionViewParent) params.height = heightPx
@@ -18094,10 +18132,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             inputBehavior = currentInputBehavior,
             liveConversionEnabled = isLiveConversionEnable == true,
             learningPaused = learningPausedForSession,
+            handwritingActive = handwritingModeActive,
         )
 
         shortcutAdapter?.setActiveShortcutTypes(activeTypes)
         suggestionAdapter?.setActiveShortcutTypes(activeTypes)
+    }
+
+    private fun refreshShortcutAvailability() {
+        val handwritingAvailable =
+            gemmaTranslationManager.imageInputCapability() is GemmaImageCapability.Available
+        val visibleItems = configuredShortcutItems.filter { type ->
+            type != ShortcutType.GEMMA_HANDWRITING || handwritingAvailable
+        }
+        currentShortcutItems = visibleItems
+        shortcutAdapter?.submitList(visibleItems) {
+            updateShortcutActiveStates()
+        }
+        updateShortcutActiveStates()
+        refreshCandidateStripContent()
     }
 
     private fun toggleLiveConversionFromShortcut() {
@@ -18726,6 +18779,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 launchGemmaAudioAction()
             }
 
+            ShortcutType.GEMMA_HANDWRITING -> {
+                toggleGemmaHandwriting()
+            }
+
             ShortcutType.CLIP_BOARD -> {
                 vibrate()
                 _keyboardSymbolViewState.value = SymbolKeyboardState(
@@ -18747,6 +18804,124 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun launchGemmaAudioAction() {
         prepareForGemmaMediaPanel()
         ensureGemmaMediaPanelController().openAudio()
+    }
+
+    private fun toggleGemmaHandwriting() {
+        val controller = ensureGemmaHandwritingController()
+        if (controller.isActive) {
+            controller.close()
+            return
+        }
+        if (gemmaTranslationManager.imageInputCapability() !is GemmaImageCapability.Available) {
+            showToastMessage(getString(R.string.gemma_handwriting_unavailable))
+            return
+        }
+        prepareForGemmaHandwriting()
+        controller.open()
+    }
+
+    private fun prepareForGemmaHandwriting() {
+        gemmaMediaPanelController?.close()
+        stopAllOngoingKeyLongPresses()
+        disableKeyboardLayoutEditMode(updateSurface = false)
+        collapseShortcutEntryExpansion()
+        if (keyboardSymbolViewState.value.isShown) {
+            _keyboardSymbolViewState.value = SymbolKeyboardState()
+        }
+        clearZeroQueryAllState(refresh = false)
+        finishComposingText()
+        _inputString.update { "" }
+        stringInTail.set("")
+        setSuggestionAdapterSuggestionsOnMain(emptyList())
+    }
+
+    private fun ensureGemmaHandwritingController(): GemmaHandwritingController {
+        gemmaHandwritingController?.let { return it }
+        return GemmaHandwritingController(
+            context = this,
+            gemmaManager = gemmaTranslationManager,
+            settingsProvider = {
+                GemmaHandwritingSettings.normalized(
+                    autoRecognitionDelayMs =
+                        appPreference.gemma_handwriting_auto_recognition_delay_preference,
+                    recognitionLanguage =
+                        appPreference.gemma_handwriting_recognition_language_preference,
+                    additionalInstruction =
+                        appPreference.gemma_handwriting_additional_instruction_preference,
+                    penSizeDp = appPreference.gemma_handwriting_pen_size_preference,
+                    penColorArgb = appPreference.gemma_handwriting_pen_color_preference,
+                )
+            },
+            callbacks = object : GemmaHandwritingController.Callbacks {
+                override fun onVisibilityChanged(visible: Boolean) {
+                    setGemmaHandwritingVisibility(visible)
+                }
+
+                override fun currentInputSessionId(): Long = gemmaInputSessionId
+
+                override fun commitRecognizedText(
+                    text: String,
+                    inputSessionId: Long,
+                ): Boolean {
+                    if (inputSessionId != gemmaInputSessionId) return false
+                    val inputConnection = currentInputConnection ?: return false
+                    clearZeroQueryAllState(refresh = false)
+                    finishComposingText()
+                    inputConnection.commitText(text, 1)
+                    refreshCandidateStripContent()
+                    return true
+                }
+
+                override fun deleteText() {
+                    vibrate()
+                    handleDeleteKeyTap(
+                        insertString = inputString.value,
+                        suggestions = suggestionAdapter?.suggestions.orEmpty(),
+                    )
+                }
+
+                override fun moveCursor(keyCode: Int) {
+                    clearZeroQueryAllState(refresh = false)
+                    vibrate()
+                    sendDownUpKeyEvents(keyCode)
+                }
+
+                override fun showMessage(message: String) {
+                    showToastMessage(message)
+                }
+            },
+        ).also { controller ->
+            gemmaHandwritingController = controller
+            mainLayoutBinding?.gemmaHandwritingKeyboard?.let(controller::bindView)
+        }
+    }
+
+    private fun setGemmaHandwritingVisibility(visible: Boolean) {
+        val mainView = mainLayoutBinding ?: return
+        handwritingModeActive = visible
+        (mainView.root as? InkTouchDispatchFrameLayout)
+            ?.suppressTouchEffectMotionEvents = visible
+        if (visible) {
+            restoreFloatingModeAfterHandwriting = isKeyboardFloatingMode == true
+            if (restoreFloatingModeAfterHandwriting) {
+                applyFloatingModeState(false)
+            }
+            mainView.root.isInvisible = false
+            mainView.root.isVisible = true
+            mainView.root.alpha = 1f
+            setKeyboardSizeSwitchKeyboard(mainView)
+            renderCurrentKeyboardStateOnActiveSurface()
+            updateGemmaBackInvokedCallback(registered = true)
+        } else if (restoreFloatingModeAfterHandwriting) {
+            updateGemmaBackInvokedCallback(registered = false)
+            restoreFloatingModeAfterHandwriting = false
+            applyFloatingModeState(true)
+        } else {
+            updateGemmaBackInvokedCallback(registered = false)
+            renderCurrentKeyboardStateOnActiveSurface()
+        }
+        updateShortcutActiveStates()
+        refreshCandidateStripContent()
     }
 
     private fun launchGemmaDeviceImagePicker() {
@@ -18774,6 +18949,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun prepareForGemmaMediaPanel() {
+        gemmaHandwritingController?.close()
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
         collapseShortcutEntryExpansion()
@@ -18861,7 +19037,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (registered) {
             if (isGemmaBackInvokedCallbackRegistered) return
             val callback = gemmaBackInvokedCallback ?: OnBackInvokedCallback {
-                gemmaMediaPanelController?.handleBack()
+                if (gemmaHandwritingController?.isActive == true) {
+                    gemmaHandwritingController?.close()
+                } else {
+                    gemmaMediaPanelController?.handleBack()
+                }
             }.also { gemmaBackInvokedCallback = it }
             dispatcher.registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_OVERLAY,

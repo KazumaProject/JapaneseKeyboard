@@ -5,12 +5,35 @@ import com.kazumaproject.markdownhelperkeyboard.repository.ShortcutRepository
 import com.kazumaproject.markdownhelperkeyboard.short_cut.ShortcutType
 import com.kazumaproject.markdownhelperkeyboard.short_cut.database.ShortcutDao
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.mock
 
 class ShortcutActiveStateResolverTest {
+    @Test
+    fun handwritingShortcutIsActiveWhileSurfaceIsShown() {
+        val active = resolveShortcutActiveTypes(
+            keyboardLayoutEditActive = false,
+            keyboardFloatingActive = false,
+            inputBehavior = ResolvedInputBehavior.COMPOSING_TEXT,
+            liveConversionEnabled = false,
+            handwritingActive = true,
+        )
+
+        assertTrue(active.contains(ShortcutType.GEMMA_HANDWRITING))
+        assertNotNull(ShortcutType.GEMMA_HANDWRITING.activeIconResId)
+        assertNotEquals(
+            ShortcutType.KEYBOARD_LAYOUT_EDIT.iconResId,
+            ShortcutType.GEMMA_HANDWRITING.activeIconResId,
+        )
+        assertNotEquals(
+            ShortcutType.GEMMA_HANDWRITING.iconResId,
+            ShortcutType.GEMMA_HANDWRITING.activeIconResId,
+        )
+    }
+
 
     @Test
     fun directCommitMarksInputBehaviorToggleActiveAndPreservesExistingActiveTypes() {

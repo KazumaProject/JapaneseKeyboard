@@ -182,6 +182,16 @@
         android:importantForAccessibility="yes"
         android:visibility="gone" />
 
+    <com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingKeyboardView
+        android:id="@+id/gemma_handwriting_keyboard"
+        android:layout_width="match_parent"
+        android:layout_height="@dimen/keyboard_height_land"
+        android:layout_gravity="bottom"
+        android:clickable="true"
+        android:focusable="true"
+        android:importantForAccessibility="yes"
+        android:visibility="gone" />
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/candidates_row_view"
         android:layout_width="match_parent"
