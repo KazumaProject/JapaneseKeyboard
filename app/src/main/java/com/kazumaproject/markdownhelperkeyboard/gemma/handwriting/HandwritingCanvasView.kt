@@ -80,7 +80,14 @@ class HandwritingCanvasView @JvmOverloads constructor(
                 parent?.requestDisallowInterceptTouchEvent(true)
                 activePointerId = event.getPointerId(0)
                 activePoints.clear()
-                addPoint(event.x, event.y, force = true)
+                addPoint(
+                    x = event.x,
+                    y = event.y,
+                    eventTimeMillis = event.eventTime,
+                    pressure = event.pressure,
+                    toolType = event.getToolType(0),
+                    force = true,
+                )
                 onStrokeStarted?.invoke()
                 invalidate()
                 return true
@@ -91,18 +98,34 @@ class HandwritingCanvasView @JvmOverloads constructor(
                 if (pointerIndex < 0) return true
                 for (historyIndex in 0 until event.historySize) {
                     addPoint(
-                        event.getHistoricalX(pointerIndex, historyIndex),
-                        event.getHistoricalY(pointerIndex, historyIndex),
+                        x = event.getHistoricalX(pointerIndex, historyIndex),
+                        y = event.getHistoricalY(pointerIndex, historyIndex),
+                        eventTimeMillis = event.getHistoricalEventTime(historyIndex),
+                        pressure = event.getHistoricalPressure(pointerIndex, historyIndex),
+                        toolType = event.getToolType(pointerIndex),
                     )
                 }
-                addPoint(event.getX(pointerIndex), event.getY(pointerIndex))
+                addPoint(
+                    x = event.getX(pointerIndex),
+                    y = event.getY(pointerIndex),
+                    eventTimeMillis = event.eventTime,
+                    pressure = event.getPressure(pointerIndex),
+                    toolType = event.getToolType(pointerIndex),
+                )
                 invalidate()
                 return true
             }
 
             MotionEvent.ACTION_UP -> {
                 val pointerIndex = event.findPointerIndex(activePointerId).takeIf { it >= 0 } ?: 0
-                addPoint(event.getX(pointerIndex), event.getY(pointerIndex), force = true)
+                addPoint(
+                    x = event.getX(pointerIndex),
+                    y = event.getY(pointerIndex),
+                    eventTimeMillis = event.eventTime,
+                    pressure = event.getPressure(pointerIndex),
+                    toolType = event.getToolType(pointerIndex),
+                    force = true,
+                )
                 val committed = store.addStroke(activePoints.toList())
                 activePoints.clear()
                 activePointerId = MotionEvent.INVALID_POINTER_ID
@@ -131,19 +154,33 @@ class HandwritingCanvasView @JvmOverloads constructor(
         return true
     }
 
-    private fun addPoint(x: Float, y: Float, force: Boolean = false) {
+    private fun addPoint(
+        x: Float,
+        y: Float,
+        eventTimeMillis: Long,
+        pressure: Float,
+        toolType: Int,
+        force: Boolean = false,
+    ) {
+        val inkUnitPx = height.toFloat().coerceAtLeast(1f)
         val point = HandwritingPoint(
-            x = (x / width.toFloat()).coerceIn(0f, 1f),
-            y = (y / height.toFloat()).coerceIn(0f, 1f),
+            x = x.coerceIn(0f, width.toFloat()) / inkUnitPx,
+            y = y.coerceIn(0f, height.toFloat()) / inkUnitPx,
+            eventTimeMillis = eventTimeMillis,
+            pressure = pressure.coerceAtLeast(0f),
+            toolType = toolType,
         )
         val previous = activePoints.lastOrNull()
-        val minimumDistance = 0.0025f
+        val minimumDistance =
+            resources.displayMetrics.density * MINIMUM_POINT_DISTANCE_DP / inkUnitPx
         if (
             force ||
             previous == null ||
             hypot(point.x - previous.x, point.y - previous.y) >= minimumDistance
         ) {
-            if (previous != point) activePoints += point
+            if (previous == null || previous.x != point.x || previous.y != point.y) {
+                activePoints += point
+            }
         }
     }
 
@@ -152,8 +189,12 @@ class HandwritingCanvasView @JvmOverloads constructor(
             canvas = canvas,
             paint = strokePaint,
             points = points,
-            mapX = { normalized -> normalized * width },
-            mapY = { normalized -> normalized * height },
+            mapX = { inkX -> inkX * height },
+            mapY = { inkY -> inkY * height },
         )
+    }
+
+    private companion object {
+        const val MINIMUM_POINT_DISTANCE_DP = 0.75f
     }
 }

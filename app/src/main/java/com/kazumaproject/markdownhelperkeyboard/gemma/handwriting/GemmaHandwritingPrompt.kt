@@ -43,10 +43,20 @@ object GemmaHandwritingPrompt {
         )
     }
 
-    fun parseCandidates(raw: String): List<String> {
+    fun parseCandidates(
+        raw: String,
+        language: GemmaHandwritingLanguage = GemmaHandwritingLanguage.AUTO,
+    ): List<String> {
         return GemmaPromptBuilder.parseCandidates(raw)
             .asSequence()
             .map { candidate -> candidate.trim().trim('"', '\'', '`') }
+            .map { candidate ->
+                if (language == GemmaHandwritingLanguage.JAPANESE) {
+                    candidate.replace(SPACE_BETWEEN_JAPANESE_CHARACTERS, "")
+                } else {
+                    candidate
+                }
+            }
             .filter { candidate -> candidate.isNotBlank() }
             .distinct()
             .take(5)
@@ -87,4 +97,9 @@ object GemmaHandwritingPrompt {
             Do not return explanations, labels, quotes, markdown, or text outside those tags.
         """.trimIndent()
     }
+
+    private val SPACE_BETWEEN_JAPANESE_CHARACTERS = Regex(
+        "(?<=[\\u3040-\\u30FF\\u3400-\\u9FFF\\uF900-\\uFAFF]) +" +
+            "(?=[\\u3040-\\u30FF\\u3400-\\u9FFF\\uF900-\\uFAFF])",
+    )
 }
