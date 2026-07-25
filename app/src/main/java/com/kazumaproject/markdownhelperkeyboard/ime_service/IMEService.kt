@@ -5,6 +5,7 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -88,6 +89,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -720,6 +722,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
+    private lateinit var runtimeInputSharedPreferences: SharedPreferences
+    private var runtimeInputPreferenceListenerRegistered = false
+    private val runtimeInputPreferenceKeys = setOf(
+        AppPreference.FLICK_SENSITIVITY_KEY,
+        AppPreference.LONG_PRESS_TIMEOUT_KEY,
+        AppPreference.VIBRATION_KEY,
+        AppPreference.VIBRATION_TIMING_KEY,
+        AppPreference.KEY_SOUND_KEY,
+        AppPreference.KEY_SOUND_VOLUME_PERCENT_KEY
+    )
+    private val runtimeInputPreferenceListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key != null && key in runtimeInputPreferenceKeys) {
+                runOnMainThread {
+                    syncRuntimeInputPreferences()
+                }
+            }
+        }
 
     private fun assertMainThread(functionName: String) {
         check(Looper.myLooper() == Looper.getMainLooper()) {
@@ -1922,6 +1942,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onCreate")
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
+        runtimeInputSharedPreferences =
+            PreferenceManager.getDefaultSharedPreferences(applicationContext)
+        runtimeInputSharedPreferences.registerOnSharedPreferenceChangeListener(
+            runtimeInputPreferenceListener
+        )
+        runtimeInputPreferenceListenerRegistered = true
+        syncRuntimeInputPreferences()
 
         if (AppVariantConfig.hasGemma) {
             scope.launch {
@@ -2204,6 +2231,46 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ngramRuleScorerManager.setEnabled(
             appPreference.custom_ngram_dictionary_enable_preference,
         )
+    }
+
+    /**
+     * Keeps settings that users expect to take effect immediately in sync with every
+     * already-inflated keyboard surface. The same AppPreference keys used by the settings
+     * screen are read here; no second preference store is involved.
+     */
+    private fun syncRuntimeInputPreferences() {
+        assertMainThread("syncRuntimeInputPreferences")
+
+        val sensitivity = (appPreference.flick_sensitivity_preference ?: 100).coerceIn(1, 200)
+        val longPressTimeout =
+            (appPreference.long_press_timeout_preference ?: 300).coerceIn(100, 2000)
+
+        flickSensitivityPreferenceValue = sensitivity
+        longPressTimeoutPreferenceValue = longPressTimeout
+        isVibration = appPreference.vibration_preference ?: true
+        vibrationTimingStr = appPreference.vibration_timing_preference ?: "both"
+        isKeySoundEnabled = appPreference.key_sound_preference ?: false
+        keySoundVolumePercent =
+            (appPreference.key_sound_volume_percent_preference ?: 0).coerceIn(0, 100)
+
+        mainLayoutBinding?.apply {
+            keyboardView.setFlickSensitivityValue(sensitivity)
+            keyboardView.setLongPressTimeout(longPressTimeout.toLong())
+            tabletView.setFlickSensitivityValue(sensitivity)
+            tabletView.setLongPressTimeout(longPressTimeout.toLong())
+            qwertyView.setFlickSensitivityValue(sensitivity)
+            qwertyView.setLongPressTimeout(longPressTimeout.toLong())
+            customLayoutDefault.setFlickSensitivityValue(sensitivity)
+            customLayoutDefault.setLongPressTimeout(longPressTimeout.toLong())
+        }
+        floatingKeyboardBinding?.apply {
+            keyboardViewFloating.setFlickSensitivityValue(sensitivity)
+            keyboardViewFloating.setLongPressTimeout(longPressTimeout.toLong())
+            qwertyViewFloating.setFlickSensitivityValue(sensitivity)
+            qwertyViewFloating.setLongPressTimeout(longPressTimeout.toLong())
+            customLayoutFloating.setFlickSensitivityValue(sensitivity)
+            customLayoutFloating.setLongPressTimeout(longPressTimeout.toLong())
+        }
     }
 
     private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
@@ -3930,6 +3997,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearZeroQueryAllState(refresh = false)
         // The input view can restart without onStartInput() after returning from settings.
         // Re-read preferences that may change while the existing input session is retained.
+        syncRuntimeInputPreferences()
         syncCustomKeyboardSuggestionPreference()
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
@@ -4322,6 +4390,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
+        if (runtimeInputPreferenceListenerRegistered) {
+            runtimeInputSharedPreferences.unregisterOnSharedPreferenceChangeListener(
+                runtimeInputPreferenceListener
+            )
+            runtimeInputPreferenceListenerRegistered = false
+        }
         updateGemmaBackInvokedCallback(registered = false)
         gemmaMediaPanelController?.destroy()
         gemmaMediaPanelController = null

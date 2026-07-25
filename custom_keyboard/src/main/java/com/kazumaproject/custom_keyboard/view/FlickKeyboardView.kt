@@ -240,7 +240,12 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     fun setFlickSensitivityValue(sensitivity: Int) {
-        flickSensitivity = sensitivity.coerceIn(1, 200)
+        val normalized = sensitivity.coerceIn(1, 200)
+        if (flickSensitivity == normalized) return
+        flickSensitivity = normalized
+        // Controllers retain the threshold passed to their constructors, so an existing
+        // Sumire/custom keyboard must be rebuilt when this runtime setting changes.
+        currentLayout?.let { setKeyboard(it) }
     }
 
     private fun resolvedFlickThresholdPx(): Int {
