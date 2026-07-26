@@ -26,6 +26,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import java.io.FileOutputStream
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -45,6 +46,158 @@ class FastInputMatrixInstrumentedTest {
 
     private val uiAutomation: UiAutomation
         get() = instrumentation.uiAutomation
+
+    @Test
+    fun qwertyOverlappingTwoFingerInputOnPhysicalDevice() {
+        runPhysicalDeviceSession("qwerty-multitouch") { session ->
+            val testCase = TestCase(
+                keyboard = TestKeyboard.QWERTY,
+                columns = 1,
+                candidateTabVisible = false,
+                toolbarVisible = false,
+                toolbarIntegrated = false,
+                orientation = TestOrientation.PORTRAIT
+            )
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+                applyCasePreferences(session.preferences, testCase)
+
+                for (glideEnabled in listOf(false, true)) {
+                    check(
+                        session.preferences.edit()
+                            .putBoolean("qwerty_glide_input_preference", glideEnabled)
+                            .commit()
+                    )
+                    reloadIme(session)
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    assertDeviceReady(session.context, session.targetIme, scenario)
+
+                    for (olderPointerLiftsFirst in listOf(true, false)) {
+                        prepareEmptyEditor(scenario)
+                        val geometry = awaitStableGeometry(
+                            keyboard = TestKeyboard.QWERTY,
+                            requireCandidateContent = false
+                        )
+                        val injected = injectOverlappingTapPair(
+                            point = geometry.first.center,
+                            olderPointerLiftsFirst = olderPointerLiftsFirst
+                        )
+                        val actual = awaitTextSettled(scenario)
+                        assertTrue(
+                            "Two-pointer injection failed " +
+                                "(glide=$glideEnabled, olderFirst=$olderPointerLiftsFirst)",
+                            injected
+                        )
+                        assertEquals(
+                            "Unexpected QWERTY result " +
+                                "(glide=$glideEnabled, olderFirst=$olderPointerLiftsFirst)",
+                            "yy",
+                            actual
+                        )
+                    }
+                }
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
+
+    @Test
+    fun qwertyVariationPopupTwoFingerInputOnPhysicalDevice() {
+        runPhysicalDeviceSession("qwerty-variation-popup-multitouch") { session ->
+            val testCase = TestCase(
+                keyboard = TestKeyboard.QWERTY,
+                columns = 1,
+                candidateTabVisible = false,
+                toolbarVisible = false,
+                toolbarIntegrated = false,
+                orientation = TestOrientation.PORTRAIT
+            )
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+                applyCasePreferences(session.preferences, testCase)
+                check(
+                    session.preferences.edit()
+                        .putInt("long_press_timeout_preference", 100)
+                        .putInt("qwerty_variation_popup_size_scale_percent_preference", 100)
+                        .putBoolean("qwerty_show_popup_window_preference", true)
+                        .commit()
+                )
+
+                for (glideEnabled in listOf(false, true)) {
+                    check(
+                        session.preferences.edit()
+                            .putBoolean("qwerty_glide_input_preference", glideEnabled)
+                            .commit()
+                    )
+                    reloadIme(session)
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    assertDeviceReady(session.context, session.targetIme, scenario)
+
+                    for (longPressedPointerLiftsFirst in listOf(true, false)) {
+                        prepareEmptyEditor(scenario)
+                        val geometry = awaitStableGeometry(
+                            keyboard = TestKeyboard.QWERTY,
+                            requireCandidateContent = false
+                        )
+                        val injected = injectLongPressThenOverlappingTap(
+                            point = geometry.first.center,
+                            longPressedPointerLiftsFirst = longPressedPointerLiftsFirst
+                        )
+                        val actual = awaitTextSettled(scenario)
+                        assertTrue(
+                            "Variation popup pointer injection failed " +
+                                "(glide=$glideEnabled, " +
+                                "longPressedFirst=$longPressedPointerLiftsFirst)",
+                            injected
+                        )
+                        assertEquals(
+                            "The selected variation and second tap must both be committed " +
+                                "(glide=$glideEnabled, " +
+                                "longPressedFirst=$longPressedPointerLiftsFirst)",
+                            "6y",
+                            actual
+                        )
+                    }
+
+                    prepareEmptyEditor(scenario)
+                    val geometry = awaitStableGeometry(
+                        keyboard = TestKeyboard.QWERTY,
+                        requireCandidateContent = false
+                    )
+                    val secondVariationPoint = PointF(
+                        geometry.prime.center.x + 50f,
+                        geometry.prime.top - 75f
+                    )
+                    val injected = injectSecondPointerLongPressAndMove(
+                        firstPoint = geometry.first.center,
+                        longPressPoint = geometry.prime.center,
+                        variationPoint = secondVariationPoint
+                    )
+                    val actual = awaitTextSettled(scenario)
+                    assertTrue(
+                        "Second-pointer variation selection injection failed " +
+                            "(glide=$glideEnabled)",
+                        injected
+                    )
+                    assertEquals(
+                        "Variation selection must follow the long-pressed pointer " +
+                            "(glide=$glideEnabled)",
+                        "yβ",
+                        actual
+                    )
+                }
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
 
     @Test
     fun rapidInputFullMatrixOnPhysicalDevice() {
@@ -927,6 +1080,202 @@ class FastInputMatrixInstrumentedTest {
         return downInjected && upInjected
     }
 
+    private fun injectOverlappingTapPair(
+        point: PointF,
+        olderPointerLiftsFirst: Boolean
+    ): Boolean {
+        val downTime = SystemClock.uptimeMillis()
+        var allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = downTime,
+            actionMasked = MotionEvent.ACTION_DOWN,
+            actionIndex = 0,
+            PointerSpec(id = 0, point = point)
+        )
+        SystemClock.sleep(TAP_HOLD_MS)
+
+        allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_POINTER_DOWN,
+            actionIndex = 1,
+            PointerSpec(id = 0, point = point),
+            PointerSpec(id = 1, point = point)
+        ) && allInjected
+        SystemClock.sleep(TAP_HOLD_MS)
+
+        val liftedIndex = if (olderPointerLiftsFirst) 0 else 1
+        allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_POINTER_UP,
+            actionIndex = liftedIndex,
+            PointerSpec(id = 0, point = point),
+            PointerSpec(id = 1, point = point)
+        ) && allInjected
+        SystemClock.sleep(TAP_HOLD_MS)
+
+        val remainingPointerId = if (olderPointerLiftsFirst) 1 else 0
+        allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_UP,
+            actionIndex = 0,
+            PointerSpec(id = remainingPointerId, point = point)
+        ) && allInjected
+        SystemClock.sleep(TAP_GAP_MS)
+        return allInjected
+    }
+
+    private fun injectLongPressThenOverlappingTap(
+        point: PointF,
+        longPressedPointerLiftsFirst: Boolean
+    ): Boolean {
+        val downTime = SystemClock.uptimeMillis()
+        var allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = downTime,
+            actionMasked = MotionEvent.ACTION_DOWN,
+            actionIndex = 0,
+            PointerSpec(id = 0, point = point)
+        )
+        SystemClock.sleep(QWERTY_LONG_PRESS_HOLD_MS)
+
+        allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_POINTER_DOWN,
+            actionIndex = 1,
+            PointerSpec(id = 0, point = point),
+            PointerSpec(id = 1, point = point)
+        ) && allInjected
+        SystemClock.sleep(TAP_HOLD_MS)
+
+        val liftedIndex = if (longPressedPointerLiftsFirst) 0 else 1
+        allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_POINTER_UP,
+            actionIndex = liftedIndex,
+            PointerSpec(id = 0, point = point),
+            PointerSpec(id = 1, point = point)
+        ) && allInjected
+        SystemClock.sleep(TAP_HOLD_MS)
+
+        val remainingPointerId = if (longPressedPointerLiftsFirst) 1 else 0
+        allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_UP,
+            actionIndex = 0,
+            PointerSpec(id = remainingPointerId, point = point)
+        ) && allInjected
+        SystemClock.sleep(TAP_GAP_MS)
+        return allInjected
+    }
+
+    private fun injectSecondPointerLongPressAndMove(
+        firstPoint: PointF,
+        longPressPoint: PointF,
+        variationPoint: PointF
+    ): Boolean {
+        val downTime = SystemClock.uptimeMillis()
+        var allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = downTime,
+            actionMasked = MotionEvent.ACTION_DOWN,
+            actionIndex = 0,
+            PointerSpec(id = 0, point = firstPoint)
+        )
+        SystemClock.sleep(TAP_HOLD_MS)
+
+        allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_POINTER_DOWN,
+            actionIndex = 1,
+            PointerSpec(id = 0, point = firstPoint),
+            PointerSpec(id = 1, point = longPressPoint)
+        ) && allInjected
+        SystemClock.sleep(QWERTY_LONG_PRESS_HOLD_MS)
+
+        allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_MOVE,
+            actionIndex = 0,
+            PointerSpec(id = 0, point = firstPoint),
+            PointerSpec(id = 1, point = variationPoint)
+        ) && allInjected
+        SystemClock.sleep(TAP_HOLD_MS)
+
+        allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_POINTER_UP,
+            actionIndex = 1,
+            PointerSpec(id = 0, point = firstPoint),
+            PointerSpec(id = 1, point = variationPoint)
+        ) && allInjected
+        SystemClock.sleep(TAP_HOLD_MS)
+
+        allInjected = injectPointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            actionMasked = MotionEvent.ACTION_UP,
+            actionIndex = 0,
+            PointerSpec(id = 0, point = firstPoint)
+        ) && allInjected
+        SystemClock.sleep(TAP_GAP_MS)
+        return allInjected
+    }
+
+    private fun injectPointerEvent(
+        downTime: Long,
+        eventTime: Long,
+        actionMasked: Int,
+        actionIndex: Int,
+        vararg pointers: PointerSpec
+    ): Boolean {
+        val properties = Array(pointers.size) { index ->
+            MotionEvent.PointerProperties().apply {
+                id = pointers[index].id
+                toolType = MotionEvent.TOOL_TYPE_FINGER
+            }
+        }
+        val coordinates = Array(pointers.size) { index ->
+            MotionEvent.PointerCoords().apply {
+                x = pointers[index].point.x
+                y = pointers[index].point.y
+                pressure = 1f
+                size = 1f
+            }
+        }
+        val action = actionMasked or
+            (actionIndex shl MotionEvent.ACTION_POINTER_INDEX_SHIFT)
+        val event = MotionEvent.obtain(
+            downTime,
+            eventTime,
+            action,
+            pointers.size,
+            properties,
+            coordinates,
+            0,
+            0,
+            1f,
+            1f,
+            0,
+            0,
+            InputDevice.SOURCE_TOUCHSCREEN,
+            0
+        )
+        return try {
+            uiAutomation.injectInputEvent(event, true)
+        } finally {
+            event.recycle()
+        }
+    }
+
     private fun singlePointerEvent(
         downTime: Long,
         eventTime: Long,
@@ -1418,6 +1767,11 @@ class FastInputMatrixInstrumentedTest {
         }
     }
 
+    private data class PointerSpec(
+        val id: Int,
+        val point: PointF
+    )
+
     private enum class RateCategory {
         EXPECTED,
         YA_NA,
@@ -1460,6 +1814,7 @@ class FastInputMatrixInstrumentedTest {
         private const val DEFAULT_RATE_TRIALS = 10
         private const val TAP_HOLD_MS = 18L
         private const val TAP_GAP_MS = 12L
+        private const val QWERTY_LONG_PRESS_HOLD_MS = 350L
         private const val POLL_MS = 32L
         private const val GEOMETRY_SAMPLE_MS = 32L
         private const val GEOMETRY_STABLE_SAMPLES = 3

@@ -13,6 +13,7 @@ import android.graphics.Typeface
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
+import android.os.Build
 import android.os.SystemClock
 import android.text.Spannable
 import android.text.SpannableString
@@ -121,8 +122,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     /** Touch jobs are also recreated after PopupWindow detach / reattach. */
     private var touchScope: CoroutineScope? = null
 
-    /** If a second finger cancels the first, we suppress that first pointer until it lifts. */
-    private var suppressedPointerId: Int? = null
+    /**
+     * Pointers whose gestures have already been finalized by a newer pointer.
+     *
+     * Android keeps older pointers in subsequent MOVE events until they physically lift. Keep
+     * their IDs here so a finalized pointer cannot start pressing another key again.
+     */
+    private val suppressedPointerIds = mutableSetOf<Int>()
 
     private var keyPreviewPopup: PopupWindow? = null
     private val hitRect = Rect()
@@ -1452,37 +1458,62 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 if (event.pointerCount > 1 || pointerButtonMap.isNotEmpty()) {
                     clearAllPressed()
                 }
-                suppressedPointerId = null
+                suppressedPointerIds.clear()
                 handlePointerDown(event, pointerIndex = 0)
             }
 
             MotionEvent.ACTION_POINTER_DOWN -> {
-                if (variationPopup?.isShowing == true) return true
-                if (pointerButtonMap.size == 1) {
-                    val firstPointerId = pointerButtonMap.keyAt(0)
-                    val firstView = pointerButtonMap.valueAt(0)
-                    firstView?.let { view ->
-                        view.isPressed = false
-                        dismissKeyPreview()
-                        notifyQwertyTouchCanceledForPointer(
-                            firstPointerId,
-                            KeyTouchCancelReason.PointerInterrupted
-                        )
-                        cancelLongPressForPointer(firstPointerId)
-                        pointerStartCoords.remove(firstPointerId)
-                        flickLockedPointers.remove(firstPointerId)
+                val newPointerIndex = event.actionIndex
+                val newPointerId = event.getPointerId(newPointerIndex)
 
-                        val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
-                        if (firstPointerId == 0 && qwertyKey == QWERTYKey.QWERTYKeySwitchDefaultLayout) {
-                            return true
-                        }
-                        logVariationIfNeeded(qwertyKey)
+                if (variationPopup?.isShowing == true) {
+                    val variationPointerId = longPressedPointerId
+                    if (variationPointerId != null &&
+                        finishVariationGesture(
+                            pointerId = variationPointerId,
+                            commitSelection = true
+                        )
+                    ) {
+                        suppressedPointerIds.add(variationPointerId)
+                    } else {
+                        dismissVariationPopup()
                     }
-                    suppressedPointerId = firstPointerId
-                    pointerButtonMap.remove(firstPointerId)
                 }
-                val newIndex = event.actionIndex
-                handlePointerDown(event, pointerIndex = newIndex)
+
+                val existingPointerIds = buildList {
+                    for (index in 0 until event.pointerCount) {
+                        if (index != newPointerIndex) {
+                            add(event.getPointerId(index))
+                        }
+                    }
+                }
+
+                // Keep the existing keyboard-switch gesture in control of the stream. Starting a
+                // second key while this gesture can replace the keyboard view is unsafe.
+                val hasActiveKeyboardSwitch = existingPointerIds.any { pointerId ->
+                    val view = pointerButtonMap[pointerId] ?: return@any false
+                    qwertyButtonMap[view] == QWERTYKey.QWERTYKeySwitchDefaultLayout
+                }
+                if (hasActiveKeyboardSwitch) {
+                    suppressedPointerIds.add(newPointerId)
+                    return true
+                }
+
+                existingPointerIds.forEach { pointerId ->
+                    if (!suppressedPointerIds.contains(pointerId)) {
+                        val pointerIndex = event.findPointerIndex(pointerId)
+                        if (pointerIndex >= 0) {
+                            finishTrackedPointer(
+                                pointerId = pointerId,
+                                x = event.getX(pointerIndex),
+                                y = event.getY(pointerIndex)
+                            )
+                        }
+                    }
+                    suppressedPointerIds.add(pointerId)
+                }
+
+                handlePointerDown(event, pointerIndex = newPointerIndex)
             }
 
             MotionEvent.ACTION_MOVE -> {
@@ -1491,8 +1522,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                     if (index != -1) {
                         val location = IntArray(2)
                         variationPopupView?.getLocationOnScreen(location)
-                        val touchX = event.rawX
-                        val touchY = event.rawY
+                        val touchX = event.displayX(index)
+                        val touchY = event.displayY(index)
                         val popupX = touchX - location[0]
                         val popupY = touchY - location[1]
                         variationPopupView?.updateSelection(popupX, popupY)
@@ -1500,7 +1531,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 } else {
                     for (i in 0 until event.pointerCount) {
                         val pid = event.getPointerId(i)
-                        if (pid == suppressedPointerId || pid == lockedPointerId) continue
+                        if (suppressedPointerIds.contains(pid) || pid == lockedPointerId) continue
                         handlePointerMove(event, pointerIndex = i, pointerId = pid)
                     }
                 }
@@ -1511,150 +1542,61 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 val pointerId = event.getPointerId(pointerIndex)
 
                 if (variationPopup?.isShowing == true && pointerId == longPressedPointerId) {
-                    if (variationPopup?.isShowing == true) {
-                        variationPopupView?.getSelectedChar()?.let { selectedChar ->
-                            val qwertyKey =
-                                qwertyButtonMap[pointerButtonMap[longPressedPointerId!!]]
-                                    ?: QWERTYKey.QWERTYKeyNotSelect
-                            qwertyKeyListener?.onReleasedQWERTYKey(
-                                qwertyKey = qwertyKey, tap = selectedChar, variations = null
-                            )
-                        }
-                        disableShift()
-                        variationPopup?.dismiss()
-                        variationPopup = null
-                        variationPopupView = null
-                        longPressedPointerId = null
-                    }
-                    clearAllPressed()
+                    finishVariationGesture(pointerId = pointerId, commitSelection = true)
                     return true
                 }
 
-                if (suppressedPointerId == pointerId) {
-                    suppressedPointerId = null
-                }
-                if (!flickLockedPointers.contains(pointerId)) {
-                    tryHandleFlickAt(
-                        pointerId = pointerId,
-                        x = event.getX(pointerIndex),
-                        y = event.getY(pointerIndex)
-                    )
-                }
-                pointerStartCoords.remove(pointerId)
-
-                if (!flickLockedPointers.contains(pointerId)) {
-                    val view = pointerButtonMap[pointerId]
-                    view?.let {
-                        it.isPressed = false
-                        dismissKeyPreview()
-                        cancelLongPressForPointer(pointerId)
-                        val wasShift = (it.id == binding.keyShift.id)
-                        if (wasShift && shiftDoubleTapped) {
-                            shiftDoubleTapped = false
-                        } else {
-                            val qwertyKey = qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                            when (qwertyKey) {
-                                QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey, QWERTYKey.QWERTYKeyEmoji -> {
-                                    qwertyKeyListener?.onReleasedQWERTYKey(qwertyKey, null, null)
-                                }
-
-                                else -> {
-                                    logVariationIfNeeded(qwertyKey)
-                                    setToggleShiftState(view)
-                                }
-                            }
-                        }
-                    }
-                }
-                pointerButtonMap.remove(pointerId)
+                finishTrackedPointer(
+                    pointerId = pointerId,
+                    x = event.getX(pointerIndex),
+                    y = event.getY(pointerIndex)
+                )
             }
 
             MotionEvent.ACTION_UP -> {
                 val liftedId = event.getPointerId(event.actionIndex)
-                if (variationPopup?.isShowing == true) {
-                    variationPopupView?.getSelectedChar()?.let { selectedChar ->
-                        val qwertyKey = qwertyButtonMap[pointerButtonMap[longPressedPointerId!!]]
-                            ?: QWERTYKey.QWERTYKeyNotSelect
-                        qwertyKeyListener?.onReleasedQWERTYKey(
-                            qwertyKey = qwertyKey, tap = selectedChar, variations = null
-                        )
-                    }
-                    disableShift()
-                    variationPopup?.dismiss()
-                    variationPopup = null
-                    variationPopupView = null
-                    longPressedPointerId = null
-                } else {
-                    if (!flickLockedPointers.contains(liftedId)) {
-                        tryHandleFlickAt(
+                val variationCommitted =
+                    variationPopup?.isShowing == true &&
+                        liftedId == longPressedPointerId &&
+                        finishVariationGesture(
                             pointerId = liftedId,
-                            x = event.getX(event.actionIndex),
-                            y = event.getY(event.actionIndex)
+                            commitSelection = true
                         )
-                    }
-                    if (flickLockedPointers.contains(liftedId)) {
-                        clearAllPressed()
-                        lastNonGlideKeyUpTime = SystemClock.uptimeMillis()
-                        return true
-                    }
-                    val liftedId2 = event.getPointerId(event.actionIndex)
-                    if (suppressedPointerId == liftedId2) {
-                        suppressedPointerId = null
-                    }
-                    if (pointerButtonMap.size == 1) {
-                        val view = pointerButtonMap.valueAt(0)
-                        view?.let {
-                            it.isPressed = false
-                            dismissKeyPreview()
-                            cancelLongPressForPointer(liftedId2)
-                            val wasShift = (it.id == binding.keyShift.id)
-                            if (wasShift && shiftDoubleTapped) {
-                                shiftDoubleTapped = false
-                            } else {
-                                val qwertyMode = qwertyMode.value
-                                if (qwertyMode != QWERTYMode.Default && wasShift) {
-                                    if (qwertyMode == QWERTYMode.Number) {
-                                        _qwertyMode.update { QWERTYMode.Symbol }
-                                    } else {
-                                        _qwertyMode.update { QWERTYMode.Number }
-                                    }
-                                } else {
-                                    val qwertyKey =
-                                        qwertyButtonMap[it] ?: QWERTYKey.QWERTYKeyNotSelect
-                                    when (qwertyKey) {
-                                        QWERTYKey.QWERTYKeyCursorLeft, QWERTYKey.QWERTYKeyCursorRight, QWERTYKey.QWERTYKeySwitchRomajiEnglish, QWERTYKey.QWERTYKeySwitchNumberKey, QWERTYKey.QWERTYKeyEmoji -> {
-                                            qwertyKeyListener?.onReleasedQWERTYKey(
-                                                qwertyKey,
-                                                null,
-                                                null
-                                            )
-                                        }
-
-                                        else -> {
-                                            logVariationIfNeeded(qwertyKey)
-                                            setToggleShiftState(view)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                if (!variationCommitted) {
+                    finishTrackedPointer(
+                        pointerId = liftedId,
+                        x = event.getX(event.actionIndex),
+                        y = event.getY(event.actionIndex)
+                    )
                 }
-                clearAllPressed()
+                clearAllPressed(clearSuppressedPointers = false)
                 lastNonGlideKeyUpTime = SystemClock.uptimeMillis()
             }
 
             MotionEvent.ACTION_CANCEL -> {
                 notifyQwertyTouchCanceledForActivePointers(KeyTouchCancelReason.ActionCancel)
-                variationPopup?.dismiss()
-                variationPopup = null
-                variationPopupView = null
-                longPressedPointerId = null
+                dismissVariationPopup()
                 clearAllPressed()
                 cancelQwertyGlideCandidate(notify = true)
             }
         }
         return true
+    }
+
+    private fun MotionEvent.displayX(pointerIndex: Int): Float {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            getRawX(pointerIndex)
+        } else {
+            getX(pointerIndex) + rawX - x
+        }
+    }
+
+    private fun MotionEvent.displayY(pointerIndex: Int): Float {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            getRawY(pointerIndex)
+        } else {
+            getY(pointerIndex) + rawY - y
+        }
     }
 
     private fun handleQwertyGlideTouchEvent(event: MotionEvent): Boolean {
@@ -1668,8 +1610,18 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_POINTER_DOWN -> {
-                if (glideCandidatePointerId != null) {
-                    cancelQwertyGlideCandidate(notify = glideStarted)
+                val previousGlidePointerId = glideCandidatePointerId
+                if (previousGlidePointerId != null) {
+                    if (glideStarted) {
+                        qwertyGlideInputListener?.onQwertyGlideCancelled()
+                        clearQwertyGlideState(clearTrail = true)
+                        clearAllPressed(clearSuppressedPointers = false)
+                        suppressedPointerIds.add(previousGlidePointerId)
+                    } else {
+                        // A pending Glide is still an ordinary key gesture. Preserve its pressed
+                        // state so ACTION_POINTER_DOWN can finalize it as a tap or flick.
+                        clearQwertyGlideState(clearTrail = true)
+                    }
                 }
                 return false
             }
@@ -2086,7 +2038,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
 
     private fun handlePointerDown(event: MotionEvent, pointerIndex: Int) {
         val pid = event.getPointerId(pointerIndex)
-        if (pid == suppressedPointerId) return
+        if (suppressedPointerIds.contains(pid)) return
 
         val x = event.getX(pointerIndex)
         val y = event.getY(pointerIndex)
@@ -2129,6 +2081,127 @@ class QWERTYKeyboardView @JvmOverloads constructor(
                 showKeyPreview(it)
             }
             scheduleLongPressForPointer(pid, it)
+        }
+    }
+
+    /**
+     * Finalizes one pointer through the same path regardless of which MotionEvent ended it.
+     *
+     * A newer pointer can end the previous key gesture before Android sends that pointer's
+     * physical UP. Gesture classification must happen before any coordinates or flick locks are
+     * removed, otherwise the previous flick is converted into (or followed by) a base tap.
+     */
+    private fun finishTrackedPointer(
+        pointerId: Int,
+        x: Float,
+        y: Float
+    ) {
+        if (suppressedPointerIds.remove(pointerId)) {
+            pointerButtonMap.remove(pointerId)
+            pointerStartCoords.remove(pointerId)
+            flickLockedPointers.remove(pointerId)
+            cancelLongPressForPointer(pointerId)
+            return
+        }
+
+        if (!flickLockedPointers.contains(pointerId)) {
+            tryHandleFlickAt(pointerId = pointerId, x = x, y = y)
+        }
+        val wasFlick = flickLockedPointers.contains(pointerId)
+        pointerStartCoords.remove(pointerId)
+
+        if (!wasFlick) {
+            pointerButtonMap[pointerId]?.let { view ->
+                releaseTrackedView(pointerId, view)
+            }
+        }
+
+        pointerButtonMap.remove(pointerId)
+        flickLockedPointers.remove(pointerId)
+        if (!wasFlick) {
+            lastNonGlideKeyUpTime = SystemClock.uptimeMillis()
+        }
+    }
+
+    /**
+     * Commits or cancels the variation popup owned by [pointerId] without resetting other
+     * pointers. A second pointer can therefore take over as a new key gesture while the physical
+     * UP for this already-finished pointer is suppressed.
+     */
+    private fun finishVariationGesture(
+        pointerId: Int,
+        commitSelection: Boolean
+    ): Boolean {
+        if (longPressedPointerId != pointerId) return false
+
+        val view = pointerButtonMap[pointerId]
+        val qwertyKey = view?.let(qwertyButtonMap::get)
+            ?: QWERTYKey.QWERTYKeyNotSelect
+        val selectedChar =
+            if (commitSelection) variationPopupView?.getSelectedChar() else null
+
+        view?.isPressed = false
+        cancelLongPressForPointer(pointerId)
+        pointerButtonMap.remove(pointerId)
+        pointerStartCoords.remove(pointerId)
+        flickLockedPointers.remove(pointerId)
+        if (lockedPointerId == pointerId) {
+            lockedPointerId = null
+        }
+        dismissKeyPreview()
+        dismissVariationPopup()
+
+        if (commitSelection) {
+            selectedChar?.let { char ->
+                qwertyKeyListener?.onReleasedQWERTYKey(
+                    qwertyKey = qwertyKey,
+                    tap = char,
+                    variations = null
+                )
+            }
+            disableShift()
+            lastNonGlideKeyUpTime = SystemClock.uptimeMillis()
+        }
+        return true
+    }
+
+    private fun releaseTrackedView(pointerId: Int, view: View) {
+        view.isPressed = false
+        dismissKeyPreview()
+        cancelLongPressForPointer(pointerId)
+
+        val wasShift = view.id == binding.keyShift.id
+        if (wasShift && shiftDoubleTapped) {
+            shiftDoubleTapped = false
+            return
+        }
+
+        val qwertyMode = qwertyMode.value
+        if (qwertyMode != QWERTYMode.Default && wasShift) {
+            _qwertyMode.update {
+                if (qwertyMode == QWERTYMode.Number) {
+                    QWERTYMode.Symbol
+                } else {
+                    QWERTYMode.Number
+                }
+            }
+            return
+        }
+
+        val qwertyKey = qwertyButtonMap[view] ?: QWERTYKey.QWERTYKeyNotSelect
+        when (qwertyKey) {
+            QWERTYKey.QWERTYKeyCursorLeft,
+            QWERTYKey.QWERTYKeyCursorRight,
+            QWERTYKey.QWERTYKeySwitchRomajiEnglish,
+            QWERTYKey.QWERTYKeySwitchNumberKey,
+            QWERTYKey.QWERTYKeyEmoji -> {
+                qwertyKeyListener?.onReleasedQWERTYKey(qwertyKey, null, null)
+            }
+
+            else -> {
+                logVariationIfNeeded(qwertyKey)
+                setToggleShiftState(view)
+            }
         }
     }
 
@@ -2231,7 +2304,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun handlePointerMove(event: MotionEvent, pointerIndex: Int, pointerId: Int) {
-        if (pointerId == suppressedPointerId || pointerId == lockedPointerId) return
+        if (suppressedPointerIds.contains(pointerId) || pointerId == lockedPointerId) return
         if (flickLockedPointers.contains(pointerId)) return
 
         val x = event.getX(pointerIndex)
@@ -2276,7 +2349,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun tryHandleFlickAt(pointerId: Int, x: Float, y: Float): Boolean {
-        if (pointerId == suppressedPointerId || pointerId == lockedPointerId) return false
+        if (suppressedPointerIds.contains(pointerId) || pointerId == lockedPointerId) return false
         if (flickLockedPointers.contains(pointerId)) return true
 
         val (startX, startY) = pointerStartCoords[pointerId] ?: return false
@@ -2341,7 +2414,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         }
     }
 
-    private fun clearAllPressed() {
+    private fun clearAllPressed(clearSuppressedPointers: Boolean = true) {
         for (i in 0 until pointerButtonMap.size) {
             val pid = pointerButtonMap.keyAt(i)
             pointerButtonMap.valueAt(i)?.isPressed = false
@@ -2351,11 +2424,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         pointerStartCoords.clear()
         flickLockedPointers.clear()
         dismissKeyPreview()
-        suppressedPointerId = null
-        variationPopup?.dismiss()
-        variationPopup = null
-        variationPopupView = null
-        longPressedPointerId = null
+        if (clearSuppressedPointers) {
+            suppressedPointerIds.clear()
+        }
+        dismissVariationPopup()
         lockedPointerId = null
     }
 
@@ -2663,7 +2735,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     }
 
     private fun showVariationPopup(anchorView: View, variations: List<Char>) {
-        variationPopup?.dismiss()
+        dismissVariationPopup()
         val context = this.context
         variationPopupView = VariationsPopupView(context).apply {
             applyPopupViewStyle(variationPopupStyle)
@@ -2700,6 +2772,13 @@ class QWERTYKeyboardView @JvmOverloads constructor(
         val yOffset = -anchorView.height - popupHeight
         popup.showAsDropDown(anchorView, xOffset, yOffset)
         this.variationPopup = popup
+    }
+
+    private fun dismissVariationPopup() {
+        variationPopup?.dismiss()
+        variationPopup = null
+        variationPopupView = null
+        longPressedPointerId = null
     }
 
     fun applyPopupViewStyleSet(styleSet: QwertyPopupViewStyleSet) {
