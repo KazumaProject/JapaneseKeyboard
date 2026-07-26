@@ -60,7 +60,8 @@ data class KanaRowStageOverrides(
 
 data class KanaRowColumnOverrides(
     val upserts: List<FlickEntryDefinition> = emptyList(),
-    val removals: Set<TfbiFlickDirection> = emptySet()
+    val removals: Set<TfbiFlickDirection> = emptySet(),
+    val cancelOnTap: Boolean? = null
 )
 
 fun kanaRowStageOverrides(
@@ -96,6 +97,7 @@ class KanaRowStageOverridesBuilder {
 class KanaRowColumnOverridesBuilder {
     private val upserts = mutableListOf<FlickEntryDefinition>()
     private val removals = mutableSetOf<TfbiFlickDirection>()
+    private var cancelOnTap: Boolean? = null
 
     fun upsert(direction: TfbiFlickDirection, node: FlickNodeDefinition) {
         upserts += FlickEntryDefinition(direction = direction, node = node)
@@ -105,9 +107,14 @@ class KanaRowColumnOverridesBuilder {
         removals += direction
     }
 
+    fun cancelOnTap(value: Boolean) {
+        cancelOnTap = value
+    }
+
     fun build(): KanaRowColumnOverrides = KanaRowColumnOverrides(
         upserts = upserts.toList(),
-        removals = removals.toSet()
+        removals = removals.toSet(),
+        cancelOnTap = cancelOnTap
     )
 }
 
@@ -172,7 +179,10 @@ object KanaRowFlickDefinitionGenerator {
             add(RIGHT, input("${spec.normal.i}ゃ"))
             add(DOWN, yoonBranch("${spec.normal.i}ょ"))
         })
-        add(UP, branch(label = spec.normal.u) {
+        add(UP, branch(
+            label = spec.normal.u,
+            overrides = spec.normalOverrides.uColumn
+        ) {
             add(UP, input(spec.normal.u))
             spec.diacritics.dakuten?.let { dakuten ->
                 add(UP_LEFT, input(dakuten.u, nextState = FlickKeyState.DAKUTEN))
@@ -182,7 +192,10 @@ object KanaRowFlickDefinitionGenerator {
             } ?: add(UP_RIGHT, input("${spec.normal.u}う"))
             applyOverrides(spec.normalOverrides.uColumn)
         })
-        add(RIGHT, branch(label = spec.normal.e) {
+        add(RIGHT, branch(
+            label = spec.normal.e,
+            overrides = spec.normalOverrides.eColumn
+        ) {
             add(RIGHT, input(spec.normal.e))
             spec.diacritics.dakuten?.let { dakuten ->
                 add(DOWN_RIGHT, input(dakuten.e, nextState = FlickKeyState.DAKUTEN))
@@ -192,7 +205,10 @@ object KanaRowFlickDefinitionGenerator {
             }
             applyOverrides(spec.normalOverrides.eColumn)
         })
-        add(DOWN, branch(label = spec.normal.o) {
+        add(DOWN, branch(
+            label = spec.normal.o,
+            overrides = spec.normalOverrides.oColumn
+        ) {
             add(DOWN, input(spec.normal.o))
             spec.diacritics.dakuten?.let { dakuten ->
                 add(DOWN_RIGHT, input(dakuten.o, nextState = FlickKeyState.DAKUTEN))
@@ -223,7 +239,9 @@ object KanaRowFlickDefinitionGenerator {
             add(RIGHT, input("${dakuten.i}ゃ"))
             add(DOWN, yoonBranch("${dakuten.i}ょ"))
         })
-        add(UP, branch {
+        add(UP, branch(
+            overrides = spec.dakutenOverrides.uColumn
+        ) {
             add(UP_LEFT, input(dakuten.u))
             add(UP, input(spec.normal.u, nextState = FlickKeyState.NORMAL))
             spec.diacritics.handakuten?.let { handakuten ->
@@ -232,7 +250,9 @@ object KanaRowFlickDefinitionGenerator {
             add(LEFT, input("${dakuten.u}う"))
             applyOverrides(spec.dakutenOverrides.uColumn)
         })
-        add(RIGHT, branch {
+        add(RIGHT, branch(
+            overrides = spec.dakutenOverrides.eColumn
+        ) {
             add(DOWN_RIGHT, input(dakuten.e))
             add(RIGHT, input(spec.normal.e, nextState = FlickKeyState.NORMAL))
             spec.diacritics.handakuten?.let { handakuten ->
@@ -240,7 +260,9 @@ object KanaRowFlickDefinitionGenerator {
             }
             applyOverrides(spec.dakutenOverrides.eColumn)
         })
-        add(DOWN, branch {
+        add(DOWN, branch(
+            overrides = spec.dakutenOverrides.oColumn
+        ) {
             add(DOWN_RIGHT, input(dakuten.o))
             add(DOWN, input(spec.normal.o, nextState = FlickKeyState.NORMAL))
             spec.diacritics.handakuten?.let { handakuten ->
@@ -266,20 +288,26 @@ object KanaRowFlickDefinitionGenerator {
             add(RIGHT, input("${handakuten.i}ゃ"))
             add(DOWN, yoonBranch("${handakuten.i}ょ"))
         })
-        add(UP, branch {
+        add(UP, branch(
+            overrides = spec.handakutenOverrides.uColumn
+        ) {
             add(UP, input(spec.normal.u, nextState = FlickKeyState.NORMAL))
             add(UP_LEFT, input(dakuten.u, nextState = FlickKeyState.DAKUTEN))
             add(UP_RIGHT, input(handakuten.u, nextState = FlickKeyState.HANDAKUTEN))
             add(RIGHT, input("${handakuten.u}う"))
             applyOverrides(spec.handakutenOverrides.uColumn)
         })
-        add(RIGHT, branch {
+        add(RIGHT, branch(
+            overrides = spec.handakutenOverrides.eColumn
+        ) {
             add(RIGHT, input(spec.normal.e, nextState = FlickKeyState.NORMAL))
             add(DOWN_RIGHT, input(dakuten.e, nextState = FlickKeyState.DAKUTEN))
             add(UP_RIGHT, input(handakuten.e, nextState = FlickKeyState.HANDAKUTEN))
             applyOverrides(spec.handakutenOverrides.eColumn)
         })
-        add(DOWN, branch {
+        add(DOWN, branch(
+            overrides = spec.handakutenOverrides.oColumn
+        ) {
             add(DOWN, input(spec.normal.o, nextState = FlickKeyState.NORMAL))
             add(DOWN_RIGHT, input(dakuten.o, nextState = FlickKeyState.DAKUTEN))
             add(DOWN_LEFT, input(handakuten.o, nextState = FlickKeyState.HANDAKUTEN))
@@ -340,11 +368,12 @@ object KanaRowFlickDefinitionGenerator {
     private fun branch(
         label: String? = null,
         cancelOnTap: Boolean = true,
+        overrides: KanaRowColumnOverrides = KanaRowColumnOverrides(),
         block: FlickStageBuilder.() -> Unit
     ): FlickNodeDefinition.Branch = FlickNodeDefinition.Branch(
         label = label,
         stage = stage(block),
-        cancelOnTap = cancelOnTap
+        cancelOnTap = overrides.cancelOnTap ?: cancelOnTap
     )
 
     @KanaRowFlickDefinitionDsl

@@ -72,7 +72,9 @@ internal object HierarchicalKanaDefaultDefinitions {
                     dakuten = KanaSeries("ば", "び", "ぶ", "べ", "ぼ"),
                     handakuten = KanaSeries("ぱ", "ぴ", "ぷ", "ぺ", "ぽ")
                 ),
-                normalOverrides = createHaRowNormalOverrides()
+                normalOverrides = createHaRowNormalOverrides(),
+                dakutenOverrides = createHaRowDakutenOverrides(),
+                handakutenOverrides = createHaRowHandakutenOverrides()
             )
         ),
         "ま" to createStatefulKey(
@@ -151,10 +153,11 @@ internal object HierarchicalKanaDefaultDefinitions {
 
     private fun createHaRowNormalOverrides() = kanaRowStageOverrides {
         uColumn {
+            cancelOnTap(false)
             upsert(TfbiFlickDirection.RIGHT, kanaRowInput("ふう"))
             upsert(
                 TfbiFlickDirection.LEFT,
-                kanaRowBranch(label = "ふぁ") {
+                kanaRowBranch(label = "ふぁ", cancelOnTap = false) {
                     add(TfbiFlickDirection.LEFT, kanaRowInput("ふぁ"))
                     add(TfbiFlickDirection.UP, kanaRowInput("ふぃ"))
                     add(TfbiFlickDirection.RIGHT, kanaRowInput("ふぇ"))
@@ -163,7 +166,31 @@ internal object HierarchicalKanaDefaultDefinitions {
             )
         }
         oColumn {
+            cancelOnTap(false)
             upsert(TfbiFlickDirection.RIGHT, kanaRowInput("ほう"))
+        }
+    }
+
+    private fun createHaRowDakutenOverrides() = kanaRowStageOverrides {
+        uColumn {
+            cancelOnTap(false)
+            upsert(TfbiFlickDirection.UP_LEFT, kanaRowInput("ぶ", nextState = FlickKeyState.DAKUTEN))
+        }
+        eColumn {
+            upsert(TfbiFlickDirection.DOWN_RIGHT, kanaRowInput("べ", nextState = FlickKeyState.DAKUTEN))
+        }
+        oColumn {
+            cancelOnTap(false)
+            upsert(TfbiFlickDirection.DOWN_RIGHT, kanaRowInput("ぼ", nextState = FlickKeyState.DAKUTEN))
+        }
+    }
+
+    private fun createHaRowHandakutenOverrides() = kanaRowStageOverrides {
+        uColumn {
+            cancelOnTap(false)
+        }
+        oColumn {
+            cancelOnTap(false)
         }
     }
 

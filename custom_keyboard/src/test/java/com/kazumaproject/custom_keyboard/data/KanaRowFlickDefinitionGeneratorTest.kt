@@ -66,6 +66,7 @@ class KanaRowFlickDefinitionGeneratorTest {
                 iColumnModeSwitchBoundary = ModeSwitchBoundary.I_COLUMN_DIACRITIC,
                 normalOverrides = kanaRowStageOverrides {
                     uColumn {
+                        cancelOnTap(false)
                         upsert(TfbiFlickDirection.UP_RIGHT, input("っ"))
                     }
                     eColumn {
@@ -97,6 +98,7 @@ class KanaRowFlickDefinitionGeneratorTest {
         val dakutenDu = statefulKey.dakutenMap!!.branch(TfbiFlickDirection.UP)
         val dakutenDe = statefulKey.dakutenMap!!.branch(TfbiFlickDirection.RIGHT)
 
+        assertFalse(statefulKey.normalMap.subMenu(TfbiFlickDirection.UP).cancelOnTap)
         assertEquals("っ", normalTsu.input(TfbiFlickDirection.UP_RIGHT).char)
         assertEquals(
             "てぃー",

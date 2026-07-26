@@ -1,9 +1,11 @@
 package com.kazumaproject.custom_keyboard.layout
 
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
+import com.kazumaproject.custom_keyboard.data.KeyMode
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Test
 
 class KeyboardDefaultLayoutsHierarchicalKaSchemaTest {
@@ -66,11 +68,68 @@ class KeyboardDefaultLayoutsHierarchicalKaSchemaTest {
                 .char
         )
         assertEquals(
+            "た",
+            taKey.dakutenMap!!.input(TfbiFlickDirection.TAP).char
+        )
+        assertEquals(
             "ふぇ",
             haKey.normalMap.branch(TfbiFlickDirection.UP)
                 .branch(TfbiFlickDirection.LEFT)
                 .input(TfbiFlickDirection.RIGHT)
                 .char
+        )
+        assertFalse(haKey.normalMap.subMenu(TfbiFlickDirection.UP).cancelOnTap)
+        assertFalse(
+            haKey.normalMap.branch(TfbiFlickDirection.UP)
+                .subMenu(TfbiFlickDirection.LEFT)
+                .cancelOnTap
+        )
+        assertFalse(haKey.normalMap.subMenu(TfbiFlickDirection.DOWN).cancelOnTap)
+        assertFalse(haKey.dakutenMap!!.subMenu(TfbiFlickDirection.UP).cancelOnTap)
+        assertFalse(haKey.dakutenMap!!.subMenu(TfbiFlickDirection.DOWN).cancelOnTap)
+        assertFalse(haKey.handakutenMap!!.subMenu(TfbiFlickDirection.UP).cancelOnTap)
+        assertFalse(haKey.handakutenMap!!.subMenu(TfbiFlickDirection.DOWN).cancelOnTap)
+        assertEquals(
+            KeyMode.NORMAL,
+            haKey.dakutenMap!!.branch(TfbiFlickDirection.UP)
+                .input(TfbiFlickDirection.UP)
+                .triggersMode
+        )
+        assertEquals(
+            KeyMode.DAKUTEN,
+            haKey.dakutenMap!!.branch(TfbiFlickDirection.UP)
+                .input(TfbiFlickDirection.UP_LEFT)
+                .triggersMode
+        )
+        assertEquals(
+            KeyMode.NORMAL,
+            haKey.dakutenMap!!.branch(TfbiFlickDirection.RIGHT)
+                .input(TfbiFlickDirection.RIGHT)
+                .triggersMode
+        )
+        assertEquals(
+            KeyMode.DAKUTEN,
+            haKey.dakutenMap!!.branch(TfbiFlickDirection.RIGHT)
+                .input(TfbiFlickDirection.DOWN_RIGHT)
+                .triggersMode
+        )
+        assertEquals(
+            KeyMode.DAKUTEN,
+            haKey.dakutenMap!!.branch(TfbiFlickDirection.DOWN)
+                .input(TfbiFlickDirection.DOWN_RIGHT)
+                .triggersMode
+        )
+        assertEquals(
+            KeyMode.NORMAL,
+            haKey.handakutenMap!!.branch(TfbiFlickDirection.UP)
+                .input(TfbiFlickDirection.UP)
+                .triggersMode
+        )
+        assertEquals(
+            KeyMode.NORMAL,
+            haKey.handakutenMap!!.branch(TfbiFlickDirection.RIGHT)
+                .input(TfbiFlickDirection.RIGHT)
+                .triggersMode
         )
         assertEquals(
             "ほう",
