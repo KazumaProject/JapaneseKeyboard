@@ -12,13 +12,13 @@ import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import com.kazumaproject.custom_keyboard.view.StandardFlickPopupView
-import kotlin.math.sqrt
 
 class StandardFlickInputController(
     context: Context,
@@ -217,10 +217,15 @@ class StandardFlickInputController(
     }
 
     private fun calculateDirection(dx: Float, dy: Float): FlickDirection {
-        val distance = sqrt(dx * dx + dy * dy)
-        val threshold = activeGestureConfig?.flickThresholdPx
-            ?: gestureConfigSource.snapshot().flickThresholdPx
-        if (distance < threshold) {
+        val config = activeGestureConfig ?: gestureConfigSource.snapshot()
+        if (
+            !FlickGestureMath.isThresholdCrossed(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = config.flickThresholdPx,
+                thresholdShape = config.flickThresholdShape
+            )
+        ) {
             return FlickDirection.TAP
         }
 

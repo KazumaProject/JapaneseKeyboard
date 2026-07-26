@@ -8,6 +8,7 @@ import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
@@ -65,6 +66,7 @@ object AppPreference {
     const val GEMMA_HANDWRITING_PEN_COLOR_KEY =
         "gemma_handwriting_pen_color_preference"
     const val FLICK_SENSITIVITY_KEY = "flick_sensitivity_preference"
+    const val FLICK_THRESHOLD_SHAPE_KEY = "flick_threshold_shape_preference"
     const val LONG_PRESS_TIMEOUT_KEY = "long_press_timeout_preference"
     const val VIBRATION_KEY = "vibration_preference"
     const val VIBRATION_TIMING_KEY = "vibration_timing"
@@ -84,6 +86,10 @@ object AppPreference {
     private val CLIPBOARD_HISTORY_ENABLE = Pair("clipboard_history_preference", false)
     private val TIME_SAME_PRONOUNCE_TYPING = Pair("time_same_pronounce_typing_preference", 1000)
     private val FLICK_SENSITIVITY = Pair(FLICK_SENSITIVITY_KEY, 100)
+    private val FLICK_THRESHOLD_SHAPE = Pair(
+        FLICK_THRESHOLD_SHAPE_KEY,
+        FlickThresholdShape.Radial.preferenceValue
+    )
     private val LONG_PRESS_TIMEOUT = Pair(LONG_PRESS_TIMEOUT_KEY, 300)
     private val VIBRATION_PREFERENCE = Pair(VIBRATION_KEY, true)
     private val VIBRATION_TIMING_PREFERENCE = Pair(VIBRATION_TIMING_KEY, "both")
@@ -1491,6 +1497,18 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(FLICK_SENSITIVITY.first, value ?: 100)
+        }
+
+    var flick_threshold_shape_preference: String
+        get() = preferences.getString(
+            FLICK_THRESHOLD_SHAPE.first,
+            FLICK_THRESHOLD_SHAPE.second
+        ) ?: FLICK_THRESHOLD_SHAPE.second
+        set(value) = preferences.edit {
+            it.putString(
+                FLICK_THRESHOLD_SHAPE.first,
+                FlickThresholdShape.fromPreferenceValue(value).preferenceValue
+            )
         }
 
     var hierarchical_flick_mode_switch_angle_margin_preference: Int

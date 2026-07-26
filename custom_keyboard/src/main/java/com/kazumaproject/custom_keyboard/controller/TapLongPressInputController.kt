@@ -92,7 +92,8 @@ class TapLongPressInputController(
                     FlickGestureMath.isThresholdCrossed(
                         deltaX = dx,
                         deltaY = dy,
-                        thresholdPx = config.flickThresholdPx
+                        thresholdPx = config.flickThresholdPx,
+                        thresholdShape = config.flickThresholdShape
                     )
                 ) {
                     view.removeCallbacks(longPressRunnable)

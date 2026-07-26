@@ -259,7 +259,12 @@ class CrossFlickInputController(
 
                 if (inputMode == InputMode.TEXT && !isLongPressMode) {
                     val cancelThreshold = currentFlickThreshold() * 0.5f
-                    val movedEnoughForFlick = (dx * dx + dy * dy) > (cancelThreshold * cancelThreshold)
+                    val movedEnoughForFlick = FlickGestureMath.isThresholdCrossed(
+                        deltaX = dx,
+                        deltaY = dy,
+                        thresholdPx = cancelThreshold,
+                        thresholdShape = currentGestureConfig().flickThresholdShape
+                    )
                     if (movedEnoughForFlick) {
                         longPressJob?.cancel()
                     }
@@ -417,7 +422,8 @@ class CrossFlickInputController(
             FlickGestureMath.cardinalDirection(
                 deltaX = dx,
                 deltaY = dy,
-                thresholdPx = currentFlickThreshold()
+                thresholdPx = currentFlickThreshold(),
+                thresholdShape = currentGestureConfig().flickThresholdShape
             )
         ) {
             CoreFlickDirection.Tap -> FlickDirection.TAP
@@ -429,8 +435,11 @@ class CrossFlickInputController(
     }
 
     private fun currentFlickThreshold(): Float {
-        return activeGestureConfig?.flickThresholdPx
-            ?: gestureConfigSource.snapshot().flickThresholdPx
+        return currentGestureConfig().flickThresholdPx
+    }
+
+    private fun currentGestureConfig(): GestureSessionConfig {
+        return activeGestureConfig ?: gestureConfigSource.snapshot()
     }
 
     // FlickDirection を候補リストに展開して flickActionMap を引く。near/far 両方に対応する。
