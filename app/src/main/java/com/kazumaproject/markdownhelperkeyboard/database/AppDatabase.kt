@@ -80,7 +80,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         SumireSpecialKeyPlacementOverrideEntity::class,
         CustomZeroQueryEntry::class,
     ],
-    version = 39,
+    version = 41,
     exportSchema = false
 )
 @TypeConverters(
@@ -1043,6 +1043,55 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
                     "ALTER TABLE `key_definitions` ADD COLUMN `specialKeyColorStyle` TEXT NOT NULL DEFAULT 'SPECIAL'"
+                )
+            }
+        }
+
+        val MIGRATION_39_40 = object : Migration(39, 40) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `learn_table` ADD COLUMN `usageCount` INTEGER NOT NULL DEFAULT 1"
+                )
+                db.execSQL(
+                    "ALTER TABLE `learn_table` ADD COLUMN `lastUsedAt` INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "ALTER TABLE `learn_table` ADD COLUMN `isPhrase` INTEGER NOT NULL DEFAULT 0"
+                )
+            }
+        }
+
+        val MIGRATION_40_41 = object : Migration(40, 41) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `gemma_prompt_template` ADD COLUMN `inputModality` TEXT NOT NULL DEFAULT 'TEXT'"
+                )
+                db.execSQL(
+                    "ALTER TABLE `gemma_prompt_template` ADD COLUMN `taskKind` TEXT NOT NULL DEFAULT 'CUSTOM'"
+                )
+                db.execSQL(
+                    "ALTER TABLE `gemma_prompt_template` ADD COLUMN `outputMode` TEXT NOT NULL DEFAULT 'SINGLE_TEXT'"
+                )
+                db.execSQL(
+                    "ALTER TABLE `gemma_prompt_template` ADD COLUMN `outputLanguage` TEXT NOT NULL DEFAULT 'AUTO'"
+                )
+                db.execSQL(
+                    "ALTER TABLE `gemma_prompt_template` ADD COLUMN `candidateCount` INTEGER NOT NULL DEFAULT 1"
+                )
+                db.execSQL(
+                    "ALTER TABLE `gemma_prompt_template` ADD COLUMN `showInActionMenu` INTEGER NOT NULL DEFAULT 1"
+                )
+                db.execSQL(
+                    "ALTER TABLE `gemma_prompt_template` ADD COLUMN `isBuiltIn` INTEGER NOT NULL DEFAULT 0"
+                )
+                db.execSQL(
+                    "ALTER TABLE `gemma_prompt_template` ADD COLUMN `builtInKey` TEXT"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_gemma_prompt_template_inputModality_isEnabled` ON `gemma_prompt_template` (`inputModality`, `isEnabled`)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_gemma_prompt_template_builtInKey` ON `gemma_prompt_template` (`builtInKey`)"
                 )
             }
         }

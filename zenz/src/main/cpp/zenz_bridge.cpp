@@ -760,19 +760,30 @@ static float score_candidate_avg_logprob_reuse_prompt_locked(
     return total_score / (float) candidate_tokens.size();
 }
 
-// ------- JNI: モデル初期化 -------
+// ------- JNI: モデル初期化・キャンセル・解放 -------
 // package com.kazumaproject.zenz; class ZenzEngine
 
 extern "C"
-JNIEXPORT void JNICALL
+JNIEXPORT jboolean JNICALL
 Java_com_kazumaproject_zenz_ZenzEngine_initModel(
         JNIEnv *env,
         jobject /* thiz */,
         jstring jModelPath
 ) {
+    if (!jModelPath) {
+        LOGE("initModel: model path is null");
+        return JNI_FALSE;
+    }
+
     const char *c_model_path = env->GetStringUTFChars(jModelPath, nullptr);
+    if (!c_model_path) {
+        LOGE("initModel: failed to read model path");
+        return JNI_FALSE;
+    }
     LOGI("initModel: %s", c_model_path);
 
+    // A reload must also stop a decode that currently owns the session mutex.
+    g_request_seq.fetch_add(1, std::memory_order_relaxed);
     std::lock_guard<std::mutex> lock(g_session.mutex);
     destroy_session_context_locked();
 
@@ -795,7 +806,7 @@ Java_com_kazumaproject_zenz_ZenzEngine_initModel(
     if (!g_model) {
         LOGE("Failed to load model");
         env->ReleaseStringUTFChars(jModelPath, c_model_path);
-        return;
+        return JNI_FALSE;
     }
 
     g_vocab = llama_model_get_vocab(g_model);
@@ -804,10 +815,44 @@ Java_com_kazumaproject_zenz_ZenzEngine_initModel(
         llama_model_free(g_model);
         g_model = nullptr;
         env->ReleaseStringUTFChars(jModelPath, c_model_path);
-        return;
+        return JNI_FALSE;
     }
 
     env->ReleaseStringUTFChars(jModelPath, c_model_path);
+    return JNI_TRUE;
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_kazumaproject_zenz_ZenzEngine_cancelCurrent(
+        JNIEnv * /*env*/,
+        jobject /*thiz*/
+) {
+    // Do not take g_session.mutex here. This method must remain callable from a Binder thread
+    // while the actor thread is blocked inside llama_decode with that mutex held.
+    g_request_seq.fetch_add(1, std::memory_order_relaxed);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_kazumaproject_zenz_ZenzEngine_closeModel(
+        JNIEnv * /*env*/,
+        jobject /*thiz*/
+) {
+    g_request_seq.fetch_add(1, std::memory_order_relaxed);
+    std::lock_guard<std::mutex> lock(g_session.mutex);
+    destroy_session_context_locked();
+
+    if (g_model) {
+        llama_model_free(g_model);
+        g_model = nullptr;
+        g_vocab = nullptr;
+    }
+
+    if (g_backend_initialized) {
+        llama_backend_free();
+        g_backend_initialized = false;
+    }
 }
 
 // ------- JNI: ランタイム設定 (n_ctx / n_threads) -------
