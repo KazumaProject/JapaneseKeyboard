@@ -66,6 +66,36 @@ class FlickGestureMathTest {
     }
 
     @Test
+    fun rectangularThresholdKeepsDiagonalMotionInsideUntilEitherAxisCrosses() {
+        val threshold = 100f
+
+        assertTrue(
+            FlickGestureMath.isThresholdCrossed(
+                80f,
+                80f,
+                threshold,
+                FlickThresholdShape.Radial
+            )
+        )
+        assertFalse(
+            FlickGestureMath.isThresholdCrossed(
+                80f,
+                80f,
+                threshold,
+                FlickThresholdShape.Rectangular
+            )
+        )
+        assertTrue(
+            FlickGestureMath.isThresholdCrossed(
+                100f,
+                20f,
+                threshold,
+                FlickThresholdShape.Rectangular
+            )
+        )
+    }
+
+    @Test
     fun cardinalDirectionUsesDominantAxisAfterRadialThreshold() {
         assertEquals(
             FlickDirection.Tap,
@@ -86,6 +116,36 @@ class FlickGestureMathTest {
         assertEquals(
             FlickDirection.Bottom,
             FlickGestureMath.cardinalDirection(30f, 45f, 50f)
+        )
+    }
+
+    @Test
+    fun cardinalDirectionUsesSelectedThresholdShapeBeforeChoosingDominantAxis() {
+        assertEquals(
+            FlickDirection.Bottom,
+            FlickGestureMath.cardinalDirection(
+                deltaX = 80f,
+                deltaY = 90f,
+                thresholdPx = 100f,
+                thresholdShape = FlickThresholdShape.Radial
+            )
+        )
+        assertEquals(
+            FlickDirection.Tap,
+            FlickGestureMath.cardinalDirection(
+                deltaX = 80f,
+                deltaY = 90f,
+                thresholdPx = 100f,
+                thresholdShape = FlickThresholdShape.Rectangular
+            )
+        )
+    }
+
+    @Test
+    fun unknownPreferenceValueFallsBackToRadial() {
+        assertEquals(
+            FlickThresholdShape.Radial,
+            FlickThresholdShape.fromPreferenceValue("unknown")
         )
     }
 }

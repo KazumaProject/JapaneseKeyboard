@@ -42,6 +42,7 @@ import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setStartToEndOf
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
 import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyInfo.KeyEEnglish.getOutputChar
@@ -110,6 +111,7 @@ class TabletKeyboardView @JvmOverloads constructor(
 
     private var flickSensitivity: Int = 100
     private var flickThresholdPx: Float = resolveFlickThresholdPx(flickSensitivity)
+    private var flickThresholdShape: FlickThresholdShape = FlickThresholdShape.Radial
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     // All AppCompatButton keys (all the character keys)
@@ -1310,7 +1312,8 @@ class TabletKeyboardView @JvmOverloads constructor(
             FlickGestureMath.cardinalDirection(
                 deltaX = distanceX,
                 deltaY = distanceY,
-                thresholdPx = flickThresholdPx
+                thresholdPx = flickThresholdPx,
+                thresholdShape = flickThresholdShape
             )
         ) {
             CoreFlickDirection.Tap -> GestureType.Tap
@@ -3440,6 +3443,10 @@ class TabletKeyboardView @JvmOverloads constructor(
     fun setFlickSensitivityValue(sensitivity: Int) {
         flickSensitivity = sensitivity.coerceIn(1, 200)
         flickThresholdPx = resolveFlickThresholdPx(flickSensitivity)
+    }
+
+    fun setFlickThresholdShape(shape: FlickThresholdShape) {
+        flickThresholdShape = shape
     }
 
     fun setLongPressTimeout(timeoutMillis: Long) {
