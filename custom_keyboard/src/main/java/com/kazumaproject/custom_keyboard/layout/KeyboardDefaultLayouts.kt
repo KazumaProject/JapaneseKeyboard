@@ -6,14 +6,11 @@ import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
-import com.kazumaproject.custom_keyboard.data.KeyMode
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
-import com.kazumaproject.custom_keyboard.data.ModeSwitchBoundary
 import com.kazumaproject.custom_keyboard.data.SpacerItem
-import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
@@ -9538,7 +9535,5 @@ object KeyboardDefaultLayouts {
         }
 
     }
-
-
 
 }
