@@ -41,4 +41,17 @@ class RuntimeGestureSettingsTest {
         source.bind(null)
         assertEquals(100, source.snapshot().flickSensitivity)
     }
+
+    @Test
+    fun thresholdShapeUpdatesAtomicallyAndAdvancesRevision() {
+        val source = MutableRuntimeGestureSettingsSource()
+
+        val updated = source.update(
+            flickThresholdShape = FlickThresholdShape.Rectangular
+        )
+
+        assertEquals(FlickThresholdShape.Rectangular, updated.flickThresholdShape)
+        assertEquals(1L, updated.revision)
+        assertEquals(FlickThresholdShape.Rectangular, source.snapshot().flickThresholdShape)
+    }
 }

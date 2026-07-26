@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.data.FlickDirection
@@ -120,6 +121,56 @@ class RuntimeGestureControllerTest {
         assertEquals(listOf("press", "long", "upAfterLong"), events)
     }
 
+    @Test
+    fun standardFlickUsesConfiguredThresholdShape() {
+        var currentConfig = config(
+            thresholdPx = 100f,
+            timeoutMillis = 300L,
+            revision = 1L,
+            thresholdShape = FlickThresholdShape.Rectangular
+        )
+        val controller = StandardFlickInputController(
+            context = context(),
+            gestureConfigSource = GestureSessionConfigSource { currentConfig }
+        )
+        val button = Button(context())
+        val committed = mutableListOf<String>()
+        controller.listener = object : StandardFlickInputController.StandardFlickListener {
+            override fun onPress(character: String) = Unit
+            override fun onFlick(character: String) {
+                committed += character
+            }
+        }
+        controller.attach(
+            button,
+            mapOf(
+                FlickDirection.TAP to "tap",
+                FlickDirection.DOWN to "down"
+            ),
+            SegmentedBackgroundDrawable(
+                label = "a",
+                baseColor = 0,
+                highlightColor = 0,
+                textColor = 0,
+                cornerRadius = 0f,
+                primaryTextSizePx = 20f,
+                secondaryTextSizePx = 12f
+            )
+        )
+
+        button.dispatch(MotionEvent.ACTION_DOWN, x = 10f, y = 10f, downTime = 1L)
+        button.dispatch(MotionEvent.ACTION_UP, x = 90f, y = 100f, downTime = 1L)
+
+        currentConfig = currentConfig.copy(
+            settingsRevision = 2L,
+            flickThresholdShape = FlickThresholdShape.Radial
+        )
+        button.dispatch(MotionEvent.ACTION_DOWN, x = 10f, y = 10f, downTime = 10L)
+        button.dispatch(MotionEvent.ACTION_UP, x = 90f, y = 100f, downTime = 10L)
+
+        assertEquals(listOf("tap", "down"), committed)
+    }
+
     private fun context(): Context {
         return ContextThemeWrapper(
             ApplicationProvider.getApplicationContext(),
@@ -130,13 +181,15 @@ class RuntimeGestureControllerTest {
     private fun config(
         thresholdPx: Float,
         timeoutMillis: Long,
-        revision: Long
+        revision: Long,
+        thresholdShape: FlickThresholdShape = FlickThresholdShape.Radial
     ): GestureSessionConfig {
         return GestureSessionConfig(
             settingsRevision = revision,
             flickSensitivity = 100,
             flickThresholdPx = thresholdPx,
-            longPressTimeoutMillis = timeoutMillis
+            longPressTimeoutMillis = timeoutMillis,
+            flickThresholdShape = thresholdShape
         )
     }
 

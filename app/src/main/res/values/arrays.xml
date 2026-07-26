@@ -337,4 +337,14 @@
         <item>2</item>
         <item>3</item>
     </string-array>
+
+    <string-array name="flick_threshold_shape_entries">
+        <item>@string/flick_threshold_shape_radial</item>
+        <item>@string/flick_threshold_shape_rectangular</item>
+    </string-array>
+
+    <string-array name="flick_threshold_shape_values">
+        <item>radial</item>
+        <item>rectangular</item>
+    </string-array>
 </resources>

@@ -2,6 +2,17 @@ package com.kazumaproject.core.domain.flick
 
 import kotlin.math.abs
 
+enum class FlickThresholdShape(val preferenceValue: String) {
+    Radial("radial"),
+    Rectangular("rectangular");
+
+    companion object {
+        fun fromPreferenceValue(value: String?): FlickThresholdShape {
+            return entries.firstOrNull { it.preferenceValue == value } ?: Radial
+        }
+    }
+}
+
 /**
  * Shared distance and direction calculations for cardinal keyboard flick gestures.
  *
@@ -47,18 +58,26 @@ object FlickGestureMath {
     fun isThresholdCrossed(
         deltaX: Float,
         deltaY: Float,
-        thresholdPx: Float
+        thresholdPx: Float,
+        thresholdShape: FlickThresholdShape = FlickThresholdShape.Radial
     ): Boolean {
         val safeThreshold = thresholdPx.coerceAtLeast(1f)
-        return deltaX * deltaX + deltaY * deltaY >= safeThreshold * safeThreshold
+        return when (thresholdShape) {
+            FlickThresholdShape.Radial ->
+                deltaX * deltaX + deltaY * deltaY >= safeThreshold * safeThreshold
+
+            FlickThresholdShape.Rectangular ->
+                abs(deltaX) >= safeThreshold || abs(deltaY) >= safeThreshold
+        }
     }
 
     fun cardinalDirection(
         deltaX: Float,
         deltaY: Float,
-        thresholdPx: Float
+        thresholdPx: Float,
+        thresholdShape: FlickThresholdShape = FlickThresholdShape.Radial
     ): FlickDirection {
-        if (!isThresholdCrossed(deltaX, deltaY, thresholdPx)) {
+        if (!isThresholdCrossed(deltaX, deltaY, thresholdPx, thresholdShape)) {
             return FlickDirection.Tap
         }
 

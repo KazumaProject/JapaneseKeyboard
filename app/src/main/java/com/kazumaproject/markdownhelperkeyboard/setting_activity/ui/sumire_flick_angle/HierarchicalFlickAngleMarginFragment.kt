@@ -7,6 +7,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.view.ViewParent
 import androidx.fragment.app.Fragment
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
@@ -82,6 +83,11 @@ class HierarchicalFlickAngleMarginFragment : Fragment() {
             setPopupWindowAnchorProvider(null)
             setVisibleKeyLabels(PREVIEW_VISIBLE_KEY_LABELS)
             setFlickSensitivityValue(appPreference.flick_sensitivity_preference ?: 100)
+            setFlickThresholdShape(
+                FlickThresholdShape.fromPreferenceValue(
+                    appPreference.flick_threshold_shape_preference
+                )
+            )
             setLongPressTimeout((appPreference.long_press_timeout_preference ?: 300).toLong())
             setHierarchicalFlickModeSwitchAngleMargin(
                 appPreference.hierarchical_flick_mode_switch_angle_margin_preference.toDouble()

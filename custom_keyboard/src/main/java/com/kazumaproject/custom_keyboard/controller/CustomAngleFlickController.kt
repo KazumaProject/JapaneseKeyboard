@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
@@ -25,7 +26,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.atan2
-import kotlin.math.sqrt
 
 class CustomAngleFlickController(
     context: Context,
@@ -360,11 +360,17 @@ class CustomAngleFlickController(
     private fun calculateDirection(currentX: Float, currentY: Float): CircularFlickDirection {
         val dx = currentX - initialTouchX
         val dy = currentY - initialTouchY
-        val distance = sqrt(dx * dx + dy * dy)
-
-        val threshold = activeGestureConfig?.flickThresholdPx
-            ?: gestureConfigSource.snapshot().flickThresholdPx
-        if (distance < threshold) return CircularFlickDirection.TAP
+        val config = activeGestureConfig ?: gestureConfigSource.snapshot()
+        if (
+            !FlickGestureMath.isThresholdCrossed(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = config.flickThresholdPx,
+                thresholdShape = config.flickThresholdShape
+            )
+        ) {
+            return CircularFlickDirection.TAP
+        }
 
         val angle = (Math.toDegrees(atan2(dy.toDouble(), dx.toDouble())) + 360) % 360
         return popupView.getDirectionForAngle(angle)

@@ -38,6 +38,7 @@ import com.kazumaproject.core.domain.extensions.setDrawableAlpha
 import com.kazumaproject.core.domain.extensions.setDrawableSolidColor
 import com.kazumaproject.core.domain.flick.DelegatingRuntimeGestureSettingsSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
@@ -130,7 +131,8 @@ class FlickKeyboardView @JvmOverloads constructor(
             settingsRevision = settings.revision,
             flickSensitivity = settings.flickSensitivity,
             flickThresholdPx = resolvedFlickThresholdPx(settings.flickSensitivity),
-            longPressTimeoutMillis = settings.longPressTimeoutMillis
+            longPressTimeoutMillis = settings.longPressTimeoutMillis,
+            flickThresholdShape = settings.flickThresholdShape
         )
     }
     private var defaultTextSize = 14f
@@ -269,6 +271,10 @@ class FlickKeyboardView @JvmOverloads constructor(
         if (flickSensitivity == normalized) return
         flickSensitivity = normalized
         localRuntimeGestureSettings.update(flickSensitivity = normalized)
+    }
+
+    fun setFlickThresholdShape(shape: FlickThresholdShape) {
+        localRuntimeGestureSettings.update(flickThresholdShape = shape)
     }
 
     /**

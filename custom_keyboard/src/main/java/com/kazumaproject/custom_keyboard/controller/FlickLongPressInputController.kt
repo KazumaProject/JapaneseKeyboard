@@ -10,13 +10,13 @@ import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.hypot
 
 @SuppressLint("ClickableViewAccessibility")
 class FlickLongPressInputController(
@@ -189,8 +189,15 @@ class FlickLongPressInputController(
     }
 
     private fun resolveDirection(dx: Float, dy: Float): TfbiFlickDirection? {
-        val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
-        if (distance < currentGestureConfig().flickThresholdPx) {
+        val config = currentGestureConfig()
+        if (
+            !FlickGestureMath.isThresholdCrossed(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = config.flickThresholdPx,
+                thresholdShape = config.flickThresholdShape
+            )
+        ) {
             return TfbiFlickDirection.TAP.takeIf { isConfigured(it) }
         }
 

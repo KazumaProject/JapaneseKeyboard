@@ -17,6 +17,7 @@ import com.google.android.material.color.DynamicColors
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.LongPressListener
@@ -458,6 +459,9 @@ private fun configureTenKeyPreview(
         borderWidth = appPreference.custom_theme_border_width
     )
     tenKey.setFlickSensitivityValue(appPreference.flick_sensitivity_preference ?: 100)
+    tenKey.setFlickThresholdShape(
+        FlickThresholdShape.fromPreferenceValue(appPreference.flick_threshold_shape_preference)
+    )
     tenKey.setLongPressTimeout((appPreference.long_press_timeout_preference ?: 300).toLong())
     tenKey.applyPopupViewStyle(
         PopupViewStyle(
@@ -624,6 +628,9 @@ private fun configureFlickKeyboardPreview(
         )
     )
     flickView.setFlickSensitivityValue(appPreference.flick_sensitivity_preference ?: 100)
+    flickView.setFlickThresholdShape(
+        FlickThresholdShape.fromPreferenceValue(appPreference.flick_threshold_shape_preference)
+    )
     flickView.setLongPressTimeout((appPreference.long_press_timeout_preference ?: 300).toLong())
     flickView.setFlickGuideEnabled(appPreference.flick_keymap_guide_layout ?: false)
     flickView.setFlickGuideTextSizeSp(

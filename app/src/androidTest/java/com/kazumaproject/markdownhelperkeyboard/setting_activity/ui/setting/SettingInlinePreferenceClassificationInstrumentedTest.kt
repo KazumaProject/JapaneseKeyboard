@@ -91,6 +91,18 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
     }
 
     @Test
+    fun flickThresholdShapeIsClassifiedAsRadialDefaultListPreference() {
+        val destination = destinationForKey("flick_threshold_shape_preference")
+        val target = destination.destination as SettingDestinationType.ListPreference
+        val entryValues = context.resources.getStringArray(target.entryValuesResId)
+
+        assertEquals("flick_threshold_shape_preference", target.preferenceKey)
+        assertEquals("radial", target.defaultValue)
+        assertEquals(listOf("radial", "rectangular"), entryValues.toList())
+        assertEquals(R.id.operationFeedbackPreferenceFragment, target.destinationId)
+    }
+
+    @Test
     fun editTextPreferenceXmlItemIsClassifiedAsEditTextPreference() {
         assumeTrue(AppVariantConfig.hasZenz)
 

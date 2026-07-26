@@ -58,6 +58,7 @@ import com.kazumaproject.core.domain.extensions.setMarginStart
 import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
 import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.domain.listener.QWERTYKeyListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelReason
 import com.kazumaproject.core.domain.listener.QwertyKeyTouchCancelListener
@@ -241,6 +242,7 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     /** Persisted 1..200 sensitivity setting and its density-scaled runtime threshold. */
     private var flickSensitivity = 100
     private var flickThreshold = resolveFlickThresholdPx(flickSensitivity)
+    private var flickThresholdShape = FlickThresholdShape.Radial
 
     /**
      * Delte キーの左フリックを有効にするフラグ
@@ -1082,6 +1084,10 @@ class QWERTYKeyboardView @JvmOverloads constructor(
     fun setFlickSensitivityValue(sensitivity: Int) {
         flickSensitivity = sensitivity.coerceIn(1, 200)
         flickThreshold = resolveFlickThresholdPx(flickSensitivity)
+    }
+
+    fun setFlickThresholdShape(shape: FlickThresholdShape) {
+        flickThresholdShape = shape
     }
 
     fun setNumberKeyFlickUpChars(map: Map<String, String>) {
@@ -2216,7 +2222,8 @@ class QWERTYKeyboardView @JvmOverloads constructor(
             FlickGestureMath.cardinalDirection(
                 deltaX = dx,
                 deltaY = dy,
-                thresholdPx = threshold
+                thresholdPx = threshold,
+                thresholdShape = flickThresholdShape
             )
         ) {
             CoreFlickDirection.Left -> FlickDirection.LEFT

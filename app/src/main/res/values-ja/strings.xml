@@ -197,6 +197,9 @@
     <string name="omission_search_summary_on">修飾キー省略入力は有効です\nかつこう → がっこう</string>
     <string name="omission_search_summary_off">修飾キー省略入力は無効です</string>
     <string name="flick_sensitivity_title">フリック入力の感度</string>
+    <string name="flick_threshold_shape_title">フリック判定領域</string>
+    <string name="flick_threshold_shape_radial">全方向で均一（円形・推奨）</string>
+    <string name="flick_threshold_shape_rectangular">斜め入力を安定（矩形）</string>
     <string name="long_press_timeout_preference_title">長押し時間</string>
     <string name="long_press_timeout_preference_summary">長押しと判定するまでの時間を変更します。</string>
     <string name="long_press_timeout_preference_value">%1$d ms</string>

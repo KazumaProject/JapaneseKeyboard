@@ -122,6 +122,7 @@ import com.kazumaproject.core.domain.extensions.toRomajiQwertyOutputChar
 import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
 import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
 import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
 import com.kazumaproject.core.domain.key.Key
@@ -731,6 +732,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var runtimeInputPreferenceListenerRegistered = false
     private val runtimeInputPreferenceKeys = setOf(
         AppPreference.FLICK_SENSITIVITY_KEY,
+        AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
         AppPreference.LONG_PRESS_TIMEOUT_KEY,
         AppPreference.VIBRATION_KEY,
         AppPreference.VIBRATION_TIMING_KEY,
@@ -1318,6 +1320,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var nBest: Int? = 4
     private var conversionBeamWidth: Int = 20
     private var flickSensitivityPreferenceValue: Int? = 100
+    private var flickThresholdShapePreferenceValue: FlickThresholdShape =
+        FlickThresholdShape.Radial
     private var longPressTimeoutPreferenceValue: Int? = 300
     private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
@@ -2247,10 +2251,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         assertMainThread("syncRuntimeInputPreferences")
 
         val sensitivity = (appPreference.flick_sensitivity_preference ?: 100).coerceIn(1, 200)
+        val thresholdShape = FlickThresholdShape.fromPreferenceValue(
+            appPreference.flick_threshold_shape_preference
+        )
         val longPressTimeout =
             (appPreference.long_press_timeout_preference ?: 300).coerceIn(100, 2000)
 
         flickSensitivityPreferenceValue = sensitivity
+        flickThresholdShapePreferenceValue = thresholdShape
         longPressTimeoutPreferenceValue = longPressTimeout
         isVibration = appPreference.vibration_preference ?: true
         vibrationTimingStr = appPreference.vibration_timing_preference ?: "both"
@@ -2259,21 +2267,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (appPreference.key_sound_volume_percent_preference ?: 0).coerceIn(0, 100)
         runtimeGestureSettingsSource.update(
             flickSensitivity = sensitivity,
+            flickThresholdShape = thresholdShape,
             longPressTimeoutMillis = longPressTimeout.toLong()
         )
 
         mainLayoutBinding?.apply {
             keyboardView.setFlickSensitivityValue(sensitivity)
+            keyboardView.setFlickThresholdShape(thresholdShape)
             keyboardView.setLongPressTimeout(longPressTimeout.toLong())
             tabletView.setFlickSensitivityValue(sensitivity)
+            tabletView.setFlickThresholdShape(thresholdShape)
             tabletView.setLongPressTimeout(longPressTimeout.toLong())
             qwertyView.setFlickSensitivityValue(sensitivity)
+            qwertyView.setFlickThresholdShape(thresholdShape)
             qwertyView.setLongPressTimeout(longPressTimeout.toLong())
         }
         floatingKeyboardBinding?.apply {
             keyboardViewFloating.setFlickSensitivityValue(sensitivity)
+            keyboardViewFloating.setFlickThresholdShape(thresholdShape)
             keyboardViewFloating.setLongPressTimeout(longPressTimeout.toLong())
             qwertyViewFloating.setFlickSensitivityValue(sensitivity)
+            qwertyViewFloating.setFlickThresholdShape(thresholdShape)
             qwertyViewFloating.setLongPressTimeout(longPressTimeout.toLong())
         }
     }
@@ -2328,6 +2342,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         nBest = preferences.nBest
         conversionBeamWidth = preferences.conversionBeamWidth
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
+        flickThresholdShapePreferenceValue = FlickThresholdShape.fromPreferenceValue(
+            preferences.flickThresholdShapePreferenceValue
+        )
         longPressTimeoutPreferenceValue = preferences.longPressTimeoutPreferenceValue
         qwertyShowIMEButtonPreference = preferences.qwertyShowIMEButtonPreference
         qwertyShowEmojiButtonPreference = preferences.qwertyShowEmojiButtonPreference
@@ -4233,6 +4250,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                keyboardView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
                 keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 keyboardView.applyPopupViewStyle(currentTenKeyPopupViewStyle())
                 keyboardView.setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
@@ -4270,6 +4288,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 refreshSuggestionProgressVisibility()
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                tabletView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
                 tabletView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 customLayoutDefault.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
                 customLayoutDefault.setFlickGuideTextSizeSp(
@@ -4279,6 +4298,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     (flickGuideMaxCharactersPreference ?: 1).coerceIn(1, 4)
                 )
                 qwertyView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                qwertyView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
                 qwertyView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 qwertyView.applyPopupViewStyleSet(currentQwertyPopupViewStyleSet())
                 qwertyView.setSpecialKeyVisibility(
@@ -4471,6 +4491,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         predictionConfig = PredictionConfig()
         lastCandidate = null
         flickSensitivityPreferenceValue = null
+        flickThresholdShapePreferenceValue = FlickThresholdShape.Radial
         longPressTimeoutPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         qwertyShowEmojiButtonPreference = null
@@ -7748,6 +7769,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setFlickSensitivityValue(
             flickSensitivityPreferenceValue ?: 100
+        )
+        floatingKeyboardLayoutBinding.keyboardViewFloating.setFlickThresholdShape(
+            flickThresholdShapePreferenceValue
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setFlickGuideEnabled(
             tenkeyQKeymapGuide ?: false
@@ -19335,6 +19359,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 borderWidth = customKeyBorderWidth ?: 1
             )
             setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+            setFlickThresholdShape(flickThresholdShapePreferenceValue)
             setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
             applyPopupViewStyleSet(currentQwertyPopupViewStyleSet())
             setSpecialKeyVisibility(

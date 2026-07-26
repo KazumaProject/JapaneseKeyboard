@@ -11,13 +11,13 @@ import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.hypot
 
 class TfbiStickyFlickController(
     private val context: Context,
@@ -142,9 +142,8 @@ class TfbiStickyFlickController(
         if (flickState == FlickState.NEUTRAL) {
             val dx = event.x - initialTouchX
             val dy = event.y - initialTouchY
-            val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
 
-            if (distance >= currentFlickThreshold()) {
+            if (isFlickThresholdCrossed(dx, dy)) {
                 view.removeCallbacks(longPressRunnable)
                 val enabledFirstDirections = getEnabledFirstFlickDirections()
                 val determinedDirection =
@@ -322,8 +321,21 @@ class TfbiStickyFlickController(
     }
 
     private fun currentFlickThreshold(): Float {
-        return activeGestureConfig?.flickThresholdPx
-            ?: gestureConfigSource.snapshot().flickThresholdPx
+        return currentGestureConfig().flickThresholdPx
+    }
+
+    private fun currentGestureConfig(): GestureSessionConfig {
+        return activeGestureConfig ?: gestureConfigSource.snapshot()
+    }
+
+    private fun isFlickThresholdCrossed(dx: Float, dy: Float): Boolean {
+        val config = currentGestureConfig()
+        return FlickGestureMath.isThresholdCrossed(
+            deltaX = dx,
+            deltaY = dy,
+            thresholdPx = config.flickThresholdPx,
+            thresholdShape = config.flickThresholdShape
+        )
     }
 
     private fun getEnabledFirstFlickDirections(): Set<TfbiFlickDirection> {
@@ -346,8 +358,15 @@ class TfbiStickyFlickController(
         threshold: Float,
         enabledDirections: Set<TfbiFlickDirection>
     ): TfbiFlickDirection {
-        val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
-        if (distance < threshold) {
+        val config = currentGestureConfig()
+        if (
+            !FlickGestureMath.isThresholdCrossed(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = threshold,
+                thresholdShape = config.flickThresholdShape
+            )
+        ) {
             return TfbiFlickDirection.TAP
         }
         if (enabledDirections.isEmpty()) {

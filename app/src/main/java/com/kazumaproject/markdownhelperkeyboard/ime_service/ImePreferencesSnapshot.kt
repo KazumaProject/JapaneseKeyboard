@@ -43,6 +43,7 @@ data class ImePreferencesSnapshot(
     val conversionBackend: ConversionBackend,
     val predictionConfig: PredictionConfig,
     val flickSensitivityPreferenceValue: Int,
+    val flickThresholdShapePreferenceValue: String,
     val longPressTimeoutPreferenceValue: Int,
     val qwertyShowIMEButtonPreference: Boolean,
     val qwertyShowEmojiButtonPreference: Boolean,
@@ -343,6 +344,8 @@ data class ImePreferencesSnapshot(
                         appPreference.symbol_emoji_prediction_enable_preference,
                 ),
                 flickSensitivityPreferenceValue = appPreference.flick_sensitivity_preference ?: 100,
+                flickThresholdShapePreferenceValue =
+                    appPreference.flick_threshold_shape_preference,
                 longPressTimeoutPreferenceValue =
                     appPreference.long_press_timeout_preference ?: 300,
                 qwertyShowIMEButtonPreference = appPreference.qwerty_show_ime_button ?: true,

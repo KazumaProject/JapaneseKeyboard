@@ -9,6 +9,7 @@ package com.kazumaproject.core.domain.flick
  */
 data class RuntimeGestureSettings(
     val flickSensitivity: Int = DEFAULT_FLICK_SENSITIVITY,
+    val flickThresholdShape: FlickThresholdShape = FlickThresholdShape.Radial,
     val longPressTimeoutMillis: Long = DEFAULT_LONG_PRESS_TIMEOUT_MILLIS,
     val revision: Long = 0L
 ) {
@@ -54,6 +55,7 @@ class MutableRuntimeGestureSettingsSource(
 
     fun update(
         flickSensitivity: Int = current.flickSensitivity,
+        flickThresholdShape: FlickThresholdShape = current.flickThresholdShape,
         longPressTimeoutMillis: Long = current.longPressTimeoutMillis
     ): RuntimeGestureSettings {
         val previous = current
@@ -67,6 +69,7 @@ class MutableRuntimeGestureSettingsSource(
         )
         if (
             previous.flickSensitivity == normalizedSensitivity &&
+            previous.flickThresholdShape == flickThresholdShape &&
             previous.longPressTimeoutMillis == normalizedLongPress
         ) {
             return previous
@@ -74,6 +77,7 @@ class MutableRuntimeGestureSettingsSource(
 
         return RuntimeGestureSettings(
             flickSensitivity = normalizedSensitivity,
+            flickThresholdShape = flickThresholdShape,
             longPressTimeoutMillis = normalizedLongPress,
             revision = previous.revision + 1L
         ).also { current = it }
@@ -108,7 +112,8 @@ data class GestureSessionConfig(
     val settingsRevision: Long,
     val flickSensitivity: Int,
     val flickThresholdPx: Float,
-    val longPressTimeoutMillis: Long
+    val longPressTimeoutMillis: Long,
+    val flickThresholdShape: FlickThresholdShape = FlickThresholdShape.Radial
 ) {
     init {
         require(flickThresholdPx > 0f) { "flickThresholdPx must be positive" }

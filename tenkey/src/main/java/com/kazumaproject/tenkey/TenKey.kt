@@ -49,6 +49,7 @@ import com.kazumaproject.core.domain.state.toTwoStateNumberReturnTargetOrNull
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
 import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
@@ -136,6 +137,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     private var flickSensitivity: Int = 100
     private var flickThresholdPx: Float = resolveFlickThresholdPx(flickSensitivity)
+    private var flickThresholdShape: FlickThresholdShape = FlickThresholdShape.Radial
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var keySizeDelta = 0
@@ -1880,6 +1882,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         flickThresholdPx = resolveFlickThresholdPx(flickSensitivity)
     }
 
+    fun setFlickThresholdShape(shape: FlickThresholdShape) {
+        flickThresholdShape = shape
+    }
+
     fun setLongPressTimeout(timeoutMillis: Long) {
         longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
@@ -2109,7 +2115,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             FlickGestureMath.cardinalDirection(
                 deltaX = distanceX,
                 deltaY = distanceY,
-                thresholdPx = flickThresholdPx
+                thresholdPx = flickThresholdPx,
+                thresholdShape = flickThresholdShape
             )
         ) {
             CoreFlickDirection.Tap -> GestureType.Tap

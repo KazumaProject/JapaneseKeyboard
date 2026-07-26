@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity
 
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Before
@@ -30,5 +31,20 @@ class AppPreferenceFlickGuideTest {
     @Test
     fun zeroQuerySuggestionPreference_defaultOff() {
         assertFalse(AppPreference.zero_query_suggestion_preference)
+    }
+
+    @Test
+    fun flickThresholdShape_defaultsToRadialAndRejectsUnknownValues() {
+        assertEquals(
+            FlickThresholdShape.Radial.preferenceValue,
+            AppPreference.flick_threshold_shape_preference
+        )
+
+        AppPreference.flick_threshold_shape_preference = "unknown"
+
+        assertEquals(
+            FlickThresholdShape.Radial.preferenceValue,
+            AppPreference.flick_threshold_shape_preference
+        )
     }
 }

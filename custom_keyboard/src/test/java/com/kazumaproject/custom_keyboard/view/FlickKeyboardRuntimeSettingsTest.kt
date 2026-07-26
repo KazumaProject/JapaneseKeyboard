@@ -3,6 +3,7 @@ package com.kazumaproject.custom_keyboard.view
 import android.content.Context
 import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyData
@@ -26,8 +27,10 @@ class FlickKeyboardRuntimeSettingsTest {
         val controllerBefore = keyboardView.standardController()
 
         keyboardView.setFlickSensitivityValue(1)
+        keyboardView.setFlickThresholdShape(FlickThresholdShape.Rectangular)
         keyboardView.setLongPressTimeout(100L)
         keyboardView.setFlickSensitivityValue(200)
+        keyboardView.setFlickThresholdShape(FlickThresholdShape.Radial)
         keyboardView.setLongPressTimeout(2_000L)
 
         assertSame(childBefore, keyboardView.getChildAt(0))

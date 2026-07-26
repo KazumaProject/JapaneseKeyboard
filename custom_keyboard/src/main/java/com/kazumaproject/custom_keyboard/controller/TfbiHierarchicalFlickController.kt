@@ -11,6 +11,7 @@ import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.data.KeyMode
@@ -21,7 +22,6 @@ import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
 import java.util.ArrayDeque
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.hypot
 
 
 /**
@@ -665,8 +665,11 @@ class TfbiHierarchicalFlickController(
     }
 
     private fun currentFlickThreshold(): Float {
-        return activeGestureConfig?.flickThresholdPx
-            ?: gestureConfigSource.snapshot().flickThresholdPx
+        return currentGestureConfig().flickThresholdPx
+    }
+
+    private fun currentGestureConfig(): GestureSessionConfig {
+        return activeGestureConfig ?: gestureConfigSource.snapshot()
     }
 
     private fun calculateDirection(
@@ -675,8 +678,15 @@ class TfbiHierarchicalFlickController(
         threshold: Float,
         enabledDirections: Set<TfbiFlickDirection>
     ): TfbiFlickDirection {
-        val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
-        if (distance < threshold) {
+        val config = currentGestureConfig()
+        if (
+            !FlickGestureMath.isThresholdCrossed(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = threshold,
+                thresholdShape = config.flickThresholdShape
+            )
+        ) {
             return TfbiFlickDirection.TAP
         }
         if (enabledDirections.size <= 1 && enabledDirections.contains(TfbiFlickDirection.TAP)) {
