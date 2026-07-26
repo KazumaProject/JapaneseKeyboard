@@ -3,6 +3,10 @@ package com.kazumaproject.markdownhelperkeyboard.gemma.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaInputModality
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaOutputLanguage
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaOutputMode
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaTaskKind
 import com.kazumaproject.markdownhelperkeyboard.repository.GemmaPromptTemplateRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +25,7 @@ class GemmaPromptTemplateViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
+            repository.ensureBuiltIns()
             repository.observeAll().collect { items ->
                 _templates.value = items
             }
@@ -31,7 +36,13 @@ class GemmaPromptTemplateViewModel @Inject constructor(
         currentTemplate: GemmaPromptTemplate?,
         title: String,
         prompt: String,
-        isEnabled: Boolean
+        isEnabled: Boolean,
+        inputModality: GemmaInputModality = GemmaInputModality.TEXT,
+        taskKind: GemmaTaskKind = GemmaTaskKind.CUSTOM,
+        outputMode: GemmaOutputMode = GemmaOutputMode.SINGLE_TEXT,
+        outputLanguage: GemmaOutputLanguage = GemmaOutputLanguage.AUTO,
+        candidateCount: Int = 1,
+        showInActionMenu: Boolean = true,
     ) {
         viewModelScope.launch {
             val now = System.currentTimeMillis()
@@ -43,7 +54,13 @@ class GemmaPromptTemplateViewModel @Inject constructor(
                         isEnabled = isEnabled,
                         sortOrder = repository.nextSortOrder(),
                         createdAt = now,
-                        updatedAt = now
+                        updatedAt = now,
+                        inputModality = inputModality.name,
+                        taskKind = taskKind.name,
+                        outputMode = outputMode.name,
+                        outputLanguage = outputLanguage.name,
+                        candidateCount = candidateCount,
+                        showInActionMenu = showInActionMenu,
                     )
                 )
             } else {
@@ -52,7 +69,13 @@ class GemmaPromptTemplateViewModel @Inject constructor(
                         title = title,
                         prompt = prompt,
                         isEnabled = isEnabled,
-                        updatedAt = now
+                        updatedAt = now,
+                        inputModality = inputModality.name,
+                        taskKind = taskKind.name,
+                        outputMode = outputMode.name,
+                        outputLanguage = outputLanguage.name,
+                        candidateCount = candidateCount,
+                        showInActionMenu = showInActionMenu,
                     )
                 )
             }

@@ -36,16 +36,16 @@ class ConversionDictionarySnapshotTest {
         val dao = mock<LearnDao>()
         val short = LearnEntity(input = "なか", out = "中")
         val long = LearnEntity(input = "なかの", out = "中野")
-        whenever(dao.getAllSuspend()).thenReturn(listOf(short, long))
+        whenever(dao.findByInputPrefix("な", "な\uFFFF")).thenReturn(listOf(long, short))
         val repository = LearnRepository(dao)
 
         assertEquals(listOf(long, short), repository.findCommonPrefixes("なかのかも"))
         assertEquals(listOf(short), repository.findCommonPrefixes("なかだけ"))
-        verify(dao, times(1)).getAllSuspend()
+        verify(dao, times(1)).findByInputPrefix("な", "な\uFFFF")
 
         repository.deleteAll()
         repository.findCommonPrefixes("なか")
-        verify(dao, times(2)).getAllSuspend()
+        verify(dao, times(2)).findByInputPrefix("な", "な\uFFFF")
     }
 
     private fun userWord(id: Int, word: String, reading: String) = UserWord(

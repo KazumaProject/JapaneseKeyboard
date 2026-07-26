@@ -617,6 +617,9 @@ object AppPreference {
     private val LEARN_FIRST_CANDIDATE_DICTIONARY_PREFERENCE =
         Pair("learn_first_candidate_dictionary_preference", false)
 
+    private val LEARN_DICTIONARY_ALLOW_MIXED_SYMBOLS_NUMBERS_PREFERENCE =
+        Pair("learn_dictionary_allow_mixed_symbols_numbers_preference", true)
+
     private val ENABLE_PREDICTION_SEARCH_LEARN_DICTIONARY_PREFERENCE =
         Pair("enable_prediction_search_learn_dictionary_preference", false)
 
@@ -3327,6 +3330,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(LEARN_FIRST_CANDIDATE_DICTIONARY_PREFERENCE.first, value)
+        }
+
+    var learn_dictionary_allow_mixed_symbols_numbers_preference: Boolean
+        get() = preferences.getBoolean(
+            LEARN_DICTIONARY_ALLOW_MIXED_SYMBOLS_NUMBERS_PREFERENCE.first,
+            LEARN_DICTIONARY_ALLOW_MIXED_SYMBOLS_NUMBERS_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(LEARN_DICTIONARY_ALLOW_MIXED_SYMBOLS_NUMBERS_PREFERENCE.first, value)
         }
 
     var enable_prediction_search_learn_dictionary_preference: Boolean

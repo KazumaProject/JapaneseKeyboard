@@ -48,8 +48,8 @@ class LearnDaoTest {
 
         // Assert: Verify the results
         assertEquals(2, results?.size)
-        assertEquals("output", results?.get(0))
-        assertEquals("output2", results?.get(1))
+        assertEquals("output", results?.get(0)?.out)
+        assertEquals("output2", results?.get(1)?.out)
 
         println(results)
     }
@@ -69,9 +69,9 @@ class LearnDaoTest {
 
         // Assert: Verify that each input maps to the correct output
         assertEquals(1, result1?.size)
-        assertEquals("output1", result1?.get(0))
+        assertEquals("output1", result1?.get(0)?.out)
 
         assertEquals(1, result2?.size)
-        assertEquals("output2", result2?.get(0))
+        assertEquals("output2", result2?.get(0)?.out)
     }
 }

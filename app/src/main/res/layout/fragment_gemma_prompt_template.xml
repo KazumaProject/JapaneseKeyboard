@@ -6,6 +6,48 @@
     android:layout_height="match_parent"
     android:background="?android:attr/colorBackground">
 
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/gemma_action_filter_group"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        app:selectionRequired="true"
+        app:singleSelection="true"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/gemma_action_filter_all"
+            style="@style/Widget.MaterialComponents.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            android:text="@string/gemma_action_filter_all" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/gemma_action_filter_text"
+            style="@style/Widget.MaterialComponents.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gemma_action_modality_text" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/gemma_action_filter_image"
+            style="@style/Widget.MaterialComponents.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gemma_action_modality_image" />
+
+        <com.google.android.material.chip.Chip
+            android:id="@+id/gemma_action_filter_audio"
+            style="@style/Widget.MaterialComponents.Chip.Filter"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/gemma_action_modality_audio" />
+    </com.google.android.material.chip.ChipGroup>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recycler_view"
         android:layout_width="0dp"
@@ -16,7 +58,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/gemma_action_filter_group"
         tools:listitem="@layout/item_gemma_prompt_template" />
 
     <TextView

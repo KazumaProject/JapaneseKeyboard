@@ -2,11 +2,17 @@ package com.kazumaproject.markdownhelperkeyboard.gemma.ui
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.databinding.ItemGemmaPromptTemplateBinding
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
+import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaInputModality
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaOutputMode
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.modality
+import com.kazumaproject.markdownhelperkeyboard.gemma.database.output
 
 class GemmaPromptTemplateAdapter(
     private val onToggle: (GemmaPromptTemplate, Boolean) -> Unit,
@@ -32,6 +38,22 @@ class GemmaPromptTemplateAdapter(
         with(holder.binding) {
             textTitle.text = item.title
             textPrompt.text = item.prompt
+            val modalityLabel = when (item.modality()) {
+                GemmaInputModality.TEXT -> root.context.getString(R.string.gemma_action_modality_text)
+                GemmaInputModality.IMAGE -> root.context.getString(R.string.gemma_action_modality_image)
+                GemmaInputModality.AUDIO -> root.context.getString(R.string.gemma_action_modality_audio)
+            }
+            val outputLabel = when (item.output()) {
+                GemmaOutputMode.SINGLE_TEXT -> root.context.getString(R.string.gemma_action_output_single)
+                GemmaOutputMode.MULTILINE_TEXT -> root.context.getString(R.string.gemma_action_output_multiline)
+                GemmaOutputMode.CANDIDATE_LIST -> root.context.getString(R.string.gemma_action_output_candidates)
+            }
+            val builtInLabel = if (item.isBuiltIn) {
+                " · ${root.context.getString(R.string.gemma_action_built_in)}"
+            } else {
+                ""
+            }
+            textModality.text = "$modalityLabel · $outputLabel$builtInLabel"
 
             switchEnable.setOnCheckedChangeListener(null)
             switchEnable.isChecked = item.isEnabled
@@ -45,6 +67,7 @@ class GemmaPromptTemplateAdapter(
             buttonDelete.setOnClickListener {
                 onDelete(item)
             }
+            buttonDelete.isVisible = !item.isBuiltIn
             root.setOnClickListener {
                 onEdit(item)
             }

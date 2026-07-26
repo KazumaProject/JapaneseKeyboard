@@ -1,9 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
 import android.database.sqlite.SQLiteConstraintException
-import androidx.room.Transaction
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.containsSymbolNumberOrEmoji
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHiragana
+import com.kazumaproject.markdownhelperkeyboard.learning.LearningEligibilityPolicy
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnDao
 import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 import com.kazumaproject.markdownhelperkeyboard.learning.model.LearnResult
@@ -11,7 +9,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,7 +17,7 @@ class LearnRepository @Inject constructor(
     private val learnDao: LearnDao
 ) {
     @Volatile
-    private var conversionSnapshot: Map<Char, List<LearnEntity>>? = null
+    private var conversionSnapshot: Map<Char, List<LearnEntity>> = emptyMap()
     @Volatile
     var conversionRevision: Long = 0
         private set
@@ -45,34 +42,27 @@ class LearnRepository @Inject constructor(
     suspend fun existsDuplicateForUpdate(input: String, output: String, excludeId: Int): Boolean =
         learnDao.existsDuplicateForUpdate(input, output, excludeId)
 
-    /**
-     * 学習データをアトミックにupsert（更新または挿入）します。
-     * この関数は、指定された単語が既に存在するかどうかを確認し、
-     * 存在しない場合は挿入、存在する場合はスコアを加算して更新します。
-     * @Transactionアノテーションにより、一連の処理が単一のトランザクションとして実行され、競合状態を防ぎます。
-     *
-     * @param learnData 学習させたいデータ。
-     * @param scoreIncrement スコアを加算する量。
-     */
-    @Transaction
-    suspend fun upsertLearnedData(learnData: LearnEntity) {
-        val existingData = learnDao.findByInputAndOutput(learnData.input, learnData.out)
-        Timber.d("upsertLearnedData: ${learnData.input} ${learnData.out} ${learnData.input.isAllHiragana()}")
-        if (learnData.out.containsSymbolNumberOrEmoji()) return
-        if (existingData == null) {
-            learnDao.insert(learnData)
-        } else {
-            val score =
-                if (existingData.score > 0) ((existingData.score - 1500).coerceAtLeast(0)).toShort() else (0).toShort()
-            learnDao.updateLearnedData(
-                learnData.copy(
-                    input = learnData.input,
-                    out = learnData.out,
-                    score = score,
-                    id = existingData.id
-                )
+    suspend fun upsertLearnedData(
+        learnData: LearnEntity,
+        allowJapaneseWithSymbolsAndNumbers: Boolean = true,
+    ) = upsertLearnedDataBatch(
+        learnDataList = listOf(learnData),
+        allowJapaneseWithSymbolsAndNumbers = allowJapaneseWithSymbolsAndNumbers,
+    )
+
+    suspend fun upsertLearnedDataBatch(
+        learnDataList: List<LearnEntity>,
+        allowJapaneseWithSymbolsAndNumbers: Boolean,
+    ) {
+        val eligibleEntries = learnDataList.filter { entry ->
+            LearningEligibilityPolicy.isEligible(
+                input = entry.input,
+                output = entry.out,
+                allowJapaneseWithSymbolsAndNumbers = allowJapaneseWithSymbolsAndNumbers,
             )
         }
+        if (eligibleEntries.isEmpty()) return
+        learnDao.upsertLearningEntries(eligibleEntries)
         invalidateConversionSnapshot()
     }
 
@@ -84,7 +74,7 @@ class LearnRepository @Inject constructor(
      * @return A list of matching LearnEntity objects.
      */
     suspend fun predictiveSearchByInput(prefix: String, limit: Int): List<LearnEntity> =
-        learnDao.predictiveSearchByInput(prefix, limit)
+        learnDao.predictiveSearchByInput(prefix, prefix.upperBound(), limit)
 
     /**
      * Calls the DAO to find entries that are a common prefix of the given search term.
@@ -94,11 +84,10 @@ class LearnRepository @Inject constructor(
      */
     suspend fun findCommonPrefixes(searchTerm: String): List<LearnEntity> {
         val firstCharacter = searchTerm.firstOrNull() ?: return emptyList()
-        return getConversionSnapshot()[firstCharacter]
-            ?.asSequence()
-            ?.filter { searchTerm.startsWith(it.input) }
-            ?.toList()
-            .orEmpty()
+        return getConversionBucket(firstCharacter)
+            .asSequence()
+            .filter { searchTerm.startsWith(it.input) }
+            .toList()
     }
 
     fun all(): Flow<List<LearnEntity>> = learnDao.all()
@@ -146,23 +135,25 @@ class LearnRepository @Inject constructor(
         }
     }
 
-    private suspend fun getConversionSnapshot(): Map<Char, List<LearnEntity>> {
-        conversionSnapshot?.let { return it }
+    private suspend fun getConversionBucket(firstCharacter: Char): List<LearnEntity> {
+        conversionSnapshot[firstCharacter]?.let { return it }
         return conversionSnapshotMutex.withLock {
-            conversionSnapshot ?: learnDao.getAllSuspend()
-                .asSequence()
-                .filter { it.input.isNotEmpty() }
-                .groupBy { it.input.first() }
-                .mapValues { (_, words) -> words.sortedByDescending { it.input.length } }
-                .also { conversionSnapshot = it }
+            conversionSnapshot[firstCharacter] ?: learnDao.findByInputPrefix(
+                firstCharacter.toString(),
+                firstCharacter.toString().upperBound(),
+            ).also { words ->
+                conversionSnapshot = conversionSnapshot + (firstCharacter to words)
+            }
         }
     }
 
     private fun invalidateConversionSnapshot() {
-        conversionSnapshot = null
+        conversionSnapshot = emptyMap()
         conversionRevision++
     }
 }
+
+private fun String.upperBound(): String = this + '\uFFFF'
 
 enum class LearnUpdateResult {
     Updated,

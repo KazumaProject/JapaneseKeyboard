@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.textview.MaterialTextView
 import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.learning.database.LearnEntity
 
 class LearnDictionaryAdapter :
     RecyclerView.Adapter<LearnDictionaryAdapter.LearnDictionaryViewHolder>() {
@@ -25,21 +26,21 @@ class LearnDictionaryAdapter :
         }
     }
 
-    private val diffCallback = object : DiffUtil.ItemCallback<Pair<String, List<String>>>() {
+    private val diffCallback = object : DiffUtil.ItemCallback<Pair<String, List<LearnEntity>>>() {
         override fun areItemsTheSame(
-            oldItem: Pair<String, List<String>>,
-            newItem: Pair<String, List<String>>
+            oldItem: Pair<String, List<LearnEntity>>,
+            newItem: Pair<String, List<LearnEntity>>
         ): Boolean = oldItem.first == newItem.first
 
         override fun areContentsTheSame(
-            oldItem: Pair<String, List<String>>,
-            newItem: Pair<String, List<String>>
+            oldItem: Pair<String, List<LearnEntity>>,
+            newItem: Pair<String, List<LearnEntity>>
         ): Boolean = oldItem == newItem
     }
 
     private val differ = AsyncListDiffer(this, diffCallback)
 
-    var learnDataList: List<Pair<String, List<String>>>
+    var learnDataList: List<Pair<String, List<LearnEntity>>>
         get() = differ.currentList
         set(value) = differ.submitList(value)
 
@@ -80,10 +81,10 @@ class LearnDictionaryAdapter :
         holder.outputAdapter.apply {
             learnDataOutputList = item.second
             this.setOnItemClickListener { child ->
-                onItemChildrenClickListener?.invoke(item.first, child)
+                onItemChildrenClickListener?.invoke(item.first, child.out)
             }
             this.setOnItemLongClickListener { child ->
-                onItemChildrenLongClickListener?.invoke(item.first, child)
+                onItemChildrenLongClickListener?.invoke(item.first, child.out)
             }
         }
     }

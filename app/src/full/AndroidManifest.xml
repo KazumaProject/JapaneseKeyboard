@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <service
+            android:name=".gemma.runtime.GemmaRuntimeService"
+            android:exported="false"
+            android:process=":gemma"
+            android:stopWithTask="false" />
+        <service
+            android:name=".zenz.runtime.ZenzRuntimeService"
+            android:exported="false"
+            android:process=":zenz"
+            android:stopWithTask="false" />
+    </application>
+</manifest>

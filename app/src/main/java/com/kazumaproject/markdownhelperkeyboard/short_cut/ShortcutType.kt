@@ -50,6 +50,12 @@ enum class ShortcutType(
         activeIconResId = com.kazumaproject.core.R.drawable.live_conversion_on_24px,
         description = "ライブ変換"
     ),
+    LEARNING_PAUSE(
+        "learning_pause",
+        com.kazumaproject.core.R.drawable.dictionary_24px,
+        activeIconResId = com.kazumaproject.core.R.drawable.incognito,
+        description = "学習を一時停止"
+    ),
     SELECT_ALL(
         "select_all",
         com.kazumaproject.core.R.drawable.text_select_start_24dp,
@@ -74,6 +80,16 @@ enum class ShortcutType(
         "voice_input",
         com.kazumaproject.core.R.drawable.settings_voice_24px,
         description = "音声入力"
+    ),
+    GEMMA_IMAGE(
+        "gemma_image",
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_image_24,
+        description = "Gemma画像"
+    ),
+    GEMMA_AUDIO(
+        "gemma_audio",
+        com.kazumaproject.markdownhelperkeyboard.R.drawable.gemma_audio_24,
+        description = "Gemma音声"
     ),
     CLIP_BOARD(
         "clip_board",

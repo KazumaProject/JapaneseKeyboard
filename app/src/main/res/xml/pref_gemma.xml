@@ -28,11 +28,20 @@
             android:title="@string/gemma_translation_target_language_title"
             app:useSimpleSummaryProvider="true" />
 
+        <ListPreference
+            android:key="gemma_model_selection_preference"
+            android:title="@string/gemma_model_selection_title"
+            app:summary="@string/gemma_translation_model_summary_missing" />
+
         <Preference
-            android:dependency="gemma_translation_enable_preference"
             android:key="gemma_translation_model_preference"
             android:title="@string/gemma_translation_model_title"
             app:summary="@string/gemma_translation_model_summary_default" />
+
+        <Preference
+            android:key="gemma_supported_models_preference"
+            android:title="@string/gemma_supported_models_title"
+            app:summary="@string/gemma_supported_models_summary" />
 
         <Preference
             android:key="gemma_prompt_template_management_preference"

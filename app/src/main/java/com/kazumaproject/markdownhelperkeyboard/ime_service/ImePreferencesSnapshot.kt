@@ -223,6 +223,7 @@ data class ImePreferencesSnapshot(
     val conversionCandidatesRomajiEnablePreference: Boolean,
     val enableZenzRightContextPreference: Boolean,
     val learnFirstCandidateDictionaryPreference: Boolean,
+    val learnDictionaryAllowMixedSymbolsNumbersPreference: Boolean,
     val enablePredictionSearchLearnDictionaryPreference: Boolean,
     val learnPredictionPreference: Int,
     val userDictionaryPredictionCandidateLimit: Int,
@@ -638,6 +639,8 @@ data class ImePreferencesSnapshot(
                     AppVariantConfig.hasZenz && appPreference.enable_zenz_right_context_preference,
                 learnFirstCandidateDictionaryPreference =
                     appPreference.learn_first_candidate_dictionary_preference,
+                learnDictionaryAllowMixedSymbolsNumbersPreference =
+                    appPreference.learn_dictionary_allow_mixed_symbols_numbers_preference,
                 enablePredictionSearchLearnDictionaryPreference =
                     appPreference.enable_prediction_search_learn_dictionary_preference,
                 learnPredictionPreference = appPreference.learn_prediction_preference,

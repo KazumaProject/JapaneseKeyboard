@@ -9,6 +9,7 @@ import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.LayerDrawable
+import android.os.Build
 import android.os.SystemClock
 import android.text.Spannable
 import android.text.SpannableString
@@ -2289,7 +2290,20 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
     }
 
-    private val motionTargets = mutableMapOf<Int, View>()
+    /**
+     * A gesture must not depend on the IME window-local origin after ACTION_DOWN.
+     *
+     * Candidate-surface relayout can move the IME window origin between two input events even
+     * though the keyboard remains at the same physical position. Keeping both the target and its
+     * display-space origin makes the complete gesture independent from that transient relayout.
+     */
+    private data class MotionTarget(
+        val view: View,
+        val displayOriginX: Float,
+        val displayOriginY: Float
+    )
+
+    private val motionTargets = mutableMapOf<Int, MotionTarget>()
     private val pointerDownTime = mutableMapOf<Int, Long>()
     private val TAG = "FlickKeyboardViewTouch"
 
@@ -2304,11 +2318,11 @@ class FlickKeyboardView @JvmOverloads constructor(
                     pointerDownTime[trackedPointerId] ?: eventTime,
                     eventTime,
                     MotionEvent.ACTION_CANCEL,
-                    target.width / 2f,
-                    target.height / 2f,
+                    target.view.width / 2f,
+                    target.view.height / 2f,
                     0
                 )
-                target.dispatchTouchEvent(cancelEvent)
+                target.view.dispatchTouchEvent(cancelEvent)
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to dispatch ACTION_CANCEL while clearing touch state", e)
             } finally {
@@ -2316,10 +2330,10 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             try {
-                target.cancelPendingInputEvents()
-                target.isPressed = false
-                target.isSelected = false
-                target.refreshDrawableState()
+                target.view.cancelPendingInputEvents()
+                target.view.isPressed = false
+                target.view.isSelected = false
+                target.view.refreshDrawableState()
             } catch (e: Exception) {
                 Log.w(TAG, "Failed to reset tracked touch target state", e)
             }
@@ -2329,17 +2343,70 @@ class FlickKeyboardView @JvmOverloads constructor(
         pointerDownTime.clear()
     }
 
-    private fun findTargetView(x: Float, y: Float): View? {
+    private fun findTargetView(displayX: Float, displayY: Float): MotionTarget? {
+        val location = IntArray(2)
         for (i in 0 until childCount) {
             val child = getChildAt(i)
             if (child.visibility != View.VISIBLE || !child.isEnabled) continue
-            child.getHitRect(hitRect)
-            if (hitRect.contains(x.toInt(), y.toInt())) {
-                return child
+            child.getLocationOnScreen(location)
+            hitRect.set(
+                location[0],
+                location[1],
+                location[0] + child.width,
+                location[1] + child.height
+            )
+            if (hitRect.contains(displayX.toInt(), displayY.toInt())) {
+                return MotionTarget(
+                    view = child,
+                    displayOriginX = location[0].toFloat(),
+                    displayOriginY = location[1].toFloat()
+                )
             }
         }
 
         return null
+    }
+
+    private fun MotionEvent.displayX(pointerIndex: Int): Float {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            getRawX(pointerIndex)
+        } else {
+            getX(pointerIndex) + rawX - x
+        }
+    }
+
+    private fun MotionEvent.displayY(pointerIndex: Int): Float {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            getRawY(pointerIndex)
+        } else {
+            getY(pointerIndex) + rawY - y
+        }
+    }
+
+    private fun dispatchPointerEvent(
+        source: MotionEvent,
+        pointerIndex: Int,
+        target: MotionTarget,
+        action: Int,
+        downTime: Long,
+        eventTime: Long = source.eventTime
+    ) {
+        val displayX = source.displayX(pointerIndex)
+        val displayY = source.displayY(pointerIndex)
+        val childEvent = MotionEvent.obtain(
+            downTime,
+            eventTime,
+            action,
+            displayX,
+            displayY,
+            source.metaState
+        )
+        childEvent.offsetLocation(
+            -target.displayOriginX,
+            -target.displayOriginY
+        )
+        target.view.dispatchTouchEvent(childEvent)
+        childEvent.recycle()
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -2429,27 +2496,20 @@ class FlickKeyboardView @JvmOverloads constructor(
                 pointerDownTime.clear()
 
                 pointerDownTime[pointerId] = event.downTime
-                val x = event.x
-                val y = event.y
-                val targetView = findTargetView(x, y)
+                val targetView = findTargetView(
+                    displayX = event.displayX(pointerIndex),
+                    displayY = event.displayY(pointerIndex)
+                )
 
-                targetView?.let {
-                    motionTargets[pointerId] = it
-
-                    val newEvent = MotionEvent.obtain(
-                        event.downTime,
-                        event.eventTime,
-                        MotionEvent.ACTION_DOWN,
-                        x,
-                        y,
-                        event.metaState
+                targetView?.let { target ->
+                    motionTargets[pointerId] = target
+                    dispatchPointerEvent(
+                        source = event,
+                        pointerIndex = pointerIndex,
+                        target = target,
+                        action = MotionEvent.ACTION_DOWN,
+                        downTime = event.downTime
                     )
-
-                    Log.d("FlickKeyboardView MotionEvent.ACTION_DOWN", "$newEvent")
-
-                    newEvent.offsetLocation(-it.left.toFloat(), -it.top.toFloat())
-                    it.dispatchTouchEvent(newEvent)
-                    newEvent.recycle()
                 }
                 return true
             }
@@ -2471,29 +2531,20 @@ class FlickKeyboardView @JvmOverloads constructor(
                     if (target != null && downTime != null) {
                         val existingPointerIndex = event.findPointerIndex(existingPointerId)
                         if (existingPointerIndex != -1) {
-                            val x = event.getX(existingPointerIndex)
-                            val y = event.getY(existingPointerIndex)
-
                             // A second finger starts a new key gesture; the first finger should be
                             // committed at its current position, not canceled.
-                            val upEvent = MotionEvent.obtain(
-                                downTime,
-                                event.eventTime,
-                                MotionEvent.ACTION_UP,
-                                x,
-                                y,
-                                event.metaState
+                            dispatchPointerEvent(
+                                source = event,
+                                pointerIndex = existingPointerIndex,
+                                target = target,
+                                action = MotionEvent.ACTION_UP,
+                                downTime = downTime
                             )
-                            upEvent.offsetLocation(
-                                -target.left.toFloat(),
-                                -target.top.toFloat()
-                            )
-                            target.dispatchTouchEvent(upEvent)
-                            upEvent.recycle()
                         }
                     }
 
-                    val matchingEntry = dynamicKeyMap.entries.find { it.value.view == target }
+                    val matchingEntry =
+                        dynamicKeyMap.entries.find { it.value.view == target?.view }
                     if (matchingEntry != null) {
                         val keyInfo = matchingEntry.value
                         Log.d(
@@ -2517,31 +2568,22 @@ class FlickKeyboardView @JvmOverloads constructor(
                 pointerDownTime.clear()
 
                 val newPointerId = event.getPointerId(pointerIndex)
-                val x = event.getX(pointerIndex)
-                val y = event.getY(pointerIndex)
 
                 pointerDownTime[newPointerId] = event.eventTime
-                val targetView = findTargetView(x, y)
+                val targetView = findTargetView(
+                    displayX = event.displayX(pointerIndex),
+                    displayY = event.displayY(pointerIndex)
+                )
 
-                targetView?.let {
-                    motionTargets[newPointerId] = it
-                    val newEvent = MotionEvent.obtain(
-                        event.eventTime,
-                        event.eventTime,
-                        MotionEvent.ACTION_DOWN,
-                        x,
-                        y,
-                        event.metaState
+                targetView?.let { target ->
+                    motionTargets[newPointerId] = target
+                    dispatchPointerEvent(
+                        source = event,
+                        pointerIndex = pointerIndex,
+                        target = target,
+                        action = MotionEvent.ACTION_DOWN,
+                        downTime = event.eventTime
                     )
-
-                    Log.d(
-                        "FlickKeyboardView",
-                        "MotionEvent.ACTION_POINTER_DOWN called new $newPointerId $newEvent"
-                    )
-
-                    newEvent.offsetLocation(-it.left.toFloat(), -it.top.toFloat())
-                    it.dispatchTouchEvent(newEvent)
-                    newEvent.recycle()
                 }
                 return true
             }
@@ -2553,20 +2595,13 @@ class FlickKeyboardView @JvmOverloads constructor(
                     val downTime = pointerDownTime[pId]
 
                     if (target != null && downTime != null) {
-                        val x = event.getX(i)
-                        val y = event.getY(i)
-
-                        val newEvent = MotionEvent.obtain(
-                            downTime,
-                            event.eventTime,
-                            MotionEvent.ACTION_MOVE,
-                            x,
-                            y,
-                            event.metaState
+                        dispatchPointerEvent(
+                            source = event,
+                            pointerIndex = i,
+                            target = target,
+                            action = MotionEvent.ACTION_MOVE,
+                            downTime = downTime
                         )
-                        newEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
-                        target.dispatchTouchEvent(newEvent)
-                        newEvent.recycle()
                     }
                 }
                 return true
@@ -2576,9 +2611,6 @@ class FlickKeyboardView @JvmOverloads constructor(
                 if (visibility != View.VISIBLE) {
                     return false
                 }
-
-                val x = event.getX(pointerIndex)
-                val y = event.getY(pointerIndex)
 
                 Log.d(
                     "FlickKeyboardView",
@@ -2590,23 +2622,13 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                     Log.d("FlickKeyboardView", "ACTION_POINTER_UP: Found target! $target")
 
-                    val newEvent = MotionEvent.obtain(
-                        downTime,
-                        event.eventTime,
-                        MotionEvent.ACTION_UP,
-                        x,
-                        y,
-                        event.metaState
+                    dispatchPointerEvent(
+                        source = event,
+                        pointerIndex = pointerIndex,
+                        target = target,
+                        action = MotionEvent.ACTION_UP,
+                        downTime = downTime
                     )
-
-                    Log.d(
-                        "FlickKeyboardView",
-                        "ACTION_POINTER_UP: Dispatching fake ACTION_UP to target. Event: $newEvent"
-                    )
-
-                    newEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
-                    target.dispatchTouchEvent(newEvent)
-                    newEvent.recycle()
                 } ?: run {
                     Log.e(
                         "FlickKeyboardView",
@@ -2620,26 +2642,18 @@ class FlickKeyboardView @JvmOverloads constructor(
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                val x = event.getX(pointerIndex)
-                val y = event.getY(pointerIndex)
                 val actionToDispatch =
                     if (action == MotionEvent.ACTION_UP) MotionEvent.ACTION_UP else MotionEvent.ACTION_CANCEL
 
                 motionTargets[pointerId]?.let { target ->
                     val downTime = pointerDownTime[pointerId]!!
-                    val newEvent = MotionEvent.obtain(
-                        downTime,
-                        event.eventTime,
-                        actionToDispatch,
-                        x,
-                        y,
-                        event.metaState
+                    dispatchPointerEvent(
+                        source = event,
+                        pointerIndex = pointerIndex,
+                        target = target,
+                        action = actionToDispatch,
+                        downTime = downTime
                     )
-
-                    Log.d("FlickKeyboardView MotionEvent.ACTION_UP", "$downTime $newEvent")
-                    newEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
-                    target.dispatchTouchEvent(newEvent)
-                    newEvent.recycle()
                 }
 
                 if (action == MotionEvent.ACTION_CANCEL) {
@@ -2705,28 +2719,20 @@ class FlickKeyboardView @JvmOverloads constructor(
         motionTargets.forEach { (trackedPointerId, target) ->
             val trackedPointerIndex = sourceEvent.findPointerIndex(trackedPointerId)
             if (trackedPointerIndex == -1) {
-                target.isPressed = false
-                target.isSelected = false
-                target.refreshDrawableState()
+                target.view.isPressed = false
+                target.view.isSelected = false
+                target.view.refreshDrawableState()
                 return@forEach
             }
 
             val downTime = pointerDownTime[trackedPointerId] ?: sourceEvent.downTime
-            val x = sourceEvent.getX(trackedPointerIndex)
-            val y = sourceEvent.getY(trackedPointerIndex)
-
-            val endEvent = MotionEvent.obtain(
-                downTime,
-                sourceEvent.eventTime,
-                actionToDispatch,
-                x,
-                y,
-                sourceEvent.metaState
+            dispatchPointerEvent(
+                source = sourceEvent,
+                pointerIndex = trackedPointerIndex,
+                target = target,
+                action = actionToDispatch,
+                downTime = downTime
             )
-
-            endEvent.offsetLocation(-target.left.toFloat(), -target.top.toFloat())
-            target.dispatchTouchEvent(endEvent)
-            endEvent.recycle()
         }
     }
 

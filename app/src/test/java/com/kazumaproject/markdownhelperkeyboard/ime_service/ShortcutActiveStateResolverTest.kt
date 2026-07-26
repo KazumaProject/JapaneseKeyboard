@@ -99,4 +99,19 @@ class ShortcutActiveStateResolverTest {
             ShortcutType.fromId("live_conversion_toggle") == ShortcutType.LIVE_CONVERSION_TOGGLE
         )
     }
+
+    @Test
+    fun learningPauseIsActiveOnlyWhilePaused() {
+        val activeTypes = resolveShortcutActiveTypes(
+            keyboardLayoutEditActive = false,
+            keyboardFloatingActive = false,
+            inputBehavior = ResolvedInputBehavior.COMPOSING_TEXT,
+            liveConversionEnabled = false,
+            learningPaused = true,
+        )
+
+        assertTrue(ShortcutType.LEARNING_PAUSE in activeTypes)
+        assertNotNull(ShortcutType.LEARNING_PAUSE.activeIconResId)
+        assertTrue(ShortcutType.fromId("learning_pause") == ShortcutType.LEARNING_PAUSE)
+    }
 }
