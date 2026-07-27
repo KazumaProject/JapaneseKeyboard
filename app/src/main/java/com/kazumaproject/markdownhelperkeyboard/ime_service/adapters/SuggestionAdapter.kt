@@ -1601,7 +1601,7 @@ class SuggestionAdapter internal constructor(
             /** Mozc UT Web **/
             (27).toByte() -> ""
             CANDIDATE_TYPE_USER_DICTIONARY ->
-                if (showDictionaryCandidateLabels) "ユーザー" else ""
+                if (showDictionaryCandidateLabels) "[ユーザー]" else ""
             /** 英語 **/
             (29).toByte() -> ""
             /** 全角 **/
@@ -1609,7 +1609,7 @@ class SuggestionAdapter internal constructor(
             CANDIDATE_TYPE_TIME -> ""
             CANDIDATE_TYPE_ERA -> ""
             CANDIDATE_TYPE_USER_TEMPLATE ->
-                if (showDictionaryCandidateLabels) "定型" else ""
+                if (showDictionaryCandidateLabels) "[定型]" else ""
             /** 半角 **/
             (31).toByte() -> "[半]"
             /** 漢数字 **/
@@ -1617,7 +1617,7 @@ class SuggestionAdapter internal constructor(
             /** Zenz **/
             (33).toByte() -> "[AI]"
             CANDIDATE_TYPE_LEARNED_DICTIONARY ->
-                if (showDictionaryCandidateLabels) "学習" else ""
+                if (showDictionaryCandidateLabels) "[学習]" else ""
             /** Typo Correction QWERTY **/
             (35).toByte() -> "[修正]"
 
