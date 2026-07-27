@@ -19,9 +19,10 @@ import android.provider.Settings
 import android.util.Log
 import android.view.InputDevice
 import android.view.MotionEvent
-import android.view.WindowInsets
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -90,7 +91,7 @@ class FastInputMatrixInstrumentedTest {
                     "Failed to prepare the TenKey number-guide scenario"
                 }
 
-                reloadIme(session)
+                ensureTargetImeSelected(session)
                 restartInput(scenario)
                 SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                 assertDeviceReady(session.context, session.targetIme, scenario)
@@ -151,7 +152,7 @@ class FastInputMatrixInstrumentedTest {
                 ) {
                     "Failed to disable the TenKey number guide for the control measurement"
                 }
-                reloadIme(session)
+                ensureTargetImeSelected(session)
                 restartInput(scenario)
                 SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                 val legacyBounds = awaitVisibleNodeBounds("key_small_letter")
@@ -204,7 +205,7 @@ class FastInputMatrixInstrumentedTest {
                             .putBoolean("qwerty_glide_input_preference", glideEnabled)
                             .commit()
                     )
-                    reloadIme(session)
+                    ensureTargetImeSelected(session)
                     restartInput(scenario)
                     SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                     assertDeviceReady(session.context, session.targetIme, scenario)
@@ -269,7 +270,7 @@ class FastInputMatrixInstrumentedTest {
                             .putBoolean("qwerty_glide_input_preference", glideEnabled)
                             .commit()
                     )
-                    reloadIme(session)
+                    ensureTargetImeSelected(session)
                     restartInput(scenario)
                     SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                     assertDeviceReady(session.context, session.targetIme, scenario)
@@ -390,7 +391,7 @@ class FastInputMatrixInstrumentedTest {
                                         )
                                         val configKey = "case-$caseIndex-${testCase.fileToken()}"
                                         applyCasePreferences(session.preferences, testCase)
-                                        reloadIme(session)
+                                        ensureTargetImeSelected(session)
                                         restartInput(scenario)
                                         SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                                         if (casePauseMs > 0L) SystemClock.sleep(casePauseMs)
@@ -463,6 +464,7 @@ class FastInputMatrixInstrumentedTest {
                                             if (screenshots.add(configKey)) {
                                                 saveScreenshot(session, configKey)
                                             }
+                                            throw SetupException(result, error)
                                         }
 
                                         completedConfigurations += 1
@@ -578,7 +580,7 @@ class FastInputMatrixInstrumentedTest {
                                 )
                                 val configKey = "rate-${testCase.fileToken()}"
                                 applyCasePreferences(session.preferences, testCase)
-                                reloadIme(session)
+                                ensureTargetImeSelected(session)
                                 restartInput(scenario)
                                 SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
 
@@ -946,17 +948,56 @@ class FastInputMatrixInstrumentedTest {
 
     private fun restartInput(scenario: ActivityScenario<FastInputHostActivity>) {
         scenario.onActivity { activity ->
-            activity.editText.setText("")
-            activity.editText.requestFocus()
-            activity.editText.setSelection(0)
-            val inputMethodManager = activity.getSystemService(InputMethodManager::class.java)
-            inputMethodManager.restartInput(activity.editText)
-            activity.editText.windowInsetsController?.show(WindowInsets.Type.ime())
-            inputMethodManager.showSoftInput(
-                activity.editText,
-                InputMethodManager.SHOW_FORCED
-            )
+            activity.restartEditorInput(clearText = true)
         }
+
+        val deadline = SystemClock.uptimeMillis() + EDITOR_CONNECTION_TIMEOUT_MS
+        var stableSamples = 0
+        var lastState = "host activity unavailable"
+        while (SystemClock.uptimeMillis() < deadline) {
+            var ready = false
+            scenario.onActivity { activity ->
+                val editor = activity.editText
+                val inputMethodManager =
+                    activity.getSystemService(InputMethodManager::class.java)
+                val attached = editor.isAttachedToWindow
+                val windowFocused = editor.hasWindowFocus()
+                val viewFocused = editor.hasFocus()
+                val shown = editor.isShown
+                val active = inputMethodManager.isActive(editor)
+                val acceptingText = inputMethodManager.isAcceptingText
+                val imeVisible = ViewCompat.getRootWindowInsets(editor)
+                    ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+
+                ready = attached &&
+                    windowFocused &&
+                    viewFocused &&
+                    shown &&
+                    active &&
+                    acceptingText &&
+                    imeVisible
+                lastState =
+                    "attached=$attached windowFocused=$windowFocused " +
+                        "viewFocused=$viewFocused shown=$shown active=$active " +
+                        "acceptingText=$acceptingText imeVisible=$imeVisible"
+                if (!ready) {
+                    activity.requestImeForEditor()
+                }
+            }
+
+            if (ready) {
+                stableSamples += 1
+                if (stableSamples >= EDITOR_CONNECTION_STABLE_SAMPLES) return
+            } else {
+                stableSamples = 0
+            }
+            SystemClock.sleep(POLL_MS)
+        }
+
+        throw SetupException(
+            "Host editor was not served by InputMethodManager " +
+                "within ${EDITOR_CONNECTION_TIMEOUT_MS}ms ($lastState)"
+        )
     }
 
     private fun prepareEmptyEditor(scenario: ActivityScenario<FastInputHostActivity>) {
@@ -1646,9 +1687,6 @@ class FastInputMatrixInstrumentedTest {
         val targetImeInitiallyEnabled =
             enabledImeIds.any { sameComponent(it, expectedTargetIme) }
         val targetIme = awaitAvailableIme(expectedTargetIme)
-        val fallbackIme = enabledImeIds
-            .filterNot { sameComponent(it, targetIme) }
-            .minByOrNull(::imeReloadFallbackPriority)
         val outputDirectory = File(
             context.getExternalFilesDir("fast-input"),
             "${name}-${System.currentTimeMillis()}"
@@ -1660,7 +1698,6 @@ class FastInputMatrixInstrumentedTest {
             context = context,
             preferences = preferences,
             targetIme = targetIme,
-            fallbackIme = fallbackIme,
             originalIme = originalIme,
             targetImeInitiallyEnabled = targetImeInitiallyEnabled,
             outputDirectory = outputDirectory
@@ -1669,7 +1706,7 @@ class FastInputMatrixInstrumentedTest {
         sendProgress(
             "FAST_INPUT_SESSION name=$name device=${android.os.Build.MODEL} " +
                 "sdk=${android.os.Build.VERSION.SDK_INT} output=$outputDirectory " +
-                "originalIme=$originalIme fallbackIme=$fallbackIme\n"
+                "originalIme=$originalIme\n"
         )
 
         try {
@@ -1714,18 +1751,9 @@ class FastInputMatrixInstrumentedTest {
         }
     }
 
-    private fun reloadIme(session: PhysicalDeviceSession) {
-        session.fallbackIme?.let {
-            setIme(session.context, it)
-            SystemClock.sleep(IME_TOGGLE_SETTLE_MS)
-        }
-        setIme(session.context, session.targetIme)
-        SystemClock.sleep(IME_RELOAD_SETTLE_MS)
+    private fun ensureTargetImeSelected(session: PhysicalDeviceSession) {
         if (!sameComponent(currentIme(session.context), session.targetIme)) {
-            // A cold emulator can fall back while the target IME process is still starting.
-            // Re-select only for setup; the measured key timing below remains unchanged.
             setIme(session.context, session.targetIme)
-            SystemClock.sleep(IME_RELOAD_SETTLE_MS)
         }
     }
 
@@ -1823,17 +1851,6 @@ class FastInputMatrixInstrumentedTest {
             firstComponent == secondComponent
         } else {
             first == second
-        }
-    }
-
-    private fun imeReloadFallbackPriority(component: String): Int {
-        return when (ComponentName.unflattenFromString(component)?.packageName) {
-            // The system keyboard remains selectable through repeated switches on stock devices.
-            "com.google.android.inputmethod.latin" -> 0
-            // An alternate installed build is also a keyboard-mode IME and is a safe fallback.
-            "com.kazumaproject.markdownhelperkeyboard.lite.fdroid" -> 1
-            // Auxiliary voice IMEs and third-party IMEs may reject repeated `ime set` calls.
-            else -> 2
         }
     }
 
@@ -1975,7 +1992,6 @@ class FastInputMatrixInstrumentedTest {
         val context: Context,
         val preferences: SharedPreferences,
         val targetIme: String,
-        val fallbackIme: String?,
         val originalIme: String?,
         val targetImeInitiallyEnabled: Boolean,
         val outputDirectory: File
@@ -2148,7 +2164,10 @@ class FastInputMatrixInstrumentedTest {
             "expected=$expected,yaNa=$yaNa,other=$other,missing=$missing"
     }
 
-    private class SetupException(message: String) : RuntimeException(message)
+    private class SetupException(
+        message: String,
+        cause: Throwable? = null
+    ) : RuntimeException(message, cause)
 
     companion object {
         private const val TAG = "FastInputMatrix"
@@ -2175,8 +2194,8 @@ class FastInputMatrixInstrumentedTest {
         private const val ORIENTATION_SETTLE_MS = 500L
         private const val HOST_LAUNCH_SETTLE_MS = 1_000L
         private const val IME_LAYOUT_SETTLE_MS = 350L
-        private const val IME_TOGGLE_SETTLE_MS = 100L
-        private const val IME_RELOAD_SETTLE_MS = 600L
+        private const val EDITOR_CONNECTION_TIMEOUT_MS = 10_000L
+        private const val EDITOR_CONNECTION_STABLE_SAMPLES = 3
         private const val IME_STATE_POLL_MS = 250L
         private const val IME_REGISTRATION_TIMEOUT_MS = 30_000L
         private const val IME_ENABLE_TIMEOUT_MS = 15_000L
