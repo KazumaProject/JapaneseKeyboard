@@ -947,6 +947,7 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun restartInput(scenario: ActivityScenario<FastInputHostActivity>) {
+        awaitHostWindowFocus(scenario)
         scenario.onActivity { activity ->
             activity.restartEditorInput(clearText = true)
         }
@@ -1629,8 +1630,61 @@ class FastInputMatrixInstrumentedTest {
             Intent(context, FastInputHostActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
-        SystemClock.sleep(HOST_LAUNCH_SETTLE_MS)
+        awaitHostWindowFocus(scenario)
         return scenario
+    }
+
+    private fun awaitHostWindowFocus(
+        scenario: ActivityScenario<FastInputHostActivity>
+    ) {
+        val startedAt = SystemClock.uptimeMillis()
+        val deadline = startedAt + HOST_WINDOW_FOCUS_TIMEOUT_MS
+        var recreated = false
+        var lastState = "host activity unavailable"
+
+        while (SystemClock.uptimeMillis() < deadline) {
+            var ready = false
+            scenario.onActivity { activity ->
+                val editor = activity.editText
+                val attached = editor.isAttachedToWindow
+                val decorFocused = activity.window.decorView.hasWindowFocus()
+                val editorWindowFocused = editor.hasWindowFocus()
+                val editorFocused = editor.hasFocus()
+                val shown = editor.isShown
+                ready = attached &&
+                    decorFocused &&
+                    editorWindowFocused &&
+                    editorFocused &&
+                    shown
+                lastState =
+                    "attached=$attached decorFocused=$decorFocused " +
+                        "editorWindowFocused=$editorWindowFocused " +
+                        "editorFocused=$editorFocused shown=$shown"
+                if (decorFocused) {
+                    activity.requestImeForEditor()
+                }
+            }
+            if (ready) return
+
+            if (
+                !recreated &&
+                SystemClock.uptimeMillis() - startedAt >= HOST_WINDOW_RECREATE_AFTER_MS
+            ) {
+                Log.w(TAG, "Recreating host after window-focus timeout ($lastState)")
+                scenario.recreate()
+                recreated = true
+            }
+            SystemClock.sleep(POLL_MS)
+        }
+
+        val focusedWindow = shell(
+            "dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'"
+        ).replace('\n', ' ')
+        throw SetupException(
+            "Host activity did not gain window focus " +
+                "within ${HOST_WINDOW_FOCUS_TIMEOUT_MS}ms " +
+                "($lastState, windowManager=[$focusedWindow])"
+        )
     }
 
     private fun assertDeviceReady(
@@ -2192,7 +2246,8 @@ class FastInputMatrixInstrumentedTest {
         private const val RESULT_TIMEOUT_MS = 1_000L
         private const val ORIENTATION_TIMEOUT_MS = 4_000L
         private const val ORIENTATION_SETTLE_MS = 500L
-        private const val HOST_LAUNCH_SETTLE_MS = 1_000L
+        private const val HOST_WINDOW_FOCUS_TIMEOUT_MS = 15_000L
+        private const val HOST_WINDOW_RECREATE_AFTER_MS = 4_000L
         private const val IME_LAYOUT_SETTLE_MS = 350L
         private const val EDITOR_CONNECTION_TIMEOUT_MS = 10_000L
         private const val EDITOR_CONNECTION_STABLE_SAMPLES = 3

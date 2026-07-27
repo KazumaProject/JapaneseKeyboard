@@ -50,12 +50,14 @@ class FastInputHostActivity : Activity() {
             WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE or
                 WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
         )
-        restartEditorInput(clearText = false)
+        editText.requestFocus()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
+            editText.requestFocus()
+            getSystemService(InputMethodManager::class.java).restartInput(editText)
             requestImeForEditor()
         }
     }
