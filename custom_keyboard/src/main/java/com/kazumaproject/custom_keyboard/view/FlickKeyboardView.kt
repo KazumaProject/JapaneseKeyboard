@@ -184,6 +184,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var visibleKeyLabels: Set<String>? = null
     private var borderWidth: Int = 1
     private var flickGuideEnabled: Boolean = false
+    private var flickGuideAllowsMultiCharacterLabels: Boolean = false
     private var flickGuideTextSizeSp: Float = 9f
     private var flickGuideMaxCodePoints: Int = 1
     private var popupViewStyleSet = FlickPopupViewStyleSet(
@@ -304,8 +305,21 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     fun setFlickGuideEnabled(enabled: Boolean) {
-        if (flickGuideEnabled == enabled) return
+        setFlickGuideEnabled(enabled, allowMultiCharacterLabels = false)
+    }
+
+    fun setFlickGuideEnabled(
+        enabled: Boolean,
+        allowMultiCharacterLabels: Boolean
+    ) {
+        if (
+            flickGuideEnabled == enabled &&
+            flickGuideAllowsMultiCharacterLabels == allowMultiCharacterLabels
+        ) {
+            return
+        }
         flickGuideEnabled = enabled
+        flickGuideAllowsMultiCharacterLabels = allowMultiCharacterLabels
         currentLayout?.let { setKeyboard(it) }
     }
 
@@ -937,17 +951,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         keyData: KeyData,
         stringMap: Map<FlickDirection, String>
     ) {
-        if (!flickGuideEnabled) {
-            button.setFlickGuideLabels(null)
-            return
-        }
-
-        if (!isSingleGuideCharacter(keyData.label)) {
-            button.setFlickGuideLabels(null)
-            return
-        }
-
-        button.setFlickGuideLabels(getGuideLabels(stringMap), getGuideTextColor(keyData))
+        applyResolvedGuideLabels(button, keyData, getGuideLabels(stringMap))
     }
 
     private fun applyCircularGuideLabels(
@@ -955,17 +959,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         keyData: KeyData,
         stringMap: Map<CircularFlickDirection, String>
     ) {
-        if (!flickGuideEnabled) {
-            button.setFlickGuideLabels(null)
-            return
-        }
-
-        if (!isSingleGuideCharacter(keyData.label)) {
-            button.setFlickGuideLabels(null)
-            return
-        }
-
-        button.setFlickGuideLabels(getCircularGuideLabels(stringMap), getGuideTextColor(keyData))
+        applyResolvedGuideLabels(button, keyData, getCircularGuideLabels(stringMap))
     }
 
     private fun applyTwoStepGuideLabels(
@@ -973,26 +967,43 @@ class FlickKeyboardView @JvmOverloads constructor(
         keyData: KeyData,
         twoStepMap: Map<TfbiFlickDirection, Map<TfbiFlickDirection, String>>
     ) {
-        if (!flickGuideEnabled) {
-            button.setFlickGuideLabels(null)
-            return
-        }
-
-        if (!isSingleGuideCharacter(keyData.label)) {
-            button.setFlickGuideLabels(null)
-            return
-        }
-
-        button.setFlickGuideLabels(
+        applyResolvedGuideLabels(
+            button,
+            keyData,
             FlickGuideLabelMapper.buildTwoStepRootGuideLabels(
                 twoStepMap,
                 flickGuideMaxCodePoints
-            ),
-            getGuideTextColor(keyData)
+            )
         )
     }
 
 
+
+    private fun applyResolvedGuideLabels(
+        button: AutoSizeButton,
+        keyData: KeyData,
+        labels: AutoSizeButton.FlickGuideLabels
+    ) {
+        val singleCharacterLabel = isSingleGuideCharacter(keyData.label)
+        val eligibleMultiCharacterLabel =
+            flickGuideAllowsMultiCharacterLabels && !keyData.isSpecialKey
+        if (
+            !flickGuideEnabled ||
+            (!singleCharacterLabel && !eligibleMultiCharacterLabel) ||
+            !labels.hasVisibleGuides()
+        ) {
+            button.setFlickGuideLabels(null)
+            return
+        }
+
+        if (!singleCharacterLabel && eligibleMultiCharacterLabel && labels.tap.isNotEmpty()) {
+            button.maxLines = 1
+            button.setLineSpacing(0f, 1f)
+            button.text = labels.tap
+            button.refreshTextSize()
+        }
+        button.setFlickGuideLabels(labels, getGuideTextColor(keyData))
+    }
 
     private fun isSingleGuideCharacter(value: String): Boolean {
         return value.isNotEmpty() && value.codePointCount(0, value.length) == 1

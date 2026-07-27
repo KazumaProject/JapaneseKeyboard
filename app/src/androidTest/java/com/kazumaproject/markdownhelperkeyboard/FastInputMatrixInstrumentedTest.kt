@@ -8,6 +8,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Bitmap
 import android.graphics.PointF
 import android.graphics.Rect
 import android.os.Bundle
@@ -46,6 +47,138 @@ class FastInputMatrixInstrumentedTest {
 
     private val uiAutomation: UiAutomation
         get() = instrumentation.uiAutomation
+
+    @Test
+    fun tenKeyNumberBracketGuideSurvivesActualFlicksOnPhysicalDevice() {
+        runPhysicalDeviceSession("tenkey-number-bracket-guide") { session ->
+            val testCase = TestCase(
+                keyboard = TestKeyboard.TENKEY,
+                columns = 1,
+                candidateTabVisible = false,
+                toolbarVisible = false,
+                toolbarIntegrated = false,
+                orientation = TestOrientation.PORTRAIT
+            )
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+                applyCasePreferences(session.preferences, testCase)
+                check(
+                    session.preferences.edit()
+                        .putString("keyboard_order_preference", """["TENKEY"]""")
+                        .putBoolean("tenkey_use_three_state_keyboard_preference", true)
+                        .putBoolean("tenkey_switch_number_to_qwerty_number_preference", false)
+                        .putBoolean("tenkey_restore_input_mode_on_restart_preference", true)
+                        .putBoolean(
+                            "tenkey_restore_input_mode_only_within_time_preference",
+                            false
+                        )
+                        .putString("tenkey_last_input_mode_preference", "number")
+                        .putString("tenkey_last_input_mode_presentation_preference", "native")
+                        .putLong(
+                            "tenkey_last_input_mode_saved_at_epoch_millis_preference",
+                            System.currentTimeMillis()
+                        )
+                        .putBoolean("tenkey_keymap_guide", false)
+                        .putBoolean("tenkey_keymap_guide_english", false)
+                        .putBoolean("tenkey_keymap_guide_number", true)
+                        .putString("keyboard_touch_effect_type_preference", "none")
+                        .commit()
+                ) {
+                    "Failed to prepare the TenKey number-guide scenario"
+                }
+
+                reloadIme(session)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                assertDeviceReady(session.context, session.targetIme, scenario)
+
+                val bracketBounds = awaitVisibleNodeBounds("key_small_letter")
+                val baseline = uiAutomation.takeScreenshot()
+                saveScreenshot(session, "number-guide-before-gesture")
+                val directions = listOf(
+                    FlickVerification("tap", PointF(0f, 0f), "("),
+                    FlickVerification("left", PointF(-0.60f, 0f), "()"),
+                    FlickVerification("up", PointF(0f, -0.85f), "()["),
+                    FlickVerification("right", PointF(0.60f, 0f), "()[]")
+                )
+
+                directions.forEach { verification ->
+                    val end = PointF(
+                        bracketBounds.center.x +
+                            bracketBounds.width * verification.normalizedDelta.x,
+                        bracketBounds.center.y +
+                            bracketBounds.height * verification.normalizedDelta.y
+                    )
+                    val injected = injectFlick(bracketBounds.center, end)
+                    val actual = awaitTextSettled(scenario)
+                    SystemClock.sleep(GUIDE_SETTLE_MS)
+                    val after = uiAutomation.takeScreenshot()
+                    val changedPixels = countChangedPixels(
+                        baseline,
+                        after,
+                        bracketBounds.guideComparisonRegion(),
+                        GUIDE_CHANNEL_TOLERANCE
+                    )
+                    Log.i(
+                        TAG,
+                        "TENKEY_NUMBER_GUIDE direction=${verification.name} " +
+                            "expected=${verification.expectedText} actual=$actual " +
+                            "changedPixels=$changedPixels"
+                    )
+                    saveScreenshot(session, "number-guide-after-${verification.name}")
+                    after.recycle()
+
+                    assertTrue("${verification.name} gesture injection failed", injected)
+                    assertEquals(
+                        "Unexpected bracket result after ${verification.name}",
+                        verification.expectedText,
+                        actual
+                    )
+                    assertTrue(
+                        "TenKey number bracket guide changed after ${verification.name}: " +
+                            "$changedPixels pixels",
+                        changedPixels <= MAX_GUIDE_CHANGED_PIXELS
+                    )
+                }
+
+                check(
+                    session.preferences.edit()
+                        .putBoolean("tenkey_keymap_guide_number", false)
+                        .commit()
+                ) {
+                    "Failed to disable the TenKey number guide for the control measurement"
+                }
+                reloadIme(session)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                val legacyBounds = awaitVisibleNodeBounds("key_small_letter")
+                val legacy = uiAutomation.takeScreenshot()
+                val guideVsLegacyChangedPixels = countChangedPixels(
+                    baseline,
+                    legacy,
+                    bracketBounds.union(legacyBounds),
+                    GUIDE_CHANNEL_TOLERANCE
+                )
+                Log.i(
+                    TAG,
+                    "TENKEY_NUMBER_GUIDE controlChangedPixels=$guideVsLegacyChangedPixels"
+                )
+                saveScreenshot(session, "number-guide-disabled-control")
+                legacy.recycle()
+                baseline.recycle()
+
+                assertTrue(
+                    "Enabled guide was not measurably different from the legacy ()[] icon: " +
+                        "$guideVsLegacyChangedPixels pixels",
+                    guideVsLegacyChangedPixels >= MIN_GUIDE_CONTROL_CHANGED_PIXELS
+                )
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
 
     @Test
     fun qwertyOverlappingTwoFingerInputOnPhysicalDevice() {
@@ -982,6 +1115,60 @@ class FastInputMatrixInstrumentedTest {
         return null
     }
 
+    private fun awaitVisibleNodeBounds(idName: String): ScreenRect {
+        val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
+        var previous: ScreenRect? = null
+        var stableSamples = 0
+        while (SystemClock.uptimeMillis() < deadline) {
+            val current = findVisibleNodeById(idName)?.screenRect()
+            if (current != null && current.isValid && current == previous) {
+                stableSamples += 1
+                if (stableSamples >= GEOMETRY_STABLE_SAMPLES) return current
+            } else {
+                stableSamples = if (current?.isValid == true) 1 else 0
+            }
+            previous = current
+            SystemClock.sleep(GEOMETRY_SAMPLE_MS)
+        }
+        throw SetupException("Timed out waiting for visible key id=$idName")
+    }
+
+    private fun countChangedPixels(
+        first: Bitmap,
+        second: Bitmap,
+        region: ScreenRect,
+        channelTolerance: Int
+    ): Int {
+        check(first.width == second.width && first.height == second.height)
+        val clipped = region.intersect(ScreenRect(0, 0, first.width, first.height))
+        check(clipped.isValid) { "Invalid screenshot comparison region: $region" }
+
+        var changed = 0
+        for (y in clipped.top until clipped.bottom) {
+            for (x in clipped.left until clipped.right) {
+                val firstPixel = first.getPixel(x, y)
+                val secondPixel = second.getPixel(x, y)
+                if (
+                    kotlin.math.abs(
+                        android.graphics.Color.red(firstPixel) -
+                            android.graphics.Color.red(secondPixel)
+                    ) > channelTolerance ||
+                    kotlin.math.abs(
+                        android.graphics.Color.green(firstPixel) -
+                            android.graphics.Color.green(secondPixel)
+                    ) > channelTolerance ||
+                    kotlin.math.abs(
+                        android.graphics.Color.blue(firstPixel) -
+                            android.graphics.Color.blue(secondPixel)
+                    ) > channelTolerance
+                ) {
+                    changed += 1
+                }
+            }
+        }
+        return changed
+    }
+
     private fun findDescendant(
         root: AccessibilityNodeInfo,
         predicate: (AccessibilityNodeInfo) -> Boolean
@@ -1035,6 +1222,56 @@ class FastInputMatrixInstrumentedTest {
     private fun injectTap(point: PointF): Boolean {
         return injectTapWithoutTrailingGap(point, TAP_HOLD_MS).also {
             SystemClock.sleep(TAP_GAP_MS)
+        }
+    }
+
+    private fun injectFlick(start: PointF, end: PointF): Boolean {
+        if (start == end) return injectTap(start)
+
+        val downTime = SystemClock.uptimeMillis()
+        var allInjected = injectSinglePointerEvent(
+            downTime = downTime,
+            action = MotionEvent.ACTION_DOWN,
+            point = start
+        )
+        SystemClock.sleep(FLICK_STEP_MS)
+
+        repeat(FLICK_MOVE_STEPS) { index ->
+            val fraction = (index + 1f) / FLICK_MOVE_STEPS
+            val point = PointF(
+                start.x + (end.x - start.x) * fraction,
+                start.y + (end.y - start.y) * fraction
+            )
+            allInjected = injectSinglePointerEvent(
+                downTime = downTime,
+                action = MotionEvent.ACTION_MOVE,
+                point = point
+            ) && allInjected
+            SystemClock.sleep(FLICK_STEP_MS)
+        }
+
+        allInjected = injectSinglePointerEvent(
+            downTime = downTime,
+            action = MotionEvent.ACTION_UP,
+            point = end
+        ) && allInjected
+        SystemClock.sleep(TAP_GAP_MS)
+        return allInjected
+    }
+
+    private fun injectSinglePointerEvent(
+        downTime: Long,
+        action: Int,
+        point: PointF
+    ): Boolean {
+        val event = singlePointerEvent(
+            downTime = downTime,
+            eventTime = SystemClock.uptimeMillis(),
+            action = action,
+            point = point
+        )
+        return uiAutomation.injectInputEvent(event, true).also {
+            event.recycle()
         }
     }
 
@@ -1679,6 +1916,12 @@ class FastInputMatrixInstrumentedTest {
         val texts: List<String>
     )
 
+    private data class FlickVerification(
+        val name: String,
+        val normalizedDelta: PointF,
+        val expectedText: String
+    )
+
     private data class ScreenRect(
         val left: Int,
         val top: Int,
@@ -1690,6 +1933,36 @@ class FastInputMatrixInstrumentedTest {
 
         val center: PointF
             get() = PointF((left + right) / 2f, (top + bottom) / 2f)
+
+        val width: Int
+            get() = right - left
+
+        val height: Int
+            get() = bottom - top
+
+        fun guideComparisonRegion(): ScreenRect {
+            val horizontalInset = (width * 0.22f).toInt()
+            return ScreenRect(
+                left = left + horizontalInset,
+                top = top,
+                right = right - horizontalInset,
+                bottom = top + (height * 0.48f).toInt()
+            )
+        }
+
+        fun intersect(other: ScreenRect): ScreenRect = ScreenRect(
+            left = maxOf(left, other.left),
+            top = maxOf(top, other.top),
+            right = minOf(right, other.right),
+            bottom = minOf(bottom, other.bottom)
+        )
+
+        fun union(other: ScreenRect): ScreenRect = ScreenRect(
+            left = minOf(left, other.left),
+            top = minOf(top, other.top),
+            right = maxOf(right, other.right),
+            bottom = maxOf(bottom, other.bottom)
+        )
 
         override fun toString(): String = "$left,$top-$right,$bottom"
     }
@@ -1814,6 +2087,12 @@ class FastInputMatrixInstrumentedTest {
         private const val DEFAULT_RATE_TRIALS = 10
         private const val TAP_HOLD_MS = 18L
         private const val TAP_GAP_MS = 12L
+        private const val FLICK_MOVE_STEPS = 4
+        private const val FLICK_STEP_MS = 18L
+        private const val GUIDE_SETTLE_MS = 350L
+        private const val GUIDE_CHANNEL_TOLERANCE = 12
+        private const val MAX_GUIDE_CHANGED_PIXELS = 80
+        private const val MIN_GUIDE_CONTROL_CHANGED_PIXELS = 120
         private const val QWERTY_LONG_PRESS_HOLD_MS = 350L
         private const val POLL_MS = 32L
         private const val GEOMETRY_SAMPLE_MS = 32L
