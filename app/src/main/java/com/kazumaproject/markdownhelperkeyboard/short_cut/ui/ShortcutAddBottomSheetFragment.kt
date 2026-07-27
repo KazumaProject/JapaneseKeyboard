@@ -175,7 +175,11 @@ class ShortcutAddBottomSheetFragment : BottomSheetDialogFragment() {
     }
 
     companion object {
-        private val GEMMA_SHORTCUTS = setOf(ShortcutType.GEMMA_IMAGE, ShortcutType.GEMMA_AUDIO)
+        private val GEMMA_SHORTCUTS = setOf(
+            ShortcutType.GEMMA_IMAGE,
+            ShortcutType.GEMMA_AUDIO,
+            ShortcutType.GEMMA_HANDWRITING,
+        )
         const val REQUEST_KEY_ADD_SHORTCUT = "request_key_add_shortcut"
         const val KEY_SHORTCUT_TYPE_ID = "key_shortcut_type_id"
 

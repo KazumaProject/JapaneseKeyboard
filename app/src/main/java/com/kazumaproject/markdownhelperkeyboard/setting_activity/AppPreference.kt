@@ -8,6 +8,7 @@ import androidx.preference.PreferenceManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
@@ -19,6 +20,8 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.Keyboar
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.SprayPaintSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.CandidateTab
 import com.kazumaproject.markdownhelperkeyboard.ime_service.state.KeyboardType
+import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingLanguage
+import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingSettings
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefBackup
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.backup.PrefEntry
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.circular_slot.CircularSlotActionSetting
@@ -48,6 +51,34 @@ object AppPreference {
         PredictionConfig.MAX_LOOKAHEAD_CHARACTER_COUNT
     const val PREDICTION_LOOKAHEAD_CHARACTER_COUNT_DEFAULT =
         PredictionConfig.DEFAULT_LOOKAHEAD_CHARACTER_COUNT
+    const val GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_KEY =
+        "gemma_handwriting_auto_recognition_delay_preference"
+    const val GEMMA_HANDWRITING_PROMPT_KEY =
+        "gemma_handwriting_prompt_preference"
+    const val GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_KEY =
+        "gemma_handwriting_recognition_language_preference"
+    const val GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_KEY =
+        "gemma_handwriting_additional_instruction_preference"
+    const val GEMMA_HANDWRITING_RESET_PROMPT_KEY =
+        "gemma_handwriting_reset_prompt_preference"
+    const val GEMMA_HANDWRITING_PEN_SIZE_KEY =
+        "gemma_handwriting_pen_size_preference"
+    const val GEMMA_HANDWRITING_PEN_COLOR_KEY =
+        "gemma_handwriting_pen_color_preference"
+    const val FLICK_SENSITIVITY_KEY = "flick_sensitivity_preference"
+    const val FLICK_THRESHOLD_SHAPE_KEY = "flick_threshold_shape_preference"
+    const val TENKEY_KEYMAP_GUIDE_JAPANESE_KEY = "tenkey_keymap_guide"
+    const val TENKEY_KEYMAP_GUIDE_ENGLISH_KEY = "tenkey_keymap_guide_english"
+    const val TENKEY_KEYMAP_GUIDE_NUMBER_KEY = "tenkey_keymap_guide_number"
+    const val SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY = "sumire_keymap_guide_japanese"
+    const val SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY = "sumire_keymap_guide_english"
+    const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
+    const val CUSTOM_KEYMAP_GUIDE_KEY = "flick_keymap_guide"
+    const val LONG_PRESS_TIMEOUT_KEY = "long_press_timeout_preference"
+    const val VIBRATION_KEY = "vibration_preference"
+    const val VIBRATION_TIMING_KEY = "vibration_timing"
+    const val KEY_SOUND_KEY = "key_sound_preference"
+    const val KEY_SOUND_VOLUME_PERCENT_KEY = "key_sound_volume_percent_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -61,13 +92,17 @@ object AppPreference {
 
     private val CLIPBOARD_HISTORY_ENABLE = Pair("clipboard_history_preference", false)
     private val TIME_SAME_PRONOUNCE_TYPING = Pair("time_same_pronounce_typing_preference", 1000)
-    private val FLICK_SENSITIVITY = Pair("flick_sensitivity_preference", 100)
-    private val LONG_PRESS_TIMEOUT = Pair("long_press_timeout_preference", 300)
-    private val VIBRATION_PREFERENCE = Pair("vibration_preference", true)
-    private val VIBRATION_TIMING_PREFERENCE = Pair("vibration_timing", "both")
-    private val KEY_SOUND_PREFERENCE = Pair("key_sound_preference", false)
+    private val FLICK_SENSITIVITY = Pair(FLICK_SENSITIVITY_KEY, 100)
+    private val FLICK_THRESHOLD_SHAPE = Pair(
+        FLICK_THRESHOLD_SHAPE_KEY,
+        FlickThresholdShape.Radial.preferenceValue
+    )
+    private val LONG_PRESS_TIMEOUT = Pair(LONG_PRESS_TIMEOUT_KEY, 300)
+    private val VIBRATION_PREFERENCE = Pair(VIBRATION_KEY, true)
+    private val VIBRATION_TIMING_PREFERENCE = Pair(VIBRATION_TIMING_KEY, "both")
+    private val KEY_SOUND_PREFERENCE = Pair(KEY_SOUND_KEY, false)
     private val KEY_SOUND_VOLUME_PERCENT_PREFERENCE =
-        Pair("key_sound_volume_percent_preference", 0)
+        Pair(KEY_SOUND_VOLUME_PERCENT_KEY, 0)
     private val LEARN_DICTIONARY_PREFERENCE = Pair("learn_dictionary_preference", true)
     private val INCOGNITO_MODE_DETECTION_PREFERENCE =
         Pair("incognito_mode_detection_preference", true)
@@ -157,10 +192,22 @@ object AppPreference {
         Pair("tablet_tenkey_kana_english_qwerty_preference", false)
 
     private val TENKEY_KEYMAP_GUIDE_PREFERENCE =
-        Pair("tenkey_keymap_guide", false)
+        Pair(TENKEY_KEYMAP_GUIDE_JAPANESE_KEY, false)
+    private val TENKEY_KEYMAP_GUIDE_ENGLISH_PREFERENCE =
+        Pair(TENKEY_KEYMAP_GUIDE_ENGLISH_KEY, false)
+    private val TENKEY_KEYMAP_GUIDE_NUMBER_PREFERENCE =
+        Pair(TENKEY_KEYMAP_GUIDE_NUMBER_KEY, false)
 
     private val FLICK_KEYMAP_GUIDE_PREFERENCE =
-        Pair("flick_keymap_guide", false)
+        Pair(CUSTOM_KEYMAP_GUIDE_KEY, false)
+    private val SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE =
+        Pair(SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY, false)
+    private val SUMIRE_KEYMAP_GUIDE_ENGLISH_PREFERENCE =
+        Pair(SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY, false)
+    private val SUMIRE_KEYMAP_GUIDE_NUMBER_PREFERENCE =
+        Pair(SUMIRE_KEYMAP_GUIDE_NUMBER_KEY, false)
+    private const val SUMIRE_KEYMAP_GUIDE_MIGRATION_KEY =
+        "sumire_keymap_guide_modes_migrated"
     private val FLICK_GUIDE_TEXT_SIZE_SP_PREFERENCE =
         Pair("flick_guide_text_size_sp_preference", 9)
     private val FLICK_GUIDE_MAX_CHARACTERS_PREFERENCE =
@@ -683,6 +730,31 @@ object AppPreference {
         Pair("gemma_translation_target_language_preference", "en")
     private val GEMMA_TRANSLATION_MODEL_PATH_PREFERENCE =
         Pair("gemma_translation_model_path_preference", "")
+    private val GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_PREFERENCE =
+        Pair(
+            GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_KEY,
+            GemmaHandwritingSettings.DEFAULT_AUTO_RECOGNITION_DELAY_MS.toInt(),
+        )
+    private val GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_PREFERENCE =
+        Pair(
+            GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_KEY,
+            GemmaHandwritingLanguage.AUTO.preferenceValue,
+        )
+    private val GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE =
+        Pair(
+            GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_KEY,
+            "",
+        )
+    private val GEMMA_HANDWRITING_PEN_SIZE_PREFERENCE =
+        Pair(
+            GEMMA_HANDWRITING_PEN_SIZE_KEY,
+            GemmaHandwritingSettings.DEFAULT_PEN_SIZE_DP,
+        )
+    private val GEMMA_HANDWRITING_PEN_COLOR_PREFERENCE =
+        Pair(
+            GEMMA_HANDWRITING_PEN_COLOR_KEY,
+            GemmaHandwritingSettings.AUTOMATIC_PEN_COLOR,
+        )
     private val KEYBOARD_BACKGROUND_IMAGE_URI_PREFERENCE =
         Pair("keyboard_background_image_uri_preference", "")
     private val KEYBOARD_BACKGROUND_IMAGE_DISPLAY_MODE_PREFERENCE =
@@ -779,7 +851,33 @@ object AppPreference {
 
     fun init(context: Context) {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        removeUnsafeLegacyGemmaHandwritingPrompt()
         migratePredictionLookaheadPreferenceIfNeeded()
+        migrateSumireKeymapGuideModesIfNeeded()
+    }
+
+    private fun migrateSumireKeymapGuideModesIfNeeded() {
+        if (preferences.getBoolean(SUMIRE_KEYMAP_GUIDE_MIGRATION_KEY, false)) return
+        val legacyGuideEnabled = preferences.getBoolean(
+            FLICK_KEYMAP_GUIDE_PREFERENCE.first,
+            FLICK_KEYMAP_GUIDE_PREFERENCE.second
+        )
+        preferences.edit {
+            if (!preferences.contains(SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE.first)) {
+                it.putBoolean(
+                    SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE.first,
+                    legacyGuideEnabled
+                )
+            }
+            it.putBoolean(SUMIRE_KEYMAP_GUIDE_MIGRATION_KEY, true)
+        }
+    }
+
+    private fun removeUnsafeLegacyGemmaHandwritingPrompt() {
+        if (!preferences.contains(GEMMA_HANDWRITING_PROMPT_KEY)) return
+        preferences.edit {
+            it.remove(GEMMA_HANDWRITING_PROMPT_KEY)
+        }
     }
 
     private inline fun SharedPreferences.edit(operation: (SharedPreferences.Editor) -> Unit) {
@@ -1019,12 +1117,57 @@ object AppPreference {
             it.putBoolean(TENKEY_KEYMAP_GUIDE_PREFERENCE.first, value ?: false)
         }
 
+    var tenkey_keymap_guide_english: Boolean
+        get() = preferences.getBoolean(
+            TENKEY_KEYMAP_GUIDE_ENGLISH_PREFERENCE.first,
+            TENKEY_KEYMAP_GUIDE_ENGLISH_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_KEYMAP_GUIDE_ENGLISH_PREFERENCE.first, value)
+        }
+
+    var tenkey_keymap_guide_number: Boolean
+        get() = preferences.getBoolean(
+            TENKEY_KEYMAP_GUIDE_NUMBER_PREFERENCE.first,
+            TENKEY_KEYMAP_GUIDE_NUMBER_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_KEYMAP_GUIDE_NUMBER_PREFERENCE.first, value)
+        }
+
     var flick_keymap_guide_layout: Boolean?
         get() = preferences.getBoolean(
             FLICK_KEYMAP_GUIDE_PREFERENCE.first, FLICK_KEYMAP_GUIDE_PREFERENCE.second
         )
         set(value) = preferences.edit {
             it.putBoolean(FLICK_KEYMAP_GUIDE_PREFERENCE.first, value ?: false)
+        }
+
+    var sumire_keymap_guide_japanese: Boolean
+        get() = preferences.getBoolean(
+            SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE.first,
+            SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE.first, value)
+        }
+
+    var sumire_keymap_guide_english: Boolean
+        get() = preferences.getBoolean(
+            SUMIRE_KEYMAP_GUIDE_ENGLISH_PREFERENCE.first,
+            SUMIRE_KEYMAP_GUIDE_ENGLISH_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUMIRE_KEYMAP_GUIDE_ENGLISH_PREFERENCE.first, value)
+        }
+
+    var sumire_keymap_guide_number: Boolean
+        get() = preferences.getBoolean(
+            SUMIRE_KEYMAP_GUIDE_NUMBER_PREFERENCE.first,
+            SUMIRE_KEYMAP_GUIDE_NUMBER_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUMIRE_KEYMAP_GUIDE_NUMBER_PREFERENCE.first, value)
         }
 
     var flick_guide_text_size_sp_preference: Int?
@@ -1436,6 +1579,18 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(FLICK_SENSITIVITY.first, value ?: 100)
+        }
+
+    var flick_threshold_shape_preference: String
+        get() = preferences.getString(
+            FLICK_THRESHOLD_SHAPE.first,
+            FLICK_THRESHOLD_SHAPE.second
+        ) ?: FLICK_THRESHOLD_SHAPE.second
+        set(value) = preferences.edit {
+            it.putString(
+                FLICK_THRESHOLD_SHAPE.first,
+                FlickThresholdShape.fromPreferenceValue(value).preferenceValue
+            )
         }
 
     var hierarchical_flick_mode_switch_angle_margin_preference: Int
@@ -3600,6 +3755,100 @@ object AppPreference {
             it.putString(GEMMA_TRANSLATION_TARGET_LANGUAGE_PREFERENCE.first, value)
         }
 
+    var gemma_handwriting_auto_recognition_delay_preference: Int
+        get() = preferences.getInt(
+            GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_PREFERENCE.first,
+            GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_PREFERENCE.second,
+        ).coerceIn(
+            GemmaHandwritingSettings.MIN_AUTO_RECOGNITION_DELAY_MS,
+            GemmaHandwritingSettings.MAX_AUTO_RECOGNITION_DELAY_MS,
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                GEMMA_HANDWRITING_AUTO_RECOGNITION_DELAY_PREFERENCE.first,
+                value.coerceIn(
+                    GemmaHandwritingSettings.MIN_AUTO_RECOGNITION_DELAY_MS,
+                    GemmaHandwritingSettings.MAX_AUTO_RECOGNITION_DELAY_MS,
+                ),
+            )
+        }
+
+    var gemma_handwriting_recognition_language_preference: String
+        get() = preferences.getString(
+            GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_PREFERENCE.first,
+            GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_PREFERENCE.second,
+        )
+            ?.let(GemmaHandwritingLanguage::fromPreference)
+            ?.preferenceValue
+            ?: GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_PREFERENCE.second
+        set(value) = preferences.edit {
+            it.putString(
+                GEMMA_HANDWRITING_RECOGNITION_LANGUAGE_PREFERENCE.first,
+                GemmaHandwritingLanguage.fromPreference(value).preferenceValue,
+            )
+        }
+
+    var gemma_handwriting_additional_instruction_preference: String
+        get() = preferences.getString(
+            GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE.first,
+            GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE.second,
+        )
+            .orEmpty()
+            .trim()
+            .take(GemmaHandwritingSettings.MAX_ADDITIONAL_INSTRUCTION_LENGTH)
+        set(value) = preferences.edit {
+            val normalized = value
+                .trim()
+                .take(GemmaHandwritingSettings.MAX_ADDITIONAL_INSTRUCTION_LENGTH)
+            if (normalized.isEmpty()) {
+                it.remove(GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE.first)
+            } else {
+                it.putString(
+                    GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE.first,
+                    normalized,
+                )
+            }
+        }
+
+    fun resetGemmaHandwritingPromptToDefault() {
+        preferences.edit {
+            it.remove(GEMMA_HANDWRITING_PROMPT_KEY)
+            it.remove(GEMMA_HANDWRITING_ADDITIONAL_INSTRUCTION_PREFERENCE.first)
+        }
+    }
+
+    var gemma_handwriting_pen_size_preference: Int
+        get() = preferences.getInt(
+            GEMMA_HANDWRITING_PEN_SIZE_PREFERENCE.first,
+            GEMMA_HANDWRITING_PEN_SIZE_PREFERENCE.second,
+        ).coerceIn(
+            GemmaHandwritingSettings.MIN_PEN_SIZE_DP,
+            GemmaHandwritingSettings.MAX_PEN_SIZE_DP,
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                GEMMA_HANDWRITING_PEN_SIZE_PREFERENCE.first,
+                value.coerceIn(
+                    GemmaHandwritingSettings.MIN_PEN_SIZE_DP,
+                    GemmaHandwritingSettings.MAX_PEN_SIZE_DP,
+                ),
+            )
+        }
+
+    var gemma_handwriting_pen_color_preference: Int
+        get() = GemmaHandwritingSettings.normalizePenColor(
+            preferences.getInt(
+                GEMMA_HANDWRITING_PEN_COLOR_PREFERENCE.first,
+                GEMMA_HANDWRITING_PEN_COLOR_PREFERENCE.second,
+            ),
+        )
+        set(value) = preferences.edit {
+            it.putInt(
+                GEMMA_HANDWRITING_PEN_COLOR_PREFERENCE.first,
+                GemmaHandwritingSettings.normalizePenColor(value),
+            )
+        }
+
     var keyboard_background_image_uri: String
         get() = preferences.getString(
             KEYBOARD_BACKGROUND_IMAGE_URI_PREFERENCE.first,
@@ -4211,6 +4460,7 @@ object AppPreference {
                 }
             }
         }
+        migrateSumireKeymapGuideModesIfNeeded()
     }
 
     fun migrateSumirePreferenceIfNeeded() {

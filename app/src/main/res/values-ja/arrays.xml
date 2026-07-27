@@ -244,6 +244,54 @@
         <item>uk</item>
     </string-array>
 
+    <string-array name="gemma_handwriting_recognition_language_entries">
+        <item>@string/gemma_handwriting_language_auto</item>
+        <item>@string/gemma_translation_language_english</item>
+        <item>@string/gemma_translation_language_japanese</item>
+        <item>@string/gemma_translation_language_korean</item>
+        <item>@string/gemma_translation_language_chinese_simplified</item>
+        <item>@string/gemma_translation_language_chinese_traditional</item>
+        <item>@string/gemma_translation_language_spanish</item>
+        <item>@string/gemma_translation_language_french</item>
+        <item>@string/gemma_translation_language_german</item>
+        <item>@string/gemma_translation_language_italian</item>
+        <item>@string/gemma_translation_language_portuguese</item>
+        <item>@string/gemma_translation_language_russian</item>
+        <item>@string/gemma_translation_language_arabic</item>
+        <item>@string/gemma_translation_language_hindi</item>
+        <item>@string/gemma_translation_language_indonesian</item>
+        <item>@string/gemma_translation_language_thai</item>
+        <item>@string/gemma_translation_language_vietnamese</item>
+        <item>@string/gemma_translation_language_turkish</item>
+        <item>@string/gemma_translation_language_polish</item>
+        <item>@string/gemma_translation_language_dutch</item>
+        <item>@string/gemma_translation_language_ukrainian</item>
+    </string-array>
+
+    <string-array name="gemma_handwriting_recognition_language_values">
+        <item>auto</item>
+        <item>en</item>
+        <item>ja</item>
+        <item>ko</item>
+        <item>zh-Hans</item>
+        <item>zh-Hant</item>
+        <item>es</item>
+        <item>fr</item>
+        <item>de</item>
+        <item>it</item>
+        <item>pt</item>
+        <item>ru</item>
+        <item>ar</item>
+        <item>hi</item>
+        <item>id</item>
+        <item>th</item>
+        <item>vi</item>
+        <item>tr</item>
+        <item>pl</item>
+        <item>nl</item>
+        <item>uk</item>
+    </string-array>
+
     <string-array name="candidate_column_entries">
         <item>@string/candidate_column_one</item>
         <item>@string/candidate_column_two</item>

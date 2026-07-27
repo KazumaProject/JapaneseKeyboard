@@ -49,11 +49,15 @@ class InkTouchDispatchFrameLayout @JvmOverloads constructor(
             keyboardTouchEffectMotionEventListener = value
         }
 
+    var suppressTouchEffectMotionEvents: Boolean = false
+
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        runCatching {
-            keyboardTouchEffectMotionEventListener?.invoke(ev)
-        }.onFailure {
-            Timber.w(it, "Keyboard touch effect forwarding failed.")
+        if (!suppressTouchEffectMotionEvents) {
+            runCatching {
+                keyboardTouchEffectMotionEventListener?.invoke(ev)
+            }.onFailure {
+                Timber.w(it, "Keyboard touch effect forwarding failed.")
+            }
         }
 
         fallbackTouchTarget?.let { target ->
