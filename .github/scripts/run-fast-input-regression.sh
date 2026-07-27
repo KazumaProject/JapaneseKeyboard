@@ -116,6 +116,8 @@ fi
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 adb shell settings put secure show_ime_with_hard_keyboard 1
+adb shell dumpsys input > "$fast_input_log_dir/input-service-before-test.txt"
+adb shell dumpsys input_method > "$fast_input_log_dir/input-method-before-test.txt"
 adb logcat -c
 
 fast_input_test_method=\
