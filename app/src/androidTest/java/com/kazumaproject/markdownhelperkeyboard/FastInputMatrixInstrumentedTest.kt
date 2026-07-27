@@ -15,12 +15,14 @@ import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import android.view.InputDevice
 import android.view.MotionEvent
-import android.view.WindowInsets
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -89,7 +91,7 @@ class FastInputMatrixInstrumentedTest {
                     "Failed to prepare the TenKey number-guide scenario"
                 }
 
-                reloadIme(session)
+                ensureTargetImeSelected(session)
                 restartInput(scenario)
                 SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                 assertDeviceReady(session.context, session.targetIme, scenario)
@@ -150,7 +152,7 @@ class FastInputMatrixInstrumentedTest {
                 ) {
                     "Failed to disable the TenKey number guide for the control measurement"
                 }
-                reloadIme(session)
+                ensureTargetImeSelected(session)
                 restartInput(scenario)
                 SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                 val legacyBounds = awaitVisibleNodeBounds("key_small_letter")
@@ -203,7 +205,7 @@ class FastInputMatrixInstrumentedTest {
                             .putBoolean("qwerty_glide_input_preference", glideEnabled)
                             .commit()
                     )
-                    reloadIme(session)
+                    ensureTargetImeSelected(session)
                     restartInput(scenario)
                     SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                     assertDeviceReady(session.context, session.targetIme, scenario)
@@ -268,7 +270,7 @@ class FastInputMatrixInstrumentedTest {
                             .putBoolean("qwerty_glide_input_preference", glideEnabled)
                             .commit()
                     )
-                    reloadIme(session)
+                    ensureTargetImeSelected(session)
                     restartInput(scenario)
                     SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                     assertDeviceReady(session.context, session.targetIme, scenario)
@@ -389,7 +391,7 @@ class FastInputMatrixInstrumentedTest {
                                         )
                                         val configKey = "case-$caseIndex-${testCase.fileToken()}"
                                         applyCasePreferences(session.preferences, testCase)
-                                        reloadIme(session)
+                                        ensureTargetImeSelected(session)
                                         restartInput(scenario)
                                         SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
                                         if (casePauseMs > 0L) SystemClock.sleep(casePauseMs)
@@ -462,6 +464,7 @@ class FastInputMatrixInstrumentedTest {
                                             if (screenshots.add(configKey)) {
                                                 saveScreenshot(session, configKey)
                                             }
+                                            throw SetupException(result, error)
                                         }
 
                                         completedConfigurations += 1
@@ -577,7 +580,7 @@ class FastInputMatrixInstrumentedTest {
                                 )
                                 val configKey = "rate-${testCase.fileToken()}"
                                 applyCasePreferences(session.preferences, testCase)
-                                reloadIme(session)
+                                ensureTargetImeSelected(session)
                                 restartInput(scenario)
                                 SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
 
@@ -944,18 +947,58 @@ class FastInputMatrixInstrumentedTest {
     }
 
     private fun restartInput(scenario: ActivityScenario<FastInputHostActivity>) {
+        awaitHostWindowFocus(scenario)
         scenario.onActivity { activity ->
-            activity.editText.setText("")
-            activity.editText.requestFocus()
-            activity.editText.setSelection(0)
-            val inputMethodManager = activity.getSystemService(InputMethodManager::class.java)
-            inputMethodManager.restartInput(activity.editText)
-            activity.editText.windowInsetsController?.show(WindowInsets.Type.ime())
-            inputMethodManager.showSoftInput(
-                activity.editText,
-                InputMethodManager.SHOW_FORCED
-            )
+            activity.restartEditorInput(clearText = true)
         }
+
+        val deadline = SystemClock.uptimeMillis() + EDITOR_CONNECTION_TIMEOUT_MS
+        var stableSamples = 0
+        var lastState = "host activity unavailable"
+        while (SystemClock.uptimeMillis() < deadline) {
+            var ready = false
+            scenario.onActivity { activity ->
+                val editor = activity.editText
+                val inputMethodManager =
+                    activity.getSystemService(InputMethodManager::class.java)
+                val attached = editor.isAttachedToWindow
+                val windowFocused = editor.hasWindowFocus()
+                val viewFocused = editor.hasFocus()
+                val shown = editor.isShown
+                val active = inputMethodManager.isActive(editor)
+                val acceptingText = inputMethodManager.isAcceptingText
+                val imeVisible = ViewCompat.getRootWindowInsets(editor)
+                    ?.isVisible(WindowInsetsCompat.Type.ime()) == true
+
+                ready = attached &&
+                    windowFocused &&
+                    viewFocused &&
+                    shown &&
+                    active &&
+                    acceptingText &&
+                    imeVisible
+                lastState =
+                    "attached=$attached windowFocused=$windowFocused " +
+                        "viewFocused=$viewFocused shown=$shown active=$active " +
+                        "acceptingText=$acceptingText imeVisible=$imeVisible"
+                if (!ready) {
+                    activity.requestImeForEditor()
+                }
+            }
+
+            if (ready) {
+                stableSamples += 1
+                if (stableSamples >= EDITOR_CONNECTION_STABLE_SAMPLES) return
+            } else {
+                stableSamples = 0
+            }
+            SystemClock.sleep(POLL_MS)
+        }
+
+        throw SetupException(
+            "Host editor was not served by InputMethodManager " +
+                "within ${EDITOR_CONNECTION_TIMEOUT_MS}ms ($lastState)"
+        )
     }
 
     private fun prepareEmptyEditor(scenario: ActivityScenario<FastInputHostActivity>) {
@@ -1587,8 +1630,61 @@ class FastInputMatrixInstrumentedTest {
             Intent(context, FastInputHostActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         )
-        SystemClock.sleep(HOST_LAUNCH_SETTLE_MS)
+        awaitHostWindowFocus(scenario)
         return scenario
+    }
+
+    private fun awaitHostWindowFocus(
+        scenario: ActivityScenario<FastInputHostActivity>
+    ) {
+        val startedAt = SystemClock.uptimeMillis()
+        val deadline = startedAt + HOST_WINDOW_FOCUS_TIMEOUT_MS
+        var recreated = false
+        var lastState = "host activity unavailable"
+
+        while (SystemClock.uptimeMillis() < deadline) {
+            var ready = false
+            scenario.onActivity { activity ->
+                val editor = activity.editText
+                val attached = editor.isAttachedToWindow
+                val decorFocused = activity.window.decorView.hasWindowFocus()
+                val editorWindowFocused = editor.hasWindowFocus()
+                val editorFocused = editor.hasFocus()
+                val shown = editor.isShown
+                ready = attached &&
+                    decorFocused &&
+                    editorWindowFocused &&
+                    editorFocused &&
+                    shown
+                lastState =
+                    "attached=$attached decorFocused=$decorFocused " +
+                        "editorWindowFocused=$editorWindowFocused " +
+                        "editorFocused=$editorFocused shown=$shown"
+                if (decorFocused) {
+                    activity.requestImeForEditor()
+                }
+            }
+            if (ready) return
+
+            if (
+                !recreated &&
+                SystemClock.uptimeMillis() - startedAt >= HOST_WINDOW_RECREATE_AFTER_MS
+            ) {
+                Log.w(TAG, "Recreating host after window-focus timeout ($lastState)")
+                scenario.recreate()
+                recreated = true
+            }
+            SystemClock.sleep(POLL_MS)
+        }
+
+        val focusedWindow = shell(
+            "dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp'"
+        ).replace('\n', ' ')
+        throw SetupException(
+            "Host activity did not gain window focus " +
+                "within ${HOST_WINDOW_FOCUS_TIMEOUT_MS}ms " +
+                "($lastState, windowManager=[$focusedWindow])"
+        )
     }
 
     private fun assertDeviceReady(
@@ -1604,7 +1700,7 @@ class FastInputMatrixInstrumentedTest {
         if (keyguardManager.isKeyguardLocked) {
             throw SetupException("Device is locked by keyguard")
         }
-        val currentIme = shell("settings get secure default_input_method")
+        val currentIme = currentIme(context)
         if (!sameComponent(currentIme, expectedIme)) {
             throw SetupException("Default IME is [$currentIme], expected [$expectedIme]")
         }
@@ -1636,24 +1732,15 @@ class FastInputMatrixInstrumentedTest {
         configureAccessibilityInspection()
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val originalPreferences = preferences.all.toMap()
-        val originalIme = shell("settings get secure default_input_method")
+        val originalIme = currentIme(context)
             .takeUnless { it.isBlank() || it == "null" }
         val expectedTargetIme =
             "${context.packageName}/" +
                 "com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
-        // `-a` also returns installed-but-disabled IMEs. Android 16 reports those entries but
-        // rejects `ime set`, so only select a reload fallback from the currently enabled list.
-        val installedImeIds = shell("ime list -s")
-            .lineSequence()
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .toList()
-        val targetIme = installedImeIds
-            .firstOrNull { sameComponent(it, expectedTargetIme) }
-            ?: expectedTargetIme
-        val fallbackIme = installedImeIds
-            .filterNot { sameComponent(it, targetIme) }
-            .minByOrNull(::imeReloadFallbackPriority)
+        val enabledImeIds = listImeIds(includeDisabled = false)
+        val targetImeInitiallyEnabled =
+            enabledImeIds.any { sameComponent(it, expectedTargetIme) }
+        val targetIme = awaitAvailableIme(expectedTargetIme)
         val outputDirectory = File(
             context.getExternalFilesDir("fast-input"),
             "${name}-${System.currentTimeMillis()}"
@@ -1665,27 +1752,33 @@ class FastInputMatrixInstrumentedTest {
             context = context,
             preferences = preferences,
             targetIme = targetIme,
-            fallbackIme = fallbackIme,
             originalIme = originalIme,
+            targetImeInitiallyEnabled = targetImeInitiallyEnabled,
             outputDirectory = outputDirectory
         )
 
         sendProgress(
             "FAST_INPUT_SESSION name=$name device=${android.os.Build.MODEL} " +
                 "sdk=${android.os.Build.VERSION.SDK_INT} output=$outputDirectory " +
-                "originalIme=$originalIme fallbackIme=$fallbackIme\n"
+                "originalIme=$originalIme initiallyEnabled=$targetImeInitiallyEnabled\n"
         )
 
         try {
-            setIme(targetIme)
+            setIme(context, targetIme)
             assertDeviceReady(context, targetIme)
             block(session)
         } finally {
             restorePreferences(preferences, originalPreferences)
-            // Reload the restored settings before handing the device back.
-            runCatching { setIme(targetIme) }
             if (originalIme != null) {
-                runCatching { setIme(originalIme) }
+                runCatching { setIme(context, originalIme) }
+                    .onFailure { reportImeRestoreFailure("restore default", originalIme, it) }
+            }
+            if (
+                !targetImeInitiallyEnabled &&
+                (originalIme == null || !sameComponent(originalIme, targetIme))
+            ) {
+                runCatching { disableIme(targetIme) }
+                    .onFailure { reportImeRestoreFailure("restore enabled state", targetIme, it) }
             }
             uiAutomation.setRotation(UiAutomation.ROTATION_UNFREEZE)
             sendProgress(
@@ -1709,22 +1802,58 @@ class FastInputMatrixInstrumentedTest {
         }
     }
 
-    private fun reloadIme(session: PhysicalDeviceSession) {
-        session.fallbackIme?.let {
-            setIme(it)
-            SystemClock.sleep(IME_TOGGLE_SETTLE_MS)
-        }
-        setIme(session.targetIme)
-        SystemClock.sleep(IME_RELOAD_SETTLE_MS)
-        if (!sameComponent(shell("settings get secure default_input_method"), session.targetIme)) {
-            // A cold emulator can fall back while the target IME process is still starting.
-            // Re-select only for setup; the measured key timing below remains unchanged.
-            setIme(session.targetIme)
-            SystemClock.sleep(IME_RELOAD_SETTLE_MS)
+    private fun ensureTargetImeSelected(session: PhysicalDeviceSession) {
+        if (!sameComponent(currentIme(session.context), session.targetIme)) {
+            setIme(session.context, session.targetIme)
         }
     }
 
-    private fun setIme(component: String) {
+    private fun awaitAvailableIme(component: String): String {
+        val deadline = SystemClock.uptimeMillis() + IME_REGISTRATION_TIMEOUT_MS
+        var availableImeIds = emptyList<String>()
+        while (SystemClock.uptimeMillis() < deadline) {
+            availableImeIds = listImeIds(includeDisabled = true)
+            availableImeIds.firstOrNull { sameComponent(it, component) }?.let { return it }
+            SystemClock.sleep(IME_STATE_POLL_MS)
+        }
+        throw SetupException(
+            "IME was not registered by InputMethodManager: target=$component " +
+                "available=$availableImeIds enabled=${listImeIds(includeDisabled = false)}"
+        )
+    }
+
+    private fun ensureImeEnabled(component: String) {
+        val deadline = SystemClock.uptimeMillis() + IME_ENABLE_TIMEOUT_MS
+        var enabledImeIds = listImeIds(includeDisabled = false)
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (enabledImeIds.any { sameComponent(it, component) }) return
+            shell("ime enable $component")
+            SystemClock.sleep(IME_STATE_POLL_MS)
+            enabledImeIds = listImeIds(includeDisabled = false)
+        }
+        throw SetupException(
+            "Unable to enable IME $component; " +
+                "available=${listImeIds(includeDisabled = true)} enabled=$enabledImeIds"
+        )
+    }
+
+    private fun disableIme(component: String) {
+        val deadline = SystemClock.uptimeMillis() + IME_ENABLE_TIMEOUT_MS
+        var enabledImeIds = listImeIds(includeDisabled = false)
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (enabledImeIds.none { sameComponent(it, component) }) return
+            shell("ime disable $component")
+            SystemClock.sleep(IME_STATE_POLL_MS)
+            enabledImeIds = listImeIds(includeDisabled = false)
+        }
+        throw SetupException(
+            "Unable to restore disabled state for IME $component; enabled=$enabledImeIds"
+        )
+    }
+
+    private fun setIme(context: Context, component: String) {
+        awaitAvailableIme(component)
+        ensureImeEnabled(component)
         val deadline = SystemClock.uptimeMillis() + IME_SWITCH_TIMEOUT_MS
         while (SystemClock.uptimeMillis() < deadline) {
             shell("ime set $component")
@@ -1733,18 +1862,37 @@ class FastInputMatrixInstrumentedTest {
                 SystemClock.uptimeMillis() + IME_SWITCH_RETRY_MS
             )
             while (SystemClock.uptimeMillis() < attemptDeadline) {
-                if (
-                    sameComponent(
-                        shell("settings get secure default_input_method"),
-                        component
-                    )
-                ) {
+                if (sameComponent(currentIme(context), component)) {
                     return
                 }
                 SystemClock.sleep(POLL_MS)
             }
         }
-        throw SetupException("Unable to select IME $component")
+        throw SetupException(
+            "Unable to select IME $component; current=${currentIme(context)} " +
+                "available=${listImeIds(includeDisabled = true)} " +
+                "enabled=${listImeIds(includeDisabled = false)}"
+        )
+    }
+
+    private fun currentIme(context: Context): String =
+        Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.DEFAULT_INPUT_METHOD
+        ).orEmpty().trim()
+
+    private fun listImeIds(includeDisabled: Boolean): List<String> =
+        shell(if (includeDisabled) "ime list -a -s" else "ime list -s")
+            .lineSequence()
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .toList()
+
+    private fun reportImeRestoreFailure(action: String, component: String, error: Throwable) {
+        val message =
+            "FAST_INPUT_RESTORE_ERROR action=$action ime=$component error=${error.message}\n"
+        Log.e(TAG, message.trim(), error)
+        sendProgress(message)
     }
 
     private fun sameComponent(first: String, second: String): Boolean {
@@ -1754,17 +1902,6 @@ class FastInputMatrixInstrumentedTest {
             firstComponent == secondComponent
         } else {
             first == second
-        }
-    }
-
-    private fun imeReloadFallbackPriority(component: String): Int {
-        return when (ComponentName.unflattenFromString(component)?.packageName) {
-            // The system keyboard remains selectable through repeated switches on stock devices.
-            "com.google.android.inputmethod.latin" -> 0
-            // An alternate installed build is also a keyboard-mode IME and is a safe fallback.
-            "com.kazumaproject.markdownhelperkeyboard.lite.fdroid" -> 1
-            // Auxiliary voice IMEs and third-party IMEs may reject repeated `ime set` calls.
-            else -> 2
         }
     }
 
@@ -1906,8 +2043,8 @@ class FastInputMatrixInstrumentedTest {
         val context: Context,
         val preferences: SharedPreferences,
         val targetIme: String,
-        val fallbackIme: String?,
         val originalIme: String?,
+        val targetImeInitiallyEnabled: Boolean,
         val outputDirectory: File
     )
 
@@ -2078,7 +2215,10 @@ class FastInputMatrixInstrumentedTest {
             "expected=$expected,yaNa=$yaNa,other=$other,missing=$missing"
     }
 
-    private class SetupException(message: String) : RuntimeException(message)
+    private class SetupException(
+        message: String,
+        cause: Throwable? = null
+    ) : RuntimeException(message, cause)
 
     companion object {
         private const val TAG = "FastInputMatrix"
@@ -2103,10 +2243,14 @@ class FastInputMatrixInstrumentedTest {
         private const val RESULT_TIMEOUT_MS = 1_000L
         private const val ORIENTATION_TIMEOUT_MS = 4_000L
         private const val ORIENTATION_SETTLE_MS = 500L
-        private const val HOST_LAUNCH_SETTLE_MS = 1_000L
+        private const val HOST_WINDOW_FOCUS_TIMEOUT_MS = 15_000L
+        private const val HOST_WINDOW_RECREATE_AFTER_MS = 4_000L
         private const val IME_LAYOUT_SETTLE_MS = 350L
-        private const val IME_TOGGLE_SETTLE_MS = 100L
-        private const val IME_RELOAD_SETTLE_MS = 600L
+        private const val EDITOR_CONNECTION_TIMEOUT_MS = 10_000L
+        private const val EDITOR_CONNECTION_STABLE_SAMPLES = 3
+        private const val IME_STATE_POLL_MS = 250L
+        private const val IME_REGISTRATION_TIMEOUT_MS = 30_000L
+        private const val IME_ENABLE_TIMEOUT_MS = 15_000L
         private const val IME_SWITCH_TIMEOUT_MS = 15_000L
         private const val IME_SWITCH_RETRY_MS = 1_000L
         private const val TOTAL_CASES = 3 * 3 * 2 * 2 * 2 * 2

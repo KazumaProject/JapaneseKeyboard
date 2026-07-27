@@ -104,6 +104,14 @@ jobs:
           enable-hw-keyboard: false
           disable-animations: false
           disable-spellchecker: true
+          # android-emulator-runner only adds hw.keyboard=yes when this input is true.
+          # Explicitly override the Pixel profile so the test exercises the software IME.
+          # Keep this folded into one command because the action parses each line separately.
+          pre-emulator-launch-script: >-
+            avd_config="${ANDROID_AVD_HOME}/test.avd/config.ini" &&
+            sed -i '/^[[:space:]]*hw\.keyboard[[:space:]]*=/d' "$avd_config" &&
+            printf '%s\n' 'hw.keyboard=no' >> "$avd_config" &&
+            grep '^hw.keyboard=no$' "$avd_config"
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -no-snapshot
             -noaudio -no-boot-anim -camera-back none
