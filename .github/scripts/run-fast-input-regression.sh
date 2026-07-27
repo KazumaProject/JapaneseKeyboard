@@ -108,42 +108,157 @@ wait_for_android_services() {
   return 1
 }
 
+android_runtime_config() {
+  adb -s "$fast_input_emulator_serial" shell am get-config 2>/dev/null |
+    tr -d '\r' |
+    head -n 1
+}
+
+detach_emulated_at_keyboard() {
+  local adb_root_output
+  local atkbd_devices
+  local device_name
+  local runtime_config
+  local selinux_mode
+  local attempt
+
+  runtime_config="$(android_runtime_config)"
+  echo "Android runtime configuration before keyboard setup: $runtime_config" |
+    tee -a "$fast_input_readiness_log"
+  if [[ "$runtime_config" == *"-nokeys-"* ]]; then
+    return 0
+  fi
+
+  # The x86_64 ranchu machine can expose its translated PS/2 keyboard even when
+  # the AVD has hw.keyboard=no. IMEService correctly treats that device as a
+  # physical alphabetic keyboard, so remove the emulator-only device rather
+  # than adding a production exception for CI.
+  adb -s "$fast_input_emulator_serial" shell dumpsys input \
+    > "$fast_input_log_dir/input-service-before-keyboard-detach.txt" || true
+
+  adb_root_output="$(
+    adb -s "$fast_input_emulator_serial" root 2>&1 ||
+      true
+  )"
+  echo "adb root: $adb_root_output" | tee -a "$fast_input_readiness_log"
+  if ! adb -s "$fast_input_emulator_serial" wait-for-device; then
+    echo "The emulator did not reconnect after restarting adbd as root." |
+      tee -a "$fast_input_readiness_log"
+    return 1
+  fi
+  if ! wait_for_android_services 2>&1 | tee -a "$fast_input_readiness_log"; then
+    return 1
+  fi
+  if [[ "$(
+    adb -s "$fast_input_emulator_serial" shell id -u 2>/dev/null |
+      tr -d '\r'
+  )" != "0" ]]; then
+    echo "The google_apis emulator did not permit root ADB." |
+      tee -a "$fast_input_readiness_log"
+    return 1
+  fi
+
+  atkbd_devices="$(
+    adb -s "$fast_input_emulator_serial" shell \
+      'for link in /sys/bus/serio/drivers/atkbd/serio*; do
+        if [ -e "$link" ]; then basename "$link"; fi
+      done' 2>/dev/null |
+      tr -d '\r'
+  )"
+  if [[ -z "$atkbd_devices" ]]; then
+    echo "No bound atkbd device was found for runtime config [$runtime_config]." |
+      tee -a "$fast_input_readiness_log"
+    return 1
+  fi
+
+  selinux_mode="$(
+    adb -s "$fast_input_emulator_serial" shell getenforce 2>/dev/null |
+      tr -d '\r'
+  )"
+  while IFS= read -r device_name; do
+    if [[ ! "$device_name" =~ ^serio[0-9]+$ ]]; then
+      echo "Refusing unexpected atkbd device name [$device_name]." |
+        tee -a "$fast_input_readiness_log"
+      return 1
+    fi
+    echo "Detaching emulator AT keyboard $device_name." |
+      tee -a "$fast_input_readiness_log"
+    if ! adb -s "$fast_input_emulator_serial" shell \
+      "echo $device_name > /sys/bus/serio/drivers/atkbd/unbind"; then
+      if [[ "$selinux_mode" != "Enforcing" ]]; then
+        return 1
+      fi
+      echo "Retrying keyboard detach with SELinux temporarily permissive." |
+        tee -a "$fast_input_readiness_log"
+      adb -s "$fast_input_emulator_serial" shell setenforce 0
+      if ! adb -s "$fast_input_emulator_serial" shell \
+        "echo $device_name > /sys/bus/serio/drivers/atkbd/unbind"; then
+        adb -s "$fast_input_emulator_serial" shell setenforce 1 || true
+        return 1
+      fi
+      adb -s "$fast_input_emulator_serial" shell setenforce 1
+    fi
+  done <<< "$atkbd_devices"
+
+  for ((attempt = 1; attempt <= 30; attempt += 1)); do
+    runtime_config="$(android_runtime_config)"
+    if [[ "$runtime_config" == *"-nokeys-"* ]]; then
+      echo "Android runtime configuration after keyboard setup: $runtime_config" |
+        tee -a "$fast_input_readiness_log"
+      adb -s "$fast_input_emulator_serial" shell dumpsys input \
+        > "$fast_input_log_dir/input-service-after-keyboard-detach.txt" || true
+      return 0
+    fi
+    sleep 1
+  done
+
+  echo "AT keyboard detach did not produce a nokeys runtime configuration: " \
+    "[$runtime_config]." | tee -a "$fast_input_readiness_log"
+  adb -s "$fast_input_emulator_serial" shell dumpsys input \
+    > "$fast_input_log_dir/input-service-after-keyboard-detach.txt" || true
+  return 1
+}
+
 export ANDROID_SERIAL="$fast_input_emulator_serial"
 if ! wait_for_android_services 2>&1 | tee "$fast_input_readiness_log"; then
   exit 3
 fi
 
-adb shell settings put secure show_ime_with_hard_keyboard 1
+if ! detach_emulated_at_keyboard; then
+  exit 4
+fi
+
+adb -s "$fast_input_emulator_serial" shell \
+  settings put secure show_ime_with_hard_keyboard 1
 fast_input_show_ime_with_hard_keyboard="$(
-  adb shell settings get secure show_ime_with_hard_keyboard 2>/dev/null |
+  adb -s "$fast_input_emulator_serial" shell \
+    settings get secure show_ime_with_hard_keyboard 2>/dev/null |
     tr -d '\r'
 )"
 if [[ "$fast_input_show_ime_with_hard_keyboard" != "1" ]]; then
   echo "Unable to enable the software IME while hardware keys are present." |
     tee -a "$fast_input_readiness_log"
-  exit 4
+  exit 5
 fi
 
-fast_input_android_config="$(
-  adb shell am get-config 2>/dev/null |
-    tr -d '\r' |
-    head -n 1
-)"
+fast_input_android_config="$(android_runtime_config)"
 echo "Android runtime configuration: $fast_input_android_config" |
   tee -a "$fast_input_readiness_log"
 if [[ "$fast_input_android_config" != *"-nokeys-"* ]]; then
   echo "The emulator exposes a hardware keyboard; expected the nokeys configuration." |
     tee -a "$fast_input_readiness_log"
-  adb shell dumpsys input \
+  adb -s "$fast_input_emulator_serial" shell dumpsys input \
     > "$fast_input_log_dir/input-service-readiness-failure.txt" || true
-  exit 5
+  exit 6
 fi
 
-adb shell input keyevent KEYCODE_WAKEUP
-adb shell wm dismiss-keyguard
-adb shell dumpsys input > "$fast_input_log_dir/input-service-before-test.txt"
-adb shell dumpsys input_method > "$fast_input_log_dir/input-method-before-test.txt"
-adb logcat -c
+adb -s "$fast_input_emulator_serial" shell input keyevent KEYCODE_WAKEUP
+adb -s "$fast_input_emulator_serial" shell wm dismiss-keyguard
+adb -s "$fast_input_emulator_serial" shell dumpsys input \
+  > "$fast_input_log_dir/input-service-before-test.txt"
+adb -s "$fast_input_emulator_serial" shell dumpsys input_method \
+  > "$fast_input_log_dir/input-method-before-test.txt"
+adb -s "$fast_input_emulator_serial" logcat -c
 
 fast_input_test_method=\
 "com.kazumaproject.markdownhelperkeyboard.FastInputMatrixInstrumentedTest#rapidInputFullMatrixOnPhysicalDevice"
@@ -163,10 +278,13 @@ set +e
 fast_input_gradle_status=${PIPESTATUS[0]}
 set -e
 
-adb logcat -d -v threadtime > "$fast_input_log_dir/device-logcat.txt" || true
+adb -s "$fast_input_emulator_serial" logcat -d -v threadtime \
+  > "$fast_input_log_dir/device-logcat.txt" || true
 
-if adb shell test -d "$fast_input_device_output"; then
-  adb pull "$fast_input_device_output" "$fast_input_device_dir/" ||
+if adb -s "$fast_input_emulator_serial" shell \
+  test -d "$fast_input_device_output"; then
+  adb -s "$fast_input_emulator_serial" \
+    pull "$fast_input_device_output" "$fast_input_device_dir/" ||
     echo "Unable to pull fast-input screenshots from the emulator."
 fi
 
