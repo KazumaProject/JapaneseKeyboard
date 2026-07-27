@@ -10,6 +10,8 @@ fast_input_artifact_dir="${GITHUB_WORKSPACE:-.}/fast-input-artifacts"
 fast_input_log_dir="$fast_input_artifact_dir/logs"
 fast_input_device_dir="$fast_input_artifact_dir/device"
 fast_input_device_output="/sdcard/Android/data/com.kazumaproject.markdownhelperkeyboard/files/fast-input"
+fast_input_readiness_log="$fast_input_log_dir/android-readiness.log"
+fast_input_emulator_serial="${ANDROID_SERIAL:-emulator-${EMULATOR_PORT:-5554}}"
 
 is_positive_integer() {
   [[ "$1" =~ ^[1-9][0-9]*$ ]]
@@ -36,7 +38,81 @@ fi
 
 mkdir -p "$fast_input_log_dir" "$fast_input_device_dir"
 
-adb wait-for-device
+wait_for_android_services() {
+  local attempt
+  local boot_completed
+  local device_state
+  local input_method_service
+  local package_service
+  local stable_samples=0
+
+  echo "Waiting for Android services on $fast_input_emulator_serial."
+  adb start-server >/dev/null 2>&1 || true
+
+  for ((attempt = 1; attempt <= 90; attempt += 1)); do
+    device_state="$(
+      adb -s "$fast_input_emulator_serial" get-state 2>/dev/null ||
+        true
+    )"
+    if [[ "$device_state" != "device" ]]; then
+      stable_samples=0
+      echo "Readiness attempt $attempt/90: adb state=${device_state:-unavailable}."
+      if [[ "$device_state" == "offline" && $((attempt % 5)) -eq 0 ]]; then
+        adb reconnect offline >/dev/null 2>&1 || true
+      fi
+      sleep 2
+      continue
+    fi
+
+    boot_completed="$(
+      adb -s "$fast_input_emulator_serial" \
+        shell getprop sys.boot_completed 2>/dev/null |
+        tr -d '\r' ||
+        true
+    )"
+    package_service="$(
+      adb -s "$fast_input_emulator_serial" \
+        shell service check package 2>/dev/null |
+        tr -d '\r' ||
+        true
+    )"
+    input_method_service="$(
+      adb -s "$fast_input_emulator_serial" \
+        shell service check input_method 2>/dev/null |
+        tr -d '\r' ||
+        true
+    )"
+
+    if [[ "$boot_completed" == "1" &&
+      "$package_service" == *"found"* &&
+      "$input_method_service" == *"found"* ]]; then
+      stable_samples=$((stable_samples + 1))
+      echo "Readiness attempt $attempt/90: stable sample $stable_samples/3."
+      if ((stable_samples >= 3)); then
+        echo "Android package and input-method services are stable."
+        return 0
+      fi
+    else
+      stable_samples=0
+      echo "Readiness attempt $attempt/90: boot=$boot_completed " \
+        "package=[$package_service] input_method=[$input_method_service]."
+    fi
+    sleep 2
+  done
+
+  echo "Android services did not become stable."
+  adb devices -l || true
+  adb -s "$fast_input_emulator_serial" shell getprop sys.boot_completed || true
+  adb -s "$fast_input_emulator_serial" shell service check package || true
+  adb -s "$fast_input_emulator_serial" shell service check input_method || true
+  return 1
+}
+
+export ANDROID_SERIAL="$fast_input_emulator_serial"
+if ! wait_for_android_services 2>&1 | tee "$fast_input_readiness_log"; then
+  exit 3
+fi
+
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 adb shell settings put secure show_ime_with_hard_keyboard 1

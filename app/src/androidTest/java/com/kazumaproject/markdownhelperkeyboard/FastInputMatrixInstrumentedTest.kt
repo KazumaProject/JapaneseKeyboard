@@ -15,6 +15,7 @@ import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.os.SystemClock
+import android.provider.Settings
 import android.util.Log
 import android.view.InputDevice
 import android.view.MotionEvent
@@ -1636,22 +1637,16 @@ class FastInputMatrixInstrumentedTest {
         configureAccessibilityInspection()
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val originalPreferences = preferences.all.toMap()
-        val originalIme = shell("settings get secure default_input_method")
+        val originalIme = currentIme(context)
             .takeUnless { it.isBlank() || it == "null" }
         val expectedTargetIme =
             "${context.packageName}/" +
                 "com.kazumaproject.markdownhelperkeyboard.ime_service.IMEService"
-        // `-a` also returns installed-but-disabled IMEs. Android 16 reports those entries but
-        // rejects `ime set`, so only select a reload fallback from the currently enabled list.
-        val installedImeIds = shell("ime list -s")
-            .lineSequence()
-            .map(String::trim)
-            .filter(String::isNotEmpty)
-            .toList()
-        val targetIme = installedImeIds
-            .firstOrNull { sameComponent(it, expectedTargetIme) }
-            ?: expectedTargetIme
-        val fallbackIme = installedImeIds
+        val enabledImeIds = listImeIds(includeDisabled = false)
+        val targetImeInitiallyEnabled =
+            enabledImeIds.any { sameComponent(it, expectedTargetIme) }
+        val targetIme = awaitAvailableIme(expectedTargetIme)
+        val fallbackIme = enabledImeIds
             .filterNot { sameComponent(it, targetIme) }
             .minByOrNull(::imeReloadFallbackPriority)
         val outputDirectory = File(
@@ -1667,6 +1662,7 @@ class FastInputMatrixInstrumentedTest {
             targetIme = targetIme,
             fallbackIme = fallbackIme,
             originalIme = originalIme,
+            targetImeInitiallyEnabled = targetImeInitiallyEnabled,
             outputDirectory = outputDirectory
         )
 
@@ -1677,15 +1673,24 @@ class FastInputMatrixInstrumentedTest {
         )
 
         try {
-            setIme(targetIme)
+            setIme(context, targetIme)
             assertDeviceReady(context, targetIme)
             block(session)
         } finally {
             restorePreferences(preferences, originalPreferences)
             // Reload the restored settings before handing the device back.
-            runCatching { setIme(targetIme) }
+            runCatching { setIme(context, targetIme) }
+                .onFailure { reportImeRestoreFailure("reload target", targetIme, it) }
             if (originalIme != null) {
-                runCatching { setIme(originalIme) }
+                runCatching { setIme(context, originalIme) }
+                    .onFailure { reportImeRestoreFailure("restore default", originalIme, it) }
+            }
+            if (
+                !targetImeInitiallyEnabled &&
+                (originalIme == null || !sameComponent(originalIme, targetIme))
+            ) {
+                runCatching { disableIme(targetIme) }
+                    .onFailure { reportImeRestoreFailure("restore enabled state", targetIme, it) }
             }
             uiAutomation.setRotation(UiAutomation.ROTATION_UNFREEZE)
             sendProgress(
@@ -1711,20 +1716,65 @@ class FastInputMatrixInstrumentedTest {
 
     private fun reloadIme(session: PhysicalDeviceSession) {
         session.fallbackIme?.let {
-            setIme(it)
+            setIme(session.context, it)
             SystemClock.sleep(IME_TOGGLE_SETTLE_MS)
         }
-        setIme(session.targetIme)
+        setIme(session.context, session.targetIme)
         SystemClock.sleep(IME_RELOAD_SETTLE_MS)
-        if (!sameComponent(shell("settings get secure default_input_method"), session.targetIme)) {
+        if (!sameComponent(currentIme(session.context), session.targetIme)) {
             // A cold emulator can fall back while the target IME process is still starting.
             // Re-select only for setup; the measured key timing below remains unchanged.
-            setIme(session.targetIme)
+            setIme(session.context, session.targetIme)
             SystemClock.sleep(IME_RELOAD_SETTLE_MS)
         }
     }
 
-    private fun setIme(component: String) {
+    private fun awaitAvailableIme(component: String): String {
+        val deadline = SystemClock.uptimeMillis() + IME_REGISTRATION_TIMEOUT_MS
+        var availableImeIds = emptyList<String>()
+        while (SystemClock.uptimeMillis() < deadline) {
+            availableImeIds = listImeIds(includeDisabled = true)
+            availableImeIds.firstOrNull { sameComponent(it, component) }?.let { return it }
+            SystemClock.sleep(IME_STATE_POLL_MS)
+        }
+        throw SetupException(
+            "IME was not registered by InputMethodManager: target=$component " +
+                "available=$availableImeIds enabled=${listImeIds(includeDisabled = false)}"
+        )
+    }
+
+    private fun ensureImeEnabled(component: String) {
+        val deadline = SystemClock.uptimeMillis() + IME_ENABLE_TIMEOUT_MS
+        var enabledImeIds = listImeIds(includeDisabled = false)
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (enabledImeIds.any { sameComponent(it, component) }) return
+            shell("ime enable $component")
+            SystemClock.sleep(IME_STATE_POLL_MS)
+            enabledImeIds = listImeIds(includeDisabled = false)
+        }
+        throw SetupException(
+            "Unable to enable IME $component; " +
+                "available=${listImeIds(includeDisabled = true)} enabled=$enabledImeIds"
+        )
+    }
+
+    private fun disableIme(component: String) {
+        val deadline = SystemClock.uptimeMillis() + IME_ENABLE_TIMEOUT_MS
+        var enabledImeIds = listImeIds(includeDisabled = false)
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (enabledImeIds.none { sameComponent(it, component) }) return
+            shell("ime disable $component")
+            SystemClock.sleep(IME_STATE_POLL_MS)
+            enabledImeIds = listImeIds(includeDisabled = false)
+        }
+        throw SetupException(
+            "Unable to restore disabled state for IME $component; enabled=$enabledImeIds"
+        )
+    }
+
+    private fun setIme(context: Context, component: String) {
+        awaitAvailableIme(component)
+        ensureImeEnabled(component)
         val deadline = SystemClock.uptimeMillis() + IME_SWITCH_TIMEOUT_MS
         while (SystemClock.uptimeMillis() < deadline) {
             shell("ime set $component")
@@ -1733,18 +1783,37 @@ class FastInputMatrixInstrumentedTest {
                 SystemClock.uptimeMillis() + IME_SWITCH_RETRY_MS
             )
             while (SystemClock.uptimeMillis() < attemptDeadline) {
-                if (
-                    sameComponent(
-                        shell("settings get secure default_input_method"),
-                        component
-                    )
-                ) {
+                if (sameComponent(currentIme(context), component)) {
                     return
                 }
                 SystemClock.sleep(POLL_MS)
             }
         }
-        throw SetupException("Unable to select IME $component")
+        throw SetupException(
+            "Unable to select IME $component; current=${currentIme(context)} " +
+                "available=${listImeIds(includeDisabled = true)} " +
+                "enabled=${listImeIds(includeDisabled = false)}"
+        )
+    }
+
+    private fun currentIme(context: Context): String =
+        Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.DEFAULT_INPUT_METHOD
+        ).orEmpty().trim()
+
+    private fun listImeIds(includeDisabled: Boolean): List<String> =
+        shell(if (includeDisabled) "ime list -a -s" else "ime list -s")
+            .lineSequence()
+            .map(String::trim)
+            .filter(String::isNotEmpty)
+            .toList()
+
+    private fun reportImeRestoreFailure(action: String, component: String, error: Throwable) {
+        val message =
+            "FAST_INPUT_RESTORE_ERROR action=$action ime=$component error=${error.message}\n"
+        Log.e(TAG, message.trim(), error)
+        sendProgress(message)
     }
 
     private fun sameComponent(first: String, second: String): Boolean {
@@ -1908,6 +1977,7 @@ class FastInputMatrixInstrumentedTest {
         val targetIme: String,
         val fallbackIme: String?,
         val originalIme: String?,
+        val targetImeInitiallyEnabled: Boolean,
         val outputDirectory: File
     )
 
@@ -2107,6 +2177,9 @@ class FastInputMatrixInstrumentedTest {
         private const val IME_LAYOUT_SETTLE_MS = 350L
         private const val IME_TOGGLE_SETTLE_MS = 100L
         private const val IME_RELOAD_SETTLE_MS = 600L
+        private const val IME_STATE_POLL_MS = 250L
+        private const val IME_REGISTRATION_TIMEOUT_MS = 30_000L
+        private const val IME_ENABLE_TIMEOUT_MS = 15_000L
         private const val IME_SWITCH_TIMEOUT_MS = 15_000L
         private const val IME_SWITCH_RETRY_MS = 1_000L
         private const val TOTAL_CASES = 3 * 3 * 2 * 2 * 2 * 2
