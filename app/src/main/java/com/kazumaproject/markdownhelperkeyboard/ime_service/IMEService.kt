@@ -5,6 +5,7 @@ import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -88,6 +89,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -120,6 +122,9 @@ import com.kazumaproject.core.domain.extensions.toRomajiQwertyOutputChar
 import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
 import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
+import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
+import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.listener.FlickListener
 import com.kazumaproject.core.domain.listener.KeyTouchCancelListener
@@ -193,8 +198,12 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryBi
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryCategory
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryOverrideStore
 import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionarySourceResolver
+import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaImageCapability
 import com.kazumaproject.markdownhelperkeyboard.gemma.GemmaTranslationManager
 import com.kazumaproject.markdownhelperkeyboard.gemma.database.GemmaPromptTemplate
+import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingController
+import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingSettings
+import com.kazumaproject.markdownhelperkeyboard.gemma.handwriting.GemmaHandwritingKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImagePickerActivity
 import com.kazumaproject.markdownhelperkeyboard.gemma.media.GemmaImeMediaPanelController
 import com.kazumaproject.markdownhelperkeyboard.ime_service.adapters.FloatingCandidateListAdapter
@@ -563,8 +572,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyTwoStateQwertyNumberReturnTarget: TwoStateNumberReturnTarget =
         TwoStateNumberReturnTarget.Japanese
     private var tabletTenkeyQwertySwitchEnglish: Boolean = false
-    private var tenkeyQKeymapGuide: Boolean? = false
-    private var flickKeymapGuidePreference: Boolean? = false
+    private var tenkeyKeymapGuideSettings = ModeKeymapGuideSettings()
+    private var sumireKeymapGuideSettings = ModeKeymapGuideSettings()
+    private var customKeymapGuidePreference: Boolean = false
     private var flickGuideTextSizeSpPreference: Int? = 9
     private var flickGuideMaxCharactersPreference: Int? = 1
 
@@ -697,6 +707,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             bundledProviderHolder = zeroQueryProviderHolder,
         )
     }
+    private var configuredShortcutItems: List<ShortcutType> = emptyList()
     private var currentShortcutItems: List<ShortcutType> = emptyList()
     private var candidateStripIncognitoIconDrawable: Drawable? = null
     private var candidateStripIncognitoVisible: Boolean = false
@@ -715,6 +726,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val runtimeGestureSettingsSource = MutableRuntimeGestureSettingsSource(
+        RuntimeGestureSettings()
+    )
+    private lateinit var runtimeInputSharedPreferences: SharedPreferences
+    private var runtimeInputPreferenceListenerRegistered = false
+    private val runtimeInputPreferenceKeys = setOf(
+        AppPreference.FLICK_SENSITIVITY_KEY,
+        AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
+        AppPreference.TENKEY_KEYMAP_GUIDE_JAPANESE_KEY,
+        AppPreference.TENKEY_KEYMAP_GUIDE_ENGLISH_KEY,
+        AppPreference.TENKEY_KEYMAP_GUIDE_NUMBER_KEY,
+        AppPreference.SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY,
+        AppPreference.SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY,
+        AppPreference.SUMIRE_KEYMAP_GUIDE_NUMBER_KEY,
+        AppPreference.CUSTOM_KEYMAP_GUIDE_KEY,
+        AppPreference.LONG_PRESS_TIMEOUT_KEY,
+        AppPreference.VIBRATION_KEY,
+        AppPreference.VIBRATION_TIMING_KEY,
+        AppPreference.KEY_SOUND_KEY,
+        AppPreference.KEY_SOUND_VOLUME_PERCENT_KEY
+    )
+    private val runtimeInputPreferenceListener =
+        SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key != null && key in runtimeInputPreferenceKeys) {
+                runOnMainThread {
+                    syncRuntimeInputPreferences()
+                }
+            }
+        }
 
     private fun assertMainThread(functionName: String) {
         check(Looper.myLooper() == Looper.getMainLooper()) {
@@ -1183,6 +1223,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var mainLayoutBinding: MainLayoutBinding? = null
     private var gemmaMediaPanelController: GemmaImeMediaPanelController? = null
+    private var gemmaHandwritingController: GemmaHandwritingController? = null
+    private var handwritingModeActive: Boolean = false
+    private var restoreFloatingModeAfterHandwriting: Boolean = false
     private var pendingGemmaPickedImagePath: String? = null
     private val gemmaImagePickerResultReceiver = object : ResultReceiver(mainHandler) {
         override fun onReceiveResult(resultCode: Int, resultData: Bundle?) {
@@ -1285,6 +1328,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var nBest: Int? = 4
     private var conversionBeamWidth: Int = 20
     private var flickSensitivityPreferenceValue: Int? = 100
+    private var flickThresholdShapePreferenceValue: FlickThresholdShape =
+        FlickThresholdShape.Radial
     private var longPressTimeoutPreferenceValue: Int? = 300
     private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
@@ -1904,6 +1949,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val tabletView: View?,
         val qwertyView: QWERTYKeyboardView?,
         val customLayout: FlickKeyboardView?,
+        val handwritingView: GemmaHandwritingKeyboardView?,
         val suggestionRecyclerView: RecyclerView?,
         val symbolKeyboard: CustomSymbolKeyboardView?
     )
@@ -1913,6 +1959,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("onCreate")
         lifecycleRegistry = LifecycleRegistry(this)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
+        runtimeInputSharedPreferences =
+            PreferenceManager.getDefaultSharedPreferences(applicationContext)
+        runtimeInputSharedPreferences.registerOnSharedPreferenceChangeListener(
+            runtimeInputPreferenceListener
+        )
+        runtimeInputPreferenceListenerRegistered = true
+        syncRuntimeInputPreferences()
 
         if (AppVariantConfig.hasGemma) {
             scope.launch {
@@ -2141,6 +2194,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         super.onStartInput(attribute, restarting)
         gemmaInputSessionId += 1L
         gemmaMediaPanelController?.onInputSessionChanged()
+        gemmaHandwritingController?.onInputSessionChanged()
         Timber.d("onStartInput: ${Build.MANUFACTURER}")
         Timber.d("onUpdate onStartInput called $restarting ${attribute?.imeOptions}")
         isTablet = resources.getBoolean(com.kazumaproject.core.R.bool.isTablet)
@@ -2196,6 +2250,79 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
+    /**
+     * Keeps settings that users expect to take effect immediately in sync with every
+     * already-inflated keyboard surface. The same AppPreference keys used by the settings
+     * screen are read here; no second preference store is involved.
+     */
+    private fun syncRuntimeInputPreferences() {
+        assertMainThread("syncRuntimeInputPreferences")
+
+        val sensitivity = (appPreference.flick_sensitivity_preference ?: 100).coerceIn(1, 200)
+        val thresholdShape = FlickThresholdShape.fromPreferenceValue(
+            appPreference.flick_threshold_shape_preference
+        )
+        val longPressTimeout =
+            (appPreference.long_press_timeout_preference ?: 300).coerceIn(100, 2000)
+
+        flickSensitivityPreferenceValue = sensitivity
+        flickThresholdShapePreferenceValue = thresholdShape
+        longPressTimeoutPreferenceValue = longPressTimeout
+        isVibration = appPreference.vibration_preference ?: true
+        vibrationTimingStr = appPreference.vibration_timing_preference ?: "both"
+        isKeySoundEnabled = appPreference.key_sound_preference ?: false
+        keySoundVolumePercent =
+            (appPreference.key_sound_volume_percent_preference ?: 0).coerceIn(0, 100)
+        tenkeyKeymapGuideSettings = ModeKeymapGuideSettings(
+            japanese = appPreference.tenkey_keymap_guide_layout ?: false,
+            english = appPreference.tenkey_keymap_guide_english,
+            number = appPreference.tenkey_keymap_guide_number
+        )
+        sumireKeymapGuideSettings = ModeKeymapGuideSettings(
+            japanese = appPreference.sumire_keymap_guide_japanese,
+            english = appPreference.sumire_keymap_guide_english,
+            number = appPreference.sumire_keymap_guide_number
+        )
+        customKeymapGuidePreference = appPreference.flick_keymap_guide_layout ?: false
+        runtimeGestureSettingsSource.update(
+            flickSensitivity = sensitivity,
+            flickThresholdShape = thresholdShape,
+            longPressTimeoutMillis = longPressTimeout.toLong()
+        )
+
+        mainLayoutBinding?.apply {
+            keyboardView.setFlickSensitivityValue(sensitivity)
+            keyboardView.setFlickThresholdShape(thresholdShape)
+            keyboardView.setLongPressTimeout(longPressTimeout.toLong())
+            keyboardView.setFlickGuideEnabled(
+                japaneseEnabled = tenkeyKeymapGuideSettings.japanese,
+                englishEnabled = tenkeyKeymapGuideSettings.english,
+                numberEnabled = tenkeyKeymapGuideSettings.number
+            )
+            tabletView.setFlickSensitivityValue(sensitivity)
+            tabletView.setFlickThresholdShape(thresholdShape)
+            tabletView.setLongPressTimeout(longPressTimeout.toLong())
+            qwertyView.setFlickSensitivityValue(sensitivity)
+            qwertyView.setFlickThresholdShape(thresholdShape)
+            qwertyView.setLongPressTimeout(longPressTimeout.toLong())
+            applyCurrentFlickGuidePreference(customLayoutDefault)
+        }
+        floatingKeyboardBinding?.apply {
+            keyboardViewFloating.setFlickSensitivityValue(sensitivity)
+            keyboardViewFloating.setFlickThresholdShape(thresholdShape)
+            keyboardViewFloating.setLongPressTimeout(longPressTimeout.toLong())
+            keyboardViewFloating.setFlickGuideEnabled(
+                japaneseEnabled = tenkeyKeymapGuideSettings.japanese,
+                englishEnabled = tenkeyKeymapGuideSettings.english,
+                numberEnabled = tenkeyKeymapGuideSettings.number
+            )
+            qwertyViewFloating.setFlickSensitivityValue(sensitivity)
+            qwertyViewFloating.setFlickThresholdShape(thresholdShape)
+            qwertyViewFloating.setLongPressTimeout(longPressTimeout.toLong())
+            applyCurrentFlickGuidePreference(customLayoutFloating)
+        }
+    }
+
     private fun applyImePreferences(preferences: ImePreferencesSnapshot) {
         val deleteKeyFlickPreferencesChanged =
             isDeleteLeftFlickPreference != preferences.isDeleteLeftFlickPreference ||
@@ -2246,6 +2373,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         nBest = preferences.nBest
         conversionBeamWidth = preferences.conversionBeamWidth
         flickSensitivityPreferenceValue = preferences.flickSensitivityPreferenceValue
+        flickThresholdShapePreferenceValue = FlickThresholdShape.fromPreferenceValue(
+            preferences.flickThresholdShapePreferenceValue
+        )
         longPressTimeoutPreferenceValue = preferences.longPressTimeoutPreferenceValue
         qwertyShowIMEButtonPreference = preferences.qwertyShowIMEButtonPreference
         qwertyShowEmojiButtonPreference = preferences.qwertyShowEmojiButtonPreference
@@ -2333,8 +2463,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireLastInputModePresentationPreference =
             preferences.sumireLastInputModePresentationPreference
         tabletTenkeyQwertySwitchEnglish = preferences.tabletTenkeyQwertySwitchEnglish
-        tenkeyQKeymapGuide = preferences.tenkeyQKeymapGuide
-        flickKeymapGuidePreference = preferences.flickKeymapGuide
+        tenkeyKeymapGuideSettings = ModeKeymapGuideSettings(
+            japanese = preferences.tenkeyJapaneseKeymapGuide,
+            english = preferences.tenkeyEnglishKeymapGuide,
+            number = preferences.tenkeyNumberKeymapGuide
+        )
+        sumireKeymapGuideSettings = ModeKeymapGuideSettings(
+            japanese = preferences.sumireJapaneseKeymapGuide,
+            english = preferences.sumireEnglishKeymapGuide,
+            number = preferences.sumireNumberKeymapGuide
+        )
+        customKeymapGuidePreference = preferences.customKeymapGuide
         flickGuideTextSizeSpPreference = preferences.flickGuideTextSizeSp
         flickGuideMaxCharactersPreference = preferences.flickGuideMaxCharacters
         isKeyboardFloatingMode = preferences.isKeyboardFloatingMode
@@ -3920,6 +4059,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearZeroQueryAllState(refresh = false)
         // The input view can restart without onStartInput() after returning from settings.
         // Re-read preferences that may change while the existing input session is retained.
+        syncRuntimeInputPreferences()
         syncCustomKeyboardSuggestionPreference()
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
@@ -4150,6 +4290,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 suggestionRecyclerView.isVisible = true
                 suggestionVisibility.isVisible = false
                 keyboardView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                keyboardView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
                 keyboardView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 keyboardView.applyPopupViewStyle(currentTenKeyPopupViewStyle())
                 keyboardView.setUseThreeStateKeyboard(tenkeyUseThreeStateKeyboard)
@@ -4180,25 +4321,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     keyboardView.setBackgroundSmallLetterKey(cachedKanaDrawable)
                 }
 
-                keyboardView.setFlickGuideEnabled(tenkeyQKeymapGuide ?: false)
+                keyboardView.setFlickGuideEnabled(
+                    japaneseEnabled = tenkeyKeymapGuideSettings.japanese,
+                    englishEnabled = tenkeyKeymapGuideSettings.english,
+                    numberEnabled = tenkeyKeymapGuideSettings.number
+                )
 
                 setTabsToTabLayout(mainView)
 
                 refreshSuggestionProgressVisibility()
 
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                tabletView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
                 tabletView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
-                customLayoutDefault.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
-                customLayoutDefault.setLongPressTimeout(
-                    (longPressTimeoutPreferenceValue ?: 300).toLong()
-                )
-                customLayoutDefault.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
+                applyCurrentFlickGuidePreference(customLayoutDefault)
                 customLayoutDefault.setFlickGuideTextSizeSp(
                     (flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat()
                 )
                 customLayoutDefault.setFlickGuideMaxCodePoints(
                     (flickGuideMaxCharactersPreference ?: 1).coerceIn(1, 4)
                 )
+                qwertyView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+                qwertyView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
                 qwertyView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
                 qwertyView.applyPopupViewStyleSet(currentQwertyPopupViewStyleSet())
                 qwertyView.setSpecialKeyVisibility(
@@ -4273,6 +4417,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onFinishInputView(finishingInput: Boolean) {
         gemmaMediaPanelController?.onInputViewHidden()
+        gemmaHandwritingController?.onInputViewHidden()
         candidateRequestTracker.invalidate()
         candidateRefreshCoordinator.invalidate()
         defaultInputFinalizeJob?.cancel()
@@ -4303,15 +4448,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onWindowHidden() {
         gemmaMediaPanelController?.onInputViewHidden()
+        gemmaHandwritingController?.onInputViewHidden()
         clearAndPauseSuminagashiInkEffects()
         super.onWindowHidden()
     }
 
     override fun onDestroy() {
         Timber.d("onUpdate onDestroy")
+        if (runtimeInputPreferenceListenerRegistered) {
+            runtimeInputSharedPreferences.unregisterOnSharedPreferenceChangeListener(
+                runtimeInputPreferenceListener
+            )
+            runtimeInputPreferenceListenerRegistered = false
+        }
         updateGemmaBackInvokedCallback(registered = false)
         gemmaMediaPanelController?.destroy()
         gemmaMediaPanelController = null
+        gemmaHandwritingController?.destroy()
+        gemmaHandwritingController = null
+        handwritingModeActive = false
         pendingGemmaPickedImagePath?.let { path ->
             runCatching { File(path).delete() }
         }
@@ -4380,6 +4535,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         predictionConfig = PredictionConfig()
         lastCandidate = null
         flickSensitivityPreferenceValue = null
+        flickThresholdShapePreferenceValue = FlickThresholdShape.Radial
         longPressTimeoutPreferenceValue = null
         qwertyShowIMEButtonPreference = null
         qwertyShowEmojiButtonPreference = null
@@ -4501,7 +4657,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = null
         deleteKeyHighLight = null
         customKeyboardSuggestionPreference = null
-        flickKeymapGuidePreference = null
+        customKeymapGuidePreference = false
+        sumireKeymapGuideSettings = ModeKeymapGuideSettings()
         flickGuideTextSizeSpPreference = null
         flickGuideMaxCharactersPreference = null
         zenzDebounceTimePreference = null
@@ -4531,7 +4688,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertySwitchNumberKeyReturnSource = RestartInputModeQwertyReturnSource.None
         tenkeyTwoStateQwertyNumberReturnTarget = TwoStateNumberReturnTarget.Japanese
         tabletTenkeyQwertySwitchEnglish = false
-        tenkeyQKeymapGuide = null
+        tenkeyKeymapGuideSettings = ModeKeymapGuideSettings()
         isKeyboardFloatingMode = null
         isKeyboardRounded = null
         bunsetsuSeparation = null
@@ -5129,11 +5286,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     binding.keyboardView,
                     binding.tabletView,
                     binding.qwertyView,
-                    binding.customLayoutDefault
+                    binding.customLayoutDefault,
+                    binding.gemmaHandwritingKeyboard,
                 ).firstOrNull {
                     it.isAttachedToWindow && it.isShown
                 }
             }
+            ensureGemmaHandwritingController().bindView(binding.gemmaHandwritingKeyboard)
         }
 
         releaseFloatingKeyboardBackgroundVideoPlayer()
@@ -5482,6 +5641,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (keyCode == KeyEvent.KEYCODE_BACK &&
             gemmaMediaPanelController?.handleBack() == true
         ) {
+            consumeGemmaBackKeyUp = true
+            return true
+        }
+        if (keyCode == KeyEvent.KEYCODE_BACK &&
+            gemmaHandwritingController?.isActive == true
+        ) {
+            gemmaHandwritingController?.close()
             consumeGemmaBackKeyUp = true
             return true
         }
@@ -6736,6 +6902,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tabletView = mainView.tabletView,
             qwertyView = mainView.qwertyView,
             customLayout = mainView.customLayoutDefault,
+            handwritingView = mainView.gemmaHandwritingKeyboard,
             suggestionRecyclerView = mainView.suggestionRecyclerView,
             symbolKeyboard = mainView.keyboardSymbolView
         )
@@ -6749,6 +6916,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             tabletView = null,
             qwertyView = floatingView.qwertyViewFloating,
             customLayout = floatingView.customLayoutFloating,
+            handwritingView = null,
             suggestionRecyclerView = floatingView.suggestionRecyclerView,
             symbolKeyboard = floatingView.floatingSymbolKeyboard
         )
@@ -6771,6 +6939,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         surface.tabletView?.isVisible = false
         surface.qwertyView?.isVisible = false
         surface.customLayout?.isVisible = false
+        surface.handwritingView?.isVisible = false
     }
 
     private fun renderKeyboardMode(
@@ -6779,6 +6948,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isFloating: Boolean
     ) {
         hideKeyboardViews(surface)
+        if (handwritingModeActive && !isFloating) {
+            surface.handwritingView?.isVisible = true
+            return
+        }
         when (mode) {
             TenKeyQWERTYMode.Default -> {
                 if (!isFloating && isTabletGojuonSurface()) {
@@ -7340,8 +7513,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ?.let(::syncCustomKeyboardToggleKeyIcons)
     }
 
+    private fun applyCurrentFlickGuidePreference(flickView: FlickKeyboardView) {
+        val surface = when (qwertyMode.value) {
+            TenKeyQWERTYMode.Sumire -> FlickGuideSurface.Sumire
+            TenKeyQWERTYMode.Custom -> FlickGuideSurface.Custom
+            else -> FlickGuideSurface.Other
+        }
+        val config = resolveFlickGuideRuntimeConfig(
+            surface = surface,
+            mode = customKeyboardMode,
+            sumireSettings = sumireKeymapGuideSettings,
+            customGuideEnabled = customKeymapGuidePreference
+        )
+        flickView.setFlickGuideEnabled(
+            enabled = config.enabled,
+            allowMultiCharacterLabels = config.allowMultiCharacterLabels
+        )
+    }
+
     private fun setSumireLayoutTo(flickView: FlickKeyboardView) {
         val layoutType = sumireInputKeyLayoutType ?: "toggle"
+        applyCurrentFlickGuidePreference(flickView)
         flickView.setSumireSpecialKeyActionResolver(
             resolver = SumireSpecialKeyActionResolver(sumireSpecialKeyActionOverrides)::resolve,
             layoutType = layoutType,
@@ -7351,6 +7543,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
+        applyCurrentFlickGuidePreference(flickView)
         val numberCustomLayout = numberUsageCustomKeyboardLayoutOrNull()
         if (numberCustomLayout != null) {
             setKeyboardWithDeleteKeyFlickPreferences(
@@ -7422,6 +7615,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setCurrentCustomLayoutTo(flickView: FlickKeyboardView) {
+        applyCurrentFlickGuidePreference(flickView)
         val layout = selectedCustomKeyboardLayoutOrNull() ?: return
         scope.launch(Dispatchers.IO) {
             val id = layout.layoutId
@@ -7461,7 +7655,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setCustomLayoutOnActiveSurface(layout: KeyboardLayout) {
         getActiveKeyboardSurface()
             ?.customLayout
-            ?.let { flickView -> setKeyboardWithDeleteKeyFlickPreferences(flickView, layout) }
+            ?.let { flickView ->
+                applyCurrentFlickGuidePreference(flickView)
+                setKeyboardWithDeleteKeyFlickPreferences(flickView, layout)
+            }
     }
 
     private fun setCustomLayoutOnAvailableSurfaces(layout: KeyboardLayout) {
@@ -7642,8 +7839,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         floatingKeyboardLayoutBinding.keyboardViewFloating.setFlickSensitivityValue(
             flickSensitivityPreferenceValue ?: 100
         )
+        floatingKeyboardLayoutBinding.keyboardViewFloating.setFlickThresholdShape(
+            flickThresholdShapePreferenceValue
+        )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setFlickGuideEnabled(
-            tenkeyQKeymapGuide ?: false
+            japaneseEnabled = tenkeyKeymapGuideSettings.japanese,
+            englishEnabled = tenkeyKeymapGuideSettings.english,
+            numberEnabled = tenkeyKeymapGuideSettings.number
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
             setOnFlickListener(object : FlickListener {
@@ -9963,6 +10165,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyView.isVisible = false
             tabletView.isVisible = false
             customLayoutDefault.isVisible = false
+            gemmaHandwritingKeyboard.isVisible = false
             keyboardSymbolView.isVisible = false
             candidatesRowView.isVisible = false
         }
@@ -10821,6 +11024,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         isFloatingView: Boolean
     ) {
+        flickView.bindRuntimeGestureSettings(runtimeGestureSettingsSource)
         if (isFloatingView) {
             Timber.d("Configuring floating FlickKeyboardView mirror surface")
             // Floating ON のときだけ、popup の window anchor を IME decorView (or floating root)
@@ -10875,7 +11079,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 16.0f
         )
         flickView.applyPopupViewStyleSet(currentFlickPopupViewStyleSet())
-        flickView.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
+        applyCurrentFlickGuidePreference(flickView)
         flickView.setFlickGuideTextSizeSp(
             (flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat()
         )
@@ -14570,12 +14774,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         launch {
             shortCurRepository.enabledShortcutsFlow.collectLatest {
-                currentShortcutItems = it
-                shortcutAdapter?.submitList(it) {
-                    updateShortcutActiveStates()
-                }
-                updateShortcutActiveStates()
-                refreshCandidateStripContent()
+                configuredShortcutItems = it
+                refreshShortcutAvailability()
+            }
+        }
+
+        launch {
+            gemmaTranslationManager.loadState.collectLatest {
+                val capability = gemmaTranslationManager.imageInputCapability()
+                gemmaHandwritingController?.onImageCapabilityChanged(capability)
+                refreshShortcutAvailability()
             }
         }
 
@@ -15482,6 +15690,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.keyboardView,
             mainView.customLayoutDefault,
             mainView.qwertyView,
+            mainView.gemmaHandwritingKeyboard,
             mainView.candidatesRowView
         ).forEach { view ->
             (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
@@ -15704,7 +15913,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             mainView.suggestionViewParent,
             mainView.keyboardView,
             mainView.customLayoutDefault,
-            mainView.qwertyView
+            mainView.qwertyView,
+            mainView.gemmaHandwritingKeyboard,
         ).forEach { view ->
             (view.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
                 if (view != mainView.suggestionViewParent) params.height = heightPx
@@ -16061,9 +16271,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         InputMode.ModeNumber -> {
-                            setBackgroundSmallLetterKey(
-                                cachedNumberDrawable
-                            )
+                            setNumberSmallKeyPresentation()
                         }
                     }
                 }
@@ -16095,9 +16303,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         InputMode.ModeNumber -> {
-                            setBackgroundSmallLetterKey(
-                                cachedNumberDrawable
-                            )
+                            setNumberSmallKeyPresentation()
                         }
                     }
                 }
@@ -18094,10 +18300,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             inputBehavior = currentInputBehavior,
             liveConversionEnabled = isLiveConversionEnable == true,
             learningPaused = learningPausedForSession,
+            handwritingActive = handwritingModeActive,
         )
 
         shortcutAdapter?.setActiveShortcutTypes(activeTypes)
         suggestionAdapter?.setActiveShortcutTypes(activeTypes)
+    }
+
+    private fun refreshShortcutAvailability() {
+        val handwritingAvailable =
+            gemmaTranslationManager.imageInputCapability() is GemmaImageCapability.Available
+        val visibleItems = configuredShortcutItems.filter { type ->
+            type != ShortcutType.GEMMA_HANDWRITING || handwritingAvailable
+        }
+        currentShortcutItems = visibleItems
+        shortcutAdapter?.submitList(visibleItems) {
+            updateShortcutActiveStates()
+        }
+        updateShortcutActiveStates()
+        refreshCandidateStripContent()
     }
 
     private fun toggleLiveConversionFromShortcut() {
@@ -18726,6 +18947,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 launchGemmaAudioAction()
             }
 
+            ShortcutType.GEMMA_HANDWRITING -> {
+                toggleGemmaHandwriting()
+            }
+
             ShortcutType.CLIP_BOARD -> {
                 vibrate()
                 _keyboardSymbolViewState.value = SymbolKeyboardState(
@@ -18747,6 +18972,124 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun launchGemmaAudioAction() {
         prepareForGemmaMediaPanel()
         ensureGemmaMediaPanelController().openAudio()
+    }
+
+    private fun toggleGemmaHandwriting() {
+        val controller = ensureGemmaHandwritingController()
+        if (controller.isActive) {
+            controller.close()
+            return
+        }
+        if (gemmaTranslationManager.imageInputCapability() !is GemmaImageCapability.Available) {
+            showToastMessage(getString(R.string.gemma_handwriting_unavailable))
+            return
+        }
+        prepareForGemmaHandwriting()
+        controller.open()
+    }
+
+    private fun prepareForGemmaHandwriting() {
+        gemmaMediaPanelController?.close()
+        stopAllOngoingKeyLongPresses()
+        disableKeyboardLayoutEditMode(updateSurface = false)
+        collapseShortcutEntryExpansion()
+        if (keyboardSymbolViewState.value.isShown) {
+            _keyboardSymbolViewState.value = SymbolKeyboardState()
+        }
+        clearZeroQueryAllState(refresh = false)
+        finishComposingText()
+        _inputString.update { "" }
+        stringInTail.set("")
+        setSuggestionAdapterSuggestionsOnMain(emptyList())
+    }
+
+    private fun ensureGemmaHandwritingController(): GemmaHandwritingController {
+        gemmaHandwritingController?.let { return it }
+        return GemmaHandwritingController(
+            context = this,
+            gemmaManager = gemmaTranslationManager,
+            settingsProvider = {
+                GemmaHandwritingSettings.normalized(
+                    autoRecognitionDelayMs =
+                        appPreference.gemma_handwriting_auto_recognition_delay_preference,
+                    recognitionLanguage =
+                        appPreference.gemma_handwriting_recognition_language_preference,
+                    additionalInstruction =
+                        appPreference.gemma_handwriting_additional_instruction_preference,
+                    penSizeDp = appPreference.gemma_handwriting_pen_size_preference,
+                    penColorArgb = appPreference.gemma_handwriting_pen_color_preference,
+                )
+            },
+            callbacks = object : GemmaHandwritingController.Callbacks {
+                override fun onVisibilityChanged(visible: Boolean) {
+                    setGemmaHandwritingVisibility(visible)
+                }
+
+                override fun currentInputSessionId(): Long = gemmaInputSessionId
+
+                override fun commitRecognizedText(
+                    text: String,
+                    inputSessionId: Long,
+                ): Boolean {
+                    if (inputSessionId != gemmaInputSessionId) return false
+                    val inputConnection = currentInputConnection ?: return false
+                    clearZeroQueryAllState(refresh = false)
+                    finishComposingText()
+                    inputConnection.commitText(text, 1)
+                    refreshCandidateStripContent()
+                    return true
+                }
+
+                override fun deleteText() {
+                    vibrate()
+                    handleDeleteKeyTap(
+                        insertString = inputString.value,
+                        suggestions = suggestionAdapter?.suggestions.orEmpty(),
+                    )
+                }
+
+                override fun moveCursor(keyCode: Int) {
+                    clearZeroQueryAllState(refresh = false)
+                    vibrate()
+                    sendDownUpKeyEvents(keyCode)
+                }
+
+                override fun showMessage(message: String) {
+                    showToastMessage(message)
+                }
+            },
+        ).also { controller ->
+            gemmaHandwritingController = controller
+            mainLayoutBinding?.gemmaHandwritingKeyboard?.let(controller::bindView)
+        }
+    }
+
+    private fun setGemmaHandwritingVisibility(visible: Boolean) {
+        val mainView = mainLayoutBinding ?: return
+        handwritingModeActive = visible
+        (mainView.root as? InkTouchDispatchFrameLayout)
+            ?.suppressTouchEffectMotionEvents = visible
+        if (visible) {
+            restoreFloatingModeAfterHandwriting = isKeyboardFloatingMode == true
+            if (restoreFloatingModeAfterHandwriting) {
+                applyFloatingModeState(false)
+            }
+            mainView.root.isInvisible = false
+            mainView.root.isVisible = true
+            mainView.root.alpha = 1f
+            setKeyboardSizeSwitchKeyboard(mainView)
+            renderCurrentKeyboardStateOnActiveSurface()
+            updateGemmaBackInvokedCallback(registered = true)
+        } else if (restoreFloatingModeAfterHandwriting) {
+            updateGemmaBackInvokedCallback(registered = false)
+            restoreFloatingModeAfterHandwriting = false
+            applyFloatingModeState(true)
+        } else {
+            updateGemmaBackInvokedCallback(registered = false)
+            renderCurrentKeyboardStateOnActiveSurface()
+        }
+        updateShortcutActiveStates()
+        refreshCandidateStripContent()
     }
 
     private fun launchGemmaDeviceImagePicker() {
@@ -18774,6 +19117,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun prepareForGemmaMediaPanel() {
+        gemmaHandwritingController?.close()
         stopAllOngoingKeyLongPresses()
         disableKeyboardLayoutEditMode(updateSurface = false)
         collapseShortcutEntryExpansion()
@@ -18861,7 +19205,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (registered) {
             if (isGemmaBackInvokedCallbackRegistered) return
             val callback = gemmaBackInvokedCallback ?: OnBackInvokedCallback {
-                gemmaMediaPanelController?.handleBack()
+                if (gemmaHandwritingController?.isActive == true) {
+                    gemmaHandwritingController?.close()
+                } else {
+                    gemmaMediaPanelController?.handleBack()
+                }
             }.also { gemmaBackInvokedCallback = it }
             dispatcher.registerOnBackInvokedCallback(
                 OnBackInvokedDispatcher.PRIORITY_OVERLAY,
@@ -19077,6 +19425,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 liquidGlassKeyAlphaEnable = liquidGlassKeyBlurRadiousPreference ?: 255,
                 borderWidth = customKeyBorderWidth ?: 1
             )
+            setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
+            setFlickThresholdShape(flickThresholdShapePreferenceValue)
             setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
             applyPopupViewStyleSet(currentQwertyPopupViewStyleSet())
             setSpecialKeyVisibility(
@@ -21337,9 +21687,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     InputMode.ModeNumber -> {
-                        setBackgroundSmallLetterKey(
-                            cachedNumberDrawable
-                        )
+                        setNumberSmallKeyPresentation()
                         setSideKeySpaceDrawable(
                             cachedSpaceDrawable
                         )
@@ -21391,9 +21739,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 InputMode.ModeNumber -> {
-                    setBackgroundSmallLetterKey(
-                        cachedNumberDrawable
-                    )
+                    setNumberSmallKeyPresentation()
                     setSideKeySpaceDrawable(
                         cachedSpaceDrawable
                     )

@@ -8,6 +8,7 @@ import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaMediaType
 import com.kazumaproject.markdownhelperkeyboard.gemma.runtime.GemmaRuntimeClient
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
+import com.kazumaproject.markdownhelperkeyboard.variant.AppVariantConfig
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import java.io.InputStream
@@ -81,6 +82,13 @@ class GemmaTranslationManager @Inject constructor(
     private var lastErrorMessage: String? = null
 
     fun isTranslationAvailable(): Boolean = _loadState.value is GemmaLoadState.Ready
+
+    fun imageInputCapability(): GemmaImageCapability {
+        return GemmaImageCapabilityResolver.resolve(
+            hasGemma = AppVariantConfig.hasGemma,
+            loadState = _loadState.value,
+        )
+    }
 
     fun selectedModel(): InstalledGemmaModel? {
         return resolveModelFile()?.let { InstalledGemmaModel(it, GemmaModelCatalog.descriptorFor(it)) }

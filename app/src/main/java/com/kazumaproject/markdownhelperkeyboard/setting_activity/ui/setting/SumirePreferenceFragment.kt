@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.SwitchPreferenceCompat
 import com.kazumaproject.markdownhelperkeyboard.R
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -86,6 +87,61 @@ class SumirePreferenceFragment : PreferenceFragmentCompat() {
                 true
             }
         }
+
+        val japaneseGuidePreference =
+            findPreference<SwitchPreferenceCompat>("sumire_keymap_guide_japanese")
+        val englishGuidePreference =
+            findPreference<SwitchPreferenceCompat>("sumire_keymap_guide_english")
+        val numberGuidePreference =
+            findPreference<SwitchPreferenceCompat>("sumire_keymap_guide_number")
+        val englishQwertyPreference =
+            findPreference<SwitchPreferenceCompat>("sumire_english_qwerty_preference")
+        val guideTextSizePreference =
+            findPreference<Preference>("flick_guide_text_size_sp_preference")
+        val guideMaxCharactersPreference =
+            findPreference<Preference>("flick_guide_max_characters_preference")
+
+        fun updateGuideDetailAvailability(
+            japaneseEnabled: Boolean = japaneseGuidePreference?.isChecked == true,
+            englishEnabled: Boolean = englishGuidePreference?.isChecked == true,
+            numberEnabled: Boolean = numberGuidePreference?.isChecked == true
+        ) {
+            val anyGuideEnabled = japaneseEnabled || englishEnabled || numberEnabled
+            guideTextSizePreference?.isEnabled = anyGuideEnabled
+            guideMaxCharactersPreference?.isEnabled = anyGuideEnabled
+        }
+
+        fun updateEnglishGuideAvailability(usesQwerty: Boolean) {
+            englishGuidePreference?.apply {
+                isEnabled = !usesQwerty
+                setSummary(
+                    if (usesQwerty) {
+                        R.string.keymap_guide_qwerty_disabled_summary
+                    } else {
+                        R.string.flick_keymap_guide_summary
+                    }
+                )
+            }
+        }
+
+        japaneseGuidePreference?.setOnPreferenceChangeListener { _, newValue ->
+            updateGuideDetailAvailability(japaneseEnabled = newValue as Boolean)
+            true
+        }
+        englishGuidePreference?.setOnPreferenceChangeListener { _, newValue ->
+            updateGuideDetailAvailability(englishEnabled = newValue as Boolean)
+            true
+        }
+        numberGuidePreference?.setOnPreferenceChangeListener { _, newValue ->
+            updateGuideDetailAvailability(numberEnabled = newValue as Boolean)
+            true
+        }
+        englishQwertyPreference?.setOnPreferenceChangeListener { _, newValue ->
+            updateEnglishGuideAvailability(newValue as Boolean)
+            true
+        }
+        updateGuideDetailAvailability()
+        updateEnglishGuideAvailability(englishQwertyPreference?.isChecked == true)
 
         hierarchicalFlickAngleMarginPreference?.apply {
             setOnPreferenceClickListener {

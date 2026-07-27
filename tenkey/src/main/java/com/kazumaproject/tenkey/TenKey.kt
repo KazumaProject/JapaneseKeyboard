@@ -47,6 +47,9 @@ import com.kazumaproject.core.domain.state.TwoStateNumberReturnTarget
 import com.kazumaproject.core.domain.state.toInputMode
 import com.kazumaproject.core.domain.state.toTwoStateNumberReturnTargetOrNull
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
+import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
 import com.kazumaproject.core.ui.key_window.KeyWindowLayout
@@ -70,6 +73,7 @@ import com.kazumaproject.tenkey.extensions.setTenKeyTextEnglish
 import com.kazumaproject.tenkey.extensions.setTenKeyTextJapanese
 import com.kazumaproject.tenkey.extensions.setTenKeyTextJapaneseWithFlickGuide
 import com.kazumaproject.tenkey.extensions.setTenKeyTextNumber
+import com.kazumaproject.tenkey.extensions.setTenKeyTextWithFlickGuide
 import com.kazumaproject.tenkey.extensions.setTenKeyTextWhenTapEnglish
 import com.kazumaproject.tenkey.extensions.setTenKeyTextWhenTapJapanese
 import com.kazumaproject.tenkey.extensions.setTenKeyTextWhenTapNumber
@@ -133,6 +137,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var qwertyNumberModeRequestedListener: (() -> Unit)? = null
 
     private var flickSensitivity: Int = 100
+    private var flickThresholdPx: Float = resolveFlickThresholdPx(flickSensitivity)
+    private var flickThresholdShape: FlickThresholdShape = FlickThresholdShape.Radial
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var keySizeDelta = 0
@@ -172,7 +178,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private lateinit var bubbleViewCenter: KeyWindowLayout
     private lateinit var popTextCenter: MaterialTextView
 
-    private var isFlickGuideEnabled: Boolean = false
+    private var isJapaneseFlickGuideEnabled: Boolean = false
+    private var isEnglishFlickGuideEnabled: Boolean = false
+    private var isNumberFlickGuideEnabled: Boolean = false
     private var popupViewStyle = PopupViewStyle(100, 28f)
 
     private val cachedArrowRightDrawable: Drawable? by lazy {
@@ -221,6 +229,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         ContextCompat.getDrawable(
             context,
             com.kazumaproject.core.R.drawable.number_small
+        )
+    }
+
+    private val cachedNumberSmallFlickGuideDrawable: Drawable? by lazy {
+        ContextCompat.getDrawable(
+            context,
+            com.kazumaproject.core.R.drawable.number_small_flick_guide
         )
     }
 
@@ -1423,14 +1438,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         )
                     }
 
-                    Log.d("TenKey: ACTION_DOWN", "called ${pressedKey.key}")
-
                     if (isCursorMode) {
                         return true
                     }
 
                     setKeyPressed()
-                    longPressJob = CoroutineScope(Dispatchers.Main).launch {
+                    longPressJob = scope.launch {
                         delay(longPressTimeout)
                         if (pressedKey.key != Key.NotSelected) {
                             longPressListener?.onLongPress(pressedKey.key)
@@ -1521,31 +1534,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     button?.let {
                         if (it is AppCompatButton) {
                             // ← UPDATE: use state flow's value to set text after finger-up
-                            when (currentInputMode.value) {
-
-                                InputMode.ModeJapanese -> setJapaneseTextFor(
-                                    it
-                                )
-
-                                InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
-                                    it.id,
-                                    delta = keySizeDelta,
-                                    modeTheme = themeMode,
-                                    colorTextInt = customKeyTextColor
-                                )
-
-                                InputMode.ModeNumber -> it.setTenKeyTextNumber(
-                                    it.id,
-                                    delta = keySizeDelta,
-                                    modeTheme = themeMode,
-                                    colorTextInt = customKeyTextColor
-                                )
-                            }
+                            setTextForMode(it, currentInputMode.value)
                         }
                         if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
-                            it.setImageDrawable(
-                                cachedNumberSmallDrawable
-                            )
+                            setNumberSmallKeyPresentation()
                         }
                     }
                     return false
@@ -1647,9 +1639,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             event, if (pointer == 0) 1 else 0
                         )
                         if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.value == InputMode.ModeNumber) {
-                            binding.keySmallLetter.setImageDrawable(
-                                cachedNumberSmallDrawable
-                            )
+                            setNumberSmallKeyPresentation()
                         }
                         val keyInfo = currentInputMode.value
                             .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
@@ -1670,30 +1660,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                                     val button = getButtonFromKey(pressedKey.key)
                                     button?.let {
                                         if (it is AppCompatButton) {
-                                            when (currentInputMode.value) {
-                                                InputMode.ModeJapanese -> setJapaneseTextFor(
-                                                    it
-                                                )
-
-                                                InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
-                                                    it.id,
-                                                    delta = keySizeDelta,
-                                                    modeTheme = themeMode,
-                                                    colorTextInt = customKeyTextColor
-                                                )
-
-                                                InputMode.ModeNumber -> it.setTenKeyTextNumber(
-                                                    it.id,
-                                                    delta = keySizeDelta,
-                                                    modeTheme = themeMode,
-                                                    colorTextInt = customKeyTextColor
-                                                )
-                                            }
+                                            setTextForMode(it, currentInputMode.value)
                                         }
                                         if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
-                                            it.setImageDrawable(
-                                                cachedNumberSmallDrawable
-                                            )
+                                            setNumberSmallKeyPresentation()
                                         }
                                     }
                                 }
@@ -1731,7 +1701,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         )
                         setKeyPressed()
-                        longPressJob = CoroutineScope(Dispatchers.Main).launch {
+                        longPressJob = scope.launch {
                             delay(longPressTimeout)
                             if (pressedKey.key != Key.NotSelected) {
                                 longPressListener?.onLongPress(pressedKey.key)
@@ -1805,25 +1775,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             button?.let {
                                 if (it is AppCompatButton) {
                                     it.isPressed = false
-                                    when (currentInputMode.value) {
-                                        InputMode.ModeJapanese -> setJapaneseTextFor(
-                                            it
-                                        )
-
-                                        InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
-                                            it.id,
-                                            delta = keySizeDelta,
-                                            modeTheme = themeMode,
-                                            colorTextInt = customKeyTextColor
-                                        )
-
-                                        InputMode.ModeNumber -> it.setTenKeyTextNumber(
-                                            it.id,
-                                            delta = keySizeDelta,
-                                            modeTheme = themeMode,
-                                            colorTextInt = customKeyTextColor
-                                        )
-                                    }
+                                    setTextForMode(it, currentInputMode.value)
                                 }
                             }
                             pressedKey = pressedKey.copy(key = Key.NotSelected)
@@ -1875,7 +1827,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     fun setFlickSensitivityValue(sensitivity: Int) {
-        flickSensitivity = sensitivity
+        flickSensitivity = sensitivity.coerceIn(1, 200)
+        flickThresholdPx = resolveFlickThresholdPx(flickSensitivity)
+    }
+
+    fun setFlickThresholdShape(shape: FlickThresholdShape) {
+        flickThresholdShape = shape
     }
 
     fun setLongPressTimeout(timeoutMillis: Long) {
@@ -1883,16 +1840,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun setTextToAllButtons() {
-        setJapaneseTextFor(binding.key1)
-        setJapaneseTextFor(binding.key2)
-        setJapaneseTextFor(binding.key3)
-        setJapaneseTextFor(binding.key4)
-        setJapaneseTextFor(binding.key5)
-        setJapaneseTextFor(binding.key6)
-        setJapaneseTextFor(binding.key7)
-        setJapaneseTextFor(binding.key8)
-        setJapaneseTextFor(binding.key9)
-        setJapaneseTextFor(binding.key11)
+        characterButtons().forEach { setTextForMode(it, currentInputMode.value) }
     }
 
     /** Determine which Key enum corresponds to the touch coordinates **/
@@ -2055,13 +2003,27 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
      * フリックガイド表示のオン/オフを切り替える
      */
     fun setFlickGuideEnabled(enabled: Boolean) {
-        isFlickGuideEnabled = enabled
+        setFlickGuideEnabled(
+            japaneseEnabled = enabled,
+            englishEnabled = false,
+            numberEnabled = false
+        )
+    }
+
+    fun setFlickGuideEnabled(
+        japaneseEnabled: Boolean,
+        englishEnabled: Boolean,
+        numberEnabled: Boolean
+    ) {
+        isJapaneseFlickGuideEnabled = japaneseEnabled
+        isEnglishFlickGuideEnabled = englishEnabled
+        isNumberFlickGuideEnabled = numberEnabled
         // 現在のモードに合わせてキー表示を再描画
         handleCurrentInputModeSwitch(currentInputMode.value)
     }
 
     private fun setJapaneseTextFor(button: AppCompatButton) {
-        if (isFlickGuideEnabled) {
+        if (isJapaneseFlickGuideEnabled) {
             button.setTenKeyTextJapaneseWithFlickGuide(
                 button.id,
                 delta = keySizeDelta,
@@ -2075,6 +2037,92 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                 modeTheme = themeMode,
                 colorTextInt = customKeyTextColor
             )
+        }
+    }
+
+    private fun setEnglishTextFor(button: AppCompatButton) {
+        val keyInfo = keyForCharacterButton(button)
+            ?.let { keyMap.getKeyInfoEnglish(it, false) as? KeyInfo.KeyTapFlickInfo }
+        if (isEnglishFlickGuideEnabled && keyInfo != null) {
+            button.setTenKeyTextWithFlickGuide(
+                keyInfo = keyInfo,
+                delta = keySizeDelta,
+                modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+        } else {
+            button.setTenKeyTextEnglish(
+                button.id,
+                delta = keySizeDelta,
+                modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+        }
+    }
+
+    private fun setNumberTextFor(button: AppCompatButton) {
+        val keyInfo = keyForCharacterButton(button)
+            ?.let { keyMap.getKeyInfoNumber(it, false) as? KeyInfo.KeyTapFlickInfo }
+        if (isNumberFlickGuideEnabled && keyInfo != null) {
+            button.setTenKeyTextWithFlickGuide(
+                keyInfo = keyInfo,
+                delta = keySizeDelta,
+                modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+        } else {
+            button.setTenKeyTextNumber(
+                button.id,
+                delta = keySizeDelta,
+                modeTheme = themeMode,
+                colorTextInt = customKeyTextColor
+            )
+        }
+    }
+
+    private fun setTextForMode(button: AppCompatButton, inputMode: InputMode) {
+        when (inputMode) {
+            InputMode.ModeJapanese -> setJapaneseTextFor(button)
+            InputMode.ModeEnglish -> setEnglishTextFor(button)
+            InputMode.ModeNumber -> setNumberTextFor(button)
+        }
+    }
+
+    /**
+     * 数字モードの括弧キーを、現在のガイド設定に合わせた既定表示へ戻す。
+     *
+     * IME 側で候補表示などを更新した後も、旧アイコンを直接設定せずこのメソッドを使う。
+     */
+    fun setNumberSmallKeyPresentation() {
+        binding.keySmallLetter.setImageDrawable(
+            if (isNumberFlickGuideEnabled) {
+                cachedNumberSmallFlickGuideDrawable
+            } else {
+                cachedNumberSmallDrawable
+            }
+        )
+    }
+
+    private fun keyForCharacterButton(button: AppCompatButton): Key? {
+        return when (button.id) {
+            R.id.key_1 -> Key.KeyA
+            R.id.key_2 -> Key.KeyKA
+            R.id.key_3 -> Key.KeySA
+            R.id.key_4 -> Key.KeyTA
+            R.id.key_5 -> Key.KeyNA
+            R.id.key_6 -> Key.KeyHA
+            R.id.key_7 -> Key.KeyMA
+            R.id.key_8 -> Key.KeyYA
+            R.id.key_9 -> Key.KeyRA
+            R.id.key_11 -> Key.KeyWA
+            R.id.key_12 -> Key.KeyKutouten
+            else -> null
+        }
+    }
+
+    private fun characterButtons(): List<AppCompatButton> {
+        return binding.run {
+            listOf(key1, key2, key3, key4, key5, key6, key7, key8, key9, key11, key12)
         }
     }
 
@@ -2103,14 +2151,30 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         }
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
-        return when {
-            abs(distanceX) < flickSensitivity && abs(distanceY) < flickSensitivity -> GestureType.Tap
-            abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
-            abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
-            abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight
-            abs(distanceX) <= abs(distanceY) && pressedKey.initialY < finalY -> GestureType.FlickBottom
-            else -> GestureType.Null
+        return when (
+            FlickGestureMath.cardinalDirection(
+                deltaX = distanceX,
+                deltaY = distanceY,
+                thresholdPx = flickThresholdPx,
+                thresholdShape = flickThresholdShape
+            )
+        ) {
+            CoreFlickDirection.Tap -> GestureType.Tap
+            CoreFlickDirection.Left -> GestureType.FlickLeft
+            CoreFlickDirection.Top -> GestureType.FlickTop
+            CoreFlickDirection.Right -> GestureType.FlickRight
+            CoreFlickDirection.Bottom -> GestureType.FlickBottom
         }
+    }
+
+    private fun resolveFlickThresholdPx(sensitivity: Int): Float {
+        return FlickGestureMath.thresholdPxForSensitivity(
+            sensitivity = sensitivity,
+            scaledTouchSlopPx = ViewConfiguration.get(context).scaledTouchSlop,
+            sensitiveMultiplier = 1.5f,
+            normalMultiplier = 3.5f,
+            stableMultiplier = 4.25f
+        )
     }
 
     /** Visually indicate which key is pressed **/
@@ -2467,25 +2531,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             val button = getButtonFromKey(pressedKey.key)
             button?.let {
                 if (it is AppCompatButton) {
-                    when (currentInputMode.value) {
-                        InputMode.ModeJapanese -> setJapaneseTextFor(
-                            it
-                        )
-
-                        InputMode.ModeEnglish -> it.setTenKeyTextEnglish(
-                            it.id,
-                            delta = keySizeDelta,
-                            modeTheme = themeMode,
-                            colorTextInt = customKeyTextColor
-                        )
-
-                        InputMode.ModeNumber -> it.setTenKeyTextNumber(
-                            it.id,
-                            delta = keySizeDelta,
-                            modeTheme = themeMode,
-                            colorTextInt = customKeyTextColor
-                        )
-                    }
+                    setTextForMode(it, currentInputMode.value)
                 }
             }
         }
@@ -2708,29 +2754,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Populate all main keys with Japanese labels **/
     private fun setKeysInJapaneseText() {
         binding.apply {
-            key1.apply {
-                setJapaneseTextFor(key1)
-                setCompoundDrawables(null, null, null, null)
+            characterButtons().forEach { button ->
+                setJapaneseTextFor(button)
+                button.setCompoundDrawables(null, null, null, null)
             }
-            setJapaneseTextFor(key2)
-            key3.apply {
-                setJapaneseTextFor(key3)
-                setCompoundDrawables(null, null, null, null)
-            }
-            setJapaneseTextFor(key4)
-            setJapaneseTextFor(key5)
-            setJapaneseTextFor(key6)
-            key7.apply {
-                setJapaneseTextFor(key7)
-                setCompoundDrawables(null, null, null, null)
-            }
-            setJapaneseTextFor(key8)
-            key9.apply {
-                setJapaneseTextFor(key9)
-                setCompoundDrawables(null, null, null, null)
-            }
-            setJapaneseTextFor(key11)
-            setJapaneseTextFor(key12)
             if (isLanguageIconEnabled) {
                 keySmallLetter.setImageDrawable(cachedLanguageDrawable)
             } else {
@@ -2750,66 +2777,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Populate all main keys with English labels **/
     private fun setKeysInEnglishText() {
         binding.apply {
-            key1.apply {
-                setTenKeyTextEnglish(
-                    key1.id,
-                    delta = keySizeDelta,
-                    modeTheme = themeMode,
-                    colorTextInt = customKeyTextColor
-                )
-                setCompoundDrawables(null, null, null, null)
+            characterButtons().forEach { button ->
+                setEnglishTextFor(button)
+                button.setCompoundDrawables(null, null, null, null)
             }
-            key2.apply {
-                setTenKeyTextEnglish(
-                    key2.id,
-                    delta = keySizeDelta,
-                    modeTheme = themeMode,
-                    colorTextInt = customKeyTextColor
-                )
-                setCompoundDrawables(null, null, null, null)
-            }
-            key3.setTenKeyTextEnglish(
-                key3.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key4.setTenKeyTextEnglish(
-                key4.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key5.setTenKeyTextEnglish(
-                key5.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key6.setTenKeyTextEnglish(
-                key6.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key7.apply {
-                setTenKeyTextEnglish(
-                    key7.id, delta = keySizeDelta, modeTheme = themeMode,
-                    colorTextInt = customKeyTextColor
-                )
-                setCompoundDrawables(null, null, null, null)
-            }
-            key8.setTenKeyTextEnglish(
-                key8.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key9.apply {
-                setTenKeyTextEnglish(
-                    key9.id, delta = keySizeDelta, modeTheme = themeMode,
-                    colorTextInt = customKeyTextColor
-                )
-                setCompoundDrawables(null, null, null, null)
-            }
-            key11.setTenKeyTextEnglish(
-                key11.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key12.setTenKeyTextEnglish(
-                key12.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
             resetFromSelectMode(binding)
             keyMoveCursorRight.setImageDrawable(
                 cachedArrowRightDrawable
@@ -2829,63 +2800,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Populate all main keys with Number labels **/
     private fun setKeysInNumberText() {
         binding.apply {
-            key1.apply {
-                setTenKeyTextNumber(
-                    key1.id, delta = keySizeDelta, modeTheme = themeMode,
-                    colorTextInt = customKeyTextColor
-                )
-                setCompoundDrawables(null, null, null, null)
+            characterButtons().forEach { button ->
+                setNumberTextFor(button)
+                button.setCompoundDrawables(null, null, null, null)
             }
-            key2.setTenKeyTextNumber(
-                key2.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key3.apply {
-                setTenKeyTextNumber(
-                    key3.id, delta = keySizeDelta, modeTheme = themeMode,
-                    colorTextInt = customKeyTextColor
-                )
-                setCompoundDrawables(null, null, null, null)
-            }
-            key4.setTenKeyTextNumber(
-                key4.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key5.setTenKeyTextNumber(
-                key5.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key6.setTenKeyTextNumber(
-                key6.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key7.apply {
-                setTenKeyTextNumber(
-                    key7.id, delta = keySizeDelta, modeTheme = themeMode,
-                    colorTextInt = customKeyTextColor
-                )
-                setCompoundDrawables(null, null, null, null)
-            }
-            key8.setTenKeyTextNumber(
-                key8.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key9.apply {
-                setTenKeyTextNumber(
-                    key9.id, delta = keySizeDelta, modeTheme = themeMode,
-                    colorTextInt = customKeyTextColor
-                )
-                setCompoundDrawables(null, null, null, null)
-            }
-            key11.setTenKeyTextNumber(
-                key11.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-            key12.setTenKeyTextNumber(
-                key12.id, delta = keySizeDelta, modeTheme = themeMode,
-                colorTextInt = customKeyTextColor
-            )
-
             resetFromSelectMode(binding)
             keyMoveCursorRight.setImageDrawable(
                 cachedArrowRightDrawable
@@ -2893,7 +2811,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             keySoftLeft.setImageDrawable(
                 cachedArrowLeftDrawable
             )
-            keySmallLetter.setImageDrawable(cachedNumberSmallDrawable)
+            setNumberSmallKeyPresentation()
             keyDelete.setImageDrawable(cachedBackSpaceDrawable)
         }
     }

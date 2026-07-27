@@ -65,14 +65,25 @@
             app:summary="@string/sumire_restore_input_mode_timeout_minutes_summary" />
 
         <SwitchPreferenceCompat
-            android:key="flick_keymap_guide"
-            android:title="@string/flick_keymap_guide_title"
+            android:key="sumire_keymap_guide_japanese"
+            android:title="@string/keymap_guide_japanese_title"
+            app:defaultValue="false"
+            app:summary="@string/flick_keymap_guide_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="sumire_keymap_guide_english"
+            android:title="@string/keymap_guide_english_title"
+            app:defaultValue="false"
+            app:summary="@string/flick_keymap_guide_summary" />
+
+        <SwitchPreferenceCompat
+            android:key="sumire_keymap_guide_number"
+            android:title="@string/keymap_guide_number_title"
             app:defaultValue="false"
             app:summary="@string/flick_keymap_guide_summary" />
 
         <SeekBarPreference
             android:defaultValue="9"
-            android:dependency="flick_keymap_guide"
             android:key="flick_guide_text_size_sp_preference"
             android:max="16"
             android:title="@string/flick_guide_text_size_title"
@@ -82,7 +93,6 @@
 
         <SeekBarPreference
             android:defaultValue="1"
-            android:dependency="flick_keymap_guide"
             android:key="flick_guide_max_characters_preference"
             android:max="4"
             android:title="@string/flick_guide_max_characters_title"

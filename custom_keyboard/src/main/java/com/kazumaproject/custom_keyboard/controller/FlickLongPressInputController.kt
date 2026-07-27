@@ -9,17 +9,36 @@ import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.GestureSessionConfig
+import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.hypot
 
 @SuppressLint("ClickableViewAccessibility")
 class FlickLongPressInputController(
     private val context: Context,
-    private val flickSensitivity: Float
+    private val gestureConfigSource: GestureSessionConfigSource
 ) {
+
+    constructor(
+        context: Context,
+        flickSensitivity: Float
+    ) : this(
+        context = context,
+        gestureConfigSource = FixedGestureSessionConfigSource(
+            GestureSessionConfig(
+                settingsRevision = 0L,
+                flickSensitivity = 100,
+                flickThresholdPx = flickSensitivity.coerceAtLeast(1f),
+                longPressTimeoutMillis =
+                    ViewConfiguration.getLongPressTimeout().toLong().coerceIn(100L, 2_000L)
+            )
+        )
+    )
 
     interface Listener {
         fun onPress(character: String)
@@ -41,11 +60,11 @@ class FlickLongPressInputController(
     private var longPressDirection: TfbiFlickDirection? = null
     private var isTouchActive = false
     private var isLongPressActive = false
+    private var activeGestureConfig: GestureSessionConfig? = null
 
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
     private var popupWindowAnchorProvider: (() -> View?)? = null
-    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var popupBackgroundColor: Int? = null
     private var popupHighlightedColor: Int? = null
@@ -76,10 +95,6 @@ class FlickLongPressInputController(
             textColor = style.textColor
         )
         popupView?.applyPopupViewStyle(popupStyle)
-    }
-
-    fun setLongPressTimeout(timeoutMillis: Long) {
-        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
     }
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
@@ -119,6 +134,7 @@ class FlickLongPressInputController(
 
     private fun handleTouchDown(event: MotionEvent, view: View) {
         resetState()
+        activeGestureConfig = gestureConfigSource.snapshot()
         isTouchActive = true
         initialTouchX = event.x
         initialTouchY = event.y
@@ -166,12 +182,22 @@ class FlickLongPressInputController(
         clearLongPressCallback()
         longPressDirection = direction
         if (direction == null || longPressMap[direction].orEmpty().isEmpty()) return
-        attachedView?.postDelayed(longPressRunnable, longPressTimeout)
+        attachedView?.postDelayed(
+            longPressRunnable,
+            currentGestureConfig().longPressTimeoutMillis
+        )
     }
 
     private fun resolveDirection(dx: Float, dy: Float): TfbiFlickDirection? {
-        val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
-        if (distance < flickSensitivity) {
+        val config = currentGestureConfig()
+        if (
+            !FlickGestureMath.isThresholdCrossed(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = config.flickThresholdPx,
+                thresholdShape = config.flickThresholdShape
+            )
+        ) {
             return TfbiFlickDirection.TAP.takeIf { isConfigured(it) }
         }
 
@@ -271,6 +297,11 @@ class FlickLongPressInputController(
         isLongPressActive = false
         currentDirection = null
         longPressDirection = null
+        activeGestureConfig = null
+    }
+
+    private fun currentGestureConfig(): GestureSessionConfig {
+        return activeGestureConfig ?: gestureConfigSource.snapshot()
     }
 
     private fun clearLongPressCallback() {

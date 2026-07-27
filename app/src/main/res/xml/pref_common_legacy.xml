@@ -593,6 +593,15 @@
             app:min="1"
             app:seekBarIncrement="5"
             app:showSeekBarValue="true" />
+
+        <ListPreference
+            android:defaultValue="radial"
+            android:dialogTitle="@string/flick_threshold_shape_title"
+            android:entries="@array/flick_threshold_shape_entries"
+            android:entryValues="@array/flick_threshold_shape_values"
+            android:key="flick_threshold_shape_preference"
+            android:title="@string/flick_threshold_shape_title"
+            app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/shortcutsettingfragment">
