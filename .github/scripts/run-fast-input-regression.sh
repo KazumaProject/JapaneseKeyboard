@@ -113,6 +113,21 @@ if ! wait_for_android_services 2>&1 | tee "$fast_input_readiness_log"; then
   exit 3
 fi
 
+fast_input_android_config="$(
+  adb -s "$fast_input_emulator_serial" shell am get-config 2>/dev/null |
+    tr -d '\r' |
+    head -n 1
+)"
+echo "Android runtime configuration: $fast_input_android_config" |
+  tee -a "$fast_input_readiness_log"
+if [[ "$fast_input_android_config" != *"-nokeys-"* ]]; then
+  echo "The emulator exposes a hardware keyboard; expected the nokeys configuration." |
+    tee -a "$fast_input_readiness_log"
+  adb -s "$fast_input_emulator_serial" shell dumpsys input \
+    > "$fast_input_log_dir/input-service-readiness-failure.txt" || true
+  exit 4
+fi
+
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
 adb shell settings put secure show_ime_with_hard_keyboard 1

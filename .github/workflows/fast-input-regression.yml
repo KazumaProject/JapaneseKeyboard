@@ -106,11 +106,13 @@ jobs:
           disable-spellchecker: true
           # android-emulator-runner only writes hw.keyboard=yes when this option is true.
           # It does not write hw.keyboard=no for false, so the hardware profile default can win.
-          pre-emulator-launch-script: |
-            avd_config="${ANDROID_AVD_HOME}/test.avd/config.ini"
-            sed -i '/^hw\.keyboard=/d' "$avd_config"
-            printf '%s\n' 'hw.keyboard=no' >> "$avd_config"
-            grep '^hw.keyboard=' "$avd_config"
+          # The action executes each newline as a separate shell command, so keep the variable
+          # assignment and all uses in one folded line.
+          pre-emulator-launch-script: >-
+            avd_config="${ANDROID_AVD_HOME}/test.avd/config.ini" &&
+            sed -i '/^[[:space:]]*hw\.keyboard[[:space:]]*=/d' "$avd_config" &&
+            printf '%s\n' 'hw.keyboard=no' >> "$avd_config" &&
+            grep '^hw.keyboard=no$' "$avd_config"
           emulator-options: >-
             -no-window -gpu swiftshader_indirect -no-snapshot
             -noaudio -no-boot-anim -camera-back none
