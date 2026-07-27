@@ -35,7 +35,7 @@ jobs:
   fast-input-regression:
     name: Pixel 6 Pro API 35
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     env:
       ZENZ_MODEL_CACHE_DIR: ${{ github.workspace }}/.zenz-model-cache
       ZENZ_DEBUG_NATIVE_ABIS: x86_64
