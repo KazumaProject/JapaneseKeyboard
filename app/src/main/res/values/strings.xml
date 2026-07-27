@@ -1000,6 +1000,10 @@
     <string name="tenkey_keymap_guide_summary">Displays guide characters on the keys to indicate how to input each character.</string>
     <string name="flick_keymap_guide_title">Show flick guides</string>
     <string name="flick_keymap_guide_summary">Displays the tap character in the center and flick guide characters around flick keys.</string>
+    <string name="keymap_guide_japanese_title">Japanese key guides</string>
+    <string name="keymap_guide_english_title">English key guides</string>
+    <string name="keymap_guide_number_title">Number key guides</string>
+    <string name="keymap_guide_qwerty_disabled_summary">Not applied while English input uses QWERTY.</string>
     <string name="flick_guide_text_size_title">Flick guide text size</string>
     <string name="flick_guide_text_size_summary">Adjusts flick guide text size in sp.</string>
     <string name="flick_guide_max_characters_title">Flick guide max characters</string>

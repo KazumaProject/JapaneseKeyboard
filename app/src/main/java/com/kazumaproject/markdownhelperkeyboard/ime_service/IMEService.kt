@@ -572,8 +572,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var tenkeyTwoStateQwertyNumberReturnTarget: TwoStateNumberReturnTarget =
         TwoStateNumberReturnTarget.Japanese
     private var tabletTenkeyQwertySwitchEnglish: Boolean = false
-    private var tenkeyQKeymapGuide: Boolean? = false
-    private var flickKeymapGuidePreference: Boolean? = false
+    private var tenkeyKeymapGuideSettings = ModeKeymapGuideSettings()
+    private var sumireKeymapGuideSettings = ModeKeymapGuideSettings()
+    private var customKeymapGuidePreference: Boolean = false
     private var flickGuideTextSizeSpPreference: Int? = 9
     private var flickGuideMaxCharactersPreference: Int? = 1
 
@@ -733,6 +734,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val runtimeInputPreferenceKeys = setOf(
         AppPreference.FLICK_SENSITIVITY_KEY,
         AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
+        AppPreference.TENKEY_KEYMAP_GUIDE_JAPANESE_KEY,
+        AppPreference.TENKEY_KEYMAP_GUIDE_ENGLISH_KEY,
+        AppPreference.TENKEY_KEYMAP_GUIDE_NUMBER_KEY,
+        AppPreference.SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY,
+        AppPreference.SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY,
+        AppPreference.SUMIRE_KEYMAP_GUIDE_NUMBER_KEY,
+        AppPreference.CUSTOM_KEYMAP_GUIDE_KEY,
         AppPreference.LONG_PRESS_TIMEOUT_KEY,
         AppPreference.VIBRATION_KEY,
         AppPreference.VIBRATION_TIMING_KEY,
@@ -2265,6 +2273,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isKeySoundEnabled = appPreference.key_sound_preference ?: false
         keySoundVolumePercent =
             (appPreference.key_sound_volume_percent_preference ?: 0).coerceIn(0, 100)
+        tenkeyKeymapGuideSettings = ModeKeymapGuideSettings(
+            japanese = appPreference.tenkey_keymap_guide_layout ?: false,
+            english = appPreference.tenkey_keymap_guide_english,
+            number = appPreference.tenkey_keymap_guide_number
+        )
+        sumireKeymapGuideSettings = ModeKeymapGuideSettings(
+            japanese = appPreference.sumire_keymap_guide_japanese,
+            english = appPreference.sumire_keymap_guide_english,
+            number = appPreference.sumire_keymap_guide_number
+        )
+        customKeymapGuidePreference = appPreference.flick_keymap_guide_layout ?: false
         runtimeGestureSettingsSource.update(
             flickSensitivity = sensitivity,
             flickThresholdShape = thresholdShape,
@@ -2275,20 +2294,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             keyboardView.setFlickSensitivityValue(sensitivity)
             keyboardView.setFlickThresholdShape(thresholdShape)
             keyboardView.setLongPressTimeout(longPressTimeout.toLong())
+            keyboardView.setFlickGuideEnabled(
+                japaneseEnabled = tenkeyKeymapGuideSettings.japanese,
+                englishEnabled = tenkeyKeymapGuideSettings.english,
+                numberEnabled = tenkeyKeymapGuideSettings.number
+            )
             tabletView.setFlickSensitivityValue(sensitivity)
             tabletView.setFlickThresholdShape(thresholdShape)
             tabletView.setLongPressTimeout(longPressTimeout.toLong())
             qwertyView.setFlickSensitivityValue(sensitivity)
             qwertyView.setFlickThresholdShape(thresholdShape)
             qwertyView.setLongPressTimeout(longPressTimeout.toLong())
+            applyCurrentFlickGuidePreference(customLayoutDefault)
         }
         floatingKeyboardBinding?.apply {
             keyboardViewFloating.setFlickSensitivityValue(sensitivity)
             keyboardViewFloating.setFlickThresholdShape(thresholdShape)
             keyboardViewFloating.setLongPressTimeout(longPressTimeout.toLong())
+            keyboardViewFloating.setFlickGuideEnabled(
+                japaneseEnabled = tenkeyKeymapGuideSettings.japanese,
+                englishEnabled = tenkeyKeymapGuideSettings.english,
+                numberEnabled = tenkeyKeymapGuideSettings.number
+            )
             qwertyViewFloating.setFlickSensitivityValue(sensitivity)
             qwertyViewFloating.setFlickThresholdShape(thresholdShape)
             qwertyViewFloating.setLongPressTimeout(longPressTimeout.toLong())
+            applyCurrentFlickGuidePreference(customLayoutFloating)
         }
     }
 
@@ -2432,8 +2463,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         sumireLastInputModePresentationPreference =
             preferences.sumireLastInputModePresentationPreference
         tabletTenkeyQwertySwitchEnglish = preferences.tabletTenkeyQwertySwitchEnglish
-        tenkeyQKeymapGuide = preferences.tenkeyQKeymapGuide
-        flickKeymapGuidePreference = preferences.flickKeymapGuide
+        tenkeyKeymapGuideSettings = ModeKeymapGuideSettings(
+            japanese = preferences.tenkeyJapaneseKeymapGuide,
+            english = preferences.tenkeyEnglishKeymapGuide,
+            number = preferences.tenkeyNumberKeymapGuide
+        )
+        sumireKeymapGuideSettings = ModeKeymapGuideSettings(
+            japanese = preferences.sumireJapaneseKeymapGuide,
+            english = preferences.sumireEnglishKeymapGuide,
+            number = preferences.sumireNumberKeymapGuide
+        )
+        customKeymapGuidePreference = preferences.customKeymapGuide
         flickGuideTextSizeSpPreference = preferences.flickGuideTextSizeSp
         flickGuideMaxCharactersPreference = preferences.flickGuideMaxCharacters
         isKeyboardFloatingMode = preferences.isKeyboardFloatingMode
@@ -4281,7 +4321,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     keyboardView.setBackgroundSmallLetterKey(cachedKanaDrawable)
                 }
 
-                keyboardView.setFlickGuideEnabled(tenkeyQKeymapGuide ?: false)
+                keyboardView.setFlickGuideEnabled(
+                    japaneseEnabled = tenkeyKeymapGuideSettings.japanese,
+                    englishEnabled = tenkeyKeymapGuideSettings.english,
+                    numberEnabled = tenkeyKeymapGuideSettings.number
+                )
 
                 setTabsToTabLayout(mainView)
 
@@ -4290,7 +4334,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 tabletView.setFlickSensitivityValue(flickSensitivityPreferenceValue ?: 100)
                 tabletView.setFlickThresholdShape(flickThresholdShapePreferenceValue)
                 tabletView.setLongPressTimeout((longPressTimeoutPreferenceValue ?: 300).toLong())
-                customLayoutDefault.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
+                applyCurrentFlickGuidePreference(customLayoutDefault)
                 customLayoutDefault.setFlickGuideTextSizeSp(
                     (flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat()
                 )
@@ -4613,7 +4657,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         isNgWordEnable = null
         deleteKeyHighLight = null
         customKeyboardSuggestionPreference = null
-        flickKeymapGuidePreference = null
+        customKeymapGuidePreference = false
+        sumireKeymapGuideSettings = ModeKeymapGuideSettings()
         flickGuideTextSizeSpPreference = null
         flickGuideMaxCharactersPreference = null
         zenzDebounceTimePreference = null
@@ -4643,7 +4688,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         qwertySwitchNumberKeyReturnSource = RestartInputModeQwertyReturnSource.None
         tenkeyTwoStateQwertyNumberReturnTarget = TwoStateNumberReturnTarget.Japanese
         tabletTenkeyQwertySwitchEnglish = false
-        tenkeyQKeymapGuide = null
+        tenkeyKeymapGuideSettings = ModeKeymapGuideSettings()
         isKeyboardFloatingMode = null
         isKeyboardRounded = null
         bunsetsuSeparation = null
@@ -7468,8 +7513,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             ?.let(::syncCustomKeyboardToggleKeyIcons)
     }
 
+    private fun applyCurrentFlickGuidePreference(flickView: FlickKeyboardView) {
+        val surface = when (qwertyMode.value) {
+            TenKeyQWERTYMode.Sumire -> FlickGuideSurface.Sumire
+            TenKeyQWERTYMode.Custom -> FlickGuideSurface.Custom
+            else -> FlickGuideSurface.Other
+        }
+        val config = resolveFlickGuideRuntimeConfig(
+            surface = surface,
+            mode = customKeyboardMode,
+            sumireSettings = sumireKeymapGuideSettings,
+            customGuideEnabled = customKeymapGuidePreference
+        )
+        flickView.setFlickGuideEnabled(
+            enabled = config.enabled,
+            allowMultiCharacterLabels = config.allowMultiCharacterLabels
+        )
+    }
+
     private fun setSumireLayoutTo(flickView: FlickKeyboardView) {
         val layoutType = sumireInputKeyLayoutType ?: "toggle"
+        applyCurrentFlickGuidePreference(flickView)
         flickView.setSumireSpecialKeyActionResolver(
             resolver = SumireSpecialKeyActionResolver(sumireSpecialKeyActionOverrides)::resolve,
             layoutType = layoutType,
@@ -7479,6 +7543,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
+        applyCurrentFlickGuidePreference(flickView)
         val numberCustomLayout = numberUsageCustomKeyboardLayoutOrNull()
         if (numberCustomLayout != null) {
             setKeyboardWithDeleteKeyFlickPreferences(
@@ -7550,6 +7615,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setCurrentCustomLayoutTo(flickView: FlickKeyboardView) {
+        applyCurrentFlickGuidePreference(flickView)
         val layout = selectedCustomKeyboardLayoutOrNull() ?: return
         scope.launch(Dispatchers.IO) {
             val id = layout.layoutId
@@ -7589,7 +7655,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun setCustomLayoutOnActiveSurface(layout: KeyboardLayout) {
         getActiveKeyboardSurface()
             ?.customLayout
-            ?.let { flickView -> setKeyboardWithDeleteKeyFlickPreferences(flickView, layout) }
+            ?.let { flickView ->
+                applyCurrentFlickGuidePreference(flickView)
+                setKeyboardWithDeleteKeyFlickPreferences(flickView, layout)
+            }
     }
 
     private fun setCustomLayoutOnAvailableSurfaces(layout: KeyboardLayout) {
@@ -7774,7 +7843,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             flickThresholdShapePreferenceValue
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.setFlickGuideEnabled(
-            tenkeyQKeymapGuide ?: false
+            japaneseEnabled = tenkeyKeymapGuideSettings.japanese,
+            englishEnabled = tenkeyKeymapGuideSettings.english,
+            numberEnabled = tenkeyKeymapGuideSettings.number
         )
         floatingKeyboardLayoutBinding.keyboardViewFloating.apply {
             setOnFlickListener(object : FlickListener {
@@ -11008,7 +11079,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             specialKeyTextSizeSp = appPreference.flick_special_key_text_size_sp ?: 16.0f
         )
         flickView.applyPopupViewStyleSet(currentFlickPopupViewStyleSet())
-        flickView.setFlickGuideEnabled(flickKeymapGuidePreference ?: false)
+        applyCurrentFlickGuidePreference(flickView)
         flickView.setFlickGuideTextSizeSp(
             (flickGuideTextSizeSpPreference ?: 9).coerceIn(6, 16).toFloat()
         )
@@ -16200,9 +16271,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         InputMode.ModeNumber -> {
-                            setBackgroundSmallLetterKey(
-                                cachedNumberDrawable
-                            )
+                            setNumberSmallKeyPresentation()
                         }
                     }
                 }
@@ -16234,9 +16303,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
 
                         InputMode.ModeNumber -> {
-                            setBackgroundSmallLetterKey(
-                                cachedNumberDrawable
-                            )
+                            setNumberSmallKeyPresentation()
                         }
                     }
                 }
@@ -21620,9 +21687,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     InputMode.ModeNumber -> {
-                        setBackgroundSmallLetterKey(
-                            cachedNumberDrawable
-                        )
+                        setNumberSmallKeyPresentation()
                         setSideKeySpaceDrawable(
                             cachedSpaceDrawable
                         )
@@ -21674,9 +21739,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
 
                 InputMode.ModeNumber -> {
-                    setBackgroundSmallLetterKey(
-                        cachedNumberDrawable
-                    )
+                    setNumberSmallKeyPresentation()
                     setSideKeySpaceDrawable(
                         cachedSpaceDrawable
                     )

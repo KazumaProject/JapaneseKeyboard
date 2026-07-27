@@ -159,7 +159,13 @@ internal fun renderCandidateKeyboardPreview(
     when (previewKeyboardType) {
         KeyboardType.CUSTOM -> {
             views.flick.isVisible = true
-            configureFlickKeyboardPreview(fragment.requireContext(), appPreference, views.flick)
+            configureFlickKeyboardPreview(
+                context = fragment.requireContext(),
+                appPreference = appPreference,
+                flickView = views.flick,
+                guideEnabled = appPreference.flick_keymap_guide_layout ?: false,
+                allowMultiCharacterGuideLabels = false
+            )
             fragment.viewLifecycleOwner.lifecycleScope.launch {
                 val customLayout = withContext(Dispatchers.IO) {
                     loadPreviewCustomKeyboardLayout(appPreference, keyboardRepository)
@@ -250,7 +256,13 @@ private fun renderNonCustomKeyboardPreviewType(
 
         KeyboardType.SUMIRE -> {
             views.flick.isVisible = true
-            configureFlickKeyboardPreview(fragment.requireContext(), appPreference, views.flick)
+            configureFlickKeyboardPreview(
+                context = fragment.requireContext(),
+                appPreference = appPreference,
+                flickView = views.flick,
+                guideEnabled = appPreference.sumire_keymap_guide_japanese,
+                allowMultiCharacterGuideLabels = true
+            )
             fragment.viewLifecycleOwner.lifecycleScope.launch {
                 val layoutType = appPreference.sumire_input_method
                 val inputMode = KeyboardInputMode.HIRAGANA
@@ -480,7 +492,11 @@ private fun configureTenKeyPreview(
         appPreference.tenkey_key_height_scale_percent ?: 100
     )
     tenKey.setLanguageEnableKeyState(appPreference.tenkey_show_language_button_preference)
-    tenKey.setFlickGuideEnabled(appPreference.tenkey_keymap_guide_layout ?: false)
+    tenKey.setFlickGuideEnabled(
+        japaneseEnabled = appPreference.tenkey_keymap_guide_layout ?: false,
+        englishEnabled = appPreference.tenkey_keymap_guide_english,
+        numberEnabled = appPreference.tenkey_keymap_guide_number
+    )
     tenKey.setOnQwertyNumberModeRequestedListener(null)
     tenKey.setOnFlickListener(object : FlickListener {
         override fun onFlick(gestureType: GestureType, key: Key, char: Char?) = Unit
@@ -574,7 +590,9 @@ private fun configureQwertyPreview(
 private fun configureFlickKeyboardPreview(
     context: Context,
     appPreference: AppPreference,
-    flickView: FlickKeyboardView
+    flickView: FlickKeyboardView,
+    guideEnabled: Boolean,
+    allowMultiCharacterGuideLabels: Boolean
 ) {
     flickView.setPopupWindowAnchorProvider(null)
     flickView.applyKeyboardTheme(
@@ -632,7 +650,10 @@ private fun configureFlickKeyboardPreview(
         FlickThresholdShape.fromPreferenceValue(appPreference.flick_threshold_shape_preference)
     )
     flickView.setLongPressTimeout((appPreference.long_press_timeout_preference ?: 300).toLong())
-    flickView.setFlickGuideEnabled(appPreference.flick_keymap_guide_layout ?: false)
+    flickView.setFlickGuideEnabled(
+        enabled = guideEnabled,
+        allowMultiCharacterLabels = allowMultiCharacterGuideLabels
+    )
     flickView.setFlickGuideTextSizeSp(
         (appPreference.flick_guide_text_size_sp_preference ?: 9).coerceIn(6, 16).toFloat()
     )
