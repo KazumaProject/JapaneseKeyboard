@@ -54,7 +54,17 @@
             android:title="数字入力時にQWERTY数字キーボードを使用" />
         <SwitchPreferenceCompat
             android:key="tenkey_keymap_guide"
-            android:title="@string/tenkey_keymap_guide_title"
+            android:title="@string/keymap_guide_japanese_title"
+            app:defaultValue="false"
+            app:summary="@string/tenkey_keymap_guide_summary" />
+        <SwitchPreferenceCompat
+            android:key="tenkey_keymap_guide_english"
+            android:title="@string/keymap_guide_english_title"
+            app:defaultValue="false"
+            app:summary="@string/tenkey_keymap_guide_summary" />
+        <SwitchPreferenceCompat
+            android:key="tenkey_keymap_guide_number"
+            android:title="@string/keymap_guide_number_title"
             app:defaultValue="false"
             app:summary="@string/tenkey_keymap_guide_summary" />
     </PreferenceCategory>

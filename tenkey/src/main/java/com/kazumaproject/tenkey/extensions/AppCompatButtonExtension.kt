@@ -12,6 +12,7 @@ import com.kazumaproject.core.domain.extensions.KEY_JAPANESE_SIZE
 import com.kazumaproject.core.domain.extensions.KEY_NUMBER_SIZE
 import com.kazumaproject.core.domain.extensions.getSpannableStringForKigouButtonJapanese
 import com.kazumaproject.core.domain.extensions.getSpannableStringForNumberButton
+import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.tenkey.R
 
 private data class FlickChars(
@@ -116,6 +117,13 @@ private fun createFlickSpannable(
     return spannable
 }
 
+private fun AppCompatButton.prepareLabelLayout(maxLabelLines: Int) {
+    isSingleLine = maxLabelLines == 1
+    maxLines = maxLabelLines
+    gravity = Gravity.CENTER
+    setLineSpacing(0f, 1f)
+}
+
 
 fun AppCompatButton.setTenKeyTextJapanese(
     keyId: Int,
@@ -123,6 +131,7 @@ fun AppCompatButton.setTenKeyTextJapanese(
     modeTheme: String,
     colorTextInt: Int
 ) {
+    prepareLabelLayout(if (keyId == R.id.key_12) 3 else 1)
     textSize = KEY_JAPANESE_SIZE + delta
     when (modeTheme) {
         "default" -> {
@@ -169,6 +178,7 @@ fun AppCompatButton.setTenKeyTextJapaneseWithFlickGuide(
     modeTheme: String,
     colorTextInt: Int
 ) {
+    prepareLabelLayout(3)
     // ベースのテキストサイズ (中心) をセット
     textSize = 11f + delta
     when (modeTheme) {
@@ -196,9 +206,6 @@ fun AppCompatButton.setTenKeyTextJapaneseWithFlickGuide(
     }
 
     // 3行表示＋中央寄せ
-    this.isSingleLine = false
-    this.maxLines = 3
-    this.gravity = Gravity.CENTER
     // 行間を少し詰めたいなら（好みで調整）
     this.setLineSpacing(0f, 0.9f)
 
@@ -308,12 +315,42 @@ fun AppCompatButton.setTenKeyTextJapaneseWithFlickGuide(
     }
 }
 
+fun AppCompatButton.setTenKeyTextWithFlickGuide(
+    keyInfo: KeyInfo.KeyTapFlickInfo,
+    delta: Int,
+    modeTheme: String,
+    colorTextInt: Int
+) {
+    prepareLabelLayout(3)
+    textSize = 11f + delta
+    setLineSpacing(0f, 0.9f)
+    when (modeTheme) {
+        "custom" -> setTextColor(colorTextInt)
+        else -> setTextColor(
+            ContextCompat.getColor(
+                context,
+                com.kazumaproject.core.R.color.keyboard_icon_color
+            )
+        )
+    }
+
+    text = createFlickSpannable(
+        center = keyInfo.tap?.toString().orEmpty(),
+        left = keyInfo.flickLeft?.toString(),
+        top = keyInfo.flickTop?.toString(),
+        right = keyInfo.flickRight?.toString(),
+        bottom = keyInfo.flickBottom?.toString(),
+        sideScale = 0.6f
+    )
+}
+
 fun AppCompatButton.setTenKeyTextEnglish(
     keyId: Int,
     delta: Int,
     modeTheme: String,
     colorTextInt: Int
 ) {
+    prepareLabelLayout(1)
     textSize = KEY_ENGLISH_SIZE + delta
 
     when (modeTheme) {
@@ -362,6 +399,7 @@ fun AppCompatButton.setTenKeyTextNumber(
     modeTheme: String,
     colorTextInt: Int
 ) {
+    prepareLabelLayout(2)
     textSize = KEY_NUMBER_SIZE + delta
 
     when (modeTheme) {

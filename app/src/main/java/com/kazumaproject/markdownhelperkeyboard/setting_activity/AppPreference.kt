@@ -67,6 +67,13 @@ object AppPreference {
         "gemma_handwriting_pen_color_preference"
     const val FLICK_SENSITIVITY_KEY = "flick_sensitivity_preference"
     const val FLICK_THRESHOLD_SHAPE_KEY = "flick_threshold_shape_preference"
+    const val TENKEY_KEYMAP_GUIDE_JAPANESE_KEY = "tenkey_keymap_guide"
+    const val TENKEY_KEYMAP_GUIDE_ENGLISH_KEY = "tenkey_keymap_guide_english"
+    const val TENKEY_KEYMAP_GUIDE_NUMBER_KEY = "tenkey_keymap_guide_number"
+    const val SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY = "sumire_keymap_guide_japanese"
+    const val SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY = "sumire_keymap_guide_english"
+    const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
+    const val CUSTOM_KEYMAP_GUIDE_KEY = "flick_keymap_guide"
     const val LONG_PRESS_TIMEOUT_KEY = "long_press_timeout_preference"
     const val VIBRATION_KEY = "vibration_preference"
     const val VIBRATION_TIMING_KEY = "vibration_timing"
@@ -185,10 +192,22 @@ object AppPreference {
         Pair("tablet_tenkey_kana_english_qwerty_preference", false)
 
     private val TENKEY_KEYMAP_GUIDE_PREFERENCE =
-        Pair("tenkey_keymap_guide", false)
+        Pair(TENKEY_KEYMAP_GUIDE_JAPANESE_KEY, false)
+    private val TENKEY_KEYMAP_GUIDE_ENGLISH_PREFERENCE =
+        Pair(TENKEY_KEYMAP_GUIDE_ENGLISH_KEY, false)
+    private val TENKEY_KEYMAP_GUIDE_NUMBER_PREFERENCE =
+        Pair(TENKEY_KEYMAP_GUIDE_NUMBER_KEY, false)
 
     private val FLICK_KEYMAP_GUIDE_PREFERENCE =
-        Pair("flick_keymap_guide", false)
+        Pair(CUSTOM_KEYMAP_GUIDE_KEY, false)
+    private val SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE =
+        Pair(SUMIRE_KEYMAP_GUIDE_JAPANESE_KEY, false)
+    private val SUMIRE_KEYMAP_GUIDE_ENGLISH_PREFERENCE =
+        Pair(SUMIRE_KEYMAP_GUIDE_ENGLISH_KEY, false)
+    private val SUMIRE_KEYMAP_GUIDE_NUMBER_PREFERENCE =
+        Pair(SUMIRE_KEYMAP_GUIDE_NUMBER_KEY, false)
+    private const val SUMIRE_KEYMAP_GUIDE_MIGRATION_KEY =
+        "sumire_keymap_guide_modes_migrated"
     private val FLICK_GUIDE_TEXT_SIZE_SP_PREFERENCE =
         Pair("flick_guide_text_size_sp_preference", 9)
     private val FLICK_GUIDE_MAX_CHARACTERS_PREFERENCE =
@@ -834,6 +853,24 @@ object AppPreference {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
         removeUnsafeLegacyGemmaHandwritingPrompt()
         migratePredictionLookaheadPreferenceIfNeeded()
+        migrateSumireKeymapGuideModesIfNeeded()
+    }
+
+    private fun migrateSumireKeymapGuideModesIfNeeded() {
+        if (preferences.getBoolean(SUMIRE_KEYMAP_GUIDE_MIGRATION_KEY, false)) return
+        val legacyGuideEnabled = preferences.getBoolean(
+            FLICK_KEYMAP_GUIDE_PREFERENCE.first,
+            FLICK_KEYMAP_GUIDE_PREFERENCE.second
+        )
+        preferences.edit {
+            if (!preferences.contains(SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE.first)) {
+                it.putBoolean(
+                    SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE.first,
+                    legacyGuideEnabled
+                )
+            }
+            it.putBoolean(SUMIRE_KEYMAP_GUIDE_MIGRATION_KEY, true)
+        }
     }
 
     private fun removeUnsafeLegacyGemmaHandwritingPrompt() {
@@ -1080,12 +1117,57 @@ object AppPreference {
             it.putBoolean(TENKEY_KEYMAP_GUIDE_PREFERENCE.first, value ?: false)
         }
 
+    var tenkey_keymap_guide_english: Boolean
+        get() = preferences.getBoolean(
+            TENKEY_KEYMAP_GUIDE_ENGLISH_PREFERENCE.first,
+            TENKEY_KEYMAP_GUIDE_ENGLISH_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_KEYMAP_GUIDE_ENGLISH_PREFERENCE.first, value)
+        }
+
+    var tenkey_keymap_guide_number: Boolean
+        get() = preferences.getBoolean(
+            TENKEY_KEYMAP_GUIDE_NUMBER_PREFERENCE.first,
+            TENKEY_KEYMAP_GUIDE_NUMBER_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(TENKEY_KEYMAP_GUIDE_NUMBER_PREFERENCE.first, value)
+        }
+
     var flick_keymap_guide_layout: Boolean?
         get() = preferences.getBoolean(
             FLICK_KEYMAP_GUIDE_PREFERENCE.first, FLICK_KEYMAP_GUIDE_PREFERENCE.second
         )
         set(value) = preferences.edit {
             it.putBoolean(FLICK_KEYMAP_GUIDE_PREFERENCE.first, value ?: false)
+        }
+
+    var sumire_keymap_guide_japanese: Boolean
+        get() = preferences.getBoolean(
+            SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE.first,
+            SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUMIRE_KEYMAP_GUIDE_JAPANESE_PREFERENCE.first, value)
+        }
+
+    var sumire_keymap_guide_english: Boolean
+        get() = preferences.getBoolean(
+            SUMIRE_KEYMAP_GUIDE_ENGLISH_PREFERENCE.first,
+            SUMIRE_KEYMAP_GUIDE_ENGLISH_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUMIRE_KEYMAP_GUIDE_ENGLISH_PREFERENCE.first, value)
+        }
+
+    var sumire_keymap_guide_number: Boolean
+        get() = preferences.getBoolean(
+            SUMIRE_KEYMAP_GUIDE_NUMBER_PREFERENCE.first,
+            SUMIRE_KEYMAP_GUIDE_NUMBER_PREFERENCE.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SUMIRE_KEYMAP_GUIDE_NUMBER_PREFERENCE.first, value)
         }
 
     var flick_guide_text_size_sp_preference: Int?
@@ -4378,6 +4460,7 @@ object AppPreference {
                 }
             }
         }
+        migrateSumireKeymapGuideModesIfNeeded()
     }
 
     fun migrateSumirePreferenceIfNeeded() {
