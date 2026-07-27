@@ -2,12 +2,13 @@ package com.kazumaproject.markdownhelperkeyboard
 
 import android.app.Activity
 import android.os.Bundle
-import android.view.WindowInsets
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 
 class FastInputHostActivity : Activity() {
     lateinit var editText: EditText
@@ -50,10 +51,41 @@ class FastInputHostActivity : Activity() {
                 WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
         )
         editText.requestFocus()
-        editText.postDelayed({
-            editText.windowInsetsController?.show(WindowInsets.Type.ime())
-            getSystemService(InputMethodManager::class.java)
-                .showSoftInput(editText, InputMethodManager.SHOW_FORCED)
-        }, 250L)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            editText.requestFocus()
+            getSystemService(InputMethodManager::class.java).restartInput(editText)
+            requestImeForEditor()
+        }
+    }
+
+    /**
+     * Reconnects the editor without changing the selected IME.
+     *
+     * Switching the default IME while this window owns focus tears down the served editor. The
+     * matrix test only needs InputMethodService.onStartInput() to reload its preferences, so a
+     * restart on the existing connection is both sufficient and deterministic.
+     */
+    fun restartEditorInput(clearText: Boolean) {
+        if (clearText) {
+            editText.setText("")
+        }
+        editText.requestFocus()
+        editText.setSelection(editText.text.length)
+        getSystemService(InputMethodManager::class.java).restartInput(editText)
+        requestImeForEditor()
+    }
+
+    fun requestImeForEditor() {
+        if (!editText.hasWindowFocus()) return
+        editText.post {
+            if (isFinishing || isDestroyed) return@post
+            editText.requestFocus()
+            WindowCompat.getInsetsController(window, editText)
+                .show(WindowInsetsCompat.Type.ime())
+        }
     }
 }
