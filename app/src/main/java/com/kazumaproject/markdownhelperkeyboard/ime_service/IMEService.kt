@@ -27,6 +27,7 @@ import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.provider.Settings
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -1689,6 +1690,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         private const val ZENZ_RERANK_TOP_K = 4
         private const val ZENZ_RERANK_ALPHA = 0.7f
         private const val ZENZ_RERANK_BETA = 0.3f
+        private const val SHOW_IME_WITH_HARD_KEYBOARD_SETTING =
+            "show_ime_with_hard_keyboard"
         private val DEFAULT_DELETE_KEY_FLICK_TARGETS =
             DeleteKeyFlickDeleteTargetRepository.DEFAULT_TARGET_SYMBOLS.toSet()
         private val ALWAYS_DELETE_KEY_FLICK_BOUNDARIES = setOf(' ', '　', '\n')
@@ -24764,15 +24767,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val hasAlphabeticInputDevice = inputManager.inputDeviceIds.any { deviceId ->
             isDevicePhysicalKeyboard(inputManager.getInputDevice(deviceId))
         }
-        val isAvailable = PhysicalKeyboardAvailability.isAvailable(
+        val showImeWithHardKeyboard = Settings.Secure.getInt(
+            contentResolver,
+            SHOW_IME_WITH_HARD_KEYBOARD_SETTING,
+            0,
+        ) == 1
+        val isAvailable = PhysicalKeyboardModePolicy.shouldUsePhysicalMode(
             configurationKeyboard = configuration.keyboard,
             hardKeyboardHidden = configuration.hardKeyboardHidden,
             hasAlphabeticInputDevice = hasAlphabeticInputDevice,
+            showImeWithHardKeyboard = showImeWithHardKeyboard,
         )
         Timber.d(
             "Physical keyboard availability: keyboard=${configuration.keyboard} " +
                 "hardKeyboardHidden=${configuration.hardKeyboardHidden} " +
-                "alphabeticDevice=$hasAlphabeticInputDevice available=$isAvailable"
+                "alphabeticDevice=$hasAlphabeticInputDevice " +
+                "showImeWithHardKeyboard=$showImeWithHardKeyboard available=$isAvailable"
         )
         return isAvailable
     }

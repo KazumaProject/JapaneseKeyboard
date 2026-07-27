@@ -113,6 +113,18 @@ if ! wait_for_android_services 2>&1 | tee "$fast_input_readiness_log"; then
   exit 3
 fi
 
+adb shell settings put secure show_ime_with_hard_keyboard 1
+fast_input_show_ime_with_hard_keyboard="$(
+  adb -s "$fast_input_emulator_serial" \
+    shell settings get secure show_ime_with_hard_keyboard 2>/dev/null |
+    tr -d '\r'
+)"
+if [[ "$fast_input_show_ime_with_hard_keyboard" != "1" ]]; then
+  echo "Unable to enable the software IME while hardware keys are present." |
+    tee -a "$fast_input_readiness_log"
+  exit 4
+fi
+
 fast_input_android_config="$(
   adb -s "$fast_input_emulator_serial" shell am get-config 2>/dev/null |
     tr -d '\r' |
@@ -121,16 +133,14 @@ fast_input_android_config="$(
 echo "Android runtime configuration: $fast_input_android_config" |
   tee -a "$fast_input_readiness_log"
 if [[ "$fast_input_android_config" != *"-nokeys-"* ]]; then
-  echo "The emulator exposes a hardware keyboard; expected the nokeys configuration." |
+  echo "The emulator exposes hardware keys; software IME display is explicitly enabled." |
     tee -a "$fast_input_readiness_log"
   adb -s "$fast_input_emulator_serial" shell dumpsys input \
-    > "$fast_input_log_dir/input-service-readiness-failure.txt" || true
-  exit 4
+    > "$fast_input_log_dir/input-service-hardware-keyboard.txt" || true
 fi
 
 adb shell input keyevent KEYCODE_WAKEUP
 adb shell wm dismiss-keyguard
-adb shell settings put secure show_ime_with_hard_keyboard 1
 adb shell dumpsys input > "$fast_input_log_dir/input-service-before-test.txt"
 adb shell dumpsys input_method > "$fast_input_log_dir/input-method-before-test.txt"
 adb logcat -c
