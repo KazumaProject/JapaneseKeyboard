@@ -6,17 +6,37 @@ import android.graphics.Color
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.WindowManager
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.GestureSessionConfig
+import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
 import com.kazumaproject.custom_keyboard.view.StandardFlickPopupView
-import kotlin.math.sqrt
 
-class StandardFlickInputController(context: Context) {
+class StandardFlickInputController(
+    context: Context,
+    private val gestureConfigSource: GestureSessionConfigSource
+) {
+
+    constructor(context: Context) : this(
+        context = context,
+        gestureConfigSource = FixedGestureSessionConfigSource(
+            GestureSessionConfig(
+                settingsRevision = 0L,
+                flickSensitivity = 100,
+                flickThresholdPx = 65f,
+                longPressTimeoutMillis =
+                    ViewConfiguration.getLongPressTimeout().toLong().coerceIn(100L, 2_000L)
+            )
+        )
+    )
 
     interface StandardFlickListener {
         fun onPress(character: String)
@@ -31,7 +51,7 @@ class StandardFlickInputController(context: Context) {
 
     private var initialTouchX = 0f
     private var initialTouchY = 0f
-    private val flickThreshold = 65f
+    private var activeGestureConfig: GestureSessionConfig? = null
 
     private val popupWindow: PopupWindow
     private val popupView = StandardFlickPopupView(context)
@@ -103,6 +123,7 @@ class StandardFlickInputController(context: Context) {
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                activeGestureConfig = gestureConfigSource.snapshot()
                 anchorView = view
                 initialTouchX = event.rawX
                 initialTouchY = event.rawY
@@ -132,6 +153,7 @@ class StandardFlickInputController(context: Context) {
                     }
                 }
                 dismissPopup()
+                activeGestureConfig = null
                 return true
             }
 
@@ -139,6 +161,7 @@ class StandardFlickInputController(context: Context) {
                 segmentedDrawable?.highlightDirection = null
                 dismissPopup()
                 anchorView = null
+                activeGestureConfig = null
                 return true
             }
         }
@@ -194,8 +217,15 @@ class StandardFlickInputController(context: Context) {
     }
 
     private fun calculateDirection(dx: Float, dy: Float): FlickDirection {
-        val distance = sqrt(dx * dx + dy * dy)
-        if (distance < flickThreshold) {
+        val config = activeGestureConfig ?: gestureConfigSource.snapshot()
+        if (
+            !FlickGestureMath.isThresholdCrossed(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = config.flickThresholdPx,
+                thresholdShape = config.flickThresholdShape
+            )
+        ) {
             return FlickDirection.TAP
         }
 
@@ -210,6 +240,7 @@ class StandardFlickInputController(context: Context) {
     }
 
     fun cancel() {
+        activeGestureConfig = null
         dismissPopup()
     }
 

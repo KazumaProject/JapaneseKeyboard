@@ -40,6 +40,9 @@ import com.kazumaproject.core.domain.extensions.setLargeUnicodeIcon
 import com.kazumaproject.core.domain.extensions.setLargeUnicodeIconScaleX
 import com.kazumaproject.core.domain.extensions.setMarginEnd
 import com.kazumaproject.core.domain.extensions.setStartToEndOf
+import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
+import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.domain.key.Key
 import com.kazumaproject.core.domain.key.KeyInfo
 import com.kazumaproject.core.domain.key.KeyInfo.KeyEEnglish.getOutputChar
@@ -89,7 +92,6 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.abs
 
 /**
  * A custom view that wraps the tablet keyboard layout and provides easy access
@@ -108,6 +110,8 @@ class TabletKeyboardView @JvmOverloads constructor(
     private var inputModeChangedListener: ((InputMode) -> Unit)? = null
 
     private var flickSensitivity: Int = 100
+    private var flickThresholdPx: Float = resolveFlickThresholdPx(flickSensitivity)
+    private var flickThresholdShape: FlickThresholdShape = FlickThresholdShape.Radial
     private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     // All AppCompatButton keys (all the character keys)
@@ -1304,14 +1308,30 @@ class TabletKeyboardView @JvmOverloads constructor(
         }
         val distanceX = finalX - pressedKey.initialX
         val distanceY = finalY - pressedKey.initialY
-        return when {
-            abs(distanceX) < flickSensitivity && abs(distanceY) < flickSensitivity -> GestureType.Tap
-            abs(distanceX) > abs(distanceY) && pressedKey.initialX >= finalX -> GestureType.FlickLeft
-            abs(distanceX) <= abs(distanceY) && pressedKey.initialY >= finalY -> GestureType.FlickTop
-            abs(distanceX) > abs(distanceY) && pressedKey.initialX < finalX -> GestureType.FlickRight
-            abs(distanceX) <= abs(distanceY) && pressedKey.initialY < finalY -> GestureType.FlickBottom
-            else -> GestureType.Null
+        return when (
+            FlickGestureMath.cardinalDirection(
+                deltaX = distanceX,
+                deltaY = distanceY,
+                thresholdPx = flickThresholdPx,
+                thresholdShape = flickThresholdShape
+            )
+        ) {
+            CoreFlickDirection.Tap -> GestureType.Tap
+            CoreFlickDirection.Left -> GestureType.FlickLeft
+            CoreFlickDirection.Top -> GestureType.FlickTop
+            CoreFlickDirection.Right -> GestureType.FlickRight
+            CoreFlickDirection.Bottom -> GestureType.FlickBottom
         }
+    }
+
+    private fun resolveFlickThresholdPx(sensitivity: Int): Float {
+        return FlickGestureMath.thresholdPxForSensitivity(
+            sensitivity = sensitivity,
+            scaledTouchSlopPx = ViewConfiguration.get(context).scaledTouchSlop,
+            sensitiveMultiplier = 1.5f,
+            normalMultiplier = 3.5f,
+            stableMultiplier = 4.25f
+        )
     }
 
     private fun setKeyPressed() {
@@ -3421,7 +3441,12 @@ class TabletKeyboardView @JvmOverloads constructor(
     }
 
     fun setFlickSensitivityValue(sensitivity: Int) {
-        flickSensitivity = sensitivity
+        flickSensitivity = sensitivity.coerceIn(1, 200)
+        flickThresholdPx = resolveFlickThresholdPx(flickSensitivity)
+    }
+
+    fun setFlickThresholdShape(shape: FlickThresholdShape) {
+        flickThresholdShape = shape
     }
 
     fun setLongPressTimeout(timeoutMillis: Long) {

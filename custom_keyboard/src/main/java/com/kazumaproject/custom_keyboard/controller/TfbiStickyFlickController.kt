@@ -3,23 +3,42 @@ package com.kazumaproject.custom_keyboard.controller
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
-import android.view.GestureDetector
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.GestureSessionConfig
+import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
 import kotlin.math.abs
 import kotlin.math.atan2
-import kotlin.math.hypot
 
 class TfbiStickyFlickController(
     private val context: Context,
-    private val flickSensitivity: Float
+    private val gestureConfigSource: GestureSessionConfigSource
 ) {
+
+    constructor(
+        context: Context,
+        flickSensitivity: Float
+    ) : this(
+        context = context,
+        gestureConfigSource = FixedGestureSessionConfigSource(
+            GestureSessionConfig(
+                settingsRevision = 0L,
+                flickSensitivity = 100,
+                flickThresholdPx = flickSensitivity.coerceAtLeast(1f),
+                longPressTimeoutMillis =
+                    ViewConfiguration.getLongPressTimeout().toLong().coerceIn(100L, 2_000L)
+            )
+        )
+    )
     /**
      * このコントローラー専用のリスナーインターフェース
      */
@@ -43,6 +62,7 @@ class TfbiStickyFlickController(
     private var initialTouchY = 0f
     private var intermediateTouchX = 0f
     private var intermediateTouchY = 0f
+    private var activeGestureConfig: GestureSessionConfig? = null
 
     var listener: TfbiListener? = null
     private var characterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
@@ -54,7 +74,12 @@ class TfbiStickyFlickController(
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
 
-    private lateinit var gestureDetector: GestureDetector
+    private val longPressRunnable = Runnable {
+        val view = attachedView ?: return@Runnable
+        if (flickState != FlickState.NEUTRAL || activeGestureConfig == null) return@Runnable
+        popupWindow?.dismiss()
+        showPopup(view, TfbiFlickDirection.TAP, true)
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     fun attach(
@@ -63,19 +88,6 @@ class TfbiStickyFlickController(
     ) {
         this.attachedView = view
         this.characterMapProvider = provider
-
-        // GestureDetectorを初期化
-        gestureDetector =
-            GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
-                override fun onLongPress(e: MotionEvent) {
-                    // 長押しが検知されたら、フリックが開始前であることを確認して
-                    // 花びら付きのポップアップを表示する
-                    if (flickState == FlickState.NEUTRAL) {
-                        popupWindow?.dismiss()
-                        showPopup(view, TfbiFlickDirection.TAP, true)
-                    }
-                }
-            })
 
         view.setOnTouchListener { _, event -> handleTouchEvent(event) }
     }
@@ -101,9 +113,6 @@ class TfbiStickyFlickController(
     }
 
     private fun handleTouchEvent(event: MotionEvent): Boolean {
-        // タッチイベントをまずGestureDetectorに渡す
-        gestureDetector.onTouchEvent(event)
-
         val view = attachedView ?: return false
         when (event.action) {
             MotionEvent.ACTION_DOWN -> handleTouchDown(event, view)
@@ -117,6 +126,8 @@ class TfbiStickyFlickController(
     private fun handleTouchDown(event: MotionEvent, view: View) {
         // 状態リセットはここで行う
         resetState()
+        val gestureConfig = gestureConfigSource.snapshot()
+        activeGestureConfig = gestureConfig
         flickState = FlickState.NEUTRAL
         initialTouchX = event.x
         initialTouchY = event.y
@@ -124,18 +135,19 @@ class TfbiStickyFlickController(
 
         // 最初は必ず花びらなしのポップアップを表示する
         showPopup(view, TfbiFlickDirection.TAP, false)
+        view.postDelayed(longPressRunnable, gestureConfig.longPressTimeoutMillis)
     }
 
     private fun handleTouchMove(event: MotionEvent, view: View) {
         if (flickState == FlickState.NEUTRAL) {
             val dx = event.x - initialTouchX
             val dy = event.y - initialTouchY
-            val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
 
-            if (distance >= flickSensitivity) {
+            if (isFlickThresholdCrossed(dx, dy)) {
+                view.removeCallbacks(longPressRunnable)
                 val enabledFirstDirections = getEnabledFirstFlickDirections()
                 val determinedDirection =
-                    calculateDirection(dx, dy, flickSensitivity, enabledFirstDirections)
+                    calculateDirection(dx, dy, currentFlickThreshold(), enabledFirstDirections)
                 if (determinedDirection == TfbiFlickDirection.TAP) return
 
                 firstFlickDirection = determinedDirection
@@ -168,7 +180,7 @@ class TfbiStickyFlickController(
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
 
             var highlightTargetDirection =
-                calculateDirection(dx, dy, flickSensitivity, enabledSecondDirections)
+                calculateDirection(dx, dy, currentFlickThreshold(), enabledSecondDirections)
 
             if (highlightTargetDirection == TfbiFlickDirection.TAP) {
                 // ===== ★ 変更点 2 =====
@@ -200,7 +212,7 @@ class TfbiStickyFlickController(
             val dy = event.y - intermediateTouchY
             val enabledSecondDirections = getEnabledSecondFlickDirections(firstFlickDirection)
             finalSecondDirection =
-                calculateDirection(dx, dy, flickSensitivity, enabledSecondDirections)
+                calculateDirection(dx, dy, currentFlickThreshold(), enabledSecondDirections)
 
             Log.d(
                 "TfbStickyInput", // ★ ログタグ
@@ -221,7 +233,7 @@ class TfbiStickyFlickController(
             val dy = event.y - initialTouchY
             val enabledFirstDirections = getEnabledFirstFlickDirections()
             firstFlickDirection =
-                calculateDirection(dx, dy, flickSensitivity, enabledFirstDirections)
+                calculateDirection(dx, dy, currentFlickThreshold(), enabledFirstDirections)
             finalSecondDirection = TfbiFlickDirection.TAP
 
             Log.d(
@@ -298,12 +310,32 @@ class TfbiStickyFlickController(
 
 
     private fun resetState() {
+        attachedView?.removeCallbacks(longPressRunnable)
         popupWindow?.dismiss()
         popupWindow = null
         popupView = null
         flickState = FlickState.NEUTRAL
         firstFlickDirection = TfbiFlickDirection.TAP
         currentSecondFlickDirection = TfbiFlickDirection.TAP
+        activeGestureConfig = null
+    }
+
+    private fun currentFlickThreshold(): Float {
+        return currentGestureConfig().flickThresholdPx
+    }
+
+    private fun currentGestureConfig(): GestureSessionConfig {
+        return activeGestureConfig ?: gestureConfigSource.snapshot()
+    }
+
+    private fun isFlickThresholdCrossed(dx: Float, dy: Float): Boolean {
+        val config = currentGestureConfig()
+        return FlickGestureMath.isThresholdCrossed(
+            deltaX = dx,
+            deltaY = dy,
+            thresholdPx = config.flickThresholdPx,
+            thresholdShape = config.flickThresholdShape
+        )
     }
 
     private fun getEnabledFirstFlickDirections(): Set<TfbiFlickDirection> {
@@ -326,8 +358,15 @@ class TfbiStickyFlickController(
         threshold: Float,
         enabledDirections: Set<TfbiFlickDirection>
     ): TfbiFlickDirection {
-        val distance = hypot(dx.toDouble(), dy.toDouble()).toFloat()
-        if (distance < threshold) {
+        val config = currentGestureConfig()
+        if (
+            !FlickGestureMath.isThresholdCrossed(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = threshold,
+                thresholdShape = config.flickThresholdShape
+            )
+        ) {
             return TfbiFlickDirection.TAP
         }
         if (enabledDirections.isEmpty()) {

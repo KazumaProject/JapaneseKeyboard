@@ -49,4 +49,47 @@
             app:summary="@string/gemma_prompt_template_management_summary" />
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/category_gemma_handwriting_title">
+        <SeekBarPreference
+            android:defaultValue="900"
+            android:key="gemma_handwriting_auto_recognition_delay_preference"
+            android:max="5000"
+            android:min="300"
+            android:title="@string/gemma_handwriting_auto_recognition_delay_title"
+            app:seekBarIncrement="100"
+            app:showSeekBarValue="true" />
+
+        <SeekBarPreference
+            android:defaultValue="5"
+            android:key="gemma_handwriting_pen_size_preference"
+            android:max="20"
+            android:min="1"
+            android:title="@string/gemma_handwriting_pen_size_title"
+            app:seekBarIncrement="1"
+            app:showSeekBarValue="true" />
+
+        <Preference
+            android:key="gemma_handwriting_pen_color_preference"
+            android:title="@string/gemma_handwriting_pen_color_title" />
+
+        <ListPreference
+            android:defaultValue="auto"
+            android:entries="@array/gemma_handwriting_recognition_language_entries"
+            android:entryValues="@array/gemma_handwriting_recognition_language_values"
+            android:key="gemma_handwriting_recognition_language_preference"
+            android:title="@string/gemma_handwriting_recognition_language_title"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            android:defaultValue=""
+            android:key="gemma_handwriting_additional_instruction_preference"
+            android:summary="@string/gemma_handwriting_additional_instruction_summary_default"
+            android:title="@string/gemma_handwriting_additional_instruction_title" />
+
+        <Preference
+            android:key="gemma_handwriting_reset_prompt_preference"
+            android:summary="@string/gemma_handwriting_reset_prompt_summary"
+            android:title="@string/gemma_handwriting_reset_prompt_title" />
+    </PreferenceCategory>
+
 </androidx.preference.PreferenceScreen>

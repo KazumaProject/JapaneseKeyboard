@@ -13,6 +13,11 @@ import android.widget.Button
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
+import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
+import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.GestureSessionConfig
+import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
@@ -27,12 +32,27 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 class CrossFlickInputController(
     private val context: Context,
-    flickSensitivity: Int = 80
+    private val gestureConfigSource: GestureSessionConfigSource
 ) {
+
+    constructor(
+        context: Context,
+        flickSensitivity: Int = 80
+    ) : this(
+        context = context,
+        gestureConfigSource = FixedGestureSessionConfigSource(
+            GestureSessionConfig(
+                settingsRevision = 0L,
+                flickSensitivity = 100,
+                flickThresholdPx = flickSensitivity.toFloat().coerceAtLeast(1f),
+                longPressTimeoutMillis =
+                    ViewConfiguration.getLongPressTimeout().toLong().coerceIn(100L, 2_000L)
+            )
+        )
+    )
 
     interface CrossFlickListener {
         fun onPress(action: KeyAction)
@@ -85,7 +105,7 @@ class CrossFlickInputController(
     private var anchorView: View? = null
     private var initialTouchPoint = PointF(0f, 0f)
     private var currentDirection = FlickDirection.TAP
-    private val flickThreshold = flickSensitivity.toFloat().coerceAtLeast(1f)
+    private var activeGestureConfig: GestureSessionConfig? = null
 
     private var flickActionMap: Map<FlickDirection, FlickAction> = emptyMap()
     private var textMap: Map<FlickDirection, String> = emptyMap()
@@ -97,6 +117,9 @@ class CrossFlickInputController(
     private val directionalPopupMap = mutableMapOf<FlickDirection, PopupWindow>()
     private var currentVisibleDirectionalPopup: PopupWindow? = null
     private var currentVisibleDirectional: FlickDirection? = null
+    private var directionalPopupCacheDirty = true
+    private var directionalPopupAnchorWidth = -1
+    private var directionalPopupAnchorHeight = -1
     private var originalKeyText: CharSequence? = null
 
     private val gridPopup = PopupWindow(
@@ -117,7 +140,6 @@ class CrossFlickInputController(
     private var longPressJob: Job? = null
     private var isLongPressMode = false
     private var isLongPressTriggered = false
-    private var longPressTimeout: Long = ViewConfiguration.getLongPressTimeout().toLong()
 
     private var popupColorTheme: FlickPopupColorTheme? = null
     private var directionalPopupStyle = PopupViewStyle(100, 28f)
@@ -129,6 +151,7 @@ class CrossFlickInputController(
     // 色設定。FlickPopupColorTheme をまとめて受け取り、全ポップアップに適用する。
     fun setPopupColors(theme: FlickPopupColorTheme) {
         popupColorTheme = theme
+        invalidateDirectionalPopupCache()
     }
 
     fun applyPopupViewStyleSet(
@@ -149,11 +172,7 @@ class CrossFlickInputController(
         )
         actionPopupViews.values.forEach { it.applyPopupViewStyle(crossPopupStyle) }
         (gridPopup.contentView as? CrossFlickPopupView)?.applyPopupViewStyle(crossPopupStyle)
-    }
-
-    // 長押し判定までの待機時間を変更する。FlickKeyboardView から端末設定に合わせて呼ばれる。
-    fun setLongPressTimeout(timeoutMillis: Long) {
-        longPressTimeout = timeoutMillis.coerceIn(100L, 2000L)
+        invalidateDirectionalPopupCache()
     }
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
@@ -162,10 +181,11 @@ class CrossFlickInputController(
 
     // コントローラを破棄する。ビューのデタッチやキーボードビューの再構築時に FlickKeyboardView から呼ばれる。
     fun cancel() {
+        activeGestureConfig = null
         longPressJob?.cancel()
         controllerScope.cancel()
         restoreOriginalButtonText()
-        dismissAllPopups()
+        dismissAllPopups(clearDirectionalCache = true)
     }
 
     // ACTION モードでビューにアタッチする。CROSS_FLICK キー（アイコン付き特殊キー）向け。
@@ -175,6 +195,7 @@ class CrossFlickInputController(
         flickActionMap = map.mapValues { (_, action) -> action.withDisplayMetadata() }
         textMap = emptyMap()
         longPressTextMap = emptyMap()
+        invalidateDirectionalPopupCache()
         view.setOnTouchListener { v, event -> handleTouchEvent(v, event) }
     }
 
@@ -190,6 +211,7 @@ class CrossFlickInputController(
         textMap = map
         longPressTextMap = longPressMap
         flickActionMap = emptyMap()
+        invalidateDirectionalPopupCache()
         view.setOnTouchListener { v, event -> handleTouchEvent(v, event) }
     }
 
@@ -197,6 +219,8 @@ class CrossFlickInputController(
     private fun handleTouchEvent(view: View, event: MotionEvent): Boolean {
         when (event.action) {
             MotionEvent.ACTION_DOWN -> {
+                val gestureConfig = gestureConfigSource.snapshot()
+                activeGestureConfig = gestureConfig
                 view.isPressed = true
                 view.drawableHotspotChanged(event.x, event.y)
 
@@ -206,20 +230,20 @@ class CrossFlickInputController(
                 initialTouchPoint.set(event.rawX, event.rawY)
                 currentDirection = FlickDirection.TAP
 
+                notifyPressAction()
+
                 if (inputMode == InputMode.TEXT) {
                     (anchorView as? Button)?.let { button ->
                         originalKeyText = button.text
                         button.text = ""
                     }
-                    createDirectionalPopups()
+                    ensureDirectionalPopups()
                     showDirectionalPopup(FlickDirection.TAP)
                 }
 
-                notifyPressAction()
-
                 longPressJob?.cancel()
                 longPressJob = controllerScope.launch {
-                    delay(longPressTimeout)
+                    delay(gestureConfig.longPressTimeoutMillis)
                     isLongPressTriggered = true
                     isLongPressMode = true
                     onLongPressTriggered()
@@ -234,8 +258,13 @@ class CrossFlickInputController(
                 val dy = event.rawY - initialTouchPoint.y
 
                 if (inputMode == InputMode.TEXT && !isLongPressMode) {
-                    val cancelThreshold = flickThreshold * 0.5f
-                    val movedEnoughForFlick = (dx * dx + dy * dy) > (cancelThreshold * cancelThreshold)
+                    val cancelThreshold = currentFlickThreshold() * 0.5f
+                    val movedEnoughForFlick = FlickGestureMath.isThresholdCrossed(
+                        deltaX = dx,
+                        deltaY = dy,
+                        thresholdPx = cancelThreshold,
+                        thresholdShape = currentGestureConfig().flickThresholdShape
+                    )
                     if (movedEnoughForFlick) {
                         longPressJob?.cancel()
                     }
@@ -268,6 +297,7 @@ class CrossFlickInputController(
                 restoreOriginalButtonText()
                 dismissAllPopups()
                 anchorView = null
+                activeGestureConfig = null
                 return true
             }
         }
@@ -385,21 +415,31 @@ class CrossFlickInputController(
         }
     }
 
-    // 初期タッチ位置からの差分を FlickDirection に変換する。両軸が閾値未満なら TAP とみなす。
+    // 初期タッチ位置からの直線距離と主軸を FlickDirection に変換する。
     // LEFT は UP_LEFT_FAR、RIGHT は UP_RIGHT_FAR で表現する（フォールバック候補は getDirectionCandidates が担う）。
     private fun calculateDirection(dx: Float, dy: Float): FlickDirection {
-        val absDx = abs(dx)
-        val absDy = abs(dy)
-
-        if (absDx < flickThreshold && absDy < flickThreshold) {
-            return FlickDirection.TAP
+        return when (
+            FlickGestureMath.cardinalDirection(
+                deltaX = dx,
+                deltaY = dy,
+                thresholdPx = currentFlickThreshold(),
+                thresholdShape = currentGestureConfig().flickThresholdShape
+            )
+        ) {
+            CoreFlickDirection.Tap -> FlickDirection.TAP
+            CoreFlickDirection.Left -> FlickDirection.UP_LEFT_FAR
+            CoreFlickDirection.Top -> FlickDirection.UP
+            CoreFlickDirection.Right -> FlickDirection.UP_RIGHT_FAR
+            CoreFlickDirection.Bottom -> FlickDirection.DOWN
         }
+    }
 
-        return if (absDx > absDy) {
-            if (dx > 0) FlickDirection.UP_RIGHT_FAR else FlickDirection.UP_LEFT_FAR
-        } else {
-            if (dy > 0) FlickDirection.DOWN else FlickDirection.UP
-        }
+    private fun currentFlickThreshold(): Float {
+        return currentGestureConfig().flickThresholdPx
+    }
+
+    private fun currentGestureConfig(): GestureSessionConfig {
+        return activeGestureConfig ?: gestureConfigSource.snapshot()
     }
 
     // FlickDirection を候補リストに展開して flickActionMap を引く。near/far 両方に対応する。
@@ -561,15 +601,21 @@ class CrossFlickInputController(
         actionPopupViews.clear()
     }
 
-    // TEXT モードの ACTION_DOWN 時に全方向の DirectionalKeyPopupView を事前生成してマップに保持する。
-    // 実際の表示は showDirectionalPopup が担うため、ここでは showAtLocation は呼ばない。
-    private fun createDirectionalPopups() {
+    // TEXT モードの方向ポップアップを必要なときだけ生成し、同じキーでは再利用する。
+    private fun ensureDirectionalPopups() {
+        val currentAnchor = anchorView ?: return
+        val anchorSizeUnchanged =
+            directionalPopupAnchorWidth == currentAnchor.width &&
+                directionalPopupAnchorHeight == currentAnchor.height
+        if (!directionalPopupCacheDirty && anchorSizeUnchanged) {
+            return
+        }
+
         directionalPopupMap.values.forEach { if (it.isShowing) it.dismiss() }
         directionalPopupMap.clear()
         currentVisibleDirectionalPopup = null
         currentVisibleDirectional = null
 
-        val currentAnchor = anchorView ?: return
         val directions = listOf(
             FlickDirection.TAP,
             FlickDirection.UP,
@@ -622,6 +668,10 @@ class CrossFlickInputController(
                 exitTransition = null
             }
         }
+
+        directionalPopupAnchorWidth = currentAnchor.width
+        directionalPopupAnchorHeight = currentAnchor.height
+        directionalPopupCacheDirty = false
     }
 
     // TEXT モードで指定方向のポップアップを表示し、直前に表示していたものを閉じる。
@@ -771,21 +821,30 @@ class CrossFlickInputController(
     }
 
     // TEXT モードのポップアップ（方向ポップアップとグリッドポップアップ）をすべて閉じる。
-    private fun dismissDirectionalPopups() {
+    private fun dismissDirectionalPopups(clearCache: Boolean = false) {
         currentVisibleDirectionalPopup?.dismiss()
         currentVisibleDirectionalPopup = null
         currentVisibleDirectional = null
         directionalPopupMap.values.forEach { if (it.isShowing) it.dismiss() }
-        directionalPopupMap.clear()
+        if (clearCache) {
+            directionalPopupMap.clear()
+            directionalPopupAnchorWidth = -1
+            directionalPopupAnchorHeight = -1
+            directionalPopupCacheDirty = true
+        }
         if (gridPopup.isShowing) {
             gridPopup.dismiss()
         }
     }
 
     // ACTION・TEXT 両モードのポップアップをすべて閉じる。
-    fun dismissAllPopups() {
+    fun dismissAllPopups(clearDirectionalCache: Boolean = false) {
         dismissAllActionPopups()
-        dismissDirectionalPopups()
+        dismissDirectionalPopups(clearCache = clearDirectionalCache)
+    }
+
+    private fun invalidateDirectionalPopupCache() {
+        dismissDirectionalPopups(clearCache = true)
     }
 
     private fun resolveWindowAnchor(keyAnchor: View): View? {

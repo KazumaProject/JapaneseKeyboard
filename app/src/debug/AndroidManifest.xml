@@ -7,5 +7,13 @@
             android:screenOrientation="unspecified"
             android:theme="@android:style/Theme.Material.Light.NoActionBar"
             android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
+
+        <receiver
+            android:name=".RuntimeGestureSettingsDebugReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kazumaproject.markdownhelperkeyboard.DEBUG_SET_RUNTIME_GESTURE" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
