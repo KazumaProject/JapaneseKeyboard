@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
 import android.graphics.PointF
-import android.os.Build
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
@@ -149,7 +148,6 @@ class CrossFlickInputController(
         animationStyle = 0
         enterTransition = null
         exitTransition = null
-        configurePopupWindowPositioning(this)
     }
 
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -551,7 +549,6 @@ class CrossFlickInputController(
             animationStyle = 0
             enterTransition = null
             exitTransition = null
-            configurePopupWindowPositioning(this)
         }
 
         readPopupAnchorLocation(anchor, windowAnchor)
@@ -683,7 +680,6 @@ class CrossFlickInputController(
                 animationStyle = 0
                 enterTransition = null
                 exitTransition = null
-                configurePopupWindowPositioning(this)
             }
         }
 
@@ -882,11 +878,8 @@ class CrossFlickInputController(
     }
 
     private fun readPopupAnchorLocation(keyAnchor: View, windowAnchor: View?) {
-        if (usesScreenPositionedPopupWindows()) {
-            keyAnchor.getLocationOnScreen(popupAnchorLocation)
-            return
-        }
-
+        // showAtLocation(NO_GRAVITY) receives coordinates relative to the containing window.
+        // Screen coordinates add the left navigation inset again when the device is rotated 270°.
         getLocationRelativeToWindowAnchor(
             keyAnchor = keyAnchor,
             windowAnchor = windowAnchor,
@@ -894,17 +887,6 @@ class CrossFlickInputController(
             keyLocationScratch = popupKeyLocationScratch,
             windowLocationScratch = popupWindowLocationScratch
         )
-    }
-
-    private fun configurePopupWindowPositioning(popupWindow: PopupWindow) {
-        if (usesScreenPositionedPopupWindows()) {
-            popupWindow.setAttachedInDecor(false)
-            popupWindow.setIsLaidOutInScreen(true)
-        }
-    }
-
-    private fun usesScreenPositionedPopupWindows(): Boolean {
-        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
     }
 
     private fun resolveActionPopupPosition(
