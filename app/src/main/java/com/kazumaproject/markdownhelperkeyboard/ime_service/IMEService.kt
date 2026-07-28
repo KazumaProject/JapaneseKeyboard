@@ -148,6 +148,7 @@ import com.kazumaproject.core.domain.window.getScreenHeight
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
+import com.kazumaproject.custom_keyboard.data.KeyCharacterCase
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
 import com.kazumaproject.custom_keyboard.data.KeyboardLayout
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
@@ -7486,7 +7487,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickView.setKeyboard(applyDeleteKeyFlickPreferences(layout))
     }
 
-    private fun syncCustomKeyboardToggleKeyIcons(flickView: FlickKeyboardView) {
+    private fun syncCustomKeyboardTogglePresentation(flickView: FlickKeyboardView) {
+        flickView.setKeyCharacterCase(customKeyboardShiftState.keyCharacterCase)
         flickView.updateKeyIconByAction(
             KeyAction.SwitchDirectMode,
             if (isCustomLayoutDirectMode) {
@@ -7505,10 +7507,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         flickView.updateKeyIconByAction(
             KeyAction.ShiftKey,
-            if (isCustomLayoutShiftPressed) {
-                com.kazumaproject.core.R.drawable.shift_fill_24px
-            } else {
-                com.kazumaproject.core.R.drawable.shift_24px
+            when (customKeyboardShiftState) {
+                CustomKeyboardShiftState.OFF ->
+                    com.kazumaproject.core.R.drawable.shift_24px
+                CustomKeyboardShiftState.ONE_SHOT ->
+                    com.kazumaproject.core.R.drawable.shift_fill_24px
+                CustomKeyboardShiftState.LOCKED ->
+                    com.kazumaproject.core.R.drawable.caps_lock
             }
         )
         flickView.updateKeyIconByAction(
@@ -7521,13 +7526,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
     }
 
-    private fun syncCustomKeyboardToggleKeyIconsOnAvailableSurfaces() {
+    private fun syncCustomKeyboardTogglePresentationOnAvailableSurfaces() {
         getNormalKeyboardSurface()
             ?.customLayout
-            ?.let(::syncCustomKeyboardToggleKeyIcons)
+            ?.let(::syncCustomKeyboardTogglePresentation)
         getFloatingKeyboardSurface()
             ?.customLayout
-            ?.let(::syncCustomKeyboardToggleKeyIcons)
+            ?.let(::syncCustomKeyboardTogglePresentation)
     }
 
     private fun applyCurrentFlickGuidePreference(flickView: FlickKeyboardView) {
@@ -7550,6 +7555,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun setSumireLayoutTo(flickView: FlickKeyboardView) {
         val layoutType = sumireInputKeyLayoutType ?: "toggle"
+        flickView.setKeyCharacterCase(KeyCharacterCase.AS_DEFINED)
         applyCurrentFlickGuidePreference(flickView)
         flickView.setSumireSpecialKeyActionResolver(
             resolver = SumireSpecialKeyActionResolver(sumireSpecialKeyActionOverrides)::resolve,
@@ -7560,6 +7566,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun setNumberLayoutTo(flickView: FlickKeyboardView) {
+        flickView.setKeyCharacterCase(KeyCharacterCase.AS_DEFINED)
         applyCurrentFlickGuidePreference(flickView)
         val numberCustomLayout = numberUsageCustomKeyboardLayoutOrNull()
         if (numberCustomLayout != null) {
@@ -7656,14 +7663,13 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 stableId = expectedStableId,
                 defaultValue = finalLayout.isDirectMode
             )
-            isCustomLayoutShiftPressed = false
-            isCustomLayoutCapLock = false
+            customKeyboardShiftState = CustomKeyboardShiftState.OFF
             withContext(Dispatchers.Main) {
                 if (!isCurrentCustomKeyboardSelection(layoutId = id, stableId = expectedStableId)) {
                     return@withContext
                 }
                 setKeyboardWithDeleteKeyFlickPreferences(flickView, finalLayout)
-                syncCustomKeyboardToggleKeyIcons(flickView)
+                syncCustomKeyboardTogglePresentation(flickView)
                 refreshBaselineInputBehaviorForCurrentKeyboard("custom layout input mode loaded")
             }
         }
@@ -10574,8 +10580,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var isCustomLayoutRomajiMode = false
     private var isCustomLayoutDirectMode = false
-    private var isCustomLayoutShiftPressed = false
-    private var isCustomLayoutCapLock = false
+    private var customKeyboardShiftState = CustomKeyboardShiftState.OFF
+    private val isCustomLayoutShiftPressed: Boolean
+        get() = customKeyboardShiftState == CustomKeyboardShiftState.ONE_SHOT
+    private val isCustomLayoutCapLock: Boolean
+        get() = customKeyboardShiftState == CustomKeyboardShiftState.LOCKED
 
     private fun customKeyboardInputModePersistenceKey(layoutId: Long, stableId: String): String {
         return stableId.takeIf { it.isNotBlank() } ?: layoutId.toString()
@@ -10795,15 +10804,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 stableId = expectedStableId,
                 defaultValue = finalLayout.isDirectMode
             )
-            isCustomLayoutShiftPressed = false
-            isCustomLayoutCapLock = false
+            customKeyboardShiftState = CustomKeyboardShiftState.OFF
             withContext(Dispatchers.Main) {
                 if (!isCurrentCustomKeyboardSelection(layoutId = id, stableId = expectedStableId)) {
                     Timber.d("renderCustomKeyboardLayout: skip stale render id=$id stableId=$expectedStableId")
                     return@withContext
                 }
                 setCustomLayoutOnAvailableSurfaces(finalLayout)
-                syncCustomKeyboardToggleKeyIconsOnAvailableSurfaces()
+                syncCustomKeyboardTogglePresentationOnAvailableSurfaces()
                 refreshBaselineInputBehaviorForCurrentKeyboard("custom layout input mode loaded")
             }
         }
@@ -11715,15 +11723,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.ShiftKey -> {
-                        isCustomLayoutShiftPressed = !isCustomLayoutShiftPressed
-
-                        Handler(mainLooper).post {
-                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
-                                KeyAction.ShiftKey,
-                                if (isCustomLayoutShiftPressed) com.kazumaproject.core.R.drawable.shift_fill_24px
-                                else com.kazumaproject.core.R.drawable.shift_24px
-                            )
-                        }
+                        handleCustomKeyboardShiftTap()
                     }
 
                     KeyAction.MoveCustomKeyboardTab -> {
@@ -11858,15 +11858,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.CapLockKey -> {
-                        isCustomLayoutCapLock = !isCustomLayoutCapLock
-
-                        Handler(mainLooper).post {
-                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
-                                KeyAction.CapLockKey,
-                                if (isCustomLayoutCapLock) com.kazumaproject.core.R.drawable.caps_lock
-                                else com.kazumaproject.core.R.drawable.caps_lock_outline
-                            )
-                        }
+                        handleCustomKeyboardCapsLockTap()
                     }
 
                     KeyAction.ForceHalfWidthSpace -> {
@@ -11901,18 +11893,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 if (text.isEmpty()) return
                                 val shiftedText = applyCustomLayoutShiftAndCapLock(text)
                                 if (dispatchDirectTextIfNeeded(shiftedText)) {
-                                    if (isCustomLayoutShiftPressed) {
-                                        isCustomLayoutShiftPressed = false
-                                    }
+                                    consumeCustomKeyboardOneShotShift()
                                     return
                                 }
                                 if (isCustomLayoutDirectMode) {
                                     finishComposingText()
                                     setComposingText("", 0)
                                     commitText(shiftedText, 1)
-                                    if (isCustomLayoutShiftPressed) {
-                                        isCustomLayoutShiftPressed = false
-                                    }
+                                    consumeCustomKeyboardOneShotShift()
                                     return
                                 }
                                 if (text.length == 1) {
@@ -11964,20 +11952,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         )
                                     }
 
-                                    if (isCustomLayoutShiftPressed) {
-                                        isCustomLayoutShiftPressed = false
-                                    }
-
                                 } else {
                                     if (isCustomKeyboardTwoWordsOutputEnable == true) {
                                         finishComposingText()
                                         setComposingText("", 0)
-                                        commitText(text, 1)
+                                        commitText(shiftedText, 1)
                                     } else {
                                         if (isCustomLayoutRomajiMode) {
                                             val insertString = inputString.value
                                             val sb = StringBuilder()
-                                            sb.append(insertString).append(text)
+                                            sb.append(insertString).append(shiftedText)
                                             romajiConverter?.let { converter ->
                                                 if (isDefaultRomajiHenkanMap) {
                                                     _inputString.update {
@@ -11998,11 +11982,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                         } else {
                                             val insertString = inputString.value
                                             val sb = StringBuilder()
-                                            sb.append(insertString).append(text)
+                                            sb.append(insertString).append(shiftedText)
                                             _inputString.update { sb.toString() }
                                         }
                                     }
                                 }
+                                consumeCustomKeyboardOneShotShift()
                             }
 
                             TenKeyQWERTYMode.Sumire -> {
@@ -12285,15 +12270,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.ShiftKey -> {
-                        isCustomLayoutShiftPressed = !isCustomLayoutShiftPressed
-
-                        Handler(mainLooper).post {
-                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
-                                KeyAction.ShiftKey,
-                                if (isCustomLayoutShiftPressed) com.kazumaproject.core.R.drawable.shift_fill_24px
-                                else com.kazumaproject.core.R.drawable.shift_24px
-                            )
-                        }
+                        handleCustomKeyboardShiftTap()
                     }
 
                     KeyAction.SwitchDirectMode -> {
@@ -12313,15 +12290,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.CapLockKey -> {
-                        isCustomLayoutCapLock = !isCustomLayoutCapLock
-
-                        Handler(mainLooper).post {
-                            getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
-                                KeyAction.CapLockKey,
-                                if (isCustomLayoutCapLock) com.kazumaproject.core.R.drawable.caps_lock
-                                else com.kazumaproject.core.R.drawable.caps_lock_outline
-                            )
-                        }
+                        handleCustomKeyboardCapsLockTap()
                     }
 
                     KeyAction.SwitchRomajiEnglish -> {
@@ -12435,25 +12404,25 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         })
     }
 
+    private fun handleCustomKeyboardShiftTap() {
+        customKeyboardShiftState = customKeyboardShiftState.onShiftTap()
+        Handler(mainLooper).post(::syncCustomKeyboardTogglePresentationOnAvailableSurfaces)
+    }
+
+    private fun handleCustomKeyboardCapsLockTap() {
+        customKeyboardShiftState = customKeyboardShiftState.onCapsLockTap()
+        Handler(mainLooper).post(::syncCustomKeyboardTogglePresentationOnAvailableSurfaces)
+    }
+
+    private fun consumeCustomKeyboardOneShotShift() {
+        val consumedState = customKeyboardShiftState.consumeOneShot()
+        if (consumedState == customKeyboardShiftState) return
+        customKeyboardShiftState = consumedState
+        Handler(mainLooper).post(::syncCustomKeyboardTogglePresentationOnAvailableSurfaces)
+    }
+
     private fun applyCustomLayoutShiftAndCapLock(text: String): String {
-        if (!isCustomLayoutShiftPressed && !isCustomLayoutCapLock) {
-            return text
-        }
-        if (isCustomLayoutShiftPressed) {
-            Handler(mainLooper).post {
-                getActiveKeyboardSurface()?.customLayout?.updateKeyIconByAction(
-                    KeyAction.ShiftKey,
-                    com.kazumaproject.core.R.drawable.shift_24px
-                )
-            }
-        }
-        return text.map { char ->
-            if (char in 'a'..'z' || char in 'A'..'Z') {
-                char.uppercaseChar()
-            } else {
-                char
-            }
-        }.joinToString("")
+        return customKeyboardShiftState.transformAsciiLetters(text)
     }
 
     private fun handleOnKeyForSumire(

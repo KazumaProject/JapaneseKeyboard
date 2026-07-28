@@ -3,14 +3,17 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.kazumaproject.custom_keyboard.data.DoubleTapPolicy
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.KeyIconBuiltInDrawable
 import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
+import com.kazumaproject.custom_keyboard.data.automaticDoubleTapPolicy
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CircularFlickMapping
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.CustomKeyboardLayout
@@ -301,6 +304,39 @@ object KeyboardBackupNormalizer {
                 )
             }
 
+            val normalizedTapAction = remapKeyAction(
+                action = keyDto.action,
+                stableIdsByOldLayoutId = stableIdsByOldLayoutId,
+                layoutIndex = layoutIndex,
+                keyIndex = keyIndex,
+                warnings = warnings
+            )
+            val isSpecialKey = keyDto.isSpecialKey ?: false
+            val normalizedDoubleTapAction = when {
+                !isSpecialKey -> null
+                keyDto.doubleTapEnabled == false -> null
+                keyDto.doubleTapAction != null -> remapKeyAction(
+                    action = keyDto.doubleTapAction,
+                    stableIdsByOldLayoutId = stableIdsByOldLayoutId,
+                    layoutIndex = layoutIndex,
+                    keyIndex = keyIndex,
+                    warnings = warnings
+                )
+                // Backups from before schema v3 had no gesture field. Preserve the new Shift
+                // default during import while still allowing v3+ exports to explicitly disable it.
+                keyDto.doubleTapEnabled == null && normalizedTapAction == "ShiftKeyPressed" ->
+                    "CapLockKey"
+                else -> null
+            }
+            val normalizedDoubleTapPolicy = normalizedDoubleTapAction?.let {
+                val doubleTapAction = KeyActionMapper.toKeyAction(normalizedDoubleTapAction)
+                    ?: return@let DoubleTapPolicy.EXCLUSIVE.serializedName
+                automaticDoubleTapPolicy(
+                    normalAction = KeyActionMapper.toKeyAction(normalizedTapAction),
+                    doubleTapAction = doubleTapAction
+                ).serializedName
+            }
+
             val normalizedKey = KeyDefinition(
                 keyId = 0,
                 ownerLayoutId = 0,
@@ -310,7 +346,7 @@ object KeyboardBackupNormalizer {
                 rowSpan = keyDto.rowSpan ?: 1,
                 colSpan = keyDto.colSpan ?: 1,
                 keyType = enumValueOrNull<KeyType>(keyDto.keyType) ?: KeyType.NORMAL,
-                isSpecialKey = keyDto.isSpecialKey ?: false,
+                isSpecialKey = isSpecialKey,
                 drawableResId = keyDto.drawableResId,
                 iconType = normalizedIconType(
                     iconType = keyDto.iconType,
@@ -325,20 +361,16 @@ object KeyboardBackupNormalizer {
                     iconValue = keyDto.iconValue
                 ),
                 keyIdentifier = identifier,
-                action = remapKeyAction(
-                    action = keyDto.action,
-                    stableIdsByOldLayoutId = stableIdsByOldLayoutId,
-                    layoutIndex = layoutIndex,
-                    keyIndex = keyIndex,
-                    warnings = warnings
-                ),
+                action = normalizedTapAction,
                 rowUnits = keyDto.rowUnits?.coerceAtLeast(0),
                 columnUnits = keyDto.columnUnits?.coerceAtLeast(0),
                 rowSpanUnits = keyDto.rowSpanUnits?.coerceAtLeast(1),
                 columnSpanUnits = keyDto.columnSpanUnits?.coerceAtLeast(1),
                 specialKeyColorStyle = SpecialKeyColorStyle
                     .fromDbValue(keyDto.specialKeyColorStyle)
-                    .dbValue
+                    .dbValue,
+                doubleTapAction = normalizedDoubleTapAction,
+                doubleTapPolicy = normalizedDoubleTapPolicy
             )
 
             ImportableKeyWithFlicks(

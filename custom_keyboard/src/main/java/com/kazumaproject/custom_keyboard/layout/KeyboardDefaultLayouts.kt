@@ -2,6 +2,8 @@ package com.kazumaproject.custom_keyboard.layout
 
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.DoubleTapBinding
+import com.kazumaproject.custom_keyboard.data.DoubleTapPolicy
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
@@ -4712,6 +4714,7 @@ object KeyboardDefaultLayouts {
         val label: String = "",
         val action: KeyAction,
         val drawableResId: Int? = null,
+        val doubleTapBinding: DoubleTapBinding? = null,
         override val columnSpanUnits: Int = 2
     ) : TemplateItemSpec
 
@@ -4785,7 +4788,8 @@ object KeyboardDefaultLayouts {
                             keyType = KeyType.NORMAL,
                             isSpecialKey = true,
                             drawableResId = itemSpec.drawableResId,
-                            keyId = keyId
+                            keyId = keyId,
+                            doubleTapBinding = itemSpec.doubleTapBinding
                         )
                         items += KeyItem(id = keyId, keyData = keyData, placement = placement)
                         keys += keyData
@@ -4823,6 +4827,10 @@ object KeyboardDefaultLayouts {
             idSuffix = "shift",
             action = KeyAction.ShiftKey,
             drawableResId = com.kazumaproject.core.R.drawable.shift_24px,
+            doubleTapBinding = DoubleTapBinding(
+                action = KeyAction.CapLockKey,
+                policy = DoubleTapPolicy.PROMOTE
+            ),
             columnSpanUnits = 2
         )
 

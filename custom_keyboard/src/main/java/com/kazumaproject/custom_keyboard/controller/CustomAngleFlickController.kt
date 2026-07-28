@@ -130,6 +130,10 @@ class CustomAngleFlickController(
         popupWindowAnchorProvider = provider
     }
 
+    fun setInputTextTransform(transform: (String) -> String) {
+        popupView.setInputTextTransform(transform)
+    }
+
     private fun updateEffectiveRangesForMap(
         map: Map<CircularFlickDirection, FlickAction>
     ) {

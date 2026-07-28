@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.DoubleTapBinding
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.GridPlacement
@@ -18,8 +19,10 @@ import com.kazumaproject.custom_keyboard.data.KeyboardLayoutItem
 import com.kazumaproject.custom_keyboard.data.KeyboardLayoutUsageMode
 import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
 import com.kazumaproject.custom_keyboard.data.SpacerItem
+import com.kazumaproject.custom_keyboard.data.automaticDoubleTapPolicy
 import com.kazumaproject.custom_keyboard.data.copyWithItems
 import com.kazumaproject.custom_keyboard.data.copyWithKeys
+import com.kazumaproject.custom_keyboard.data.effectiveDoubleTapBinding
 import com.kazumaproject.custom_keyboard.data.toCircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.toKeyItem
 import com.kazumaproject.custom_keyboard.data.usesFlexiblePlacement
@@ -599,7 +602,21 @@ class KeyboardRepository @Inject constructor(
                     )
                 }
 
-                // 2) flick mapping
+                // 2) double-tap action
+                val doubleTapAction = KeyActionMapper.toKeyAction(key.doubleTapAction)
+                if (doubleTapAction is KeyAction.MoveToCustomKeyboard &&
+                    doubleTapAction.stableId == targetStableId
+                ) {
+                    references += MoveToCustomKeyboardReference(
+                        sourceLayoutId = sourceLayoutId,
+                        sourceLayoutName = sourceLayoutName,
+                        sourceKeyIdentifier = keyIdentifier,
+                        sourceKeyLabel = keyLabel,
+                        targetStableId = targetStableId
+                    )
+                }
+
+                // 3) flick mapping
                 for (flick in keyWithFlicks.flicks) {
                     val act = flick.toFlickAction()
                     if (act is FlickAction.Action) {
@@ -901,6 +918,17 @@ class KeyboardRepository @Inject constructor(
 
             val iconRef = keyIconRefFromDb(dbKey.iconType, dbKey.iconValue)
             val specialKeyColorStyle = SpecialKeyColorStyle.fromDbValue(dbKey.specialKeyColorStyle)
+            val doubleTapBinding = KeyActionMapper.toKeyAction(dbKey.doubleTapAction)
+                ?.takeIf { dbKey.isSpecialKey }
+                ?.let {
+                DoubleTapBinding(
+                    action = it,
+                    policy = automaticDoubleTapPolicy(
+                        normalAction = restoredAction,
+                        doubleTapAction = it
+                    )
+                )
+            }
             val keyData = if (restoredAction == null) {
                 KeyData(
                     label = dbKey.label,
@@ -915,7 +943,8 @@ class KeyboardRepository @Inject constructor(
                     icon = iconRef,
                     keyId = dbKey.keyIdentifier,
                     action = null,
-                    specialKeyColorStyle = specialKeyColorStyle
+                    specialKeyColorStyle = specialKeyColorStyle,
+                    doubleTapBinding = doubleTapBinding
                 )
             } else {
                 KeyData(
@@ -931,7 +960,8 @@ class KeyboardRepository @Inject constructor(
                     icon = iconRef,
                     keyId = dbKey.keyIdentifier,
                     action = restoredAction,
-                    specialKeyColorStyle = specialKeyColorStyle
+                    specialKeyColorStyle = specialKeyColorStyle,
+                    doubleTapBinding = doubleTapBinding
                 )
             }
             val placement = GridPlacement(
@@ -1121,6 +1151,7 @@ class KeyboardRepository @Inject constructor(
             val keyIdentifier = keyData.keyId ?: UUID.randomUUID().toString()
 
             val actionString: String? = KeyActionMapper.fromKeyAction(keyData.action)
+            val doubleTapBinding = keyData.effectiveDoubleTapBinding(keyData.action)
             val placement = itemByKeyId[keyIdentifier]?.placement ?: keyData.toKeyItem().placement
 
             keys.add(
@@ -1145,7 +1176,11 @@ class KeyboardRepository @Inject constructor(
                     columnUnits = placement.columnUnits,
                     rowSpanUnits = placement.rowSpanUnits,
                     columnSpanUnits = placement.columnSpanUnits,
-                    specialKeyColorStyle = keyData.specialKeyColorStyle.dbValue
+                    specialKeyColorStyle = keyData.specialKeyColorStyle.dbValue,
+                    doubleTapAction = KeyActionMapper.fromKeyAction(
+                        doubleTapBinding?.action
+                    ),
+                    doubleTapPolicy = doubleTapBinding?.policy?.serializedName
                 )
             )
 

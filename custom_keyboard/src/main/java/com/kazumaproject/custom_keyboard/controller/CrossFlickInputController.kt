@@ -156,6 +156,7 @@ class CrossFlickInputController(
     private var isLongPressTriggered = false
 
     private var popupColorTheme: FlickPopupColorTheme? = null
+    private var inputTextTransform: (String) -> String = { it }
     private var directionalPopupStyle = PopupViewStyle(100, 28f)
     private var crossPopupStyle = PopupViewStyle(100, 18f)
     private val displayActionsByClass by lazy {
@@ -191,6 +192,13 @@ class CrossFlickInputController(
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
         popupWindowAnchorProvider = provider
+    }
+
+    fun setInputTextTransform(transform: (String) -> String) {
+        inputTextTransform = transform
+        (gridPopup.contentView as? CrossFlickPopupView)?.setInputTextTransform(transform)
+        actionPopupViews.values.forEach { it.setInputTextTransform(transform) }
+        invalidateDirectionalPopupCache()
     }
 
     // コントローラを破棄する。ビューのデタッチやキーボードビューの再構築時に FlickKeyboardView から呼ばれる。
@@ -527,6 +535,7 @@ class CrossFlickInputController(
         if (!isAnchorReady(anchor, windowAnchor)) return
 
         val popupView = CrossFlickPopupView(context).apply {
+            setInputTextTransform(inputTextTransform)
             applyPopupViewStyle(crossPopupStyle)
             val scale = crossPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
             setCells(
@@ -643,7 +652,7 @@ class CrossFlickInputController(
             if (text.isNullOrEmpty()) return@forEach
 
             val popupView = DirectionalKeyPopupView(context).apply {
-                this.text = text
+                this.text = inputTextTransform(text)
                 applyPopupViewStyle(directionalPopupStyle)
                 popupColorTheme?.let { setColors(it) }
                 setFlickDirection(direction)
@@ -754,6 +763,7 @@ class CrossFlickInputController(
         }
 
         val popupView = gridPopup.contentView as CrossFlickPopupView
+        popupView.setInputTextTransform(inputTextTransform)
         popupView.applyPopupViewStyle(crossPopupStyle)
         popupColorTheme?.let { popupView.setColors(it) }
         val scale = crossPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f

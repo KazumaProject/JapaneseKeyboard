@@ -1,6 +1,7 @@
 package com.kazumaproject.custom_keyboard.layout
 
 import com.kazumaproject.custom_keyboard.data.GridPlacement
+import com.kazumaproject.custom_keyboard.data.DoubleTapPolicy
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
@@ -80,6 +81,16 @@ class AlphabetTemplateLayoutsTest {
         assertEquals("$prefix SwitchToNextIme rowUnits", 6, switchIme!!.placement.rowUnits)
         assertEquals("$prefix Space rowUnits", 6, space!!.placement.rowUnits)
         assertEquals("$prefix Enter rowUnits", 6, enter!!.placement.rowUnits)
+        assertEquals(
+            "$prefix Shift double tap action",
+            KeyAction.CapLockKey,
+            shift.keyData.doubleTapBinding?.action
+        )
+        assertEquals(
+            "$prefix Shift double tap policy",
+            DoubleTapPolicy.PROMOTE,
+            shift.keyData.doubleTapBinding?.policy
+        )
     }
 
     private fun assertAllCharacterKeysAreNormalText(layout: KeyboardLayout) {

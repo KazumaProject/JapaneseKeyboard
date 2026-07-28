@@ -41,5 +41,7 @@ data class KeyDefinition(
     val columnUnits: Int? = null,
     val rowSpanUnits: Int? = null,
     val columnSpanUnits: Int? = null,
-    val specialKeyColorStyle: String = SpecialKeyColorStyle.SPECIAL.dbValue
+    val specialKeyColorStyle: String = SpecialKeyColorStyle.SPECIAL.dbValue,
+    val doubleTapAction: String? = null,
+    val doubleTapPolicy: String? = null
 )

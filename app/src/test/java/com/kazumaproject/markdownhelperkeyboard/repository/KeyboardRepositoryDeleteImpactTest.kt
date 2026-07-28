@@ -162,6 +162,47 @@ class KeyboardRepositoryDeleteImpactTest {
     }
 
     @Test
+    fun getDeleteImpactForLayout_referencedByDoubleTapAction_isDetected() = runBlocking {
+        val targetStableId = "target-via-double-tap"
+        val target = layout(layoutId = 15, stableId = targetStableId, name = "Target")
+        val source = layout(layoutId = 25, stableId = "source-stable", name = "Source")
+        val sourceFull = FullKeyboardLayout(
+            layout = source,
+            keysWithFlicks = listOf(
+                KeyWithFlicks(
+                    key = KeyDefinition(
+                        keyId = 250,
+                        ownerLayoutId = 25,
+                        label = "→",
+                        row = 0,
+                        column = 0,
+                        keyType = KeyType.NORMAL,
+                        isSpecialKey = true,
+                        keyIdentifier = "key-source-double",
+                        action = "MoveCustomKeyboardTab",
+                        doubleTapAction = "MoveToCustomKeyboard:$targetStableId",
+                        doubleTapPolicy = "EXCLUSIVE"
+                    ),
+                    flicks = emptyList(),
+                    circularFlicks = emptyList(),
+                    twoStepFlicks = emptyList(),
+                    longPressFlicks = emptyList(),
+                    twoStepLongPressFlicks = emptyList()
+                )
+            ),
+            spacers = emptyList()
+        )
+        val targetFull = FullKeyboardLayout(target, emptyList(), emptyList())
+        whenever(dao.getFullLayoutOneShot(15L)).thenReturn(targetFull)
+        whenever(dao.getAllFullLayoutsOneShot()).thenReturn(listOf(targetFull, sourceFull))
+
+        val impact = repository.getDeleteImpactForLayout(15L)
+
+        assertTrue(impact.hasReferences)
+        assertEquals("key-source-double", impact.references.single().sourceKeyIdentifier)
+    }
+
+    @Test
     fun getDeleteImpactForLayout_noReferences_returnsEmpty() = runBlocking {
         val target = layout(layoutId = 13, stableId = "target-no-ref", name = "Target")
         val targetFull = FullKeyboardLayout(target, emptyList(), emptyList())

@@ -77,6 +77,7 @@ internal object ExactInputCandidatePromotionPolicy {
         hashSetOf(
             "ての",
             "か？",
+            "なにこれ？",
             "え",
             "き",
             "く",
