@@ -177,6 +177,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ExactInputCandidatePromotionPolicy
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.buildRomajiCandidates
@@ -15189,7 +15190,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             rawScores.toList()
         )
 
-        reranked
+        applyMergedCandidateOrder(
+            input = insertString,
+            candidates = reranked,
+        )
     }
 
     private suspend fun getZenzContext(
@@ -22137,17 +22141,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
 
-        val orderedCandidates =
-            if (appPreference.candidate_order_override_enable_preference == true) {
-                measureDebugStage("IMEService.candidateOrderOverride") {
-                    candidateOrderOverrideRepository.applyOrderFromSnapshot(
-                        input = insertString,
-                        candidates = filteredCandidates
-                    )
-                }
-            } else {
-                filteredCandidates
-            }
+        val orderedCandidates = applyMergedCandidateOrder(
+            input = insertString,
+            candidates = filteredCandidates,
+        )
 
         if (candidateRequestTracker.isCurrent(token)) {
             updateBunsetsuStateAfterCandidateMerge(
@@ -22269,17 +22266,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
         }
 
-        val orderedCandidates =
-            if (appPreference.candidate_order_override_enable_preference == true) {
-                measureDebugStage("IMEService.candidateOrderOverride") {
-                    candidateOrderOverrideRepository.applyOrderFromSnapshot(
-                        input = insertString,
-                        candidates = filteredCandidates
-                    )
-                }
-            } else {
-                filteredCandidates
-            }
+        val orderedCandidates = applyMergedCandidateOrder(
+            input = insertString,
+            candidates = filteredCandidates,
+        )
 
         if (token == null || candidateRequestTracker.isCurrent(token)) {
             updateBunsetsuStateAfterCandidateMerge(
@@ -22398,17 +22388,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }.withoutHentaiganaCandidatesIfNeeded().distinctBy { it.string }
 
-        val orderedCandidates =
-            if (appPreference.candidate_order_override_enable_preference == true) {
-                measureDebugStage("IMEService.candidateOrderOverride") {
-                    candidateOrderOverrideRepository.applyOrderFromSnapshot(
-                        input = insertString,
-                        candidates = filteredCandidates
-                    )
-                }
-            } else {
-                filteredCandidates
-            }
+        val orderedCandidates = applyMergedCandidateOrder(
+            input = insertString,
+            candidates = filteredCandidates,
+        )
 
         if (candidateRequestTracker.isCurrent(token)) {
             updateBunsetsuStateAfterCandidateMerge(
@@ -22419,6 +22402,28 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         return orderedCandidates
+    }
+
+    private suspend fun applyMergedCandidateOrder(
+        input: String,
+        candidates: List<Candidate>,
+    ): List<Candidate> {
+        val promotedCandidates = measureDebugStage("IMEService.exactInputPromotion") {
+            ExactInputCandidatePromotionPolicy.promote(
+                input = input,
+                candidates = candidates,
+            )
+        }
+        return if (appPreference.candidate_order_override_enable_preference == true) {
+            measureDebugStage("IMEService.candidateOrderOverride") {
+                candidateOrderOverrideRepository.applyOrderFromSnapshot(
+                    input = input,
+                    candidates = promotedCandidates,
+                )
+            }
+        } else {
+            promotedCandidates
+        }
     }
 
     private suspend fun getSuggestionListEnglishKana(
