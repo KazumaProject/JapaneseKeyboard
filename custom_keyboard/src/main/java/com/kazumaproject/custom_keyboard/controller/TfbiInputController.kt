@@ -76,6 +76,7 @@ class TfbiInputController(
 
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
+    private var inputTextTransform: (String) -> String = { it }
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
 
@@ -116,6 +117,11 @@ class TfbiInputController(
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
         popupWindowAnchorProvider = provider
+    }
+
+    fun setInputTextTransform(transform: (String) -> String) {
+        inputTextTransform = transform
+        popupView?.setInputTextTransform(transform)
     }
 
     fun attach(
@@ -311,6 +317,7 @@ class TfbiInputController(
         }
 
         popupView = TfbiFlickPopupView(context).apply {
+            setInputTextTransform(inputTextTransform)
             // ▼▼▼ 修正: 色設定があれば適用 ▼▼▼
             if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
                 setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)

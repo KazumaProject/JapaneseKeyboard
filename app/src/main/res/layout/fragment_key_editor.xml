@@ -327,6 +327,42 @@
                     tools:text="My Keyboard" />
             </com.google.android.material.textfield.TextInputLayout>
 
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/double_tap_action_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:hint="@string/double_tap_action"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <AutoCompleteTextView
+                    android:id="@+id/double_tap_action_spinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    tools:text="Caps Lock" />
+            </com.google.android.material.textfield.TextInputLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/double_tap_target_layout"
+                style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:hint="@string/custom_keyboard_target_hint"
+                android:visibility="gone"
+                tools:visibility="visible">
+
+                <AutoCompleteTextView
+                    android:id="@+id/double_tap_target_spinner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="none"
+                    tools:text="My Keyboard" />
+            </com.google.android.material.textfield.TextInputLayout>
+
             <LinearLayout
                 android:id="@+id/key_icon_override_group"
                 android:layout_width="match_parent"

@@ -94,6 +94,12 @@ data class KeyDefinitionDto(
     val iconValue: String? = null,
     @SerializedName("action")
     val action: String? = null,
+    @SerializedName("doubleTapEnabled")
+    val doubleTapEnabled: Boolean? = null,
+    @SerializedName("doubleTapAction")
+    val doubleTapAction: String? = null,
+    @SerializedName("doubleTapPolicy")
+    val doubleTapPolicy: String? = null,
     @SerializedName("rowUnits")
     val rowUnits: Int? = null,
     @SerializedName("columnUnits")

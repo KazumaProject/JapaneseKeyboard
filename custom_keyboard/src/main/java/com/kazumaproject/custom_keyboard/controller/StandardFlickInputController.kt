@@ -97,6 +97,10 @@ class StandardFlickInputController(
         popupWindowAnchorProvider = provider
     }
 
+    fun setInputTextTransform(transform: (String) -> String) {
+        popupView.setInputTextTransform(transform)
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     fun attach(
         button: View,
