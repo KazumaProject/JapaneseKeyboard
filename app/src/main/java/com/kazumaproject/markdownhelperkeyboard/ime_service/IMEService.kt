@@ -4902,6 +4902,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return true
     }
 
+
+    override fun onEvaluateFullscreenMode(): Boolean {
+        val isFullscreenModeAllowed: Boolean =
+            resources.getBoolean(R.bool.config_allow_fullscreen_mode)
+
+        if (super.onEvaluateFullscreenMode() && isFullscreenModeAllowed) {
+            // TODO: Remove this hack. Actually we should not really assume NO_EXTRACT_UI
+            // implies NO_FULLSCREEN. However, the framework mistakenly does.  i.e. NO_EXTRACT_UI
+            // without NO_FULLSCREEN doesn't work as expected. Because of this we need this
+            // hack for now.  Let's get rid of this once the framework gets fixed.
+            val ei = getCurrentInputEditorInfo()
+            return !(ei != null && ((ei.imeOptions and EditorInfo.IME_FLAG_NO_EXTRACT_UI) != 0))
+        }
+        return false
+    }
+
     /**
      * FloatingDockViewを非表示にします。
      */
