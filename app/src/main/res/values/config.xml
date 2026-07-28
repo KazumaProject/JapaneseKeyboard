@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <bool name="config_allow_fullscreen_mode">false</bool>
+</resources>
