@@ -1,9 +1,13 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
 import android.content.Context
+import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.kazumaproject.custom_keyboard.data.KeyCharacterCase
+import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
+import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
@@ -11,6 +15,7 @@ import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryReposit
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
@@ -19,6 +24,85 @@ import kotlin.system.measureNanoTime
 
 @RunWith(AndroidJUnit4::class)
 class ConversionPerformanceInstrumentedProbeTest {
+    @Test
+    fun compareConversionWithDefinedAndUppercaseKeyPresentation() = runBlocking {
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val arguments = InstrumentationRegistry.getArguments()
+        assumeTrue(arguments.getString("keyCaseConversionProbe") == "true")
+        val iterations = arguments.getString("keyCaseConversionIterations")?.toIntOrNull() ?: 30
+        val input = "わたしはきのうともだちとえきまえであいました"
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            KanaKanjiEngineEntryPoint::class.java,
+        )
+        val engine = entryPoint.kanaKanjiEngine()
+        val repository = entryPoint.userDictionaryRepository()
+        lateinit var keyboard: FlickKeyboardView
+
+        instrumentation.runOnMainSync {
+            keyboard = FlickKeyboardView(
+                ContextThemeWrapper(
+                    context,
+                    com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar,
+                ),
+            ).apply {
+                setKeyboard(KeyboardDefaultLayouts.createQwertyTemplateLayout())
+            }
+        }
+
+        repeat(30) {
+            engine.convertForProbe(input, repository)
+        }
+
+        val asDefinedNanos = LongArray(iterations)
+        val uppercaseNanos = LongArray(iterations)
+        var asDefinedCandidates: List<Candidate> = emptyList()
+        var uppercaseCandidates: List<Candidate> = emptyList()
+
+        suspend fun measure(
+            characterCase: KeyCharacterCase,
+            samples: LongArray,
+            index: Int,
+            capture: (List<Candidate>) -> Unit,
+        ) {
+            instrumentation.runOnMainSync {
+                keyboard.setKeyCharacterCase(characterCase)
+            }
+            samples[index] = measureNanoTime {
+                capture(engine.convertForProbe(input, repository))
+            }
+        }
+
+        repeat(iterations) { index ->
+            if (index % 2 == 0) {
+                measure(KeyCharacterCase.AS_DEFINED, asDefinedNanos, index) {
+                    asDefinedCandidates = it
+                }
+                measure(KeyCharacterCase.UPPERCASE, uppercaseNanos, index) {
+                    uppercaseCandidates = it
+                }
+            } else {
+                measure(KeyCharacterCase.UPPERCASE, uppercaseNanos, index) {
+                    uppercaseCandidates = it
+                }
+                measure(KeyCharacterCase.AS_DEFINED, asDefinedNanos, index) {
+                    asDefinedCandidates = it
+                }
+            }
+        }
+
+        assertEquals(asDefinedCandidates, uppercaseCandidates)
+        val asDefinedAverageUs = asDefinedNanos.average() / 1_000.0
+        val uppercaseAverageUs = uppercaseNanos.average() / 1_000.0
+        println(
+            "KEY_CASE_CONVERSION_ISOLATION iterations=$iterations " +
+                    "asDefinedAverageUs=$asDefinedAverageUs " +
+                    "uppercaseAverageUs=$uppercaseAverageUs " +
+                    "ratio=${uppercaseAverageUs / asDefinedAverageUs} " +
+                    "candidateCount=${uppercaseCandidates.size}",
+        )
+    }
 
     @Test
     fun measureProductionDiConversionPerformance() = runBlocking {

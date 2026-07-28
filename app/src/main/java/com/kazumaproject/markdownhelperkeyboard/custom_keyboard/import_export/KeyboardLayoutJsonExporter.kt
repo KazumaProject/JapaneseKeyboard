@@ -2,6 +2,8 @@ package com.kazumaproject.markdownhelperkeyboard.custom_keyboard.import_export
 
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
+import com.kazumaproject.custom_keyboard.data.KeyActionMapper
+import com.kazumaproject.custom_keyboard.data.automaticDoubleTapPolicy
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.FullKeyboardLayout
 import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.KeyWithFlicks
 
@@ -84,6 +86,15 @@ private fun exportLayoutName(rawName: String?, layoutId: Long): String {
 }
 
 internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
+    val doubleTapAction = this.key.doubleTapAction.takeIf { this.key.isSpecialKey }
+    val doubleTapPolicy = doubleTapAction
+        ?.let(KeyActionMapper::toKeyAction)
+        ?.let { action ->
+            automaticDoubleTapPolicy(
+                normalAction = KeyActionMapper.toKeyAction(this.key.action),
+                doubleTapAction = action
+            ).serializedName
+        }
     return KeyWithFlicksExportDto(
         key = KeyDefinitionDto(
             keyId = this.key.keyId,
@@ -100,6 +111,9 @@ internal fun KeyWithFlicks.toExportDto(): KeyWithFlicksExportDto {
             iconType = this.key.iconType,
             iconValue = this.key.iconValue,
             action = this.key.action,
+            doubleTapEnabled = doubleTapAction != null,
+            doubleTapAction = doubleTapAction,
+            doubleTapPolicy = doubleTapPolicy,
             rowUnits = this.key.rowUnits,
             columnUnits = this.key.columnUnits,
             rowSpanUnits = this.key.rowSpanUnits,

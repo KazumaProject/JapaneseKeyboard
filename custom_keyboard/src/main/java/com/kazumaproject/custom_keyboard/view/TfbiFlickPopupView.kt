@@ -43,6 +43,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
     }
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
+    private var inputTextTransform: (String) -> String = { it }
 
     private val rects = mutableMapOf<TfbiFlickDirection, RectF>()
     private var cornerRadius = 20f
@@ -77,6 +78,11 @@ class TfbiFlickPopupView(context: Context) : View(context) {
     fun setCharacters(tapChar: String, petalChars: Map<TfbiFlickDirection, String>) {
         this.tapCharacter = tapChar
         this.petalCharacters = petalChars
+        invalidate()
+    }
+
+    fun setInputTextTransform(transform: (String) -> String) {
+        inputTextTransform = transform
         invalidate()
     }
 
@@ -118,7 +124,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
                 if (highlightedDirection == TfbiFlickDirection.TAP) highlightBgPaint else bgPaint
             canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
             canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
-            drawTextCentered(canvas, tapCharacter, rect)
+            drawTextCentered(canvas, inputTextTransform(tapCharacter), rect)
         }
 
         for ((direction, char) in petalCharacters) {
@@ -126,7 +132,7 @@ class TfbiFlickPopupView(context: Context) : View(context) {
                 val paint = if (highlightedDirection == direction) highlightBgPaint else bgPaint
                 canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
                 canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
-                drawTextCentered(canvas, char, rect)
+                drawTextCentered(canvas, inputTextTransform(char), rect)
             }
         }
     }

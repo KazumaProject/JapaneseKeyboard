@@ -46,6 +46,7 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
     private var popupTextSizeSp: Float = 19f
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
+    private var inputTextTransform: (String) -> String = { it }
 
     private class YOffsetSpan(private val yOffset: Int) : ReplacementSpan() {
         override fun getSize(
@@ -118,20 +119,24 @@ class StandardFlickPopupView(context: Context) : AppCompatTextView(context) {
         colorTheme?.let { applyTheme(it, direction) }
     }
 
+    fun setInputTextTransform(transform: (String) -> String) {
+        inputTextTransform = transform
+    }
+
     fun updateText(text: String?) {
         if (text.isNullOrEmpty()) {
             this.text = ""
             return
         }
-        this.text = createSpannableText(text)
+        this.text = createSpannableText(inputTextTransform(text))
     }
 
     fun updateMultiCharText(characters: Map<FlickDirection, String>) {
-        val up = characters[FlickDirection.UP] ?: ""
-        val left = characters[FlickDirection.UP_LEFT_FAR] ?: ""
-        val tap = characters[FlickDirection.TAP] ?: ""
-        val right = characters[FlickDirection.UP_RIGHT_FAR] ?: ""
-        val down = characters[FlickDirection.DOWN] ?: ""
+        val up = inputTextTransform(characters[FlickDirection.UP] ?: "")
+        val left = inputTextTransform(characters[FlickDirection.UP_LEFT_FAR] ?: "")
+        val tap = inputTextTransform(characters[FlickDirection.TAP] ?: "")
+        val right = inputTextTransform(characters[FlickDirection.UP_RIGHT_FAR] ?: "")
+        val down = inputTextTransform(characters[FlickDirection.DOWN] ?: "")
 
         val tapSize = popupTextSizeSp.coerceIn(8f, 48f)
         val sideSize = tapSize * 0.58f

@@ -668,6 +668,8 @@
     <string name="special_key">特別なキー</string>
     <string name="key_label">キーの表示ラベル</string>
     <string name="key_action">キーのアクション</string>
+    <string name="double_tap_action">ダブルタップのアクション</string>
+    <string name="double_tap_disabled">なし</string>
     <string name="setting_flick">フリック設定</string>
     <string name="tap">タップ</string>
     <string name="flick_left">左フリック</string>
