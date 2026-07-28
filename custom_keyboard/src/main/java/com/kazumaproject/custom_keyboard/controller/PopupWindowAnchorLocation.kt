@@ -23,3 +23,28 @@ internal fun getLocationRelativeToWindowAnchor(
         keyLocation[1] - windowLocation[1]
     )
 }
+
+internal fun getLocationRelativeToWindowAnchor(
+    keyAnchor: View,
+    windowAnchor: View?,
+    outLocation: IntArray,
+    keyLocationScratch: IntArray,
+    windowLocationScratch: IntArray
+) {
+    require(outLocation.size >= 2)
+    require(keyLocationScratch.size >= 2)
+    require(windowLocationScratch.size >= 2)
+
+    val resolvedWindowAnchor = windowAnchor ?: keyAnchor
+
+    if (keyAnchor === resolvedWindowAnchor) {
+        keyAnchor.getLocationInWindow(outLocation)
+        return
+    }
+
+    keyAnchor.getLocationOnScreen(keyLocationScratch)
+    resolvedWindowAnchor.getLocationOnScreen(windowLocationScratch)
+
+    outLocation[0] = keyLocationScratch[0] - windowLocationScratch[0]
+    outLocation[1] = keyLocationScratch[1] - windowLocationScratch[1]
+}
