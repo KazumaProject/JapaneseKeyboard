@@ -10,10 +10,10 @@ import android.graphics.RectF
 import android.util.TypedValue
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.graphics.toColorInt
-import androidx.core.graphics.withRotation
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
+import kotlin.math.min
 
 /**
  * 通常フリック時に表示される、方向を示す矢印型のポップアップ
@@ -33,7 +33,6 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
 
     private val backgroundPath = Path()
     private val textBounds = Rect()
-    private var viewRotation = 0f
     private var currentDirection: FlickDirection = FlickDirection.TAP
 
     // カラーテーマから受け取る色のプレースホルダー
@@ -66,13 +65,6 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
 
     fun setFlickDirection(direction: FlickDirection) {
         this.currentDirection = direction
-        this.viewRotation = when (direction) {
-            FlickDirection.UP -> 90f
-            FlickDirection.DOWN -> -90f
-            FlickDirection.UP_LEFT_FAR -> 0f
-            FlickDirection.UP_RIGHT_FAR -> 180f
-            else -> 0f
-        }
         invalidate()
     }
 
@@ -102,13 +94,8 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
 
         updatePath(w, h)
 
-        // 背景と枠線の両方が回転されるように、withRotationブロック内で描画
-        canvas.withRotation(viewRotation, w / 2f, h / 2f) {
-            // 1. 背景（塗りつぶし）を描画
-            drawPath(backgroundPath, backgroundPaint)
-            // 2. 枠線を描画
-            drawPath(backgroundPath, strokePaint)
-        }
+        canvas.drawPath(backgroundPath, backgroundPaint)
+        canvas.drawPath(backgroundPath, strokePaint)
 
         val textToDraw = this.text.toString()
         val textPaint = this.paint
@@ -129,32 +116,122 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     private fun updatePath(w: Float, h: Float) {
         backgroundPath.reset()
 
-        val cornerRadius = 24f
-        val pointerHeight = 35f
-        val showPointer = currentDirection != FlickDirection.TAP
+        val cornerRadius = min(24f, min(w, h) / 2f)
+        val pointerLength = min(35f, min(w, h))
 
-        if (showPointer) {
-            val rectWidth = w - pointerHeight
-
-            backgroundPath.moveTo(cornerRadius, 0f)
-            backgroundPath.lineTo(rectWidth, 0f)
-            backgroundPath.lineTo(w, h / 2f)
-            backgroundPath.lineTo(rectWidth, h)
-            backgroundPath.lineTo(cornerRadius, h)
-            backgroundPath.quadTo(0f, h, 0f, h - cornerRadius)
-            backgroundPath.lineTo(0f, cornerRadius)
-            backgroundPath.quadTo(0f, 0f, cornerRadius, 0f)
-
-        } else {
-            backgroundPath.addRoundRect(
+        when (currentDirection) {
+            FlickDirection.TAP -> backgroundPath.addRoundRect(
                 RectF(0f, 0f, w, h),
                 cornerRadius,
                 cornerRadius,
                 Path.Direction.CW
             )
+
+            FlickDirection.UP -> updateDownPointingPath(
+                w = w,
+                h = h,
+                cornerRadius = cornerRadius,
+                pointerLength = pointerLength
+            )
+
+            FlickDirection.DOWN -> updateUpPointingPath(
+                w = w,
+                h = h,
+                cornerRadius = cornerRadius,
+                pointerLength = pointerLength
+            )
+
+            FlickDirection.UP_LEFT_FAR,
+            FlickDirection.UP_LEFT -> updateRightPointingPath(
+                w = w,
+                h = h,
+                cornerRadius = cornerRadius,
+                pointerLength = pointerLength
+            )
+
+            FlickDirection.UP_RIGHT_FAR,
+            FlickDirection.UP_RIGHT -> updateLeftPointingPath(
+                w = w,
+                h = h,
+                cornerRadius = cornerRadius,
+                pointerLength = pointerLength
+            )
         }
 
         backgroundPath.close()
+    }
+
+    private fun updateRightPointingPath(
+        w: Float,
+        h: Float,
+        cornerRadius: Float,
+        pointerLength: Float
+    ) {
+        val bodyRight = w - pointerLength
+        val radius = min(cornerRadius, min(bodyRight, h) / 2f)
+        backgroundPath.moveTo(radius, 0f)
+        backgroundPath.lineTo(bodyRight, 0f)
+        backgroundPath.lineTo(w, h / 2f)
+        backgroundPath.lineTo(bodyRight, h)
+        backgroundPath.lineTo(radius, h)
+        backgroundPath.quadTo(0f, h, 0f, h - radius)
+        backgroundPath.lineTo(0f, radius)
+        backgroundPath.quadTo(0f, 0f, radius, 0f)
+    }
+
+    private fun updateLeftPointingPath(
+        w: Float,
+        h: Float,
+        cornerRadius: Float,
+        pointerLength: Float
+    ) {
+        val bodyLeft = pointerLength
+        val bodyWidth = w - bodyLeft
+        val radius = min(cornerRadius, min(bodyWidth, h) / 2f)
+        backgroundPath.moveTo(w - radius, 0f)
+        backgroundPath.lineTo(bodyLeft, 0f)
+        backgroundPath.lineTo(0f, h / 2f)
+        backgroundPath.lineTo(bodyLeft, h)
+        backgroundPath.lineTo(w - radius, h)
+        backgroundPath.quadTo(w, h, w, h - radius)
+        backgroundPath.lineTo(w, radius)
+        backgroundPath.quadTo(w, 0f, w - radius, 0f)
+    }
+
+    private fun updateDownPointingPath(
+        w: Float,
+        h: Float,
+        cornerRadius: Float,
+        pointerLength: Float
+    ) {
+        val bodyBottom = h - pointerLength
+        val radius = min(cornerRadius, min(w, bodyBottom) / 2f)
+        backgroundPath.moveTo(radius, 0f)
+        backgroundPath.lineTo(w - radius, 0f)
+        backgroundPath.quadTo(w, 0f, w, radius)
+        backgroundPath.lineTo(w, bodyBottom)
+        backgroundPath.lineTo(w / 2f, h)
+        backgroundPath.lineTo(0f, bodyBottom)
+        backgroundPath.lineTo(0f, radius)
+        backgroundPath.quadTo(0f, 0f, radius, 0f)
+    }
+
+    private fun updateUpPointingPath(
+        w: Float,
+        h: Float,
+        cornerRadius: Float,
+        pointerLength: Float
+    ) {
+        val bodyTop = pointerLength
+        val bodyHeight = h - bodyTop
+        val radius = min(cornerRadius, min(w, bodyHeight) / 2f)
+        backgroundPath.moveTo(w / 2f, 0f)
+        backgroundPath.lineTo(w, bodyTop)
+        backgroundPath.lineTo(w, h - radius)
+        backgroundPath.quadTo(w, h, w - radius, h)
+        backgroundPath.lineTo(radius, h)
+        backgroundPath.quadTo(0f, h, 0f, h - radius)
+        backgroundPath.lineTo(0f, bodyTop)
     }
 
     // ▼▼▼ 追加: dpをピクセルに変換するヘルパー関数 ▼▼▼
