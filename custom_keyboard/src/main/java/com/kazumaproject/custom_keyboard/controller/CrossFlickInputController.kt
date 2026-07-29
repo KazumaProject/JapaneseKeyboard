@@ -2,17 +2,11 @@ package com.kazumaproject.custom_keyboard.controller
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Color
 import android.graphics.PointF
-import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
-import android.view.ViewTreeObserver
-import android.view.WindowManager
 import android.widget.Button
-import android.widget.PopupWindow
-import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
@@ -100,7 +94,7 @@ class CrossFlickInputController(
 
     var listener: CrossFlickListener? = null
 
-    private var popupWindowAnchorProvider: (() -> View?)? = null
+    private var popupOverlayHostProvider: (() -> View?)? = null
 
     private var inputMode: InputMode = InputMode.ACTION
     private var anchorView: View? = null
@@ -112,11 +106,10 @@ class CrossFlickInputController(
     private var textMap: Map<FlickDirection, String> = emptyMap()
     private var longPressTextMap: Map<FlickDirection, String> = emptyMap()
 
-    private val actionPopupWindows = mutableMapOf<FlickDirection, PopupWindow>()
     private val actionPopupViews = mutableMapOf<FlickDirection, CrossFlickPopupView>()
 
-    private val directionalPopupMap = mutableMapOf<FlickDirection, PopupWindow>()
-    private var currentVisibleDirectionalPopup: PopupWindow? = null
+    private val directionalPopupMap = mutableMapOf<FlickDirection, DirectionalKeyPopupView>()
+    private var currentVisibleDirectionalPopup: DirectionalKeyPopupView? = null
     private var currentVisibleDirectional: FlickDirection? = null
     private var directionalPopupCacheDirty = true
     private var directionalPopupAnchorWidth = -1
@@ -124,30 +117,11 @@ class CrossFlickInputController(
     private var originalKeyText: CharSequence? = null
     private val popupAnchorLocation = IntArray(2)
     private val popupKeyLocationScratch = IntArray(2)
-    private val popupWindowLocationScratch = IntArray(2)
+    private val popupHostLocationScratch = IntArray(2)
     private val popupPositionScratch = IntArray(2)
-    private var trackedPopupAnchor: View? = null
-    private var trackedPopupViewTreeObserver: ViewTreeObserver? = null
-    private var lastPopupAnchorX = Int.MIN_VALUE
-    private var lastPopupAnchorY = Int.MIN_VALUE
-    private var lastPopupAnchorWidth = -1
-    private var lastPopupAnchorHeight = -1
-    private val popupGlobalLayoutListener = ViewTreeObserver.OnGlobalLayoutListener {
-        repositionVisiblePopupsIfAnchorMoved()
-    }
-
-    private val gridPopup = PopupWindow(
-        CrossFlickPopupView(context),
-        WindowManager.LayoutParams.WRAP_CONTENT,
-        WindowManager.LayoutParams.WRAP_CONTENT,
-        false
-    ).apply {
-        setBackgroundDrawable(Color.TRANSPARENT.toDrawable())
-        isClippingEnabled = false
+    private val popupOverlay = KeyboardPopupOverlay(::positionVisiblePopupsBeforeDraw)
+    private val gridPopupView = CrossFlickPopupView(context).apply {
         elevation = 8f
-        animationStyle = 0
-        enterTransition = null
-        exitTransition = null
     }
 
     private val controllerScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
@@ -186,17 +160,17 @@ class CrossFlickInputController(
             textColor = cross.textColor
         )
         actionPopupViews.values.forEach { it.applyPopupViewStyle(crossPopupStyle) }
-        (gridPopup.contentView as? CrossFlickPopupView)?.applyPopupViewStyle(crossPopupStyle)
+        gridPopupView.applyPopupViewStyle(crossPopupStyle)
         invalidateDirectionalPopupCache()
     }
 
-    fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
-        popupWindowAnchorProvider = provider
+    fun setPopupOverlayHostProvider(provider: (() -> View?)?) {
+        popupOverlayHostProvider = provider
     }
 
     fun setInputTextTransform(transform: (String) -> String) {
         inputTextTransform = transform
-        (gridPopup.contentView as? CrossFlickPopupView)?.setInputTextTransform(transform)
+        gridPopupView.setInputTextTransform(transform)
         actionPopupViews.values.forEach { it.setInputTextTransform(transform) }
         invalidateDirectionalPopupCache()
     }
@@ -421,7 +395,7 @@ class CrossFlickInputController(
             }
 
             InputMode.TEXT -> {
-                if (gridPopup.isShowing) {
+                if (popupOverlay.isShowing(gridPopupView)) {
                     highlightGrid(direction)
                 } else {
                     showDirectionalPopup(direction)
@@ -531,8 +505,7 @@ class CrossFlickInputController(
         val flickAction = resolveAction(direction) ?: return
         if (!isVisiblePopupAction(flickAction)) return
         val anchor = anchorView ?: return
-        val windowAnchor = resolveWindowAnchor(anchor)
-        if (!isAnchorReady(anchor, windowAnchor)) return
+        if (!anchor.isAttachedToWindow) return
 
         val popupView = CrossFlickPopupView(context).apply {
             setInputTextTransform(inputTextTransform)
@@ -545,43 +518,24 @@ class CrossFlickInputController(
             )
             popupColorTheme?.let { setColors(it) }
             if (highlighted) highlightDirection(direction)
-        }
-
-        val popupWindow = PopupWindow(
-            popupView,
-            (anchor.width * (crossPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f)).toInt().coerceAtLeast(1),
-            (anchor.height * (crossPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f)).toInt().coerceAtLeast(1),
-            false
-        ).apply {
-            isClippingEnabled = false
             elevation = 8f
-            animationStyle = 0
-            enterTransition = null
-            exitTransition = null
         }
+        val scale = crossPopupStyle.sizeScalePercent.coerceIn(50, 200) / 100f
+        val popupWidth = (anchor.width * scale).toInt().coerceAtLeast(1)
+        val popupHeight = (anchor.height * scale).toInt().coerceAtLeast(1)
 
-        readPopupAnchorLocation(anchor, windowAnchor)
-        resolveActionPopupPosition(
-            direction = direction,
+        // Register first so the overlay's initial pre-draw placement can include this view.
+        actionPopupViews[direction] = popupView
+        val shown = popupOverlay.show(
             anchor = anchor,
-            anchorX = popupAnchorLocation[0],
-            anchorY = popupAnchorLocation[1]
+            preferredHost = resolvePreferredOverlayHost(),
+            popupView = popupView,
+            width = popupWidth,
+            height = popupHeight
         )
 
-        val shown = runCatching {
-            popupWindow.showAtLocation(
-                windowAnchor,
-                Gravity.NO_GRAVITY,
-                popupPositionScratch[0],
-                popupPositionScratch[1]
-            )
-            true
-        }.getOrDefault(false)
-
-        if (shown) {
-            actionPopupWindows[direction] = popupWindow
-            actionPopupViews[direction] = popupView
-            startPopupPositionTracking()
+        if (!shown) {
+            actionPopupViews.remove(direction)
         }
     }
 
@@ -596,13 +550,14 @@ class CrossFlickInputController(
             FlickDirection.UP_LEFT_FAR,
             FlickDirection.UP_RIGHT_FAR
         ).forEach { direction ->
-            val existingPopup = actionPopupWindows[direction]
             val existingPopupView = actionPopupViews[direction]
-            if (existingPopup?.isShowing == true && existingPopupView != null) {
+            if (
+                existingPopupView != null &&
+                popupOverlay.isShowing(existingPopupView)
+            ) {
                 existingPopupView.highlightDirection(null)
             } else {
-                existingPopup?.dismiss()
-                actionPopupWindows.remove(direction)
+                existingPopupView?.let(popupOverlay::dismiss)
                 actionPopupViews.remove(direction)
                 showActionPopup(direction, highlighted = false)
             }
@@ -618,10 +573,8 @@ class CrossFlickInputController(
 
     // 表示中のアクションポップアップを全て閉じてマップをクリアする。
     private fun dismissAllActionPopups() {
-        actionPopupWindows.values.forEach { if (it.isShowing) it.dismiss() }
-        actionPopupWindows.clear()
+        actionPopupViews.values.forEach(popupOverlay::dismiss)
         actionPopupViews.clear()
-        stopPopupPositionTrackingIfNoPopupsVisible()
     }
 
     // TEXT モードの方向ポップアップを必要なときだけ生成し、同じキーでは再利用する。
@@ -634,7 +587,7 @@ class CrossFlickInputController(
             return
         }
 
-        directionalPopupMap.values.forEach { if (it.isShowing) it.dismiss() }
+        directionalPopupMap.values.forEach(popupOverlay::dismiss)
         directionalPopupMap.clear()
         currentVisibleDirectionalPopup = null
         currentVisibleDirectional = null
@@ -678,18 +631,12 @@ class CrossFlickInputController(
                 }
             }.let { (it * scale).toInt().coerceAtLeast(1) }
 
-            directionalPopupMap[direction] = PopupWindow(
-                popupView,
-                popupWidth,
-                popupHeight,
-                false
-            ).apply {
-                isClippingEnabled = false
-                elevation = 8f
-                animationStyle = 0
-                enterTransition = null
-                exitTransition = null
-            }
+            popupView.elevation = 8f
+            popupView.measure(
+                View.MeasureSpec.makeMeasureSpec(popupWidth, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(popupHeight, View.MeasureSpec.EXACTLY)
+            )
+            directionalPopupMap[direction] = popupView
         }
 
         directionalPopupAnchorWidth = currentAnchor.width
@@ -704,65 +651,40 @@ class CrossFlickInputController(
             return
         }
 
-        currentVisibleDirectionalPopup?.dismiss()
+        currentVisibleDirectionalPopup?.let(popupOverlay::dismiss)
 
         val popupToShow = directionalPopupMap[direction] ?: return
         val currentAnchor = anchorView ?: return
-        val windowAnchor = resolveWindowAnchor(currentAnchor)
-        if (!isAnchorReady(currentAnchor, windowAnchor)) {
+        if (!currentAnchor.isAttachedToWindow) {
             currentVisibleDirectionalPopup = null
             currentVisibleDirectional = null
             return
         }
-
-        readPopupAnchorLocation(currentAnchor, windowAnchor)
-        val anchorX = popupAnchorLocation[0]
-        val anchorY = popupAnchorLocation[1]
-        val keyWidth = currentAnchor.width
-        val keyHeight = currentAnchor.height
-
-        val popupWidth = popupToShow.width
-        val popupHeight = popupToShow.height
-
-        resolveDirectionalPopupPosition(
-            direction = direction,
-            anchorX = anchorX,
-            anchorY = anchorY,
-            keyWidth = keyWidth,
-            keyHeight = keyHeight,
-            popupWidth = popupWidth,
-            popupHeight = popupHeight
+        currentVisibleDirectionalPopup = popupToShow
+        currentVisibleDirectional = direction
+        val shown = popupOverlay.show(
+            anchor = currentAnchor,
+            preferredHost = resolvePreferredOverlayHost(),
+            popupView = popupToShow,
+            width = popupToShow.measuredWidth,
+            height = popupToShow.measuredHeight
         )
 
-        val shown = runCatching {
-            popupToShow.showAtLocation(
-                windowAnchor,
-                Gravity.NO_GRAVITY,
-                popupPositionScratch[0],
-                popupPositionScratch[1]
-            )
-            true
-        }.getOrDefault(false)
-
-        if (shown) {
-            currentVisibleDirectionalPopup = popupToShow
-            currentVisibleDirectional = direction
-            startPopupPositionTracking()
+        if (!shown) {
+            currentVisibleDirectionalPopup = null
+            currentVisibleDirectional = null
         }
     }
 
     // TEXT モードの長押し発動時にグリッドポップアップを表示する。既に表示中なら位置を更新する。
     private fun showGridPopup() {
         val currentAnchor = anchorView ?: return
-        val windowAnchor = resolveWindowAnchor(currentAnchor)
-        if (!isAnchorReady(currentAnchor, windowAnchor)) {
-            if (gridPopup.isShowing) {
-                gridPopup.dismiss()
-            }
+        if (!currentAnchor.isAttachedToWindow) {
+            popupOverlay.dismiss(gridPopupView)
             return
         }
 
-        val popupView = gridPopup.contentView as CrossFlickPopupView
+        val popupView = gridPopupView
         popupView.setInputTextTransform(inputTextTransform)
         popupView.applyPopupViewStyle(crossPopupStyle)
         popupColorTheme?.let { popupView.setColors(it) }
@@ -778,48 +700,19 @@ class CrossFlickInputController(
         )
         popupView.highlightDirection(currentDirection)
 
-        readPopupAnchorLocation(currentAnchor, windowAnchor)
         popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
-
-        resolveCenteredPopupPosition(
-            anchorX = popupAnchorLocation[0],
-            anchorY = popupAnchorLocation[1],
-            keyWidth = currentAnchor.width,
-            keyHeight = currentAnchor.height,
-            popupWidth = popupView.measuredWidth,
-            popupHeight = popupView.measuredHeight
+        popupOverlay.show(
+            anchor = currentAnchor,
+            preferredHost = resolvePreferredOverlayHost(),
+            popupView = popupView,
+            width = popupView.measuredWidth,
+            height = popupView.measuredHeight
         )
-
-        gridPopup.width = WindowManager.LayoutParams.WRAP_CONTENT
-        gridPopup.height = WindowManager.LayoutParams.WRAP_CONTENT
-
-        if (!gridPopup.isShowing) {
-            runCatching {
-                gridPopup.showAtLocation(
-                    windowAnchor,
-                    Gravity.NO_GRAVITY,
-                    popupPositionScratch[0],
-                    popupPositionScratch[1]
-                )
-            }
-        } else {
-            runCatching {
-                gridPopup.update(
-                    popupPositionScratch[0],
-                    popupPositionScratch[1],
-                    -1,
-                    -1
-                )
-            }
-        }
-        if (gridPopup.isShowing) {
-            startPopupPositionTracking()
-        }
     }
 
     // グリッドポップアップ内の対応セルをハイライトする。長押し中の指移動で呼ばれる。
     private fun highlightGrid(direction: FlickDirection) {
-        (gridPopup.contentView as? CrossFlickPopupView)?.highlightDirection(direction)
+        gridPopupView.highlightDirection(direction)
     }
 
     // グリッドポップアップに渡す表示文字マップを生成する。各方向で longPressTextMap を優先し、なければ textMap を使う。
@@ -849,53 +742,41 @@ class CrossFlickInputController(
 
     // TEXT モードのポップアップ（方向ポップアップとグリッドポップアップ）をすべて閉じる。
     private fun dismissDirectionalPopups(clearCache: Boolean = false) {
-        currentVisibleDirectionalPopup?.dismiss()
+        currentVisibleDirectionalPopup?.let(popupOverlay::dismiss)
         currentVisibleDirectionalPopup = null
         currentVisibleDirectional = null
-        directionalPopupMap.values.forEach { if (it.isShowing) it.dismiss() }
         if (clearCache) {
+            directionalPopupMap.values.forEach(popupOverlay::dismiss)
             directionalPopupMap.clear()
             directionalPopupAnchorWidth = -1
             directionalPopupAnchorHeight = -1
             directionalPopupCacheDirty = true
         }
-        if (gridPopup.isShowing) {
-            gridPopup.dismiss()
-        }
-        stopPopupPositionTrackingIfNoPopupsVisible()
+        popupOverlay.dismiss(gridPopupView)
     }
 
     // ACTION・TEXT 両モードのポップアップをすべて閉じる。
     fun dismissAllPopups(clearDirectionalCache: Boolean = false) {
         dismissAllActionPopups()
         dismissDirectionalPopups(clearCache = clearDirectionalCache)
-        stopPopupPositionTracking()
+        popupOverlay.dismissAll()
     }
 
     private fun invalidateDirectionalPopupCache() {
         dismissDirectionalPopups(clearCache = true)
     }
 
-    private fun resolveWindowAnchor(keyAnchor: View): View? {
-        return popupWindowAnchorProvider?.invoke() ?: keyAnchor
+    private fun resolvePreferredOverlayHost(): View? {
+        return popupOverlayHostProvider?.invoke()
     }
 
-    private fun isAnchorReady(keyAnchor: View, windowAnchor: View?): Boolean {
-        if (!keyAnchor.isAttachedToWindow) return false
-        if (windowAnchor == null) return false
-        if (!windowAnchor.isAttachedToWindow) return false
-        return windowAnchor.windowToken != null
-    }
-
-    private fun readPopupAnchorLocation(keyAnchor: View, windowAnchor: View?) {
-        // showAtLocation(NO_GRAVITY) receives coordinates relative to the containing window.
-        // Screen coordinates add the left navigation inset again when the device is rotated 270°.
-        getLocationRelativeToWindowAnchor(
+    private fun readPopupAnchorLocation(keyAnchor: View, overlayHost: View) {
+        getLocationRelativeToOverlayHost(
             keyAnchor = keyAnchor,
-            windowAnchor = windowAnchor,
+            overlayHost = overlayHost,
             outLocation = popupAnchorLocation,
             keyLocationScratch = popupKeyLocationScratch,
-            windowLocationScratch = popupWindowLocationScratch
+            hostLocationScratch = popupHostLocationScratch
         )
     }
 
@@ -968,109 +849,44 @@ class CrossFlickInputController(
         popupPositionScratch[1] = anchorY + keyHeight / 2 - popupHeight / 2
     }
 
-    private fun startPopupPositionTracking() {
-        val anchor = anchorView ?: return
-        val observer = anchor.viewTreeObserver
-        if (
-            trackedPopupAnchor === anchor &&
-            trackedPopupViewTreeObserver === observer &&
-            observer.isAlive
-        ) {
-            return
-        }
-
-        stopPopupPositionTracking()
-        if (!observer.isAlive) return
-
-        trackedPopupAnchor = anchor
-        trackedPopupViewTreeObserver = observer
-        observer.addOnGlobalLayoutListener(popupGlobalLayoutListener)
-
-        val windowAnchor = resolveWindowAnchor(anchor)
-        if (isAnchorReady(anchor, windowAnchor)) {
-            readPopupAnchorLocation(anchor, windowAnchor)
-            rememberPopupAnchorGeometry(anchor)
-        }
-    }
-
-    private fun stopPopupPositionTracking() {
-        trackedPopupViewTreeObserver?.let { observer ->
-            if (observer.isAlive) {
-                observer.removeOnGlobalLayoutListener(popupGlobalLayoutListener)
-            }
-        }
-        trackedPopupAnchor = null
-        trackedPopupViewTreeObserver = null
-        lastPopupAnchorX = Int.MIN_VALUE
-        lastPopupAnchorY = Int.MIN_VALUE
-        lastPopupAnchorWidth = -1
-        lastPopupAnchorHeight = -1
-    }
-
-    private fun stopPopupPositionTrackingIfNoPopupsVisible() {
-        val hasVisibleActionPopup = actionPopupWindows.values.any { it.isShowing }
-        val hasVisibleDirectionalPopup = currentVisibleDirectionalPopup?.isShowing == true
-        if (!hasVisibleActionPopup && !hasVisibleDirectionalPopup && !gridPopup.isShowing) {
-            stopPopupPositionTracking()
-        }
-    }
-
-    private fun rememberPopupAnchorGeometry(anchor: View) {
-        lastPopupAnchorX = popupAnchorLocation[0]
-        lastPopupAnchorY = popupAnchorLocation[1]
-        lastPopupAnchorWidth = anchor.width
-        lastPopupAnchorHeight = anchor.height
-    }
-
-    private fun repositionVisiblePopupsIfAnchorMoved() {
+    private fun positionVisiblePopupsBeforeDraw() {
         val anchor = anchorView ?: run {
-            stopPopupPositionTracking()
+            popupOverlay.dismissAll()
             return
         }
-        val windowAnchor = resolveWindowAnchor(anchor)
-        if (!isAnchorReady(anchor, windowAnchor)) {
-            stopPopupPositionTracking()
+        val overlayHost = popupOverlay.currentHost ?: return
+        if (!anchor.isAttachedToWindow || !overlayHost.isAttachedToWindow) {
+            popupOverlay.dismissAll()
             return
         }
 
-        readPopupAnchorLocation(anchor, windowAnchor)
-        val geometryUnchanged =
-            popupAnchorLocation[0] == lastPopupAnchorX &&
-                popupAnchorLocation[1] == lastPopupAnchorY &&
-                anchor.width == lastPopupAnchorWidth &&
-                anchor.height == lastPopupAnchorHeight
-        if (geometryUnchanged) return
-
-        rememberPopupAnchorGeometry(anchor)
-        repositionVisibleActionPopups(anchor)
-        repositionVisibleDirectionalPopup(anchor)
-        repositionGridPopup(anchor)
+        readPopupAnchorLocation(anchor, overlayHost)
+        positionVisibleActionPopups(anchor)
+        positionVisibleDirectionalPopup(anchor)
+        positionGridPopup(anchor)
     }
 
-    private fun repositionVisibleActionPopups(anchor: View) {
-        actionPopupWindows.forEach { (direction, popupWindow) ->
-            if (!popupWindow.isShowing) return@forEach
+    private fun positionVisibleActionPopups(anchor: View) {
+        actionPopupViews.forEach { (direction, popupView) ->
+            if (!popupOverlay.isShowing(popupView)) return@forEach
             resolveActionPopupPosition(
                 direction = direction,
                 anchor = anchor,
                 anchorX = popupAnchorLocation[0],
                 anchorY = popupAnchorLocation[1]
             )
-            runCatching {
-                popupWindow.update(
-                    popupPositionScratch[0],
-                    popupPositionScratch[1],
-                    -1,
-                    -1
-                )
-            }
+            popupOverlay.place(
+                popupView = popupView,
+                left = popupPositionScratch[0],
+                top = popupPositionScratch[1]
+            )
         }
     }
 
-    private fun repositionVisibleDirectionalPopup(anchor: View) {
-        val popupWindow = currentVisibleDirectionalPopup ?: return
+    private fun positionVisibleDirectionalPopup(anchor: View) {
+        val popupView = currentVisibleDirectionalPopup ?: return
         val direction = currentVisibleDirectional ?: return
-        if (!popupWindow.isShowing) return
+        if (!popupOverlay.isShowing(popupView)) return
 
         resolveDirectionalPopupPosition(
             direction = direction,
@@ -1078,39 +894,31 @@ class CrossFlickInputController(
             anchorY = popupAnchorLocation[1],
             keyWidth = anchor.width,
             keyHeight = anchor.height,
-            popupWidth = popupWindow.width,
-            popupHeight = popupWindow.height
+            popupWidth = popupView.measuredWidth,
+            popupHeight = popupView.measuredHeight
         )
-        runCatching {
-            popupWindow.update(
-                popupPositionScratch[0],
-                popupPositionScratch[1],
-                -1,
-                -1
-            )
-        }
+        popupOverlay.place(
+            popupView = popupView,
+            left = popupPositionScratch[0],
+            top = popupPositionScratch[1]
+        )
     }
 
-    private fun repositionGridPopup(anchor: View) {
-        if (!gridPopup.isShowing) return
-        val popupView = gridPopup.contentView ?: return
-        popupView.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED)
+    private fun positionGridPopup(anchor: View) {
+        if (!popupOverlay.isShowing(gridPopupView)) return
         resolveCenteredPopupPosition(
             anchorX = popupAnchorLocation[0],
             anchorY = popupAnchorLocation[1],
             keyWidth = anchor.width,
             keyHeight = anchor.height,
-            popupWidth = popupView.measuredWidth,
-            popupHeight = popupView.measuredHeight
+            popupWidth = gridPopupView.measuredWidth,
+            popupHeight = gridPopupView.measuredHeight
         )
-        runCatching {
-            gridPopup.update(
-                popupPositionScratch[0],
-                popupPositionScratch[1],
-                -1,
-                -1
-            )
-        }
+        popupOverlay.place(
+            popupView = gridPopupView,
+            left = popupPositionScratch[0],
+            top = popupPositionScratch[1]
+        )
     }
 }
 
