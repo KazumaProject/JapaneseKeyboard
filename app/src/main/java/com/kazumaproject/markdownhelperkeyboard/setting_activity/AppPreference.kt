@@ -75,6 +75,8 @@ object AppPreference {
     const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
     const val CUSTOM_KEYMAP_GUIDE_KEY = "flick_keymap_guide"
     const val LONG_PRESS_TIMEOUT_KEY = "long_press_timeout_preference"
+    const val DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY =
+        "delete_long_press_conversion_behavior"
     const val VIBRATION_KEY = "vibration_preference"
     const val VIBRATION_TIMING_KEY = "vibration_timing"
     const val KEY_SOUND_KEY = "key_sound_preference"
@@ -98,6 +100,8 @@ object AppPreference {
         FlickThresholdShape.Radial.preferenceValue
     )
     private val LONG_PRESS_TIMEOUT = Pair(LONG_PRESS_TIMEOUT_KEY, 300)
+    private val DELETE_LONG_PRESS_CONVERSION_BEHAVIOR =
+        Pair(DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY, "deferred")
     private val VIBRATION_PREFERENCE = Pair(VIBRATION_KEY, true)
     private val VIBRATION_TIMING_PREFERENCE = Pair(VIBRATION_TIMING_KEY, "both")
     private val KEY_SOUND_PREFERENCE = Pair(KEY_SOUND_KEY, false)
@@ -1611,6 +1615,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(LONG_PRESS_TIMEOUT.first, value ?: 300)
+        }
+
+    var delete_long_press_conversion_behavior: String
+        get() = preferences.getString(
+            DELETE_LONG_PRESS_CONVERSION_BEHAVIOR.first,
+            DELETE_LONG_PRESS_CONVERSION_BEHAVIOR.second,
+        ) ?: DELETE_LONG_PRESS_CONVERSION_BEHAVIOR.second
+        set(value) = preferences.edit {
+            it.putString(DELETE_LONG_PRESS_CONVERSION_BEHAVIOR.first, value)
         }
 
     var n_best_preference: Int?
