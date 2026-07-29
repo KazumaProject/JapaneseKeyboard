@@ -14,21 +14,58 @@ import org.robolectric.annotation.Config
 class CrossFlickInputControllerPopupPositionTest {
 
     @Test
-    fun normalKeyboardUsesWindowCoordinatesWhenSystemInsetMovesWindowOrigin() {
+    fun popupCoordinatesAreRelativeToOverlayHost() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
         val key = LocatedView(
-            context = ApplicationProvider.getApplicationContext(),
+            context = context,
             screenLocation = intArrayOf(560, 599),
             windowLocation = intArrayOf(434, 599)
         )
+        val overlayHost = LocatedView(
+            context = context,
+            screenLocation = intArrayOf(126, 95),
+            windowLocation = intArrayOf(0, 0)
+        )
 
         assertArrayEquals(
-            intArrayOf(434, 599),
-            readPopupAnchorLocation(keyAnchor = key, windowAnchor = key)
+            intArrayOf(434, 504),
+            readPopupAnchorLocation(keyAnchor = key, overlayHost = overlayHost)
         )
     }
 
     @Test
-    fun floatingKeyboardUsesCoordinatesRelativeToProvidedWindowAnchor() {
+    fun popupCoordinatesRemainStableWhenAnchorAndHostWindowMoveTogether() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val beforeMoveKey = LocatedView(
+            context = context,
+            screenLocation = intArrayOf(760, 640),
+            windowLocation = intArrayOf(760, 640)
+        )
+        val beforeMoveHost = LocatedView(
+            context = context,
+            screenLocation = intArrayOf(120, 80),
+            windowLocation = intArrayOf(120, 80)
+        )
+        val afterMoveKey = LocatedView(
+            context = context,
+            screenLocation = intArrayOf(760, 735),
+            windowLocation = intArrayOf(760, 735)
+        )
+        val afterMoveHost = LocatedView(
+            context = context,
+            screenLocation = intArrayOf(120, 175),
+            windowLocation = intArrayOf(120, 175)
+        )
+
+        assertArrayEquals(
+            readPopupAnchorLocation(beforeMoveKey, beforeMoveHost),
+            readPopupAnchorLocation(afterMoveKey, afterMoveHost)
+        )
+    }
+
+    @Test
+    @Config(qualifiers = "land")
+    fun overlayCoordinateRuleDoesNotChangeWithOrientation() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val key = LocatedView(
             context = context,
@@ -43,13 +80,13 @@ class CrossFlickInputControllerPopupPositionTest {
 
         assertArrayEquals(
             intArrayOf(640, 560),
-            readPopupAnchorLocation(keyAnchor = key, windowAnchor = windowAnchor)
+            readPopupAnchorLocation(keyAnchor = key, overlayHost = windowAnchor)
         )
     }
 
     private fun readPopupAnchorLocation(
         keyAnchor: View,
-        windowAnchor: View
+        overlayHost: View
     ): IntArray {
         val controller = CrossFlickInputController(
             context = ApplicationProvider.getApplicationContext(),
@@ -62,7 +99,7 @@ class CrossFlickInputControllerPopupPositionTest {
         ).apply {
             isAccessible = true
         }
-        method.invoke(controller, keyAnchor, windowAnchor)
+        method.invoke(controller, keyAnchor, overlayHost)
 
         return CrossFlickInputController::class.java
             .getDeclaredField("popupAnchorLocation")

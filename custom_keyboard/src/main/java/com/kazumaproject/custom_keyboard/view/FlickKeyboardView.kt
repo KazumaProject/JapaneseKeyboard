@@ -266,7 +266,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
         popupWindowAnchorProvider = provider
         flickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
-        crossFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
+        crossFlickControllers.forEach { it.setPopupOverlayHostProvider(provider) }
         standardFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         tfbiControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         flickLongPressControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
@@ -1537,7 +1537,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
-                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setPopupOverlayHostProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyleSet(
                             popupViewStyleSet.directional,
@@ -1877,7 +1877,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
-                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setPopupOverlayHostProvider(popupWindowAnchorProvider)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyleSet(
                             popupViewStyleSet.directional,

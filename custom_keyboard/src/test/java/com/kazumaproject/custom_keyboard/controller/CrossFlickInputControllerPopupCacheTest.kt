@@ -3,8 +3,8 @@ package com.kazumaproject.custom_keyboard.controller
 import android.content.Context
 import android.view.ContextThemeWrapper
 import android.view.MotionEvent
+import android.view.View
 import android.widget.Button
-import android.widget.PopupWindow
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
@@ -81,11 +81,11 @@ class CrossFlickInputControllerPopupCacheTest {
 
     @Suppress("UNCHECKED_CAST")
     private fun CrossFlickInputController.directionalPopups():
-        Map<FlickDirection, PopupWindow> {
+        Map<FlickDirection, View> {
         val field = CrossFlickInputController::class.java
             .getDeclaredField("directionalPopupMap")
             .apply { isAccessible = true }
-        return field.get(this) as Map<FlickDirection, PopupWindow>
+        return field.get(this) as Map<FlickDirection, View>
     }
 }
 
