@@ -54,6 +54,15 @@
 
     <PreferenceCategory android:title="@string/setting_category_operation_keys_title">
 
+        <ListPreference
+            android:defaultValue="deferred"
+            android:dialogTitle="@string/delete_long_press_conversion_behavior_title"
+            android:entries="@array/delete_long_press_conversion_behavior_entries"
+            android:entryValues="@array/delete_long_press_conversion_behavior_values"
+            android:key="delete_long_press_conversion_behavior"
+            android:title="@string/delete_long_press_conversion_behavior_title"
+            app:useSimpleSummaryProvider="true" />
+
         <SwitchPreferenceCompat
             android:defaultValue="true"
             android:key="delete_key_flick_left_preference"

@@ -744,6 +744,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.SUMIRE_KEYMAP_GUIDE_NUMBER_KEY,
         AppPreference.CUSTOM_KEYMAP_GUIDE_KEY,
         AppPreference.LONG_PRESS_TIMEOUT_KEY,
+        AppPreference.DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY,
         AppPreference.VIBRATION_KEY,
         AppPreference.VIBRATION_TIMING_KEY,
         AppPreference.KEY_SOUND_KEY,
@@ -1212,6 +1213,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         emptyList()
 
     private var deleteLongPressJob: Job? = null
+    private val deleteLongPressConversionGate = DeleteLongPressConversionGate()
     private var rightLongPressJob: Job? = null
     private var leftLongPressJob: Job? = null
     private var candidateTranslationJob: Job? = null
@@ -1333,6 +1335,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var flickThresholdShapePreferenceValue: FlickThresholdShape =
         FlickThresholdShape.Radial
     private var longPressTimeoutPreferenceValue: Int? = 300
+    private var deleteLongPressConversionBehavior =
+        DeleteLongPressConversionBehavior.Default
+    private var activeDeleteLongPressConversionBehavior:
+        DeleteLongPressConversionBehavior? = null
     private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowEmojiButtonPreference: Boolean? = false
@@ -2270,6 +2276,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = sensitivity
         flickThresholdShapePreferenceValue = thresholdShape
         longPressTimeoutPreferenceValue = longPressTimeout
+        deleteLongPressConversionBehavior =
+            DeleteLongPressConversionBehavior.fromPreferenceValue(
+                appPreference.delete_long_press_conversion_behavior
+            )
         isVibration = appPreference.vibration_preference ?: true
         vibrationTimingStr = appPreference.vibration_timing_preference ?: "both"
         isKeySoundEnabled = appPreference.key_sound_preference ?: false
@@ -14277,6 +14287,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         launch {
             var prevFlag: CandidateShowFlag? = null
             candidateRefreshRequests.collectLatest { request ->
+                deleteLongPressConversionGate.onCandidateRefreshStarted()
                 val currentFlag = request.flag
                 val insertString = request.input
                 Timber.d(
@@ -15286,7 +15297,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         requestInput: String,
         token: CandidateRequestToken? = null,
     ): Boolean {
-        return !suppressSuggestions &&
+        return deleteLongPressConversionGate.mayApplyCandidateResult() &&
+                !suppressSuggestions &&
                 requestInput.isNotEmpty() &&
                 inputString.value == requestInput &&
                 (token == null || candidateRequestTracker.isCurrent(token))
@@ -16177,6 +16189,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 preserveBunsetsuReconversionDraftOnNextProcessInput = false
             } else {
                 clearBunsetsuReconversionDraft()
+            }
+            if (deleteLongPressConversionGate.shouldRenderRawComposing(string)) {
+                Timber.d("deleteLongPress: render raw composing input=[%s]", string)
+                applyRawComposingFallback(string)
+                refreshReconversionUi()
+                return
             }
             if (suppressSuggestions) {
                 setComposingText(string, 1)
@@ -17198,7 +17216,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val henkanActive = isHenkan.get()
         val tailIsEmpty = stringInTail.get().isEmpty()
         val shouldCommitIdle = !bunsetusMultipleDetect || tailIsEmpty
-        if (!henkanActive && shouldCommitIdle) {
+        if (
+            !henkanActive &&
+            shouldCommitIdle &&
+            deleteLongPressConversionGate.mayApplyCandidateResult()
+        ) {
             requestCandidateRefresh(CandidateShowFlag.Idle)
         }
     }
@@ -22569,6 +22591,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         invalidateZeroQueryForEditorMutation()
         if (isKeyboardLayoutEditModeActive()) return
         if (deleteLongPressJob?.isActive == true) return
+        val behavior = deleteLongPressConversionBehavior
+        activeDeleteLongPressConversionBehavior = behavior
+        if (behavior.suspendsCandidateResultsDuringRepeat) {
+            if (!deleteLongPressConversionGate.beginRepeat()) {
+                activeDeleteLongPressConversionBehavior = null
+                return
+            }
+            candidateRequestTracker.invalidate()
+        }
         activeDeleteHistoryBatch = DeleteHistoryBatch(
             initialInput = inputString.value,
             initialTail = stringInTail.get(),
@@ -22596,7 +22627,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     val newString = current.dropLast(1)
                     _inputString.update { newString }
                     if (newString.isEmpty() && tailIsEmpty) {
-                        setComposingText("", 0)
+                        clearStyledComposingTextAfterFinalDelete(current)
                     }
                 }
 
@@ -22604,10 +22635,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
             // （連続タップ入力解除など）
             enableContinuousTapInput()
-
-            val flag = if (inputString.value.isEmpty()) CandidateShowFlag.Idle
-            else CandidateShowFlag.Updating
-            requestCandidateRefresh(flag)
+            if (
+                activeDeleteLongPressConversionBehavior ==
+                DeleteLongPressConversionBehavior.Continuous
+            ) {
+                val refreshFlag = if (inputString.value.isEmpty()) {
+                    CandidateShowFlag.Idle
+                } else {
+                    CandidateShowFlag.Updating
+                }
+                requestCandidateRefresh(refreshFlag, inputString.value)
+            }
         }
         deleteLongPressJob?.invokeOnCompletion {
             if (selectMode.value || !isEditHistoryEnabled()) {
@@ -22627,11 +22665,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    /**
+     * Removes the final composing character without collapsing composing spans to length zero.
+     *
+     * Some editor implementations warn when a styled composing range is replaced directly with an
+     * empty string. Finishing and deleting inside one batch removes those spans first and does not
+     * expose the temporary committed state to the display.
+     */
+    private fun clearStyledComposingTextAfterFinalDelete(previousInput: String) {
+        beginBatchEdit()
+        try {
+            finishComposingText()
+            val codePointCount = previousInput.codePointCount(0, previousInput.length)
+            if (codePointCount > 0) {
+                deleteSurroundingTextInCodePoints(codePointCount, 0)
+            }
+        } finally {
+            endBatchEdit()
+        }
+    }
+
     private fun stopDeleteLongPress() {
         deleteKeyLongKeyPressed.set(false)
         onDeleteLongPressUp.set(true)
         deleteLongPressJob?.cancel()
         deleteLongPressJob = null
+        if (
+            activeDeleteLongPressConversionBehavior ==
+            DeleteLongPressConversionBehavior.Deferred
+        ) {
+            val refreshFlag = deleteLongPressConversionGate.finishRepeat(inputString.value)
+            if (refreshFlag != null) {
+                enableContinuousTapInput()
+                candidateRequestTracker.invalidate()
+                Timber.d(
+                    "deleteLongPress: resume candidate refresh once input=[%s] flag=%s",
+                    inputString.value,
+                    refreshFlag,
+                )
+                requestCandidateRefresh(refreshFlag, inputString.value)
+            }
+        }
+        activeDeleteLongPressConversionBehavior = null
     }
 
     private fun enableContinuousTapInput() {
