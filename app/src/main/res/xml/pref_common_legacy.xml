@@ -45,6 +45,12 @@
             android:title="@string/keyboard_screen_landscape_size_preference_title" />
 
         <SwitchPreferenceCompat
+            android:defaultValue="@bool/config_allow_fullscreen_mode"
+            android:key="allow_fullscreen_mode_preference"
+            android:summary="@string/allow_fullscreen_mode_preference_summary"
+            android:title="@string/allow_fullscreen_mode_preference_title" />
+
+        <SwitchPreferenceCompat
             android:defaultValue="false"
             android:key="keyboard_floating_preference"
             android:summary="@string/keyboard_floating_preference_summary"

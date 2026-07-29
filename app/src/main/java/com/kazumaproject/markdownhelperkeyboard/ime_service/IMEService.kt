@@ -4916,18 +4916,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
 
     override fun onEvaluateFullscreenMode(): Boolean {
-        val isFullscreenModeAllowed: Boolean =
-            resources.getBoolean(R.bool.config_allow_fullscreen_mode)
+        val deviceDefault = resources.getBoolean(R.bool.config_allow_fullscreen_mode)
+        val isFullscreenModeAllowed =
+            appPreference.isFullscreenModeAllowed(defaultValue = deviceDefault)
+        val imeOptions = currentInputEditorInfo?.imeOptions ?: 0
 
-        if (super.onEvaluateFullscreenMode() && isFullscreenModeAllowed) {
-            // TODO: Remove this hack. Actually we should not really assume NO_EXTRACT_UI
-            // implies NO_FULLSCREEN. However, the framework mistakenly does.  i.e. NO_EXTRACT_UI
-            // without NO_FULLSCREEN doesn't work as expected. Because of this we need this
-            // hack for now.  Let's get rid of this once the framework gets fixed.
-            val ei = getCurrentInputEditorInfo()
-            return !(ei != null && ((ei.imeOptions and EditorInfo.IME_FLAG_NO_EXTRACT_UI) != 0))
-        }
-        return false
+        // Keep treating NO_EXTRACT_UI as NO_FULLSCREEN. Android's framework does not
+        // reliably support the former without the latter.
+        return FullscreenModePolicy.shouldUseFullscreenMode(
+            frameworkRequestsFullscreen = super.onEvaluateFullscreenMode(),
+            fullscreenModeAllowed = isFullscreenModeAllowed,
+            imeOptions = imeOptions,
+        )
     }
 
     /**

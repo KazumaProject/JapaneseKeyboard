@@ -81,6 +81,7 @@ object AppPreference {
     const val VIBRATION_TIMING_KEY = "vibration_timing"
     const val KEY_SOUND_KEY = "key_sound_preference"
     const val KEY_SOUND_VOLUME_PERCENT_KEY = "key_sound_volume_percent_preference"
+    const val ALLOW_FULLSCREEN_MODE_KEY = "allow_fullscreen_mode_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -1324,6 +1325,9 @@ object AppPreference {
         set(value) = preferences.edit {
             it.putBoolean(LANDSCAPE_FORCE_QWERTY_PREFERENCE.first, value)
         }
+
+    fun isFullscreenModeAllowed(defaultValue: Boolean): Boolean =
+        preferences.getBoolean(ALLOW_FULLSCREEN_MODE_KEY, defaultValue)
 
     var landscape_force_qwerty_romaji_preference: Boolean
         get() = preferences.getBoolean(

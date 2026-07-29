@@ -478,7 +478,12 @@ object SettingSearchIndex {
             "SwitchPreferenceCompat",
             "SwitchPreference" -> SettingDestinationType.SwitchPreference(
                 preferenceKey = key,
-                defaultValue = readBooleanAttribute(parser, "defaultValue", defaultValue = false),
+                defaultValue = readBooleanAttribute(
+                    context = context,
+                    parser = parser,
+                    name = "defaultValue",
+                    defaultValue = false,
+                ),
                 destinationId = destinationId,
                 highlightPreferenceKey = highlightPreferenceKey ?: key,
             )
@@ -610,10 +615,20 @@ object SettingSearchIndex {
     }
 
     private fun readBooleanAttribute(
+        context: Context,
         parser: XmlResourceParser,
         name: String,
         defaultValue: Boolean,
     ): Boolean {
+        listOf(ANDROID_NS, APP_NS).forEach { namespace ->
+            val resourceId = parser.getAttributeResourceValue(namespace, name, 0)
+            if (resourceId != 0) {
+                return runCatching {
+                    context.resources.getBoolean(resourceId)
+                }.getOrDefault(defaultValue)
+            }
+        }
+
         val raw = parser.getAttributeValue(ANDROID_NS, name)
             ?: parser.getAttributeValue(APP_NS, name)
             ?: return defaultValue

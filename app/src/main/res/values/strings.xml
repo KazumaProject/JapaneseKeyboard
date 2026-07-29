@@ -119,6 +119,8 @@
     <string name="keyboard_corner_top_right_preference_title">Round top-right corner</string>
     <string name="keyboard_corner_bottom_left_preference_title">Round bottom-left corner</string>
     <string name="keyboard_corner_bottom_right_preference_title">Round bottom-right corner</string>
+    <string name="allow_fullscreen_mode_preference_title">Allow fullscreen input in landscape</string>
+    <string name="allow_fullscreen_mode_preference_summary">Allow Android to use a fullscreen input view in landscape when needed.</string>
     <string name="landscape_force_qwerty_preference_title">Always use QWERTY in landscape</string>
     <string name="landscape_force_qwerty_preference_summary">When the device is in landscape, temporarily switch to a QWERTY keyboard.</string>
     <string name="landscape_force_qwerty_romaji_preference_title">Landscape QWERTY input mode</string>

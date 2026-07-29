@@ -43,6 +43,29 @@ class SettingInlinePreferenceClassificationInstrumentedTest {
     }
 
     @Test
+    fun fullscreenPreferenceUsesDeviceResourceDefaultInSearchAndAppPreference() {
+        val key = AppPreference.ALLOW_FULLSCREEN_MODE_KEY
+        val deviceDefault = context.resources.getBoolean(R.bool.config_allow_fullscreen_mode)
+        val target = destinationForKey(key).destination as SettingDestinationType.SwitchPreference
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+
+        assertEquals(deviceDefault, target.defaultValue)
+        assertEquals(deviceDefault, AppPreference.isFullscreenModeAllowed(deviceDefault))
+
+        preferences.edit().putBoolean(key, !deviceDefault).commit()
+
+        assertEquals(!deviceDefault, AppPreference.isFullscreenModeAllowed(deviceDefault))
+    }
+
+    @Test
+    fun fullscreenPreferenceIsAvailableInNewAndLegacySettings() {
+        val key = AppPreference.ALLOW_FULLSCREEN_MODE_KEY
+
+        assertTrue(key in realPreferenceKeys(listOf(R.xml.pref_keyboard_display)))
+        assertTrue(key in realPreferenceKeys(listOf(R.xml.pref_common_legacy)))
+    }
+
+    @Test
     fun listPreferenceXmlItemIsClassifiedWithEntriesAndEntryValues() {
         val destination = destinationForKey("candidate_column_preference")
         val target = destination.destination as SettingDestinationType.ListPreference
