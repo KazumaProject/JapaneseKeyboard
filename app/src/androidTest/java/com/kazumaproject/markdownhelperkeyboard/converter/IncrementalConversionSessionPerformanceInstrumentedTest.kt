@@ -615,6 +615,12 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
             KanaKanjiEngineEntryPoint::class.java,
         )
         val engine = entryPoint.kanaKanjiEngine()
+        if (
+            probeOptionalDictionariesEnabled &&
+            !engine.isInitialOptionalDictionaryStateLoaded()
+        ) {
+            engine.initializeOptionalDictionaryStateFromCurrentSources()
+        }
         val repository = entryPoint.userDictionaryRepository()
         val disableSystemNgramForProbe =
             arguments.getString("conversionPerfSystemNgram") == "false"

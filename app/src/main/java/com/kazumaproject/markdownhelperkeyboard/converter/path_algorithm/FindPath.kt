@@ -60,6 +60,7 @@ class FindPath(
         internal var lastExpansionCacheHitCount: Int = 0
         internal var lastExpansionCacheMissCount: Int = 0
         internal var lastForwardDpReused: Boolean = false
+        internal var afterForwardDpForTest: (() -> Unit)? = null
 
         private var queryCheckpoint: QueryCheckpoint? = null
 
@@ -103,6 +104,7 @@ class FindPath(
             lastExpansionCacheHitCount = 0
             lastExpansionCacheMissCount = 0
             lastForwardDpReused = false
+            afterForwardDpForTest = null
         }
     }
 
@@ -1026,6 +1028,7 @@ class FindPath(
             startPosition = forwardDpStartPosition,
             cancellationCheck = cancellationCheck,
         )
+        sessionState?.afterForwardDpForTest?.invoke()
         val updatedCache = incrementalMetadata?.let {
             ForwardDpCache(
                 inputLength = length,
@@ -1616,6 +1619,7 @@ class FindPath(
         if (performanceState != null) {
             performanceState.lastForwardDpNs = System.nanoTime() - forwardDpStartNs
         }
+        sessionState?.afterForwardDpForTest?.invoke()
 
         val updatedCache = if (incrementalMetadata != null) {
             ForwardDpCache(
