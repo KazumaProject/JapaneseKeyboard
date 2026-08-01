@@ -124,6 +124,67 @@ class KanaKanjiConversionSessionParityTest {
         assertEquals("きょうは", incremental.committedInput())
     }
 
+    @Test
+    fun completedGraphSurvivesCancellationAfterForwardDp() = runBlocking {
+        val localEngine = TestEngineFactory.create()
+        val incremental = KanaKanjiConversionSession(
+            localEngine,
+            ConversionBackend.INCREMENTAL_SESSION,
+        )
+        incremental.query(request("きょ", CandidateQueryMode.PREDICTION, true))
+
+        var cancelAfterForwardDp = true
+        incremental.setAfterForwardDpForTest {
+            if (cancelAfterForwardDp) {
+                cancelAfterForwardDp = false
+                throw kotlinx.coroutines.CancellationException("controlled post-forward cancellation")
+            }
+        }
+        var cancellationObserved = false
+        try {
+            incremental.query(request("きょう", CandidateQueryMode.PREDICTION, true))
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            cancellationObserved = true
+        }
+
+        assertTrue(cancellationObserved)
+        assertEquals("きょう", incremental.committedInput())
+
+        incremental.setAfterForwardDpForTest(null)
+        val recovered = incremental.query(request("きょうは", CandidateQueryMode.PREDICTION, true))
+        val rebuilt = KanaKanjiConversionSession(localEngine, ConversionBackend.LEGACY).query(
+            request("きょうは", CandidateQueryMode.PREDICTION, true),
+        )
+        assertEquals(rebuilt.candidates.fingerprint(), recovered.candidates.fingerprint())
+        assertEquals(rebuilt.bunsetsuResult?.splitPatterns, recovered.bunsetsuResult?.splitPatterns)
+        assertEquals("きょうは", incremental.committedInput())
+    }
+
+    @Test
+    fun oneCharacterAppendReusesCommittedForwardDpAndMatchesLegacy() = runBlocking {
+        val localEngine = TestEngineFactory.create()
+        val incremental = KanaKanjiConversionSession(
+            localEngine,
+            ConversionBackend.INCREMENTAL_SESSION,
+        ).also { it.enablePerformanceProbe() }
+        val legacy = KanaKanjiConversionSession(localEngine, ConversionBackend.LEGACY)
+
+        incremental.query(request("きょう", CandidateQueryMode.PREDICTION, true))
+        val incrementalResult = incremental.query(
+            request("きょうは", CandidateQueryMode.PREDICTION, true),
+        )
+        val legacyResult = legacy.query(
+            request("きょうは", CandidateQueryMode.PREDICTION, true),
+        )
+
+        assertTrue(incremental.performanceSnapshot()?.forwardDpReused == true)
+        assertEquals(legacyResult.candidates.fingerprint(), incrementalResult.candidates.fingerprint())
+        assertEquals(
+            legacyResult.bunsetsuResult?.splitPatterns,
+            incrementalResult.bunsetsuResult?.splitPatterns,
+        )
+    }
+
     private fun request(
         input: String,
         mode: CandidateQueryMode,

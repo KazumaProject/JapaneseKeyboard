@@ -77,9 +77,21 @@ class GraphBuilder {
         }
 
         private data class QueryTransaction(
-            val committedCache: CachedGraph?,
+            var committedCache: CachedGraph?,
             var inPlaceAppendRollback: InPlaceAppendRollback? = null,
+            var completedGraphRollback: CompletedGraphRollback? = null,
         )
+
+        private data class CompletedGraphRollback(
+            val graph: IncrementalGraph,
+            val unprunedPositions: Map<Int, MutableList<Node>>,
+        ) {
+            fun restore() {
+                unprunedPositions.forEach { (position, nodes) ->
+                    graph[position] = nodes
+                }
+            }
+        }
 
         internal fun beginQueryTransaction() {
             check(queryTransaction == null) { "Graph query transaction is already active" }
@@ -111,11 +123,28 @@ class GraphBuilder {
             queryTransaction = null
         }
 
+        /**
+         * Publishes a completely constructed lattice before the cancellable DP/K-best phase.
+         * If that later phase is cancelled, retain the new input frontier and only restore the
+         * node lists that beam search may have pruned in place.
+         */
+        internal fun commitCompletedGraph(cache: CachedGraph) {
+            val transaction = queryTransaction ?: return
+            val graph = cache.graph as? IncrementalGraph ?: return
+            transaction.committedCache = cache
+            transaction.inPlaceAppendRollback = null
+            transaction.completedGraphRollback = CompletedGraphRollback(
+                graph = graph,
+                unprunedPositions = cache.unprunedPositions.orEmpty(),
+            )
+        }
+
         internal fun committedInput(): String? = cachedGraph?.input
 
         internal fun rollbackQueryTransaction() {
             val transaction = queryTransaction ?: return
-            transaction.inPlaceAppendRollback?.restore()
+            transaction.completedGraphRollback?.restore()
+                ?: transaction.inPlaceAppendRollback?.restore()
             cachedGraph = transaction.committedCache
             queryTransaction = null
         }
@@ -468,9 +497,12 @@ class GraphBuilder {
         val graph: MutableMap<Int, MutableList<Node>> = if (reusable != null) {
             val sessionGraph = reusable.graph as? IncrementalGraph
             if (sessionState != null && sessionGraph != null) {
-                // A session owns this graph exclusively.  Keep the already-pruned lattice and
-                // extend it in place instead of cloning every node twice for every typed letter.
-                // Clear the published cache first so cancellation cannot expose a partial append.
+                // Keep two views of the completed prefix: the graph contains the beam-pruned DP
+                // view, while CachedGraph.unprunedPositions retains the complete lattice.  Only
+                // the old input frontier can change its suffix/exact-input penalty after a
+                // one-character append, so restore that position and keep older DP results.
+                // A catch-up append cannot use the one-step path cache and therefore restores the
+                // complete lattice before FindPath performs a full DP pass.
                 sessionState.registerInPlaceAppend(
                     graph = sessionGraph,
                     previousReusedThroughEndIndex = sessionGraph.reusedThroughEndIndex,
@@ -483,14 +515,21 @@ class GraphBuilder {
                 )
                 sessionState.cachedGraph = null
                 sessionGraph.reusedThroughEndIndex = reusablePrefixLength
-                sessionGraph.forwardDpReusableThroughEndIndex =
-                    if (reusable.unprunedPositions.isNullOrEmpty()) reusablePrefixLength else -1
                 sessionGraph.remove(reusablePrefixLength + 1) // previous EOS
-                // Beam pruning is query-local. With correction and optional dictionaries, nodes
-                // discarded on an earlier prefix can still participate in a later K-best path.
-                // Restore the node lists while retaining the node objects and search frontiers.
-                reusable.unprunedPositions?.forEach { (position, nodes) ->
-                    sessionGraph[position] = nodes
+
+                if (
+                    str.length == reusablePrefixLength + 1 &&
+                    !reusable.unprunedPositions.isNullOrEmpty()
+                ) {
+                    sessionGraph.forwardDpReusableThroughEndIndex = reusablePrefixLength
+                    reusable.unprunedPositions[reusablePrefixLength]?.let { frontierNodes ->
+                        sessionGraph[reusablePrefixLength] = frontierNodes
+                    }
+                } else {
+                    sessionGraph.forwardDpReusableThroughEndIndex = -1
+                    reusable.unprunedPositions?.forEach { (position, nodes) ->
+                        sessionGraph[position] = nodes
+                    }
                 }
                 sessionGraph
             } else {
@@ -505,6 +544,16 @@ class GraphBuilder {
         } else {
             IncrementalGraph(-1, signature).apply { put(0, mutableListOf(BOS)) }
         }
+
+        fun invalidateForwardDpReuseAndRestoreCompletePrefix() {
+            val incrementalGraph = graph as? IncrementalGraph ?: return
+            if (incrementalGraph.forwardDpReusableThroughEndIndex < 0) return
+            reusable?.unprunedPositions?.forEach { (position, nodes) ->
+                incrementalGraph[position] = nodes
+            }
+            incrementalGraph.forwardDpReusableThroughEndIndex = -1
+        }
+
         graph[str.length + 1] = mutableListOf(
             Node(
                 l = 0,
@@ -1172,6 +1221,17 @@ class GraphBuilder {
             // prefix. Remove the now-invalid unknown fallback retained by the incremental graph.
             if (foundInAnyDictionary && reusablePrefixLength >= 0) {
                 val fallbackEndIndex = i + 1
+                val removesStablePrefixNode =
+                    fallbackEndIndex < reusablePrefixLength &&
+                        graph[fallbackEndIndex].orEmpty().any {
+                            it.candidateSource == CandidateSource.UNKNOWN && it.sPos == i
+                        }
+                if (removesStablePrefixNode) {
+                    // A dictionary match completed by the appended character can invalidate an
+                    // older unknown fallback. Restore the complete prefix and deliberately fall
+                    // back to full DP for this uncommon transition.
+                    invalidateForwardDpReuseAndRestoreCompletePrefix()
+                }
                 graph[fallbackEndIndex]?.removeAll {
                     it.candidateSource == CandidateSource.UNKNOWN && it.sPos == i
                 }
@@ -1238,18 +1298,39 @@ class GraphBuilder {
             personPrefixStates = personPrefixStates,
             neologdPrefixStates = neologdPrefixStates,
             unprunedPositions = if (sessionState != null) {
-                graph.entries
-                    .asSequence()
-                    .filter { (endIndex, _) -> endIndex <= str.length }
-                    .associateTo(LinkedHashMap()) { (endIndex, nodes) ->
-                        endIndex to nodes.toMutableList()
+                val incrementalGraph = graph as? IncrementalGraph
+                if (
+                    reusable != null &&
+                    incrementalGraph?.forwardDpReusableThroughEndIndex == reusablePrefixLength
+                ) {
+                    // Older positions intentionally remain pruned in the active DP view. Carry
+                    // their complete lattice lists forward without publishing them back into the
+                    // graph; the previous frontier and new suffix are currently unpruned.
+                    LinkedHashMap<Int, MutableList<Node>>().apply {
+                        reusable.unprunedPositions?.forEach { (endIndex, nodes) ->
+                            if (endIndex < reusablePrefixLength) put(endIndex, nodes)
+                        }
+                        graph.entries.forEach { (endIndex, nodes) ->
+                            if (endIndex in reusablePrefixLength..str.length) {
+                                put(endIndex, nodes.toMutableList())
+                            }
+                        }
                     }
+                } else {
+                    graph.entries
+                        .asSequence()
+                        .filter { (endIndex, _) -> endIndex <= str.length }
+                        .associateTo(LinkedHashMap()) { (endIndex, nodes) ->
+                            endIndex to nodes.toMutableList()
+                        }
+                }
             } else {
                 null
             },
         )
         if (sessionState != null) {
             sessionState.cachedGraph = updatedCache
+            sessionState.commitCompletedGraph(updatedCache)
             if (performanceStartNs != 0L) {
                 sessionState.lastConstructGraphNs = System.nanoTime() - performanceStartNs
             }

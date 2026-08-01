@@ -22,6 +22,7 @@ import android.os.Bundle
 import android.os.CombinedVibration
 import android.os.Handler
 import android.os.Looper
+import android.os.Process
 import android.os.ResultReceiver
 import android.os.SystemClock
 import android.os.VibrationEffect
@@ -334,6 +335,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
@@ -371,6 +373,7 @@ import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.Executors
 import java.util.regex.Pattern
 import javax.inject.Inject
 import androidx.appcompat.R as AppCompatR
@@ -727,6 +730,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val kanaKanjiConversionDispatcher = Executors.newSingleThreadExecutor { runnable ->
+        Thread(
+            {
+                Process.setThreadPriority(Process.THREAD_PRIORITY_DISPLAY)
+                runnable.run()
+            },
+            "KanaKanjiConversion",
+        ).apply { isDaemon = true }
+    }.asCoroutineDispatcher()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val runtimeGestureSettingsSource = MutableRuntimeGestureSettingsSource(
         RuntimeGestureSettings()
@@ -2423,8 +2435,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentQwertyGlideCompositionText = null
         }
         val dictionaryReloadWillConfigureGlide =
-            dictionaryOverrideApplyJob?.isActive == true ||
-                dictionaryOverrideStore.currentRevision != lastAppliedDictionaryOverrideRevision
+            lastAppliedDictionaryOverrideRevision != Long.MIN_VALUE &&
+                (dictionaryOverrideApplyJob?.isActive == true ||
+                    dictionaryOverrideStore.currentRevision !=
+                    lastAppliedDictionaryOverrideRevision)
         if (!dictionaryReloadWillConfigureGlide) {
             englishEngine.configureQwertyGlideDecoderAsync(
                 enabled = preferences.qwertyGlideInputPreference,
@@ -2750,37 +2764,54 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         dictionaryOverrideApplyJob = ioScope.launch {
             val revisionToApply = dictionaryOverrideStore.currentRevision
+            val initialOptionalStateOnly =
+                lastAppliedDictionaryOverrideRevision == Long.MIN_VALUE &&
+                    !kanaKanjiEngine.isInitialOptionalDictionaryStateLoaded()
+            val startedAt = System.nanoTime()
             val success = runCatching {
-                kanaKanjiEngine.applyDictionaryOverrideState(applicationContext)
-                englishEngine.reloadDictionariesFromCurrentSources(
-                    reader = dictionaryBinaryReader,
-                    qwertyGlideInputEnabled = qwertyGlideInputPreference,
-                    qwertyGlidePrebuiltDictionaryLoader = QwertyGlidePrebuiltDictionaryLoader(
-                        dictionarySourceResolver
-                    ),
-                    canUseBundledPrebuiltIndex = !dictionarySourceResolver.shouldUseOverrideCategory(
-                        DictionaryCategory.ENGLISH
-                    ),
-                )
+                if (initialOptionalStateOnly) {
+                    kanaKanjiEngine.initializeOptionalDictionaryStateFromCurrentSources()
+                } else {
+                    kanaKanjiEngine.applyDictionaryOverrideState(applicationContext)
+                    englishEngine.reloadDictionariesFromCurrentSources(
+                        reader = dictionaryBinaryReader,
+                        qwertyGlideInputEnabled = qwertyGlideInputPreference,
+                        qwertyGlidePrebuiltDictionaryLoader = QwertyGlidePrebuiltDictionaryLoader(
+                            dictionarySourceResolver
+                        ),
+                        canUseBundledPrebuiltIndex =
+                            !dictionarySourceResolver.shouldUseOverrideCategory(
+                                DictionaryCategory.ENGLISH
+                            ),
+                    )
+                }
             }.onFailure {
                 Timber.w(it, "Failed to apply dictionary override revision $revisionToApply")
             }.isSuccess
 
-            if (success) {
+            if (success && dictionaryOverrideStore.currentRevision == revisionToApply) {
                 lastAppliedDictionaryOverrideRevision = revisionToApply
+                if (initialOptionalStateOnly) {
+                    Timber.d(
+                        "Initial optional dictionary state loaded without core reload: " +
+                            "elapsed_ms=${(System.nanoTime() - startedAt) / 1_000_000.0}"
+                    )
+                }
             } else {
-                // The regular reload also configures glide. If it failed before reaching that
-                // point, retain the lightweight asynchronous configuration as a fallback.
-                englishEngine.configureQwertyGlideDecoderAsync(
-                    enabled = qwertyGlideInputPreference,
-                    canUseBundledPrebuiltIndex =
-                        !dictionarySourceResolver.shouldUseOverrideCategory(
-                            DictionaryCategory.ENGLISH
+                if (!initialOptionalStateOnly) {
+                    // The regular reload also configures glide. If it failed before reaching that
+                    // point, retain the lightweight asynchronous configuration as a fallback.
+                    englishEngine.configureQwertyGlideDecoderAsync(
+                        enabled = qwertyGlideInputPreference,
+                        canUseBundledPrebuiltIndex =
+                            !dictionarySourceResolver.shouldUseOverrideCategory(
+                                DictionaryCategory.ENGLISH
+                            ),
+                        prebuiltDictionaryLoader = QwertyGlidePrebuiltDictionaryLoader(
+                            dictionarySourceResolver
                         ),
-                    prebuiltDictionaryLoader = QwertyGlidePrebuiltDictionaryLoader(
-                        dictionarySourceResolver
-                    ),
-                )
+                    )
+                }
             }
         }
     }
@@ -21301,6 +21332,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         closeConnection()
         scope.cancel()
         ioScope.cancel()
+        kanaKanjiConversionDispatcher.close()
     }
 
     private fun resetFlagsSuggestionClick() {
@@ -22139,7 +22171,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
                     (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !currentQwertyRomajiModeForSession))
 
-        val coreResult = withContext(Dispatchers.Default) {
+        val coreResult = withContext(kanaKanjiConversionDispatcher) {
             queryKanaKanjiCore(
                 input = insertString,
                 mode = CandidateQueryMode.NO_TAB_DEFAULT,
@@ -22266,7 +22298,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
                     (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !currentQwertyRomajiModeForSession))
 
-        val coreResultDeferred = async(Dispatchers.Default) {
+        val coreResultDeferred = async(kanaKanjiConversionDispatcher) {
             measureDebugStage("IMEService.getSuggestionList.kanaKanjiEngine") {
                 queryKanaKanjiCore(
                     input = insertString,
@@ -22403,7 +22435,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val ngWords =
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
-        val coreResult = withContext(Dispatchers.Default) {
+        val coreResult = withContext(kanaKanjiConversionDispatcher) {
             queryKanaKanjiCore(
                 input = insertString,
                 mode = CandidateQueryMode.CONVERSION,
@@ -22473,7 +22505,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun getSuggestionListEnglishKana(
         insertString: String,
     ): List<Candidate> {
-        val engineCandidates = withContext(Dispatchers.Default) {
+        val engineCandidates = withContext(kanaKanjiConversionDispatcher) {
             queryKanaKanjiCore(
                 input = insertString,
                 mode = CandidateQueryMode.EISUKANA,
