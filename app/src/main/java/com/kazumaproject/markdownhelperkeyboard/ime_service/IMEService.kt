@@ -2189,7 +2189,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         } else {
-            setupKeyboardView()
             scope.coroutineContext.cancelChildren()
             mainLayoutBinding?.let { mainView ->
                 startScope(mainView)
@@ -2407,13 +2406,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             englishEngine.invalidateQwertyGlideCache()
             currentQwertyGlideCompositionText = null
         }
-        englishEngine.configureQwertyGlideDecoder(
-            enabled = preferences.qwertyGlideInputPreference,
-            canUseBundledPrebuiltIndex = !dictionarySourceResolver.shouldUseOverrideCategory(
-                DictionaryCategory.ENGLISH
-            ),
-            prebuiltDictionaryLoader = QwertyGlidePrebuiltDictionaryLoader(dictionarySourceResolver),
-        )
+        val dictionaryReloadWillConfigureGlide =
+            dictionaryOverrideApplyJob?.isActive == true ||
+                dictionaryOverrideStore.currentRevision != lastAppliedDictionaryOverrideRevision
+        if (!dictionaryReloadWillConfigureGlide) {
+            englishEngine.configureQwertyGlideDecoderAsync(
+                enabled = preferences.qwertyGlideInputPreference,
+                canUseBundledPrebuiltIndex = !dictionarySourceResolver.shouldUseOverrideCategory(
+                    DictionaryCategory.ENGLISH
+                ),
+                prebuiltDictionaryLoader = QwertyGlidePrebuiltDictionaryLoader(
+                    dictionarySourceResolver
+                ),
+            )
+        }
         qwertyShowPopupWindowPreference = preferences.qwertyShowPopupWindowPreference
         qwertyEnableFlickUpPreference = preferences.qwertyEnableFlickUpPreference
         qwertyEnableFlickDownPreference = preferences.qwertyEnableFlickDownPreference
@@ -2746,6 +2752,19 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             if (success) {
                 lastAppliedDictionaryOverrideRevision = revisionToApply
+            } else {
+                // The regular reload also configures glide. If it failed before reaching that
+                // point, retain the lightweight asynchronous configuration as a fallback.
+                englishEngine.configureQwertyGlideDecoderAsync(
+                    enabled = qwertyGlideInputPreference,
+                    canUseBundledPrebuiltIndex =
+                        !dictionarySourceResolver.shouldUseOverrideCategory(
+                            DictionaryCategory.ENGLISH
+                        ),
+                    prebuiltDictionaryLoader = QwertyGlidePrebuiltDictionaryLoader(
+                        dictionarySourceResolver
+                    ),
+                )
             }
         }
     }

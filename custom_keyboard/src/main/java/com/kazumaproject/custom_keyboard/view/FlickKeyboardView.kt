@@ -176,6 +176,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val canonicalGuideLabels =
         IdentityHashMap<AutoSizeButton, AutoSizeButton.FlickGuideLabels>()
     private var currentLayout: KeyboardLayout? = null
+    private var keyboardRenderRevision: Int = 0
+    private var renderedKeyboardRenderRevision: Int = -1
     private var keyCharacterCase: KeyCharacterCase = KeyCharacterCase.AS_DEFINED
     private var sumireSpecialKeyActionResolver:
             ((String, String, KeyData, SumireSpecialKeyDirection) -> ResolvedSumireSpecialKeyAction)? =
@@ -356,21 +358,21 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
         flickGuideEnabled = enabled
         flickGuideAllowsMultiCharacterLabels = allowMultiCharacterLabels
-        currentLayout?.let { setKeyboard(it) }
+        rebuildCurrentKeyboard()
     }
 
     fun setFlickGuideTextSizeSp(sizeSp: Float) {
         val coerced = sizeSp.coerceIn(6f, 16f)
         if (flickGuideTextSizeSp == coerced) return
         flickGuideTextSizeSp = coerced
-        currentLayout?.let { setKeyboard(it) }
+        rebuildCurrentKeyboard()
     }
 
     fun setFlickGuideMaxCodePoints(maxCodePoints: Int) {
         val coerced = maxCodePoints.coerceIn(1, 4)
         if (flickGuideMaxCodePoints == coerced) return
         flickGuideMaxCodePoints = coerced
-        currentLayout?.let { setKeyboard(it) }
+        rebuildCurrentKeyboard()
     }
 
     fun applyKeySizing(
@@ -380,13 +382,27 @@ class FlickKeyboardView @JvmOverloads constructor(
         textSizeSp: Float,
         specialKeyTextSizeSp: Float
     ) {
-        this.keyWidthScalePercent = keyWidthScalePercent.coerceIn(0, 200)
-        this.keyHeightScalePercent = keyHeightScalePercent.coerceIn(0, 200)
-        this.iconScalePercent = iconScalePercent.coerceIn(40, 200)
-        this.defaultTextSize = textSizeSp.coerceIn(8f, 32f)
-        this.specialKeyTextSizeSp = specialKeyTextSizeSp.coerceIn(8f, 32f)
+        val normalizedWidthScale = keyWidthScalePercent.coerceIn(0, 200)
+        val normalizedHeightScale = keyHeightScalePercent.coerceIn(0, 200)
+        val normalizedIconScale = iconScalePercent.coerceIn(40, 200)
+        val normalizedTextSize = textSizeSp.coerceIn(8f, 32f)
+        val normalizedSpecialTextSize = specialKeyTextSizeSp.coerceIn(8f, 32f)
+        if (
+            this.keyWidthScalePercent == normalizedWidthScale &&
+            this.keyHeightScalePercent == normalizedHeightScale &&
+            this.iconScalePercent == normalizedIconScale &&
+            this.defaultTextSize == normalizedTextSize &&
+            this.specialKeyTextSizeSp == normalizedSpecialTextSize
+        ) {
+            return
+        }
+        this.keyWidthScalePercent = normalizedWidthScale
+        this.keyHeightScalePercent = normalizedHeightScale
+        this.iconScalePercent = normalizedIconScale
+        this.defaultTextSize = normalizedTextSize
+        this.specialKeyTextSizeSp = normalizedSpecialTextSize
 
-        currentLayout?.let { setKeyboard(it) }
+        rebuildCurrentKeyboard()
     }
 
     fun setCursorMode(enabled: Boolean) {
@@ -434,6 +450,21 @@ class FlickKeyboardView @JvmOverloads constructor(
         liquidGlassKeyAlphaEnable: Int,
         borderWidth: Int
     ) {
+        val renderConfigurationChanged =
+            this.themeMode != themeMode ||
+                this.isNightMode !=
+                (currentNightMode == Configuration.UI_MODE_NIGHT_YES) ||
+                this.isDynamicColorEnabled != isDynamicColorEnabled ||
+                this.customBgColor != customBgColor ||
+                this.customKeyColor != customKeyColor ||
+                this.customSpecialKeyColor != customSpecialKeyColor ||
+                this.customKeyTextColor != customKeyTextColor ||
+                this.customSpecialKeyTextColor != customSpecialKeyTextColor ||
+                this.liquidGlassEnable != liquidGlassEnable ||
+                this.customBorderEnable != customBorderEnable ||
+                this.customBorderColor != customBorderColor ||
+                this.liquidGlassKeyAlphaEnable != liquidGlassKeyAlphaEnable ||
+                this.borderWidth != borderWidth
         this.themeMode = themeMode
         this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
         this.isDynamicColorEnabled = isDynamicColorEnabled
@@ -447,6 +478,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.customBorderColor = customBorderColor
         this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
         this.borderWidth = borderWidth
+        if (renderConfigurationChanged) {
+            keyboardRenderRevision += 1
+        }
 
         if (liquidGlassEnable) {
             this.setBackgroundColor(ColorUtils.setAlphaComponent(customBgColor, 0))
@@ -505,6 +539,29 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     fun setKeyboard(layout: KeyboardLayout) {
+        setKeyboard(layout, forceRebuild = false)
+    }
+
+    private fun rebuildCurrentKeyboard() {
+        currentLayout?.let { setKeyboard(it, forceRebuild = true) }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setKeyboard(layout: KeyboardLayout, forceRebuild: Boolean) {
+        val expectedChildCount = if (layout.items.isNotEmpty()) {
+            layout.items.size
+        } else {
+            layout.keys.size
+        }
+        if (
+            !forceRebuild &&
+            currentLayout == layout &&
+            renderedKeyboardRenderRevision == keyboardRenderRevision &&
+            childCount == expectedChildCount
+        ) {
+            Log.d("FlickKeyboardView", "setKeyboard (Reuse Existing Views)")
+            return
+        }
         Log.d("FlickKeyboardView", "setKeyboard (Full Rebuild)")
 
         doubleTapActionDispatcher.cancel()
@@ -570,6 +627,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 )
             }
         }
+        renderedKeyboardRenderRevision = keyboardRenderRevision
     }
 
     private fun addKeyItem(item: KeyItem) {
@@ -625,6 +683,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             displayActions = KeyActionMapper.getDisplayActions(context),
             resolve = ::resolveSumireSpecialKeyOverride
         )
+        if (info.keyData == newKeyData) return
 
         val oldView = info.view
         val newViewIsIcon = KeyIconResolver.hasIcon(newKeyData)
