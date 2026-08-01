@@ -882,74 +882,43 @@ class LOUDSWithTermId {
             return TypoSearchProgress(emptyList(), emptyList(), emptyMap())
         }
 
-        // 同一yomiの重複を最小penaltyで集約
-        val bestPenaltyByYomi = HashMap<String, Int>(128)
-        val sb = StringBuilder(maxLen)
-        val terminalStates = ArrayList<TypoSearchState>()
-
-        fun acceptIfLeaf(nodeIndex: Int, penaltyUsed: Int) {
-            if (sb.isEmpty()) return
-            if (!isLeaf[nodeIndex]) return
-
-            val yomi = sb.toString()
-            val prev = bestPenaltyByYomi[yomi]
-            if (prev == null || penaltyUsed < prev) {
-                bestPenaltyByYomi[yomi] = penaltyUsed
-            }
-        }
-
-        fun dfs(strIndex: Int, nodeIndex: Int, penaltyUsed: Int) {
-            if (penaltyUsed > maxPenalty) return
-            if (sb.length > maxLen) return
-            if (bestPenaltyByYomi.size >= maxResults) return
-
-            // ★ prefix検索: 途中でも leaf なら採用
-            acceptIfLeaf(nodeIndex, penaltyUsed)
-
-            // 入力を使い切ったら終了（prefixなのでここで止める）
-            if (strIndex >= str.length) {
-                terminalStates.add(
-                    TypoSearchState(nodeIndex, penaltyUsed, sb.length, sb.toString())
-                )
-                return
-            }
-            if (sb.length >= maxLen) return
-
-            val ch = str[strIndex]
-
-            // ★ 候補をペナルティ昇順で展開（枝刈り）
-            val candidates: List<TypoCandidate> = getTypoCandidates(ch)
-
-            for (cand in candidates) {
-                val nextPenalty = penaltyUsed + cand.penalty
-                if (nextPenalty > maxPenalty) continue
-
-                var childPos = firstChild(nodeIndex, succinctBitVector)
-                while (childPos >= 0 && LBS[childPos]) {
-                    val labelNodeId = succinctBitVector.rank1(childPos)
-                    if (labelNodeId < labelCount && labelAt(labelNodeId) == cand.ch) {
-                        sb.append(cand.ch)
-                        dfs(strIndex + 1, childPos, nextPenalty)
-                        sb.setLength(sb.length - 1)
-                        break
-                    }
-                    childPos++
+        // Use the exact same character-at-a-time transition as an incremental append. The old
+        // cold path used depth-first traversal while append used frontier traversal; once the
+        // bounded result set reached maxResults, they retained different typo paths and could
+        // produce different first candidates for the same input.
+        var progress = TypoSearchProgress(
+            results = emptyList(),
+            terminalStates = listOf(TypoSearchState(0, 0, 0, "")),
+            acceptedPenalties = emptyMap(),
+        )
+        val acceptedResults = LinkedHashMap<String, Int>()
+        val endExclusive = minOf(str.length, startIndex + maxLen)
+        for (index in startIndex until endExclusive) {
+            progress = advanceTypoCorrectionSearch(
+                previous = progress,
+                char = str[index],
+                succinctBitVector = succinctBitVector,
+                maxPenalty = maxPenalty,
+                maxLen = maxLen,
+                maxResults = maxResults,
+            )
+            progress.results.forEach { result ->
+                val previousPenalty = acceptedResults[result.yomi]
+                if (previousPenalty == null || result.penaltyUsed < previousPenalty) {
+                    acceptedResults[result.yomi] = result.penaltyUsed
                 }
             }
+            if (progress.terminalStates.isEmpty()) break
         }
 
-        // ルート開始
-        dfs(strIndex = startIndex, nodeIndex = 0, penaltyUsed = 0)
-
-        // 出力整形: penalty昇順 → 長さ降順（好み）→ 文字列昇順
-        val results = bestPenaltyByYomi.entries
+        val results = acceptedResults.entries
             .sortedWith(
                 compareBy<Map.Entry<String, Int>> { it.value }
                     .thenByDescending { it.key.length }
                     .thenBy { it.key }
             )
             .map { TypoCorrectionResult(it.key, it.value) }
-        return TypoSearchProgress(results, terminalStates, bestPenaltyByYomi)
+        return progress.copy(results = results)
     }
 
     fun advanceTypoCorrectionSearch(
