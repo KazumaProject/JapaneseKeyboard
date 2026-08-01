@@ -349,10 +349,10 @@ class FindPath(
                 expansionCache.reset()
                 queueElementPool.clear()
             } else {
-                // Restoring an unpruned incremental lattice can add predecessor nodes to an
-                // existing position. Cached expansion lists are therefore query-local even
-                // though node identities and the reusable work arena remain session-local.
-                expansionCache.clear()
+                // Expansion keys include the predecessor-list identity. A one-character append
+                // replaces the restored frontier list, while older pruned lists retain their
+                // identity, so only the changed frontier and new suffix miss the cache.
+                expansionCache.prepareForIncrementalQuery()
             }
             expansionCache.configure(
                 connectionMatrix = connectionMatrix,
@@ -486,6 +486,7 @@ class FindPath(
         private var nextNode2 = IntArray(currentNode.size)
         private var nextNode3 = IntArray(currentNode.size)
         private var adjustedScore = IntArray(currentNode.size)
+        private var predecessorLists = arrayOfNulls<List<Node>>(currentNode.size)
         private var values = arrayOfNulls<ExpansionList>(currentNode.size)
         private var stamps = IntArray(currentNode.size)
         private var generation = 1
@@ -529,6 +530,7 @@ class FindPath(
 
         fun reset() {
             clear()
+            predecessorLists.fill(null)
             values.fill(null)
             configured = false
             configuredConnectionMatrix = null
@@ -537,22 +539,37 @@ class FindPath(
             configuredBoundaryMode = null
         }
 
+        fun prepareForIncrementalQuery() {
+            if (entryCount < MAX_RETAINED_ENTRY_COUNT) return
+            clear()
+            predecessorLists.fill(null)
+            values.fill(null)
+        }
+
         fun get(
             currentNode: Int,
             nextNode1: Int,
             nextNode2: Int,
             nextNode3: Int,
             adjustedScore: Int,
+            predecessorList: List<Node>,
         ): ExpansionList? {
-            var slot = hash(currentNode, nextNode1, nextNode2, nextNode3, adjustedScore) and
-                (stamps.size - 1)
+            var slot = hash(
+                currentNode,
+                nextNode1,
+                nextNode2,
+                nextNode3,
+                adjustedScore,
+                predecessorList,
+            ) and (stamps.size - 1)
             while (stamps[slot] == generation) {
                 if (
                     this.currentNode[slot] == currentNode &&
                     this.nextNode1[slot] == nextNode1 &&
                     this.nextNode2[slot] == nextNode2 &&
                     this.nextNode3[slot] == nextNode3 &&
-                    this.adjustedScore[slot] == adjustedScore
+                    this.adjustedScore[slot] == adjustedScore &&
+                    this.predecessorLists[slot] === predecessorList
                 ) return values[slot]
                 slot = (slot + 1) and (stamps.size - 1)
             }
@@ -565,18 +582,26 @@ class FindPath(
             nextNode2: Int,
             nextNode3: Int,
             adjustedScore: Int,
+            predecessorList: List<Node>,
             value: ExpansionList,
         ) {
             if ((entryCount + 1) * 10 >= stamps.size * 6) grow()
-            var slot = hash(currentNode, nextNode1, nextNode2, nextNode3, adjustedScore) and
-                (stamps.size - 1)
+            var slot = hash(
+                currentNode,
+                nextNode1,
+                nextNode2,
+                nextNode3,
+                adjustedScore,
+                predecessorList,
+            ) and (stamps.size - 1)
             while (stamps[slot] == generation) {
                 if (
                     this.currentNode[slot] == currentNode &&
                     this.nextNode1[slot] == nextNode1 &&
                     this.nextNode2[slot] == nextNode2 &&
                     this.nextNode3[slot] == nextNode3 &&
-                    this.adjustedScore[slot] == adjustedScore
+                    this.adjustedScore[slot] == adjustedScore &&
+                    this.predecessorLists[slot] === predecessorList
                 ) {
                     values[slot] = value
                     return
@@ -589,6 +614,7 @@ class FindPath(
             this.nextNode2[slot] = nextNode2
             this.nextNode3[slot] = nextNode3
             this.adjustedScore[slot] = adjustedScore
+            this.predecessorLists[slot] = predecessorList
             values[slot] = value
             entryCount++
         }
@@ -599,6 +625,7 @@ class FindPath(
             val oldNextNode2 = nextNode2
             val oldNextNode3 = nextNode3
             val oldAdjustedScore = adjustedScore
+            val oldPredecessorLists = predecessorLists
             val oldValues = values
             val oldStamps = stamps
             val oldGeneration = generation
@@ -608,6 +635,7 @@ class FindPath(
             nextNode2 = IntArray(currentNode.size)
             nextNode3 = IntArray(currentNode.size)
             adjustedScore = IntArray(currentNode.size)
+            predecessorLists = arrayOfNulls(currentNode.size)
             values = arrayOfNulls(currentNode.size)
             stamps = IntArray(currentNode.size)
             generation = 1
@@ -620,6 +648,7 @@ class FindPath(
                         nextNode2 = oldNextNode2[slot],
                         nextNode3 = oldNextNode3[slot],
                         adjustedScore = oldAdjustedScore[slot],
+                        predecessorList = checkNotNull(oldPredecessorLists[slot]),
                         value = checkNotNull(oldValues[slot]),
                     )
                 }
@@ -639,14 +668,18 @@ class FindPath(
                 nextNode2: Int,
                 nextNode3: Int,
                 adjustedScore: Int,
+                predecessorList: List<Node>,
             ): Int {
                 var result = currentNode
                 result = 31 * result + nextNode1
                 result = 31 * result + nextNode2
                 result = 31 * result + nextNode3
                 result = 31 * result + adjustedScore
+                result = 31 * result + System.identityHashCode(predecessorList)
                 return result xor (result ushr 16)
             }
+
+            const val MAX_RETAINED_ENTRY_COUNT = 32_768
         }
     }
 
@@ -715,6 +748,37 @@ class FindPath(
             costs[slot] = cost
             entryCount++
             return true
+        }
+
+        fun containsExactCost(
+            nodeIdentity: Int,
+            nextIdentity1: Int,
+            nextIdentity2: Int,
+            nextIdentity3: Int,
+            outputPathId: Int,
+            sourceMask: Int,
+            cost: Int,
+        ): Boolean {
+            var slot = hash(
+                nodeIdentity,
+                nextIdentity1,
+                nextIdentity2,
+                nextIdentity3,
+                outputPathId,
+                sourceMask,
+            ) and (stamps.size - 1)
+            while (stamps[slot] == generation) {
+                if (
+                    this.nodeIdentity[slot] == nodeIdentity &&
+                    this.nextIdentity1[slot] == nextIdentity1 &&
+                    this.nextIdentity2[slot] == nextIdentity2 &&
+                    this.nextIdentity3[slot] == nextIdentity3 &&
+                    this.sourceMask[slot] == sourceMask &&
+                    this.outputPathId[slot] == outputPathId
+                ) return costs[slot] == cost
+                slot = (slot + 1) and (stamps.size - 1)
+            }
+            return false
         }
 
         private fun grow() {
@@ -1086,6 +1150,7 @@ class FindPath(
             if (cancellationPollCounter++ and 0x3f == 0) cancellationCheck()
             val element = pQueue.poll() ?: break
             val currentNode = element.node
+            if (!isCurrentBestBackwardState(element, searchScratch)) continue
 
             if (currentNode.tango == "BOS") {
                 val stringFromNode = searchScratch.outputString(element.outputPathId)
@@ -1315,23 +1380,24 @@ class FindPath(
         } else {
             -1
         }
+        val previousNodes = getPrevNodes2(
+            graph = graph,
+            node = currentNode,
+            startPosition = currentNode.sPos,
+        )
         scratch.expansionCache.get(
             currentNode = currentNodeId,
             nextNode1 = nextNode1Id,
             nextNode2 = nextNode2Id,
             nextNode3 = nextNode3Id,
             adjustedScore = currentNode.adjustedScore,
+            predecessorList = previousNodes,
         )?.let {
             scratch.expansionCacheHitCount++
             return it
         }
         scratch.expansionCacheMissCount++
 
-        val previousNodes = getPrevNodes2(
-            graph = graph,
-            node = currentNode,
-            startPosition = currentNode.sPos,
-        )
         val cachedNodes = arrayOfNulls<Node>(previousNodes.size)
         val localCosts = IntArray(previousNodes.size)
         var count = 0
@@ -1365,6 +1431,7 @@ class FindPath(
                 nextNode2 = nextNode2Id,
                 nextNode3 = nextNode3Id,
                 adjustedScore = currentNode.adjustedScore,
+                predecessorList = previousNodes,
                 value = result,
             )
         }
@@ -1408,6 +1475,23 @@ class FindPath(
                 outputPathId = outputPathId,
                 sourceMask = sourceMask,
             ),
+        )
+    }
+
+    private fun isCurrentBestBackwardState(
+        element: PathQueueElement,
+        scratch: BackwardSearchScratch,
+    ): Boolean {
+        val next = element.next ?: return true // The initial EOS element is not in the state table.
+        val nodeIds = scratch.nodeIds
+        return scratch.bestBackwardCostByState.containsExactCost(
+            nodeIdentity = nodeIds.getValue(element.node),
+            nextIdentity1 = nodeIds.getValue(next.node),
+            nextIdentity2 = next.next?.node?.let(nodeIds::getValue) ?: -1,
+            nextIdentity3 = next.next?.next?.node?.let(nodeIds::getValue) ?: -1,
+            outputPathId = element.outputPathId,
+            sourceMask = element.sourceMask,
+            cost = element.backwardCost,
         )
     }
 
@@ -1734,6 +1818,7 @@ class FindPath(
             if (cancellationPollCounter++ and 0x3f == 0) cancellationCheck()
             val element = pQueue.poll() ?: break
             val currentNode = element.node
+            if (!isCurrentBestBackwardState(element, searchScratch)) continue
 
             if (currentNode.tango == "BOS") {
                 val stringFromNode = searchScratch.outputString(element.outputPathId)

@@ -376,6 +376,7 @@ class GraphBuilder {
         val webPrefixStates = LinkedHashMap<Int, Int>()
         val personPrefixStates = LinkedHashMap<Int, Int>()
         val neologdPrefixStates = LinkedHashMap<Int, Int>()
+        val typoTopTokenScratch = IntArray(5)
 
         fun prefixSearch(
             trie: LOUDSWithTermId,
@@ -719,60 +720,54 @@ class GraphBuilder {
                         if (typo.penaltyUsed == 0) continue
 
                         val yomiStr = typo.yomi
-                        val nodeIndex = localSystemUserYomiTrie.getNodeIndex(
-                            yomiStr,
-                            localSystemUserLBSYomi,
-                        )
+                        val nodeIndex = typo.nodeIndex
                         if (nodeIndex <= 0) continue
 
                         val termId = localSystemUserYomiTrie.getTermId(
                             nodeIndex,
                             localSystemUserIsLeaf,
                         )
-                        val listToken = localSystemUserTokenArray.getListDictionaryByYomiTermId(
-                            termId,
-                            localSystemUserTokenBitVector,
-                        )
                         val endIndex = i + yomiStr.length
                         if (endIndex <= reusablePrefixLength) continue
                         val penalty = typoCorrectionOffsetScore * typo.penaltyUsed
 
-                        listToken
-                            .sortedBy { it.wordCost }
-                            .take(5)
-                            .forEach { token ->
-                                val tango = when (token.nodeId) {
-                                    -2 -> yomiStr
-                                    -1 -> yomiStr.hiraToKata()
-                                    else -> localSystemUserTangoTrie.getLetter(
-                                        token.nodeId,
-                                        succinctBitVector = localSystemUserTangoLBS,
-                                    )
-                                }
-                                val cost = token.wordCost.toInt() + penalty
-                                addOrUpdateNode(
-                                    graph,
-                                    endIndex,
-                                    Node(
-                                        l = localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
-                                        r = localSystemUserTokenArray.rightIds[token.posTableIndex.toInt()],
-                                        score = cost,
-                                        f = cost,
-                                        g = cost,
-                                        tango = tango,
-                                        yomiUsed = yomiStr,
-                                        len = yomiStr.length.toShort(),
-                                        sPos = i,
-                                        mozcAttributes = mozcAttributesFor(
-                                            localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
-                                        ),
-                                    ),
-                                    graphNodeDedupMode,
-                                    graphNodeTrace,
-                                    str,
-                                    "SYSTEM_USER_TYPO",
+                        localSystemUserTokenArray.forEachLowestCostDictionaryByYomiTermId(
+                            nodeId = termId,
+                            succinctBitVector = localSystemUserTokenBitVector,
+                            scratchIndices = typoTopTokenScratch,
+                        ) { posTableIndex, wordCost, tokenNodeId ->
+                            val tango = when (tokenNodeId) {
+                                -2 -> yomiStr
+                                -1 -> yomiStr.hiraToKata()
+                                else -> localSystemUserTangoTrie.getLetter(
+                                    tokenNodeId,
+                                    succinctBitVector = localSystemUserTangoLBS,
                                 )
                             }
+                            val cost = wordCost.toInt() + penalty
+                            addOrUpdateNode(
+                                graph,
+                                endIndex,
+                                Node(
+                                    l = localSystemUserTokenArray.leftIds[posTableIndex.toInt()],
+                                    r = localSystemUserTokenArray.rightIds[posTableIndex.toInt()],
+                                    score = cost,
+                                    f = cost,
+                                    g = cost,
+                                    tango = tango,
+                                    yomiUsed = yomiStr,
+                                    len = yomiStr.length.toShort(),
+                                    sPos = i,
+                                    mozcAttributes = mozcAttributesFor(
+                                        localSystemUserTokenArray.leftIds[posTableIndex.toInt()],
+                                    ),
+                                ),
+                                graphNodeDedupMode,
+                                graphNodeTrace,
+                                str,
+                                "SYSTEM_USER_TYPO",
+                            )
+                        }
                     }
                 }
 
@@ -908,52 +903,50 @@ class GraphBuilder {
                     if (typo.penaltyUsed == 0) continue
 
                     val yomiStr = typo.yomi
-                    val nodeIndex = yomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSYomi)
+                    val nodeIndex = typo.nodeIndex
                     if (nodeIndex <= 0) continue
 
                     val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
-                    val listToken = tokenArray.getListDictionaryByYomiTermId(
-                        termId,
-                        succinctBitVectorTokenArray
-                    )
-
                     val endIndex = i + yomiStr.length
                     if (endIndex <= reusablePrefixLength) continue
                     val penalty = typoCorrectionOffsetScore * typo.penaltyUsed
 
-                    listToken
-                        .sortedBy { it.wordCost }
-                        .take(5)
-                        .forEach { token ->
-                            val tango = when (token.nodeId) {
-                                -2 -> yomiStr
-                                -1 -> yomiStr.hiraToKata()
-                                else -> tangoTrie.getLetter(token.nodeId, succinctBitVectorTangoLBS)
-                            }
-
-                            val cost = token.wordCost.toInt() + penalty
-
-                            addOrUpdateNode(
-                                graph,
-                                endIndex,
-                                Node(
-                                    l = tokenArray.leftIds[token.posTableIndex.toInt()],
-                                    r = tokenArray.rightIds[token.posTableIndex.toInt()],
-                                    score = cost,
-                                    f = cost,
-                                    g = cost,
-                                    tango = tango,
-                                    yomiUsed = yomiStr,
-                                    len = yomiStr.length.toShort(),
-                                    sPos = i,
-                                    mozcAttributes = mozcAttributesFor(tokenArray.leftIds[token.posTableIndex.toInt()]),
-                                ),
-                                graphNodeDedupMode,
-                                graphNodeTrace,
-                                str,
-                                "SYSTEM_TYPO",
-                            )
+                    tokenArray.forEachLowestCostDictionaryByYomiTermId(
+                        nodeId = termId,
+                        succinctBitVector = succinctBitVectorTokenArray,
+                        scratchIndices = typoTopTokenScratch,
+                    ) { posTableIndex, wordCost, tokenNodeId ->
+                        val tango = when (tokenNodeId) {
+                            -2 -> yomiStr
+                            -1 -> yomiStr.hiraToKata()
+                            else -> tangoTrie.getLetter(tokenNodeId, succinctBitVectorTangoLBS)
                         }
+
+                        val cost = wordCost.toInt() + penalty
+
+                        addOrUpdateNode(
+                            graph,
+                            endIndex,
+                            Node(
+                                l = tokenArray.leftIds[posTableIndex.toInt()],
+                                r = tokenArray.rightIds[posTableIndex.toInt()],
+                                score = cost,
+                                f = cost,
+                                g = cost,
+                                tango = tango,
+                                yomiUsed = yomiStr,
+                                len = yomiStr.length.toShort(),
+                                sPos = i,
+                                mozcAttributes = mozcAttributesFor(
+                                    tokenArray.leftIds[posTableIndex.toInt()],
+                                ),
+                            ),
+                            graphNodeDedupMode,
+                            graphNodeTrace,
+                            str,
+                            "SYSTEM_TYPO",
+                        )
+                    }
                 }
             }
 

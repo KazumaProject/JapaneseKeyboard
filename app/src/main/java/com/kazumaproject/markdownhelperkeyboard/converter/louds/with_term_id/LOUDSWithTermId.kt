@@ -892,6 +892,7 @@ class LOUDSWithTermId {
             acceptedPenalties = emptyMap(),
         )
         val acceptedResults = LinkedHashMap<String, Int>()
+        val acceptedNodeIndices = HashMap<String, Int>()
         val endExclusive = minOf(str.length, startIndex + maxLen)
         for (index in startIndex until endExclusive) {
             progress = advanceTypoCorrectionSearch(
@@ -906,6 +907,7 @@ class LOUDSWithTermId {
                 val previousPenalty = acceptedResults[result.yomi]
                 if (previousPenalty == null || result.penaltyUsed < previousPenalty) {
                     acceptedResults[result.yomi] = result.penaltyUsed
+                    acceptedNodeIndices[result.yomi] = result.nodeIndex
                 }
             }
             if (progress.terminalStates.isEmpty()) break
@@ -917,7 +919,13 @@ class LOUDSWithTermId {
                     .thenByDescending { it.key.length }
                     .thenBy { it.key }
             )
-            .map { TypoCorrectionResult(it.key, it.value) }
+            .map {
+                TypoCorrectionResult(
+                    yomi = it.key,
+                    penaltyUsed = it.value,
+                    nodeIndex = checkNotNull(acceptedNodeIndices[it.key]),
+                )
+            }
         return progress.copy(results = results)
     }
 
@@ -935,6 +943,7 @@ class LOUDSWithTermId {
         val bestPenaltyByYomi = HashMap(previous.acceptedPenalties)
         val terminalStates = ArrayList<TypoSearchState>()
         val newResults = LinkedHashMap<String, Int>()
+        val newResultNodeIndices = HashMap<String, Int>()
         val typoCandidates = getTypoCandidates(char)
         for (state in previous.terminalStates) {
             if (bestPenaltyByYomi.size >= maxResults) break
@@ -951,6 +960,7 @@ class LOUDSWithTermId {
                 if (oldPenalty == null || nextPenalty < oldPenalty) {
                     bestPenaltyByYomi[yomi] = nextPenalty
                     newResults[yomi] = nextPenalty
+                    newResultNodeIndices[yomi] = child
                 }
             }
         }
@@ -960,7 +970,13 @@ class LOUDSWithTermId {
                     .thenByDescending { it.key.length }
                     .thenBy { it.key }
             )
-            .map { TypoCorrectionResult(it.key, it.value) }
+            .map {
+                TypoCorrectionResult(
+                    yomi = it.key,
+                    penaltyUsed = it.value,
+                    nodeIndex = checkNotNull(newResultNodeIndices[it.key]),
+                )
+            }
         return TypoSearchProgress(results, terminalStates, bestPenaltyByYomi)
     }
 

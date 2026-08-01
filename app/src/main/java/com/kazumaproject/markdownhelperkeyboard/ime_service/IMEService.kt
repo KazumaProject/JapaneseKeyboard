@@ -21892,9 +21892,24 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
+        val shouldApplyLiveConversion =
+            shouldStartLiveConversion(insertString) && !hasConvertedKatakana
+        val applyLiveConversionBeforeCandidateStrip =
+            shouldApplyLiveConversion && liveConversionApplyDelayMillis() == 0L
+        if (applyLiveConversionBeforeCandidateStrip) {
+            // This is the completed conversion candidate, not a raw composing fallback. Keep the
+            // candidate-strip DiffUtil work out of the visible live-conversion critical path.
+            delayBeforeApplyingLiveConversion()
+            if (!shouldApplyCandidateResult(insertString, token)) return
+            if (!applyFirstSuggestionOnMainIfCurrent(
+                    insertString = insertString,
+                    candidate = displayedCandidates.firstOrNull(),
+                )
+            ) return
+        }
         updateDisplayedCandidates(insertString, displayedCandidates)
 
-        if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
+        if (shouldApplyLiveConversion && !applyLiveConversionBeforeCandidateStrip) {
             delayBeforeApplyingLiveConversion()
             if (!shouldApplyCandidateResult(insertString, token)) {
                 return
@@ -21958,9 +21973,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
+        val shouldApplyLiveConversion =
+            shouldStartLiveConversion(insertString) && !hasConvertedKatakana
+        val applyLiveConversionBeforeCandidateStrip =
+            shouldApplyLiveConversion && liveConversionApplyDelayMillis() == 0L
+        if (applyLiveConversionBeforeCandidateStrip) {
+            delayBeforeApplyingLiveConversion()
+            if (!shouldApplyCandidateResult(insertString, token)) return
+            if (!applyFirstSuggestionOnMainIfCurrent(
+                    insertString = insertString,
+                    candidate = displayedCandidates.firstOrNull(),
+                )
+            ) return
+        }
         updateDisplayedCandidates(insertString, displayedCandidates)
 
-        if (shouldStartLiveConversion(insertString) && !hasConvertedKatakana) {
+        if (shouldApplyLiveConversion && !applyLiveConversionBeforeCandidateStrip) {
             delayBeforeApplyingLiveConversion()
             if (!shouldApplyCandidateResult(insertString, token)) {
                 return
