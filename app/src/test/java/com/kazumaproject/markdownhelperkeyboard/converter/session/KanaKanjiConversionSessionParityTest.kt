@@ -75,6 +75,13 @@ class KanaKanjiConversionSessionParityTest {
             }
             emptyList<UserWord>()
         }
+        whenever(repository.exactMatchesForConversion(any())).thenAnswer {
+            lookupCount++
+            if (failDuringAppend && lookupCount == 3) {
+                throw kotlinx.coroutines.CancellationException("controlled partial append")
+            }
+            emptyList<UserWord>()
+        }
         val incremental = KanaKanjiConversionSession(
             localEngine,
             ConversionBackend.INCREMENTAL_SESSION,
@@ -98,21 +105,23 @@ class KanaKanjiConversionSessionParityTest {
             cancellationObserved = true
         }
         assertTrue(cancellationObserved)
+        assertEquals("きょ", incremental.committedInput())
 
         failDuringAppend = false
         lookupCount = 0
         val recovered = incremental.query(
-            request("きょう", CandidateQueryMode.PREDICTION, true).copy(
+            request("きょうは", CandidateQueryMode.PREDICTION, true).copy(
                 userDictionaryRepository = repository,
             ),
         )
         val rebuilt = KanaKanjiConversionSession(localEngine, ConversionBackend.LEGACY).query(
-            request("きょう", CandidateQueryMode.PREDICTION, true).copy(
+            request("きょうは", CandidateQueryMode.PREDICTION, true).copy(
                 userDictionaryRepository = repository,
             ),
         )
         assertEquals(rebuilt.candidates.fingerprint(), recovered.candidates.fingerprint())
         assertEquals(rebuilt.bunsetsuResult?.splitPatterns, recovered.bunsetsuResult?.splitPatterns)
+        assertEquals("きょうは", incremental.committedInput())
     }
 
     private fun request(
@@ -162,6 +171,8 @@ class KanaKanjiConversionSessionParityTest {
             userDictionaryRepository = mock()
             runBlocking {
                 whenever(userDictionaryRepository.commonPrefixSearchInUserDict(any()))
+                    .thenReturn(emptyList())
+                whenever(userDictionaryRepository.exactMatchesForConversion(any()))
                     .thenReturn(emptyList())
             }
         }

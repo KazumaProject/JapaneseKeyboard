@@ -89,12 +89,29 @@ class KanaKanjiEngine {
         val stateRejectionCount: Int,
         val expansionCacheHitCount: Int,
         val expansionCacheMissCount: Int,
+        val graphAppendReused: Boolean,
+        val forwardDpReused: Boolean,
     )
 
     class IncrementalSessionState internal constructor(
         internal val graphState: GraphBuilder.SessionState,
         internal val pathState: FindPath.SessionState,
     ) {
+        internal fun beginQueryTransaction() {
+            graphState.beginQueryTransaction()
+            pathState.beginQueryTransaction()
+        }
+
+        internal fun commitQueryTransaction() {
+            graphState.commitQueryTransaction()
+            pathState.commitQueryTransaction()
+        }
+
+        internal fun rollbackQueryTransaction() {
+            graphState.rollbackQueryTransaction()
+            pathState.rollbackQueryTransaction()
+        }
+
         internal fun reset() {
             graphState.reset()
             pathState.reset()
@@ -115,7 +132,11 @@ class KanaKanjiEngine {
                 stateRejectionCount = pathState.lastStateRejectionCount,
                 expansionCacheHitCount = pathState.lastExpansionCacheHitCount,
                 expansionCacheMissCount = pathState.lastExpansionCacheMissCount,
+                graphAppendReused = graphState.lastAppendReused,
+                forwardDpReused = pathState.lastForwardDpReused,
             )
+
+        internal fun committedInput(): String? = graphState.committedInput()
     }
 
     private lateinit var graphBuilder: GraphBuilder
@@ -1074,6 +1095,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -1577,6 +1599,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -2111,6 +2134,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -2586,6 +2610,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -3041,6 +3066,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -3532,6 +3558,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
