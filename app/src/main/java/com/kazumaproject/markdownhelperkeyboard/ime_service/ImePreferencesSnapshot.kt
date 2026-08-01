@@ -317,7 +317,10 @@ data class ImePreferencesSnapshot(
                     appPreference.live_conversion_candidate_yomi_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
                 conversionBeamWidth = appPreference.conversion_beam_width_preference,
-                conversionBackend = if (appPreference.incremental_conversion_session_preference) {
+                conversionBackend = if (
+                    appPreference.incremental_conversion_session_preference ||
+                    appPreference.live_conversion_preference == true
+                ) {
                     ConversionBackend.INCREMENTAL_SESSION
                 } else {
                     ConversionBackend.LEGACY

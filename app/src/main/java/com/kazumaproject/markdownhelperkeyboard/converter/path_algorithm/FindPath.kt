@@ -59,8 +59,39 @@ class FindPath(
         internal var lastStateRejectionCount: Int = 0
         internal var lastExpansionCacheHitCount: Int = 0
         internal var lastExpansionCacheMissCount: Int = 0
+        internal var lastForwardDpReused: Boolean = false
+
+        private var queryCheckpoint: QueryCheckpoint? = null
+
+        private data class QueryCheckpoint(
+            val forwardDpCache: ForwardDpCache?,
+            val penaltyCache: PenaltyCache?,
+        )
+
+        internal fun beginQueryTransaction() {
+            check(queryCheckpoint == null) { "Path query transaction is already active" }
+            queryCheckpoint = QueryCheckpoint(
+                forwardDpCache = forwardDpCache,
+                penaltyCache = penaltyCache,
+            )
+        }
+
+        internal fun commitQueryTransaction() {
+            queryCheckpoint = null
+        }
+
+        internal fun rollbackQueryTransaction() {
+            val checkpoint = queryCheckpoint ?: return
+            forwardDpCache = checkpoint.forwardDpCache
+            penaltyCache = checkpoint.penaltyCache
+            queryCheckpoint = null
+            // Queue/path arenas are query-local. They are cleared at the next begin(), while
+            // node ids and expansion entries for the committed prefix remain reusable.
+            backwardSearchScratch.discardInFlightWork()
+        }
 
         internal fun reset() {
+            queryCheckpoint = null
             forwardDpCache = null
             penaltyCache = null
             backwardSearchScratch.reset()
@@ -71,6 +102,7 @@ class FindPath(
             lastStateRejectionCount = 0
             lastExpansionCacheHitCount = 0
             lastExpansionCacheMissCount = 0
+            lastForwardDpReused = false
         }
     }
 
@@ -314,6 +346,11 @@ class FindPath(
                 nodeIds.clear()
                 expansionCache.reset()
                 queueElementPool.clear()
+            } else {
+                // Restoring an unpruned incremental lattice can add predecessor nodes to an
+                // existing position. Cached expansion lists are therefore query-local even
+                // though node identities and the reusable work arena remain session-local.
+                expansionCache.clear()
             }
             expansionCache.configure(
                 connectionMatrix = connectionMatrix,
@@ -337,6 +374,17 @@ class FindPath(
             bestSplitCostsByState.clear()
             expansionCache.reset()
             queueElementPool.clear()
+            charPathArena.reset()
+            queueElementCount = 0
+            stateRejectionCount = 0
+            expansionCacheHitCount = 0
+            expansionCacheMissCount = 0
+        }
+
+        fun discardInFlightWork() {
+            queue.clear()
+            bestBackwardCostByState.clear()
+            bestSplitCostsByState.clear()
             charPathArena.reset()
             queueElementCount = 0
             stateRejectionCount = 0
@@ -953,11 +1001,14 @@ class FindPath(
         val activeCache = if (sessionState != null) sessionState.forwardDpCache else forwardDpCache
         val reusableForwardDp = activeCache?.takeIf { cached ->
             incrementalMetadata != null &&
-                incrementalMetadata.reusedThroughEndIndex == cached.inputLength &&
+                incrementalMetadata.forwardDpReusableThroughEndIndex == cached.inputLength &&
                 incrementalMetadata.conversionSignature == cached.conversionSignature &&
                 length == cached.inputLength + 1 &&
                 cached.connectionMatrixIdentity == System.identityHashCode(connectionMatrix) &&
                 cached.beamWidth == effectiveBeamWidth
+        }
+        if (sessionState?.performanceProbeEnabled == true) {
+            sessionState.lastForwardDpReused = reusableForwardDp != null
         }
         val forwardDpStartPosition = if (reusableForwardDp != null) {
             reusableForwardDp.nodesBeforePreviousEnd.forEach { (position, nodes) ->
@@ -1530,11 +1581,14 @@ class FindPath(
         val reusableForwardDp = activeCache?.takeIf { cached ->
             forwardDpTrace == null &&
                 incrementalMetadata != null &&
-                incrementalMetadata.reusedThroughEndIndex == cached.inputLength &&
+                incrementalMetadata.forwardDpReusableThroughEndIndex == cached.inputLength &&
                 incrementalMetadata.conversionSignature == cached.conversionSignature &&
                 length == cached.inputLength + 1 &&
                 cached.connectionMatrixIdentity == System.identityHashCode(connectionMatrix) &&
                 cached.beamWidth == effectiveBeamWidth
+        }
+        if (sessionState?.performanceProbeEnabled == true) {
+            sessionState.lastForwardDpReused = reusableForwardDp != null
         }
         val forwardDpStartPosition = if (reusableForwardDp != null) {
             reusableForwardDp.nodesBeforePreviousEnd.forEach { (position, nodes) ->

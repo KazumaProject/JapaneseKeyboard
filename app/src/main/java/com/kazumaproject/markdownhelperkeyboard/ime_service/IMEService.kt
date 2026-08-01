@@ -1182,6 +1182,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 applyRawComposingFallback(insertString)
             }
         }
+        if (BuildConfig.DEBUG && shouldStartLiveConversion(insertString)) {
+            val request = candidateRefreshCoordinator.requests.value
+            if (request.input == insertString) {
+                Timber.d(
+                    "liveConversionLatency inputLength=%d revision=%d requestToApplied=%.2fms",
+                    insertString.length,
+                    request.revision,
+                    (System.nanoTime() -
+                        request.publishedAtNanos) / 1_000_000.0,
+                )
+            }
+        }
         true
     }
 
@@ -2232,7 +2244,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         kanaKanjiConversionSession = KanaKanjiConversionSession(
             engine = kanaKanjiEngine,
             backend = backend,
-        )
+        ).also { session ->
+            if (BuildConfig.DEBUG && backend == ConversionBackend.INCREMENTAL_SESSION) {
+                session.enablePerformanceProbe()
+            }
+        }
         candidateRequestTracker.restart(backend)
         candidateRefreshCoordinator.restart()
     }
@@ -22175,44 +22191,53 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         mainView: MainLayoutBinding,
         token: CandidateRequestToken? = null,
-    ): List<Candidate> = measureDebugStage("IMEService.getSuggestionList") {
-        val resultFromUserDictionary = if (isUserDictionaryEnable == true) {
-            measureDebugStage("IMEService.getSuggestionList.userDictionary") {
-                withContext(Dispatchers.IO) {
+    ): List<Candidate> = measureDebugStage("IMEService.getSuggestionList") { coroutineScope {
+        // These lookups do not depend on one another. Starting them together moves Room and
+        // template latency under the converter's CPU time instead of paying it serially first.
+        val userDictionaryDeferred = async(Dispatchers.IO) {
+            if (isUserDictionaryEnable == true) {
+                measureDebugStage("IMEService.getSuggestionList.userDictionary") {
                     val prefixMatchNumber = (userDictionaryPrefixMatchNumber ?: 2) - 1
-                    if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
-                    userDictionaryRepository.searchByReadingPrefixSuspend(
-                        prefix = insertString, limit = userDictionaryPredictionCandidateLimit
-                    ).map {
-                        Candidate(
-                            string = it.word,
-                            type = CANDIDATE_TYPE_USER_DICTIONARY,
-                            length = (it.reading.length).toUByte(),
-                            score = it.posScore
-                        )
-                    }.sortedBy { it.score }
+                    if (insertString.length <= prefixMatchNumber) {
+                        emptyList()
+                    } else {
+                        userDictionaryRepository.searchByReadingPrefixSuspend(
+                            prefix = insertString,
+                            limit = userDictionaryPredictionCandidateLimit,
+                        ).map {
+                            Candidate(
+                                string = it.word,
+                                type = CANDIDATE_TYPE_USER_DICTIONARY,
+                                length = it.reading.length.toUByte(),
+                                score = it.posScore,
+                            )
+                        }.sortedBy { it.score }
+                    }
                 }
+            } else {
+                emptyList()
             }
-        } else {
-            emptyList()
         }
 
-        val resultFromUserTemplate =
+        val userTemplateDeferred = async {
             measureDebugStage("IMEService.getSuggestionList.userTemplate") {
                 getUserTemplateCandidates(insertString)
             }
+        }
 
         val suggestionLearnRepository = learnedRepositoryForSuggestion()
-        val resultFromLearnDictionary =
+        val learnDictionaryDeferred = async(Dispatchers.IO) {
             if (enablePredictionSearchLearnDictionaryPreference == true &&
                 suggestionLearnRepository != null
             ) {
                 measureDebugStage("IMEService.getSuggestionList.learnDictionary") {
-                    withContext(Dispatchers.IO) {
-                        val prefixMatchNumber = (learnPredictionPreference ?: 4) - 1
-                        if (insertString.length <= prefixMatchNumber) return@withContext emptyList<Candidate>()
+                    val prefixMatchNumber = (learnPredictionPreference ?: 4) - 1
+                    if (insertString.length <= prefixMatchNumber) {
+                        emptyList()
+                    } else {
                         suggestionLearnRepository.predictiveSearchByInput(
-                            prefix = insertString, limit = learnDictionaryPredictionCandidateLimit
+                            prefix = insertString,
+                            limit = learnDictionaryPredictionCandidateLimit,
                         ).map {
                             Candidate(
                                 string = it.out,
@@ -22227,6 +22252,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             } else {
                 emptyList()
             }
+        }
 
         val ngWords = measureDebugStage("IMEService.getSuggestionList.ngWordSnapshot") {
             if (isNgWordEnable == true) ngWordsList.value.map { it.tango } else emptyList()
@@ -22240,8 +22266,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             (enableTypoCorrectionQwertyEnglishKeyboardPreference == true) &&
                     (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTY || (qwertyMode.value == TenKeyQWERTYMode.TenKeyQWERTYRomaji && !currentQwertyRomajiModeForSession))
 
-        val coreResult = measureDebugStage("IMEService.getSuggestionList.kanaKanjiEngine") {
-            withContext(Dispatchers.Default) {
+        val coreResultDeferred = async(Dispatchers.Default) {
+            measureDebugStage("IMEService.getSuggestionList.kanaKanjiEngine") {
                 queryKanaKanjiCore(
                     input = insertString,
                     mode = CandidateQueryMode.PREDICTION,
@@ -22252,6 +22278,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             }
         }
+        val coreResult = coreResultDeferred.await()
+        val resultFromUserDictionary = userDictionaryDeferred.await()
+        val resultFromUserTemplate = userTemplateDeferred.await()
+        val resultFromLearnDictionary = learnDictionaryDeferred.await()
         val engineResult = coreResult.bunsetsuResult
         val engineCandidates = coreResult.candidates
         engineResult?.let {
@@ -22294,7 +22324,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         orderedCandidates
-    }
+    } }
 
     private fun getLeftContext(inputLength: Int): String {
         val ic = currentInputConnection ?: return ""
@@ -22467,7 +22497,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         ).also {
             kanaKanjiConversionSession = it
         }
-        return session.query(
+        val result = session.query(
             KanaKanjiQueryRequest(
                 input = input,
                 mode = mode,
@@ -22490,6 +22520,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 predictionConfig = predictionConfig,
             )
         )
+        if (BuildConfig.DEBUG) {
+            session.performanceSnapshot()?.let { snapshot ->
+                Timber.d(
+                    "conversionStages inputLength=%d graph=%.2fms penalty=%.2fms forward=%.2fms backward=%.2fms graphReused=%s forwardReused=%s",
+                    input.length,
+                    snapshot.graphNs / 1_000_000.0,
+                    snapshot.penaltyNs / 1_000_000.0,
+                    snapshot.forwardDpNs / 1_000_000.0,
+                    snapshot.backwardSearchNs / 1_000_000.0,
+                    snapshot.graphAppendReused,
+                    snapshot.forwardDpReused,
+                )
+            }
+        }
+        return result
     }
 
     private fun List<Candidate>.withoutHentaiganaCandidatesIfNeeded(): List<Candidate> {

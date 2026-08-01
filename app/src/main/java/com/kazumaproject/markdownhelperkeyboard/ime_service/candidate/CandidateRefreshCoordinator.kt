@@ -68,4 +68,5 @@ internal data class CandidateRefreshRequest(
     val revision: Long,
     val input: String,
     val flag: CandidateShowFlag,
+    val publishedAtNanos: Long = System.nanoTime(),
 )

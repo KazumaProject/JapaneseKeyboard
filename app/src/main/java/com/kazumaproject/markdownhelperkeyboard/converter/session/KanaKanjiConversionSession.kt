@@ -6,6 +6,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -72,9 +73,12 @@ class KanaKanjiConversionSession(
     internal fun performanceSnapshot(): KanaKanjiEngine.IncrementalPerformanceSnapshot? =
         incrementalState?.performanceSnapshot()
 
+    internal fun committedInput(): String? = incrementalState?.committedInput()
+
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
+        incrementalState?.beginQueryTransaction()
         try {
-            when (request.mode) {
+            val result = when (request.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
                     candidates = engine.getCandidatesEnglishKana(
                         input = request.input,
@@ -86,9 +90,16 @@ class KanaKanjiConversionSession(
                 CandidateQueryMode.PREDICTION -> queryPrediction(request)
                 CandidateQueryMode.CONVERSION -> queryConversion(request)
             }
+            incrementalState?.commitQueryTransaction()
+            result
+        } catch (cancellation: CancellationException) {
+            // Keep the last fully committed prefix. Graph append and path caches have an explicit
+            // rollback boundary, so rapid collectLatest input no longer forces a cold rebuild.
+            incrementalState?.rollbackQueryTransaction()
+            throw cancellation
         } catch (throwable: Throwable) {
-            // Graph construction and forward DP update state in place.  A collectLatest
-            // cancellation (or any failure) must make the next request rebuild atomically.
+            // Unexpected engine/repository failures may violate invariants outside the tracked
+            // append delta. Prefer a clean rebuild for those rare failures.
             incrementalState?.reset()
             throw throwable
         }

@@ -52,6 +52,19 @@ class UserDictionaryRepository @Inject constructor(
             .orEmpty()
     }
 
+    /**
+     * Incremental lattice append only needs entries whose reading ends at the new input tail.
+     * Earlier, shorter common-prefix matches are already present in the committed graph.
+     */
+    suspend fun exactMatchesForConversion(reading: String): List<UserWord> {
+        val firstCharacter = reading.firstOrNull() ?: return emptyList()
+        return getConversionSnapshot()[firstCharacter]
+            ?.asSequence()
+            ?.filter { it.reading == reading }
+            ?.toList()
+            .orEmpty()
+    }
+
     suspend fun allWordsSuspend(): List<UserWord> {
         return userWordDao.getAllSuspend()
     }
