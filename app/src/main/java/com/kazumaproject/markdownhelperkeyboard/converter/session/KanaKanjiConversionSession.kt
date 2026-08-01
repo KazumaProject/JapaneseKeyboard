@@ -75,6 +75,10 @@ class KanaKanjiConversionSession(
 
     internal fun committedInput(): String? = incrementalState?.committedInput()
 
+    internal fun setAfterForwardDpForTest(callback: (() -> Unit)?) {
+        incrementalState?.pathState?.afterForwardDpForTest = callback
+    }
+
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
         incrementalState?.beginQueryTransaction()
         try {
@@ -93,8 +97,8 @@ class KanaKanjiConversionSession(
             incrementalState?.commitQueryTransaction()
             result
         } catch (cancellation: CancellationException) {
-            // Keep the last fully committed prefix. Graph append and path caches have an explicit
-            // rollback boundary, so rapid collectLatest input no longer forces a cold rebuild.
+            // A completed graph has its own staged commit. Keep that newest frontier when only the
+            // later path search was cancelled; an incomplete append still rolls back entirely.
             incrementalState?.rollbackQueryTransaction()
             throw cancellation
         } catch (throwable: Throwable) {

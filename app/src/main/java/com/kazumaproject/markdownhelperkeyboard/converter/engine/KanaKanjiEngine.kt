@@ -143,6 +143,9 @@ class KanaKanjiEngine {
     private lateinit var findPath: FindPath
     private var dictionaryBinaryReader: DictionaryBinaryReader? = null
 
+    @Volatile
+    private var initialOptionalDictionaryStateLoaded: Boolean = false
+
     private lateinit var connectionMatrix: ConnectionMatrix.CostTable
 
     fun createIncrementalSessionState(): IncrementalSessionState = IncrementalSessionState(
@@ -487,8 +490,36 @@ class KanaKanjiEngine {
             assignNeologdDictionary(newNeologd)
             assignWebDictionary(newWeb)
             mozcDictionaryActive = newMozcDictionaryActive
+            initialOptionalDictionaryStateLoaded = true
         }
     }
+
+    /**
+     * Completes the dictionary state that is not supplied by the Hilt graph without rebuilding
+     * the already-loaded core dictionaries. The IME starts this once in the background instead
+     * of racing the first input against a redundant full dictionary reload.
+     */
+    fun initializeOptionalDictionaryStateFromCurrentSources() {
+        val reader = checkNotNull(dictionaryBinaryReader) {
+            "DictionaryBinaryReader must be configured before optional dictionaries"
+        }
+        val newPerson = loadOptionalTripleDictionary(reader, DictionaryCategory.PERSON_NAME)
+        val newPlaces = loadOptionalTripleDictionary(reader, DictionaryCategory.PLACES)
+        val newWiki = loadOptionalTripleDictionary(reader, DictionaryCategory.WIKI)
+        val newNeologd = loadOptionalTripleDictionary(reader, DictionaryCategory.NEOLOGD)
+        val newWeb = loadOptionalTripleDictionary(reader, DictionaryCategory.WEB)
+        synchronized(this) {
+            assignPersonDictionary(newPerson)
+            assignPlacesDictionary(newPlaces)
+            assignWikiDictionary(newWiki)
+            assignNeologdDictionary(newNeologd)
+            assignWebDictionary(newWeb)
+            initialOptionalDictionaryStateLoaded = true
+        }
+    }
+
+    fun isInitialOptionalDictionaryStateLoaded(): Boolean =
+        initialOptionalDictionaryStateLoaded
 
     private fun loadOptionalTripleDictionary(
         reader: DictionaryBinaryReader,
@@ -515,10 +546,10 @@ class KanaKanjiEngine {
             tangoTrie = tangoTrie,
             yomiTrie = yomiTrie,
             tokenArray = tokenArray,
-            succinctBitVectorLBSYomi = SuccinctBitVector(yomiTrie.LBS),
-            succinctBitVectorIsLeafYomi = SuccinctBitVector(yomiTrie.isLeaf),
-            succinctBitVectorTokenArray = SuccinctBitVector(tokenArray.bitvector),
-            succinctBitVectorTangoLBS = SuccinctBitVector(tangoTrie.LBS),
+            succinctBitVectorLBSYomi = reader.loadYomiLbsIndex(yomiKey, yomiTrie),
+            succinctBitVectorIsLeafYomi = reader.loadYomiLeafIndex(yomiKey, yomiTrie),
+            succinctBitVectorTokenArray = reader.loadTokenIndex(tokenKey, tokenArray),
+            succinctBitVectorTangoLBS = reader.loadTangoLbsIndex(tangoKey, tangoTrie),
         )
     }
 
