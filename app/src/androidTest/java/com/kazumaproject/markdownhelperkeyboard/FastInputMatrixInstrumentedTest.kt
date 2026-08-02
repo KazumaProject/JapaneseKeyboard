@@ -241,6 +241,83 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
+    fun tenKeyDeleteLongPressClearsComposingCandidatesOnPhysicalDevice() {
+        runPhysicalDeviceSession("delete-long-press-candidate-clear") { session ->
+            val testCase = TestCase(
+                keyboard = TestKeyboard.TENKEY,
+                columns = 1,
+                candidateTabVisible = false,
+                toolbarVisible = false,
+                toolbarIntegrated = false,
+                orientation = TestOrientation.PORTRAIT
+            )
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+                applyCasePreferences(session.preferences, testCase)
+                check(
+                    session.preferences.edit()
+                        .putInt("long_press_timeout_preference", 100)
+                        .putString("delete_long_press_conversion_behavior", "deferred")
+                        .putBoolean("live_conversion_preference", false)
+                        .commit()
+                )
+
+                ensureTargetImeSelected(session)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                assertDeviceReady(session.context, session.targetIme, scenario)
+                prepareEmptyEditor(scenario)
+
+                val before = awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = false
+                )
+                val inputInjected = injectSequence(
+                    first = before.first.center,
+                    second = before.second.center,
+                    repetitions = 1
+                )
+                val inputText = awaitTextSettled(scenario)
+                awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = true
+                )
+                assertTrue("Ten-key input injection failed", inputInjected)
+                assertTrue("Composing input did not reach the editor", inputText.isNotEmpty())
+                assertTrue(
+                    "Candidate list was not populated before delete long press",
+                    findCandidateState().texts.isNotEmpty()
+                )
+
+                val deleteBounds = findVisibleNodeById("key_delete")?.screenRect()
+                    ?: throw SetupException("Delete key is not visible")
+                val deleteInjected = injectTapWithoutTrailingGap(
+                    point = deleteBounds.center,
+                    holdMs = 850L
+                )
+                awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = false
+                )
+                val afterText = awaitTextSettled(scenario)
+                val afterCandidates = findCandidateState().texts
+
+                assertTrue("Delete long-press injection failed", deleteInjected)
+                assertTrue("ComposingText was not fully deleted", afterText.isEmpty())
+                assertTrue(
+                    "SuggestionAdapter still exposes candidates after ComposingText deletion: " +
+                        afterCandidates,
+                    afterCandidates.isEmpty()
+                )
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
+
+    @Test
     fun qwertyVariationPopupTwoFingerInputOnPhysicalDevice() {
         runPhysicalDeviceSession("qwerty-variation-popup-multitouch") { session ->
             val testCase = TestCase(

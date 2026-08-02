@@ -682,7 +682,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
                     categoryTab.addTab(
                         categoryTab.newTab().setIcon(
                             categoryIconRes[cat] ?: com.kazumaproject.core.R.drawable.logo_key
-                        )
+                        ).setContentDescription(emojiCategoryLabelRes.getValue(cat))
                     )
                 }
             }
@@ -1035,9 +1035,21 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         ).toInt()
     }
 
+    private val emojiCategoryLabelRes = mapOf(
+        EmojiCategory.SMILEYS_EMOTION to R.string.emoji_category_smileys_emotion,
+        EmojiCategory.PEOPLE_BODY to R.string.emoji_category_people_body,
+        EmojiCategory.ANIMALS_NATURE to R.string.emoji_category_animals_nature,
+        EmojiCategory.FOOD_DRINK to R.string.emoji_category_food_drink,
+        EmojiCategory.TRAVEL_PLACES to R.string.emoji_category_travel_places,
+        EmojiCategory.ACTIVITIES to R.string.emoji_category_activities,
+        EmojiCategory.OBJECTS to R.string.emoji_category_objects,
+        EmojiCategory.SYMBOLS to R.string.emoji_category_symbols,
+        EmojiCategory.FLAGS to R.string.emoji_category_flags,
+        EmojiCategory.UNKNOWN to R.string.emoji_category_unknown,
+    )
+
     private val categoryIconRes = mapOf(
-        EmojiCategory.EMOTICONS to com.kazumaproject.core.R.drawable.mood_24px,
-        EmojiCategory.GESTURES to com.kazumaproject.core.R.drawable.thumb_up_24dp,
+        EmojiCategory.SMILEYS_EMOTION to com.kazumaproject.core.R.drawable.mood_24px,
         EmojiCategory.PEOPLE_BODY to com.kazumaproject.core.R.drawable.person_24dp,
         EmojiCategory.ANIMALS_NATURE to com.kazumaproject.core.R.drawable.pets_24dp,
         EmojiCategory.FOOD_DRINK to com.kazumaproject.core.R.drawable.fastfood_24dp,
@@ -1049,35 +1061,7 @@ class CustomSymbolKeyboardView @JvmOverloads constructor(
         EmojiCategory.UNKNOWN to com.kazumaproject.core.R.drawable.question_mark_24dp
     )
 
-    private val categoryOrder = Comparator<EmojiCategory> { a, b ->
-        listOf(
-            EmojiCategory.EMOTICONS,
-            EmojiCategory.GESTURES,
-            EmojiCategory.PEOPLE_BODY,
-            EmojiCategory.ANIMALS_NATURE,
-            EmojiCategory.FOOD_DRINK,
-            EmojiCategory.TRAVEL_PLACES,
-            EmojiCategory.ACTIVITIES,
-            EmojiCategory.OBJECTS,
-            EmojiCategory.SYMBOLS,
-            EmojiCategory.FLAGS,
-            EmojiCategory.UNKNOWN
-        ).indexOf(a).compareTo(
-            listOf(
-                EmojiCategory.EMOTICONS,
-                EmojiCategory.GESTURES,
-                EmojiCategory.PEOPLE_BODY,
-                EmojiCategory.ANIMALS_NATURE,
-                EmojiCategory.FOOD_DRINK,
-                EmojiCategory.TRAVEL_PLACES,
-                EmojiCategory.ACTIVITIES,
-                EmojiCategory.OBJECTS,
-                EmojiCategory.SYMBOLS,
-                EmojiCategory.FLAGS,
-                EmojiCategory.UNKNOWN
-            ).indexOf(b)
-        )
-    }
+    private val categoryOrder = compareBy<EmojiCategory> { it.ordinal }
 
     fun switchToClipboardMode(selectCategoryIndex: Int = 0) {
         // Modeを切り替え
