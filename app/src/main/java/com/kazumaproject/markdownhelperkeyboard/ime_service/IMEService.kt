@@ -1363,6 +1363,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         DeleteLongPressConversionBehavior.Default
     private var activeDeleteLongPressConversionBehavior:
         DeleteLongPressConversionBehavior? = null
+    private var deleteLongPressFinalRefreshRequested = false
     private var tenkeyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowIMEButtonPreference: Boolean? = true
     private var qwertyShowEmojiButtonPreference: Boolean? = false
@@ -14427,7 +14428,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     CandidateShowFlag.Idle -> {
                         var resetCandidateTabSelection = false
                         clearZenzLiveSlot("suggestion idle")
-                        setSuggestionAdapterSuggestionsOnMain(emptyList())
+                        setSuggestionAdaptersOnMain(emptyList())
                         if (stringInTail.get().isEmpty()) {
                             shortcutToolbarHiddenForCandidates = false
                             resetCandidateTabSelection = true
@@ -17278,11 +17279,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val henkanActive = isHenkan.get()
         val tailIsEmpty = stringInTail.get().isEmpty()
         val shouldCommitIdle = !bunsetusMultipleDetect || tailIsEmpty
-        if (
-            !henkanActive &&
-            shouldCommitIdle &&
-            deleteLongPressConversionGate.mayApplyCandidateResult()
-        ) {
+        if (!henkanActive && shouldCommitIdle) {
             requestCandidateRefresh(CandidateShowFlag.Idle)
         }
     }
@@ -22713,6 +22710,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (deleteLongPressJob?.isActive == true) return
         val behavior = deleteLongPressConversionBehavior
         activeDeleteLongPressConversionBehavior = behavior
+        deleteLongPressFinalRefreshRequested = false
         if (behavior.suspendsCandidateResultsDuringRepeat) {
             if (!deleteLongPressConversionGate.beginRepeat()) {
                 activeDeleteLongPressConversionBehavior = null
@@ -22726,45 +22724,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             deletesCommittedText = inputString.value.isEmpty()
         )
         deleteLongPressJob = scope.launch {
-            while (isActive && deleteKeyLongKeyPressed.get()) {
-                val current = inputString.value
-                val tailIsEmpty = stringInTail.get().isEmpty()
+            try {
+                while (isActive && deleteKeyLongKeyPressed.get()) {
+                    val current = inputString.value
+                    val tailIsEmpty = stringInTail.get().isEmpty()
 
-                if (current.isEmpty()) {
-                    if (tailIsEmpty) {
-                        if (isEditHistoryEnabled()) {
-                            val beforeChar =
-                                captureDeletedTextFromConnection(currentInputConnection)
-                            if (beforeChar.isNotEmpty()) {
-                                activeDeleteHistoryBatch?.deletedText?.insert(0, beforeChar)
+                    if (current.isEmpty()) {
+                        if (tailIsEmpty) {
+                            if (isEditHistoryEnabled()) {
+                                val beforeChar =
+                                    captureDeletedTextFromConnection(currentInputConnection)
+                                if (beforeChar.isNotEmpty()) {
+                                    activeDeleteHistoryBatch?.deletedText?.insert(0, beforeChar)
+                                }
                             }
+                            deleteLastGraphemeOrSelection()
+                        } else {
+                            break
                         }
-                        deleteLastGraphemeOrSelection()
                     } else {
-                        break
+                        val newString = current.dropLast(1)
+                        _inputString.update { newString }
+                        if (newString.isEmpty() && tailIsEmpty) {
+                            clearStyledComposingTextAfterFinalDelete(current)
+                        }
                     }
-                } else {
-                    val newString = current.dropLast(1)
-                    _inputString.update { newString }
-                    if (newString.isEmpty() && tailIsEmpty) {
-                        clearStyledComposingTextAfterFinalDelete(current)
-                    }
-                }
 
-                delay(LONG_DELAY_TIME)
-            }
-            // （連続タップ入力解除など）
-            enableContinuousTapInput()
-            if (
-                activeDeleteLongPressConversionBehavior ==
-                DeleteLongPressConversionBehavior.Continuous
-            ) {
-                val refreshFlag = if (inputString.value.isEmpty()) {
-                    CandidateShowFlag.Idle
-                } else {
-                    CandidateShowFlag.Updating
+                    delay(LONG_DELAY_TIME)
                 }
-                requestCandidateRefresh(refreshFlag, inputString.value)
+            } finally {
+                // The key-up path cancels this job. Final candidate cleanup must therefore also
+                // live in finally so cancellation cannot skip it.
+                enableContinuousTapInput()
+                requestFinalDeleteLongPressRefresh()
             }
         }
         deleteLongPressJob?.invokeOnCompletion {
@@ -22783,6 +22775,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
         }
+    }
+
+    private fun requestFinalDeleteLongPressRefresh() {
+        if (deleteLongPressFinalRefreshRequested) return
+
+        val behavior = activeDeleteLongPressConversionBehavior ?: return
+        val finalInput = inputString.value
+        val refreshFlag = when (behavior) {
+            DeleteLongPressConversionBehavior.Deferred ->
+                deleteLongPressConversionGate.finishRepeat(finalInput)
+
+            DeleteLongPressConversionBehavior.Continuous ->
+                if (finalInput.isEmpty()) {
+                    CandidateShowFlag.Idle
+                } else {
+                    CandidateShowFlag.Updating
+                }
+        } ?: return
+
+        deleteLongPressFinalRefreshRequested = true
+        candidateRequestTracker.invalidate()
+        Timber.d(
+            "deleteLongPress: final candidate refresh input=[%s] flag=%s",
+            finalInput,
+            refreshFlag,
+        )
+        requestCandidateRefresh(refreshFlag, finalInput)
     }
 
     /**
@@ -22810,22 +22829,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         onDeleteLongPressUp.set(true)
         deleteLongPressJob?.cancel()
         deleteLongPressJob = null
-        if (
-            activeDeleteLongPressConversionBehavior ==
-            DeleteLongPressConversionBehavior.Deferred
-        ) {
-            val refreshFlag = deleteLongPressConversionGate.finishRepeat(inputString.value)
-            if (refreshFlag != null) {
-                enableContinuousTapInput()
-                candidateRequestTracker.invalidate()
-                Timber.d(
-                    "deleteLongPress: resume candidate refresh once input=[%s] flag=%s",
-                    inputString.value,
-                    refreshFlag,
-                )
-                requestCandidateRefresh(refreshFlag, inputString.value)
-            }
-        }
+        requestFinalDeleteLongPressRefresh()
         activeDeleteLongPressConversionBehavior = null
     }
 
