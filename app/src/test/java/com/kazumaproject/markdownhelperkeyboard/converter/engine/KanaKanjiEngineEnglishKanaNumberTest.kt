@@ -59,6 +59,67 @@ class KanaKanjiEngineEnglishKanaNumberTest {
         assertTrue(engine.getCandidatesEnglishKana("にじゅっふん").any { it.string == "20分" })
         assertTrue(engine.getCandidatesEnglishKana("ろくじ").any { it.string == "6時" })
         assertTrue(engine.getCandidatesEnglishKana("にじゅうよじ").any { it.string == "24時" })
+        assertTrue(engine.getCandidatesEnglishKana("くじ").any { it.string == "9時" })
+        assertTrue(engine.getCandidatesEnglishKana("じゅうくじ").any { it.string == "19時" })
+        assertTrue(engine.getCandidatesEnglishKana("よにん").any { it.string == "4人" })
+        assertTrue(engine.getCandidatesEnglishKana("よえん").any { it.string == "4円" })
+        assertTrue(engine.getCandidatesEnglishKana("くえん").any { it.string == "9円" })
+        assertTrue(engine.getCandidatesEnglishKana("くにん").any { it.string == "9人" })
+        assertTrue(engine.getCandidatesEnglishKana("いっぷん").any { it.string == "1分" })
+        assertTrue(engine.getCandidatesEnglishKana("ろっぷん").any { it.string == "6分" })
+        assertTrue(engine.getCandidatesEnglishKana("はっぷん").any { it.string == "8分" })
+    }
+
+    @Test
+    fun getCandidatesEnglishKana_does_not_generate_numeric_candidates_for_ordinary_words() {
+        val cases = mapOf(
+            "よしよし" to setOf("4444", "４４４４", "8383", "８３８３", "四千四百四十四"),
+            "しせん" to setOf("4000", "４０００", "4,000", "四千"),
+            "くちょう" to setOf("9000000000000", "９００００００００００００", "九兆", "9兆"),
+            "ちょうせん" to setOf("1000000001000", "一兆一千"),
+            "ごご" to setOf("55", "５５", "五十五"),
+            "さんご" to setOf("35", "３５", "三十五"),
+            "しえん" to setOf("4円", "４円"),
+            "しじ" to setOf("4時", "４時"),
+            "いちいち" to setOf("11", "１１", "十一"),
+            "さんさん" to setOf("33", "３３", "三十三"),
+            "ろくろく" to setOf("66", "６６", "六十六"),
+            "よせん" to setOf("4000", "４０００", "4,000", "四千"),
+            "くせん" to setOf("9000", "９０００", "9,000", "九千"),
+        )
+
+        cases.forEach { (input, forbidden) ->
+            val candidates = engine.getCandidatesEnglishKana(input).map { it.string }
+            assertEquals(input, candidates.first())
+            assertTrue("$input: $candidates", candidates.none { it in forbidden })
+        }
+    }
+
+    @Test
+    fun getCandidatesEnglishKana_keeps_valid_cardinal_and_counter_candidates() {
+        val fourThousand = engine.getCandidatesEnglishKana("よんせん")
+        assertTrue(fourThousand.any { it.string == "4000" })
+        assertTrue(fourThousand.any { it.string == "四千" })
+        assertTrue(fourThousand.any {
+            it.string == "四千" && it.leftId == 2046.toShort() && it.rightId == 2046.toShort()
+        })
+
+        val nineTrillion = engine.getCandidatesEnglishKana("きゅうちょう")
+        assertTrue(nineTrillion.any { it.string == "9000000000000" })
+        assertTrue(nineTrillion.any { it.string == "九兆" })
+
+        val oneTrillion = engine.getCandidatesEnglishKana("いっちょう")
+        assertTrue(oneTrillion.any { it.string == "1000000000000" })
+        assertTrue(oneTrillion.any { it.string == "一兆" })
+
+        val historicalForty = engine.getCandidatesEnglishKana("しじゅう")
+        assertTrue(historicalForty.any { it.string == "40" })
+        assertTrue(historicalForty.any { it.string == "四十" })
+
+        val threePeople = engine.getCandidatesEnglishKana("さんにん")
+        assertTrue(threePeople.any {
+            it.string == "3人" && it.leftId == 2044.toShort() && it.rightId == 2011.toShort()
+        })
     }
 
     @Test

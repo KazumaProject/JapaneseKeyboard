@@ -52,7 +52,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertFu
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertFullWidthNumbersToHalfWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.createValueBasedSymbolCandidates
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.groupAndReplaceJapaneseForNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllFullWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
@@ -77,6 +76,12 @@ import java.io.ObjectInputStream
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
+
+private const val POS_ID_COUNTER_GENERIC: Short = 2011
+private const val POS_ID_COUNTER_TIME: Short = 2015
+private const val POS_ID_NUMBER_ARABIC: Short = 2044
+private const val POS_ID_NUMBER_SEPARATED: Short = 2045
+private const val POS_ID_NUMBER_KANJI: Short = 2046
 
 class KanaKanjiEngine {
 
@@ -4073,49 +4078,60 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig = PredictionConfig(),
     ): List<Candidate> {
         val inputToEnglish = input.replaceJapaneseCharactersForEnglish()
-        val inputToNumbers = input.groupAndReplaceJapaneseForNumber()
+        val explicitDigitInput = input.takeIf { value ->
+            value.isNotEmpty() && value.all { it in '0'..'9' || it in '０'..'９' }
+        }
         val directJapaneseNumber = input.toNumber()
         val numberUnitCandidates = createCandidatesForJapaneseNumberWithUnit(input)
         val preferredNumberCandidate = when {
             numberUnitCandidates.isNotEmpty() -> numberUnitCandidates.first().string
             directJapaneseNumber != null -> directJapaneseNumber.second
-            else -> inputToNumbers
+            explicitDigitInput != null -> explicitDigitInput.convertFullWidthNumbersToHalfWidth()
+            else -> null
         }
-        val listJapaneseCandidates = listOf(
-            Candidate(
+        val listJapaneseCandidates = buildList {
+            add(Candidate(
                 string = input, type = (1).toByte(), length = input.length.toUByte(), score = 3000
-            ), Candidate(
+            ))
+            add(Candidate(
                 string = input.hiraToKata(),
                 type = (1).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
-            ), Candidate(
+            ))
+            add(Candidate(
                 string = input.toHankakuKatakana(),
                 type = (31).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
-            ), Candidate(
+            ))
+            add(Candidate(
                 string = inputToEnglish,
                 type = (1).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
-            ), Candidate(
+            ))
+            add(Candidate(
                 string = inputToEnglish.replaceFirstChar { it.uppercaseChar() },
                 type = (1).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
-            ), Candidate(
+            ))
+            add(Candidate(
                 string = inputToEnglish.uppercase(),
                 type = (1).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
-            ), Candidate(
-                string = preferredNumberCandidate,
-                type = (1).toByte(),
-                length = input.length.toUByte(),
-                score = 3000
-            )
-        )
+            ))
+            if (preferredNumberCandidate != null && preferredNumberCandidate != input) {
+                add(Candidate(
+                    string = preferredNumberCandidate,
+                    type = (1).toByte(),
+                    length = input.length.toUByte(),
+                    score = 3000
+                ))
+            }
+        }
 
         val digitCandidates = when {
             directJapaneseNumber != null -> createDigitCandidates(
@@ -4123,7 +4139,11 @@ class KanaKanjiEngine {
             )
 
             numberUnitCandidates.isNotEmpty() -> emptyList()
-            else -> createDigitCandidates(inputToNumbers, input.length.toUByte())
+            explicitDigitInput != null -> createDigitCandidates(
+                explicitDigitInput,
+                input.length.toUByte(),
+            )
+            else -> emptyList()
         }
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
@@ -4251,16 +4271,16 @@ class KanaKanjiEngine {
             type = 22,
             length = inputLength,
             score = 8000,
-            leftId = 2040,
-            rightId = 2040
+            leftId = POS_ID_NUMBER_ARABIC,
+            rightId = POS_ID_NUMBER_ARABIC
         )
         val halfWidth = Candidate(
             string = halfWidthDigits.convertFullWidthToHalfWidth(),
             type = 31,
             length = inputLength,
             score = 8000,
-            leftId = 2040,
-            rightId = 2040
+            leftId = POS_ID_NUMBER_ARABIC,
+            rightId = POS_ID_NUMBER_ARABIC
         )
         val timeConversion = createCandidatesForTime(halfWidthDigits)
         val dateConversion = createCandidatesForDateInDigit(halfWidthDigits)
@@ -4274,8 +4294,8 @@ class KanaKanjiEngine {
                         type = 17,
                         score = 2000,
                         length = inputLength,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_KANJI,
+                        rightId = POS_ID_NUMBER_KANJI
                     )
                 )
                 add(
@@ -4284,8 +4304,8 @@ class KanaKanjiEngine {
                         type = 19,
                         score = 8001,
                         length = inputLength,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_SEPARATED,
+                        rightId = POS_ID_NUMBER_SEPARATED
                     )
                 )
                 add(
@@ -4294,8 +4314,8 @@ class KanaKanjiEngine {
                         type = 18,
                         score = 8002,
                         length = inputLength,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_ARABIC,
+                        rightId = POS_ID_NUMBER_ARABIC
                     )
                 )
                 add(
@@ -4304,8 +4324,8 @@ class KanaKanjiEngine {
                         type = 23,
                         score = 7900,
                         length = inputLength,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_KANJI,
+                        rightId = POS_ID_NUMBER_KANJI
                     )
                 )
             }
@@ -4324,9 +4344,13 @@ class KanaKanjiEngine {
         for ((readingSuffix, unit) in unitMappings) {
             if (!input.endsWith(readingSuffix) || input.length <= readingSuffix.length) continue
 
-            val number = input.removeSuffix(readingSuffix).toNumber() ?: continue
+            val numberReading = normalizeJapaneseNumberReadingForCounter(
+                input.removeSuffix(readingSuffix),
+                readingSuffix,
+            ) ?: continue
+            val number = numberReading.toNumber() ?: continue
             val isTimeLike = unit == "時" || unit == "分"
-            val connectionId = if (isTimeLike) 1851.toShort() else 2040.toShort()
+            val rightId = if (unit == "時") POS_ID_COUNTER_TIME else POS_ID_COUNTER_GENERIC
 
             return listOf(
                 Candidate(
@@ -4334,20 +4358,45 @@ class KanaKanjiEngine {
                     type = if (isTimeLike) CANDIDATE_TYPE_TIME else 18,
                     length = input.length.toUByte(),
                     score = 8000,
-                    leftId = connectionId,
-                    rightId = connectionId
+                    leftId = POS_ID_NUMBER_ARABIC,
+                    rightId = rightId
                 ), Candidate(
                     string = "${number.first}$unit",
                     type = if (isTimeLike) 30 else 22,
                     length = input.length.toUByte(),
                     score = 8001,
-                    leftId = connectionId,
-                    rightId = connectionId
+                    leftId = POS_ID_NUMBER_ARABIC,
+                    rightId = rightId
                 )
             )
         }
 
         return emptyList()
+    }
+
+    private fun normalizeJapaneseNumberReadingForCounter(
+        numberReading: String,
+        counterReading: String,
+    ): String? {
+        fun isStandaloneOrAfterPlace(alias: String): Boolean {
+            if (numberReading == alias) return true
+            val prefix = numberReading.dropLast(alias.length)
+            return listOf("じゅう", "ひゃく", "せん", "まん", "おく", "ちょう")
+                .any(prefix::endsWith)
+        }
+
+        // 「し」は単独の四としては有効だが、現在扱っている助数詞の
+        // 直前では通常語との衝突が大きい（しじ、しえん、しにん等）。
+        if (numberReading.endsWith("し") && isStandaloneOrAfterPlace("し")) return null
+        if (counterReading != "じ") return numberReading
+
+        return when {
+            numberReading.endsWith("よ") && isStandaloneOrAfterPlace("よ") ->
+                numberReading.dropLast(1) + "よん"
+            numberReading.endsWith("く") && isStandaloneOrAfterPlace("く") ->
+                numberReading.dropLast(1) + "きゅう"
+            else -> numberReading
+        }
     }
 
 
@@ -5151,7 +5200,7 @@ class KanaKanjiEngine {
                     Candidate(
                         string = numberAsLong.toKanji(), type = 32, // 新しいタイプ
                         length = input.length.toUByte(), score = 8000, // 優先度を調整
-                        leftId = 2040, rightId = 2040
+                        leftId = POS_ID_NUMBER_KANJI, rightId = POS_ID_NUMBER_KANJI
                     )
                 )
             }
@@ -5164,8 +5213,8 @@ class KanaKanjiEngine {
                         type = 17,
                         length = input.length.toUByte(),
                         score = 8000,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_KANJI,
+                        rightId = POS_ID_NUMBER_KANJI
                     )
                 )
             }
@@ -5178,8 +5227,8 @@ class KanaKanjiEngine {
                         type = if (it == firstNum) (30).toByte() else (31).toByte(),
                         length = input.length.toUByte(),
                         score = 8002,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_ARABIC,
+                        rightId = POS_ID_NUMBER_ARABIC
                     )
                 )
             }
@@ -5191,8 +5240,8 @@ class KanaKanjiEngine {
                     type = 19,
                     length = input.length.toUByte(),
                     score = 8001,
-                    leftId = 2040,
-                    rightId = 2040
+                    leftId = POS_ID_NUMBER_SEPARATED,
+                    rightId = POS_ID_NUMBER_SEPARATED
                 )
             )
 
@@ -5204,8 +5253,8 @@ class KanaKanjiEngine {
                         type = 20,
                         length = input.length.toUByte(),
                         score = 8003,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_ARABIC,
+                        rightId = POS_ID_NUMBER_ARABIC
                     )
                 )
             }
