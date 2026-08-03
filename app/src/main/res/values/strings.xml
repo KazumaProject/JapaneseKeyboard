@@ -153,6 +153,7 @@
     <string name="henkan_delete_key_action_summary_on">Long press Delete: Unhighlight\nTap Delete: Move selection back one place</string>
     <string name="henkan_delete_key_action_summary_off">Tap Delete: Unhighlight</string>
     <string name="category_function_title">Features</string>
+    <string name="category_flick_input_title">Flick input</string>
     <string name="category_romaji_conversion_title">Romaji Conversion</string>
     <string name="category_qwerty_keyboard_title">QWERTY Keyboard</string>
     <string name="category_symbol_keyboard_title">Symbol Keyboard</string>
@@ -179,6 +180,9 @@
     <string name="flick_input_only_title">Flick/Toggle Input</string>
     <string name="flick_input_only_summary_on">Use only flick input and disable toggle input</string>
     <string name="flick_input_only_summary_off">Enable toggle input</string>
+    <string name="flick_editor_preview_title">Preview flick characters in the text field</string>
+    <string name="flick_editor_preview_summary_off">Enter the character when you release the key</string>
+    <string name="flick_editor_preview_summary_on">Preview the selected tap or flick text while holding a TenKey or Sumire key</string>
     <string name="undo_enable_title">Undo Function</string>
     <string name="undo_enable_summary">Disable the undo function</string>
     <string name="reconversion_preference_title">Restore Reading</string>

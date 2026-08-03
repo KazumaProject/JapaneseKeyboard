@@ -455,6 +455,42 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory android:title="@string/category_flick_input_title">
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="flick_input_only_preference"
+            android:summaryOff="@string/flick_input_only_summary_off"
+            android:summaryOn="@string/flick_input_only_summary_on"
+            android:title="@string/flick_input_only_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="flick_editor_preview_preference"
+            android:summaryOff="@string/flick_editor_preview_summary_off"
+            android:summaryOn="@string/flick_editor_preview_summary_on"
+            android:title="@string/flick_editor_preview_title" />
+
+        <SeekBarPreference
+            android:defaultValue="100"
+            android:key="flick_sensitivity_preference"
+            android:max="200"
+            android:title="@string/flick_sensitivity_title"
+            app:min="1"
+            app:seekBarIncrement="5"
+            app:showSeekBarValue="true" />
+
+        <ListPreference
+            android:defaultValue="radial"
+            android:dialogTitle="@string/flick_threshold_shape_title"
+            android:entries="@array/flick_threshold_shape_entries"
+            android:entryValues="@array/flick_threshold_shape_values"
+            android:key="flick_threshold_shape_preference"
+            android:title="@string/flick_threshold_shape_title"
+            app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+
     <PreferenceCategory android:title="@string/category_function_title">
 
         <ListPreference
@@ -464,13 +500,6 @@
             android:key="type_null_input_behavior_preference"
             android:summary="%s"
             android:title="@string/type_null_input_behavior_title" />
-
-        <SwitchPreferenceCompat
-            android:defaultValue="false"
-            android:key="flick_input_only_preference"
-            android:summaryOff="@string/flick_input_only_summary_off"
-            android:summaryOn="@string/flick_input_only_summary_on"
-            android:title="@string/flick_input_only_title" />
 
         <SwitchPreferenceCompat
             android:defaultValue="true"
@@ -591,23 +620,6 @@
             android:title="@string/save_last_used_keyboard_title"
             app:defaultValue="false"
             app:summary="@string/save_last_used_keyboard_summey" />
-        <SeekBarPreference
-            android:defaultValue="100"
-            android:key="flick_sensitivity_preference"
-            android:max="200"
-            android:title="@string/flick_sensitivity_title"
-            app:min="1"
-            app:seekBarIncrement="5"
-            app:showSeekBarValue="true" />
-
-        <ListPreference
-            android:defaultValue="radial"
-            android:dialogTitle="@string/flick_threshold_shape_title"
-            android:entries="@array/flick_threshold_shape_entries"
-            android:entryValues="@array/flick_threshold_shape_values"
-            android:key="flick_threshold_shape_preference"
-            android:title="@string/flick_threshold_shape_title"
-            app:useSimpleSummaryProvider="true" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/shortcutsettingfragment">
