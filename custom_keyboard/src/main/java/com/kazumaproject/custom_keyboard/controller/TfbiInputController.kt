@@ -50,6 +50,12 @@ class TfbiInputController(
         fun onPress(first: TfbiFlickDirection, second: TfbiFlickDirection)
         fun onFlick(first: TfbiFlickDirection, second: TfbiFlickDirection)
         fun onLongPressFlick(first: TfbiFlickDirection, second: TfbiFlickDirection): Boolean = false
+        fun onSelectionChanged(
+            first: TfbiFlickDirection,
+            second: TfbiFlickDirection,
+            isLongPress: Boolean,
+        ) {}
+        fun onCanceled() {}
     }
 
     private enum class FlickState { NEUTRAL, FIRST_FLICK_DETERMINED }
@@ -90,6 +96,11 @@ class TfbiInputController(
         isLongPressModeActive = true
         popupWindow?.dismiss()
         showPopup(view, TfbiFlickDirection.TAP, true)
+        listener?.onSelectionChanged(
+            TfbiFlickDirection.TAP,
+            TfbiFlickDirection.TAP,
+            true
+        )
     }
 
     // ▼▼▼ 追加: 色設定保持用の変数 ▼▼▼
@@ -137,6 +148,7 @@ class TfbiInputController(
     }
 
     fun cancel() {
+        listener?.onCanceled()
         activeGestureConfig = null
         clearLongPressCallback(attachedView)
         isTouchActive = false
@@ -167,6 +179,7 @@ class TfbiInputController(
                 clearLongPressCallback(attachedView)
                 resetState()
                 activeGestureConfig = null
+                listener?.onCanceled()
             }
         }
         return true
@@ -220,6 +233,11 @@ class TfbiInputController(
                 }
                 resetState()
                 showPopup(view, TfbiFlickDirection.TAP, false)
+                listener?.onSelectionChanged(
+                    TfbiFlickDirection.TAP,
+                    TfbiFlickDirection.TAP,
+                    false
+                )
                 return
             }
             val dx = event.x - intermediateTouchX
@@ -238,6 +256,11 @@ class TfbiInputController(
                 currentSecondFlickDirection = highlightTargetDirection
             }
         }
+        listener?.onSelectionChanged(
+            firstFlickDirection,
+            currentSecondFlickDirection,
+            isLongPressModeActive
+        )
     }
 
     private fun handleTouchUp(event: MotionEvent) {

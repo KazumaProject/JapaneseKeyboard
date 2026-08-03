@@ -124,6 +124,7 @@ import com.kazumaproject.core.domain.extensions.toZenkaku
 import com.kazumaproject.core.domain.extensions.toZenkakuAlphabet
 import com.kazumaproject.core.domain.extensions.toZenkakuKatakana
 import com.kazumaproject.core.domain.flick.FlickThresholdShape
+import com.kazumaproject.core.domain.flick.FlickTextPreviewListener
 import com.kazumaproject.core.domain.flick.MutableRuntimeGestureSettingsSource
 import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
 import com.kazumaproject.core.domain.key.Key
@@ -238,6 +239,10 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.feedback.VibrationTi
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.BubbleTextView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockListener
 import com.kazumaproject.markdownhelperkeyboard.ime_service.floating_view.FloatingDockView
+import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.ComposingTextArbiter
+import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.FlickInputPreviewCoordinator
+import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.FlickPreviewContext
+import com.kazumaproject.markdownhelperkeyboard.ime_service.flick_preview.FlickPreviewSource
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveEffectView
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.CinematicWaveSettings
 import com.kazumaproject.markdownhelperkeyboard.ime_service.image_effect.FluidInkTransportMode
@@ -748,6 +753,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val runtimeInputPreferenceKeys = setOf(
         AppPreference.FLICK_SENSITIVITY_KEY,
         AppPreference.FLICK_THRESHOLD_SHAPE_KEY,
+        AppPreference.FLICK_EDITOR_PREVIEW_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_JAPANESE_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_ENGLISH_KEY,
         AppPreference.TENKEY_KEYMAP_GUIDE_NUMBER_KEY,
@@ -1341,6 +1347,32 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private val rightCursorKeyLongKeyPressed = AtomicBoolean(false)
     private val leftCursorKeyLongKeyPressed = AtomicBoolean(false)
     private var isFlickOnlyMode: Boolean? = false
+    private var flickEditorPreviewPreference: Boolean = false
+    private var flickPreviewEditorSessionId: Long = 0L
+    private val composingTextArbiter = ComposingTextArbiter(
+        writeComposingText = { text, cursorPosition ->
+            currentInputConnection?.setComposingText(text, cursorPosition) ?: false
+        },
+        finishComposingText = {
+            currentInputConnection?.finishComposingText() ?: false
+        },
+        copyText = { text -> SpannableString(text) },
+    )
+    private val flickInputPreviewCoordinator = FlickInputPreviewCoordinator(
+        composingTextArbiter = composingTextArbiter,
+    )
+    private val tenKeyFlickTextPreviewListener = FlickTextPreviewListener { event ->
+        flickInputPreviewCoordinator.onEvent(
+            event = event,
+            context = currentFlickPreviewContext(FlickPreviewSource.TENKEY),
+        )
+    }
+    private val sumireFlickTextPreviewListener = FlickTextPreviewListener { event ->
+        flickInputPreviewCoordinator.onEvent(
+            event = event,
+            context = currentFlickPreviewContext(FlickPreviewSource.SUMIRE),
+        )
+    }
     private var isOmissionSearchEnable: Boolean? = false
     private var delayTime: Int? = 1000
     private var isLearnDictionaryMode: Boolean? = false
@@ -2224,6 +2256,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        flickPreviewEditorSessionId += 1L
+        flickInputPreviewCoordinator.resetForEditorSession()
         gemmaInputSessionId += 1L
         gemmaMediaPanelController?.onInputSessionChanged()
         gemmaHandwritingController?.onInputSessionChanged()
@@ -2304,6 +2338,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickSensitivityPreferenceValue = sensitivity
         flickThresholdShapePreferenceValue = thresholdShape
         longPressTimeoutPreferenceValue = longPressTimeout
+        flickEditorPreviewPreference = appPreference.flick_editor_preview_preference
         deleteLongPressConversionBehavior =
             DeleteLongPressConversionBehavior.fromPreferenceValue(
                 appPreference.delete_long_press_conversion_behavior
@@ -2381,6 +2416,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mozcUTNeologd = preferences.mozcUTNeologd
         mozcUTWeb = preferences.mozcUTWeb
         isFlickOnlyMode = preferences.isFlickOnlyMode
+        flickEditorPreviewPreference = preferences.flickEditorPreviewPreference
         isOmissionSearchEnable = preferences.isOmissionSearchEnable
         delayTime = preferences.delayTime
         isLearnDictionaryMode = preferences.isLearnDictionaryMode
@@ -4135,6 +4171,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
+        flickInputPreviewCoordinator.cancel(restore = true)
         clearZeroQueryAllState(refresh = false)
         // The input view can restart without onStartInput() after returning from settings.
         // Re-read preferences that may change while the existing input session is retained.
@@ -4495,6 +4532,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
+        flickInputPreviewCoordinator.cancel(restore = false)
         gemmaMediaPanelController?.onInputViewHidden()
         gemmaHandwritingController?.onInputViewHidden()
         candidateRequestTracker.invalidate()
@@ -4526,6 +4564,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onWindowHidden() {
+        flickInputPreviewCoordinator.cancel(restore = true)
         gemmaMediaPanelController?.onInputViewHidden()
         gemmaHandwritingController?.onInputViewHidden()
         clearAndPauseSuminagashiInkEffects()
@@ -4533,6 +4572,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     override fun onDestroy() {
+        flickInputPreviewCoordinator.cancel(restore = false)
         Timber.d("onUpdate onDestroy")
         if (runtimeInputPreferenceListenerRegistered) {
             runtimeInputSharedPreferences.unregisterOnSharedPreferenceChangeListener(
@@ -5191,7 +5231,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun updateComposingText(text: String) {
         // 途中経過の表示用（変換中のようなイメージ）
-        currentInputConnection?.setComposingText(text, 1)
+        setComposingText(text, 1)
     }
 
     private fun commitRecognizedText(text: String) {
@@ -7906,6 +7946,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private fun configureFloatingTenKeyView(
         floatingKeyboardLayoutBinding: FloatingKeyboardLayoutBinding
     ) {
+        floatingKeyboardLayoutBinding.keyboardViewFloating.setOnFlickTextPreviewListener(
+            tenKeyFlickTextPreviewListener
+        )
         floatingKeyboardLayoutBinding.keyboardViewFloating.applyKeyboardTheme(
             themeMode = keyboardThemeMode ?: "default",
             currentNightMode = currentNightMode,
@@ -8049,6 +8092,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.keyboardView.apply {
+            setOnFlickTextPreviewListener(tenKeyFlickTextPreviewListener)
             applyKeyboardTheme(
                 themeMode = keyboardThemeMode ?: "default",
                 currentNightMode = currentNightMode,
@@ -11126,6 +11170,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding,
         isFloatingView: Boolean
     ) {
+        flickView.setOnFlickTextPreviewListener(sumireFlickTextPreviewListener)
         flickView.bindRuntimeGestureSettings(runtimeGestureSettingsSource)
         if (isFloatingView) {
             Timber.d("Configuring floating FlickKeyboardView mirror surface")
@@ -12506,6 +12551,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         text: String, mainView: MainLayoutBinding, isFlick: Boolean
     ) {
         if (dispatchDirectTextIfNeeded(text)) return
+        if (applyPendingFlickTextMutation(text, isFlick)) return
         val insertString = inputString.value
         val sb = StringBuilder()
         if (text.isNotEmpty()) {
@@ -24068,10 +24114,54 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun currentFlickPreviewContext(source: FlickPreviewSource): FlickPreviewContext {
+        val surfaceEligible = when (source) {
+            FlickPreviewSource.TENKEY -> qwertyMode.value == TenKeyQWERTYMode.Default
+            FlickPreviewSource.SUMIRE -> qwertyMode.value == TenKeyQWERTYMode.Sumire ||
+                    qwertyMode.value == TenKeyQWERTYMode.Number
+        }
+        return FlickPreviewContext(
+            source = source,
+            editorSessionId = flickPreviewEditorSessionId,
+            settingEnabled = flickEditorPreviewPreference,
+            surfaceEligible = surfaceEligible && !isKeyboardLayoutEditModeActive(),
+            inputBehaviorUsesComposingText =
+                currentInputBehavior == ResolvedInputBehavior.COMPOSING_TEXT,
+            safeInputType = currentInputType !in passwordTypes &&
+                    currentInputType !in numberTypes &&
+                    currentInputType != InputTypeForIME.None,
+            isHenkan = isHenkan.get(),
+            selectMode = selectMode.value,
+            cursorMoveMode = cursorMoveMode.value,
+            hasComposingTail = stringInTail.get().isNotEmpty(),
+            hasInputConnection = currentInputConnection != null,
+            baseInput = inputString.value,
+            isFlickOnlyMode = isFlickOnlyMode == true,
+            isContinuousTapInputEnabled = isContinuousTapInputEnabled.get(),
+            lastFlickConvertedNextHiragana = lastFlickConvertedNextHiragana.get(),
+        )
+    }
+
+    private fun applyPendingFlickTextMutation(text: String, isFlick: Boolean): Boolean {
+        val mutation = flickInputPreviewCoordinator.consumePendingCommit(text, isFlick)
+            ?: return false
+        suggestionClickNum = 0
+        _dakutenPressed.value = false
+        englishSpaceKeyPressed.set(false)
+        onDeleteLongPressUp.set(false)
+        mutation.effects.continuousTapInputEnabled?.let(isContinuousTapInputEnabled::set)
+        mutation.effects.lastFlickConvertedNextHiragana?.let(
+            lastFlickConvertedNextHiragana::set
+        )
+        _inputString.update { mutation.resultInput }
+        return true
+    }
+
     private fun sendCharTap(
         charToSend: Char, insertString: String, sb: StringBuilder
     ) {
         if (dispatchDirectTextIfNeeded(charToSend.toString())) return
+        if (applyPendingFlickTextMutation(charToSend.toString(), isFlick = false)) return
         when (currentInputType) {
             InputTypeForIME.None,
             InputTypeForIME.Number,
@@ -24120,6 +24210,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         charToSend: Char, insertString: String, sb: StringBuilder
     ) {
         if (dispatchDirectTextIfNeeded(charToSend.toString())) return
+        if (applyPendingFlickTextMutation(charToSend.toString(), isFlick = true)) return
         when (currentInputType) {
             InputTypeForIME.None,
             InputTypeForIME.Number,
@@ -25111,12 +25202,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun deleteSurroundingText(p0: Int, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
         return currentInputConnection.deleteSurroundingText(p0, p1)
     }
 
     override fun deleteSurroundingTextInCodePoints(p0: Int, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        flickInputPreviewCoordinator.cancel(restore = true)
         cancelCandidateTranslationIfPreEditMutates()
         return currentInputConnection.deleteSurroundingTextInCodePoints(p0, p1)
     }
@@ -25124,40 +25217,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     override fun setComposingText(p0: CharSequence?, p1: Int): Boolean {
         if (currentInputConnection == null) return false
         cancelCandidateTranslationIfComposingChanges(p0)
-        return currentInputConnection.setComposingText(p0, p1)
+        return composingTextArbiter.setCanonical(p0, p1)
     }
 
     override fun setComposingRegion(p0: Int, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        flickInputPreviewCoordinator.cancel(restore = true)
         return currentInputConnection.setComposingRegion(p0, p1)
     }
 
     override fun finishComposingText(): Boolean {
         if (currentInputConnection == null) return false
+        flickInputPreviewCoordinator.cancel(restore = true)
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
-        return currentInputConnection.finishComposingText()
+        return composingTextArbiter.finishCanonical()
     }
 
     override fun commitText(p0: CharSequence?, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        flickInputPreviewCoordinator.cancel(restore = true)
         clearFunctionKeyConversionSource()
         cancelCandidateTranslationIfPreEditMutates()
-        return currentInputConnection.commitText(p0, p1)
+        val committed = currentInputConnection.commitText(p0, p1)
+        if (committed) composingTextArbiter.markCanonicalFinished()
+        return committed
     }
 
     override fun commitCompletion(p0: CompletionInfo?): Boolean {
         if (currentInputConnection == null) return false
+        flickInputPreviewCoordinator.cancel(restore = true)
         return currentInputConnection.commitCompletion(p0)
     }
 
     override fun commitCorrection(p0: CorrectionInfo?): Boolean {
         if (currentInputConnection == null) return false
+        flickInputPreviewCoordinator.cancel(restore = true)
         return currentInputConnection.commitCorrection(p0)
     }
 
     override fun setSelection(p0: Int, p1: Int): Boolean {
         if (currentInputConnection == null) return false
+        flickInputPreviewCoordinator.cancel(restore = true)
         return currentInputConnection.setSelection(p0, p1)
     }
 

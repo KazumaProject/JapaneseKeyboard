@@ -85,6 +85,8 @@ class CrossFlickInputController(
             action: KeyAction,
             direction: FlickDirection
         ) {}
+        fun onTextSelectionChanged(text: String?, isFlick: Boolean) {}
+        fun onCanceled() {}
     }
 
     private enum class InputMode {
@@ -177,6 +179,7 @@ class CrossFlickInputController(
 
     // コントローラを破棄する。ビューのデタッチやキーボードビューの再構築時に FlickKeyboardView から呼ばれる。
     fun cancel() {
+        listener?.onCanceled()
         activeGestureConfig = null
         longPressJob?.cancel()
         controllerScope.cancel()
@@ -275,6 +278,12 @@ class CrossFlickInputController(
                     } else {
                         updateNormalPopup(newDirection)
                     }
+                    if (inputMode == InputMode.TEXT) {
+                        listener?.onTextSelectionChanged(
+                            resolveText(currentDirection, preferLongPress = isLongPressMode),
+                            currentDirection != FlickDirection.TAP
+                        )
+                    }
                 }
                 return true
             }
@@ -288,6 +297,7 @@ class CrossFlickInputController(
                     commitAction()
                 } else {
                     notifyLongPressCanceledIfNeeded()
+                    listener?.onCanceled()
                 }
 
                 restoreOriginalButtonText()
@@ -316,6 +326,10 @@ class CrossFlickInputController(
                     showGridPopup()
                     highlightGrid(currentDirection)
                 }
+                listener?.onTextSelectionChanged(
+                    resolveText(currentDirection, preferLongPress = true),
+                    currentDirection != FlickDirection.TAP
+                )
             }
         }
     }

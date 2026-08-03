@@ -55,6 +55,8 @@ class TfbiHierarchicalFlickController(
     interface TfbiListener {
         fun onPress(character: String)
         fun onFlick(character: String)
+        fun onSelectionChanged(character: String?, isFlick: Boolean) {}
+        fun onCanceled() {}
 
         /**
          * コントローラーの内部状態が変更されたことを通知します。
@@ -184,6 +186,7 @@ class TfbiHierarchicalFlickController(
      * コントローラーを View からデタッチし、リソースを解放します。
      */
     fun cancel() {
+        listener?.onCanceled()
         resetState()
         attachedView?.setOnTouchListener(null)
         attachedView = null
@@ -197,7 +200,10 @@ class TfbiHierarchicalFlickController(
             MotionEvent.ACTION_DOWN -> handleTouchDown(event, view)
             MotionEvent.ACTION_MOVE -> handleTouchMove(event, view)
             MotionEvent.ACTION_UP -> handleTouchUp(event)
-            MotionEvent.ACTION_CANCEL -> resetState()
+            MotionEvent.ACTION_CANCEL -> {
+                listener?.onCanceled()
+                resetState()
+            }
         }
         return true
     }
@@ -278,12 +284,14 @@ class TfbiHierarchicalFlickController(
                     setupStageUI(currentMap!!)
 
                     popupView?.highlightDirection(currentHighlight)
+                    notifySelectionChanged()
                     return // イベント処理終了
                 }
             }
 
             // --- 通常の "Sticky" 動作 ---
             popupView?.highlightDirection(currentHighlight)
+            notifySelectionChanged()
             return
         }
 
@@ -351,6 +359,7 @@ class TfbiHierarchicalFlickController(
                 Log.e(TAG, "Illegal state: StatefulKey found inside a flick map during Move.")
             }
         }
+        notifySelectionChanged()
     }
 
     private fun handleTouchUp(event: MotionEvent) {
@@ -392,6 +401,23 @@ class TfbiHierarchicalFlickController(
 
         // 1タッチの終了
         resetState()
+    }
+
+    private fun notifySelectionChanged() {
+        listener?.onSelectionChanged(
+            resolveCurrentOutput(),
+            mapStack.size > 1 || currentHighlight != TfbiFlickDirection.TAP
+        )
+    }
+
+    private fun resolveCurrentOutput(): String? {
+        val map = currentMap ?: return null
+        return when (val node = map[currentHighlight]) {
+            is TfbiFlickNode.Input -> node.char
+            is TfbiFlickNode.SubMenu ->
+                (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
+            else -> null
+        }?.takeIf(String::isNotEmpty)
     }
 
     private fun updateInternalState(newMode: KeyMode?, event: MotionEvent) {

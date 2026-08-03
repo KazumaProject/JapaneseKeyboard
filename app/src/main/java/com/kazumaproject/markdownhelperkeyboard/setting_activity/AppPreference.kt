@@ -67,6 +67,7 @@ object AppPreference {
         "gemma_handwriting_pen_color_preference"
     const val FLICK_SENSITIVITY_KEY = "flick_sensitivity_preference"
     const val FLICK_THRESHOLD_SHAPE_KEY = "flick_threshold_shape_preference"
+    const val FLICK_EDITOR_PREVIEW_KEY = "flick_editor_preview_preference"
     const val TENKEY_KEYMAP_GUIDE_JAPANESE_KEY = "tenkey_keymap_guide"
     const val TENKEY_KEYMAP_GUIDE_ENGLISH_KEY = "tenkey_keymap_guide_english"
     const val TENKEY_KEYMAP_GUIDE_NUMBER_KEY = "tenkey_keymap_guide_number"
@@ -334,6 +335,7 @@ object AppPreference {
         Pair("candidate_view_empty_height_dp_landscape_preference", 110)
 
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
+    private val FLICK_EDITOR_PREVIEW = Pair(FLICK_EDITOR_PREVIEW_KEY, false)
     private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
@@ -1446,8 +1448,15 @@ object AppPreference {
     var keyboard_order: List<KeyboardType>
         get() {
             val json = preferences.getString(KEYBOARD_ORDER.first, KEYBOARD_ORDER.second)
-            val type = object : TypeToken<List<KeyboardType>>() {}.type
-            return gson.fromJson(json, type)
+            val type = object : TypeToken<List<KeyboardType?>>() {}.type
+            return runCatching {
+                gson.fromJson<List<KeyboardType?>>(json, type)
+                    .orEmpty()
+                    .filterNotNull()
+                    .ifEmpty { listOf(KeyboardType.TENKEY, KeyboardType.QWERTY) }
+            }.getOrElse {
+                listOf(KeyboardType.TENKEY, KeyboardType.QWERTY)
+            }
         }
         set(value) = preferences.edit {
             val json = gson.toJson(value)
@@ -2109,6 +2118,15 @@ object AppPreference {
         get() = preferences.getBoolean(FLICK_INPUT_ONLY.first, FLICK_INPUT_ONLY.second)
         set(value) = preferences.edit {
             it.putBoolean(FLICK_INPUT_ONLY.first, value ?: false)
+        }
+
+    var flick_editor_preview_preference: Boolean
+        get() = preferences.getBoolean(
+            FLICK_EDITOR_PREVIEW.first,
+            FLICK_EDITOR_PREVIEW.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(FLICK_EDITOR_PREVIEW.first, value)
         }
 
     var undo_enable_preference: Boolean?
