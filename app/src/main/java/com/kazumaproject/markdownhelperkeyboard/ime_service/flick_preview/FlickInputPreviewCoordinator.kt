@@ -5,6 +5,7 @@ import com.kazumaproject.core.domain.flick.FlickTextSelection
 
 internal class FlickInputPreviewCoordinator(
     private val composingTextArbiter: ComposingTextArbiter,
+    private val createPreviewText: (String) -> CharSequence = { it },
     private val mutationResolver: (
         FlickMutationSnapshot,
         FlickTextSelection,
@@ -115,9 +116,7 @@ internal class FlickInputPreviewCoordinator(
                     (previousMutation as? FlickTextMutation.ReplaceComposingInput)?.resultInput
                 val needsEditorUpdate = !composingTextArbiter.isPreviewVisible() ||
                         previousResult != mutation.resultInput
-                if (needsEditorUpdate &&
-                    !composingTextArbiter.showPreview(mutation.resultInput, 1)
-                ) {
+                if (needsEditorUpdate && !showPreview(mutation)) {
                     active = null
                     return
                 }
@@ -166,12 +165,19 @@ internal class FlickInputPreviewCoordinator(
     private fun renderMutation(mutation: FlickTextMutation) {
         when (mutation) {
             is FlickTextMutation.ReplaceComposingInput -> {
-                if (!composingTextArbiter.showPreview(mutation.resultInput, 1)) {
+                if (!showPreview(mutation)) {
                     active = null
                 }
             }
 
             FlickTextMutation.NoTextOutput -> composingTextArbiter.suspendPreviewAndRestore()
         }
+    }
+
+    private fun showPreview(mutation: FlickTextMutation.ReplaceComposingInput): Boolean {
+        return composingTextArbiter.showPreview(
+            createPreviewText(mutation.resultInput),
+            1,
+        )
     }
 }

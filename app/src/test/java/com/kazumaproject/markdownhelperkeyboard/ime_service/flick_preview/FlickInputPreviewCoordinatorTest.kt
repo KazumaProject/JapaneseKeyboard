@@ -60,7 +60,22 @@ class FlickInputPreviewCoordinatorTest {
         assertEquals("text:かあ:1", fixture.writes.last())
     }
 
-    private class Fixture {
+    @Test
+    fun downAndMoveUsePreviewTextFactory() {
+        val fixture = Fixture(createPreviewText = { text -> "decorated[$text]" })
+
+        fixture.coordinator.onEvent(started("あ"), fixture.context())
+        fixture.coordinator.onEvent(changed("う"), fixture.context())
+
+        assertEquals(
+            listOf("text:decorated[あ]:1", "text:decorated[う]:1"),
+            fixture.writes,
+        )
+    }
+
+    private class Fixture(
+        createPreviewText: (String) -> CharSequence = { it },
+    ) {
         val writes = mutableListOf<String>()
         val arbiter = ComposingTextArbiter(
             writeComposingText = { text, cursor ->
@@ -72,7 +87,10 @@ class FlickInputPreviewCoordinatorTest {
                 true
             },
         )
-        val coordinator = FlickInputPreviewCoordinator(arbiter)
+        val coordinator = FlickInputPreviewCoordinator(
+            composingTextArbiter = arbiter,
+            createPreviewText = createPreviewText,
+        )
 
         fun context(baseInput: String = "", sessionId: Long = 1L) = FlickPreviewContext(
             source = FlickPreviewSource.TENKEY,
