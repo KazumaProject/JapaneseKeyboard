@@ -11,6 +11,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCand
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_LEARNED_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.IncrementalGraphMetadata
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryCheckResult
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryChecker
@@ -59,8 +60,40 @@ class FindPath(
         internal var lastStateRejectionCount: Int = 0
         internal var lastExpansionCacheHitCount: Int = 0
         internal var lastExpansionCacheMissCount: Int = 0
+        internal var lastForwardDpReused: Boolean = false
+        internal var afterForwardDpForTest: (() -> Unit)? = null
+
+        private var queryCheckpoint: QueryCheckpoint? = null
+
+        private data class QueryCheckpoint(
+            val forwardDpCache: ForwardDpCache?,
+            val penaltyCache: PenaltyCache?,
+        )
+
+        internal fun beginQueryTransaction() {
+            check(queryCheckpoint == null) { "Path query transaction is already active" }
+            queryCheckpoint = QueryCheckpoint(
+                forwardDpCache = forwardDpCache,
+                penaltyCache = penaltyCache,
+            )
+        }
+
+        internal fun commitQueryTransaction() {
+            queryCheckpoint = null
+        }
+
+        internal fun rollbackQueryTransaction() {
+            val checkpoint = queryCheckpoint ?: return
+            forwardDpCache = checkpoint.forwardDpCache
+            penaltyCache = checkpoint.penaltyCache
+            queryCheckpoint = null
+            // Queue/path arenas are query-local. They are cleared at the next begin(), while
+            // node ids and expansion entries for the committed prefix remain reusable.
+            backwardSearchScratch.discardInFlightWork()
+        }
 
         internal fun reset() {
+            queryCheckpoint = null
             forwardDpCache = null
             penaltyCache = null
             backwardSearchScratch.reset()
@@ -71,6 +104,8 @@ class FindPath(
             lastStateRejectionCount = 0
             lastExpansionCacheHitCount = 0
             lastExpansionCacheMissCount = 0
+            lastForwardDpReused = false
+            afterForwardDpForTest = null
         }
     }
 
@@ -314,6 +349,11 @@ class FindPath(
                 nodeIds.clear()
                 expansionCache.reset()
                 queueElementPool.clear()
+            } else {
+                // Expansion keys include the predecessor-list identity. A one-character append
+                // replaces the restored frontier list, while older pruned lists retain their
+                // identity, so only the changed frontier and new suffix miss the cache.
+                expansionCache.prepareForIncrementalQuery()
             }
             expansionCache.configure(
                 connectionMatrix = connectionMatrix,
@@ -337,6 +377,17 @@ class FindPath(
             bestSplitCostsByState.clear()
             expansionCache.reset()
             queueElementPool.clear()
+            charPathArena.reset()
+            queueElementCount = 0
+            stateRejectionCount = 0
+            expansionCacheHitCount = 0
+            expansionCacheMissCount = 0
+        }
+
+        fun discardInFlightWork() {
+            queue.clear()
+            bestBackwardCostByState.clear()
+            bestSplitCostsByState.clear()
             charPathArena.reset()
             queueElementCount = 0
             stateRejectionCount = 0
@@ -436,6 +487,7 @@ class FindPath(
         private var nextNode2 = IntArray(currentNode.size)
         private var nextNode3 = IntArray(currentNode.size)
         private var adjustedScore = IntArray(currentNode.size)
+        private var predecessorLists = arrayOfNulls<List<Node>>(currentNode.size)
         private var values = arrayOfNulls<ExpansionList>(currentNode.size)
         private var stamps = IntArray(currentNode.size)
         private var generation = 1
@@ -479,6 +531,7 @@ class FindPath(
 
         fun reset() {
             clear()
+            predecessorLists.fill(null)
             values.fill(null)
             configured = false
             configuredConnectionMatrix = null
@@ -487,22 +540,37 @@ class FindPath(
             configuredBoundaryMode = null
         }
 
+        fun prepareForIncrementalQuery() {
+            if (entryCount < MAX_RETAINED_ENTRY_COUNT) return
+            clear()
+            predecessorLists.fill(null)
+            values.fill(null)
+        }
+
         fun get(
             currentNode: Int,
             nextNode1: Int,
             nextNode2: Int,
             nextNode3: Int,
             adjustedScore: Int,
+            predecessorList: List<Node>,
         ): ExpansionList? {
-            var slot = hash(currentNode, nextNode1, nextNode2, nextNode3, adjustedScore) and
-                (stamps.size - 1)
+            var slot = hash(
+                currentNode,
+                nextNode1,
+                nextNode2,
+                nextNode3,
+                adjustedScore,
+                predecessorList,
+            ) and (stamps.size - 1)
             while (stamps[slot] == generation) {
                 if (
                     this.currentNode[slot] == currentNode &&
                     this.nextNode1[slot] == nextNode1 &&
                     this.nextNode2[slot] == nextNode2 &&
                     this.nextNode3[slot] == nextNode3 &&
-                    this.adjustedScore[slot] == adjustedScore
+                    this.adjustedScore[slot] == adjustedScore &&
+                    this.predecessorLists[slot] === predecessorList
                 ) return values[slot]
                 slot = (slot + 1) and (stamps.size - 1)
             }
@@ -515,18 +583,26 @@ class FindPath(
             nextNode2: Int,
             nextNode3: Int,
             adjustedScore: Int,
+            predecessorList: List<Node>,
             value: ExpansionList,
         ) {
             if ((entryCount + 1) * 10 >= stamps.size * 6) grow()
-            var slot = hash(currentNode, nextNode1, nextNode2, nextNode3, adjustedScore) and
-                (stamps.size - 1)
+            var slot = hash(
+                currentNode,
+                nextNode1,
+                nextNode2,
+                nextNode3,
+                adjustedScore,
+                predecessorList,
+            ) and (stamps.size - 1)
             while (stamps[slot] == generation) {
                 if (
                     this.currentNode[slot] == currentNode &&
                     this.nextNode1[slot] == nextNode1 &&
                     this.nextNode2[slot] == nextNode2 &&
                     this.nextNode3[slot] == nextNode3 &&
-                    this.adjustedScore[slot] == adjustedScore
+                    this.adjustedScore[slot] == adjustedScore &&
+                    this.predecessorLists[slot] === predecessorList
                 ) {
                     values[slot] = value
                     return
@@ -539,6 +615,7 @@ class FindPath(
             this.nextNode2[slot] = nextNode2
             this.nextNode3[slot] = nextNode3
             this.adjustedScore[slot] = adjustedScore
+            this.predecessorLists[slot] = predecessorList
             values[slot] = value
             entryCount++
         }
@@ -549,6 +626,7 @@ class FindPath(
             val oldNextNode2 = nextNode2
             val oldNextNode3 = nextNode3
             val oldAdjustedScore = adjustedScore
+            val oldPredecessorLists = predecessorLists
             val oldValues = values
             val oldStamps = stamps
             val oldGeneration = generation
@@ -558,6 +636,7 @@ class FindPath(
             nextNode2 = IntArray(currentNode.size)
             nextNode3 = IntArray(currentNode.size)
             adjustedScore = IntArray(currentNode.size)
+            predecessorLists = arrayOfNulls(currentNode.size)
             values = arrayOfNulls(currentNode.size)
             stamps = IntArray(currentNode.size)
             generation = 1
@@ -570,6 +649,7 @@ class FindPath(
                         nextNode2 = oldNextNode2[slot],
                         nextNode3 = oldNextNode3[slot],
                         adjustedScore = oldAdjustedScore[slot],
+                        predecessorList = checkNotNull(oldPredecessorLists[slot]),
                         value = checkNotNull(oldValues[slot]),
                     )
                 }
@@ -589,14 +669,18 @@ class FindPath(
                 nextNode2: Int,
                 nextNode3: Int,
                 adjustedScore: Int,
+                predecessorList: List<Node>,
             ): Int {
                 var result = currentNode
                 result = 31 * result + nextNode1
                 result = 31 * result + nextNode2
                 result = 31 * result + nextNode3
                 result = 31 * result + adjustedScore
+                result = 31 * result + System.identityHashCode(predecessorList)
                 return result xor (result ushr 16)
             }
+
+            const val MAX_RETAINED_ENTRY_COUNT = 32_768
         }
     }
 
@@ -665,6 +749,37 @@ class FindPath(
             costs[slot] = cost
             entryCount++
             return true
+        }
+
+        fun containsExactCost(
+            nodeIdentity: Int,
+            nextIdentity1: Int,
+            nextIdentity2: Int,
+            nextIdentity3: Int,
+            outputPathId: Int,
+            sourceMask: Int,
+            cost: Int,
+        ): Boolean {
+            var slot = hash(
+                nodeIdentity,
+                nextIdentity1,
+                nextIdentity2,
+                nextIdentity3,
+                outputPathId,
+                sourceMask,
+            ) and (stamps.size - 1)
+            while (stamps[slot] == generation) {
+                if (
+                    this.nodeIdentity[slot] == nodeIdentity &&
+                    this.nextIdentity1[slot] == nextIdentity1 &&
+                    this.nextIdentity2[slot] == nextIdentity2 &&
+                    this.nextIdentity3[slot] == nextIdentity3 &&
+                    this.sourceMask[slot] == sourceMask &&
+                    this.outputPathId[slot] == outputPathId
+                ) return costs[slot] == cost
+                slot = (slot + 1) and (stamps.size - 1)
+            }
+            return false
         }
 
         private fun grow() {
@@ -928,6 +1043,7 @@ class FindPath(
         beamWidth: Int = 20,
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): MutableList<Candidate> = backwardAStar(
         graph = graph,
         length = length,
@@ -936,6 +1052,7 @@ class FindPath(
         beamWidth = beamWidth,
         cancellationCheck = cancellationCheck,
         sessionState = sessionState,
+        candidateSegmentCollector = candidateSegmentCollector,
     )
 
     fun backwardAStar(
@@ -946,6 +1063,7 @@ class FindPath(
         beamWidth: Int = 20,
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): MutableList<Candidate> {
         cancellationCheck()
         val effectiveBeamWidth = beamWidth.coerceAtLeast(1)
@@ -953,11 +1071,14 @@ class FindPath(
         val activeCache = if (sessionState != null) sessionState.forwardDpCache else forwardDpCache
         val reusableForwardDp = activeCache?.takeIf { cached ->
             incrementalMetadata != null &&
-                incrementalMetadata.reusedThroughEndIndex == cached.inputLength &&
+                incrementalMetadata.forwardDpReusableThroughEndIndex == cached.inputLength &&
                 incrementalMetadata.conversionSignature == cached.conversionSignature &&
                 length == cached.inputLength + 1 &&
                 cached.connectionMatrixIdentity == System.identityHashCode(connectionMatrix) &&
                 cached.beamWidth == effectiveBeamWidth
+        }
+        if (sessionState?.performanceProbeEnabled == true) {
+            sessionState.lastForwardDpReused = reusableForwardDp != null
         }
         val forwardDpStartPosition = if (reusableForwardDp != null) {
             reusableForwardDp.nodesBeforePreviousEnd.forEach { (position, nodes) ->
@@ -975,6 +1096,7 @@ class FindPath(
             startPosition = forwardDpStartPosition,
             cancellationCheck = cancellationCheck,
         )
+        sessionState?.afterForwardDpForTest?.invoke()
         val updatedCache = incrementalMetadata?.let {
             ForwardDpCache(
                 inputLength = length,
@@ -1032,12 +1154,17 @@ class FindPath(
             if (cancellationPollCounter++ and 0x3f == 0) cancellationCheck()
             val element = pQueue.poll() ?: break
             val currentNode = element.node
+            if (!isCurrentBestBackwardState(element, searchScratch)) continue
 
             if (currentNode.tango == "BOS") {
                 val stringFromNode = searchScratch.outputString(element.outputPathId)
                 val yomiUsedFromNode = getYomiUsedFromPath(element)
 
                 if (foundStrings.add(stringFromNode)) {
+                    candidateSegmentCollector?.set(
+                        stringFromNode,
+                        getConversionSegmentsFromPath(element),
+                    )
                     val candidate = Candidate(
                         string = stringFromNode,
                         type = resolveCandidateType(
@@ -1261,23 +1388,24 @@ class FindPath(
         } else {
             -1
         }
+        val previousNodes = getPrevNodes2(
+            graph = graph,
+            node = currentNode,
+            startPosition = currentNode.sPos,
+        )
         scratch.expansionCache.get(
             currentNode = currentNodeId,
             nextNode1 = nextNode1Id,
             nextNode2 = nextNode2Id,
             nextNode3 = nextNode3Id,
             adjustedScore = currentNode.adjustedScore,
+            predecessorList = previousNodes,
         )?.let {
             scratch.expansionCacheHitCount++
             return it
         }
         scratch.expansionCacheMissCount++
 
-        val previousNodes = getPrevNodes2(
-            graph = graph,
-            node = currentNode,
-            startPosition = currentNode.sPos,
-        )
         val cachedNodes = arrayOfNulls<Node>(previousNodes.size)
         val localCosts = IntArray(previousNodes.size)
         var count = 0
@@ -1311,6 +1439,7 @@ class FindPath(
                 nextNode2 = nextNode2Id,
                 nextNode3 = nextNode3Id,
                 adjustedScore = currentNode.adjustedScore,
+                predecessorList = previousNodes,
                 value = result,
             )
         }
@@ -1354,6 +1483,23 @@ class FindPath(
                 outputPathId = outputPathId,
                 sourceMask = sourceMask,
             ),
+        )
+    }
+
+    private fun isCurrentBestBackwardState(
+        element: PathQueueElement,
+        scratch: BackwardSearchScratch,
+    ): Boolean {
+        val next = element.next ?: return true // The initial EOS element is not in the state table.
+        val nodeIds = scratch.nodeIds
+        return scratch.bestBackwardCostByState.containsExactCost(
+            nodeIdentity = nodeIds.getValue(element.node),
+            nextIdentity1 = nodeIds.getValue(next.node),
+            nextIdentity2 = next.next?.node?.let(nodeIds::getValue) ?: -1,
+            nextIdentity3 = next.next?.next?.node?.let(nodeIds::getValue) ?: -1,
+            outputPathId = element.outputPathId,
+            sourceMask = element.sourceMask,
+            cost = element.backwardCost,
         )
     }
 
@@ -1453,6 +1599,7 @@ class FindPath(
         candidateTrace: MutableList<CandidateTrace>? = null,
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): BunsetsuCandidateResult = backwardAStarWithBunsetsu(
         graph = graph,
         length = length,
@@ -1465,6 +1612,7 @@ class FindPath(
         candidateTrace = candidateTrace,
         cancellationCheck = cancellationCheck,
         sessionState = sessionState,
+        candidateSegmentCollector = candidateSegmentCollector,
     )
 
     fun backwardAStarWithBunsetsu(
@@ -1479,6 +1627,7 @@ class FindPath(
         candidateTrace: MutableList<CandidateTrace>? = null,
         cancellationCheck: () -> Unit = {},
         sessionState: SessionState? = null,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): BunsetsuCandidateResult {
         cancellationCheck()
         val performanceState = sessionState?.takeIf { it.performanceProbeEnabled }
@@ -1530,11 +1679,14 @@ class FindPath(
         val reusableForwardDp = activeCache?.takeIf { cached ->
             forwardDpTrace == null &&
                 incrementalMetadata != null &&
-                incrementalMetadata.reusedThroughEndIndex == cached.inputLength &&
+                incrementalMetadata.forwardDpReusableThroughEndIndex == cached.inputLength &&
                 incrementalMetadata.conversionSignature == cached.conversionSignature &&
                 length == cached.inputLength + 1 &&
                 cached.connectionMatrixIdentity == System.identityHashCode(connectionMatrix) &&
                 cached.beamWidth == effectiveBeamWidth
+        }
+        if (sessionState?.performanceProbeEnabled == true) {
+            sessionState.lastForwardDpReused = reusableForwardDp != null
         }
         val forwardDpStartPosition = if (reusableForwardDp != null) {
             reusableForwardDp.nodesBeforePreviousEnd.forEach { (position, nodes) ->
@@ -1562,6 +1714,7 @@ class FindPath(
         if (performanceState != null) {
             performanceState.lastForwardDpNs = System.nanoTime() - forwardDpStartNs
         }
+        sessionState?.afterForwardDpForTest?.invoke()
 
         val updatedCache = if (incrementalMetadata != null) {
             ForwardDpCache(
@@ -1676,6 +1829,7 @@ class FindPath(
             if (cancellationPollCounter++ and 0x3f == 0) cancellationCheck()
             val element = pQueue.poll() ?: break
             val currentNode = element.node
+            if (!isCurrentBestBackwardState(element, searchScratch)) continue
 
             if (currentNode.tango == "BOS") {
                 val stringFromNode = searchScratch.outputString(element.outputPathId)
@@ -1691,6 +1845,10 @@ class FindPath(
                 )
 
                 if (foundStrings.add(stringFromNode)) {
+                    candidateSegmentCollector?.set(
+                        stringFromNode,
+                        getConversionSegmentsFromPath(element),
+                    )
                     if (pathMatchesSystemNgram(element, systemNgramDictionary)) {
                         systemNgramMatchedCandidates.add(stringFromNode)
                     }
@@ -2410,6 +2568,30 @@ class FindPath(
             val node = current.node
             if (node.tango != "BOS" && node.tango != "EOS") {
                 result.add(node.tango)
+            }
+            current = current.next
+        }
+        return result
+    }
+
+    private fun getConversionSegmentsFromPath(
+        path: PathQueueElement,
+    ): List<CandidateConversionSegment> {
+        val result = mutableListOf<CandidateConversionSegment>()
+        var currentPosition = 0
+        var current: PathQueueElement? = path
+        while (current != null) {
+            val node = current.node
+            if (node.tango != "BOS" && node.tango != "EOS") {
+                val nextPosition = currentPosition + node.len.toInt()
+                result.add(
+                    CandidateConversionSegment(
+                        inputStart = currentPosition,
+                        inputEnd = nextPosition,
+                        output = node.tango,
+                    ),
+                )
+                currentPosition = nextPosition
             }
             current = current.next
         }

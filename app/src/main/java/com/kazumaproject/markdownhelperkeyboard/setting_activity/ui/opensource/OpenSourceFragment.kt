@@ -244,12 +244,12 @@ class OpenSourceFragment : Fragment() {
         }
 
         if (AppVariantConfig.hasZenz) {
-            entries += LicenseEntry("Miwa-Keita/zenz-v3.1-xsmall-gguf") {
+            entries += LicenseEntry("Miwa-Keita/zenz-v3.2-xsmall-gguf") {
                 showLicenseDialog(
-                    title = "Miwa-Keita/zenz-v3.1-xsmall-gguf",
+                    title = "Miwa-Keita/zenz-v3.2-xsmall-gguf",
                     notice = Notice(
-                        "Miwa-Keita/zenz-v3.1-xsmall-gguf",
-                        "https://huggingface.co/Miwa-Keita/zenz-v3.1-xsmall-gguf",
+                        "Miwa-Keita/zenz-v3.2-xsmall-gguf",
+                        "https://huggingface.co/Miwa-Keita/zenz-v3.2-xsmall-gguf",
                         "Copyright 2025 Miwa-Keita",
                         ZenzLicense()
                     )

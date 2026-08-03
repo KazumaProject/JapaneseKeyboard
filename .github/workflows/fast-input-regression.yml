@@ -73,7 +73,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: .zenz-model-cache
-          key: ${{ runner.os }}-zenz-model-v1-a728931c8b4867a53ca33d1ff3fe7360b0f15cd5-Q5_K_M-ggml-model-Q5_K_M.gguf
+          key: ${{ runner.os }}-zenz-model-v2-4f5423f0fad41a73b1242eb96fe5c12ae4fdca83-Q5_K_M-ggml-model-Q5_K_M.gguf
 
       - name: Enable KVM
         run: |

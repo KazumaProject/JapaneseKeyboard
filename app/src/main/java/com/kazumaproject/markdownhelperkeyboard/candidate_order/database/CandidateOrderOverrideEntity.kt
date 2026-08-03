@@ -8,13 +8,15 @@ import androidx.room.PrimaryKey
     tableName = "candidate_order_override",
     indices = [
         Index(value = ["input"]),
-        Index(value = ["input", "candidate"], unique = true)
+        Index(value = ["input", "scope"]),
+        Index(value = ["input", "scope", "candidate"], unique = true)
     ]
 )
 data class CandidateOrderOverrideEntity(
     @PrimaryKey(autoGenerate = true)
     val id: Int = 0,
     val input: String,
+    val scope: String = "EXACT_INPUT",
     val candidate: String,
     val rank: Int,
     val createdAt: Long,

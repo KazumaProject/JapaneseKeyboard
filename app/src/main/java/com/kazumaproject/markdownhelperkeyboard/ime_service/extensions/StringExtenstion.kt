@@ -287,27 +287,6 @@ fun String.replaceJapaneseCharactersForEnglish(): String {
         .replace('！', '!')
 }
 
-fun String.groupAndReplaceJapaneseForNumber(): String {
-    val result = StringBuilder()
-    for (char in this) {
-        when (char) {
-            in 'あ'..'お' -> result.append('1')
-            in 'か'..'こ' -> result.append('2')
-            in 'さ'..'そ' -> result.append('3')
-            in 'た'..'と' -> result.append('4')
-            in 'な'..'の' -> result.append('5')
-            in 'は'..'ほ' -> result.append('6')
-            in 'ま'..'も' -> result.append('7')
-            'や', 'ゆ', 'よ' -> result.append('8')
-            in 'ら'..'ろ' -> result.append('9')
-            'わ', 'を', 'ん' -> result.append('0')
-            // 上記以外の文字はそのまま追加する
-            else -> result.append(char)
-        }
-    }
-    return result.toString()
-}
-
 /**
  * 数字文字列を上付き文字（¹²³）に変換します。
  */

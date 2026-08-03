@@ -135,7 +135,8 @@ data class KeyData(
     val isHiLighted: Boolean = false,
     val keyId: String? = null,
     val keyType: KeyType = if (isFlickable) KeyType.CIRCULAR_FLICK else KeyType.NORMAL,
-    val specialKeyColorStyle: SpecialKeyColorStyle = SpecialKeyColorStyle.SPECIAL
+    val specialKeyColorStyle: SpecialKeyColorStyle = SpecialKeyColorStyle.SPECIAL,
+    val doubleTapBinding: DoubleTapBinding? = null
 )
 
 data class GridPlacement(

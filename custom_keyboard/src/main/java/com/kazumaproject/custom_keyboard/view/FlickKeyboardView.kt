@@ -46,8 +46,11 @@ import com.kazumaproject.core.domain.flick.RuntimeGestureSettings
 import com.kazumaproject.core.domain.flick.RuntimeGestureSettingsSource
 import com.kazumaproject.custom_keyboard.controller.CrossFlickInputController
 import com.kazumaproject.custom_keyboard.controller.CustomAngleFlickController
+import com.kazumaproject.custom_keyboard.controller.CancellableTask
+import com.kazumaproject.custom_keyboard.controller.DoubleTapActionDispatcher
 import com.kazumaproject.custom_keyboard.controller.FlickLongPressInputController
 import com.kazumaproject.custom_keyboard.controller.StandardFlickInputController
+import com.kazumaproject.custom_keyboard.controller.TapTaskScheduler
 import com.kazumaproject.custom_keyboard.controller.TapLongPressInputController
 import com.kazumaproject.custom_keyboard.controller.TfbiHierarchicalFlickController
 import com.kazumaproject.custom_keyboard.controller.TfbiStickyFlickController
@@ -57,6 +60,7 @@ import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import com.kazumaproject.custom_keyboard.data.GridPlacement
 import com.kazumaproject.custom_keyboard.data.KeyAction
+import com.kazumaproject.custom_keyboard.data.KeyCharacterCase
 import com.kazumaproject.custom_keyboard.data.KeyIconResolver
 import com.kazumaproject.custom_keyboard.data.KeyActionMapper
 import com.kazumaproject.custom_keyboard.data.KeyData
@@ -73,11 +77,16 @@ import com.kazumaproject.custom_keyboard.data.buildSumireSpecialKeyDisplayAction
 import com.kazumaproject.custom_keyboard.data.buildEvenCircularRanges
 import com.kazumaproject.custom_keyboard.data.dispatchResolvedSumireSpecialKeyAction
 import com.kazumaproject.custom_keyboard.data.dispatchSumireSpecialKeyRuntimeAction
+import com.kazumaproject.custom_keyboard.data.effectiveDoubleTapBinding
 import com.kazumaproject.custom_keyboard.data.refreshSumireSpecialKeyTap
 import com.kazumaproject.custom_keyboard.data.toCircularFlickKeyMaps
 import com.kazumaproject.custom_keyboard.data.toLegacyFlickDirection
 import com.kazumaproject.custom_keyboard.data.toSumireSpecialKeyDirectionOrNull
 import com.kazumaproject.custom_keyboard.layout.SegmentedBackgroundDrawable
+import com.kazumaproject.core.domain.flick.FlickTextPreviewEmitter
+import com.kazumaproject.core.domain.flick.FlickTextPreviewListener
+import com.kazumaproject.core.domain.flick.FlickTextSelection
+import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -100,9 +109,12 @@ class FlickKeyboardView @JvmOverloads constructor(
         private const val SPECIAL_KEY_BASE_TEXT_SIZE_SP = 16f
         private const val SPECIAL_ICON_TO_TEXT_RATIO = 1.6f
         private const val INPUT_MODE_SWITCH_ICON_SIZE_MULTIPLIER = 1.65f
+        private const val DOUBLE_TAP_MIN_INTERVAL_MILLIS = 40L
     }
 
     private var listener: OnKeyboardActionListener? = null
+    private val flickTextPreviewEmitter = FlickTextPreviewEmitter()
+    private var previewKeyData: KeyData? = null
     private val flickControllers = mutableListOf<CustomAngleFlickController>()
     private val crossFlickControllers = mutableListOf<CrossFlickInputController>()
     private val standardFlickControllers = mutableListOf<StandardFlickInputController>()
@@ -111,6 +123,17 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val stickyTfbiControllers = mutableListOf<TfbiStickyFlickController>()
     private val hierarchicalTfbiControllers = mutableListOf<TfbiHierarchicalFlickController>()
     private val tapLongPressControllers = mutableListOf<TapLongPressInputController>()
+    private val doubleTapActionDispatcher = DoubleTapActionDispatcher(
+        timeoutMillis = ViewConfiguration.getDoubleTapTimeout().toLong(),
+        minimumIntervalMillis = DOUBLE_TAP_MIN_INTERVAL_MILLIS,
+        clockMillis = SystemClock::uptimeMillis,
+        scheduler = TapTaskScheduler { delayMillis, task ->
+            val runnable = Runnable(task)
+            postDelayed(runnable, delayMillis)
+            CancellableTask { removeCallbacks(runnable) }
+        },
+        dispatch = { action -> listener?.onAction(action, false) }
+    )
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
 
@@ -153,8 +176,14 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private var liquidGlassEnable: Boolean = false
 
+    private val keyInfos = mutableListOf<KeyInfo>()
     private val dynamicKeyMap = mutableMapOf<String, KeyInfo>()
+    private val canonicalGuideLabels =
+        IdentityHashMap<AutoSizeButton, AutoSizeButton.FlickGuideLabels>()
     private var currentLayout: KeyboardLayout? = null
+    private var keyboardRenderRevision: Int = 0
+    private var renderedKeyboardRenderRevision: Int = -1
+    private var keyCharacterCase: KeyCharacterCase = KeyCharacterCase.AS_DEFINED
     private var sumireSpecialKeyActionResolver:
             ((String, String, KeyData, SumireSpecialKeyDirection) -> ResolvedSumireSpecialKeyAction)? =
         null
@@ -214,6 +243,21 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.listener = listener
     }
 
+    fun setOnFlickTextPreviewListener(listener: FlickTextPreviewListener?) {
+        flickTextPreviewEmitter.listener = listener
+    }
+
+    /**
+     * Updates text-producing key labels without rebuilding the keyboard or changing canonical
+     * [KeyData]. This preserves active gesture recognizers, including the second Shift tap.
+     */
+    fun setKeyCharacterCase(characterCase: KeyCharacterCase) {
+        if (keyCharacterCase == characterCase) return
+        keyCharacterCase = characterCase
+        keyInfos.forEach(::refreshKeyTextPresentation)
+        refreshPopupTextTransformers()
+    }
+
     fun setSumireSpecialKeyActionResolver(
         resolver: ((String, String, KeyData, SumireSpecialKeyDirection) -> ResolvedSumireSpecialKeyAction)?,
         layoutType: String?,
@@ -233,7 +277,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
         popupWindowAnchorProvider = provider
         flickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
-        crossFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
+        crossFlickControllers.forEach { it.setPopupOverlayHostProvider(provider) }
         standardFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         tfbiControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
         flickLongPressControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
@@ -323,21 +367,21 @@ class FlickKeyboardView @JvmOverloads constructor(
         }
         flickGuideEnabled = enabled
         flickGuideAllowsMultiCharacterLabels = allowMultiCharacterLabels
-        currentLayout?.let { setKeyboard(it) }
+        rebuildCurrentKeyboard()
     }
 
     fun setFlickGuideTextSizeSp(sizeSp: Float) {
         val coerced = sizeSp.coerceIn(6f, 16f)
         if (flickGuideTextSizeSp == coerced) return
         flickGuideTextSizeSp = coerced
-        currentLayout?.let { setKeyboard(it) }
+        rebuildCurrentKeyboard()
     }
 
     fun setFlickGuideMaxCodePoints(maxCodePoints: Int) {
         val coerced = maxCodePoints.coerceIn(1, 4)
         if (flickGuideMaxCodePoints == coerced) return
         flickGuideMaxCodePoints = coerced
-        currentLayout?.let { setKeyboard(it) }
+        rebuildCurrentKeyboard()
     }
 
     fun applyKeySizing(
@@ -347,13 +391,27 @@ class FlickKeyboardView @JvmOverloads constructor(
         textSizeSp: Float,
         specialKeyTextSizeSp: Float
     ) {
-        this.keyWidthScalePercent = keyWidthScalePercent.coerceIn(0, 200)
-        this.keyHeightScalePercent = keyHeightScalePercent.coerceIn(0, 200)
-        this.iconScalePercent = iconScalePercent.coerceIn(40, 200)
-        this.defaultTextSize = textSizeSp.coerceIn(8f, 32f)
-        this.specialKeyTextSizeSp = specialKeyTextSizeSp.coerceIn(8f, 32f)
+        val normalizedWidthScale = keyWidthScalePercent.coerceIn(0, 200)
+        val normalizedHeightScale = keyHeightScalePercent.coerceIn(0, 200)
+        val normalizedIconScale = iconScalePercent.coerceIn(40, 200)
+        val normalizedTextSize = textSizeSp.coerceIn(8f, 32f)
+        val normalizedSpecialTextSize = specialKeyTextSizeSp.coerceIn(8f, 32f)
+        if (
+            this.keyWidthScalePercent == normalizedWidthScale &&
+            this.keyHeightScalePercent == normalizedHeightScale &&
+            this.iconScalePercent == normalizedIconScale &&
+            this.defaultTextSize == normalizedTextSize &&
+            this.specialKeyTextSizeSp == normalizedSpecialTextSize
+        ) {
+            return
+        }
+        this.keyWidthScalePercent = normalizedWidthScale
+        this.keyHeightScalePercent = normalizedHeightScale
+        this.iconScalePercent = normalizedIconScale
+        this.defaultTextSize = normalizedTextSize
+        this.specialKeyTextSizeSp = normalizedSpecialTextSize
 
-        currentLayout?.let { setKeyboard(it) }
+        rebuildCurrentKeyboard()
     }
 
     fun setCursorMode(enabled: Boolean) {
@@ -401,6 +459,21 @@ class FlickKeyboardView @JvmOverloads constructor(
         liquidGlassKeyAlphaEnable: Int,
         borderWidth: Int
     ) {
+        val renderConfigurationChanged =
+            this.themeMode != themeMode ||
+                this.isNightMode !=
+                (currentNightMode == Configuration.UI_MODE_NIGHT_YES) ||
+                this.isDynamicColorEnabled != isDynamicColorEnabled ||
+                this.customBgColor != customBgColor ||
+                this.customKeyColor != customKeyColor ||
+                this.customSpecialKeyColor != customSpecialKeyColor ||
+                this.customKeyTextColor != customKeyTextColor ||
+                this.customSpecialKeyTextColor != customSpecialKeyTextColor ||
+                this.liquidGlassEnable != liquidGlassEnable ||
+                this.customBorderEnable != customBorderEnable ||
+                this.customBorderColor != customBorderColor ||
+                this.liquidGlassKeyAlphaEnable != liquidGlassKeyAlphaEnable ||
+                this.borderWidth != borderWidth
         this.themeMode = themeMode
         this.isNightMode = (currentNightMode == Configuration.UI_MODE_NIGHT_YES)
         this.isDynamicColorEnabled = isDynamicColorEnabled
@@ -414,6 +487,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         this.customBorderColor = customBorderColor
         this.liquidGlassKeyAlphaEnable = liquidGlassKeyAlphaEnable
         this.borderWidth = borderWidth
+        if (renderConfigurationChanged) {
+            keyboardRenderRevision += 1
+        }
 
         if (liquidGlassEnable) {
             this.setBackgroundColor(ColorUtils.setAlphaComponent(customBgColor, 0))
@@ -472,8 +548,32 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     @SuppressLint("ClickableViewAccessibility")
     fun setKeyboard(layout: KeyboardLayout) {
+        setKeyboard(layout, forceRebuild = false)
+    }
+
+    private fun rebuildCurrentKeyboard() {
+        currentLayout?.let { setKeyboard(it, forceRebuild = true) }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setKeyboard(layout: KeyboardLayout, forceRebuild: Boolean) {
+        val expectedChildCount = if (layout.items.isNotEmpty()) {
+            layout.items.size
+        } else {
+            layout.keys.size
+        }
+        if (
+            !forceRebuild &&
+            currentLayout == layout &&
+            renderedKeyboardRenderRevision == keyboardRenderRevision &&
+            childCount == expectedChildCount
+        ) {
+            Log.d("FlickKeyboardView", "setKeyboard (Reuse Existing Views)")
+            return
+        }
         Log.d("FlickKeyboardView", "setKeyboard (Full Rebuild)")
 
+        doubleTapActionDispatcher.cancel()
         cancelTrackedTouchState()
         listener?.onLongPressActionCanceled(KeyAction.Cancel)
 
@@ -503,7 +603,9 @@ class FlickKeyboardView @JvmOverloads constructor(
         tapLongPressControllers.forEach { it.cancel() }
         tapLongPressControllers.clear()
 
+        keyInfos.clear()
         dynamicKeyMap.clear()
+        canonicalGuideLabels.clear()
         currentLayout = layout
 
         columnCount = if (layout.items.isNotEmpty()) layout.columnUnitCount else layout.columnCount
@@ -534,6 +636,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                 )
             }
         }
+        renderedKeyboardRenderRevision = keyboardRenderRevision
     }
 
     private fun addKeyItem(item: KeyItem) {
@@ -544,8 +647,10 @@ class FlickKeyboardView @JvmOverloads constructor(
         val controller = attachKeyBehavior(keyView, keyData)
         applyVisibleKeyFilter(keyView, keyData)
 
+        val info = KeyInfo(keyView, keyData, controller, index)
+        keyInfos += info
         keyData.keyId?.let { id ->
-            dynamicKeyMap[id] = KeyInfo(keyView, keyData, controller, index)
+            dynamicKeyMap[id] = info
         }
 
         addView(keyView)
@@ -587,6 +692,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             displayActions = KeyActionMapper.getDisplayActions(context),
             resolve = ::resolveSumireSpecialKeyOverride
         )
+        if (info.keyData == newKeyData) return
 
         val oldView = info.view
         val newViewIsIcon = KeyIconResolver.hasIcon(newKeyData)
@@ -598,6 +704,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         val needsNewView = (oldViewIsIcon && newViewIsText) || (oldViewIsText && newViewIsIcon)
 
         detachKeyBehavior(info.controller)
+        (oldView as? AutoSizeButton)?.let(canonicalGuideLabels::remove)
 
         val newView: View
         if (needsNewView) {
@@ -631,6 +738,57 @@ class FlickKeyboardView @JvmOverloads constructor(
                 }
             }
     }
+
+    private fun refreshKeyTextPresentation(info: KeyInfo) {
+        val button = info.view as? AutoSizeButton ?: return
+        val guideLabels = canonicalGuideLabels[button]
+        updateKeyVisuals(button, info.keyData)
+        if (guideLabels != null) {
+            applyDisplayedGuideLabels(button, info.keyData, guideLabels)
+        }
+    }
+
+    private fun refreshPopupTextTransformers() {
+        val transform = ::transformInputTextForDisplay
+        flickControllers.forEach { it.setInputTextTransform(transform) }
+        crossFlickControllers.forEach { it.setInputTextTransform(transform) }
+        standardFlickControllers.forEach { it.setInputTextTransform(transform) }
+        tfbiControllers.forEach { it.setInputTextTransform(transform) }
+        flickLongPressControllers.forEach { it.setInputTextTransform(transform) }
+        stickyTfbiControllers.forEach { it.setInputTextTransform(transform) }
+        hierarchicalTfbiControllers.forEach { it.setInputTextTransform(transform) }
+    }
+
+    private fun transformInputTextForDisplay(text: String): String =
+        keyCharacterCase.transformAsciiLetters(text)
+
+    private fun shouldTransformMainLabel(keyData: KeyData): Boolean {
+        if (keyData.action is KeyAction.Text) return true
+        return !keyData.isSpecialKey && keyData.keyType != KeyType.NORMAL
+    }
+
+    private fun keyLabelForDisplay(keyData: KeyData): String {
+        val canonicalLabel = KeyIconResolver.resolvedLabelForRendering(keyData)
+        return if (shouldTransformMainLabel(keyData)) {
+            transformInputTextForDisplay(canonicalLabel)
+        } else {
+            canonicalLabel
+        }
+    }
+
+    private fun transformGuideLabels(
+        labels: AutoSizeButton.FlickGuideLabels
+    ): AutoSizeButton.FlickGuideLabels = labels.copy(
+        tap = transformInputTextForDisplay(labels.tap),
+        up = transformInputTextForDisplay(labels.up),
+        upRight = transformInputTextForDisplay(labels.upRight),
+        right = transformInputTextForDisplay(labels.right),
+        downRight = transformInputTextForDisplay(labels.downRight),
+        down = transformInputTextForDisplay(labels.down),
+        downLeft = transformInputTextForDisplay(labels.downLeft),
+        left = transformInputTextForDisplay(labels.left),
+        upLeft = transformInputTextForDisplay(labels.upLeft)
+    )
 
     /**
      * 100 = デフォルト margin
@@ -824,11 +982,12 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private fun applyButtonText(button: AutoSizeButton, keyData: KeyData) {
         val targetTextSizeSp = getKeyTextSizeSp(keyData)
-        val label = KeyIconResolver.resolvedLabelForRendering(keyData)
+        val label = keyLabelForDisplay(keyData)
 
         button.setDefaultTextSize(targetTextSizeSp)
         button.setFlickGuideTextSizeSp(flickGuideTextSizeSp)
         button.setFlickGuideLabels(null)
+        button.contentDescription = label
 
         if (label.contains("\n")) {
             button.maxLines = 2
@@ -1015,10 +1174,24 @@ class FlickKeyboardView @JvmOverloads constructor(
             (!singleCharacterLabel && !eligibleMultiCharacterLabel) ||
             !labels.hasVisibleGuides()
         ) {
+            canonicalGuideLabels.remove(button)
             button.setFlickGuideLabels(null)
             return
         }
 
+        canonicalGuideLabels[button] = labels
+        applyDisplayedGuideLabels(button, keyData, labels)
+    }
+
+    private fun applyDisplayedGuideLabels(
+        button: AutoSizeButton,
+        keyData: KeyData,
+        canonicalLabels: AutoSizeButton.FlickGuideLabels
+    ) {
+        val labels = transformGuideLabels(canonicalLabels)
+        val singleCharacterLabel = isSingleGuideCharacter(keyData.label)
+        val eligibleMultiCharacterLabel =
+            flickGuideAllowsMultiCharacterLabels && !keyData.isSpecialKey
         if (!singleCharacterLabel && eligibleMultiCharacterLabel && labels.tap.isNotEmpty()) {
             button.maxLines = 1
             button.setLineSpacing(0f, 1f)
@@ -1256,6 +1429,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setInputTextTransform(::transformInputTextForDisplay)
                         val secondaryColor =
                             context.getColorFromAttr(R.attr.colorSecondaryContainer)
                         val surfaceContainerLow =
@@ -1320,7 +1494,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                         this.listener = object : CustomAngleFlickController.FlickListener {
                             override fun onPress(action: FlickAction?) {
                                 when (action) {
-                                    is FlickAction.Input -> notifyTextPress(action.char)
+                                    is FlickAction.Input -> notifyTextPress(keyData, action.char)
                                     is FlickAction.Action -> this@FlickKeyboardView.listener?.onPress(
                                         action.action
                                     )
@@ -1336,7 +1510,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 when (action) {
                                     is FlickAction.Input -> {
                                         if (action.char.isNotEmpty()) {
-                                            this@FlickKeyboardView.listener?.onAction(
+                                            dispatchCommittedKeyAction(
+                                                keyData,
                                                 KeyAction.Text(action.char),
                                                 isFlick = direction != CircularFlickDirection.TAP
                                             )
@@ -1344,7 +1519,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     }
 
                                     is FlickAction.Action -> {
-                                        this@FlickKeyboardView.listener?.onAction(
+                                        dispatchCommittedKeyAction(
+                                            keyData,
                                             action.action,
                                             isFlick = direction != CircularFlickDirection.TAP
                                         )
@@ -1372,6 +1548,15 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     newDirection.toLegacyFlickDirection()
                                 )
                             }
+
+                            override fun onSelectionChanged(
+                                action: FlickAction?,
+                                isFlick: Boolean
+                            ) {
+                                updateTextPreview(textOutputFromFlickAction(action), isFlick)
+                            }
+
+                            override fun onCanceled() = cancelTextPreview()
                         }
 
                         val mapSwitchLabels = List(circularKeyMapsList.size) { null }
@@ -1429,7 +1614,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
-                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setPopupOverlayHostProvider(popupWindowAnchorProvider)
+                        setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyleSet(
                             popupViewStyleSet.directional,
                             popupViewStyleSet.cross
@@ -1489,7 +1675,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     isFlick = isFlick,
                                     resolve = ::resolveSumireSpecialKeyOverride
                                 ) { dispatchedAction, actionIsFlick ->
-                                    this@FlickKeyboardView.listener?.onAction(
+                                    dispatchCommittedKeyAction(
+                                        keyData,
                                         dispatchedAction,
                                         actionIsFlick
                                     )
@@ -1498,6 +1685,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
                             override fun onFlickLongPress(action: KeyAction) {
                                 if (action !is KeyAction.Text) {
+                                    doubleTapActionDispatcher.interrupt()
                                     this@FlickKeyboardView.listener?.onFlickActionLongPress(action)
                                 }
                             }
@@ -1507,6 +1695,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 isFlick: Boolean
                             ) {
                                 if (action !is KeyAction.Text) {
+                                    doubleTapActionDispatcher.interrupt()
                                     this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
                                         action, isFlick = isFlick
                                     )
@@ -1662,19 +1851,28 @@ class FlickKeyboardView @JvmOverloads constructor(
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.standard)
                         this.listener =
                             object : StandardFlickInputController.StandardFlickListener {
                                 override fun onPress(character: String) {
-                                    notifyTextPress(character)
+                                    notifyTextPress(keyData, character)
                                 }
 
                                 override fun onFlick(character: String) {
-                                    this@FlickKeyboardView.listener?.onAction(
+                                    dispatchCommittedKeyAction(
+                                        keyData,
                                         KeyAction.Text(character),
                                         isFlick = true
                                     )
                                 }
+
+                                override fun onSelectionChanged(
+                                    character: String?,
+                                    isFlick: Boolean
+                                ) = updateTextPreview(character, isFlick)
+
+                                override fun onCanceled() = cancelTextPreview()
                             }
 
                         val stringMap = extractInputMap(flickActionMap)
@@ -1764,7 +1962,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                         context = context,
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
-                        setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setPopupOverlayHostProvider(popupWindowAnchorProvider)
+                        setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyleSet(
                             popupViewStyleSet.directional,
                             popupViewStyleSet.cross
@@ -1837,17 +2036,25 @@ class FlickKeyboardView @JvmOverloads constructor(
                         this.listener = object : CrossFlickInputController.CrossFlickListener {
                             override fun onPress(action: KeyAction) {
                                 when (action) {
-                                    is KeyAction.Text -> notifyTextPress(action.text)
+                                    is KeyAction.Text -> notifyTextPress(keyData, action.text)
                                     else -> this@FlickKeyboardView.listener?.onPress(action)
                                 }
                             }
 
                             override fun onFlick(action: KeyAction, isFlick: Boolean) {
-                                this@FlickKeyboardView.listener?.onAction(action, isFlick)
+                                dispatchCommittedKeyAction(keyData, action, isFlick)
                             }
+
+                            override fun onTextSelectionChanged(
+                                text: String?,
+                                isFlick: Boolean
+                            ) = updateTextPreview(text, isFlick)
+
+                            override fun onCanceled() = cancelTextPreview()
 
                             override fun onFlickLongPress(action: KeyAction) {
                                 if (action !is KeyAction.Text) {
+                                    doubleTapActionDispatcher.interrupt()
                                     this@FlickKeyboardView.listener?.onFlickActionLongPress(action)
                                 }
                             }
@@ -1857,6 +2064,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 isFlick: Boolean
                             ) {
                                 if (action !is KeyAction.Text) {
+                                    doubleTapActionDispatcher.interrupt()
                                     this@FlickKeyboardView.listener?.onFlickActionUpAfterLongPress(
                                         action,
                                         isFlick
@@ -1936,6 +2144,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 override fun onTap() {
                                     if (
                                         dispatchResolvedSumireSpecialKeyAction(
+                                            keyData,
                                             resolveSumireSpecialKeyOverride(
                                                 keyData,
                                                 SumireSpecialKeyDirection.TAP
@@ -1950,19 +2159,22 @@ class FlickKeyboardView @JvmOverloads constructor(
                                         "FlickKeyboardView KeyType.NORMAL",
                                         "currentAction: $currentAction"
                                     )
-                                    this@FlickKeyboardView.listener?.onAction(
+                                    dispatchCommittedKeyAction(
+                                        keyData,
                                         currentAction,
                                         isFlick = false
                                     )
                                 }
 
                                 override fun onLongPress() {
+                                    doubleTapActionDispatcher.interrupt()
                                     this@FlickKeyboardView.listener?.onActionLongPress(
                                         currentAction()
                                     )
                                 }
 
                                 override fun onUpAfterLongPress() {
+                                    doubleTapActionDispatcher.interrupt()
                                     this@FlickKeyboardView.listener?.onActionUpAfterLongPress(
                                         currentAction()
                                     )
@@ -1998,13 +2210,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : TfbiInputController.TfbiListener {
                             override fun onPress(
                                 first: TfbiFlickDirection,
                                 second: TfbiFlickDirection
                             ) {
-                                notifyTextPress(twoStepMap[first]?.get(second) ?: "")
+                                notifyTextPress(keyData, twoStepMap[first]?.get(second) ?: "")
                             }
 
                             override fun onFlick(
@@ -2017,7 +2230,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     "$character $first $second"
                                 )
                                 if (character.isNotEmpty()) {
-                                    this@FlickKeyboardView.listener?.onAction(
+                                    dispatchCommittedKeyAction(
+                                        keyData,
                                         KeyAction.Text(character),
                                         isFlick = !(first == TfbiFlickDirection.TAP && second == TfbiFlickDirection.TAP)
                                     )
@@ -2031,13 +2245,34 @@ class FlickKeyboardView @JvmOverloads constructor(
                                 val output = twoStepLongPressMap?.get(first)?.get(second).orEmpty()
                                 if (output.isEmpty()) return false
 
-                                this@FlickKeyboardView.listener?.onAction(
-                                    KeyAction.Text(output),
+                                dispatchCommittedKeyAction(
+                                    keyData = keyData,
+                                    action = KeyAction.Text(output),
                                     isFlick = !(first == TfbiFlickDirection.TAP &&
-                                            second == TfbiFlickDirection.TAP)
+                                        second == TfbiFlickDirection.TAP)
                                 )
                                 return true
                             }
+
+                            override fun onSelectionChanged(
+                                first: TfbiFlickDirection,
+                                second: TfbiFlickDirection,
+                                isLongPress: Boolean
+                            ) {
+                                val longPressText = if (isLongPress) {
+                                    twoStepLongPressMap?.get(first)?.get(second)
+                                } else {
+                                    null
+                                }
+                                updateTextPreview(
+                                    longPressText?.takeIf(String::isNotEmpty)
+                                        ?: twoStepMap[first]?.get(second),
+                                    first != TfbiFlickDirection.TAP ||
+                                        second != TfbiFlickDirection.TAP
+                                )
+                            }
+
+                            override fun onCanceled() = cancelTextPreview()
                         }
 
                         attach(
@@ -2092,14 +2327,16 @@ class FlickKeyboardView @JvmOverloads constructor(
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : FlickLongPressInputController.Listener {
                             override fun onPress(character: String) {
-                                notifyTextPress(character)
+                                notifyTextPress(keyData, character)
                             }
 
                             override fun onCommit(character: String, isFlick: Boolean) {
-                                this@FlickKeyboardView.listener?.onAction(
+                                dispatchCommittedKeyAction(
+                                    keyData,
                                     KeyAction.Text(character),
                                     isFlick = isFlick
                                 )
@@ -2141,13 +2378,14 @@ class FlickKeyboardView @JvmOverloads constructor(
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : TfbiStickyFlickController.TfbiListener {
                             override fun onPress(
                                 first: TfbiFlickDirection,
                                 second: TfbiFlickDirection
                             ) {
-                                notifyTextPress(twoStepMap[first]?.get(second) ?: "")
+                                notifyTextPress(keyData, twoStepMap[first]?.get(second) ?: "")
                             }
 
                             override fun onFlick(
@@ -2160,7 +2398,8 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     "$character $first $second"
                                 )
                                 if (character.isNotEmpty()) {
-                                    this@FlickKeyboardView.listener?.onAction(
+                                    dispatchCommittedKeyAction(
+                                        keyData,
                                         KeyAction.Text(character),
                                         isFlick = !(first == TfbiFlickDirection.TAP && second == TfbiFlickDirection.TAP)
                                     )
@@ -2199,11 +2438,12 @@ class FlickKeyboardView @JvmOverloads constructor(
                         gestureConfigSource = gestureSessionConfigSource
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
+                        setInputTextTransform(::transformInputTextForDisplay)
                         setModeSwitchAngleMargin(hierarchicalFlickModeSwitchAngleMargin)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : TfbiHierarchicalFlickController.TfbiListener {
                             override fun onPress(character: String) {
-                                notifyTextPress(character)
+                                notifyTextPress(keyData, character)
                             }
 
                             override fun onFlick(character: String) {
@@ -2212,12 +2452,20 @@ class FlickKeyboardView @JvmOverloads constructor(
                                     "Char: $character"
                                 )
                                 if (character.isNotEmpty()) {
-                                    this@FlickKeyboardView.listener?.onAction(
+                                    dispatchCommittedKeyAction(
+                                        keyData,
                                         KeyAction.Text(character),
                                         isFlick = true
                                     )
                                 }
                             }
+
+                            override fun onSelectionChanged(
+                                character: String?,
+                                isFlick: Boolean
+                            ) = updateTextPreview(character, isFlick)
+
+                            override fun onCanceled() = cancelTextPreview()
 
                             override fun onModeChanged(
                                 newLabel: String,
@@ -2290,19 +2538,87 @@ class FlickKeyboardView @JvmOverloads constructor(
         return resolver(layoutType, inputMode, keyData, direction)
     }
 
+    private fun dispatchCommittedKeyAction(
+        keyData: KeyData,
+        action: KeyAction,
+        isFlick: Boolean
+    ) {
+        val dispatch = {
+            if (isFlick) {
+                dispatchNonTapActionWithoutPreviewCancel(action, isFlick = true)
+            } else {
+                doubleTapActionDispatcher.onCommittedTap(
+                    keyIdentity = keyData.keyId
+                        ?: "legacy:${keyData.row}:${keyData.column}:${keyData.keyType}",
+                    normalAction = action,
+                    binding = keyData.effectiveDoubleTapBinding(action)
+                )
+            }
+        }
+        val textAction = action as? KeyAction.Text
+        if (textAction != null && canPreviewText(keyData, textAction)) {
+            flickTextPreviewEmitter.commit(
+                FlickTextSelection(textAction.text, isFlick),
+                dispatch
+            )
+            previewKeyData = null
+        } else {
+            cancelTextPreview()
+            dispatch()
+        }
+    }
+
+    private fun dispatchNonTapAction(action: KeyAction, isFlick: Boolean) {
+        cancelTextPreview()
+        dispatchNonTapActionWithoutPreviewCancel(action, isFlick)
+    }
+
+    private fun dispatchNonTapActionWithoutPreviewCancel(action: KeyAction, isFlick: Boolean) {
+        doubleTapActionDispatcher.interrupt()
+        listener?.onAction(action, isFlick)
+    }
+
     private fun dispatchResolvedSumireSpecialKeyAction(
+        keyData: KeyData,
         resolved: ResolvedSumireSpecialKeyAction,
         isFlick: Boolean
     ): Boolean {
         return dispatchResolvedSumireSpecialKeyAction(resolved, isFlick) { action, actionIsFlick ->
-            listener?.onAction(action, actionIsFlick)
+            dispatchCommittedKeyAction(keyData, action, actionIsFlick)
         }
     }
 
-    private fun notifyTextPress(character: String) {
-        if (character.isNotEmpty()) {
-            listener?.onPress(KeyAction.Text(character))
+    private fun notifyTextPress(keyData: KeyData, character: String) {
+        val action = KeyAction.Text(character)
+        if (character.isNotEmpty()) listener?.onPress(action)
+        if (character.isNotEmpty() && canPreviewText(keyData, action)) {
+            previewKeyData = keyData
+            flickTextPreviewEmitter.begin(FlickTextSelection(character, false))
+        } else {
+            cancelTextPreview()
         }
+    }
+
+    private fun updateTextPreview(character: String?, isFlick: Boolean) {
+        if (previewKeyData == null) return
+        flickTextPreviewEmitter.update(FlickTextSelection(character, isFlick))
+    }
+
+    private fun cancelTextPreview() {
+        flickTextPreviewEmitter.cancel()
+        previewKeyData = null
+    }
+
+    private fun canPreviewText(keyData: KeyData, action: KeyAction.Text): Boolean {
+        return !keyData.isSpecialKey && keyData.effectiveDoubleTapBinding(action) == null
+    }
+
+    private fun textOutputFromFlickAction(action: FlickAction?): String? {
+        return when (action) {
+            is FlickAction.Input -> action.char
+            is FlickAction.Action -> (action.action as? KeyAction.Text)?.text
+            null -> null
+        }?.takeIf(String::isNotEmpty)
     }
 
     private fun detachKeyBehavior(controller: Any?) {
@@ -2384,6 +2700,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val TAG = "FlickKeyboardViewTouch"
 
     private fun cancelTrackedTouchState() {
+        cancelTextPreview()
         if (motionTargets.isEmpty() && pointerDownTime.isEmpty()) return
 
         val eventTime = SystemClock.uptimeMillis()
@@ -2527,13 +2844,13 @@ class FlickKeyboardView @JvmOverloads constructor(
                     if (abs(dx) > abs(dy) && abs(dx) > threshold) {
                         val action2 =
                             if (dx < 0f) KeyAction.MoveCursorLeft else KeyAction.MoveCursorRight
-                        listener?.onAction(action2, false)
+                        dispatchNonTapAction(action2, false)
                         cursorInitialX = currentX
                         cursorInitialY = currentY
                     } else if (abs(dy) > abs(dx) && abs(dy) > threshold) {
                         val action2 =
                             if (dy < 0f) KeyAction.MoveCursorUp else KeyAction.MoveCursorDown
-                        listener?.onAction(action2, false)
+                        dispatchNonTapAction(action2, false)
                         cursorInitialX = currentX
                         cursorInitialY = currentY
                     }
@@ -2746,6 +3063,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     }
 
     override fun onDetachedFromWindow() {
+        doubleTapActionDispatcher.cancel()
+        cancelTextPreview()
         cancelTrackedTouchState()
         super.onDetachedFromWindow()
         listener?.onLongPressActionCanceled(KeyAction.Cancel)
@@ -2762,6 +3081,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     override fun onVisibilityChanged(changedView: View, visibility: Int) {
         super.onVisibilityChanged(changedView, visibility)
         if (changedView == this && visibility != View.VISIBLE) {
+            doubleTapActionDispatcher.cancel()
+            cancelTextPreview()
             cancelTrackedTouchState()
             listener?.onLongPressActionCanceled(KeyAction.Cancel)
         }

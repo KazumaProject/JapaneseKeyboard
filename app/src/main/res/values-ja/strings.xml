@@ -120,6 +120,8 @@
     <string name="keyboard_corner_top_right_preference_title">右上を角丸にする</string>
     <string name="keyboard_corner_bottom_left_preference_title">左下を角丸にする</string>
     <string name="keyboard_corner_bottom_right_preference_title">右下を角丸にする</string>
+    <string name="allow_fullscreen_mode_preference_title">横画面で全画面入力を許可</string>
+    <string name="allow_fullscreen_mode_preference_summary">横画面で、Androidが必要と判断した場合に入力画面を全画面表示します。</string>
     <string name="landscape_force_qwerty_preference_title">横画面では常に QWERTY に切り替える</string>
     <string name="landscape_force_qwerty_preference_summary">端末が横画面のとき、一時的に QWERTY キーボードへ切り替えます。</string>
     <string name="landscape_force_qwerty_romaji_preference_title">横画面 QWERTY の入力モード</string>
@@ -153,6 +155,7 @@
     <string name="henkan_delete_key_action_summary_off">削除キータップ：ハイライト解除</string>
 
     <string name="category_function_title">機能</string>
+    <string name="category_flick_input_title">フリック入力</string>
     <string name="category_romaji_conversion_title">ローマ字変換</string>
     <string name="category_qwerty_keyboard_title">QWERTY キーボード</string>
     <string name="category_symbol_keyboard_title">記号キーボード</string>
@@ -179,6 +182,9 @@
     <string name="flick_input_only_title">フリック・トグル入力</string>
     <string name="flick_input_only_summary_on">フリック入力のみを使用し、トグル入力を無効にする</string>
     <string name="flick_input_only_summary_off">トグル入力を有効にします</string>
+    <string name="flick_editor_preview_title">入力欄でフリック文字をプレビュー</string>
+    <string name="flick_editor_preview_summary_off">従来方式：指を離したときに文字を入力します</string>
+    <string name="flick_editor_preview_summary_on">TenKey・Sumireで、選択中のタップ／フリック文字を入力欄に仮表示します</string>
     <string name="undo_enable_title">元に戻す機能</string>
     <string name="undo_enable_summary">元に戻す機能を無効にする</string>
     <string name="reconversion_preference_title">読みを戻す</string>
@@ -203,6 +209,9 @@
     <string name="long_press_timeout_preference_title">長押し時間</string>
     <string name="long_press_timeout_preference_summary">長押しと判定するまでの時間を変更します。</string>
     <string name="long_press_timeout_preference_value">%1$d ms</string>
+    <string name="delete_long_press_conversion_behavior_title">削除キー長押し時の変換方式</string>
+    <string name="delete_long_press_conversion_behavior_deferred">スムーズ（推奨）：指を離した後に1回変換</string>
+    <string name="delete_long_press_conversion_behavior_continuous">従来方式：1文字削除するたびにライブ変換</string>
 
     <string name="custom_romaji_title">ローマ字変換のカスタマイズ</string>
     <string name="custom_romaji_summary">ローマ字の変換表を作成、選択します</string>
@@ -668,6 +677,8 @@
     <string name="special_key">特別なキー</string>
     <string name="key_label">キーの表示ラベル</string>
     <string name="key_action">キーのアクション</string>
+    <string name="double_tap_action">ダブルタップのアクション</string>
+    <string name="double_tap_disabled">なし</string>
     <string name="setting_flick">フリック設定</string>
     <string name="tap">タップ</string>
     <string name="flick_left">左フリック</string>
@@ -838,7 +849,7 @@
     <string name="pref_qwerty_enable_flick_down_title">下フリックを有効にする</string>
     <string name="pref_qwerty_enable_flick_down_summary">下方向のフリック入力で大文字を入力します。</string>
     <string name="enable_ai_preference_title">AI による予測変換を有効にする</string>
-    <string name="enable_ai_preference_summary">ニューラルかな漢字モデル「zenz-v3.1-xsmall」を使った逐次的な予測変換を有効にします。</string>
+    <string name="enable_ai_preference_summary">ニューラルかな漢字モデル「zenz-v3.2-xsmall」を使った逐次的な予測変換を有効にします。</string>
     <string name="zenz_profile_preference_title">zenz で使用するプロフィールの設定</string>
     <string name="zenz_profile_preference_summary">zenz が予測変換に利用するプロフィールを設定できます。\n例：この欄に「職業：医者」と入力すると、「ちゅうしゃ」と入力したときに「注射」が候補に出やすくなります。</string>
     <string name="enable_zenz_rerank_preference_title">zenz で変換候補を並び替える</string>
@@ -1309,6 +1320,13 @@
     <string name="candidate_order_override_saved_order_deleted">保存済み候補順を削除しました</string>
     <string name="candidate_order_override_saved_order_candidates_description">保存済み候補</string>
     <string name="candidate_order_override_drag_handle_description">並び替え</string>
+    <string name="candidate_order_scope_title">適用範囲</string>
+    <string name="candidate_order_scope_exact">この読みだけ（完全一致）</string>
+    <string name="candidate_order_scope_lexical">同じ語として使われる場合</string>
+    <string name="candidate_order_scope_exact_short">この読みだけ</string>
+    <string name="candidate_order_scope_lexical_short">同じ語</string>
+    <string name="candidate_order_scope_exact_description">入力全体がこの読みと一致した場合だけ適用します。最も安全で予測可能な設定です。</string>
+    <string name="candidate_order_scope_lexical_description">通常変換の第一候補がこの読みを独立した同じ語として解析した場合だけ、長い入力にも適用します。異なる語区切りには影響しません。</string>
     <string name="sumire_special_key_editor_preference_title">特殊キー編集</string>
     <string name="sumire_special_key_editor_preference_summary">Sumire の特殊キーの動作と配置を編集します</string>
     <string name="sumire_special_key_editor_title">Sumire 特殊キー編集</string>

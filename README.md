@@ -114,6 +114,7 @@ Sumireは、**プライバシーを絶対に妥協しない**
 | キーボード | キーボードの選択 | 画面/操作 |
 | キーボード | 位置とサイズの設定(縦画面) | 画面/操作 |
 | キーボード | 位置とサイズの設定(横画面) | 画面/操作 |
+| キーボード | 横画面で全画面入力を許可 | 通常端末: OFF / small端末: ON |
 | キーボード | キー・変換候補の文字サイズ | 画面/操作 |
 | キーボード | キーボード背景画像 | 画面/操作 |
 | キーボード | 背景画像の表示方法 | フィット |
@@ -289,7 +290,7 @@ cd JapaneseKeyboard
 
 #### Zenz モデルをビルド時に生成する
 
-`zenz` モジュールは、開発機のビルド時に Hugging Face から元モデルを取得し、`llama.cpp` で GGUF 変換と量子化を行った結果を APK/AAB に同梱します。アプリ実行時には通信しないため、`INTERNET` 権限は不要です。
+`zenz` モジュールは、開発機のビルド時に Hugging Face から量子化済みのGGUFモデルを取得し、APK/AAB に同梱します。アプリ実行時には通信しないため、`INTERNET` 権限は不要です。
 
 ```bash
 ./gradlew installDebug
@@ -299,15 +300,15 @@ cd JapaneseKeyboard
 
 ```properties
 # local.properties
-zenzModelRepo=Miwa-Keita/zenz-v3.1-xsmall
-zenzModelRevision=a728931c8b4867a53ca33d1ff3fe7360b0f15cd5
+zenzModelRepo=Miwa-Keita/zenz-v3.2-xsmall-gguf
+zenzModelRevision=4f5423f0fad41a73b1242eb96fe5c12ae4fdca83
 zenzModelQuantization=Q5_K_M
 zenzModelAssetName=ggml-model-Q5_K_M.gguf
 # 公開モデルなので通常は不要
 # zenzModelHfToken=hf_xxx
 ```
 
-このモードでは生成済みモデルを `zenz/build/generated/assets/zenzModel/main/ggml-model-Q5_K_M.gguf` に出力して APK/AAB に同梱します。Python 3 と CMake が必要で、初回は `huggingface_hub` と `llama.cpp` の変換用依存を自動で入れます。
+このモードではモデルを `zenz/build/generated/assets/zenzModel/main/ggml-model-Q5_K_M.gguf` に出力して APK/AAB に同梱します。Python 3 が必要で、初回は `huggingface_hub` を自動で入れます。
 
 #### 配布バリアント
 

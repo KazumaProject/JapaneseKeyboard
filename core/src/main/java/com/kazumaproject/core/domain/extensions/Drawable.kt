@@ -176,8 +176,10 @@ fun View.setDrawableSolidColor(@ColorInt color: Int, index: Int = 0) {
  */
 fun View.setDrawableAlpha(alpha: Int) {
     val background = this.background ?: return
-    // mutate() してこのView専用のインスタンスにする（他のViewへの影響を防ぐ）
-    background.mutate().alpha = alpha
+    // Key backgrounds are assigned per View. Mutating a nested LayerDrawable whose child has no
+    // ConstantState makes Android clone the layer hierarchy and emit an exception stack for every
+    // key. Alpha itself is a property of the top-level Drawable, so it can be updated directly.
+    background.alpha = alpha.coerceIn(0, 255)
 }
 
 /**

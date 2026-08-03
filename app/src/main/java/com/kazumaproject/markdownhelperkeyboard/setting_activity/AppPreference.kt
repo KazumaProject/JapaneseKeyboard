@@ -67,6 +67,7 @@ object AppPreference {
         "gemma_handwriting_pen_color_preference"
     const val FLICK_SENSITIVITY_KEY = "flick_sensitivity_preference"
     const val FLICK_THRESHOLD_SHAPE_KEY = "flick_threshold_shape_preference"
+    const val FLICK_EDITOR_PREVIEW_KEY = "flick_editor_preview_preference"
     const val TENKEY_KEYMAP_GUIDE_JAPANESE_KEY = "tenkey_keymap_guide"
     const val TENKEY_KEYMAP_GUIDE_ENGLISH_KEY = "tenkey_keymap_guide_english"
     const val TENKEY_KEYMAP_GUIDE_NUMBER_KEY = "tenkey_keymap_guide_number"
@@ -75,10 +76,13 @@ object AppPreference {
     const val SUMIRE_KEYMAP_GUIDE_NUMBER_KEY = "sumire_keymap_guide_number"
     const val CUSTOM_KEYMAP_GUIDE_KEY = "flick_keymap_guide"
     const val LONG_PRESS_TIMEOUT_KEY = "long_press_timeout_preference"
+    const val DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY =
+        "delete_long_press_conversion_behavior"
     const val VIBRATION_KEY = "vibration_preference"
     const val VIBRATION_TIMING_KEY = "vibration_timing"
     const val KEY_SOUND_KEY = "key_sound_preference"
     const val KEY_SOUND_VOLUME_PERCENT_KEY = "key_sound_volume_percent_preference"
+    const val ALLOW_FULLSCREEN_MODE_KEY = "allow_fullscreen_mode_preference"
     private const val MIN_CANDIDATE_VISIBLE_HEIGHT_DP = 30
     private const val MAX_CANDIDATE_VISIBLE_HEIGHT_DP = 300
 
@@ -98,6 +102,8 @@ object AppPreference {
         FlickThresholdShape.Radial.preferenceValue
     )
     private val LONG_PRESS_TIMEOUT = Pair(LONG_PRESS_TIMEOUT_KEY, 300)
+    private val DELETE_LONG_PRESS_CONVERSION_BEHAVIOR =
+        Pair(DELETE_LONG_PRESS_CONVERSION_BEHAVIOR_KEY, "deferred")
     private val VIBRATION_PREFERENCE = Pair(VIBRATION_KEY, true)
     private val VIBRATION_TIMING_PREFERENCE = Pair(VIBRATION_TIMING_KEY, "both")
     private val KEY_SOUND_PREFERENCE = Pair(KEY_SOUND_KEY, false)
@@ -329,6 +335,7 @@ object AppPreference {
         Pair("candidate_view_empty_height_dp_landscape_preference", 110)
 
     private val FLICK_INPUT_ONLY = Pair("flick_input_only_preference", false)
+    private val FLICK_EDITOR_PREVIEW = Pair(FLICK_EDITOR_PREVIEW_KEY, false)
     private val OMISSION_SEARCH = Pair("omission_search_preference", false)
     private val UNDO_ENABLE = Pair("undo_enable_preference", false)
     private val SPACE_HANKAKU_ENABLE = Pair("space_key_preference", false)
@@ -376,10 +383,7 @@ object AppPreference {
     private val defaultKeyboardOrderJson = gson.toJson(
         listOf(
             KeyboardType.TENKEY,
-            KeyboardType.SUMIRE,
-            KeyboardType.QWERTY,
-            KeyboardType.ROMAJI,
-            KeyboardType.CUSTOM
+            KeyboardType.QWERTY
         )
     )
     private val KEYBOARD_ORDER = Pair("keyboard_order_preference", defaultKeyboardOrderJson)
@@ -1321,6 +1325,9 @@ object AppPreference {
             it.putBoolean(LANDSCAPE_FORCE_QWERTY_PREFERENCE.first, value)
         }
 
+    fun isFullscreenModeAllowed(defaultValue: Boolean): Boolean =
+        preferences.getBoolean(ALLOW_FULLSCREEN_MODE_KEY, defaultValue)
+
     var landscape_force_qwerty_romaji_preference: Boolean
         get() = preferences.getBoolean(
             LANDSCAPE_FORCE_QWERTY_ROMAJI_PREFERENCE.first,
@@ -1441,8 +1448,15 @@ object AppPreference {
     var keyboard_order: List<KeyboardType>
         get() {
             val json = preferences.getString(KEYBOARD_ORDER.first, KEYBOARD_ORDER.second)
-            val type = object : TypeToken<List<KeyboardType>>() {}.type
-            return gson.fromJson(json, type)
+            val type = object : TypeToken<List<KeyboardType?>>() {}.type
+            return runCatching {
+                gson.fromJson<List<KeyboardType?>>(json, type)
+                    .orEmpty()
+                    .filterNotNull()
+                    .ifEmpty { listOf(KeyboardType.TENKEY, KeyboardType.QWERTY) }
+            }.getOrElse {
+                listOf(KeyboardType.TENKEY, KeyboardType.QWERTY)
+            }
         }
         set(value) = preferences.edit {
             val json = gson.toJson(value)
@@ -1611,6 +1625,15 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putInt(LONG_PRESS_TIMEOUT.first, value ?: 300)
+        }
+
+    var delete_long_press_conversion_behavior: String
+        get() = preferences.getString(
+            DELETE_LONG_PRESS_CONVERSION_BEHAVIOR.first,
+            DELETE_LONG_PRESS_CONVERSION_BEHAVIOR.second,
+        ) ?: DELETE_LONG_PRESS_CONVERSION_BEHAVIOR.second
+        set(value) = preferences.edit {
+            it.putString(DELETE_LONG_PRESS_CONVERSION_BEHAVIOR.first, value)
         }
 
     var n_best_preference: Int?
@@ -2095,6 +2118,15 @@ object AppPreference {
         get() = preferences.getBoolean(FLICK_INPUT_ONLY.first, FLICK_INPUT_ONLY.second)
         set(value) = preferences.edit {
             it.putBoolean(FLICK_INPUT_ONLY.first, value ?: false)
+        }
+
+    var flick_editor_preview_preference: Boolean
+        get() = preferences.getBoolean(
+            FLICK_EDITOR_PREVIEW.first,
+            FLICK_EDITOR_PREVIEW.second
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(FLICK_EDITOR_PREVIEW.first, value)
         }
 
     var undo_enable_preference: Boolean?

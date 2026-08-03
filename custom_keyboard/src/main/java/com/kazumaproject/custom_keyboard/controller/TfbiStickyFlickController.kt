@@ -71,6 +71,7 @@ class TfbiStickyFlickController(
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
     private var popupStyle = PopupViewStyle(100, 20f)
+    private var inputTextTransform: (String) -> String = { it }
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
 
@@ -94,6 +95,11 @@ class TfbiStickyFlickController(
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
         popupWindowAnchorProvider = provider
+    }
+
+    fun setInputTextTransform(transform: (String) -> String) {
+        inputTextTransform = transform
+        popupView?.setInputTextTransform(transform)
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
@@ -275,6 +281,7 @@ class TfbiStickyFlickController(
         }
 
         popupView = TfbiFlickPopupView(context).apply {
+            setInputTextTransform(inputTextTransform)
             applyPopupViewStyle(popupStyle)
             setCharacters(tapCharacter, petalChars)
             highlightDirection(TfbiFlickDirection.TAP)

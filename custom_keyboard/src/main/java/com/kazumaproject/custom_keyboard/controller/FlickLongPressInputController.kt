@@ -65,6 +65,7 @@ class FlickLongPressInputController(
     private var popupView: TfbiFlickPopupView? = null
     private var popupWindow: PopupWindow? = null
     private var popupWindowAnchorProvider: (() -> View?)? = null
+    private var inputTextTransform: (String) -> String = { it }
 
     private var popupBackgroundColor: Int? = null
     private var popupHighlightedColor: Int? = null
@@ -99,6 +100,11 @@ class FlickLongPressInputController(
 
     fun setPopupWindowAnchorProvider(provider: (() -> View?)?) {
         popupWindowAnchorProvider = provider
+    }
+
+    fun setInputTextTransform(transform: (String) -> String) {
+        inputTextTransform = transform
+        popupView?.setInputTextTransform(transform)
     }
 
     fun attach(
@@ -261,6 +267,7 @@ class FlickLongPressInputController(
     private fun showPopup(anchorView: View) {
         popupWindow?.dismiss()
         popupView = TfbiFlickPopupView(context).apply {
+            setInputTextTransform(inputTextTransform)
             if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
                 setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
             }

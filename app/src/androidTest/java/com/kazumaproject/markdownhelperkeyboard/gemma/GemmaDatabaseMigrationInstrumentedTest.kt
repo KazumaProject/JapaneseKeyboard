@@ -11,17 +11,21 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** Verifies the production 40 -> 41 migration against the database installed on the device. */
+/** Verifies the production 40 -> latest migration against the database installed on the device. */
 @RunWith(AndroidJUnit4::class)
 class GemmaDatabaseMigrationInstrumentedTest {
     @Test
     fun migrateExistingDatabaseAndSeedMediaActions() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val database = Room.databaseBuilder(context, AppDatabase::class.java, "learn_database")
-            .addMigrations(AppDatabase.MIGRATION_40_41)
+            .addMigrations(
+                AppDatabase.MIGRATION_40_41,
+                AppDatabase.MIGRATION_41_42,
+                AppDatabase.MIGRATION_42_43
+            )
             .build()
         try {
-            assertEquals(41, database.openHelper.writableDatabase.version)
+            assertEquals(43, database.openHelper.writableDatabase.version)
             val repository = GemmaPromptTemplateRepository(database.gemmaPromptTemplateDao())
             repository.ensureBuiltIns()
             val keys = database.gemmaPromptTemplateDao().getBuiltInKeys()

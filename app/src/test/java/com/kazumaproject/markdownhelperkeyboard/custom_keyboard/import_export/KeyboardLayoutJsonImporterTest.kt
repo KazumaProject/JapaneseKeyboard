@@ -14,6 +14,7 @@ import com.kazumaproject.markdownhelperkeyboard.custom_keyboard.data.SpacerDefin
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -254,10 +255,226 @@ class KeyboardLayoutJsonImporterTest {
         assertTrue("root must be object", root.isJsonObject)
 
         val obj = root.asJsonObject
-        assertEquals(2, obj["schemaVersion"].asInt)
+        assertEquals(3, obj["schemaVersion"].asInt)
         assertNotNull(obj["layouts"])
         assertTrue("layouts must be array", obj["layouts"].isJsonArray)
         assertEquals(0, obj["layouts"].asJsonArray.size())
+    }
+
+    @Test
+    fun parse_legacyShift_addsPromoteCapsLockDoubleTapDefault() {
+        val json = """
+            [
+              {
+                "layout": {
+                  "layoutId": 1,
+                  "name": "Legacy Shift",
+                  "columnCount": 1,
+                  "rowCount": 1,
+                  "stableId": "legacy-shift"
+                },
+                "keysWithFlicks": [
+                  {
+                    "key": {
+                      "keyIdentifier": "shift",
+                      "label": "",
+                      "row": 0,
+                      "column": 0,
+                      "keyType": "NORMAL",
+                      "isSpecialKey": true,
+                      "action": "ShiftKeyPressed"
+                    }
+                  }
+                ]
+              }
+            ]
+        """.trimIndent()
+
+        val key = KeyboardLayoutJsonImporter.parse(json)
+            .layoutsOrThrow()
+            .single()
+            .keysWithFlicks
+            .single()
+            .key
+
+        assertEquals("CapLockKey", key.doubleTapAction)
+        assertEquals("PROMOTE", key.doubleTapPolicy)
+    }
+
+    @Test
+    fun parse_schema3ShiftWithExplicitDisable_doesNotRestoreDefault() {
+        val json = """
+            {
+              "schemaVersion": 3,
+              "layouts": [
+                {
+                  "layout": {
+                    "layoutId": 1,
+                    "name": "Disabled Shift",
+                    "columnCount": 1,
+                    "rowCount": 1,
+                    "stableId": "disabled-shift"
+                  },
+                  "keysWithFlicks": [
+                    {
+                      "key": {
+                        "keyIdentifier": "shift",
+                        "label": "",
+                        "row": 0,
+                        "column": 0,
+                        "keyType": "NORMAL",
+                        "isSpecialKey": true,
+                        "action": "ShiftKeyPressed",
+                        "doubleTapEnabled": false
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val key = KeyboardLayoutJsonImporter.parse(json)
+            .layoutsOrThrow()
+            .single()
+            .keysWithFlicks
+            .single()
+            .key
+
+        assertEquals(null, key.doubleTapAction)
+        assertEquals(null, key.doubleTapPolicy)
+    }
+
+    @Test
+    fun exportImport_roundTrip_preservesConfiguredDoubleTapShortcut() {
+        val fullLayout = FullKeyboardLayout(
+            layout = CustomKeyboardLayout(
+                layoutId = 1,
+                name = "Double Tap",
+                columnCount = 1,
+                rowCount = 1,
+                stableId = "double-tap"
+            ),
+            keysWithFlicks = listOf(
+                KeyWithFlicks(
+                    key = KeyDefinition(
+                        keyId = 1,
+                        ownerLayoutId = 1,
+                        label = "Select",
+                        row = 0,
+                        column = 0,
+                        keyType = KeyType.NORMAL,
+                        isSpecialKey = true,
+                        keyIdentifier = "select",
+                        action = "SelectAll",
+                        doubleTapAction = "Copy",
+                        doubleTapPolicy = "EXCLUSIVE"
+                    ),
+                    flicks = emptyList(),
+                    circularFlicks = emptyList(),
+                    twoStepFlicks = emptyList(),
+                    longPressFlicks = emptyList(),
+                    twoStepLongPressFlicks = emptyList()
+                )
+            )
+        )
+
+        val importedKey = KeyboardLayoutJsonImporter.parse(
+            KeyboardLayoutJsonExporter.toJson(listOf(fullLayout))
+        ).layoutsOrThrow().single().keysWithFlicks.single().key
+
+        assertEquals("Copy", importedKey.doubleTapAction)
+        assertEquals("EXCLUSIVE", importedKey.doubleTapPolicy)
+    }
+
+    @Test
+    fun exportImport_dropsDoubleTapConfigurationFromNormalCharacterKey() {
+        val fullLayout = FullKeyboardLayout(
+            layout = CustomKeyboardLayout(
+                layoutId = 1,
+                name = "Normal Key",
+                columnCount = 1,
+                rowCount = 1,
+                stableId = "normal-key"
+            ),
+            keysWithFlicks = listOf(
+                KeyWithFlicks(
+                    key = KeyDefinition(
+                        keyId = 1,
+                        ownerLayoutId = 1,
+                        label = "a",
+                        row = 0,
+                        column = 0,
+                        keyType = KeyType.NORMAL,
+                        isSpecialKey = false,
+                        keyIdentifier = "a",
+                        action = "Text:a",
+                        doubleTapAction = "Copy",
+                        doubleTapPolicy = "PROMOTE"
+                    ),
+                    flicks = emptyList(),
+                    circularFlicks = emptyList(),
+                    twoStepFlicks = emptyList(),
+                    longPressFlicks = emptyList(),
+                    twoStepLongPressFlicks = emptyList()
+                )
+            )
+        )
+
+        val exportedJson = KeyboardLayoutJsonExporter.toJson(listOf(fullLayout))
+        val exportedKey = JsonParser.parseString(exportedJson)
+            .asJsonObject["layouts"].asJsonArray[0]
+            .asJsonObject["keysWithFlicks"].asJsonArray[0]
+            .asJsonObject["key"].asJsonObject
+        val importedKey = KeyboardLayoutJsonImporter.parse(exportedJson)
+            .layoutsOrThrow().single().keysWithFlicks.single().key
+
+        assertFalse(exportedKey["doubleTapEnabled"].asBoolean)
+        assertTrue(exportedKey["doubleTapAction"].isJsonNull)
+        assertTrue(exportedKey["doubleTapPolicy"].isJsonNull)
+        assertNull(importedKey.doubleTapAction)
+        assertNull(importedKey.doubleTapPolicy)
+    }
+
+    @Test
+    fun import_nonShiftSpecialKeyForcesExclusivePolicy() {
+        val json = """
+            {
+              "schemaVersion": 3,
+              "layouts": [
+                {
+                  "layout": {
+                    "name": "Special Key",
+                    "columnCount": 1,
+                    "rowCount": 1,
+                    "stableId": "special-key"
+                  },
+                  "keysWithFlicks": [
+                    {
+                      "key": {
+                        "keyIdentifier": "select",
+                        "label": "Select",
+                        "row": 0,
+                        "column": 0,
+                        "keyType": "NORMAL",
+                        "isSpecialKey": true,
+                        "action": "SelectAll",
+                        "doubleTapEnabled": true,
+                        "doubleTapAction": "Copy",
+                        "doubleTapPolicy": "PROMOTE"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+        """.trimIndent()
+
+        val key = KeyboardLayoutJsonImporter.parse(json)
+            .layoutsOrThrow().single().keysWithFlicks.single().key
+
+        assertEquals("Copy", key.doubleTapAction)
+        assertEquals("EXCLUSIVE", key.doubleTapPolicy)
     }
 
     @Test

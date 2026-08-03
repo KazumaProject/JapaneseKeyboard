@@ -32,6 +32,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
+import com.kazumaproject.custom_keyboard.data.DoubleTapBinding
 import com.kazumaproject.custom_keyboard.data.FlickAction
 import com.kazumaproject.custom_keyboard.data.FlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyAction
@@ -44,6 +45,7 @@ import com.kazumaproject.custom_keyboard.data.KeyIconType
 import com.kazumaproject.custom_keyboard.data.KeyItem
 import com.kazumaproject.custom_keyboard.data.KeyType
 import com.kazumaproject.custom_keyboard.data.SpecialKeyColorStyle
+import com.kazumaproject.custom_keyboard.data.automaticDoubleTapPolicy
 import com.kazumaproject.custom_keyboard.data.compatibleColumnSpan
 import com.kazumaproject.custom_keyboard.data.compatibleRowSpan
 import com.kazumaproject.custom_keyboard.data.toCircularFlickMap
@@ -118,6 +120,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
     private lateinit var keyActionAdapter: ArrayAdapter<String>
     private lateinit var customKeyboardTargetAdapter: ArrayAdapter<String>
+    private lateinit var doubleTapActionAdapter: ArrayAdapter<String>
+    private lateinit var doubleTapTargetAdapter: ArrayAdapter<String>
     private lateinit var circularFlickAdapter: CircularFlickMappingAdapter
     private lateinit var circularMapAdapter: ArrayAdapter<String>
 
@@ -127,6 +131,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
     private var customKeyboardTargets: List<CustomKeyboardLayout> = emptyList()
     private var customKeyboardTargetOptions: List<CustomKeyboardTargetOption> = emptyList()
     private var selectedTargetCustomKeyboardStableId: String? = null
+    private var selectedDoubleTapTargetStableId: String? = null
     private var selectedIconRef: KeyIconRef? = null
     private var originalIconRef: KeyIconRef? = null
     private val pendingUserIconPaths = mutableSetOf<String>()
@@ -188,6 +193,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         )
         binding.keyActionSpinner.setAdapter(keyActionAdapter)
 
+        doubleTapActionAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_dropdown_item,
+            listOf(getString(R.string.double_tap_disabled)) + actionDisplayNames
+        )
+        binding.doubleTapActionSpinner.setAdapter(doubleTapActionAdapter)
+        binding.doubleTapActionSpinner.setText(
+            getString(R.string.double_tap_disabled),
+            false
+        )
+
         // 特殊フリック用アクションスピナー（セル選択後に表示）
         val specialActionNames = mutableListOf("").apply {
             addAll(specialFlickDisplayActions.map { it.displayName })
@@ -205,6 +221,12 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             mutableListOf<String>()
         )
         binding.customKeyboardTargetSpinner.setAdapter(customKeyboardTargetAdapter)
+        doubleTapTargetAdapter = ArrayAdapter(
+            requireContext(),
+            android.R.layout.simple_spinner_dropdown_item,
+            mutableListOf<String>()
+        )
+        binding.doubleTapTargetSpinner.setAdapter(doubleTapTargetAdapter)
 
         circularFlickAdapter = CircularFlickMappingAdapter { updated ->
             val currentMap = currentCircularFlickMaps.getOrNull(currentCircularMapIndex)
@@ -343,6 +365,7 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 handleInputStyleUi()
             }
 
+            updateDoubleTapControlsVisibility()
             updateDoneButtonState()
         }
 
@@ -425,6 +448,22 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             refreshIconPreview()
             updateDoneButtonState()
         }
+        binding.keyActionSpinner.setOnItemClickListener { _, _, position, _ ->
+            if (
+                displayActions.getOrNull(position)?.action == KeyAction.ShiftKey &&
+                selectedDoubleTapDisplayAction() == null
+            ) {
+                displayActionForAction(KeyAction.CapLockKey)?.let { capLock ->
+                    binding.doubleTapActionSpinner.setText(capLock.displayName, false)
+                    updateDoubleTapControlsVisibility()
+                }
+            }
+        }
+
+        binding.doubleTapActionSpinner.doAfterTextChanged {
+            updateDoubleTapControlsVisibility()
+            updateDoneButtonState()
+        }
 
         binding.customKeyboardTargetSpinner.setOnItemClickListener { _, _, position, _ ->
             val option = customKeyboardTargetOptions.getOrNull(position)
@@ -448,6 +487,14 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                     .toMutableList()
                 updateDoneButtonState()
             }
+            updateDoneButtonState()
+        }
+
+        binding.doubleTapTargetSpinner.setOnItemClickListener { _, _, position, _ ->
+            selectedDoubleTapTargetStableId = customKeyboardTargetOptions
+                .getOrNull(position)
+                ?.takeIf { it.isValid }
+                ?.stableId
             updateDoneButtonState()
         }
 
@@ -860,6 +907,11 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         return displayActions.firstOrNull { it.displayName == selectedText }
     }
 
+    private fun selectedDoubleTapDisplayAction(): DisplayActionUi? {
+        val selectedText = binding.doubleTapActionSpinner.text.toString()
+        return displayActions.firstOrNull { it.displayName == selectedText }
+    }
+
     private fun isMoveToCustomKeyboardSelected(): Boolean {
         return selectedSingleDisplayAction()?.action is KeyAction.MoveToCustomKeyboard
     }
@@ -911,6 +963,9 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
         customKeyboardTargetAdapter.clear()
         customKeyboardTargetAdapter.addAll(customKeyboardTargetOptions.map { it.label })
         customKeyboardTargetAdapter.notifyDataSetChanged()
+        doubleTapTargetAdapter.clear()
+        doubleTapTargetAdapter.addAll(customKeyboardTargetOptions.map { it.label })
+        doubleTapTargetAdapter.notifyDataSetChanged()
     }
 
     private fun selectTargetCustomKeyboard(stableId: String?) {
@@ -931,6 +986,41 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             ?.takeIf { it.isValid }
             ?.stableId
         binding.customKeyboardTargetSpinner.setText(option?.label.orEmpty(), false)
+    }
+
+    private fun selectDoubleTapTargetCustomKeyboard(stableId: String?) {
+        val id = stableId.orEmpty()
+        if (id.isBlank()) {
+            selectedDoubleTapTargetStableId = null
+            binding.doubleTapTargetSpinner.setText("", false)
+            return
+        }
+
+        var option = customKeyboardTargetOptions.firstOrNull { it.stableId == id }
+        if (option == null) {
+            refreshCustomKeyboardTargetOptions(deletedStableId = id)
+            option = customKeyboardTargetOptions.firstOrNull { it.stableId == id }
+        }
+
+        selectedDoubleTapTargetStableId = option
+            ?.takeIf { it.isValid }
+            ?.stableId
+        binding.doubleTapTargetSpinner.setText(option?.label.orEmpty(), false)
+    }
+
+    private fun updateDoubleTapControlsVisibility() {
+        val supportsDoubleTap =
+            binding.keyTypeChipGroup.checkedChipId == R.id.chip_special
+        binding.doubleTapActionLayout.isVisible = supportsDoubleTap
+        val selected = selectedDoubleTapDisplayAction()
+        val isMoveToCustomKeyboard = selected?.action is KeyAction.MoveToCustomKeyboard
+        binding.doubleTapTargetLayout.isVisible = supportsDoubleTap && isMoveToCustomKeyboard
+        if (isMoveToCustomKeyboard && selectedDoubleTapTargetStableId.isNullOrBlank()) {
+            customKeyboardTargetOptions.firstOrNull { it.isValid }?.let {
+                selectedDoubleTapTargetStableId = it.stableId
+                binding.doubleTapTargetSpinner.setText(it.label, false)
+            }
+        }
     }
 
     private fun updateCustomKeyboardTargetVisibility() {
@@ -1041,7 +1131,17 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
 
             else -> false
         }
-        binding.buttonDone.isEnabled = isEnabled
+        val doubleTapAction = selectedDoubleTapDisplayAction()
+            ?.action
+            ?.takeIf { binding.keyTypeChipGroup.checkedChipId == R.id.chip_special }
+        val isDoubleTapValid = if (doubleTapAction is KeyAction.MoveToCustomKeyboard) {
+            selectedDoubleTapTargetStableId
+                ?.let { target -> customKeyboardTargets.any { it.stableId == target } }
+                ?: false
+        } else {
+            true
+        }
+        binding.buttonDone.isEnabled = isEnabled && isDoubleTapValid
     }
 
     private fun setupInitialState() {
@@ -1074,6 +1174,18 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             val key = currentKeyData!!
             selectedIconRef = key.icon?.takeIf { it.isOverride() }
             originalIconRef = selectedIconRef
+            key.doubleTapBinding
+                ?.takeIf { key.isSpecialKey }
+                ?.let { doubleTap ->
+                val doubleTapAction = doubleTap.action
+                displayActionForAction(doubleTapAction)?.let { display ->
+                    binding.doubleTapActionSpinner.setText(display.displayName, false)
+                }
+                if (doubleTapAction is KeyAction.MoveToCustomKeyboard) {
+                    selectDoubleTapTargetCustomKeyboard(doubleTapAction.stableId)
+                }
+            }
+            updateDoubleTapControlsVisibility()
 
             isFlexibleSizeEditing = state.layout.usesFlexiblePlacement() && selectedKeyItem != null
             if (isFlexibleSizeEditing) {
@@ -1839,6 +1951,40 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
             }
         }
 
+        val selectedDoubleTapAction = selectedDoubleTapDisplayAction()
+            ?.action
+            ?.takeIf { isSpecial }
+        val resolvedDoubleTapAction = if (
+            selectedDoubleTapAction is KeyAction.MoveToCustomKeyboard
+        ) {
+            val stableId = selectedDoubleTapTargetStableId
+                ?.takeIf { id -> customKeyboardTargets.any { it.stableId == id } }
+                ?: return
+            KeyAction.MoveToCustomKeyboard(stableId)
+        } else {
+            selectedDoubleTapAction
+        }
+        val newDoubleTapBinding = resolvedDoubleTapAction
+            ?.takeIf { isSpecial }
+            ?.let {
+            DoubleTapBinding(
+                action = it,
+                policy = automaticDoubleTapPolicy(
+                    normalAction = newAction,
+                    doubleTapAction = it
+                )
+            )
+        }
+        if (newDoubleTapBinding?.action == KeyAction.VoiceInput) {
+            val hasPermission = ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.RECORD_AUDIO
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasPermission) {
+                requestRecordAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+            }
+        }
+
         val savedIconRef = selectedIconRef?.takeIf { isSpecial }
         val updatedKey = originalKey.copy(
             label = newLabel,
@@ -1863,7 +2009,8 @@ class KeyEditorFragment : Fragment(R.layout.fragment_key_editor) {
                 selectedSpecialKeyColorStyle()
             } else {
                 SpecialKeyColorStyle.SPECIAL
-            }
+            },
+            doubleTapBinding = newDoubleTapBinding
         )
 
         val updated = viewModel.updateKeyAndMappings(

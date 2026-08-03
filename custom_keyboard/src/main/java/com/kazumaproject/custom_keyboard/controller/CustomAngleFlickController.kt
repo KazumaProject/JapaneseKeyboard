@@ -53,6 +53,8 @@ class CustomAngleFlickController(
         fun onFlick(direction: CircularFlickDirection, action: FlickAction)
         fun onStateChanged(view: View, newMap: Map<CircularFlickDirection, FlickAction>)
         fun onFlickDirectionChanged(newDirection: CircularFlickDirection)
+        fun onSelectionChanged(action: FlickAction?, isFlick: Boolean) {}
+        fun onCanceled() {}
     }
 
     var listener: FlickListener? = null
@@ -130,6 +132,10 @@ class CustomAngleFlickController(
         popupWindowAnchorProvider = provider
     }
 
+    fun setInputTextTransform(transform: (String) -> String) {
+        popupView.setInputTextTransform(transform)
+    }
+
     private fun updateEffectiveRangesForMap(
         map: Map<CircularFlickDirection, FlickAction>
     ) {
@@ -144,6 +150,7 @@ class CustomAngleFlickController(
     }
 
     fun cancel() {
+        listener?.onCanceled()
         activeGestureConfig = null
         hidePopup()
         controllerScope.cancel()
@@ -269,6 +276,10 @@ class CustomAngleFlickController(
                     popupView.updateFlickDirection(currentDirection)
                     previousDirection = currentDirection
                 }
+                listener?.onSelectionChanged(
+                    keyMaps.getOrNull(currentMapIndex)?.get(currentDirection),
+                    currentDirection != CircularFlickDirection.TAP
+                )
                 return true
             }
 
@@ -311,6 +322,7 @@ class CustomAngleFlickController(
                 previousDirection = CircularFlickDirection.TAP
                 hidePopup()
                 activeGestureConfig = null
+                listener?.onCanceled()
                 return true
             }
         }

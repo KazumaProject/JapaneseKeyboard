@@ -80,7 +80,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         SumireSpecialKeyPlacementOverrideEntity::class,
         CustomZeroQueryEntry::class,
     ],
-    version = 41,
+    version = 44,
     exportSchema = false
 )
 @TypeConverters(
@@ -1092,6 +1092,76 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 db.execSQL(
                     "CREATE UNIQUE INDEX IF NOT EXISTS `index_gemma_prompt_template_builtInKey` ON `gemma_prompt_template` (`builtInKey`)"
+                )
+            }
+        }
+
+        val MIGRATION_41_42 = object : Migration(41, 42) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `key_definitions` ADD COLUMN `doubleTapAction` TEXT"
+                )
+                db.execSQL(
+                    "ALTER TABLE `key_definitions` ADD COLUMN `doubleTapPolicy` TEXT"
+                )
+                db.execSQL(
+                    """
+                    UPDATE `key_definitions`
+                    SET `doubleTapAction` = 'CapLockKey',
+                        `doubleTapPolicy` = 'PROMOTE'
+                    WHERE `action` = 'ShiftKeyPressed'
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_42_43 = object : Migration(42, 43) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // Character keys must keep repeated taps as repeated text input.
+                db.execSQL(
+                    """
+                    UPDATE `key_definitions`
+                    SET `doubleTapAction` = NULL,
+                        `doubleTapPolicy` = NULL
+                    WHERE `isSpecialKey` = 0
+                    """.trimIndent()
+                )
+                // Resolution policy is an implementation detail: only Shift promotes its first tap.
+                db.execSQL(
+                    """
+                    UPDATE `key_definitions`
+                    SET `doubleTapPolicy` = CASE
+                        WHEN `action` = 'ShiftKeyPressed'
+                            AND `doubleTapAction` = 'CapLockKey' THEN 'PROMOTE'
+                        ELSE 'EXCLUSIVE'
+                    END
+                    WHERE `isSpecialKey` = 1
+                        AND `doubleTapAction` IS NOT NULL
+                    """.trimIndent()
+                )
+                db.execSQL(
+                    """
+                    UPDATE `key_definitions`
+                    SET `doubleTapPolicy` = NULL
+                    WHERE `doubleTapAction` IS NULL
+                    """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_43_44 = object : Migration(43, 44) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `candidate_order_override` ADD COLUMN `scope` TEXT NOT NULL DEFAULT 'EXACT_INPUT'"
+                )
+                db.execSQL(
+                    "DROP INDEX IF EXISTS `index_candidate_order_override_input_candidate`"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_candidate_order_override_input_scope` ON `candidate_order_override` (`input`, `scope`)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_candidate_order_override_input_scope_candidate` ON `candidate_order_override` (`input`, `scope`, `candidate`)"
                 )
             }
         }

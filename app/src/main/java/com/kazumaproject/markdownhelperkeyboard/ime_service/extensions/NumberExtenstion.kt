@@ -7,125 +7,148 @@ fun detectMultipleSen(input: String): Boolean {
     return regex.matches(input)
 }
 
-private val japaneseNumberDigits = mapOf(
-    "ぜろ" to 0L, "れい" to 0L,
-    "いち" to 1L, "いっ" to 1L,
-    "に" to 2L,
-    "さん" to 3L,
-    "よん" to 4L, "よ" to 4L, "し" to 4L,
-    "ご" to 5L,
-    "ろく" to 6L, "ろっ" to 6L,
-    "なな" to 7L, "しち" to 7L,
-    "はち" to 8L, "はっ" to 8L,
-    "きゅう" to 9L, "く" to 9L
-)
-
-private val japaneseNumberUnits = mapOf(
-    "じゅう" to 10L,
-    "ひゃく" to 100L, "びゃく" to 100L, "ぴゃく" to 100L,
-    "せん" to 1000L, "ぜん" to 1000L
-)
-
-private val japaneseNumberBigUnits = listOf(
-    "ちょう" to 1_000_000_000_000L,
-    "おく" to 100_000_000L,
-    "まん" to 10_000L
-)
-
-private val japaneseNumberDigitPatterns =
-    japaneseNumberDigits.keys.sortedByDescending { it.length }
-
-private fun normalizeJapaneseNumberReading(input: String): String {
-    return input
-        .replace("じゅっ", "じゅう")
-        .replace("じっ", "じゅう")
+private enum class JapaneseNumberReadingType {
+    UNIT,
+    SMALL_PLACE,
+    BIG_PLACE,
 }
 
-private fun parseJapaneseDigitSequence(text: String): Long? {
-    if (text.isEmpty()) return null
+private data class JapaneseNumberReading(
+    val reading: String,
+    val type: JapaneseNumberReadingType,
+    val value: Long,
+    val placeOrder: Int = 1,
+)
 
-    var number = 0L
-    var remaining = text
-
-    while (remaining.isNotEmpty()) {
-        val matched = japaneseNumberDigitPatterns.firstOrNull { remaining.startsWith(it) } ?: return null
-        number = number * 10 + japaneseNumberDigits.getValue(matched)
-        remaining = remaining.substring(matched.length)
-    }
-
-    return number
-}
-
-private fun parseJapaneseNumberSection(sectionText: String): Long? {
-    if (sectionText.isEmpty()) return 0L
-
-    var sectionTotal = 0L
-    var remaining = sectionText
-
-    val orderedUnits = listOf("せん", "ぜん", "ひゃく", "びゃく", "ぴゃく", "じゅう")
-
-    for (unit in orderedUnits) {
-        while (remaining.contains(unit)) {
-            val index = remaining.indexOf(unit)
-            val digitText = remaining.substring(0, index)
-            val digitValue = if (digitText.isEmpty()) {
-                1L
-            } else {
-                parseJapaneseDigitSequence(digitText) ?: return null
-            }
-
-            sectionTotal += digitValue * japaneseNumberUnits.getValue(unit)
-            remaining = remaining.substring(index + unit.length)
-        }
-    }
-
-    if (remaining.isNotEmpty()) {
-        sectionTotal += parseJapaneseDigitSequence(remaining) ?: return null
-    }
-
-    return sectionTotal
-}
+/**
+ * Number readings accepted by Mozc's NumberDecoder, limited to the range that
+ * can be represented by this app's Long-based number candidate API.
+ *
+ * Sound changes such as 「いっ」「ろっ」「はっ」 are units here, not global
+ * string replacements.  Decoder state determines where they are usable.
+ */
+private val japaneseNumberReadings = listOf(
+    JapaneseNumberReading("ぜろ", JapaneseNumberReadingType.UNIT, 0L),
+    JapaneseNumberReading("れい", JapaneseNumberReadingType.UNIT, 0L),
+    JapaneseNumberReading("いち", JapaneseNumberReadingType.UNIT, 1L),
+    JapaneseNumberReading("いっ", JapaneseNumberReadingType.UNIT, 1L),
+    JapaneseNumberReading("に", JapaneseNumberReadingType.UNIT, 2L),
+    JapaneseNumberReading("さん", JapaneseNumberReadingType.UNIT, 3L),
+    JapaneseNumberReading("し", JapaneseNumberReadingType.UNIT, 4L),
+    JapaneseNumberReading("よん", JapaneseNumberReadingType.UNIT, 4L),
+    JapaneseNumberReading("よ", JapaneseNumberReadingType.UNIT, 4L),
+    JapaneseNumberReading("ご", JapaneseNumberReadingType.UNIT, 5L),
+    JapaneseNumberReading("ろく", JapaneseNumberReadingType.UNIT, 6L),
+    JapaneseNumberReading("ろっ", JapaneseNumberReadingType.UNIT, 6L),
+    JapaneseNumberReading("なな", JapaneseNumberReadingType.UNIT, 7L),
+    JapaneseNumberReading("しち", JapaneseNumberReadingType.UNIT, 7L),
+    JapaneseNumberReading("はち", JapaneseNumberReadingType.UNIT, 8L),
+    JapaneseNumberReading("はっ", JapaneseNumberReadingType.UNIT, 8L),
+    JapaneseNumberReading("きゅう", JapaneseNumberReadingType.UNIT, 9L),
+    JapaneseNumberReading("きゅー", JapaneseNumberReadingType.UNIT, 9L),
+    JapaneseNumberReading("く", JapaneseNumberReadingType.UNIT, 9L),
+    JapaneseNumberReading("じゅう", JapaneseNumberReadingType.SMALL_PLACE, 10L, 2),
+    JapaneseNumberReading("じゅー", JapaneseNumberReadingType.SMALL_PLACE, 10L, 2),
+    JapaneseNumberReading("じゅっ", JapaneseNumberReadingType.SMALL_PLACE, 10L, 2),
+    JapaneseNumberReading("じっ", JapaneseNumberReadingType.SMALL_PLACE, 10L, 2),
+    JapaneseNumberReading("ひゃく", JapaneseNumberReadingType.SMALL_PLACE, 100L, 3),
+    JapaneseNumberReading("ひゃっ", JapaneseNumberReadingType.SMALL_PLACE, 100L, 3),
+    JapaneseNumberReading("びゃく", JapaneseNumberReadingType.SMALL_PLACE, 100L, 3),
+    JapaneseNumberReading("びゃっ", JapaneseNumberReadingType.SMALL_PLACE, 100L, 3),
+    JapaneseNumberReading("ぴゃく", JapaneseNumberReadingType.SMALL_PLACE, 100L, 3),
+    JapaneseNumberReading("ぴゃっ", JapaneseNumberReadingType.SMALL_PLACE, 100L, 3),
+    JapaneseNumberReading("せん", JapaneseNumberReadingType.SMALL_PLACE, 1_000L, 4),
+    JapaneseNumberReading("ぜん", JapaneseNumberReadingType.SMALL_PLACE, 1_000L, 4),
+    JapaneseNumberReading("まん", JapaneseNumberReadingType.BIG_PLACE, 10_000L, 5),
+    JapaneseNumberReading("おく", JapaneseNumberReadingType.BIG_PLACE, 100_000_000L, 9),
+    JapaneseNumberReading("おっ", JapaneseNumberReadingType.BIG_PLACE, 100_000_000L, 9),
+    JapaneseNumberReading("ちょう", JapaneseNumberReadingType.BIG_PLACE, 1_000_000_000_000L, 13),
+).sortedByDescending { it.reading.length }
 
 private fun parseJapaneseNumberValue(input: String): Long? {
-    if (input == "ちょうせん" || detectMultipleSen(input) || input == "おくせん") return null
+    if (input.isEmpty()) return null
 
-    val normalized = normalizeJapaneseNumberReading(input)
-    if (normalized.isEmpty()) return null
-
-    var remaining = normalized
+    var index = 0
     var total = 0L
+    var section = -1L
+    var smallPlaceOrder = -1
+    var bigPlaceOrder = Int.MAX_VALUE
+    var hasNumber = false
+    var restrictedUnit: String? = null
 
-    while (remaining.isNotEmpty()) {
-        var matchedBigUnit = false
+    while (index < input.length) {
+        val entry = japaneseNumberReadings.firstOrNull {
+            input.startsWith(it.reading, index)
+        } ?: return null
 
-        for ((bigUnit, bigUnitValue) in japaneseNumberBigUnits) {
-            if (!remaining.contains(bigUnit)) continue
+        // Mozc accepts these historical readings only in constrained places:
+        // 「よ」「く」 must finish the number, while 「し」 may additionally
+        // precede canonical 「じゅう」 (e.g. 四十 = しじゅう).
+        when (restrictedUnit) {
+            "よ", "く" -> return null
+            "し" -> if (entry.reading != "じゅう") return null
+        }
+        restrictedUnit = if (
+            entry.type == JapaneseNumberReadingType.UNIT &&
+            (entry.reading == "し" || entry.reading == "よ" || entry.reading == "く")
+        ) {
+            entry.reading
+        } else {
+            null
+        }
 
-            val index = remaining.indexOf(bigUnit)
-            val leftText = remaining.substring(0, index)
-            val sectionValue = if (leftText.isEmpty()) {
-                1L
-            } else {
-                parseJapaneseNumberSection(leftText) ?: return null
+        when (entry.type) {
+            JapaneseNumberReadingType.UNIT -> {
+                if (hasNumber && entry.value == 0L) return null
+                if (section == 0L || (section >= 0L && section % 10L != 0L)) return null
+
+                section = if (section < 0L) {
+                    entry.value
+                } else {
+                    Math.addExact(section, entry.value)
+                }
+                hasNumber = true
             }
 
-            total += sectionValue * bigUnitValue
-            remaining = remaining.substring(index + bigUnit.length)
-            matchedBigUnit = true
-            break
+            JapaneseNumberReadingType.SMALL_PLACE -> {
+                if (smallPlaceOrder > 1 && entry.placeOrder >= smallPlaceOrder) return null
+                if (section == 0L) return null
+
+                section = if (section < 0L) {
+                    entry.value
+                } else {
+                    val unit = maxOf(1L, section % 10L)
+                    val base = section / 10L * 10L
+                    Math.addExact(base, Math.multiplyExact(unit, entry.value))
+                }
+                smallPlaceOrder = entry.placeOrder
+                hasNumber = true
+            }
+
+            JapaneseNumberReadingType.BIG_PLACE -> {
+                if (entry.placeOrder >= bigPlaceOrder || section <= 0L) return null
+
+                total = Math.addExact(total, Math.multiplyExact(section, entry.value))
+                section = -1L
+                smallPlaceOrder = -1
+                bigPlaceOrder = entry.placeOrder
+                hasNumber = true
+            }
         }
 
-        if (!matchedBigUnit) {
-            total += parseJapaneseNumberSection(remaining) ?: return null
-            break
-        }
+        index += entry.reading.length
     }
 
-    return total
+    if (!hasNumber) return null
+    return if (section >= 0L) Math.addExact(total, section) else total
 }
 
 fun String.toNumber(): Pair<String, String>? {
-    val total = parseJapaneseNumberValue(this) ?: return null
+    val total = try {
+        parseJapaneseNumberValue(this)
+    } catch (_: ArithmeticException) {
+        null
+    } ?: return null
 
     val fullWidth = total.toString().map { it.toFullWidthChar() }.joinToString("")
     val halfWidth = total.toString()
@@ -134,7 +157,11 @@ fun String.toNumber(): Pair<String, String>? {
 }
 
 fun String.toNumberExponent(): Pair<String, String>? {
-    val total = parseJapaneseNumberValue(this) ?: return null
+    val total = try {
+        parseJapaneseNumberValue(this)
+    } catch (_: ArithmeticException) {
+        null
+    } ?: return null
 
     val result = if (total < 100_000_000L) {
         null

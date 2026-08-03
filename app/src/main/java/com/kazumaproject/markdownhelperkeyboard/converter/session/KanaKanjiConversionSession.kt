@@ -2,10 +2,12 @@ package com.kazumaproject.markdownhelperkeyboard.converter.session
 
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCandidateResult
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -40,11 +42,13 @@ data class KanaKanjiQueryRequest(
     val omissionSearchOffsetScore: Int,
     val beamWidth: Int,
     val predictionConfig: PredictionConfig = PredictionConfig(),
+    val collectCandidateSegments: Boolean = false,
 )
 
 data class KanaKanjiQueryResult(
     val candidates: List<Candidate>,
     val bunsetsuResult: BunsetsuCandidateResult? = null,
+    val candidateSegmentsByString: Map<String, List<CandidateConversionSegment>> = emptyMap(),
 )
 
 /**
@@ -72,9 +76,16 @@ class KanaKanjiConversionSession(
     internal fun performanceSnapshot(): KanaKanjiEngine.IncrementalPerformanceSnapshot? =
         incrementalState?.performanceSnapshot()
 
+    internal fun committedInput(): String? = incrementalState?.committedInput()
+
+    internal fun setAfterForwardDpForTest(callback: (() -> Unit)?) {
+        incrementalState?.pathState?.afterForwardDpForTest = callback
+    }
+
     suspend fun query(request: KanaKanjiQueryRequest): KanaKanjiQueryResult = mutex.withLock {
+        incrementalState?.beginQueryTransaction()
         try {
-            when (request.mode) {
+            val result = when (request.mode) {
                 CandidateQueryMode.EISUKANA -> KanaKanjiQueryResult(
                     candidates = engine.getCandidatesEnglishKana(
                         input = request.input,
@@ -86,16 +97,24 @@ class KanaKanjiConversionSession(
                 CandidateQueryMode.PREDICTION -> queryPrediction(request)
                 CandidateQueryMode.CONVERSION -> queryConversion(request)
             }
+            incrementalState?.commitQueryTransaction()
+            result
+        } catch (cancellation: CancellationException) {
+            // A completed graph has its own staged commit. Keep that newest frontier when only the
+            // later path search was cancelled; an incomplete append still rolls back entirely.
+            incrementalState?.rollbackQueryTransaction()
+            throw cancellation
         } catch (throwable: Throwable) {
-            // Graph construction and forward DP update state in place.  A collectLatest
-            // cancellation (or any failure) must make the next request rebuild atomically.
+            // Unexpected engine/repository failures may violate invariants outside the tracked
+            // append delta. Prefer a clean rebuild for those rare failures.
             incrementalState?.reset()
             throw throwable
         }
     }
 
-    private suspend fun queryOriginal(request: KanaKanjiQueryRequest): KanaKanjiQueryResult =
-        if (request.bunsetsuSeparation) {
+    private suspend fun queryOriginal(request: KanaKanjiQueryRequest): KanaKanjiQueryResult {
+        val segmentCollector = request.newCandidateSegmentCollector()
+        return if (request.bunsetsuSeparation) {
             engine.getCandidatesOriginalWithBunsetsu(
                 input = request.input,
                 n = request.n,
@@ -114,7 +133,8 @@ class KanaKanjiConversionSession(
                 beamWidth = request.beamWidth,
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
-            ).asQueryResult()
+                candidateSegmentCollector = segmentCollector,
+            ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
                 candidates = engine.getCandidatesOriginal(
@@ -135,12 +155,16 @@ class KanaKanjiConversionSession(
                     beamWidth = request.beamWidth,
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
+                    candidateSegmentCollector = segmentCollector,
                 ),
+                candidateSegmentsByString = segmentCollector.orEmpty(),
             )
         }
+    }
 
-    private suspend fun queryPrediction(request: KanaKanjiQueryRequest): KanaKanjiQueryResult =
-        if (request.bunsetsuSeparation) {
+    private suspend fun queryPrediction(request: KanaKanjiQueryRequest): KanaKanjiQueryResult {
+        val segmentCollector = request.newCandidateSegmentCollector()
+        return if (request.bunsetsuSeparation) {
             engine.getCandidatesWithBunsetsuSeparation(
                 input = request.input,
                 n = request.n,
@@ -159,7 +183,8 @@ class KanaKanjiConversionSession(
                 beamWidth = request.beamWidth,
                 incrementalSessionState = incrementalState,
                 predictionConfig = request.predictionConfig,
-            ).asQueryResult()
+                candidateSegmentCollector = segmentCollector,
+            ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
                 candidates = engine.getCandidates(
@@ -180,12 +205,16 @@ class KanaKanjiConversionSession(
                     beamWidth = request.beamWidth,
                     incrementalSessionState = incrementalState,
                     predictionConfig = request.predictionConfig,
+                    candidateSegmentCollector = segmentCollector,
                 ),
+                candidateSegmentsByString = segmentCollector.orEmpty(),
             )
         }
+    }
 
-    private suspend fun queryConversion(request: KanaKanjiQueryRequest): KanaKanjiQueryResult =
-        if (request.bunsetsuSeparation) {
+    private suspend fun queryConversion(request: KanaKanjiQueryRequest): KanaKanjiQueryResult {
+        val segmentCollector = request.newCandidateSegmentCollector()
+        return if (request.bunsetsuSeparation) {
             engine.getCandidatesWithoutPredictionWithBunsetsu(
                 input = request.input,
                 n = request.n,
@@ -204,7 +233,8 @@ class KanaKanjiConversionSession(
                     japanesePredictionEnabled = false,
                     englishPredictionEnabled = false,
                 ),
-            ).asQueryResult()
+                candidateSegmentCollector = segmentCollector,
+            ).asQueryResult(segmentCollector)
         } else {
             KanaKanjiQueryResult(
                 candidates = engine.getCandidatesWithoutPrediction(
@@ -225,10 +255,22 @@ class KanaKanjiConversionSession(
                         japanesePredictionEnabled = false,
                         englishPredictionEnabled = false,
                     ),
+                    candidateSegmentCollector = segmentCollector,
                 ),
+                candidateSegmentsByString = segmentCollector.orEmpty(),
             )
         }
+    }
 
-    private fun BunsetsuCandidateResult.asQueryResult(): KanaKanjiQueryResult =
-        KanaKanjiQueryResult(candidates = candidates, bunsetsuResult = this)
+    private fun KanaKanjiQueryRequest.newCandidateSegmentCollector():
+        MutableMap<String, List<CandidateConversionSegment>>? =
+        if (collectCandidateSegments) LinkedHashMap() else null
+
+    private fun BunsetsuCandidateResult.asQueryResult(
+        segmentCollector: Map<String, List<CandidateConversionSegment>>?,
+    ): KanaKanjiQueryResult = KanaKanjiQueryResult(
+        candidates = candidates,
+        bunsetsuResult = this,
+        candidateSegmentsByString = segmentCollector.orEmpty(),
+    )
 }

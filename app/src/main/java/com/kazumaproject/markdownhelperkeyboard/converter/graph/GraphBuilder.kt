@@ -36,7 +36,7 @@ class GraphBuilder {
         val webPrefixStates: Map<Int, Int>,
         val personPrefixStates: Map<Int, Int>,
         val neologdPrefixStates: Map<Int, Int>,
-        val unprunedFrontier: MutableList<Node>?,
+        val unprunedPositions: Map<Int, MutableList<Node>>?,
     )
 
     /**
@@ -49,16 +49,118 @@ class GraphBuilder {
         internal var cachedGraph: CachedGraph? = null
         internal var performanceProbeEnabled: Boolean = false
         internal var lastConstructGraphNs: Long = 0
+        internal var lastAppendReused: Boolean = false
+
+        private var queryTransaction: QueryTransaction? = null
+
+        private data class InPlaceAppendRollback(
+            val graph: IncrementalGraph,
+            val previousReusedThroughEndIndex: Int,
+            val previousForwardDpReusableThroughEndIndex: Int,
+            val previousInputLength: Int,
+            val previousPositions: Map<Int, MutableList<Node>?>,
+            val previousEosIndex: Int,
+            val previousEos: MutableList<Node>?,
+        ) {
+            fun restore() {
+                graph.keys.removeAll { it > previousInputLength }
+                previousPositions.forEach { (position, nodes) ->
+                    nodes?.let { graph[position] = it } ?: graph.remove(position)
+                }
+                previousEos?.let { graph[previousEosIndex] = it }
+                    ?: graph.remove(previousEosIndex)
+                graph.reusedThroughEndIndex = previousReusedThroughEndIndex
+                graph.forwardDpReusableThroughEndIndex =
+                    previousForwardDpReusableThroughEndIndex
+                check(graph.keys.none { it > previousEosIndex })
+            }
+        }
+
+        private data class QueryTransaction(
+            var committedCache: CachedGraph?,
+            var inPlaceAppendRollback: InPlaceAppendRollback? = null,
+            var completedGraphRollback: CompletedGraphRollback? = null,
+        )
+
+        private data class CompletedGraphRollback(
+            val graph: IncrementalGraph,
+            val unprunedPositions: Map<Int, MutableList<Node>>,
+        ) {
+            fun restore() {
+                unprunedPositions.forEach { (position, nodes) ->
+                    graph[position] = nodes
+                }
+            }
+        }
+
+        internal fun beginQueryTransaction() {
+            check(queryTransaction == null) { "Graph query transaction is already active" }
+            queryTransaction = QueryTransaction(committedCache = cachedGraph)
+        }
+
+        internal fun registerInPlaceAppend(
+            graph: IncrementalGraph,
+            previousReusedThroughEndIndex: Int,
+            previousForwardDpReusableThroughEndIndex: Int,
+            previousInputLength: Int,
+            positionsToRestore: Set<Int>,
+            previousEosIndex: Int,
+            previousEos: MutableList<Node>?,
+        ) {
+            queryTransaction?.inPlaceAppendRollback = InPlaceAppendRollback(
+                graph = graph,
+                previousReusedThroughEndIndex = previousReusedThroughEndIndex,
+                previousForwardDpReusableThroughEndIndex =
+                    previousForwardDpReusableThroughEndIndex,
+                previousInputLength = previousInputLength,
+                previousPositions = positionsToRestore.associateWith { graph[it] },
+                previousEosIndex = previousEosIndex,
+                previousEos = previousEos,
+            )
+        }
+
+        internal fun commitQueryTransaction() {
+            queryTransaction = null
+        }
+
+        /**
+         * Publishes a completely constructed lattice before the cancellable DP/K-best phase.
+         * If that later phase is cancelled, retain the new input frontier and only restore the
+         * node lists that beam search may have pruned in place.
+         */
+        internal fun commitCompletedGraph(cache: CachedGraph) {
+            val transaction = queryTransaction ?: return
+            val graph = cache.graph as? IncrementalGraph ?: return
+            transaction.committedCache = cache
+            transaction.inPlaceAppendRollback = null
+            transaction.completedGraphRollback = CompletedGraphRollback(
+                graph = graph,
+                unprunedPositions = cache.unprunedPositions.orEmpty(),
+            )
+        }
+
+        internal fun committedInput(): String? = cachedGraph?.input
+
+        internal fun rollbackQueryTransaction() {
+            val transaction = queryTransaction ?: return
+            transaction.completedGraphRollback?.restore()
+                ?: transaction.inPlaceAppendRollback?.restore()
+            cachedGraph = transaction.committedCache
+            queryTransaction = null
+        }
 
         internal fun reset() {
+            queryTransaction = null
             cachedGraph = null
             lastConstructGraphNs = 0
+            lastAppendReused = false
         }
     }
 
-    private class IncrementalGraph(
+    internal class IncrementalGraph(
         override var reusedThroughEndIndex: Int,
         override val conversionSignature: Int,
+        override var forwardDpReusableThroughEndIndex: Int = reusedThroughEndIndex,
     ) : LinkedHashMap<Int, MutableList<Node>>(), IncrementalGraphMetadata
 
     @Volatile
@@ -208,6 +310,7 @@ class GraphBuilder {
         enableTypoCorrectionJapaneseFlick: Boolean = false,
         typoCorrectionOffsetScore: Int,
         omissionSearchOffSetScore: Int,
+        beamWidth: Int = 20,
         graphNodeDedupMode: GraphNodeDedupMode = GraphNodeDedupMode.EXISTING_BY_TANGO_L_R,
         mozcNodeAttributeTable: MozcNodeAttributeTable? = null,
         graphNodeTrace: MutableList<GraphNodeTrace>? = null,
@@ -239,6 +342,7 @@ class GraphBuilder {
             enableTypoCorrectionJapaneseFlick = enableTypoCorrectionJapaneseFlick,
             typoCorrectionOffsetScore = typoCorrectionOffsetScore,
             omissionSearchOffSetScore = omissionSearchOffSetScore,
+            beamWidth = beamWidth,
             graphNodeDedupMode = graphNodeDedupMode,
             mozcNodeAttributeTable = mozcNodeAttributeTable,
         )
@@ -246,15 +350,20 @@ class GraphBuilder {
         val reusable = activeCache?.takeIf {
             graphNodeTrace == null &&
                 it.signature == signature &&
-                str.length == it.input.length + 1 &&
+                (
+                    sessionState != null && str.length > it.input.length ||
+                        sessionState == null && str.length == it.input.length + 1
+                ) &&
                 str.startsWith(it.input) &&
                 // Appending within an alphabet token changes every maximal-run node that starts
                 // in that token.  The current append cache can only preserve a fully stable
                 // prefix, so rebuild this transition instead of publishing a stale short token.
-                !(
-                    it.input.lastOrNull()?.isAsciiAlphabet() == true &&
-                        str.lastOrNull()?.isAsciiAlphabet() == true
-                    )
+                str.substring((it.input.length - 1).coerceAtLeast(0))
+                    .windowed(2)
+                    .none { pair -> pair[0].isAsciiAlphabet() && pair[1].isAsciiAlphabet() }
+        }
+        if (sessionState?.performanceProbeEnabled == true) {
+            sessionState.lastAppendReused = reusable != null
         }
         val reusablePrefixLength = reusable?.input?.length ?: -1
         val systemOmissionStates = LinkedHashMap<Int, List<LOUDSWithTermId.OmissionSearchState>>()
@@ -267,6 +376,7 @@ class GraphBuilder {
         val webPrefixStates = LinkedHashMap<Int, Int>()
         val personPrefixStates = LinkedHashMap<Int, Int>()
         val neologdPrefixStates = LinkedHashMap<Int, Int>()
+        val typoTopTokenScratch = IntArray(5)
 
         fun prefixSearch(
             trie: LOUDSWithTermId,
@@ -281,13 +391,23 @@ class GraphBuilder {
                 reusable != null &&
                 previousNodeIndex != null
             ) {
-                trie.advanceCommonPrefixSearch(
-                    previousNodeIndex = previousNodeIndex,
-                    char = str.last(),
-                    input = str,
-                    start = start,
-                    succinctBitVector = bitVector,
+                var current = LOUDSWithTermId.CommonPrefixSearchProgress(
+                    results = emptyList(),
+                    nodeIndex = previousNodeIndex,
                 )
+                val newResults = ArrayList<LOUDSWithTermId.CommonPrefixSearchResult>()
+                for (endIndex in reusable.input.length until str.length) {
+                    current = trie.advanceCommonPrefixSearch(
+                        previousNodeIndex = current.nodeIndex,
+                        char = str[endIndex],
+                        input = str.subSequence(0, endIndex + 1),
+                        start = start,
+                        succinctBitVector = bitVector,
+                    )
+                    newResults.addAll(current.results)
+                    if (current.nodeIndex < 0) break
+                }
+                current.copy(results = newResults)
             } else {
                 trie.commonPrefixSearchWithProgress(
                     str = str,
@@ -298,20 +418,119 @@ class GraphBuilder {
             currentStates[start] = progress.nodeIndex
             return progress.results
         }
+
+        fun typoSearch(
+            trie: LOUDSWithTermId,
+            bitVector: SuccinctBitVector,
+            start: Int,
+            previous: LOUDSWithTermId.TypoSearchProgress?,
+        ): LOUDSWithTermId.TypoSearchProgress {
+            if (sessionState == null || reusable == null || previous == null) {
+                return trie.commonPrefixSearchWithTypoCorrectionProgress(
+                    str = str,
+                    startIndex = start,
+                    succinctBitVector = bitVector,
+                    maxResults = 98,
+                    maxLen = 12,
+                )
+            }
+            var current: LOUDSWithTermId.TypoSearchProgress = checkNotNull(previous)
+            val newResults = ArrayList<TypoCorrectionResult>()
+            for (index in reusable.input.length until str.length) {
+                current = trie.advanceTypoCorrectionSearch(
+                    previous = current,
+                    char = str[index],
+                    succinctBitVector = bitVector,
+                    maxResults = 98,
+                    maxLen = 12,
+                )
+                newResults.addAll(current.results)
+                if (current.terminalStates.isEmpty()) break
+            }
+            return current.copy(results = newResults)
+        }
+
+        fun omissionSearch(
+            trie: LOUDSWithTermId,
+            bitVector: SuccinctBitVector,
+            start: Int,
+            previous: List<LOUDSWithTermId.OmissionSearchState>?,
+        ): LOUDSWithTermId.OmissionSearchProgress {
+            if (sessionState == null || reusable == null) {
+                return trie.commonPrefixSearchWithOmissionProgress(
+                    str = str,
+                    startIndex = start,
+                    succinctBitVector = bitVector,
+                )
+            }
+            if (previous == null) {
+                // Preserve the former one-character append semantics exactly.  A larger jump is
+                // the cancellation catch-up path; build the missing frontier from its true start
+                // so no matches in the skipped characters are lost.
+                return if (str.length == reusable.input.length + 1) {
+                    trie.advanceOmissionSearch(
+                        states = listOf(LOUDSWithTermId.OmissionSearchState(0, false)),
+                        char = str.last(),
+                        succinctBitVector = bitVector,
+                    )
+                } else {
+                    trie.commonPrefixSearchWithOmissionProgress(
+                        str = str,
+                        startIndex = start,
+                        succinctBitVector = bitVector,
+                    )
+                }
+            }
+            var states: List<LOUDSWithTermId.OmissionSearchState> = previous
+            val newResults = ArrayList<OmissionSearchResult>()
+            for (index in reusable.input.length until str.length) {
+                val current = trie.advanceOmissionSearch(
+                    states = states,
+                    char = str[index],
+                    succinctBitVector = bitVector,
+                )
+                states = current.terminalStates
+                newResults.addAll(current.results)
+                if (states.isEmpty()) break
+            }
+            return LOUDSWithTermId.OmissionSearchProgress(newResults, states)
+        }
         val graph: MutableMap<Int, MutableList<Node>> = if (reusable != null) {
             val sessionGraph = reusable.graph as? IncrementalGraph
             if (sessionState != null && sessionGraph != null) {
-                // A session owns this graph exclusively.  Keep the already-pruned lattice and
-                // extend it in place instead of cloning every node twice for every typed letter.
-                // Clear the published cache first so cancellation cannot expose a partial append.
+                // Keep two views of the completed prefix: the graph contains the beam-pruned DP
+                // view, while CachedGraph.unprunedPositions retains the complete lattice.  Only
+                // the old input frontier can change its suffix/exact-input penalty after a
+                // one-character append, so restore that position and keep older DP results.
+                // A catch-up append cannot use the one-step path cache and therefore restores the
+                // complete lattice before FindPath performs a full DP pass.
+                sessionState.registerInPlaceAppend(
+                    graph = sessionGraph,
+                    previousReusedThroughEndIndex = sessionGraph.reusedThroughEndIndex,
+                    previousForwardDpReusableThroughEndIndex =
+                        sessionGraph.forwardDpReusableThroughEndIndex,
+                    previousInputLength = reusablePrefixLength,
+                    positionsToRestore = reusable.unprunedPositions?.keys.orEmpty(),
+                    previousEosIndex = reusablePrefixLength + 1,
+                    previousEos = sessionGraph[reusablePrefixLength + 1],
+                )
                 sessionState.cachedGraph = null
                 sessionGraph.reusedThroughEndIndex = reusablePrefixLength
                 sessionGraph.remove(reusablePrefixLength + 1) // previous EOS
-                // The previous final position was pruned while it still had a suffix penalty.
-                // It must be reconsidered after that penalty disappears on append.  Retain only
-                // this one unpruned frontier, not a deep copy of the whole lattice.
-                reusable.unprunedFrontier?.let { frontier ->
-                    sessionGraph[reusablePrefixLength] = frontier
+
+                if (
+                    str.length == reusablePrefixLength + 1 &&
+                    !reusable.unprunedPositions.isNullOrEmpty()
+                ) {
+                    sessionGraph.forwardDpReusableThroughEndIndex = reusablePrefixLength
+                    reusable.unprunedPositions[reusablePrefixLength]?.let { frontierNodes ->
+                        sessionGraph[reusablePrefixLength] = frontierNodes
+                    }
+                } else {
+                    sessionGraph.forwardDpReusableThroughEndIndex = -1
+                    reusable.unprunedPositions?.forEach { (position, nodes) ->
+                        sessionGraph[position] = nodes
+                    }
                 }
                 sessionGraph
             } else {
@@ -326,6 +545,16 @@ class GraphBuilder {
         } else {
             IncrementalGraph(-1, signature).apply { put(0, mutableListOf(BOS)) }
         }
+
+        fun invalidateForwardDpReuseAndRestoreCompletePrefix() {
+            val incrementalGraph = graph as? IncrementalGraph ?: return
+            if (incrementalGraph.forwardDpReusableThroughEndIndex < 0) return
+            reusable?.unprunedPositions?.forEach { (position, nodes) ->
+                incrementalGraph[position] = nodes
+            }
+            incrementalGraph.forwardDpReusableThroughEndIndex = -1
+        }
+
         graph[str.length + 1] = mutableListOf(
             Node(
                 l = 0,
@@ -351,7 +580,13 @@ class GraphBuilder {
             var foundInAnyDictionary = false
 
             // 1. ユーザー辞書
-            val userWords = userDictionaryRepository?.commonPrefixSearchInUserDict(subStr()) ?: emptyList()
+            val userWords = userDictionaryRepository?.let { repository ->
+                if (reusable != null && str.length == reusable.input.length + 1) {
+                    repository.exactMatchesForConversion(subStr())
+                } else {
+                    repository.commonPrefixSearchInUserDict(subStr())
+                }
+            } ?: emptyList()
             if (userWords.isNotEmpty()) foundInAnyDictionary = true
             userWords.forEach { userWord ->
                 val endIndex = i + userWord.reading.length
@@ -373,7 +608,13 @@ class GraphBuilder {
             }
 
             // 2. 学習辞書
-            val learnedWords = learnRepository?.findCommonPrefixes(subStr()) ?: emptyList()
+            val learnedWords = learnRepository?.let { repository ->
+                if (reusable != null && str.length == reusable.input.length + 1) {
+                    repository.findExactMatchesForConversion(subStr())
+                } else {
+                    repository.findCommonPrefixes(subStr())
+                }
+            } ?: emptyList()
             if (learnedWords.isNotEmpty()) foundInAnyDictionary = true
             learnedWords.forEach { learnedWord ->
                 val endIndex = i + learnedWord.input.length
@@ -465,34 +706,12 @@ class GraphBuilder {
 
                 // 1.x システムユーザー辞書 (Typo Correction Prefix)
                 if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
-                    val typoProgress = if (reusablePrefixLength >= 0) {
-                        val previous = reusable?.systemUserTypoProgress?.get(i)
-                        if (previous == null) {
-                            localSystemUserYomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
-                                str = str,
-                                startIndex = i,
-                                succinctBitVector = localSystemUserLBSYomi,
-                                maxResults = 98,
-                                maxLen = 12,
-                            )
-                        } else {
-                            localSystemUserYomiTrie.advanceTypoCorrectionSearch(
-                                previous = previous,
-                                char = str.last(),
-                                succinctBitVector = localSystemUserLBSYomi,
-                                maxResults = 98,
-                                maxLen = 12,
-                            )
-                        }
-                    } else {
-                        localSystemUserYomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
-                            str = str,
-                            startIndex = i,
-                            succinctBitVector = localSystemUserLBSYomi,
-                            maxResults = 98,
-                            maxLen = 12,
-                        )
-                    }
+                    val typoProgress = typoSearch(
+                        trie = localSystemUserYomiTrie,
+                        bitVector = localSystemUserLBSYomi,
+                        start = i,
+                        previous = reusable?.systemUserTypoProgress?.get(i),
+                    )
                     systemUserTypoProgress[i] = typoProgress
                     val typoPrefixResults = typoProgress.results
                     if (typoPrefixResults.isNotEmpty()) foundInAnyDictionary = true
@@ -501,85 +720,65 @@ class GraphBuilder {
                         if (typo.penaltyUsed == 0) continue
 
                         val yomiStr = typo.yomi
-                        val nodeIndex = localSystemUserYomiTrie.getNodeIndex(
-                            yomiStr,
-                            localSystemUserLBSYomi,
-                        )
+                        val nodeIndex = typo.nodeIndex
                         if (nodeIndex <= 0) continue
 
                         val termId = localSystemUserYomiTrie.getTermId(
                             nodeIndex,
                             localSystemUserIsLeaf,
                         )
-                        val listToken = localSystemUserTokenArray.getListDictionaryByYomiTermId(
-                            termId,
-                            localSystemUserTokenBitVector,
-                        )
                         val endIndex = i + yomiStr.length
                         if (endIndex <= reusablePrefixLength) continue
                         val penalty = typoCorrectionOffsetScore * typo.penaltyUsed
 
-                        listToken
-                            .sortedBy { it.wordCost }
-                            .take(5)
-                            .forEach { token ->
-                                val tango = when (token.nodeId) {
-                                    -2 -> yomiStr
-                                    -1 -> yomiStr.hiraToKata()
-                                    else -> localSystemUserTangoTrie.getLetter(
-                                        token.nodeId,
-                                        succinctBitVector = localSystemUserTangoLBS,
-                                    )
-                                }
-                                val cost = token.wordCost.toInt() + penalty
-                                addOrUpdateNode(
-                                    graph,
-                                    endIndex,
-                                    Node(
-                                        l = localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
-                                        r = localSystemUserTokenArray.rightIds[token.posTableIndex.toInt()],
-                                        score = cost,
-                                        f = cost,
-                                        g = cost,
-                                        tango = tango,
-                                        yomiUsed = yomiStr,
-                                        len = yomiStr.length.toShort(),
-                                        sPos = i,
-                                        mozcAttributes = mozcAttributesFor(
-                                            localSystemUserTokenArray.leftIds[token.posTableIndex.toInt()],
-                                        ),
-                                    ),
-                                    graphNodeDedupMode,
-                                    graphNodeTrace,
-                                    str,
-                                    "SYSTEM_USER_TYPO",
+                        localSystemUserTokenArray.forEachLowestCostDictionaryByYomiTermId(
+                            nodeId = termId,
+                            succinctBitVector = localSystemUserTokenBitVector,
+                            scratchIndices = typoTopTokenScratch,
+                        ) { posTableIndex, wordCost, tokenNodeId ->
+                            val tango = when (tokenNodeId) {
+                                -2 -> yomiStr
+                                -1 -> yomiStr.hiraToKata()
+                                else -> localSystemUserTangoTrie.getLetter(
+                                    tokenNodeId,
+                                    succinctBitVector = localSystemUserTangoLBS,
                                 )
                             }
+                            val cost = wordCost.toInt() + penalty
+                            addOrUpdateNode(
+                                graph,
+                                endIndex,
+                                Node(
+                                    l = localSystemUserTokenArray.leftIds[posTableIndex.toInt()],
+                                    r = localSystemUserTokenArray.rightIds[posTableIndex.toInt()],
+                                    score = cost,
+                                    f = cost,
+                                    g = cost,
+                                    tango = tango,
+                                    yomiUsed = yomiStr,
+                                    len = yomiStr.length.toShort(),
+                                    sPos = i,
+                                    mozcAttributes = mozcAttributesFor(
+                                        localSystemUserTokenArray.leftIds[posTableIndex.toInt()],
+                                    ),
+                                ),
+                                graphNodeDedupMode,
+                                graphNodeTrace,
+                                str,
+                                "SYSTEM_USER_TYPO",
+                            )
+                        }
                     }
                 }
 
                 // 1.y システムユーザー辞書 (Omission Search)
                 if (isOmissionSearchEnable && !subStr().hasNConsecutiveChars(4)) {
-                    val omissionProgress = if (reusablePrefixLength >= 0) {
-                        val previousStates = reusable?.systemUserOmissionStates?.get(i)
-                            ?: listOf(
-                                LOUDSWithTermId.OmissionSearchState(
-                                    nodeIndex = 0,
-                                    omissionOccurred = false,
-                                )
-                            )
-                        localSystemUserYomiTrie.advanceOmissionSearch(
-                            states = previousStates,
-                            char = str.last(),
-                            succinctBitVector = localSystemUserLBSYomi,
-                        )
-                    } else {
-                        localSystemUserYomiTrie.commonPrefixSearchWithOmissionProgress(
-                            str = str,
-                            startIndex = i,
-                            succinctBitVector = localSystemUserLBSYomi,
-                        )
-                    }
+                    val omissionProgress = omissionSearch(
+                        trie = localSystemUserYomiTrie,
+                        bitVector = localSystemUserLBSYomi,
+                        start = i,
+                        previous = reusable?.systemUserOmissionStates?.get(i),
+                    )
                     systemUserOmissionStates[i] = omissionProgress.terminalStates
                     val omissionSearchResults = omissionProgress.results
                     if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
@@ -687,34 +886,12 @@ class GraphBuilder {
 
             // 3.x システム辞書 (Typo Correction Prefix)
             if (enableTypoCorrectionJapaneseFlick && subStr().length > 2) {
-                val typoProgress = if (reusablePrefixLength >= 0) {
-                    val previous = reusable?.systemTypoProgress?.get(i)
-                    if (previous == null) {
-                        yomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
-                            str = str,
-                            startIndex = i,
-                            succinctBitVector = succinctBitVectorLBSYomi,
-                            maxResults = 98,
-                            maxLen = 12,
-                        )
-                    } else {
-                        yomiTrie.advanceTypoCorrectionSearch(
-                            previous = previous,
-                            char = str.last(),
-                            succinctBitVector = succinctBitVectorLBSYomi,
-                            maxResults = 98,
-                            maxLen = 12,
-                        )
-                    }
-                } else {
-                    yomiTrie.commonPrefixSearchWithTypoCorrectionProgress(
-                        str = str,
-                        startIndex = i,
-                        succinctBitVector = succinctBitVectorLBSYomi,
-                        maxResults = 98,
-                        maxLen = 12,
-                    )
-                }
+                val typoProgress = typoSearch(
+                    trie = yomiTrie,
+                    bitVector = succinctBitVectorLBSYomi,
+                    start = i,
+                    previous = reusable?.systemTypoProgress?.get(i),
+                )
                 systemTypoProgress[i] = typoProgress
                 val typoPrefixResults = typoProgress.results
 
@@ -726,77 +903,61 @@ class GraphBuilder {
                     if (typo.penaltyUsed == 0) continue
 
                     val yomiStr = typo.yomi
-                    val nodeIndex = yomiTrie.getNodeIndex(yomiStr, succinctBitVectorLBSYomi)
+                    val nodeIndex = typo.nodeIndex
                     if (nodeIndex <= 0) continue
 
                     val termId = yomiTrie.getTermId(nodeIndex, succinctBitVectorIsLeafYomi)
-                    val listToken = tokenArray.getListDictionaryByYomiTermId(
-                        termId,
-                        succinctBitVectorTokenArray
-                    )
-
                     val endIndex = i + yomiStr.length
                     if (endIndex <= reusablePrefixLength) continue
                     val penalty = typoCorrectionOffsetScore * typo.penaltyUsed
 
-                    listToken
-                        .sortedBy { it.wordCost }
-                        .take(5)
-                        .forEach { token ->
-                            val tango = when (token.nodeId) {
-                                -2 -> yomiStr
-                                -1 -> yomiStr.hiraToKata()
-                                else -> tangoTrie.getLetter(token.nodeId, succinctBitVectorTangoLBS)
-                            }
-
-                            val cost = token.wordCost.toInt() + penalty
-
-                            addOrUpdateNode(
-                                graph,
-                                endIndex,
-                                Node(
-                                    l = tokenArray.leftIds[token.posTableIndex.toInt()],
-                                    r = tokenArray.rightIds[token.posTableIndex.toInt()],
-                                    score = cost,
-                                    f = cost,
-                                    g = cost,
-                                    tango = tango,
-                                    yomiUsed = yomiStr,
-                                    len = yomiStr.length.toShort(),
-                                    sPos = i,
-                                    mozcAttributes = mozcAttributesFor(tokenArray.leftIds[token.posTableIndex.toInt()]),
-                                ),
-                                graphNodeDedupMode,
-                                graphNodeTrace,
-                                str,
-                                "SYSTEM_TYPO",
-                            )
+                    tokenArray.forEachLowestCostDictionaryByYomiTermId(
+                        nodeId = termId,
+                        succinctBitVector = succinctBitVectorTokenArray,
+                        scratchIndices = typoTopTokenScratch,
+                    ) { posTableIndex, wordCost, tokenNodeId ->
+                        val tango = when (tokenNodeId) {
+                            -2 -> yomiStr
+                            -1 -> yomiStr.hiraToKata()
+                            else -> tangoTrie.getLetter(tokenNodeId, succinctBitVectorTangoLBS)
                         }
+
+                        val cost = wordCost.toInt() + penalty
+
+                        addOrUpdateNode(
+                            graph,
+                            endIndex,
+                            Node(
+                                l = tokenArray.leftIds[posTableIndex.toInt()],
+                                r = tokenArray.rightIds[posTableIndex.toInt()],
+                                score = cost,
+                                f = cost,
+                                g = cost,
+                                tango = tango,
+                                yomiUsed = yomiStr,
+                                len = yomiStr.length.toShort(),
+                                sPos = i,
+                                mozcAttributes = mozcAttributesFor(
+                                    tokenArray.leftIds[posTableIndex.toInt()],
+                                ),
+                            ),
+                            graphNodeDedupMode,
+                            graphNodeTrace,
+                            str,
+                            "SYSTEM_TYPO",
+                        )
+                    }
                 }
             }
 
             // 4. システム辞書 (Omission Search)
             if (isOmissionSearchEnable && !subStr().hasNConsecutiveChars(4)) {
-                val omissionProgress = if (reusablePrefixLength >= 0) {
-                        val previousStates = reusable?.systemOmissionStates?.get(i)
-                            ?: listOf(
-                                LOUDSWithTermId.OmissionSearchState(
-                                    nodeIndex = 0,
-                                    omissionOccurred = false,
-                                )
-                            )
-                        yomiTrie.advanceOmissionSearch(
-                            states = previousStates,
-                            char = str.last(),
-                            succinctBitVector = succinctBitVectorLBSYomi,
-                        )
-                    } else {
-                        yomiTrie.commonPrefixSearchWithOmissionProgress(
-                            str = str,
-                            startIndex = i,
-                            succinctBitVector = succinctBitVectorLBSYomi,
-                        )
-                    }
+                val omissionProgress = omissionSearch(
+                    trie = yomiTrie,
+                    bitVector = succinctBitVectorLBSYomi,
+                    start = i,
+                    previous = reusable?.systemOmissionStates?.get(i),
+                )
                 systemOmissionStates[i] = omissionProgress.terminalStates
                 val omissionSearchResults: List<OmissionSearchResult> = omissionProgress.results
                 if (omissionSearchResults.isNotEmpty()) foundInAnyDictionary = true
@@ -1053,6 +1214,17 @@ class GraphBuilder {
             // prefix. Remove the now-invalid unknown fallback retained by the incremental graph.
             if (foundInAnyDictionary && reusablePrefixLength >= 0) {
                 val fallbackEndIndex = i + 1
+                val removesStablePrefixNode =
+                    fallbackEndIndex < reusablePrefixLength &&
+                        graph[fallbackEndIndex].orEmpty().any {
+                            it.candidateSource == CandidateSource.UNKNOWN && it.sPos == i
+                        }
+                if (removesStablePrefixNode) {
+                    // A dictionary match completed by the appended character can invalidate an
+                    // older unknown fallback. Restore the complete prefix and deliberately fall
+                    // back to full DP for this uncommon transition.
+                    invalidateForwardDpReuseAndRestoreCompletePrefix()
+                }
                 graph[fallbackEndIndex]?.removeAll {
                     it.candidateSource == CandidateSource.UNKNOWN && it.sPos == i
                 }
@@ -1118,14 +1290,40 @@ class GraphBuilder {
             webPrefixStates = webPrefixStates,
             personPrefixStates = personPrefixStates,
             neologdPrefixStates = neologdPrefixStates,
-            unprunedFrontier = if (sessionState != null) {
-                graph[str.length]?.toMutableList()
+            unprunedPositions = if (sessionState != null) {
+                val incrementalGraph = graph as? IncrementalGraph
+                if (
+                    reusable != null &&
+                    incrementalGraph?.forwardDpReusableThroughEndIndex == reusablePrefixLength
+                ) {
+                    // Older positions intentionally remain pruned in the active DP view. Carry
+                    // their complete lattice lists forward without publishing them back into the
+                    // graph; the previous frontier and new suffix are currently unpruned.
+                    LinkedHashMap<Int, MutableList<Node>>().apply {
+                        reusable.unprunedPositions?.forEach { (endIndex, nodes) ->
+                            if (endIndex < reusablePrefixLength) put(endIndex, nodes)
+                        }
+                        graph.entries.forEach { (endIndex, nodes) ->
+                            if (endIndex in reusablePrefixLength..str.length) {
+                                put(endIndex, nodes.toMutableList())
+                            }
+                        }
+                    }
+                } else {
+                    graph.entries
+                        .asSequence()
+                        .filter { (endIndex, _) -> endIndex <= str.length }
+                        .associateTo(LinkedHashMap()) { (endIndex, nodes) ->
+                            endIndex to nodes.toMutableList()
+                        }
+                }
             } else {
                 null
             },
         )
         if (sessionState != null) {
             sessionState.cachedGraph = updatedCache
+            sessionState.commitCompletedGraph(updatedCache)
             if (performanceStartNs != 0L) {
                 sessionState.lastConstructGraphNs = System.nanoTime() - performanceStartNs
             }
@@ -1164,6 +1362,7 @@ class GraphBuilder {
         enableTypoCorrectionJapaneseFlick: Boolean,
         typoCorrectionOffsetScore: Int,
         omissionSearchOffSetScore: Int,
+        beamWidth: Int,
         graphNodeDedupMode: GraphNodeDedupMode,
         mozcNodeAttributeTable: MozcNodeAttributeTable?,
     ): Int {
@@ -1181,6 +1380,7 @@ class GraphBuilder {
         result = 31 * result + enableTypoCorrectionJapaneseFlick.hashCode()
         result = 31 * result + typoCorrectionOffsetScore
         result = 31 * result + omissionSearchOffSetScore
+        result = 31 * result + beamWidth
         result = 31 * result + graphNodeDedupMode.hashCode()
         result = 31 * result + System.identityHashCode(mozcNodeAttributeTable)
         return result

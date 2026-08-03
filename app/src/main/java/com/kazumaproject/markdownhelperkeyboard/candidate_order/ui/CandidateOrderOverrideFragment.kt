@@ -26,6 +26,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.adapter.CandidateOrderOverrideAdapter
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.adapter.SavedCandidateOrderAdapter
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderScope
 import com.kazumaproject.markdownhelperkeyboard.databinding.FragmentCandidateOrderOverrideBinding
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -102,8 +103,8 @@ class CandidateOrderOverrideFragment : Fragment() {
             onEdit = { savedOrder ->
                 viewModel.editSavedOrder(savedOrder)
             },
-            onDeleteInput = { input ->
-                showDeleteSavedOrderConfirmDialog(input)
+            onDeleteRule = { input, scope ->
+                showDeleteSavedOrderConfirmDialog(input, scope)
             }
         )
         binding.recyclerViewSavedCandidateOrder.apply {
@@ -142,6 +143,15 @@ class CandidateOrderOverrideFragment : Fragment() {
         binding.editTextCandidateOrderReading.doAfterTextChanged {
             viewModel.updateReading(it?.toString().orEmpty())
         }
+        binding.radioGroupCandidateOrderScope.setOnCheckedChangeListener { _, checkedId ->
+            viewModel.updateScope(
+                if (checkedId == R.id.radio_candidate_order_scope_lexical) {
+                    CandidateOrderScope.LEXICAL_UNIT
+                } else {
+                    CandidateOrderScope.EXACT_INPUT
+                },
+            )
+        }
         binding.buttonFetchCandidateOrderCandidates.setOnClickListener {
             viewModel.fetchCandidates()
         }
@@ -163,6 +173,21 @@ class CandidateOrderOverrideFragment : Fragment() {
                     }
                     adapter.submitList(state.candidates)
                     savedOrderAdapter.submitList(state.savedOrders)
+                    val expectedScopeId = if (state.scope == CandidateOrderScope.EXACT_INPUT) {
+                        R.id.radio_candidate_order_scope_exact
+                    } else {
+                        R.id.radio_candidate_order_scope_lexical
+                    }
+                    if (binding.radioGroupCandidateOrderScope.checkedRadioButtonId != expectedScopeId) {
+                        binding.radioGroupCandidateOrderScope.check(expectedScopeId)
+                    }
+                    binding.textCandidateOrderScopeExplanation.setText(
+                        if (state.scope == CandidateOrderScope.EXACT_INPUT) {
+                            R.string.candidate_order_scope_exact_description
+                        } else {
+                            R.string.candidate_order_scope_lexical_description
+                        },
+                    )
                     binding.progressCandidateOrder.visibility =
                         if (state.isLoading) View.VISIBLE else View.GONE
                     binding.textCandidateOrderEmpty.visibility =
@@ -191,17 +216,26 @@ class CandidateOrderOverrideFragment : Fragment() {
         }
     }
 
-    private fun showDeleteSavedOrderConfirmDialog(input: String) {
+    private fun showDeleteSavedOrderConfirmDialog(
+        input: String,
+        scope: CandidateOrderScope,
+    ) {
         AlertDialog.Builder(requireContext())
             .setTitle(R.string.candidate_order_override_delete_saved_order_confirm_title)
             .setMessage(
                 getString(
                     R.string.candidate_order_override_delete_saved_order_confirm_message,
-                    input
+                    getString(
+                        if (scope == CandidateOrderScope.EXACT_INPUT) {
+                            R.string.candidate_order_scope_exact_short
+                        } else {
+                            R.string.candidate_order_scope_lexical_short
+                        },
+                    ) + " / " + input
                 )
             )
             .setPositiveButton(R.string.candidate_order_override_saved_order_delete) { _, _ ->
-                viewModel.deleteSavedOrder(input)
+                viewModel.deleteSavedOrder(input, scope)
             }
             .setNegativeButton(android.R.string.cancel, null)
             .show()
