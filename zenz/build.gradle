@@ -10,10 +10,10 @@ if (localPropertiesFile.exists()) {
 }
 
 def zenzModelRepo = providers.gradleProperty("zenzModelRepo")
-        .orElse(localProperties.getProperty("zenzModelRepo") ?: "Miwa-Keita/zenz-v3.1-xsmall")
+        .orElse(localProperties.getProperty("zenzModelRepo") ?: "Miwa-Keita/zenz-v3.2-xsmall-gguf")
         .get()
 def zenzModelRevision = providers.gradleProperty("zenzModelRevision")
-        .orElse(localProperties.getProperty("zenzModelRevision") ?: "a728931c8b4867a53ca33d1ff3fe7360b0f15cd5")
+        .orElse(localProperties.getProperty("zenzModelRevision") ?: "4f5423f0fad41a73b1242eb96fe5c12ae4fdca83")
         .get()
 def zenzModelQuantization = providers.gradleProperty("zenzModelQuantization")
         .orElse(localProperties.getProperty("zenzModelQuantization") ?: "Q5_K_M")
@@ -114,7 +114,7 @@ android {
 
 def prepareZenzModel = tasks.register("prepareZenzModel", Exec) {
     group = "zenz"
-    description = "Downloads the Zenz model from Hugging Face, converts it to GGUF, and quantizes it for packaging."
+    description = "Downloads the Zenz GGUF model from Hugging Face for packaging."
 
     def outputDir = generatedZenzAssetsDir.get().asFile
 

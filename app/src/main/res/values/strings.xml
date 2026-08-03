@@ -895,7 +895,7 @@
     <string name="pref_qwerty_enable_flick_down_title">Enable Down Flick</string>
     <string name="pref_qwerty_enable_flick_down_summary">Input uppercase letters with downward flick.</string>
     <string name="enable_ai_preference_title">Enable AI Predictive Conversion</string>
-    <string name="enable_ai_preference_summary">Enable predictive text conversion using the neural kana-kanji model “zenz-v3.1-xsmall.”</string>
+    <string name="enable_ai_preference_summary">Enable predictive text conversion using the neural kana-kanji model “zenz-v3.2-xsmall.”</string>
     <string name="zenz_profile_preference_title">Profile Settings for zenz</string>
     <string name="zenz_profile_preference_summary">Set a profile that zenz will use for predictive conversion.\nExample: If you enter “Occupation: Doctor,” typing “chūsha” will make the candidate “injection” appear more frequently.</string>
     <string name="enable_zenz_rerank_preference_title">Rerank conversion candidates with zenz</string>
