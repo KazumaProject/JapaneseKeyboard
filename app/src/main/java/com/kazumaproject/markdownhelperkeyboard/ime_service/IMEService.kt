@@ -180,6 +180,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_DICTIONARY
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_USER_TEMPLATE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ExactInputCandidatePromotionPolicy
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.QWERTY_GLIDE_CANDIDATE_TYPE
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.ZenzCandidate
@@ -463,7 +464,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val leftContext: String,
         val rightContext: String,
         val cacheKey: String,
-        val rerankTargets: List<IndexedValue<Candidate>>
+        val rerankTargets: List<IndexedValue<Candidate>>,
+        val candidateSegmentsByString: Map<String, List<CandidateConversionSegment>>,
     )
 
     private data class ZenzContext(
@@ -1886,6 +1888,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var zenzLiveLatestResultMeta: ZenzLiveResultMeta? = null
     private var zenzRerankJob: Job? = null
     private var zenzRerankRequestToken: Long = 0L
+    @Volatile
+    private var latestCandidateSegmentInput: String = ""
+    @Volatile
+    private var latestCandidateSegmentsByString:
+        Map<String, List<CandidateConversionSegment>> = emptyMap()
     private val zenzRerankCache = object : LinkedHashMap<String, List<Candidate>>(16, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Candidate>>?): Boolean {
             return size > 24
@@ -15210,7 +15217,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             leftContext = zenzContext.leftContext,
             rightContext = zenzContext.rightContext,
             cacheKey = cacheKey,
-            rerankTargets = rerankTargets
+            rerankTargets = rerankTargets,
+            candidateSegmentsByString = if (latestCandidateSegmentInput == insertString) {
+                latestCandidateSegmentsByString
+            } else {
+                emptyMap()
+            },
         )
     }
 
@@ -15286,6 +15298,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         applyMergedCandidateOrder(
             input = insertString,
             candidates = reranked,
+            candidateSegmentsByString = plan.candidateSegmentsByString,
         )
     }
 
@@ -22273,6 +22286,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val orderedCandidates = applyMergedCandidateOrder(
             input = insertString,
             candidates = filteredCandidates,
+            candidateSegmentsByString = coreResult.candidateSegmentsByString,
         )
 
         if (candidateRequestTracker.isCurrent(token)) {
@@ -22412,6 +22426,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val orderedCandidates = applyMergedCandidateOrder(
             input = insertString,
             candidates = filteredCandidates,
+            candidateSegmentsByString = coreResult.candidateSegmentsByString,
         )
 
         if (token == null || candidateRequestTracker.isCurrent(token)) {
@@ -22534,6 +22549,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val orderedCandidates = applyMergedCandidateOrder(
             input = insertString,
             candidates = filteredCandidates,
+            candidateSegmentsByString = coreResult.candidateSegmentsByString,
         )
 
         if (candidateRequestTracker.isCurrent(token)) {
@@ -22550,6 +22566,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun applyMergedCandidateOrder(
         input: String,
         candidates: List<Candidate>,
+        candidateSegmentsByString: Map<String, List<CandidateConversionSegment>> = emptyMap(),
     ): List<Candidate> {
         val promotedCandidates = measureDebugStage("IMEService.exactInputPromotion") {
             ExactInputCandidatePromotionPolicy.promote(
@@ -22558,10 +22575,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
         }
         return if (appPreference.candidate_order_override_enable_preference == true) {
+            if (candidateSegmentsByString.isNotEmpty()) {
+                latestCandidateSegmentInput = input
+                latestCandidateSegmentsByString = candidateSegmentsByString
+            }
             measureDebugStage("IMEService.candidateOrderOverride") {
                 candidateOrderOverrideRepository.applyOrderFromSnapshot(
                     input = input,
                     candidates = promotedCandidates,
+                    candidateSegmentsByString = candidateSegmentsByString,
                 )
             }
         } else {
@@ -22617,6 +22639,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 omissionSearchOffsetScore = omissionSearchOffsetScorePreference ?: 1900,
                 beamWidth = conversionBeamWidth,
                 predictionConfig = predictionConfig,
+                collectCandidateSegments =
+                    appPreference.candidate_order_override_enable_preference == true,
             )
         )
         if (BuildConfig.DEBUG) {
