@@ -62,19 +62,42 @@ class FlickInputPreviewCoordinatorTest {
 
     @Test
     fun downAndMoveUsePreviewTextFactory() {
-        val fixture = Fixture(createPreviewText = { text -> "decorated[$text]" })
+        val fixture = Fixture(
+            createPreviewText = { text, tail -> "decorated[$text|$tail]" }
+        )
 
         fixture.coordinator.onEvent(started("あ"), fixture.context())
         fixture.coordinator.onEvent(changed("う"), fixture.context())
 
         assertEquals(
-            listOf("text:decorated[あ]:1", "text:decorated[う]:1"),
+            listOf("text:decorated[あ|]:1", "text:decorated[う|]:1"),
             fixture.writes,
         )
     }
 
+    @Test
+    fun tailIsRenderedOnDownAndMoveButExcludedFromCommittedInputMutation() {
+        val fixture = Fixture(
+            createPreviewText = { text, tail -> "$text$tail" }
+        )
+        val context = fixture.context(baseInput = "か", composingTail = "な")
+        fixture.arbiter.setCanonical("かな", 1)
+
+        fixture.coordinator.onEvent(started("あ"), context)
+        fixture.coordinator.onEvent(changed("う"), context)
+        fixture.coordinator.onEvent(commit("う", isFlick = true), context)
+        val mutation = fixture.coordinator.consumePendingCommit("う", isFlick = true)
+        fixture.coordinator.onEvent(finished(), context)
+
+        assertEquals(
+            listOf("text:かな:1", "text:かあな:1", "text:かうな:1"),
+            fixture.writes,
+        )
+        assertEquals("かう", mutation?.resultInput)
+    }
+
     private class Fixture(
-        createPreviewText: (String) -> CharSequence = { it },
+        createPreviewText: (String, String) -> CharSequence = { text, _ -> text },
     ) {
         val writes = mutableListOf<String>()
         val arbiter = ComposingTextArbiter(
@@ -92,7 +115,11 @@ class FlickInputPreviewCoordinatorTest {
             createPreviewText = createPreviewText,
         )
 
-        fun context(baseInput: String = "", sessionId: Long = 1L) = FlickPreviewContext(
+        fun context(
+            baseInput: String = "",
+            sessionId: Long = 1L,
+            composingTail: String = "",
+        ) = FlickPreviewContext(
             source = FlickPreviewSource.TENKEY,
             editorSessionId = sessionId,
             settingEnabled = true,
@@ -102,7 +129,7 @@ class FlickInputPreviewCoordinatorTest {
             isHenkan = false,
             selectMode = false,
             cursorMoveMode = false,
-            hasComposingTail = false,
+            composingTail = composingTail,
             hasInputConnection = true,
             baseInput = baseInput,
             isFlickOnlyMode = false,
@@ -121,9 +148,12 @@ class FlickInputPreviewCoordinatorTest {
         selection = FlickTextSelection(text, true),
     )
 
-    private fun commit(text: String) = FlickTextPreviewEvent.CommitPending(
+    private fun commit(
+        text: String,
+        isFlick: Boolean = false,
+    ) = FlickTextPreviewEvent.CommitPending(
         gestureId = 1L,
-        selection = FlickTextSelection(text, false),
+        selection = FlickTextSelection(text, isFlick),
     )
 
     private fun finished() = FlickTextPreviewEvent.Finished(gestureId = 1L)

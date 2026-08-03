@@ -224,6 +224,130 @@ class FastInputMatrixInstrumentedTest {
                     assertEquals(keyboard.primeText, awaitTextSettled(scenario))
                 }
 
+                listOf(TestKeyboard.TENKEY, TestKeyboard.SUMIRE).forEach { keyboard ->
+                    applyCasePreferences(session.preferences, previewTestCase(keyboard))
+                    check(
+                        session.preferences.edit()
+                            .putBoolean("flick_editor_preview_preference", true)
+                            .putBoolean("theme_custom_input_color_enable", true)
+                            .putInt(
+                                "theme_custom_pre_edit_bg_color",
+                                PREVIEW_TEST_BACKGROUND_COLOR,
+                            )
+                            .putString("sumire_keyboard_style_preference", "default")
+                            .putString("sumire_input_method_preference", "switch-mode-effective")
+                            .commit()
+                    )
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    val geometry = awaitStableGeometry(keyboard, false)
+                    assertTrue("First tail setup tap failed for $keyboard", injectTap(geometry.prime.center))
+                    assertTrue(
+                        "Second tail setup tap failed for $keyboard",
+                        injectTap(requireNotNull(geometry.neighbor).center),
+                    )
+                    assertEquals(
+                        "Tail setup text mismatch for $keyboard",
+                        "あな",
+                        awaitEditorText(scenario) { it == "あな" },
+                    )
+                    assertTrue(
+                        "Cursor-left tap failed for $keyboard",
+                        injectTap(findCursorLeftBounds(keyboard).center),
+                    )
+
+                    val movePoint = PointF(
+                        geometry.prime.center.x + geometry.prime.width * 0.70f,
+                        geometry.prime.center.y,
+                    )
+                    val cancelDownTime = SystemClock.uptimeMillis()
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            cancelDownTime,
+                            MotionEvent.ACTION_DOWN,
+                            geometry.prime.center,
+                        )
+                    )
+                    assertEquals(
+                        "Tail was not retained on DOWN for $keyboard",
+                        "ああな",
+                        awaitEditorText(scenario) { it == "ああな" },
+                    )
+                    assertEditorPreviewDecoration(
+                        scenario = scenario,
+                        expectedText = "ああな",
+                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        expectedBackgroundEnd = 2,
+                        caseName = "$keyboard tail DOWN",
+                    )
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            cancelDownTime,
+                            MotionEvent.ACTION_MOVE,
+                            movePoint,
+                        )
+                    )
+                    val movedWithTail = awaitEditorText(scenario) { text ->
+                        text.length == 3 &&
+                            text.startsWith("あ") &&
+                            text.endsWith("な") &&
+                            text != "ああな"
+                    }
+                    assertEditorPreviewDecoration(
+                        scenario = scenario,
+                        expectedText = movedWithTail,
+                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        expectedBackgroundEnd = 2,
+                        caseName = "$keyboard tail MOVE",
+                    )
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            cancelDownTime,
+                            MotionEvent.ACTION_CANCEL,
+                            movePoint,
+                        )
+                    )
+                    assertEquals(
+                        "Tail preview did not restore after CANCEL for $keyboard",
+                        "あな",
+                        awaitEditorText(scenario) { it == "あな" },
+                    )
+
+                    val commitDownTime = SystemClock.uptimeMillis()
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            commitDownTime,
+                            MotionEvent.ACTION_DOWN,
+                            geometry.prime.center,
+                        )
+                    )
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            commitDownTime,
+                            MotionEvent.ACTION_MOVE,
+                            movePoint,
+                        )
+                    )
+                    val commitPreview = awaitEditorText(scenario) { text ->
+                        text.length == 3 &&
+                            text.startsWith("あ") &&
+                            text.endsWith("な") &&
+                            text != "ああな"
+                    }
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            commitDownTime,
+                            MotionEvent.ACTION_UP,
+                            movePoint,
+                        )
+                    )
+                    assertEquals(
+                        "UP did not insert before stringInTail for $keyboard",
+                        commitPreview,
+                        awaitTextSettled(scenario),
+                    )
+                }
+
                 val performanceLines = mutableListOf<String>()
                 applyCasePreferences(session.preferences, previewTestCase(TestKeyboard.TENKEY))
                 for (enabled in listOf(false, true)) {
@@ -1411,17 +1535,27 @@ class FastInputMatrixInstrumentedTest {
         expectedText: String,
         expectedBackgroundColor: Int,
         caseName: String,
+        expectedBackgroundEnd: Int = expectedText.length,
     ) {
         val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
         var latest = readEditorDecoration(scenario)
         while (SystemClock.uptimeMillis() < deadline) {
             latest = readEditorDecoration(scenario)
-            if (latest.matches(expectedText, expectedBackgroundColor)) return
+            if (latest.matches(
+                    expectedText,
+                    expectedBackgroundColor,
+                    expectedBackgroundEnd,
+                )
+            ) return
             SystemClock.sleep(PREVIEW_TEXT_POLL_MS)
         }
         assertTrue(
             "$caseName did not retain the pre-edit background/underline spans: $latest",
-            latest.matches(expectedText, expectedBackgroundColor),
+            latest.matches(
+                expectedText,
+                expectedBackgroundColor,
+                expectedBackgroundEnd,
+            ),
         )
     }
 
@@ -1589,6 +1723,26 @@ class FastInputMatrixInstrumentedTest {
                         node.contentDescription?.toString() == locator.label
             }
         } ?: throw SetupException("Key ${locator.render()} is not visible")
+    }
+
+    private fun findCursorLeftBounds(keyboard: TestKeyboard): ScreenRect {
+        return when (keyboard) {
+            TestKeyboard.TENKEY -> awaitVisibleNodeBounds("key_soft_left")
+            TestKeyboard.SUMIRE -> {
+                val root = findVisibleNodeById(keyboard.rootViewId)
+                    ?: throw SetupException("${keyboard.rootViewId} is not visible")
+                val labels = setOf("CursorMoveLeft", "Move Cursor Left", "カーソル左")
+                val node = findDescendant(root) { candidate ->
+                    candidate.text?.toString() in labels ||
+                        candidate.contentDescription?.toString() in labels
+                } ?: throw SetupException("Sumire cursor-left key is not visible")
+                node.screenRect()
+            }
+
+            TestKeyboard.QWERTY -> throw SetupException(
+                "Tail preview test does not target QWERTY"
+            )
+        }
     }
 
     private fun findCandidateState(): CandidateState {
@@ -2539,17 +2693,21 @@ class FastInputMatrixInstrumentedTest {
         val backgrounds: List<BackgroundSpanSnapshot>,
         val underlines: List<SpanRangeSnapshot>,
     ) {
-        fun matches(expectedText: String, expectedBackgroundColor: Int): Boolean {
-            val expectedEnd = expectedText.length
+        fun matches(
+            expectedText: String,
+            expectedBackgroundColor: Int,
+            expectedBackgroundEnd: Int,
+        ): Boolean {
+            val expectedUnderlineEnd = expectedText.length
             val hasBackground = backgrounds.any { span ->
                 span.color == expectedBackgroundColor &&
                     span.start == 0 &&
-                    span.end == expectedEnd &&
+                    span.end == expectedBackgroundEnd &&
                     span.flags and Spanned.SPAN_COMPOSING != 0
             }
             val hasUnderline = underlines.any { span ->
                 span.start == 0 &&
-                    span.end == expectedEnd &&
+                    span.end == expectedUnderlineEnd &&
                     span.flags and Spanned.SPAN_COMPOSING != 0
             }
             return text == expectedText && hasBackground && hasUnderline

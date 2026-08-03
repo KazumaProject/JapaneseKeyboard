@@ -23,11 +23,11 @@ class FlickPreviewEligibilityPolicyTest {
     }
 
     @Test
-    fun conversionSelectionCursorAndTailStatesAreRejected() {
+    fun conversionSelectionAndCursorStatesAreRejectedButTailIsAccepted() {
         assertFalse(FlickPreviewEligibilityPolicy.isEligible(context(isHenkan = true)))
         assertFalse(FlickPreviewEligibilityPolicy.isEligible(context(selectMode = true)))
         assertFalse(FlickPreviewEligibilityPolicy.isEligible(context(cursorMoveMode = true)))
-        assertFalse(FlickPreviewEligibilityPolicy.isEligible(context(hasComposingTail = true)))
+        assertTrue(FlickPreviewEligibilityPolicy.isEligible(context(composingTail = "な")))
     }
 
     private fun context(
@@ -38,7 +38,7 @@ class FlickPreviewEligibilityPolicyTest {
         isHenkan: Boolean = false,
         selectMode: Boolean = false,
         cursorMoveMode: Boolean = false,
-        hasComposingTail: Boolean = false,
+        composingTail: String = "",
     ) = FlickPreviewContext(
         source = FlickPreviewSource.TENKEY,
         editorSessionId = 1L,
@@ -49,7 +49,7 @@ class FlickPreviewEligibilityPolicyTest {
         isHenkan = isHenkan,
         selectMode = selectMode,
         cursorMoveMode = cursorMoveMode,
-        hasComposingTail = hasComposingTail,
+        composingTail = composingTail,
         hasInputConnection = true,
         baseInput = "",
         isFlickOnlyMode = false,

@@ -50,8 +50,8 @@ TenKey と Sumire の文字フリックに、指を離す前から選択中の�
 - Sumire の特殊キー
   - 削除、空白、変換、Enter、カーソル、濁点切替など
   - 特殊キーの方向に文字列オーバーライドが設定されていても初回実装では対象外とする。
-- 変換中、文節選択中、選択モード、カーソル移動モード
-- composing 内のカーソル編集で `stringInTail` が空でない状態
+- 変換中、文節選択中、選択モード、操作中のカーソル移動モード
+- composing 内のカーソル編集で `stringInTail` が空でない場合も対象とする。DOWN 時点の tail を固定し、プレビュー表示へ連結する一方、入力 mutation からは除外する。
 - パスワード、電話番号、日時など、composing 表示を安全に保証できない入力欄
 - Direct Commit が選択されている入力動作
 - ダブルタップバインディングがあるキー
@@ -538,10 +538,12 @@ AND not password/numeric/phone/date/time direct field
 AND !isHenkan
 AND !selectMode
 AND !cursorMoveMode
-AND stringInTail is empty
+AND stringInTail is captured as an immutable preview tail
 AND currentInputConnection exists
 AND editor session matches
 ```
+
+`stringInTail` がある場合、背景 Span はカーソル前の入力プレビューまで、下線 Span は tail を含む composing 全体まで適用する。CANCEL では元の composing 全体を復元し、UP の mutation は tail を含めず、選択文字だけをカーソル前へ確定する。
 
 Sumire については `TenKeyQWERTYMode.Sumire` と、Sumire の数字レイアウトとして表示している `TenKeyQWERTYMode.Number` の composing 文字キーを許可する。`TenKeyQWERTYMode.Custom` は初回実装では拒否する。
 
@@ -623,7 +625,8 @@ Sumire については `TenKeyQWERTYMode.Sumire` と、Sumire の数字レイア
 - フリックのみ設定 ON の TAP は末尾追加
 - Sumire 複数文字出力
 - unsupported InputType
-- henkan/select/cursor/tail 状態
+- henkan/select/操作中の cursor 状態を拒否し、安定した tail 状態を許可
+- tail 付き DOWN/MOVE/CANCEL/UP の表示、Span 範囲、mutation 分離
 - resolver 結果と既存確定結果の一致
 
 #### Arbiter
