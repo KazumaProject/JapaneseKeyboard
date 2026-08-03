@@ -23,14 +23,16 @@ import com.google.android.material.R as materialR
 private data class PopupCellContent(
     val text: String?,
     val label: String?,
-    val drawableResId: Int?
+    val drawableResId: Int?,
+    val isInputText: Boolean
 )
 
 private fun FlickAction.toPopupCellContent(): PopupCellContent = when (this) {
     is FlickAction.Input -> PopupCellContent(
         text = char.takeUnless { it.isEmpty() },
         label = label?.takeUnless { it.isEmpty() },
-        drawableResId = drawableResId
+        drawableResId = drawableResId,
+        isInputText = true
     )
 
     is FlickAction.Action -> {
@@ -43,7 +45,8 @@ private fun FlickAction.toPopupCellContent(): PopupCellContent = when (this) {
         PopupCellContent(
             text = text,
             label = label?.takeUnless { it.isEmpty() },
-            drawableResId = drawableResId
+            drawableResId = drawableResId,
+            isInputText = action is KeyAction.Text
         )
     }
 }
@@ -71,7 +74,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
             background = backgroundShape
         }
 
-        fun setContent(action: FlickAction) {
+        fun setContent(action: FlickAction, inputTextTransform: (String) -> String) {
             val content = action.toPopupCellContent()
             if (content.drawableResId != null) {
                 imageView.setImageResource(content.drawableResId)
@@ -80,7 +83,12 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
                 return
             }
 
-            val text = content.label ?: content.text
+            val resolvedText = content.label ?: content.text
+            val text = if (content.isInputText && resolvedText != null) {
+                inputTextTransform(resolvedText)
+            } else {
+                resolvedText
+            }
             if (text.isNullOrEmpty()) {
                 textView.visibility = View.GONE
                 imageView.visibility = View.GONE
@@ -151,6 +159,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
     private var popupTextSizeSp: Float = 18f
     private var popupBackgroundColor: Int? = null
     private var popupTextColor: Int? = null
+    private var inputTextTransform: (String) -> String = { it }
 
     init {
         addView(gridLayout, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
@@ -168,6 +177,10 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
         updateCellTextSizes()
         updateCellColors()
         invalidate()
+    }
+
+    fun setInputTextTransform(transform: (String) -> String) {
+        inputTextTransform = transform
     }
 
     fun setCells(map: Map<FlickDirection, FlickAction>, keyWidth: Int, keyHeight: Int) {
@@ -188,7 +201,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
             }
 
             val cell = CellView(context).apply {
-                setContent(action)
+                setContent(action, inputTextTransform)
                 applyTextSize(popupTextSizeSp)
                 val theme = colorTheme
                 if (theme != null) {
@@ -239,7 +252,7 @@ class CrossFlickPopupView(context: Context) : FrameLayout(context) {
 
             if (action != null) {
                 val cell = CellView(context).apply {
-                    setContent(action)
+                    setContent(action, inputTextTransform)
                     applyTextSize(popupTextSizeSp)
                     val theme = colorTheme
                     if (theme != null) {

@@ -70,6 +70,7 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
     private var mapSwitchDirection: CircularFlickDirection? = null
     private var showMapSwitchLabel = false
     private var mapSwitchLabel: String? = null
+    private var inputTextTransform: (String) -> String = { it }
 
     // --- Size Properties ---
     // デフォルト値を設定（後で setUiSize で上書き可能）
@@ -154,6 +155,11 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
         invalidate()
     }
 
+    fun setInputTextTransform(transform: (String) -> String) {
+        inputTextTransform = transform
+        invalidate()
+    }
+
     // --- Drawing Logic ---
     // (onMeasure, onSizeChanged, onDraw, updateShaders などは既存のままでOK)
     // ※ createPathForDirection 内で centerCircleRadius が使われますが、
@@ -213,14 +219,17 @@ class CustomAngleFlickPopupView @JvmOverloads constructor(
 
     private fun FlickAction?.toDisplayLabel(): String {
         return when (this) {
-            is FlickAction.Input -> label ?: char
-            is FlickAction.Action -> label ?: when (action) {
-                KeyAction.ShowEmojiKeyboard -> "絵"
-                KeyAction.SwitchToNextIme -> "IME"
-                KeyAction.SwitchToKanaLayout -> "かな"
-                KeyAction.SwitchToEnglishLayout -> "英"
-                KeyAction.SwitchToNumberLayout -> "数"
-                else -> ""
+            is FlickAction.Input -> inputTextTransform(label ?: char)
+            is FlickAction.Action -> when (val keyAction = action) {
+                is KeyAction.Text -> inputTextTransform(label ?: keyAction.text)
+                else -> label ?: when (keyAction) {
+                    KeyAction.ShowEmojiKeyboard -> "絵"
+                    KeyAction.SwitchToNextIme -> "IME"
+                    KeyAction.SwitchToKanaLayout -> "かな"
+                    KeyAction.SwitchToEnglishLayout -> "英"
+                    KeyAction.SwitchToNumberLayout -> "数"
+                    else -> ""
+                }
             }
 
             null -> ""

@@ -36,6 +36,44 @@
                 android:text="@string/candidate_order_override_fetch_candidates" />
         </LinearLayout>
 
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="@string/candidate_order_scope_title"
+            android:textAppearance="?attr/textAppearanceListItem"
+            android:textStyle="bold" />
+
+        <RadioGroup
+            android:id="@+id/radio_group_candidate_order_scope"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <androidx.appcompat.widget.AppCompatRadioButton
+                android:id="@+id/radio_candidate_order_scope_exact"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:checked="true"
+                android:minHeight="48dp"
+                android:text="@string/candidate_order_scope_exact" />
+
+            <androidx.appcompat.widget.AppCompatRadioButton
+                android:id="@+id/radio_candidate_order_scope_lexical"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/candidate_order_scope_lexical" />
+        </RadioGroup>
+
+        <TextView
+            android:id="@+id/text_candidate_order_scope_explanation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="@string/candidate_order_scope_exact_description"
+            android:textAppearance="?attr/textAppearanceBody2" />
+
         <ProgressBar
             android:id="@+id/progress_candidate_order"
             android:layout_width="48dp"

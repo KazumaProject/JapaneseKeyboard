@@ -38,6 +38,11 @@ import kotlin.system.measureNanoTime
 @RunWith(AndroidJUnit4::class)
 class IncrementalConversionSessionPerformanceInstrumentedTest {
 
+    private var probeOmissionSearchEnabled = false
+    private var probeFlickTypoCorrectionEnabled = false
+    private var probeOptionalDictionariesEnabled = false
+    private var probeNBest = 4
+
     @Test
     fun compactCoreDictionariesMatchSerializedAssetsOnDevice() {
         val arguments = InstrumentationRegistry.getArguments()
@@ -589,13 +594,33 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
         val bunsetsuSeparation = arguments.getString("conversionPerfBunsetsu")
             ?.toBooleanStrictOrNull()
             ?: true
-        val prefixes = phrase.indices.map { phrase.substring(0, it + 1) }
+        probeOmissionSearchEnabled = arguments.getString("conversionPerfOmission") == "true"
+        probeFlickTypoCorrectionEnabled =
+            arguments.getString("conversionPerfFlickTypoCorrection") == "true"
+        probeOptionalDictionariesEnabled =
+            arguments.getString("conversionPerfMozcOptional") == "true"
+        probeNBest = arguments.getString("conversionPerfNBest")?.toIntOrNull() ?: 4
+        val strictCandidateParity = arguments.getString("conversionPerfStrictParity") != "false"
+        val requestedPrefixLengths = arguments.getString("conversionPerfPrefixLengths")
+            ?.split(',')
+            ?.mapNotNull(String::toIntOrNull)
+            ?.filter { it in 1..phrase.length }
+            ?.distinct()
+            ?.takeIf { it.isNotEmpty() }
+        val prefixLengths = requestedPrefixLengths ?: (1..phrase.length).toList()
+        val prefixes = prefixLengths.map { phrase.substring(0, it) }
         val context = ApplicationProvider.getApplicationContext<Context>()
         val entryPoint = EntryPointAccessors.fromApplication(
             context.applicationContext,
             KanaKanjiEngineEntryPoint::class.java,
         )
         val engine = entryPoint.kanaKanjiEngine()
+        if (
+            probeOptionalDictionariesEnabled &&
+            !engine.isInitialOptionalDictionaryStateLoaded()
+        ) {
+            engine.initializeOptionalDictionaryStateFromCurrentSources()
+        }
         val repository = entryPoint.userDictionaryRepository()
         val disableSystemNgramForProbe =
             arguments.getString("conversionPerfSystemNgram") == "false"
@@ -622,7 +647,21 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
             bunsetsuSeparation,
             collectFingerprints = true,
         )
-        assertEquals(legacyParity.fingerprints, incrementalParity.fingerprints)
+        val candidateParityExact = legacyParity.fingerprints == incrementalParity.fingerprints
+        if (strictCandidateParity) {
+            prefixes.indices.forEach { index ->
+                assertEquals(
+                    "prefix=${prefixes[index]}",
+                    legacyParity.fingerprints[index],
+                    incrementalParity.fingerprints[index],
+                )
+            }
+        } else {
+            assertEquals(
+                legacyParity.fingerprints.map { it.take(2) },
+                incrementalParity.fingerprints.map { it.take(2) },
+            )
+        }
 
         repeat(warmups) {
             runSequence(
@@ -711,14 +750,17 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
             appendLine("device=${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL} API ${android.os.Build.VERSION.SDK_INT}")
             appendLine("phrase=$phrase")
             appendLine("prefixCount=${prefixes.size}")
+            appendLine("prefixLengths=${prefixLengths.joinToString(",")}")
             appendLine("warmups=$warmups")
             appendLine("iterations=$iterations")
             appendLine("bunsetsuSeparation=$bunsetsuSeparation")
             appendLine("mode=$mode")
-            appendLine("optionalDictionaries=false")
-            appendLine("typoCorrection=false")
-            appendLine("omissionSearch=false")
-            appendLine("candidateParityEveryPrefix=true")
+            appendLine("optionalDictionaries=$probeOptionalDictionariesEnabled")
+            appendLine("typoCorrection=$probeFlickTypoCorrectionEnabled")
+            appendLine("omissionSearch=$probeOmissionSearchEnabled")
+            appendLine("nBest=$probeNBest")
+            appendLine("candidateParityEveryPrefix=$candidateParityExact")
+            appendLine("top2CandidateParityEveryPrefix=true")
             appendLine("legacySessionMs=${legacySession.asMilliseconds()}")
             appendLine("incrementalSessionMs=${incrementalSession.asMilliseconds()}")
             appendLine("legacyCommandMs=${legacyCommand.asMilliseconds()}")
@@ -1068,16 +1110,16 @@ class IncrementalConversionSessionPerformanceInstrumentedTest {
         input = input,
         mode = mode,
         bunsetsuSeparation = bunsetsuSeparation,
-        n = 4,
-        mozcUtPersonName = false,
-        mozcUtPlaces = false,
-        mozcUtWiki = false,
-        mozcUtNeologd = false,
-        mozcUtWeb = false,
+        n = probeNBest,
+        mozcUtPersonName = probeOptionalDictionariesEnabled,
+        mozcUtPlaces = probeOptionalDictionariesEnabled,
+        mozcUtWiki = probeOptionalDictionariesEnabled,
+        mozcUtNeologd = probeOptionalDictionariesEnabled,
+        mozcUtWeb = probeOptionalDictionariesEnabled,
         userDictionaryRepository = repository,
         learnRepository = null,
-        omissionSearchEnabled = false,
-        typoCorrectionJapaneseFlickEnabled = false,
+        omissionSearchEnabled = probeOmissionSearchEnabled,
+        typoCorrectionJapaneseFlickEnabled = probeFlickTypoCorrectionEnabled,
         typoCorrectionQwertyEnglishEnabled = false,
         typoCorrectionOffsetScore = 3000,
         omissionSearchOffsetScore = 1900,

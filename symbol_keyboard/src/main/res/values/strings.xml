@@ -6,4 +6,14 @@
     <string name="symbol_clipboard_action_pin">Pin</string>
     <string name="symbol_clipboard_action_unpin">Unpin</string>
     <string name="symbol_clipboard_action_delete">Delete</string>
+    <string name="emoji_category_smileys_emotion">Smileys &amp; Emotions</string>
+    <string name="emoji_category_people_body">People</string>
+    <string name="emoji_category_animals_nature">Animals &amp; Nature</string>
+    <string name="emoji_category_food_drink">Food &amp; Drink</string>
+    <string name="emoji_category_travel_places">Travel &amp; Places</string>
+    <string name="emoji_category_activities">Activities &amp; Events</string>
+    <string name="emoji_category_objects">Objects</string>
+    <string name="emoji_category_symbols">Symbols</string>
+    <string name="emoji_category_flags">Flags</string>
+    <string name="emoji_category_unknown">Other</string>
 </resources>

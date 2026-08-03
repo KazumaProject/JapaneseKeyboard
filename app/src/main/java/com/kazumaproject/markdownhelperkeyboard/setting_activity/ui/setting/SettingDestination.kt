@@ -496,6 +496,7 @@ object SettingDestinations {
         "setting_route_custom_keyboard_preferences",
         "setting_route_tablet_preferences",
         "flick_input_only_preference",
+        "flick_editor_preview_preference",
         "flick_sensitivity_preference",
         "flick_threshold_shape_preference",
         "long_press_timeout_preference",

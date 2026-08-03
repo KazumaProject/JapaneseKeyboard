@@ -28,12 +28,38 @@ class FindPathSessionScratchTest {
     fun stateTableKeepsOnlyTheLowestCostForAnExactState() {
         val table = FindPath.StateCostTable(initialCapacity = 16)
         assertTrue(table.putIfLower(1, 2, 3, 4, 5, 0, 100))
+        assertTrue(table.containsExactCost(1, 2, 3, 4, 5, 0, 100))
         assertFalse(table.putIfLower(1, 2, 3, 4, 5, 0, 101))
         assertTrue(table.putIfLower(1, 2, 3, 4, 5, 0, 99))
+        assertFalse(table.containsExactCost(1, 2, 3, 4, 5, 0, 100))
+        assertTrue(table.containsExactCost(1, 2, 3, 4, 5, 0, 99))
         assertTrue("a different canonical output remains a candidate", table.putIfLower(1, 2, 3, 4, 6, 0, 101))
 
         table.clear()
         assertTrue(table.putIfLower(1, 2, 3, 4, 5, 0, 200))
+    }
+
+    @Test
+    fun expansionCacheReusesOnlyTheSamePredecessorList() {
+        val cache = FindPath.ExpansionCache(initialCapacity = 16)
+        val predecessor = Node(
+            l = 0,
+            r = 0,
+            score = 0,
+            f = 0,
+            tango = "前",
+            len = 1,
+            yomiUsed = "まえ",
+            sPos = 0,
+        )
+        val firstList = mutableListOf(predecessor)
+        val restoredFrontier = mutableListOf(predecessor)
+        val expansion = FindPath.ExpansionList(arrayOf(predecessor), intArrayOf(123), 1)
+
+        cache.put(1, 2, 3, 4, 5, firstList, expansion)
+
+        assertSame(expansion, cache.get(1, 2, 3, 4, 5, firstList))
+        assertNull(cache.get(1, 2, 3, 4, 5, restoredFrontier))
     }
 
     @Test

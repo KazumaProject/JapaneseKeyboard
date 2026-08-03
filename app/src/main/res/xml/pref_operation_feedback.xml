@@ -2,7 +2,7 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory android:title="@string/category_function_title">
+    <PreferenceCategory android:title="@string/category_flick_input_title">
 
         <SwitchPreferenceCompat
             android:defaultValue="false"
@@ -10,6 +10,13 @@
             android:summaryOff="@string/flick_input_only_summary_off"
             android:summaryOn="@string/flick_input_only_summary_on"
             android:title="@string/flick_input_only_title" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="false"
+            android:key="flick_editor_preview_preference"
+            android:summaryOff="@string/flick_editor_preview_summary_off"
+            android:summaryOn="@string/flick_editor_preview_summary_on"
+            android:title="@string/flick_editor_preview_title" />
 
         <SeekBarPreference
             android:defaultValue="100"
@@ -28,6 +35,10 @@
             android:key="flick_threshold_shape_preference"
             android:title="@string/flick_threshold_shape_title"
             app:useSimpleSummaryProvider="true" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/category_function_title">
 
         <Preference
             android:key="long_press_timeout_preference"
@@ -53,6 +64,15 @@
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/setting_category_operation_keys_title">
+
+        <ListPreference
+            android:defaultValue="deferred"
+            android:dialogTitle="@string/delete_long_press_conversion_behavior_title"
+            android:entries="@array/delete_long_press_conversion_behavior_entries"
+            android:entryValues="@array/delete_long_press_conversion_behavior_values"
+            android:key="delete_long_press_conversion_behavior"
+            android:title="@string/delete_long_press_conversion_behavior_title"
+            app:useSimpleSummaryProvider="true" />
 
         <SwitchPreferenceCompat
             android:defaultValue="true"

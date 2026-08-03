@@ -20,6 +20,7 @@ import com.kazumaproject.markdownhelperkeyboard.dictionary_override.DictionaryFi
 import com.kazumaproject.qwerty_keyboard.glide.QwertyInputPointers
 import com.kazumaproject.qwerty_keyboard.glide.QwertyKeyboardProximityInfo
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -259,6 +260,97 @@ class EnglishEngine : QwertyGlideCandidateProvider {
                 logQwertyGlidePrebuilt("Fallback to runtime glide dictionary build")
             }
         }
+    }
+
+    /**
+     * Loads the bundled glide index away from the IME main thread.
+     *
+     * Until the index is ready, glide input continues to use the small fallback decoder. Repeated
+     * input sessions share the in-flight job instead of restarting the same asset read.
+     */
+    fun configureQwertyGlideDecoderAsync(
+        enabled: Boolean,
+        canUseBundledPrebuiltIndex: Boolean,
+        prebuiltDictionaryLoader: QwertyGlidePrebuiltDictionaryLoader?,
+    ) {
+        if (!enabled) {
+            configureQwertyGlideDecoder(
+                enabled = false,
+                canUseBundledPrebuiltIndex = canUseBundledPrebuiltIndex,
+                prebuiltDictionaryLoader = prebuiltDictionaryLoader,
+            )
+            return
+        }
+
+        synchronized(this) {
+            if (
+                canUseBundledPrebuiltIndex &&
+                qwertyGlideInputEnabled &&
+                (qwertyGlideDictionaryReady && qwertyGlideDecoder != null ||
+                    qwertyGlideWarmupJob?.isActive == true)
+            ) {
+                return
+            }
+            qwertyGlideInputEnabled = true
+            cancelQwertyGlideWarmup()
+            qwertyGlideDecoder = null
+            qwertyGlideDictionaryReady = false
+        }
+
+        if (!canUseBundledPrebuiltIndex || prebuiltDictionaryLoader == null) {
+            logQwertyGlidePrebuilt(
+                "External English dictionary override active, skip bundled prebuilt glide index"
+            )
+            logQwertyGlidePrebuilt("Fallback to runtime glide dictionary build")
+            return
+        }
+
+        val job = qwertyGlideWarmupScope.launch(start = CoroutineStart.LAZY) {
+            val startedAt = System.nanoTime()
+            val result = prebuiltDictionaryLoader.load()
+            if (!isActive) return@launch
+            when (result) {
+                is QwertyGlidePrebuiltLoadResult.Loaded -> {
+                    val decoder = createQwertyGlideDecoder(
+                        provider = result.provider,
+                        dictionaryReady = true,
+                    )
+                    if (!isActive) return@launch
+                    synchronized(this@EnglishEngine) {
+                        if (!isActive || !qwertyGlideInputEnabled) return@synchronized
+                        qwertyGlideDecoder = decoder
+                        qwertyGlideDictionaryReady = true
+                    }
+                    logQwertyGlidePrebuilt(
+                        "Bundled prebuilt glide index loaded asynchronously: " +
+                            "entries=${result.provider.entryCount} " +
+                            "elapsed_ms=${(System.nanoTime() - startedAt) / 1_000_000L}"
+                    )
+                }
+
+                is QwertyGlidePrebuiltLoadResult.NotAvailable -> {
+                    logQwertyGlidePrebuilt(
+                        "Bundled prebuilt glide index unavailable: ${result.reason}"
+                    )
+                    logQwertyGlidePrebuilt("Fallback to runtime glide dictionary build")
+                }
+
+                is QwertyGlidePrebuiltLoadResult.Invalid -> {
+                    logQwertyGlidePrebuilt(
+                        "Bundled prebuilt glide index invalid: ${result.reason}"
+                    )
+                    logQwertyGlidePrebuilt("Fallback to runtime glide dictionary build")
+                }
+            }
+        }
+        synchronized(this) {
+            qwertyGlideWarmupJob = job
+        }
+        job.start()
+    }
+
+    internal suspend fun awaitQwertyGlideWarmup() {
+        qwertyGlideWarmupJob?.join()
     }
 
     fun cancelQwertyGlideWarmup() {

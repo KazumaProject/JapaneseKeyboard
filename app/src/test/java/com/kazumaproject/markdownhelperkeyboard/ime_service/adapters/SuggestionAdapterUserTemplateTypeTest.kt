@@ -116,7 +116,7 @@ class SuggestionAdapterUserTemplateTypeTest {
         awaitItemCount(adapter, 3)
         val holder = createHolder(adapter)
 
-        val expected = listOf("学習", "ユーザー", "定型")
+        val expected = listOf("[学習]", "[ユーザー]", "[定型]")
         expected.forEachIndexed { position, label ->
             adapter.onBindViewHolder(holder, position)
             assertEquals(label, holder.typeText.text.toString())
@@ -136,7 +136,7 @@ class SuggestionAdapterUserTemplateTypeTest {
         val holder = createHolder(adapter)
 
         adapter.onBindViewHolder(holder, 0)
-        assertEquals("定型", holder.typeText.text.toString())
+        assertEquals("[定型]", holder.typeText.text.toString())
 
         adapter.setShowDictionaryCandidateLabels(false)
         adapter.onBindViewHolder(holder, 0)

@@ -90,6 +90,14 @@ class LearnRepository @Inject constructor(
             .toList()
     }
 
+    suspend fun findExactMatchesForConversion(input: String): List<LearnEntity> {
+        val firstCharacter = input.firstOrNull() ?: return emptyList()
+        return getConversionBucket(firstCharacter)
+            .asSequence()
+            .filter { it.input == input }
+            .toList()
+    }
+
     fun all(): Flow<List<LearnEntity>> = learnDao.all()
 
     suspend fun allSuspend(): List<LearnEntity> = learnDao.getAllSuspend()

@@ -1,6 +1,8 @@
 package com.kazumaproject.markdownhelperkeyboard.repository
 
 import com.kazumaproject.custom_keyboard.data.GridPlacement
+import com.kazumaproject.custom_keyboard.data.DoubleTapBinding
+import com.kazumaproject.custom_keyboard.data.DoubleTapPolicy
 import com.kazumaproject.custom_keyboard.data.KeyAction
 import com.kazumaproject.custom_keyboard.data.KeyData
 import com.kazumaproject.custom_keyboard.data.KeyItem
@@ -113,6 +115,99 @@ class KeyboardRepositoryGridPlacementTest {
         assertEquals(3, restoredItem.placement.columnSpanUnits)
         assertEquals(1, restored.keys.single().rowSpan)
         assertEquals(2, restored.keys.single().colSpan)
+    }
+
+    @Test
+    fun convertRoundTrip_preservesDoubleTapActionAndPolicy() {
+        val shift = KeyData(
+            label = "",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.ShiftKey,
+            keyType = KeyType.NORMAL,
+            isSpecialKey = true,
+            keyId = "shift",
+            doubleTapBinding = DoubleTapBinding(
+                action = KeyAction.CapLockKey,
+                policy = DoubleTapPolicy.PROMOTE
+            )
+        )
+        val layout = KeyboardLayout(
+            keys = listOf(shift),
+            flickKeyMaps = emptyMap(),
+            columnCount = 1,
+            rowCount = 1
+        )
+
+        val dbKey = convertToDbKeys(layout).single()
+        val restored = convertToUiLayout(listOf(dbKey)).keys.single()
+
+        assertEquals("CapLockKey", dbKey.doubleTapAction)
+        assertEquals("PROMOTE", dbKey.doubleTapPolicy)
+        assertEquals(KeyAction.CapLockKey, restored.doubleTapBinding?.action)
+        assertEquals(DoubleTapPolicy.PROMOTE, restored.doubleTapBinding?.policy)
+    }
+
+    @Test
+    fun convertRoundTrip_dropsDoubleTapBindingFromNormalCharacterKey() {
+        val characterKey = KeyData(
+            label = "a",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.Text("a"),
+            keyType = KeyType.NORMAL,
+            isSpecialKey = false,
+            keyId = "a",
+            doubleTapBinding = DoubleTapBinding(
+                action = KeyAction.Copy,
+                policy = DoubleTapPolicy.PROMOTE
+            )
+        )
+        val layout = KeyboardLayout(
+            keys = listOf(characterKey),
+            flickKeyMaps = emptyMap(),
+            columnCount = 1,
+            rowCount = 1
+        )
+
+        val dbKey = convertToDbKeys(layout).single()
+        val restored = convertToUiLayout(listOf(dbKey)).keys.single()
+
+        assertNull(dbKey.doubleTapAction)
+        assertNull(dbKey.doubleTapPolicy)
+        assertNull(restored.doubleTapBinding)
+    }
+
+    @Test
+    fun convertRoundTrip_normalizesNonShiftShortcutToExclusivePolicy() {
+        val selectKey = KeyData(
+            label = "Select",
+            row = 0,
+            column = 0,
+            isFlickable = false,
+            action = KeyAction.SelectAll,
+            keyType = KeyType.NORMAL,
+            isSpecialKey = true,
+            keyId = "select",
+            doubleTapBinding = DoubleTapBinding(
+                action = KeyAction.Copy,
+                policy = DoubleTapPolicy.PROMOTE
+            )
+        )
+        val layout = KeyboardLayout(
+            keys = listOf(selectKey),
+            flickKeyMaps = emptyMap(),
+            columnCount = 1,
+            rowCount = 1
+        )
+
+        val dbKey = convertToDbKeys(layout).single()
+        val restored = convertToUiLayout(listOf(dbKey)).keys.single()
+
+        assertEquals("EXCLUSIVE", dbKey.doubleTapPolicy)
+        assertEquals(DoubleTapPolicy.EXCLUSIVE, restored.doubleTapBinding?.policy)
     }
 
     @Test
