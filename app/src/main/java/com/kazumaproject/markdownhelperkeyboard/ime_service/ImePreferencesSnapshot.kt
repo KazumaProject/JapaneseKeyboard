@@ -21,6 +21,7 @@ data class ImePreferencesSnapshot(
     val mozcUTNeologd: Boolean,
     val mozcUTWeb: Boolean,
     val isFlickOnlyMode: Boolean,
+    val flickEditorPreviewPreference: Boolean,
     val isOmissionSearchEnable: Boolean,
     val delayTime: Int,
     val isLearnDictionaryMode: Boolean,
@@ -289,6 +290,7 @@ data class ImePreferencesSnapshot(
                     appPreference.mozc_ut_web_preference,
                 ),
                 isFlickOnlyMode = appPreference.flick_input_only_preference ?: false,
+                flickEditorPreviewPreference = appPreference.flick_editor_preview_preference,
                 isOmissionSearchEnable = appPreference.omission_search_preference ?: false,
                 delayTime = appPreference.time_same_pronounce_typing_preference ?: 1000,
                 isLearnDictionaryMode = appPreference.learn_dictionary_preference ?: true,
@@ -317,7 +319,10 @@ data class ImePreferencesSnapshot(
                     appPreference.live_conversion_candidate_yomi_preference ?: false,
                 nBest = appPreference.n_best_preference ?: 4,
                 conversionBeamWidth = appPreference.conversion_beam_width_preference,
-                conversionBackend = if (appPreference.incremental_conversion_session_preference) {
+                conversionBackend = if (
+                    appPreference.incremental_conversion_session_preference ||
+                    appPreference.live_conversion_preference == true
+                ) {
                     ConversionBackend.INCREMENTAL_SESSION
                 } else {
                     ConversionBackend.LEGACY

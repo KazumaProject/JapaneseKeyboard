@@ -49,6 +49,9 @@ import com.kazumaproject.core.domain.state.toTwoStateNumberReturnTargetOrNull
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.flick.FlickDirection as CoreFlickDirection
 import com.kazumaproject.core.domain.flick.FlickGestureMath
+import com.kazumaproject.core.domain.flick.FlickTextPreviewEmitter
+import com.kazumaproject.core.domain.flick.FlickTextPreviewListener
+import com.kazumaproject.core.domain.flick.FlickTextSelection
 import com.kazumaproject.core.domain.flick.FlickThresholdShape
 import com.kazumaproject.core.ui.effect.Blur
 import com.kazumaproject.core.ui.input_mode_witch.InputModeSwitch
@@ -135,6 +138,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var keyTouchCancelListener: KeyTouchCancelListener? = null
     private var inputModeChangedListener: ((InputMode) -> Unit)? = null
     private var qwertyNumberModeRequestedListener: (() -> Unit)? = null
+    private val flickTextPreviewEmitter = FlickTextPreviewEmitter()
 
     private var flickSensitivity: Int = 100
     private var flickThresholdPx: Float = resolveFlickThresholdPx(flickSensitivity)
@@ -1319,6 +1323,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         this.flickListener = flickListener
     }
 
+    fun setOnFlickTextPreviewListener(listener: FlickTextPreviewListener?) {
+        flickTextPreviewEmitter.listener = listener
+    }
+
     /** Allow setting an external LongPressListener **/
     fun setOnLongPressListener(longPressListener: LongPressListener) {
         this.longPressListener = longPressListener
@@ -1382,6 +1390,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         keyTouchCancelListener = null
         inputModeChangedListener = null
         qwertyNumberModeRequestedListener = null
+        flickTextPreviewEmitter.cancel()
+        flickTextPreviewEmitter.listener = null
         longPressJob?.cancel()
         longPressJob = null
         isCursorMode = false
@@ -1439,8 +1449,13 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     }
 
                     if (isCursorMode) {
+                        flickTextPreviewEmitter.cancel()
                         return true
                     }
+
+                    flickTextPreviewEmitter.begin(
+                        resolveTextSelection(key, GestureType.Tap)
+                    )
 
                     setKeyPressed()
                     longPressJob = scope.launch {
@@ -1476,56 +1491,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
                     if (pressedKey.pointer == event.getPointerId(event.actionIndex)) {
                         val gestureType = getGestureType(event)
-                        // ← READING the state flow's current value:
-                        val keyInfo = currentInputMode.value
-                            .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
+                        Log.d("TenKey: ACTION_UP in pointer", "called $pressedKey")
 
-                        Log.d("TenKey: ACTION_UP in pointer", "called $keyInfo $pressedKey")
-
-                        if (keyInfo == KeyInfo.Null) {
-                            flickListener?.onFlick(
-                                gestureType = gestureType, key = pressedKey.key, char = null
-                            )
-                            if (pressedKey.key == Key.SideKeyInputMode) {
-                                handleClickInputModeSwitch()
-                            } else if (pressedKey.key == Key.SideKeyNumberMode) {
-                                switchToNumberMode()
-                            }
-                        } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
-                            when (gestureType) {
-                                GestureType.Null -> {}
-                                GestureType.Down -> {}
-                                GestureType.Tap -> flickListener?.onFlick(
-                                    gestureType = gestureType,
-                                    key = pressedKey.key,
-                                    char = keyInfo.tap
-                                )
-
-                                GestureType.FlickLeft -> flickListener?.onFlick(
-                                    gestureType = gestureType,
-                                    key = pressedKey.key,
-                                    char = keyInfo.flickLeft
-                                )
-
-                                GestureType.FlickTop -> flickListener?.onFlick(
-                                    gestureType = gestureType,
-                                    key = pressedKey.key,
-                                    char = keyInfo.flickTop
-                                )
-
-                                GestureType.FlickRight -> flickListener?.onFlick(
-                                    gestureType = gestureType,
-                                    key = pressedKey.key,
-                                    char = keyInfo.flickRight
-                                )
-
-                                GestureType.FlickBottom -> flickListener?.onFlick(
-                                    gestureType = gestureType,
-                                    key = pressedKey.key,
-                                    char = keyInfo.flickBottom
-                                )
-                            }
-                        }
+                        dispatchResolvedGesture(pressedKey.key, gestureType)
                     }
                     Log.d("TenKey: ACTION_UP out", "called $pressedKey")
                     resetAllKeys()
@@ -1599,6 +1567,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                     } else {
                         getGestureType(event, pressedKey.pointer)
                     }
+                    flickTextPreviewEmitter.update(
+                        resolveTextSelection(pressedKey.key, gestureType)
+                    )
                     when (gestureType) {
                         GestureType.Null -> {}
                         GestureType.Down -> {}
@@ -1641,37 +1612,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                         if (pressedKey.key == Key.KeyDakutenSmall && currentInputMode.value == InputMode.ModeNumber) {
                             setNumberSmallKeyPresentation()
                         }
-                        val keyInfo = currentInputMode.value
-                            .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
-                        if (keyInfo == KeyInfo.Null) {
-                            flickListener?.onFlick(
-                                gestureType = gestureType2, key = pressedKey.key, char = null
-                            )
-                        } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
-                            when (gestureType2) {
-                                GestureType.Null -> {}
-                                GestureType.Down -> {}
-                                GestureType.Tap -> {
-                                    flickListener?.onFlick(
-                                        gestureType = gestureType2,
-                                        key = pressedKey.key,
-                                        char = keyInfo.tap
-                                    )
-                                    val button = getButtonFromKey(pressedKey.key)
-                                    button?.let {
-                                        if (it is AppCompatButton) {
-                                            setTextForMode(it, currentInputMode.value)
-                                        }
-                                        if (it is AppCompatImageButton && currentInputMode.value == InputMode.ModeNumber && it == binding.keySmallLetter) {
-                                            setNumberSmallKeyPresentation()
-                                        }
-                                    }
-                                }
-
-                                GestureType.FlickLeft, GestureType.FlickTop, GestureType.FlickRight, GestureType.FlickBottom -> {
-                                    setFlickActionPointerDown(keyInfo, gestureType2)
-                                }
-                            }
+                        dispatchResolvedGesture(pressedKey.key, gestureType2)
+                        (getButtonFromKey(pressedKey.key) as? AppCompatButton)?.let { button ->
+                            setTextForMode(button, currentInputMode.value)
                         }
                         pressedKey = pressedKey.copy(
                             key = key, pointer = pointer, initialX = if (pointer == 0) {
@@ -1701,6 +1644,9 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             }
                         )
                         setKeyPressed()
+                        flickTextPreviewEmitter.begin(
+                            resolveTextSelection(key, GestureType.Tap)
+                        )
                         longPressJob = scope.launch {
                             delay(longPressTimeout)
                             if (pressedKey.key != Key.NotSelected) {
@@ -1721,56 +1667,8 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
                             val gestureType = getGestureType(
                                 event, event.getPointerId(event.actionIndex)
                             )
-                            val keyInfo = currentInputMode.value
-                                .next(keyMap = keyMap, key = pressedKey.key, isTablet = false)
-
                             Log.d("TenKey: ACTION_POINTER_UP", "called [${pressedKey.key}]")
-                            if (keyInfo == KeyInfo.Null) {
-                                flickListener?.onFlick(
-                                    gestureType = gestureType, key = pressedKey.key, char = null
-                                )
-                                if (pressedKey.key == Key.SideKeyInputMode) {
-                                    handleClickInputModeSwitch()
-                                } else if (pressedKey.key == Key.SideKeyNumberMode) {
-                                    switchToNumberMode()
-                                }
-                            } else if (keyInfo is KeyInfo.KeyTapFlickInfo) {
-                                when (gestureType) {
-                                    GestureType.Null -> {}
-                                    GestureType.Down -> {}
-                                    GestureType.Tap -> {
-                                        flickListener?.onFlick(
-                                            gestureType = gestureType,
-                                            key = pressedKey.key,
-                                            char = keyInfo.tap
-                                        )
-                                    }
-
-                                    GestureType.FlickLeft -> flickListener?.onFlick(
-                                        gestureType = gestureType,
-                                        key = pressedKey.key,
-                                        char = keyInfo.flickLeft
-                                    )
-
-                                    GestureType.FlickTop -> flickListener?.onFlick(
-                                        gestureType = gestureType,
-                                        key = pressedKey.key,
-                                        char = keyInfo.flickTop
-                                    )
-
-                                    GestureType.FlickRight -> flickListener?.onFlick(
-                                        gestureType = gestureType,
-                                        key = pressedKey.key,
-                                        char = keyInfo.flickRight
-                                    )
-
-                                    GestureType.FlickBottom -> flickListener?.onFlick(
-                                        gestureType = gestureType,
-                                        key = pressedKey.key,
-                                        char = keyInfo.flickBottom
-                                    )
-                                }
-                            }
+                            dispatchResolvedGesture(pressedKey.key, gestureType)
                             val button = getButtonFromKey(pressedKey.key)
                             button?.let {
                                 if (it is AppCompatButton) {
@@ -1798,6 +1696,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     }
 
     private fun cancelActiveTouch(reason: KeyTouchCancelReason) {
+        flickTextPreviewEmitter.cancel()
         resetLongPressAction()
         resetAllKeys()
 
@@ -2164,6 +2063,74 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
             CoreFlickDirection.Top -> GestureType.FlickTop
             CoreFlickDirection.Right -> GestureType.FlickRight
             CoreFlickDirection.Bottom -> GestureType.FlickBottom
+        }
+    }
+
+    private fun resolveTextSelection(
+        key: Key,
+        gestureType: GestureType,
+    ): FlickTextSelection {
+        val keyInfo = currentInputMode.value.next(
+            keyMap = keyMap,
+            key = key,
+            isTablet = false
+        )
+        return resolveTextSelection(keyInfo, gestureType)
+    }
+
+    private fun resolveTextSelection(
+        keyInfo: KeyInfo,
+        gestureType: GestureType,
+    ): FlickTextSelection {
+        val character = (keyInfo as? KeyInfo.KeyTapFlickInfo)?.let { info ->
+            when (gestureType) {
+                GestureType.Tap -> info.tap
+                GestureType.FlickLeft -> info.flickLeft
+                GestureType.FlickTop -> info.flickTop
+                GestureType.FlickRight -> info.flickRight
+                GestureType.FlickBottom -> info.flickBottom
+                GestureType.Null,
+                GestureType.Down -> null
+            }
+        }
+        return FlickTextSelection(
+            text = character?.toString(),
+            isFlick = gestureType != GestureType.Tap
+        )
+    }
+
+    private fun dispatchResolvedGesture(key: Key, gestureType: GestureType) {
+        val keyInfo = currentInputMode.value.next(
+            keyMap = keyMap,
+            key = key,
+            isTablet = false
+        )
+        val selection = resolveTextSelection(keyInfo, gestureType)
+        flickTextPreviewEmitter.commit(selection) {
+            when (keyInfo) {
+                KeyInfo.Null -> {
+                    flickListener?.onFlick(
+                        gestureType = gestureType,
+                        key = key,
+                        char = null
+                    )
+                    if (key == Key.SideKeyInputMode) {
+                        handleClickInputModeSwitch()
+                    } else if (key == Key.SideKeyNumberMode) {
+                        switchToNumberMode()
+                    }
+                }
+
+                is KeyInfo.KeyTapFlickInfo -> {
+                    if (gestureType != GestureType.Null && gestureType != GestureType.Down) {
+                        flickListener?.onFlick(
+                            gestureType = gestureType,
+                            key = key,
+                            char = selection.text?.firstOrNull()
+                        )
+                    }
+                }
+            }
         }
     }
 

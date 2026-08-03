@@ -116,6 +116,51 @@ class TokenArray {
         }
     }
 
+    /**
+     * Visits at most [scratchIndices].size tokens in stable ascending word-cost order without
+     * materialising and sorting every token for the reading. [scratchIndices] belongs to the
+     * caller so repeated typo-frontier hits do not allocate a temporary list per result.
+     */
+    fun forEachLowestCostDictionaryByYomiTermId(
+        nodeId: Int,
+        succinctBitVector: SuccinctBitVector,
+        scratchIndices: IntArray,
+        block: (posTableIndex: Short, wordCost: Short, nodeId: Int) -> Unit,
+    ) {
+        if (scratchIndices.isEmpty()) return
+        val startSelect0 = succinctBitVector.select0(nodeId)
+        val endSelect0 = succinctBitVector.select0(nodeId + 1)
+        val startRank1 = succinctBitVector.rank1(startSelect0)
+        val endRank1 = succinctBitVector.rank1(endSelect0)
+        var selectedCount = 0
+        for (tokenIndex in startRank1 until endRank1) {
+            var insertionIndex = selectedCount
+            while (
+                insertionIndex > 0 &&
+                wordCostList[tokenIndex] < wordCostList[scratchIndices[insertionIndex - 1]]
+            ) {
+                insertionIndex--
+            }
+            if (insertionIndex >= scratchIndices.size) continue
+            val newCount = (selectedCount + 1).coerceAtMost(scratchIndices.size)
+            var shiftIndex = newCount - 1
+            while (shiftIndex > insertionIndex) {
+                scratchIndices[shiftIndex] = scratchIndices[shiftIndex - 1]
+                shiftIndex--
+            }
+            scratchIndices[insertionIndex] = tokenIndex
+            selectedCount = newCount
+        }
+        for (index in 0 until selectedCount) {
+            val tokenIndex = scratchIndices[index]
+            block(
+                posTableIndexList[tokenIndex],
+                wordCostList[tokenIndex],
+                nodeIdAt(tokenIndex),
+            )
+        }
+    }
+
     fun getListDictionaryByYomiTermIdShortArray(
         nodeId: Short,
         rank0ArrayTokenArrayBitvector: ShortArray,

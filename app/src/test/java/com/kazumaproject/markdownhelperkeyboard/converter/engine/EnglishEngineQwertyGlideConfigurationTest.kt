@@ -4,6 +4,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlideIndex
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.QwertyGlidePrebuiltDictionaryLoader
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.characterMask
 import com.kazumaproject.markdownhelperkeyboard.converter.glide.transitionMask
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -12,6 +13,8 @@ import java.io.ByteArrayOutputStream
 import java.io.DataOutputStream
 import java.io.FileNotFoundException
 import java.io.InputStream
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class EnglishEngineQwertyGlideConfigurationTest {
     @Test
@@ -113,6 +116,62 @@ class EnglishEngineQwertyGlideConfigurationTest {
 
         assertTrue(opened)
         assertTrue(engine.isQwertyGlideDictionaryReady())
+    }
+
+    @Test
+    fun asyncConfigurationLoadsPrebuiltWithoutBlockingCaller() = runBlocking {
+        val engine = EnglishEngine()
+        val loadStarted = CountDownLatch(1)
+        val allowLoadToFinish = CountDownLatch(1)
+
+        engine.configureQwertyGlideDecoderAsync(
+            enabled = true,
+            canUseBundledPrebuiltIndex = true,
+            prebuiltDictionaryLoader = loader {
+                loadStarted.countDown()
+                check(allowLoadToFinish.await(2, TimeUnit.SECONDS))
+                validIndex("an").inputStream()
+            },
+        )
+
+        assertTrue(engine.isQwertyGlideInputEnabled())
+        assertTrue(loadStarted.await(2, TimeUnit.SECONDS))
+        assertFalse(engine.isQwertyGlideDictionaryReady())
+        allowLoadToFinish.countDown()
+        engine.awaitQwertyGlideWarmup()
+        assertTrue(engine.isQwertyGlideDictionaryReady())
+        assertTrue(engine.hasQwertyGlideDecoder())
+    }
+
+    @Test
+    fun repeatedAsyncConfigurationSharesInFlightLoad() = runBlocking {
+        var opens = 0
+        val engine = EnglishEngine()
+        val loadStarted = CountDownLatch(1)
+        val allowLoadToFinish = CountDownLatch(1)
+        val prebuiltLoader = loader {
+            opens += 1
+            loadStarted.countDown()
+            check(allowLoadToFinish.await(2, TimeUnit.SECONDS))
+            validIndex("an").inputStream()
+        }
+
+        engine.configureQwertyGlideDecoderAsync(
+            enabled = true,
+            canUseBundledPrebuiltIndex = true,
+            prebuiltDictionaryLoader = prebuiltLoader,
+        )
+        assertTrue(loadStarted.await(2, TimeUnit.SECONDS))
+        engine.configureQwertyGlideDecoderAsync(
+            enabled = true,
+            canUseBundledPrebuiltIndex = true,
+            prebuiltDictionaryLoader = prebuiltLoader,
+        )
+
+        allowLoadToFinish.countDown()
+        engine.awaitQwertyGlideWarmup()
+        assertTrue(engine.isQwertyGlideDictionaryReady())
+        assertTrue(opens == 1)
     }
 
     private fun loader(openBundledIndex: () -> InputStream) = QwertyGlidePrebuiltDictionaryLoader(

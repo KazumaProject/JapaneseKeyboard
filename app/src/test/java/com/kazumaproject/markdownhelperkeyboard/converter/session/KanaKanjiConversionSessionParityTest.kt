@@ -58,8 +58,28 @@ class KanaKanjiConversionSessionParityTest {
                     legacyResult.bunsetsuResult?.splitPatternByCandidateString,
                     incrementalResult.bunsetsuResult?.splitPatternByCandidateString,
                 )
+                assertEquals(
+                    "$input/$mode/bunsetsu=$bunsetsu conversion segments",
+                    legacyResult.candidateSegmentsByString,
+                    incrementalResult.candidateSegmentsByString,
+                )
             }
         }
+    }
+
+    @Test
+    fun segmentCollectionUsesExactPathNodesWhenBunsetsuDisplayIsDisabled() = runBlocking {
+        val result = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY).query(
+            request("ひを", CandidateQueryMode.CONVERSION, bunsetsu = false),
+        )
+
+        assertEquals(
+            listOf(Triple(0, 1, "火"), Triple(1, 2, "を")),
+            result.candidateSegmentsByString.getValue("火を").map {
+                Triple(it.inputStart, it.inputEnd, it.output)
+            },
+        )
+        assertEquals(null, result.bunsetsuResult)
     }
 
     @Test
@@ -69,6 +89,13 @@ class KanaKanjiConversionSessionParityTest {
         var failDuringAppend = false
         var lookupCount = 0
         whenever(repository.commonPrefixSearchInUserDict(any())).thenAnswer {
+            lookupCount++
+            if (failDuringAppend && lookupCount == 3) {
+                throw kotlinx.coroutines.CancellationException("controlled partial append")
+            }
+            emptyList<UserWord>()
+        }
+        whenever(repository.exactMatchesForConversion(any())).thenAnswer {
             lookupCount++
             if (failDuringAppend && lookupCount == 3) {
                 throw kotlinx.coroutines.CancellationException("controlled partial append")
@@ -98,21 +125,84 @@ class KanaKanjiConversionSessionParityTest {
             cancellationObserved = true
         }
         assertTrue(cancellationObserved)
+        assertEquals("きょ", incremental.committedInput())
 
         failDuringAppend = false
         lookupCount = 0
         val recovered = incremental.query(
-            request("きょう", CandidateQueryMode.PREDICTION, true).copy(
+            request("きょうは", CandidateQueryMode.PREDICTION, true).copy(
                 userDictionaryRepository = repository,
             ),
         )
         val rebuilt = KanaKanjiConversionSession(localEngine, ConversionBackend.LEGACY).query(
-            request("きょう", CandidateQueryMode.PREDICTION, true).copy(
+            request("きょうは", CandidateQueryMode.PREDICTION, true).copy(
                 userDictionaryRepository = repository,
             ),
         )
         assertEquals(rebuilt.candidates.fingerprint(), recovered.candidates.fingerprint())
         assertEquals(rebuilt.bunsetsuResult?.splitPatterns, recovered.bunsetsuResult?.splitPatterns)
+        assertEquals("きょうは", incremental.committedInput())
+    }
+
+    @Test
+    fun completedGraphSurvivesCancellationAfterForwardDp() = runBlocking {
+        val localEngine = TestEngineFactory.create()
+        val incremental = KanaKanjiConversionSession(
+            localEngine,
+            ConversionBackend.INCREMENTAL_SESSION,
+        )
+        incremental.query(request("きょ", CandidateQueryMode.PREDICTION, true))
+
+        var cancelAfterForwardDp = true
+        incremental.setAfterForwardDpForTest {
+            if (cancelAfterForwardDp) {
+                cancelAfterForwardDp = false
+                throw kotlinx.coroutines.CancellationException("controlled post-forward cancellation")
+            }
+        }
+        var cancellationObserved = false
+        try {
+            incremental.query(request("きょう", CandidateQueryMode.PREDICTION, true))
+        } catch (_: kotlinx.coroutines.CancellationException) {
+            cancellationObserved = true
+        }
+
+        assertTrue(cancellationObserved)
+        assertEquals("きょう", incremental.committedInput())
+
+        incremental.setAfterForwardDpForTest(null)
+        val recovered = incremental.query(request("きょうは", CandidateQueryMode.PREDICTION, true))
+        val rebuilt = KanaKanjiConversionSession(localEngine, ConversionBackend.LEGACY).query(
+            request("きょうは", CandidateQueryMode.PREDICTION, true),
+        )
+        assertEquals(rebuilt.candidates.fingerprint(), recovered.candidates.fingerprint())
+        assertEquals(rebuilt.bunsetsuResult?.splitPatterns, recovered.bunsetsuResult?.splitPatterns)
+        assertEquals("きょうは", incremental.committedInput())
+    }
+
+    @Test
+    fun oneCharacterAppendReusesCommittedForwardDpAndMatchesLegacy() = runBlocking {
+        val localEngine = TestEngineFactory.create()
+        val incremental = KanaKanjiConversionSession(
+            localEngine,
+            ConversionBackend.INCREMENTAL_SESSION,
+        ).also { it.enablePerformanceProbe() }
+        val legacy = KanaKanjiConversionSession(localEngine, ConversionBackend.LEGACY)
+
+        incremental.query(request("きょう", CandidateQueryMode.PREDICTION, true))
+        val incrementalResult = incremental.query(
+            request("きょうは", CandidateQueryMode.PREDICTION, true),
+        )
+        val legacyResult = legacy.query(
+            request("きょうは", CandidateQueryMode.PREDICTION, true),
+        )
+
+        assertTrue(incremental.performanceSnapshot()?.forwardDpReused == true)
+        assertEquals(legacyResult.candidates.fingerprint(), incrementalResult.candidates.fingerprint())
+        assertEquals(
+            legacyResult.bunsetsuResult?.splitPatterns,
+            incrementalResult.bunsetsuResult?.splitPatterns,
+        )
     }
 
     private fun request(
@@ -137,6 +227,7 @@ class KanaKanjiConversionSessionParityTest {
         typoCorrectionOffsetScore = 3000,
         omissionSearchOffsetScore = 1900,
         beamWidth = 20,
+        collectCandidateSegments = true,
     )
 
     private fun List<Candidate>.fingerprint(): List<List<Any?>> = map { candidate ->
@@ -162,6 +253,8 @@ class KanaKanjiConversionSessionParityTest {
             userDictionaryRepository = mock()
             runBlocking {
                 whenever(userDictionaryRepository.commonPrefixSearchInUserDict(any()))
+                    .thenReturn(emptyList())
+                whenever(userDictionaryRepository.exactMatchesForConversion(any()))
                     .thenReturn(emptyList())
             }
         }

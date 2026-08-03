@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="delete_long_press_conversion_behavior_entries">
+        <item>@string/delete_long_press_conversion_behavior_deferred</item>
+        <item>@string/delete_long_press_conversion_behavior_continuous</item>
+    </string-array>
+
+    <string-array name="delete_long_press_conversion_behavior_values">
+        <item>deferred</item>
+        <item>continuous</item>
+    </string-array>
+
     <string-array name="physical_keyboard_input_mode_entries">
         <item>@string/physical_keyboard_input_mode_romaji</item>
         <item>@string/physical_keyboard_input_mode_kana</item>

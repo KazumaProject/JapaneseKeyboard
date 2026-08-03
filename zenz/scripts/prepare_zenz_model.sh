@@ -75,7 +75,6 @@ PIP_BIN="${VENV_DIR}/bin/pip"
 
 "${PIP_BIN}" install --upgrade pip >/dev/null
 "${PIP_BIN}" install huggingface_hub >/dev/null
-"${PIP_BIN}" install -r "${LLAMA_CPP_DIR}/requirements/requirements-convert_hf_to_gguf.txt" >/dev/null
 
 rm -rf "${MODEL_DIR}"
 mkdir -p "${MODEL_DIR}"
@@ -113,6 +112,23 @@ for attempt in $(seq 1 "${max_attempts}"); do
   echo "Zenz model download failed; retrying in ${sleep_seconds}s (${attempt}/${max_attempts})..." >&2
   sleep "${sleep_seconds}"
 done
+
+# GGUF repositories already contain the final quantized model. Keep the same
+# build/cache contract as the conversion path, but avoid converting and
+# quantizing the file a second time.
+GGUF_SOURCE_FILE="${MODEL_DIR}/${ZENZ_MODEL_ASSET_NAME}"
+if [[ -f "${GGUF_SOURCE_FILE}" ]]; then
+  cp "${GGUF_SOURCE_FILE}" "${OUTPUT_FILE}"
+  printf '%s\n' "${EXPECTED_STAMP}" > "${STAMP_FILE}"
+  if [[ -n "${CACHE_FILE}" ]]; then
+    cp "${OUTPUT_FILE}" "${CACHE_FILE}"
+    cp "${STAMP_FILE}" "${CACHE_STAMP_FILE}"
+  fi
+  echo "Prepared ${OUTPUT_FILE} from ${GGUF_SOURCE_FILE}"
+  exit 0
+fi
+
+"${PIP_BIN}" install -r "${LLAMA_CPP_DIR}/requirements/requirements-convert_hf_to_gguf.txt" >/dev/null
 
 cmake -S "${LLAMA_CPP_DIR}" -B "${HOST_BUILD_DIR}" \
   -DCMAKE_BUILD_TYPE=Release \

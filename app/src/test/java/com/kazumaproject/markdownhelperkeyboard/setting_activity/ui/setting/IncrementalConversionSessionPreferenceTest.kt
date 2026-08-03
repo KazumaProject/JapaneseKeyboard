@@ -48,6 +48,17 @@ class IncrementalConversionSessionPreferenceTest {
     }
 
     @Test
+    fun liveConversionAlwaysUsesIncrementalSession() {
+        AppPreference.incremental_conversion_session_preference = false
+        AppPreference.live_conversion_preference = true
+
+        assertEquals(
+            ConversionBackend.INCREMENTAL_SESSION,
+            ImePreferencesSnapshot.from(AppPreference).conversionBackend,
+        )
+    }
+
+    @Test
     fun switchIsSharedByNewAndLegacyConversionEngineSettings() {
         assertTrue(conversionEngineXmlContainsDefaultOffSwitch())
         assertFalse(xmlContainsPreference(R.xml.pref_dictionary))

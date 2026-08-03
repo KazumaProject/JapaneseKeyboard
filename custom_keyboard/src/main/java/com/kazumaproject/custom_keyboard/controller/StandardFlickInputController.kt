@@ -41,6 +41,8 @@ class StandardFlickInputController(
     interface StandardFlickListener {
         fun onPress(character: String)
         fun onFlick(character: String)
+        fun onSelectionChanged(character: String?, isFlick: Boolean) {}
+        fun onCanceled() {}
     }
 
     var listener: StandardFlickListener? = null
@@ -97,6 +99,10 @@ class StandardFlickInputController(
         popupWindowAnchorProvider = provider
     }
 
+    fun setInputTextTransform(transform: (String) -> String) {
+        popupView.setInputTextTransform(transform)
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     fun attach(
         button: View,
@@ -139,6 +145,10 @@ class StandardFlickInputController(
                 val direction = calculateDirection(dx, dy)
                 segmentedDrawable?.highlightDirection = direction
                 showPopup(direction)
+                listener?.onSelectionChanged(
+                    characterMap[direction]?.takeIf(String::isNotEmpty),
+                    direction != FlickDirection.TAP
+                )
                 return true
             }
 
@@ -162,6 +172,7 @@ class StandardFlickInputController(
                 dismissPopup()
                 anchorView = null
                 activeGestureConfig = null
+                listener?.onCanceled()
                 return true
             }
         }
@@ -240,6 +251,7 @@ class StandardFlickInputController(
     }
 
     fun cancel() {
+        listener?.onCanceled()
         activeGestureConfig = null
         dismissPopup()
     }

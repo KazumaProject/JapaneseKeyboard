@@ -12,10 +12,14 @@ import android.graphics.Bitmap
 import android.graphics.PointF
 import android.graphics.Rect
 import android.os.Bundle
+import android.os.Debug
 import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
+import android.text.Spanned
+import android.text.style.BackgroundColorSpan
+import android.text.style.UnderlineSpan
 import android.util.Log
 import android.view.InputDevice
 import android.view.MotionEvent
@@ -49,6 +53,429 @@ class FastInputMatrixInstrumentedTest {
 
     private val uiAutomation: UiAutomation
         get() = instrumentation.uiAutomation
+
+    @Test
+    fun flickEditorPreviewFunctionalAndPerformanceOnPhysicalDevice() {
+        runPhysicalDeviceSession("flick-editor-preview") { session ->
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+                val defaultPreviewBackgroundColor = session.context.getColor(
+                    com.kazumaproject.core.R.color.char_in_edit_color
+                )
+
+                val sumireStyles = listOf(
+                    "default",
+                    "circle",
+                    "second-flick",
+                    "third-flick",
+                    "sumire",
+                )
+                val functionalCases = buildList {
+                    add(TestKeyboard.TENKEY to null)
+                    sumireStyles.forEach { style -> add(TestKeyboard.SUMIRE to style) }
+                }
+
+                functionalCases.forEach { (keyboard, style) ->
+                    val testCase = previewTestCase(keyboard)
+                    applyCasePreferences(session.preferences, testCase)
+                    check(
+                        session.preferences.edit()
+                            .putBoolean("flick_editor_preview_preference", true)
+                            .putBoolean("theme_custom_input_color_enable", false)
+                            .putString("sumire_keyboard_style_preference", style ?: "default")
+                            .putString("sumire_input_method_preference", "switch-mode-effective")
+                            .putString("keyboard_touch_effect_type_preference", "none")
+                            .commit()
+                    )
+                    ensureTargetImeSelected(session)
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    val geometry = awaitStableGeometry(
+                        keyboard = keyboard,
+                        requireCandidateContent = false,
+                    )
+
+                    val downTime = SystemClock.uptimeMillis()
+                    assertTrue(
+                        "DOWN injection failed for $keyboard/$style",
+                        injectSinglePointerEvent(
+                            downTime,
+                            MotionEvent.ACTION_DOWN,
+                            geometry.prime.center,
+                        ),
+                    )
+                    assertEquals(
+                        "DOWN preview mismatch for $keyboard/$style",
+                        keyboard.primeText,
+                        awaitEditorText(scenario) { it.isNotEmpty() },
+                    )
+                    assertEditorPreviewDecoration(
+                        scenario = scenario,
+                        expectedText = keyboard.primeText,
+                        expectedBackgroundColor = defaultPreviewBackgroundColor,
+                        caseName = "$keyboard/$style DOWN",
+                    )
+                    assertTrue(
+                        "Candidate generation started before UP for $keyboard/$style",
+                        findCandidateState().texts.isEmpty(),
+                    )
+                    assertTrue(
+                        "CANCEL injection failed for $keyboard/$style",
+                        injectSinglePointerEvent(
+                            downTime,
+                            MotionEvent.ACTION_CANCEL,
+                            geometry.prime.center,
+                        ),
+                    )
+                    assertEquals(
+                        "Preview remained after CANCEL for $keyboard/$style",
+                        "",
+                        awaitEditorText(scenario) { it.isEmpty() },
+                    )
+                }
+
+                listOf(TestKeyboard.TENKEY, TestKeyboard.SUMIRE).forEach { keyboard ->
+                    val testCase = previewTestCase(keyboard)
+                    applyCasePreferences(session.preferences, testCase)
+                    check(
+                        session.preferences.edit()
+                            .putBoolean("flick_editor_preview_preference", true)
+                            .putBoolean("theme_custom_input_color_enable", true)
+                            .putInt(
+                                "theme_custom_pre_edit_bg_color",
+                                PREVIEW_TEST_BACKGROUND_COLOR,
+                            )
+                            .putString("sumire_keyboard_style_preference", "default")
+                            .commit()
+                    )
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    val geometry = awaitStableGeometry(keyboard, false)
+                    val end = PointF(
+                        geometry.prime.center.x + geometry.prime.width * 0.70f,
+                        geometry.prime.center.y,
+                    )
+                    val downTime = SystemClock.uptimeMillis()
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            downTime,
+                            MotionEvent.ACTION_DOWN,
+                            geometry.prime.center,
+                        )
+                    )
+                    assertEquals(
+                        keyboard.primeText,
+                        awaitEditorText(scenario) { it.isNotEmpty() },
+                    )
+                    assertTrue(
+                        injectSinglePointerEvent(downTime, MotionEvent.ACTION_MOVE, end)
+                    )
+                    val movedPreview = awaitEditorText(scenario) {
+                        it.isNotEmpty() && it != keyboard.primeText
+                    }
+                    assertTrue("MOVE did not replace preview for $keyboard", movedPreview.isNotEmpty())
+                    assertEditorPreviewDecoration(
+                        scenario = scenario,
+                        expectedText = movedPreview,
+                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        caseName = "$keyboard MOVE",
+                    )
+                    assertTrue(
+                        injectSinglePointerEvent(downTime, MotionEvent.ACTION_UP, end)
+                    )
+                    assertEquals(
+                        "UP result differed from MOVE preview for $keyboard",
+                        movedPreview,
+                        awaitTextSettled(scenario),
+                    )
+                }
+
+                listOf(TestKeyboard.TENKEY, TestKeyboard.SUMIRE).forEach { keyboard ->
+                    val testCase = previewTestCase(keyboard)
+                    applyCasePreferences(session.preferences, testCase)
+                    check(
+                        session.preferences.edit()
+                            .putBoolean("flick_editor_preview_preference", false)
+                            .putString("sumire_keyboard_style_preference", "default")
+                            .commit()
+                    )
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    val geometry = awaitStableGeometry(keyboard, false)
+                    val downTime = SystemClock.uptimeMillis()
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            downTime,
+                            MotionEvent.ACTION_DOWN,
+                            geometry.prime.center,
+                        )
+                    )
+                    SystemClock.sleep(PREVIEW_HOLD_ASSERT_MS)
+                    assertEquals("OFF changed editor on DOWN for $keyboard", "", readText(scenario))
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            downTime,
+                            MotionEvent.ACTION_UP,
+                            geometry.prime.center,
+                        )
+                    )
+                    assertEquals(keyboard.primeText, awaitTextSettled(scenario))
+                }
+
+                listOf(TestKeyboard.TENKEY, TestKeyboard.SUMIRE).forEach { keyboard ->
+                    applyCasePreferences(session.preferences, previewTestCase(keyboard))
+                    check(
+                        session.preferences.edit()
+                            .putBoolean("flick_editor_preview_preference", true)
+                            .putBoolean("theme_custom_input_color_enable", true)
+                            .putInt(
+                                "theme_custom_pre_edit_bg_color",
+                                PREVIEW_TEST_BACKGROUND_COLOR,
+                            )
+                            .putString("sumire_keyboard_style_preference", "default")
+                            .putString("sumire_input_method_preference", "switch-mode-effective")
+                            .commit()
+                    )
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    val geometry = awaitStableGeometry(keyboard, false)
+                    assertTrue("First tail setup tap failed for $keyboard", injectTap(geometry.prime.center))
+                    assertTrue(
+                        "Second tail setup tap failed for $keyboard",
+                        injectTap(requireNotNull(geometry.neighbor).center),
+                    )
+                    assertEquals(
+                        "Tail setup text mismatch for $keyboard",
+                        "あな",
+                        awaitEditorText(scenario) { it == "あな" },
+                    )
+                    assertTrue(
+                        "Cursor-left tap failed for $keyboard",
+                        injectTap(findCursorLeftBounds(keyboard).center),
+                    )
+
+                    val movePoint = PointF(
+                        geometry.prime.center.x + geometry.prime.width * 0.70f,
+                        geometry.prime.center.y,
+                    )
+                    val cancelDownTime = SystemClock.uptimeMillis()
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            cancelDownTime,
+                            MotionEvent.ACTION_DOWN,
+                            geometry.prime.center,
+                        )
+                    )
+                    assertEquals(
+                        "Tail was not retained on DOWN for $keyboard",
+                        "ああな",
+                        awaitEditorText(scenario) { it == "ああな" },
+                    )
+                    assertEditorPreviewDecoration(
+                        scenario = scenario,
+                        expectedText = "ああな",
+                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        expectedBackgroundEnd = 2,
+                        caseName = "$keyboard tail DOWN",
+                    )
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            cancelDownTime,
+                            MotionEvent.ACTION_MOVE,
+                            movePoint,
+                        )
+                    )
+                    val movedWithTail = awaitEditorText(scenario) { text ->
+                        text.length == 3 &&
+                            text.startsWith("あ") &&
+                            text.endsWith("な") &&
+                            text != "ああな"
+                    }
+                    assertEditorPreviewDecoration(
+                        scenario = scenario,
+                        expectedText = movedWithTail,
+                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        expectedBackgroundEnd = 2,
+                        caseName = "$keyboard tail MOVE",
+                    )
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            cancelDownTime,
+                            MotionEvent.ACTION_CANCEL,
+                            movePoint,
+                        )
+                    )
+                    assertEquals(
+                        "Tail preview did not restore after CANCEL for $keyboard",
+                        "あな",
+                        awaitEditorText(scenario) { it == "あな" },
+                    )
+
+                    val commitDownTime = SystemClock.uptimeMillis()
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            commitDownTime,
+                            MotionEvent.ACTION_DOWN,
+                            geometry.prime.center,
+                        )
+                    )
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            commitDownTime,
+                            MotionEvent.ACTION_MOVE,
+                            movePoint,
+                        )
+                    )
+                    val commitPreview = awaitEditorText(scenario) { text ->
+                        text.length == 3 &&
+                            text.startsWith("あ") &&
+                            text.endsWith("な") &&
+                            text != "ああな"
+                    }
+                    assertTrue(
+                        injectSinglePointerEvent(
+                            commitDownTime,
+                            MotionEvent.ACTION_UP,
+                            movePoint,
+                        )
+                    )
+                    assertEquals(
+                        "UP did not insert before stringInTail for $keyboard",
+                        commitPreview,
+                        awaitTextSettled(scenario),
+                    )
+                }
+
+                val performanceLines = mutableListOf<String>()
+                applyCasePreferences(session.preferences, previewTestCase(TestKeyboard.TENKEY))
+                for (enabled in listOf(false, true)) {
+                    check(
+                        session.preferences.edit()
+                            .putBoolean("flick_editor_preview_preference", enabled)
+                            .putString("keyboard_touch_effect_type_preference", "none")
+                            .commit()
+                    )
+                    val candidateSamplesNs = LongArray(PREVIEW_CANDIDATE_SAMPLES)
+                    repeat(PREVIEW_CANDIDATE_WARMUP + PREVIEW_CANDIDATE_SAMPLES) { index ->
+                        restartInput(scenario)
+                        val trialGeometry = awaitStableGeometry(TestKeyboard.TENKEY, false)
+                        val downTime = SystemClock.uptimeMillis()
+                        assertTrue(
+                            injectSinglePointerEvent(
+                                downTime,
+                                MotionEvent.ACTION_DOWN,
+                                trialGeometry.prime.center,
+                            )
+                        )
+                        if (enabled) {
+                            assertEquals(
+                                TestKeyboard.TENKEY.primeText,
+                                awaitEditorText(scenario) { it.isNotEmpty() },
+                            )
+                        }
+                        assertTrue(
+                            "Candidates changed before UP (enabled=$enabled)",
+                            findCandidateState().texts.isEmpty(),
+                        )
+                        val upStartedNs = SystemClock.elapsedRealtimeNanos()
+                        assertTrue(
+                            injectSinglePointerEvent(
+                                downTime,
+                                MotionEvent.ACTION_UP,
+                                trialGeometry.prime.center,
+                            )
+                        )
+                        val candidateLatencyNs = awaitCandidateVisibleLatencyNs(upStartedNs)
+                        if (index >= PREVIEW_CANDIDATE_WARMUP) {
+                            candidateSamplesNs[index - PREVIEW_CANDIDATE_WARMUP] =
+                                candidateLatencyNs
+                        }
+                    }
+                    val sortedCandidateSamples = candidateSamplesNs.sorted()
+                    val candidateLine = buildString {
+                        append("enabled=$enabled ")
+                        append("samples=$PREVIEW_CANDIDATE_SAMPLES ")
+                        append("candidateLatencyMeanMs=")
+                        append(candidateSamplesNs.average() / 1_000_000.0)
+                        append(" candidateLatencyP50Ms=")
+                        append(
+                            sortedCandidateSamples[sortedCandidateSamples.size / 2] /
+                                1_000_000.0
+                        )
+                        append(" candidateLatencyP95Ms=")
+                        append(
+                            sortedCandidateSamples[
+                                ((sortedCandidateSamples.size - 1) * 0.95).toInt()
+                            ] / 1_000_000.0
+                        )
+                    }
+                    performanceLines += candidateLine
+                    Log.i(TAG, "FLICK_EDITOR_PREVIEW_CONVERSION $candidateLine")
+                    sendProgress("FLICK_EDITOR_PREVIEW_CONVERSION $candidateLine\n")
+
+                    restartInput(scenario)
+                    SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                    val geometry = awaitStableGeometry(TestKeyboard.TENKEY, false)
+                    val performanceMovePoint = PointF(
+                        geometry.prime.center.x + geometry.prime.width * 0.70f,
+                        geometry.prime.center.y,
+                    )
+                    repeat(PREVIEW_PERFORMANCE_WARMUP_GESTURES) {
+                        injectPreviewCancelGesture(geometry.prime.center, performanceMovePoint)
+                    }
+                    Runtime.getRuntime().gc()
+                    SystemClock.sleep(PREVIEW_GC_SETTLE_MS)
+                    val allocatedBefore = runtimeStat("art.gc.bytes-allocated")
+                    val pssBeforeKb = Debug.getPss().toLong()
+                    val startedNs = SystemClock.elapsedRealtimeNanos()
+                    repeat(PREVIEW_PERFORMANCE_GESTURES) {
+                        assertTrue(
+                            injectPreviewCancelGesture(
+                                geometry.prime.center,
+                                performanceMovePoint,
+                            )
+                        )
+                    }
+                    val elapsedNs = SystemClock.elapsedRealtimeNanos() - startedNs
+                    val allocatedAfter = runtimeStat("art.gc.bytes-allocated")
+                    val pssImmediateKb = Debug.getPss().toLong()
+                    Runtime.getRuntime().gc()
+                    SystemClock.sleep(PREVIEW_GC_SETTLE_MS)
+                    val pssSettledKb = Debug.getPss().toLong()
+                    val line = buildString {
+                        append("enabled=$enabled ")
+                        append("gestures=$PREVIEW_PERFORMANCE_GESTURES ")
+                        append("meanGestureUs=")
+                        append(elapsedNs / PREVIEW_PERFORMANCE_GESTURES / 1_000.0)
+                        append(" allocatedBytes=")
+                        append(allocatedAfter - allocatedBefore)
+                        append(" allocatedBytesPerGesture=")
+                        append((allocatedAfter - allocatedBefore) / PREVIEW_PERFORMANCE_GESTURES)
+                        append(" pssBeforeKb=$pssBeforeKb")
+                        append(" pssImmediateKb=$pssImmediateKb")
+                        append(" pssSettledKb=$pssSettledKb")
+                    }
+                    performanceLines += line
+                    Log.i(TAG, "FLICK_EDITOR_PREVIEW_PERF $line")
+                    sendProgress("FLICK_EDITOR_PREVIEW_PERF $line\n")
+                }
+
+                val report = File(session.outputDirectory, "flick-editor-preview-performance.txt")
+                report.writeText(
+                    buildString {
+                        appendLine("device=${android.os.Build.MODEL}")
+                        appendLine("sdk=${android.os.Build.VERSION.SDK_INT}")
+                        performanceLines.forEach(::appendLine)
+                    }
+                )
+                sendProgress("FLICK_EDITOR_PREVIEW_REPORT $report\n")
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
 
     @Test
     fun tenKeyNumberBracketGuideSurvivesActualFlicksOnPhysicalDevice() {
@@ -234,6 +661,83 @@ class FastInputMatrixInstrumentedTest {
                         )
                     }
                 }
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
+
+    @Test
+    fun tenKeyDeleteLongPressClearsComposingCandidatesOnPhysicalDevice() {
+        runPhysicalDeviceSession("delete-long-press-candidate-clear") { session ->
+            val testCase = TestCase(
+                keyboard = TestKeyboard.TENKEY,
+                columns = 1,
+                candidateTabVisible = false,
+                toolbarVisible = false,
+                toolbarIntegrated = false,
+                orientation = TestOrientation.PORTRAIT
+            )
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+                applyCasePreferences(session.preferences, testCase)
+                check(
+                    session.preferences.edit()
+                        .putInt("long_press_timeout_preference", 100)
+                        .putString("delete_long_press_conversion_behavior", "deferred")
+                        .putBoolean("live_conversion_preference", false)
+                        .commit()
+                )
+
+                ensureTargetImeSelected(session)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                assertDeviceReady(session.context, session.targetIme, scenario)
+                prepareEmptyEditor(scenario)
+
+                val before = awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = false
+                )
+                val inputInjected = injectSequence(
+                    first = before.first.center,
+                    second = before.second.center,
+                    repetitions = 1
+                )
+                val inputText = awaitTextSettled(scenario)
+                awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = true
+                )
+                assertTrue("Ten-key input injection failed", inputInjected)
+                assertTrue("Composing input did not reach the editor", inputText.isNotEmpty())
+                assertTrue(
+                    "Candidate list was not populated before delete long press",
+                    findCandidateState().texts.isNotEmpty()
+                )
+
+                val deleteBounds = findVisibleNodeById("key_delete")?.screenRect()
+                    ?: throw SetupException("Delete key is not visible")
+                val deleteInjected = injectTapWithoutTrailingGap(
+                    point = deleteBounds.center,
+                    holdMs = 850L
+                )
+                awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = false
+                )
+                val afterText = awaitTextSettled(scenario)
+                val afterCandidates = findCandidateState().texts
+
+                assertTrue("Delete long-press injection failed", deleteInjected)
+                assertTrue("ComposingText was not fully deleted", afterText.isEmpty())
+                assertTrue(
+                    "SuggestionAdapter still exposes candidates after ComposingText deletion: " +
+                        afterCandidates,
+                    afterCandidates.isEmpty()
+                )
             } finally {
                 scenario?.close()
             }
@@ -865,6 +1369,7 @@ class FastInputMatrixInstrumentedTest {
             .putBoolean("enable_typo_correction_japanese_flick_keyboard_preference", false)
             .putBoolean("enable_typo_correction_qwerty_english_keyboard_preference", false)
             .putBoolean("learn_dictionary_preference", false)
+            .putBoolean("zero_query_suggestion_preference", false)
         check(editor.commit()) { "Failed to persist preferences for $case" }
 
         check(
@@ -1025,6 +1530,96 @@ class FastInputMatrixInstrumentedTest {
         return text
     }
 
+    private fun assertEditorPreviewDecoration(
+        scenario: ActivityScenario<FastInputHostActivity>,
+        expectedText: String,
+        expectedBackgroundColor: Int,
+        caseName: String,
+        expectedBackgroundEnd: Int = expectedText.length,
+    ) {
+        val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+        var latest = readEditorDecoration(scenario)
+        while (SystemClock.uptimeMillis() < deadline) {
+            latest = readEditorDecoration(scenario)
+            if (latest.matches(
+                    expectedText,
+                    expectedBackgroundColor,
+                    expectedBackgroundEnd,
+                )
+            ) return
+            SystemClock.sleep(PREVIEW_TEXT_POLL_MS)
+        }
+        assertTrue(
+            "$caseName did not retain the pre-edit background/underline spans: $latest",
+            latest.matches(
+                expectedText,
+                expectedBackgroundColor,
+                expectedBackgroundEnd,
+            ),
+        )
+    }
+
+    private fun readEditorDecoration(
+        scenario: ActivityScenario<FastInputHostActivity>
+    ): EditorDecorationSnapshot {
+        var snapshot = EditorDecorationSnapshot.Empty
+        scenario.onActivity { activity ->
+            val text = activity.editText.text
+            snapshot = EditorDecorationSnapshot(
+                text = text?.toString().orEmpty(),
+                backgrounds = text.getSpans(
+                    0,
+                    text.length,
+                    BackgroundColorSpan::class.java,
+                ).map { span ->
+                    BackgroundSpanSnapshot(
+                        color = span.backgroundColor,
+                        start = text.getSpanStart(span),
+                        end = text.getSpanEnd(span),
+                        flags = text.getSpanFlags(span),
+                    )
+                },
+                underlines = text.getSpans(
+                    0,
+                    text.length,
+                    UnderlineSpan::class.java,
+                ).map { span ->
+                    SpanRangeSnapshot(
+                        start = text.getSpanStart(span),
+                        end = text.getSpanEnd(span),
+                        flags = text.getSpanFlags(span),
+                    )
+                },
+            )
+        }
+        return snapshot
+    }
+
+    private fun awaitEditorText(
+        scenario: ActivityScenario<FastInputHostActivity>,
+        predicate: (String) -> Boolean,
+    ): String {
+        val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+        var latest = readText(scenario)
+        while (SystemClock.uptimeMillis() < deadline) {
+            latest = readText(scenario)
+            if (predicate(latest)) return latest
+            SystemClock.sleep(PREVIEW_TEXT_POLL_MS)
+        }
+        return latest
+    }
+
+    private fun awaitCandidateVisibleLatencyNs(startedNs: Long): Long {
+        val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (findCandidateState().texts.isNotEmpty()) {
+                return SystemClock.elapsedRealtimeNanos() - startedNs
+            }
+            SystemClock.sleep(PREVIEW_CANDIDATE_POLL_MS)
+        }
+        throw SetupException("Candidate list did not become visible during latency measurement")
+    }
+
     private fun awaitTextSettled(
         scenario: ActivityScenario<FastInputHostActivity>
     ): String {
@@ -1128,6 +1723,26 @@ class FastInputMatrixInstrumentedTest {
                         node.contentDescription?.toString() == locator.label
             }
         } ?: throw SetupException("Key ${locator.render()} is not visible")
+    }
+
+    private fun findCursorLeftBounds(keyboard: TestKeyboard): ScreenRect {
+        return when (keyboard) {
+            TestKeyboard.TENKEY -> awaitVisibleNodeBounds("key_soft_left")
+            TestKeyboard.SUMIRE -> {
+                val root = findVisibleNodeById(keyboard.rootViewId)
+                    ?: throw SetupException("${keyboard.rootViewId} is not visible")
+                val labels = setOf("CursorMoveLeft", "Move Cursor Left", "カーソル左")
+                val node = findDescendant(root) { candidate ->
+                    candidate.text?.toString() in labels ||
+                        candidate.contentDescription?.toString() in labels
+                } ?: throw SetupException("Sumire cursor-left key is not visible")
+                node.screenRect()
+            }
+
+            TestKeyboard.QWERTY -> throw SetupException(
+                "Tail preview test does not target QWERTY"
+            )
+        }
     }
 
     private fun findCandidateState(): CandidateState {
@@ -1317,6 +1932,17 @@ class FastInputMatrixInstrumentedTest {
             event.recycle()
         }
     }
+
+    private fun injectPreviewCancelGesture(start: PointF, move: PointF): Boolean {
+        val downTime = SystemClock.uptimeMillis()
+        var injected = injectSinglePointerEvent(downTime, MotionEvent.ACTION_DOWN, start)
+        injected = injectSinglePointerEvent(downTime, MotionEvent.ACTION_MOVE, move) && injected
+        injected = injectSinglePointerEvent(downTime, MotionEvent.ACTION_CANCEL, move) && injected
+        return injected
+    }
+
+    private fun runtimeStat(name: String): Long =
+        Debug.getRuntimeStat(name)?.toLongOrNull() ?: 0L
 
     private fun injectTapPairAtDownInterval(
         point: PointF,
@@ -2039,6 +2665,15 @@ class FastInputMatrixInstrumentedTest {
                 orientation.name.lowercase()
     }
 
+    private fun previewTestCase(keyboard: TestKeyboard) = TestCase(
+        keyboard = keyboard,
+        columns = 1,
+        candidateTabVisible = false,
+        toolbarVisible = false,
+        toolbarIntegrated = false,
+        orientation = TestOrientation.PORTRAIT,
+    )
+
     private data class PhysicalDeviceSession(
         val context: Context,
         val preferences: SharedPreferences,
@@ -2051,6 +2686,53 @@ class FastInputMatrixInstrumentedTest {
     private data class CandidateState(
         val bounds: ScreenRect?,
         val texts: List<String>
+    )
+
+    private data class EditorDecorationSnapshot(
+        val text: String,
+        val backgrounds: List<BackgroundSpanSnapshot>,
+        val underlines: List<SpanRangeSnapshot>,
+    ) {
+        fun matches(
+            expectedText: String,
+            expectedBackgroundColor: Int,
+            expectedBackgroundEnd: Int,
+        ): Boolean {
+            val expectedUnderlineEnd = expectedText.length
+            val hasBackground = backgrounds.any { span ->
+                span.color == expectedBackgroundColor &&
+                    span.start == 0 &&
+                    span.end == expectedBackgroundEnd &&
+                    span.flags and Spanned.SPAN_COMPOSING != 0
+            }
+            val hasUnderline = underlines.any { span ->
+                span.start == 0 &&
+                    span.end == expectedUnderlineEnd &&
+                    span.flags and Spanned.SPAN_COMPOSING != 0
+            }
+            return text == expectedText && hasBackground && hasUnderline
+        }
+
+        companion object {
+            val Empty = EditorDecorationSnapshot(
+                text = "",
+                backgrounds = emptyList(),
+                underlines = emptyList(),
+            )
+        }
+    }
+
+    private data class BackgroundSpanSnapshot(
+        val color: Int,
+        val start: Int,
+        val end: Int,
+        val flags: Int,
+    )
+
+    private data class SpanRangeSnapshot(
+        val start: Int,
+        val end: Int,
+        val flags: Int,
     )
 
     private data class FlickVerification(
@@ -2229,6 +2911,15 @@ class FastInputMatrixInstrumentedTest {
         private const val TAP_GAP_MS = 12L
         private const val FLICK_MOVE_STEPS = 4
         private const val FLICK_STEP_MS = 18L
+        private const val PREVIEW_HOLD_ASSERT_MS = 120L
+        private const val PREVIEW_TEXT_POLL_MS = 4L
+        private const val PREVIEW_TEST_BACKGROUND_COLOR = 0x66336699
+        private const val PREVIEW_PERFORMANCE_WARMUP_GESTURES = 30
+        private const val PREVIEW_PERFORMANCE_GESTURES = 500
+        private const val PREVIEW_GC_SETTLE_MS = 250L
+        private const val PREVIEW_CANDIDATE_WARMUP = 3
+        private const val PREVIEW_CANDIDATE_SAMPLES = 15
+        private const val PREVIEW_CANDIDATE_POLL_MS = 1L
         private const val GUIDE_SETTLE_MS = 350L
         private const val GUIDE_CHANNEL_TOLERANCE = 12
         private const val MAX_GUIDE_CHANGED_PIXELS = 80

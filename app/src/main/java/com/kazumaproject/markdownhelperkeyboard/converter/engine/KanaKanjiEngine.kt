@@ -23,6 +23,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCand
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphNodeDedupMode
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
@@ -52,7 +53,6 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertFu
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertFullWidthNumbersToHalfWidth
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.convertToKanjiNotation
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.createValueBasedSymbolCandidates
-import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.groupAndReplaceJapaneseForNumber
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllEnglishLetters
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllFullWidthAscii
 import com.kazumaproject.markdownhelperkeyboard.ime_service.extensions.isAllHalfWidthAscii
@@ -78,6 +78,12 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+private const val POS_ID_COUNTER_GENERIC: Short = 2011
+private const val POS_ID_COUNTER_TIME: Short = 2015
+private const val POS_ID_NUMBER_ARABIC: Short = 2044
+private const val POS_ID_NUMBER_SEPARATED: Short = 2045
+private const val POS_ID_NUMBER_KANJI: Short = 2046
+
 class KanaKanjiEngine {
 
     data class IncrementalPerformanceSnapshot(
@@ -89,12 +95,29 @@ class KanaKanjiEngine {
         val stateRejectionCount: Int,
         val expansionCacheHitCount: Int,
         val expansionCacheMissCount: Int,
+        val graphAppendReused: Boolean,
+        val forwardDpReused: Boolean,
     )
 
     class IncrementalSessionState internal constructor(
         internal val graphState: GraphBuilder.SessionState,
         internal val pathState: FindPath.SessionState,
     ) {
+        internal fun beginQueryTransaction() {
+            graphState.beginQueryTransaction()
+            pathState.beginQueryTransaction()
+        }
+
+        internal fun commitQueryTransaction() {
+            graphState.commitQueryTransaction()
+            pathState.commitQueryTransaction()
+        }
+
+        internal fun rollbackQueryTransaction() {
+            graphState.rollbackQueryTransaction()
+            pathState.rollbackQueryTransaction()
+        }
+
         internal fun reset() {
             graphState.reset()
             pathState.reset()
@@ -115,12 +138,19 @@ class KanaKanjiEngine {
                 stateRejectionCount = pathState.lastStateRejectionCount,
                 expansionCacheHitCount = pathState.lastExpansionCacheHitCount,
                 expansionCacheMissCount = pathState.lastExpansionCacheMissCount,
+                graphAppendReused = graphState.lastAppendReused,
+                forwardDpReused = pathState.lastForwardDpReused,
             )
+
+        internal fun committedInput(): String? = graphState.committedInput()
     }
 
     private lateinit var graphBuilder: GraphBuilder
     private lateinit var findPath: FindPath
     private var dictionaryBinaryReader: DictionaryBinaryReader? = null
+
+    @Volatile
+    private var initialOptionalDictionaryStateLoaded: Boolean = false
 
     private lateinit var connectionMatrix: ConnectionMatrix.CostTable
 
@@ -466,8 +496,36 @@ class KanaKanjiEngine {
             assignNeologdDictionary(newNeologd)
             assignWebDictionary(newWeb)
             mozcDictionaryActive = newMozcDictionaryActive
+            initialOptionalDictionaryStateLoaded = true
         }
     }
+
+    /**
+     * Completes the dictionary state that is not supplied by the Hilt graph without rebuilding
+     * the already-loaded core dictionaries. The IME starts this once in the background instead
+     * of racing the first input against a redundant full dictionary reload.
+     */
+    fun initializeOptionalDictionaryStateFromCurrentSources() {
+        val reader = checkNotNull(dictionaryBinaryReader) {
+            "DictionaryBinaryReader must be configured before optional dictionaries"
+        }
+        val newPerson = loadOptionalTripleDictionary(reader, DictionaryCategory.PERSON_NAME)
+        val newPlaces = loadOptionalTripleDictionary(reader, DictionaryCategory.PLACES)
+        val newWiki = loadOptionalTripleDictionary(reader, DictionaryCategory.WIKI)
+        val newNeologd = loadOptionalTripleDictionary(reader, DictionaryCategory.NEOLOGD)
+        val newWeb = loadOptionalTripleDictionary(reader, DictionaryCategory.WEB)
+        synchronized(this) {
+            assignPersonDictionary(newPerson)
+            assignPlacesDictionary(newPlaces)
+            assignWikiDictionary(newWiki)
+            assignNeologdDictionary(newNeologd)
+            assignWebDictionary(newWeb)
+            initialOptionalDictionaryStateLoaded = true
+        }
+    }
+
+    fun isInitialOptionalDictionaryStateLoaded(): Boolean =
+        initialOptionalDictionaryStateLoaded
 
     private fun loadOptionalTripleDictionary(
         reader: DictionaryBinaryReader,
@@ -494,10 +552,10 @@ class KanaKanjiEngine {
             tangoTrie = tangoTrie,
             yomiTrie = yomiTrie,
             tokenArray = tokenArray,
-            succinctBitVectorLBSYomi = SuccinctBitVector(yomiTrie.LBS),
-            succinctBitVectorIsLeafYomi = SuccinctBitVector(yomiTrie.isLeaf),
-            succinctBitVectorTokenArray = SuccinctBitVector(tokenArray.bitvector),
-            succinctBitVectorTangoLBS = SuccinctBitVector(tangoTrie.LBS),
+            succinctBitVectorLBSYomi = reader.loadYomiLbsIndex(yomiKey, yomiTrie),
+            succinctBitVectorIsLeafYomi = reader.loadYomiLeafIndex(yomiKey, yomiTrie),
+            succinctBitVectorTokenArray = reader.loadTokenIndex(tokenKey, tokenArray),
+            succinctBitVectorTangoLBS = reader.loadTangoLbsIndex(tangoKey, tangoTrie),
         )
     }
 
@@ -1026,6 +1084,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -1074,6 +1133,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -1096,6 +1156,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -1529,6 +1590,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -1577,6 +1639,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -1601,6 +1664,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -2063,6 +2127,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -2111,6 +2176,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -2135,6 +2201,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -2538,6 +2605,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -2586,6 +2654,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -2608,6 +2677,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -2994,6 +3064,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -3041,6 +3112,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -3063,6 +3135,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -3485,6 +3558,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -3532,6 +3606,7 @@ class KanaKanjiEngine {
             omissionSearchOffSetScore = omissionSearchOffsetScore,
             graphNodeDedupMode = graphNodeDedupModeForCurrentDictionary(),
             mozcNodeAttributeTable = mozcNodeAttributeTableForCurrentDictionary(),
+            beamWidth = beamWidth,
             sessionState = incrementalSessionState?.graphState,
         )
 
@@ -3556,6 +3631,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -4015,49 +4091,60 @@ class KanaKanjiEngine {
         predictionConfig: PredictionConfig = PredictionConfig(),
     ): List<Candidate> {
         val inputToEnglish = input.replaceJapaneseCharactersForEnglish()
-        val inputToNumbers = input.groupAndReplaceJapaneseForNumber()
+        val explicitDigitInput = input.takeIf { value ->
+            value.isNotEmpty() && value.all { it in '0'..'9' || it in '０'..'９' }
+        }
         val directJapaneseNumber = input.toNumber()
         val numberUnitCandidates = createCandidatesForJapaneseNumberWithUnit(input)
         val preferredNumberCandidate = when {
             numberUnitCandidates.isNotEmpty() -> numberUnitCandidates.first().string
             directJapaneseNumber != null -> directJapaneseNumber.second
-            else -> inputToNumbers
+            explicitDigitInput != null -> explicitDigitInput.convertFullWidthNumbersToHalfWidth()
+            else -> null
         }
-        val listJapaneseCandidates = listOf(
-            Candidate(
+        val listJapaneseCandidates = buildList {
+            add(Candidate(
                 string = input, type = (1).toByte(), length = input.length.toUByte(), score = 3000
-            ), Candidate(
+            ))
+            add(Candidate(
                 string = input.hiraToKata(),
                 type = (1).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
-            ), Candidate(
+            ))
+            add(Candidate(
                 string = input.toHankakuKatakana(),
                 type = (31).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
-            ), Candidate(
+            ))
+            add(Candidate(
                 string = inputToEnglish,
                 type = (1).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
-            ), Candidate(
+            ))
+            add(Candidate(
                 string = inputToEnglish.replaceFirstChar { it.uppercaseChar() },
                 type = (1).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
-            ), Candidate(
+            ))
+            add(Candidate(
                 string = inputToEnglish.uppercase(),
                 type = (1).toByte(),
                 length = input.length.toUByte(),
                 score = 3000
-            ), Candidate(
-                string = preferredNumberCandidate,
-                type = (1).toByte(),
-                length = input.length.toUByte(),
-                score = 3000
-            )
-        )
+            ))
+            if (preferredNumberCandidate != null && preferredNumberCandidate != input) {
+                add(Candidate(
+                    string = preferredNumberCandidate,
+                    type = (1).toByte(),
+                    length = input.length.toUByte(),
+                    score = 3000
+                ))
+            }
+        }
 
         val digitCandidates = when {
             directJapaneseNumber != null -> createDigitCandidates(
@@ -4065,7 +4152,11 @@ class KanaKanjiEngine {
             )
 
             numberUnitCandidates.isNotEmpty() -> emptyList()
-            else -> createDigitCandidates(inputToNumbers, input.length.toUByte())
+            explicitDigitInput != null -> createDigitCandidates(
+                explicitDigitInput,
+                input.length.toUByte(),
+            )
+            else -> emptyList()
         }
 
         val englishDeferred = if (input.isAllEnglishLetters()) {
@@ -4193,16 +4284,16 @@ class KanaKanjiEngine {
             type = 22,
             length = inputLength,
             score = 8000,
-            leftId = 2040,
-            rightId = 2040
+            leftId = POS_ID_NUMBER_ARABIC,
+            rightId = POS_ID_NUMBER_ARABIC
         )
         val halfWidth = Candidate(
             string = halfWidthDigits.convertFullWidthToHalfWidth(),
             type = 31,
             length = inputLength,
             score = 8000,
-            leftId = 2040,
-            rightId = 2040
+            leftId = POS_ID_NUMBER_ARABIC,
+            rightId = POS_ID_NUMBER_ARABIC
         )
         val timeConversion = createCandidatesForTime(halfWidthDigits)
         val dateConversion = createCandidatesForDateInDigit(halfWidthDigits)
@@ -4216,8 +4307,8 @@ class KanaKanjiEngine {
                         type = 17,
                         score = 2000,
                         length = inputLength,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_KANJI,
+                        rightId = POS_ID_NUMBER_KANJI
                     )
                 )
                 add(
@@ -4226,8 +4317,8 @@ class KanaKanjiEngine {
                         type = 19,
                         score = 8001,
                         length = inputLength,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_SEPARATED,
+                        rightId = POS_ID_NUMBER_SEPARATED
                     )
                 )
                 add(
@@ -4236,8 +4327,8 @@ class KanaKanjiEngine {
                         type = 18,
                         score = 8002,
                         length = inputLength,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_ARABIC,
+                        rightId = POS_ID_NUMBER_ARABIC
                     )
                 )
                 add(
@@ -4246,8 +4337,8 @@ class KanaKanjiEngine {
                         type = 23,
                         score = 7900,
                         length = inputLength,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_KANJI,
+                        rightId = POS_ID_NUMBER_KANJI
                     )
                 )
             }
@@ -4266,9 +4357,13 @@ class KanaKanjiEngine {
         for ((readingSuffix, unit) in unitMappings) {
             if (!input.endsWith(readingSuffix) || input.length <= readingSuffix.length) continue
 
-            val number = input.removeSuffix(readingSuffix).toNumber() ?: continue
+            val numberReading = normalizeJapaneseNumberReadingForCounter(
+                input.removeSuffix(readingSuffix),
+                readingSuffix,
+            ) ?: continue
+            val number = numberReading.toNumber() ?: continue
             val isTimeLike = unit == "時" || unit == "分"
-            val connectionId = if (isTimeLike) 1851.toShort() else 2040.toShort()
+            val rightId = if (unit == "時") POS_ID_COUNTER_TIME else POS_ID_COUNTER_GENERIC
 
             return listOf(
                 Candidate(
@@ -4276,20 +4371,45 @@ class KanaKanjiEngine {
                     type = if (isTimeLike) CANDIDATE_TYPE_TIME else 18,
                     length = input.length.toUByte(),
                     score = 8000,
-                    leftId = connectionId,
-                    rightId = connectionId
+                    leftId = POS_ID_NUMBER_ARABIC,
+                    rightId = rightId
                 ), Candidate(
                     string = "${number.first}$unit",
                     type = if (isTimeLike) 30 else 22,
                     length = input.length.toUByte(),
                     score = 8001,
-                    leftId = connectionId,
-                    rightId = connectionId
+                    leftId = POS_ID_NUMBER_ARABIC,
+                    rightId = rightId
                 )
             )
         }
 
         return emptyList()
+    }
+
+    private fun normalizeJapaneseNumberReadingForCounter(
+        numberReading: String,
+        counterReading: String,
+    ): String? {
+        fun isStandaloneOrAfterPlace(alias: String): Boolean {
+            if (numberReading == alias) return true
+            val prefix = numberReading.dropLast(alias.length)
+            return listOf("じゅう", "ひゃく", "せん", "まん", "おく", "ちょう")
+                .any(prefix::endsWith)
+        }
+
+        // 「し」は単独の四としては有効だが、現在扱っている助数詞の
+        // 直前では通常語との衝突が大きい（しじ、しえん、しにん等）。
+        if (numberReading.endsWith("し") && isStandaloneOrAfterPlace("し")) return null
+        if (counterReading != "じ") return numberReading
+
+        return when {
+            numberReading.endsWith("よ") && isStandaloneOrAfterPlace("よ") ->
+                numberReading.dropLast(1) + "よん"
+            numberReading.endsWith("く") && isStandaloneOrAfterPlace("く") ->
+                numberReading.dropLast(1) + "きゅう"
+            else -> numberReading
+        }
     }
 
 
@@ -5093,7 +5213,7 @@ class KanaKanjiEngine {
                     Candidate(
                         string = numberAsLong.toKanji(), type = 32, // 新しいタイプ
                         length = input.length.toUByte(), score = 8000, // 優先度を調整
-                        leftId = 2040, rightId = 2040
+                        leftId = POS_ID_NUMBER_KANJI, rightId = POS_ID_NUMBER_KANJI
                     )
                 )
             }
@@ -5106,8 +5226,8 @@ class KanaKanjiEngine {
                         type = 17,
                         length = input.length.toUByte(),
                         score = 8000,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_KANJI,
+                        rightId = POS_ID_NUMBER_KANJI
                     )
                 )
             }
@@ -5120,8 +5240,8 @@ class KanaKanjiEngine {
                         type = if (it == firstNum) (30).toByte() else (31).toByte(),
                         length = input.length.toUByte(),
                         score = 8002,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_ARABIC,
+                        rightId = POS_ID_NUMBER_ARABIC
                     )
                 )
             }
@@ -5133,8 +5253,8 @@ class KanaKanjiEngine {
                     type = 19,
                     length = input.length.toUByte(),
                     score = 8001,
-                    leftId = 2040,
-                    rightId = 2040
+                    leftId = POS_ID_NUMBER_SEPARATED,
+                    rightId = POS_ID_NUMBER_SEPARATED
                 )
             )
 
@@ -5146,8 +5266,8 @@ class KanaKanjiEngine {
                         type = 20,
                         length = input.length.toUByte(),
                         score = 8003,
-                        leftId = 2040,
-                        rightId = 2040
+                        leftId = POS_ID_NUMBER_ARABIC,
+                        rightId = POS_ID_NUMBER_ARABIC
                     )
                 )
             }
