@@ -15,7 +15,7 @@ internal data class FlickPreviewContext(
     val isHenkan: Boolean,
     val selectMode: Boolean,
     val cursorMoveMode: Boolean,
-    val hasComposingTail: Boolean,
+    val composingTail: String,
     val hasInputConnection: Boolean,
     val baseInput: String,
     val isFlickOnlyMode: Boolean,
@@ -32,7 +32,6 @@ internal object FlickPreviewEligibilityPolicy {
                 !context.isHenkan &&
                 !context.selectMode &&
                 !context.cursorMoveMode &&
-                !context.hasComposingTail &&
                 context.hasInputConnection
     }
 }
