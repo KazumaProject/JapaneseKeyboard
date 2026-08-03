@@ -155,6 +155,7 @@
     <string name="henkan_delete_key_action_summary_off">削除キータップ：ハイライト解除</string>
 
     <string name="category_function_title">機能</string>
+    <string name="category_flick_input_title">フリック入力</string>
     <string name="category_romaji_conversion_title">ローマ字変換</string>
     <string name="category_qwerty_keyboard_title">QWERTY キーボード</string>
     <string name="category_symbol_keyboard_title">記号キーボード</string>
@@ -181,6 +182,9 @@
     <string name="flick_input_only_title">フリック・トグル入力</string>
     <string name="flick_input_only_summary_on">フリック入力のみを使用し、トグル入力を無効にする</string>
     <string name="flick_input_only_summary_off">トグル入力を有効にします</string>
+    <string name="flick_editor_preview_title">入力欄でフリック文字をプレビュー</string>
+    <string name="flick_editor_preview_summary_off">従来方式：指を離したときに文字を入力します</string>
+    <string name="flick_editor_preview_summary_on">TenKey・Sumireで、選択中のタップ／フリック文字を入力欄に仮表示します</string>
     <string name="undo_enable_title">元に戻す機能</string>
     <string name="undo_enable_summary">元に戻す機能を無効にする</string>
     <string name="reconversion_preference_title">読みを戻す</string>
