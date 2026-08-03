@@ -849,7 +849,7 @@
     <string name="pref_qwerty_enable_flick_down_title">下フリックを有効にする</string>
     <string name="pref_qwerty_enable_flick_down_summary">下方向のフリック入力で大文字を入力します。</string>
     <string name="enable_ai_preference_title">AI による予測変換を有効にする</string>
-    <string name="enable_ai_preference_summary">ニューラルかな漢字モデル「zenz-v3.1-xsmall」を使った逐次的な予測変換を有効にします。</string>
+    <string name="enable_ai_preference_summary">ニューラルかな漢字モデル「zenz-v3.2-xsmall」を使った逐次的な予測変換を有効にします。</string>
     <string name="zenz_profile_preference_title">zenz で使用するプロフィールの設定</string>
     <string name="zenz_profile_preference_summary">zenz が予測変換に利用するプロフィールを設定できます。\n例：この欄に「職業：医者」と入力すると、「ちゅうしゃ」と入力したときに「注射」が候補に出やすくなります。</string>
     <string name="enable_zenz_rerank_preference_title">zenz で変換候補を並び替える</string>
