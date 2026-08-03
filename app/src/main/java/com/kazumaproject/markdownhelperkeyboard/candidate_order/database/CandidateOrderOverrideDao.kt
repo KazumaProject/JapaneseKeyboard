@@ -13,17 +13,17 @@ interface CandidateOrderOverrideDao {
     @Query(
         """
         SELECT * FROM candidate_order_override
-        WHERE input = :input
+        WHERE input = :input AND scope = :scope
         ORDER BY rank ASC
         """
     )
-    suspend fun findByInput(input: String): List<CandidateOrderOverrideEntity>
+    suspend fun findByRule(input: String, scope: String): List<CandidateOrderOverrideEntity>
 
     @Query(
         """
         SELECT * FROM candidate_order_override
         WHERE input IN (:inputs)
-        ORDER BY input ASC, rank ASC
+        ORDER BY input ASC, scope ASC, rank ASC
         """
     )
     suspend fun findByInputs(inputs: List<String>): List<CandidateOrderOverrideEntity>
@@ -31,7 +31,7 @@ interface CandidateOrderOverrideDao {
     @Query(
         """
         SELECT * FROM candidate_order_override
-        ORDER BY input ASC, rank ASC
+        ORDER BY input ASC, scope ASC, rank ASC
         """
     )
     fun observeAll(): Flow<List<CandidateOrderOverrideEntity>>
@@ -39,7 +39,7 @@ interface CandidateOrderOverrideDao {
     @Query(
         """
         SELECT * FROM candidate_order_override
-        ORDER BY input ASC, rank ASC
+        ORDER BY input ASC, scope ASC, rank ASC
         """
     )
     suspend fun getAll(): List<CandidateOrderOverrideEntity>
@@ -52,6 +52,14 @@ interface CandidateOrderOverrideDao {
     )
     suspend fun deleteByInput(input: String)
 
+    @Query(
+        """
+        DELETE FROM candidate_order_override
+        WHERE input = :input AND scope = :scope
+        """
+    )
+    suspend fun deleteByRule(input: String, scope: String)
+
     @Query("DELETE FROM candidate_order_override")
     suspend fun deleteAll()
 
@@ -59,8 +67,12 @@ interface CandidateOrderOverrideDao {
     suspend fun insertAll(entities: List<CandidateOrderOverrideEntity>)
 
     @Transaction
-    suspend fun replaceForInput(input: String, entities: List<CandidateOrderOverrideEntity>) {
-        deleteByInput(input)
+    suspend fun replaceForRule(
+        input: String,
+        scope: String,
+        entities: List<CandidateOrderOverrideEntity>,
+    ) {
+        deleteByRule(input, scope)
         insertAll(entities)
     }
 

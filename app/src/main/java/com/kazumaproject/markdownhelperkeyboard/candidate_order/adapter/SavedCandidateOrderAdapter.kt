@@ -6,11 +6,12 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.SavedCandidateOrderGroup
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderScope
 import com.kazumaproject.markdownhelperkeyboard.databinding.ListItemSavedCandidateOrderBinding
 
 class SavedCandidateOrderAdapter(
     private val onEdit: (SavedCandidateOrderGroup) -> Unit,
-    private val onDeleteInput: (String) -> Unit
+    private val onDeleteRule: (String, CandidateOrderScope) -> Unit,
 ) : ListAdapter<SavedCandidateOrderGroup, SavedCandidateOrderAdapter.ViewHolder>(DiffCallback()) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
@@ -32,6 +33,13 @@ class SavedCandidateOrderAdapter(
 
         fun bind(item: SavedCandidateOrderGroup) {
             binding.textSavedCandidateOrderInput.text = item.input
+            binding.textSavedCandidateOrderScope.text = binding.root.context.getString(
+                if (item.scope == CandidateOrderScope.EXACT_INPUT) {
+                    com.kazumaproject.markdownhelperkeyboard.R.string.candidate_order_scope_exact_short
+                } else {
+                    com.kazumaproject.markdownhelperkeyboard.R.string.candidate_order_scope_lexical_short
+                },
+            )
             binding.textSavedCandidateOrderCandidates.text = item.candidates
                 .mapIndexed { index, candidate -> "${index + 1}. $candidate" }
                 .joinToString(separator = "\n")
@@ -39,7 +47,7 @@ class SavedCandidateOrderAdapter(
                 onEdit(item)
             }
             binding.buttonDeleteSavedCandidateOrder.setOnClickListener {
-                onDeleteInput(item.input)
+                onDeleteRule(item.input, item.scope)
             }
         }
     }
@@ -48,7 +56,7 @@ class SavedCandidateOrderAdapter(
         override fun areItemsTheSame(
             oldItem: SavedCandidateOrderGroup,
             newItem: SavedCandidateOrderGroup
-        ): Boolean = oldItem.input == newItem.input
+        ): Boolean = oldItem.input == newItem.input && oldItem.scope == newItem.scope
 
         override fun areContentsTheSame(
             oldItem: SavedCandidateOrderGroup,

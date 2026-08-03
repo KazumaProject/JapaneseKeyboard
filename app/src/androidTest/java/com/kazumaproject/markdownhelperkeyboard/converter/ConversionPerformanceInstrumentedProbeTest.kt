@@ -17,6 +17,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideEntity
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderScope
 import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import dagger.hilt.android.EntryPointAccessors
@@ -319,12 +320,13 @@ class ConversionPerformanceInstrumentedProbeTest {
                             else -> "候補${candidateIndex.toString().padStart(3, '0')}-$suffix"
                         }
                         batch += CandidateOrderOverrideEntity(
-                        input = groupInput,
-                        candidate = output,
-                        rank = candidateIndex + 1,
-                        createdAt = now,
-                        updatedAt = now,
-                    )
+                            input = groupInput,
+                            scope = CandidateOrderScope.LEXICAL_UNIT.name,
+                            candidate = output,
+                            rank = candidateIndex + 1,
+                            createdAt = now,
+                            updatedAt = now,
+                        )
                         if (batch.size >= 10_000) flushBatch()
                     }
                 }
@@ -347,6 +349,28 @@ class ConversionPerformanceInstrumentedProbeTest {
                 )
             }
             assertEquals("火を", firstOrdered.first().string)
+
+            val ambiguousLongInputCandidates = listOf(
+                Candidate("人多すぎ", 1, 6u, 0),
+                Candidate("火と多すぎ", 1, 6u, 1),
+            )
+            val ambiguousLongInputSegments = mapOf(
+                "人多すぎ" to listOf(
+                    CandidateConversionSegment(0, 2, "人"),
+                    CandidateConversionSegment(2, 6, "多すぎ"),
+                ),
+                "火と多すぎ" to listOf(
+                    CandidateConversionSegment(0, 1, "火"),
+                    CandidateConversionSegment(1, 2, "と"),
+                    CandidateConversionSegment(2, 6, "多すぎ"),
+                ),
+            )
+            val safelyOrdered = repository.applyOrderFromSnapshot(
+                input = "ひとおおすぎ",
+                candidates = ambiguousLongInputCandidates,
+                candidateSegmentsByString = ambiguousLongInputSegments,
+            )
+            assertEquals("人多すぎ", safelyOrdered.first().string)
 
             forceGcForMeasurement()
             val snapshotPssKb = Debug.getPss()
@@ -404,6 +428,8 @@ class ConversionPerformanceInstrumentedProbeTest {
                 appendLine("scale=$scale")
                 appendLine("overrideGroupCount=$scale")
                 appendLine("overrideEntityCount=$entityCount")
+                appendLine("scope=${CandidateOrderScope.LEXICAL_UNIT.name}")
+                appendLine("ambiguousLongInputFirst=${safelyOrdered.first().string}")
                 appendLine("candidatesPerGroup=$candidatesPerGroup")
                 appendLine("databaseMode=file")
                 appendLine("conversionWarmup=$conversionWarmup")
