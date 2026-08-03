@@ -29,6 +29,7 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
     // ▼▼▼ 追加: 枠線描画用のPaintオブジェクト ▼▼▼
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
+        strokeJoin = Paint.Join.ROUND
     }
 
     private val backgroundPath = Path()
@@ -92,10 +93,16 @@ class DirectionalKeyPopupView(context: Context) : AppCompatTextView(context) {
         // 枠線用のPaintに色を設定
         strokePaint.color = this.separatorColor
 
-        updatePath(w, h)
+        val strokeInset = strokePaint.strokeWidth / 2f
+        val pathWidth = (w - strokePaint.strokeWidth).coerceAtLeast(0f)
+        val pathHeight = (h - strokePaint.strokeWidth).coerceAtLeast(0f)
+        updatePath(pathWidth, pathHeight)
 
+        val saveCount = canvas.save()
+        canvas.translate(strokeInset, strokeInset)
         canvas.drawPath(backgroundPath, backgroundPaint)
         canvas.drawPath(backgroundPath, strokePaint)
+        canvas.restoreToCount(saveCount)
 
         val textToDraw = this.text.toString()
         val textPaint = this.paint
