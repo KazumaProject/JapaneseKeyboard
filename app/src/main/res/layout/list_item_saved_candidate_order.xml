@@ -14,10 +14,26 @@
         android:layout_marginEnd="16dp"
         android:textAppearance="?attr/textAppearanceListItem"
         android:textStyle="bold"
-        app:layout_constraintEnd_toStartOf="@id/button_delete_saved_candidate_order"
+        app:layout_constraintEnd_toStartOf="@id/text_saved_candidate_order_scope"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         tools:text="きょう" />
+
+    <TextView
+        android:id="@+id/text_saved_candidate_order_scope"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:background="?attr/colorControlHighlight"
+        android:paddingStart="8dp"
+        android:paddingTop="4dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="4dp"
+        android:textAppearance="?attr/textAppearanceCaption"
+        app:layout_constraintBottom_toBottomOf="@id/text_saved_candidate_order_input"
+        app:layout_constraintEnd_toStartOf="@id/button_delete_saved_candidate_order"
+        app:layout_constraintTop_toTopOf="@id/text_saved_candidate_order_input"
+        tools:text="この読みだけ" />
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/button_delete_saved_candidate_order"

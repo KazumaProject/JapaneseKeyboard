@@ -10,13 +10,18 @@ import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.navigation.Navigation
 import androidx.preference.PreferenceManager
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderScope
 import com.kazumaproject.markdownhelperkeyboard.FastInputHostActivity
+import com.kazumaproject.markdownhelperkeyboard.R
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
+import com.kazumaproject.markdownhelperkeyboard.setting_activity.MainActivity
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -32,7 +37,55 @@ class CandidateOrderOverrideImeInstrumentedTest {
         get() = InstrumentationRegistry.getInstrumentation()
 
     @Test
-    fun savedHiOrderPromotesHiNodeInsideHiwoUsingSoftKeyboardTouches() = runBlocking {
+    fun lexicalHiOrderPromotesHiNodeInsideHiwoUsingSoftKeyboardTouches() = runBlocking {
+        verifyHiwoUsingSoftKeyboardTouches(
+            scope = CandidateOrderScope.LEXICAL_UNIT,
+            expectedFirstCandidate = "火を",
+        )
+    }
+
+    @Test
+    fun exactHiOrderDoesNotAffectHiwoUsingSoftKeyboardTouches() = runBlocking {
+        verifyHiwoUsingSoftKeyboardTouches(
+            scope = CandidateOrderScope.EXACT_INPUT,
+            expectedFirstCandidate = "日を",
+        )
+    }
+
+    @Test
+    fun candidateOrderScreenShowsAndSwitchesBothScopesOnDevice() {
+        configureAccessibilityInspection()
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val scenario = ActivityScenario.launch<MainActivity>(
+            Intent(context, MainActivity::class.java),
+        )
+        try {
+            scenario.onActivity { activity ->
+                Navigation.findNavController(
+                    activity,
+                    R.id.nav_host_fragment_activity_main,
+                ).navigate(R.id.candidateOrderOverrideFragment)
+            }
+            instrumentation.waitForIdleSync()
+
+            assertTrue(awaitVisibleText("この読みだけ（完全一致）").width() > 0)
+            val lexicalScope = awaitVisibleText("同じ語として使われる場合")
+            assertTrue(tap(lexicalScope.center()))
+            instrumentation.waitForIdleSync()
+            assertTrue(
+                awaitVisibleText(
+                    "通常変換の第一候補がこの読みを独立した同じ語として解析した場合だけ、長い入力にも適用します。異なる語区切りには影響しません。",
+                ).width() > 0,
+            )
+        } finally {
+            scenario.close()
+        }
+    }
+
+    private suspend fun verifyHiwoUsingSoftKeyboardTouches(
+        scope: CandidateOrderScope,
+        expectedFirstCandidate: String,
+    ) {
         configureAccessibilityInspection()
         val context = ApplicationProvider.getApplicationContext<Context>()
         val entryPoint = EntryPointAccessors.fromApplication(
@@ -40,11 +93,11 @@ class CandidateOrderOverrideImeInstrumentedTest {
             KanaKanjiEngineEntryPoint::class.java,
         )
         val candidateOrderRepository = entryPoint.candidateOrderOverrideRepository()
-        val originalHiOrder = candidateOrderRepository.observeAll()
+        val originalHiOrders = candidateOrderRepository.observeAll()
             .first()
             .filter { it.input.trim() == "ひ" }
-            .sortedBy { it.rank }
-            .map { it.candidate }
+            .groupBy { CandidateOrderScope.fromDatabase(it.scope) }
+            .mapValues { (_, rows) -> rows.sortedBy { it.rank }.map { it.candidate } }
         val preferences = PreferenceManager.getDefaultSharedPreferences(context)
         val originalPreferences = preferences.all
         preferences
@@ -61,6 +114,7 @@ class CandidateOrderOverrideImeInstrumentedTest {
         candidateOrderRepository.saveOrder(
             input = "ひ",
             candidates = listOf("火", "日", "陽"),
+            scope = scope,
         )
 
         val scenario = ActivityScenario.launch<FastInputHostActivity>(
@@ -75,23 +129,22 @@ class CandidateOrderOverrideImeInstrumentedTest {
             assertTrue(flickLeft("key_11")) // わ -> を
 
             val candidates = awaitVisibleCandidates()
-            assertEquals("火を", candidates.first().first)
+            assertEquals(expectedFirstCandidate, candidates.first().first)
             assertTrue(tap(candidates.first().second.center()))
 
             val deadline = SystemClock.uptimeMillis() + 8_000L
             var actual = ""
             while (SystemClock.uptimeMillis() < deadline) {
                 scenario.onActivity { actual = it.editText.text.toString() }
-                if (actual == "火を") break
+                if (actual == expectedFirstCandidate) break
                 SystemClock.sleep(50)
             }
-            assertEquals("火を", actual)
+            assertEquals(expectedFirstCandidate, actual)
         } finally {
             scenario.close()
-            if (originalHiOrder.isEmpty()) {
-                candidateOrderRepository.deleteByInput("ひ")
-            } else {
-                candidateOrderRepository.saveOrder("ひ", originalHiOrder)
+            candidateOrderRepository.deleteByInput("ひ")
+            originalHiOrders.forEach { (scope, candidates) ->
+                candidateOrderRepository.saveOrder("ひ", candidates, scope)
             }
             preferences.edit().clear().also { editor ->
                 originalPreferences.forEach { (key, value) ->
@@ -108,6 +161,79 @@ class CandidateOrderOverrideImeInstrumentedTest {
                     }
                 }
             }.commit()
+        }
+    }
+
+    @Test
+    fun lexicalHiOrderDoesNotChangeProductionHitoOosugiBaselinePath() = runBlocking {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val entryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            KanaKanjiEngineEntryPoint::class.java,
+        )
+        val candidateOrderRepository = entryPoint.candidateOrderOverrideRepository()
+        val originalLexicalOrder = candidateOrderRepository.observeAll()
+            .first()
+            .filter {
+                it.input.trim() == "ひ" &&
+                    CandidateOrderScope.fromDatabase(it.scope) == CandidateOrderScope.LEXICAL_UNIT
+            }
+            .sortedBy { it.rank }
+            .map { it.candidate }
+        val input = "ひとおおすぎ"
+        val segments = LinkedHashMap<String, List<CandidateConversionSegment>>()
+
+        try {
+            candidateOrderRepository.saveOrder(
+                input = "ひ",
+                candidates = listOf("火", "日", "陽"),
+                scope = CandidateOrderScope.LEXICAL_UNIT,
+            )
+            val baselineCandidates = entryPoint.kanaKanjiEngine()
+                .getCandidatesWithBunsetsuSeparation(
+                    input = input,
+                    n = 4,
+                    mozcUtPersonName = false,
+                    mozcUTPlaces = false,
+                    mozcUTWiki = false,
+                    mozcUTNeologd = false,
+                    mozcUTWeb = false,
+                    userDictionaryRepository = entryPoint.userDictionaryRepository(),
+                    learnRepository = null,
+                    isOmissionSearchEnable = false,
+                    enableTypoCorrectionJapaneseFlick = false,
+                    enableTypoCorrectionQwertyEnglish = false,
+                    typoCorrectionOffsetScore = 3000,
+                    omissionSearchOffsetScore = 1900,
+                    beamWidth = 20,
+                    candidateSegmentCollector = segments,
+                )
+                .candidates
+            assertTrue(baselineCandidates.isNotEmpty())
+
+            val orderedCandidates = candidateOrderRepository.applyOrderFromSnapshot(
+                input = input,
+                candidates = baselineCandidates,
+                candidateSegmentsByString = segments,
+            )
+
+            assertEquals(baselineCandidates.first().string, orderedCandidates.first().string)
+            println(
+                "CANDIDATE_ORDER_PRODUCTION_REGRESSION " +
+                    "input=$input " +
+                    "baselineFirst=${baselineCandidates.first().string} " +
+                    "orderedFirst=${orderedCandidates.first().string} " +
+                    "baselineSegments=${segments[baselineCandidates.first().string]}",
+            )
+        } finally {
+            candidateOrderRepository.deleteRule("ひ", CandidateOrderScope.LEXICAL_UNIT)
+            if (originalLexicalOrder.isNotEmpty()) {
+                candidateOrderRepository.saveOrder(
+                    "ひ",
+                    originalLexicalOrder,
+                    CandidateOrderScope.LEXICAL_UNIT,
+                )
+            }
         }
     }
 
@@ -167,6 +293,23 @@ class CandidateOrderOverrideImeInstrumentedTest {
             SystemClock.sleep(50)
         }
         error("Timed out waiting for visible id=$idName")
+    }
+
+    private fun awaitVisibleText(text: String): Rect {
+        val deadline = SystemClock.uptimeMillis() + 8_000L
+        while (SystemClock.uptimeMillis() < deadline) {
+            for (window in instrumentation.uiAutomation.windows) {
+                val root = window.root ?: continue
+                val found = findDescendant(root) { node ->
+                    node.isVisibleToUser && node.text?.toString() == text
+                }
+                if (found != null) {
+                    return Rect().also(found::getBoundsInScreen)
+                }
+            }
+            SystemClock.sleep(50)
+        }
+        error("Timed out waiting for visible text=$text")
     }
 
     private fun awaitVisibleCandidates(): List<Pair<String, Rect>> {

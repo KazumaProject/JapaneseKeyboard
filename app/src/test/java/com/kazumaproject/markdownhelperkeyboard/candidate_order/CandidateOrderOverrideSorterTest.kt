@@ -1,6 +1,7 @@
 package com.kazumaproject.markdownhelperkeyboard.candidate_order
 
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideEntity
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderScope
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideSorter
@@ -124,7 +125,7 @@ class CandidateOrderOverrideSorterTest {
             candidates = candidates,
             overridesByInput = mapOf(
                 "ひ" to overridesFor("ひ", "火" to 1, "日" to 2),
-                "ひを" to overridesFor("ひを", "日を" to 1, "火を" to 2),
+                "ひを" to exactOverridesFor("ひを", "日を" to 1, "火を" to 2),
             ),
             candidateSegmentsByString = mapOf(
                 "日を" to segments(0, 1, "日", 1, 2, "を"),
@@ -151,6 +152,61 @@ class CandidateOrderOverrideSorterTest {
         assertEquals(listOf("亜日", "亜火"), result.words())
     }
 
+    @Test
+    fun exactShortInputOrderDoesNotAffectLongerInput() {
+        val candidates = candidates("日を", "火を")
+        val result = CandidateOrderOverrideSorter.applyByConversionSegment(
+            input = "ひを",
+            candidates = candidates,
+            overridesByInput = mapOf(
+                "ひ" to exactOverridesFor("ひ", "火" to 1, "日" to 2),
+            ),
+            candidateSegmentsByString = mapOf(
+                "日を" to segments(0, 1, "日", 1, 2, "を"),
+                "火を" to segments(0, 1, "火", 1, 2, "を"),
+            ),
+        )
+
+        assertEquals(listOf("日を", "火を"), result.words())
+    }
+
+    @Test
+    fun lexicalOrderDoesNotPromoteCandidateWithDifferentBaselineSegmentation() {
+        val candidates = candidates("人多すぎ", "火と多すぎ")
+        val result = CandidateOrderOverrideSorter.applyByConversionSegment(
+            input = "ひとおおすぎ",
+            candidates = candidates,
+            overridesByInput = mapOf(
+                "ひ" to overridesFor("ひ", "火" to 1, "日" to 2),
+            ),
+            candidateSegmentsByString = mapOf(
+                "人多すぎ" to segments(0, 2, "人", 2, 6, "多すぎ"),
+                "火と多すぎ" to segments(0, 1, "火", 1, 2, "と", 2, 6, "多すぎ"),
+            ),
+        )
+
+        assertEquals(listOf("人多すぎ", "火と多すぎ"), result.words())
+    }
+
+    @Test
+    fun lexicalOrderChangesOnlySlotsInBaselineSegmentationCohort() {
+        val candidates = candidates("日を", "非対象", "火を")
+        val result = CandidateOrderOverrideSorter.applyByConversionSegment(
+            input = "ひを",
+            candidates = candidates,
+            overridesByInput = mapOf(
+                "ひ" to overridesFor("ひ", "火" to 1, "日" to 2),
+            ),
+            candidateSegmentsByString = mapOf(
+                "日を" to segments(0, 1, "日", 1, 2, "を"),
+                "非対象" to segments(0, 2, "非対象"),
+                "火を" to segments(0, 1, "火", 1, 2, "を"),
+            ),
+        )
+
+        assertEquals(listOf("火を", "非対象", "日を"), result.words())
+    }
+
     private fun candidates(vararg words: String): List<Candidate> =
         words.map {
             Candidate(
@@ -167,9 +223,29 @@ class CandidateOrderOverrideSorterTest {
     private fun overridesFor(
         input: String,
         vararg ranks: Pair<String, Int>,
+    ): List<CandidateOrderOverrideEntity> = overridesForScope(
+        input = input,
+        scope = CandidateOrderScope.LEXICAL_UNIT,
+        ranks = ranks,
+    )
+
+    private fun exactOverridesFor(
+        input: String,
+        vararg ranks: Pair<String, Int>,
+    ): List<CandidateOrderOverrideEntity> = overridesForScope(
+        input = input,
+        scope = CandidateOrderScope.EXACT_INPUT,
+        ranks = ranks,
+    )
+
+    private fun overridesForScope(
+        input: String,
+        scope: CandidateOrderScope,
+        ranks: Array<out Pair<String, Int>>,
     ): List<CandidateOrderOverrideEntity> = ranks.map {
             CandidateOrderOverrideEntity(
                 input = input,
+                scope = scope.name,
                 candidate = it.first,
                 rank = it.second,
                 createdAt = 1L,

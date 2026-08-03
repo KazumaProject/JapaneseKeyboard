@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.repository
 
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideEntity
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderScope
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import kotlinx.coroutines.flow.Flow
@@ -40,38 +41,62 @@ object CandidateOrderOverrideSorter {
     ): List<Candidate> {
         if (candidates.size <= 1 || overridesByInput.isEmpty()) return candidates
 
-        val exactOverrides = overridesByInput[input].orEmpty()
+        val exactOverrides = overridesByInput[input]
+            .orEmpty()
+            .filter { it.scope == CandidateOrderScope.EXACT_INPUT.name }
         if (exactOverrides.isNotEmpty()) {
             return apply(candidates, exactOverrides)
         }
         if (candidateSegmentsByString.isEmpty()) return candidates
 
+        val referenceSegments = candidateSegmentsByString[candidates.first().string]
+            ?: return candidates
+        val referenceBoundarySignature = referenceSegments.boundarySignature(input.length)
+            ?: return candidates
+
         val savedInputPrefixes = overridesByInput.keys
             .asSequence()
             .filter { savedInput ->
                 savedInput.isNotEmpty() &&
-                        savedInput.length < input.length &&
+                        savedInput.length <= input.length &&
                         input.startsWith(savedInput)
             }
             .sortedByDescending { it.length }
 
         for (savedInput in savedInputPrefixes) {
             val rankBySegmentOutput = overridesByInput.getValue(savedInput)
+                .filter { it.scope == CandidateOrderScope.LEXICAL_UNIT.name }
                 .associate { it.candidate to it.rank }
-            val ranks = candidates.map { candidate ->
-                val leadingOutput = candidateSegmentsByString[candidate.string]
-                    ?.leadingOutputAtInputEnd(savedInput.length)
-                leadingOutput?.let(rankBySegmentOutput::get) ?: Int.MAX_VALUE
-            }
-            if (ranks.all { it == Int.MAX_VALUE }) continue
+            if (rankBySegmentOutput.isEmpty()) continue
 
-            return candidates
-                .withIndex()
+            val referenceOutput = referenceSegments.leadingOutputAtInputEnd(savedInput.length)
+                ?: continue
+            if (referenceOutput !in rankBySegmentOutput) continue
+
+            val cohortIndices = candidates.indices.filter { index ->
+                candidateSegmentsByString[candidates[index].string]
+                    ?.boundarySignature(input.length) == referenceBoundarySignature
+            }
+            if (cohortIndices.size <= 1) continue
+
+            val reorderedCohort = cohortIndices
+                .map { index -> index to candidates[index] }
                 .sortedWith(
-                    compareBy<IndexedValue<Candidate>> { ranks[it.index] }
-                        .thenBy { it.index },
+                    compareBy<Pair<Int, Candidate>> { (_, candidate) ->
+                        candidateSegmentsByString.getValue(candidate.string)
+                            .leadingOutputAtInputEnd(savedInput.length)
+                            ?.let(rankBySegmentOutput::get)
+                            ?: Int.MAX_VALUE
+                    }.thenBy { it.first },
                 )
-                .map { it.value }
+                .map { it.second }
+
+            val result = candidates.toMutableList()
+            cohortIndices.forEachIndexed { cohortIndex, candidateIndex ->
+                result[candidateIndex] = reorderedCohort[cohortIndex]
+            }
+
+            return result
         }
 
         return candidates
@@ -100,6 +125,22 @@ object CandidateOrderOverrideSorter {
         }
         return null
     }
+
+    private fun List<CandidateConversionSegment>.boundarySignature(
+        inputLength: Int,
+    ): List<Int>? {
+        if (isEmpty()) return null
+        var expectedStart = 0
+        val boundaries = ArrayList<Int>(size)
+        for (segment in this) {
+            if (segment.inputStart != expectedStart || segment.inputEnd <= segment.inputStart) {
+                return null
+            }
+            boundaries += segment.inputEnd
+            expectedStart = segment.inputEnd
+        }
+        return boundaries.takeIf { expectedStart == inputLength }
+    }
 }
 
 @Singleton
@@ -116,7 +157,11 @@ class CandidateOrderOverrideRepository @Inject constructor(
 
     fun observeAll(): Flow<List<CandidateOrderOverrideEntity>> = dao.observeAll()
 
-    suspend fun saveOrder(input: String, candidates: List<String>) {
+    suspend fun saveOrder(
+        input: String,
+        candidates: List<String>,
+        scope: CandidateOrderScope = CandidateOrderScope.EXACT_INPUT,
+    ) {
         val normalizedInput = input.trim()
         if (normalizedInput.isEmpty()) return
 
@@ -124,24 +169,28 @@ class CandidateOrderOverrideRepository @Inject constructor(
         val entities = candidates.mapIndexed { index, candidate ->
             CandidateOrderOverrideEntity(
                 input = normalizedInput,
+                scope = scope.name,
                 candidate = candidate,
                 rank = index + 1,
                 createdAt = now,
                 updatedAt = now
             )
         }
-        dao.replaceForInput(normalizedInput, entities)
+        dao.replaceForRule(normalizedInput, scope.name, entities)
         invalidateInput(normalizedInput)
     }
 
     suspend fun applyOrder(
         input: String,
-        candidates: List<Candidate>
+        candidates: List<Candidate>,
+        scope: CandidateOrderScope = CandidateOrderScope.EXACT_INPUT,
     ): List<Candidate> {
         val normalizedInput = input.trim()
         if (normalizedInput.isEmpty() || candidates.size <= 1) return candidates
 
-        val overrides = loadOverridesForInputs(listOf(normalizedInput))[normalizedInput].orEmpty()
+        val overrides = loadOverridesForInputs(listOf(normalizedInput))[normalizedInput]
+            .orEmpty()
+            .filter { it.scope == scope.name }
         if (overrides.isEmpty()) return candidates
 
         return CandidateOrderOverrideSorter.apply(candidates, overrides)
@@ -170,6 +219,14 @@ class CandidateOrderOverrideRepository @Inject constructor(
         val normalizedInput = input.trim()
         if (normalizedInput.isNotEmpty()) {
             dao.deleteByInput(normalizedInput)
+            invalidateInput(normalizedInput)
+        }
+    }
+
+    suspend fun deleteRule(input: String, scope: CandidateOrderScope) {
+        val normalizedInput = input.trim()
+        if (normalizedInput.isNotEmpty()) {
+            dao.deleteByRule(normalizedInput, scope.name)
             invalidateInput(normalizedInput)
         }
     }

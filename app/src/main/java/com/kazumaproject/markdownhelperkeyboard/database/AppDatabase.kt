@@ -80,7 +80,7 @@ import com.kazumaproject.markdownhelperkeyboard.zeroquery.custom.CustomZeroQuery
         SumireSpecialKeyPlacementOverrideEntity::class,
         CustomZeroQueryEntry::class,
     ],
-    version = 43,
+    version = 44,
     exportSchema = false
 )
 @TypeConverters(
@@ -1145,6 +1145,23 @@ abstract class AppDatabase : RoomDatabase() {
                     SET `doubleTapPolicy` = NULL
                     WHERE `doubleTapAction` IS NULL
                     """.trimIndent()
+                )
+            }
+        }
+
+        val MIGRATION_43_44 = object : Migration(43, 44) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE `candidate_order_override` ADD COLUMN `scope` TEXT NOT NULL DEFAULT 'EXACT_INPUT'"
+                )
+                db.execSQL(
+                    "DROP INDEX IF EXISTS `index_candidate_order_override_input_candidate`"
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS `index_candidate_order_override_input_scope` ON `candidate_order_override` (`input`, `scope`)"
+                )
+                db.execSQL(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS `index_candidate_order_override_input_scope_candidate` ON `candidate_order_override` (`input`, `scope`, `candidate`)"
                 )
             }
         }

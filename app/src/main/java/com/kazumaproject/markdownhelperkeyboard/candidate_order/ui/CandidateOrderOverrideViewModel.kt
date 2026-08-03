@@ -6,8 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideEntity
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderItem
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderScope
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.SavedCandidateOrderGroup
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
 import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.LearnRepository
@@ -26,6 +28,7 @@ import javax.inject.Inject
 
 data class CandidateOrderOverrideUiState(
     val reading: String = "",
+    val scope: CandidateOrderScope = CandidateOrderScope.EXACT_INPUT,
     val candidates: List<CandidateOrderItem> = emptyList(),
     val savedOrders: List<SavedCandidateOrderGroup> = emptyList(),
     val isLoading: Boolean = false,
@@ -34,6 +37,7 @@ data class CandidateOrderOverrideUiState(
 
 internal data class CandidateOrderEditingState(
     val reading: String,
+    val scope: CandidateOrderScope,
     val candidates: List<CandidateOrderItem>
 )
 
@@ -50,11 +54,12 @@ internal fun filterCandidateOrderEditableCandidates(
 }
 
 internal fun List<CandidateOrderOverrideEntity>.toSavedCandidateOrderGroups(): List<SavedCandidateOrderGroup> {
-    return groupBy { it.input }
-        .map { (input, rows) ->
+    return groupBy { it.input to CandidateOrderScope.fromDatabase(it.scope) }
+        .map { (rule, rows) ->
             val sortedRows = rows.sortedBy { it.rank }
             SavedCandidateOrderGroup(
-                input = input,
+                input = rule.first,
+                scope = rule.second,
                 candidates = sortedRows.map { it.candidate },
                 updatedAt = sortedRows.maxOfOrNull { it.updatedAt } ?: 0L
             )
@@ -62,6 +67,7 @@ internal fun List<CandidateOrderOverrideEntity>.toSavedCandidateOrderGroups(): L
         .sortedWith(
             compareByDescending<SavedCandidateOrderGroup> { it.updatedAt }
                 .thenBy { it.input }
+                .thenBy { it.scope.name }
         )
 }
 
@@ -71,6 +77,7 @@ internal fun SavedCandidateOrderGroup.toCandidateOrderEditingState(): CandidateO
 
     return CandidateOrderEditingState(
         reading = normalizedInput,
+        scope = scope,
         candidates = candidates.mapIndexed { index, candidate ->
             CandidateOrderItem(
                 candidate = candidate,
@@ -106,7 +113,12 @@ class CandidateOrderOverrideViewModel @Inject constructor(
 
     fun updateReading(reading: String) {
         if (uiState.value.reading == reading) return
-        _uiState.update { it.copy(reading = reading) }
+        _uiState.update { it.copy(reading = reading, candidates = emptyList()) }
+    }
+
+    fun updateScope(scope: CandidateOrderScope) {
+        if (uiState.value.scope == scope) return
+        _uiState.update { it.copy(scope = scope, candidates = emptyList(), message = null) }
     }
 
     fun editSavedOrder(savedOrder: SavedCandidateOrderGroup) {
@@ -115,6 +127,7 @@ class CandidateOrderOverrideViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 reading = editingState.reading,
+                scope = editingState.scope,
                 candidates = editingState.candidates,
                 message = null
             )
@@ -130,6 +143,8 @@ class CandidateOrderOverrideViewModel @Inject constructor(
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, message = null) }
+            val scope = uiState.value.scope
+            val candidateSegments = LinkedHashMap<String, List<CandidateConversionSegment>>()
             val candidates = withContext(Dispatchers.Default) {
                 kanaKanjiEngine.getCandidates(
                     input = reading,
@@ -148,12 +163,23 @@ class CandidateOrderOverrideViewModel @Inject constructor(
                         .enable_typo_correction_japanese_flick_keyboard_offset_score_preference,
                     omissionSearchOffsetScore = appPreference.omission_search_offset_score_preference,
                     beamWidth = appPreference.conversion_beam_width_preference,
+                    candidateSegmentCollector = candidateSegments,
                 )
             }
                 .let { filterCandidateOrderEditableCandidates(reading, it) }
 
+            val candidatesForScope = if (scope == CandidateOrderScope.LEXICAL_UNIT) {
+                candidates.filterToSameStructureAsFirst(reading, candidateSegments)
+            } else {
+                candidates
+            }
+
             val orderedCandidates = withContext(Dispatchers.IO) {
-                candidateOrderOverrideRepository.applyOrder(reading, candidates)
+                candidateOrderOverrideRepository.applyOrder(
+                    input = reading,
+                    candidates = candidatesForScope,
+                    scope = scope,
+                )
             }
 
             _uiState.update {
@@ -165,7 +191,12 @@ class CandidateOrderOverrideViewModel @Inject constructor(
                         )
                     },
                     isLoading = false,
-                    message = if (orderedCandidates.isEmpty()) "候補が見つかりません" else null
+                    message = when {
+                        candidates.isEmpty() -> "候補が見つかりません"
+                        scope == CandidateOrderScope.LEXICAL_UNIT && orderedCandidates.isEmpty() ->
+                            "同じ語として安全に並び替えられる候補が見つかりません"
+                        else -> null
+                    }
                 )
             }
         }
@@ -183,24 +214,26 @@ class CandidateOrderOverrideViewModel @Inject constructor(
 
     fun save() {
         val reading = uiState.value.reading.trim()
+        val scope = uiState.value.scope
         val candidates = uiState.value.candidates
         if (reading.isEmpty() || candidates.isEmpty()) return
 
         viewModelScope.launch(Dispatchers.IO) {
             candidateOrderOverrideRepository.saveOrder(
                 input = reading,
-                candidates = candidates.map { it.candidate }
+                candidates = candidates.map { it.candidate },
+                scope = scope,
             )
             _uiState.update { it.copy(candidates = emptyList(), message = context.getString(R.string.candidate_order_override_saved)) }
         }
     }
 
-    fun deleteSavedOrder(input: String) {
+    fun deleteSavedOrder(input: String, scope: CandidateOrderScope) {
         val normalizedInput = input.trim()
         if (normalizedInput.isEmpty()) return
 
         viewModelScope.launch(Dispatchers.IO) {
-            candidateOrderOverrideRepository.deleteByInput(normalizedInput)
+            candidateOrderOverrideRepository.deleteRule(normalizedInput, scope)
             _uiState.update {
                 it.copy(
                     message = context.getString(
@@ -222,5 +255,33 @@ class CandidateOrderOverrideViewModel @Inject constructor(
 
     fun clearMessage() {
         _uiState.update { it.copy(message = null) }
+    }
+
+    private fun List<Candidate>.filterToSameStructureAsFirst(
+        reading: String,
+        segmentsByString: Map<String, List<CandidateConversionSegment>>,
+    ): List<Candidate> {
+        val reference = firstOrNull() ?: return emptyList()
+        val signature = segmentsByString[reference.string]?.boundarySignature(reading.length)
+            ?: return emptyList()
+        return filter { candidate ->
+            segmentsByString[candidate.string]?.boundarySignature(reading.length) == signature
+        }
+    }
+
+    private fun List<CandidateConversionSegment>.boundarySignature(
+        inputLength: Int,
+    ): List<Int>? {
+        if (isEmpty()) return null
+        var expectedStart = 0
+        val result = ArrayList<Int>(size)
+        for (segment in this) {
+            if (segment.inputStart != expectedStart || segment.inputEnd <= segment.inputStart) {
+                return null
+            }
+            result += segment.inputEnd
+            expectedStart = segment.inputEnd
+        }
+        return result.takeIf { expectedStart == inputLength }
     }
 }

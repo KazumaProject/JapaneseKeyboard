@@ -1320,6 +1320,13 @@
     <string name="candidate_order_override_saved_order_deleted">保存済み候補順を削除しました</string>
     <string name="candidate_order_override_saved_order_candidates_description">保存済み候補</string>
     <string name="candidate_order_override_drag_handle_description">並び替え</string>
+    <string name="candidate_order_scope_title">適用範囲</string>
+    <string name="candidate_order_scope_exact">この読みだけ（完全一致）</string>
+    <string name="candidate_order_scope_lexical">同じ語として使われる場合</string>
+    <string name="candidate_order_scope_exact_short">この読みだけ</string>
+    <string name="candidate_order_scope_lexical_short">同じ語</string>
+    <string name="candidate_order_scope_exact_description">入力全体がこの読みと一致した場合だけ適用します。最も安全で予測可能な設定です。</string>
+    <string name="candidate_order_scope_lexical_description">通常変換の第一候補がこの読みを独立した同じ語として解析した場合だけ、長い入力にも適用します。異なる語区切りには影響しません。</string>
     <string name="sumire_special_key_editor_preference_title">特殊キー編集</string>
     <string name="sumire_special_key_editor_preference_summary">Sumire の特殊キーの動作と配置を編集します</string>
     <string name="sumire_special_key_editor_title">Sumire 特殊キー編集</string>
