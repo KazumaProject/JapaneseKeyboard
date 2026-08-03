@@ -8,6 +8,7 @@ import android.view.ContextThemeWrapper
 import androidx.test.core.app.ApplicationProvider
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.custom_keyboard.data.FlickDirection
+import com.kazumaproject.custom_keyboard.data.FlickPopupColorTheme
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -16,7 +17,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "xxxhdpi")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class DirectionalKeyPopupViewTest {
 
@@ -42,6 +43,22 @@ class DirectionalKeyPopupViewTest {
         }
     }
 
+    @Test
+    fun outlineIsFullyDrawnInsidePopupBoundsForEveryDirection() {
+        val tapBitmap = render(FlickDirection.TAP)
+        val upBitmap = render(FlickDirection.UP)
+        val downBitmap = render(FlickDirection.DOWN)
+        val leftBitmap = render(FlickDirection.UP_LEFT_FAR)
+        val rightBitmap = render(FlickDirection.UP_RIGHT_FAR)
+
+        assertEquals(Color.GREEN, tapBitmap.getPixel(POPUP_WIDTH / 2, 2))
+        assertEquals(Color.GREEN, upBitmap.getPixel(POPUP_WIDTH / 2, 2))
+        assertEquals(Color.GREEN, downBitmap.getPixel(POPUP_WIDTH / 2, POPUP_HEIGHT - 3))
+        assertEquals(Color.GREEN, leftBitmap.getPixel(2, POPUP_HEIGHT / 2))
+        assertEquals(Color.GREEN, rightBitmap.getPixel(POPUP_WIDTH - 3, POPUP_HEIGHT / 2))
+        assertEquals(Color.RED, tapBitmap.getPixel(POPUP_WIDTH / 2, 5))
+    }
+
     private fun render(direction: FlickDirection): Bitmap {
         val context = ContextThemeWrapper(
             ApplicationProvider.getApplicationContext<Context>(),
@@ -54,6 +71,19 @@ class DirectionalKeyPopupViewTest {
                     sizeScalePercent = 100,
                     textSizeSp = 28f,
                     backgroundColor = Color.RED,
+                    textColor = Color.WHITE
+                )
+            )
+            setColors(
+                FlickPopupColorTheme(
+                    segmentColor = Color.RED,
+                    segmentHighlightGradientStartColor = Color.RED,
+                    segmentHighlightGradientEndColor = Color.RED,
+                    centerGradientStartColor = Color.RED,
+                    centerGradientEndColor = Color.RED,
+                    centerHighlightGradientStartColor = Color.RED,
+                    centerHighlightGradientEndColor = Color.RED,
+                    separatorColor = Color.GREEN,
                     textColor = Color.WHITE
                 )
             )
