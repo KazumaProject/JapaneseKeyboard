@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.candidate_order
 
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideDao
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideEntity
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.CandidateOrderScope
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.model.SavedCandidateOrderGroup
 import com.kazumaproject.markdownhelperkeyboard.candidate_order.ui.toCandidateOrderEditingState
 import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
@@ -26,6 +27,7 @@ class CandidateOrderOverrideSavedOrderEditTest {
         val editingState = savedOrder.toCandidateOrderEditingState()
 
         assertEquals("きょう", editingState?.reading)
+        assertEquals(CandidateOrderScope.EXACT_INPUT, editingState?.scope)
         assertEquals(listOf("今日", "京", "教"), editingState?.candidates?.map { it.candidate })
         assertEquals(listOf(0, 1, 2), editingState?.candidates?.map { it.originalIndex })
     }
@@ -67,9 +69,18 @@ class CandidateOrderOverrideSavedOrderEditTest {
             candidates = listOf("今日", "京")
         )
 
-        assertEquals(listOf("きょう"), dao.deletedInputs)
-        assertEquals(listOf("今日", "京"), dao.rowsForInput("きょう").map { it.candidate })
-        assertEquals(listOf(1, 2), dao.rowsForInput("きょう").map { it.rank })
+        assertEquals(
+            listOf("きょう" to CandidateOrderScope.EXACT_INPUT.name),
+            dao.deletedRules,
+        )
+        assertEquals(
+            listOf("今日", "京"),
+            dao.rowsForRule("きょう", CandidateOrderScope.EXACT_INPUT).map { it.candidate },
+        )
+        assertEquals(
+            listOf(1, 2),
+            dao.rowsForRule("きょう", CandidateOrderScope.EXACT_INPUT).map { it.rank },
+        )
         assertEquals(listOf("明日"), dao.rowsForInput("あす").map { it.candidate })
     }
 
@@ -123,7 +134,18 @@ class CandidateOrderOverrideSavedOrderEditTest {
     fun segmentOrderQueriesOnlyInputPrefixesAndReusesBoundedLookup() = runTest {
         val dao = FakeCandidateOrderOverrideDao(
             initialRows = mutableListOf(
-                entity(input = "ひ", candidate = "火", rank = 1),
+                entity(
+                    input = "ひ",
+                    candidate = "火",
+                    rank = 1,
+                    scope = CandidateOrderScope.LEXICAL_UNIT,
+                ),
+                entity(
+                    input = "ひ",
+                    candidate = "日",
+                    rank = 2,
+                    scope = CandidateOrderScope.LEXICAL_UNIT,
+                ),
                 entity(input = "べんちまっぷ00001", candidate = "候補", rank = 1),
             ),
         )
@@ -156,10 +178,12 @@ class CandidateOrderOverrideSavedOrderEditTest {
     private fun entity(
         input: String,
         candidate: String,
-        rank: Int
+        rank: Int,
+        scope: CandidateOrderScope = CandidateOrderScope.EXACT_INPUT,
     ): CandidateOrderOverrideEntity {
         return CandidateOrderOverrideEntity(
             input = input,
+            scope = scope.name,
             candidate = candidate,
             rank = rank,
             createdAt = 1L,
@@ -188,6 +212,7 @@ class CandidateOrderOverrideSavedOrderEditTest {
         private val rows = initialRows
         private val rowsFlow = MutableStateFlow(rows.toList())
         val deletedInputs = mutableListOf<String>()
+        val deletedRules = mutableListOf<Pair<String, String>>()
         val findByInputsCalls = mutableListOf<List<String>>()
         var getAllCallCount = 0
 
@@ -195,8 +220,20 @@ class CandidateOrderOverrideSavedOrderEditTest {
             return rows.filter { it.input == input }.sortedBy { it.rank }
         }
 
-        override suspend fun findByInput(input: String): List<CandidateOrderOverrideEntity> {
-            return rowsForInput(input)
+        fun rowsForRule(
+            input: String,
+            scope: CandidateOrderScope,
+        ): List<CandidateOrderOverrideEntity> {
+            return rows
+                .filter { it.input == input && it.scope == scope.name }
+                .sortedBy { it.rank }
+        }
+
+        override suspend fun findByRule(
+            input: String,
+            scope: String,
+        ): List<CandidateOrderOverrideEntity> {
+            return rows.filter { it.input == input && it.scope == scope }.sortedBy { it.rank }
         }
 
         override suspend fun findByInputs(
@@ -205,7 +242,11 @@ class CandidateOrderOverrideSavedOrderEditTest {
             findByInputsCalls += inputs.toList()
             return rows
                 .filter { it.input in inputs }
-                .sortedWith(compareBy<CandidateOrderOverrideEntity> { it.input }.thenBy { it.rank })
+                .sortedWith(
+                    compareBy<CandidateOrderOverrideEntity> { it.input }
+                        .thenBy { it.scope }
+                        .thenBy { it.rank },
+                )
         }
 
         override fun observeAll(): Flow<List<CandidateOrderOverrideEntity>> {
@@ -214,12 +255,22 @@ class CandidateOrderOverrideSavedOrderEditTest {
 
         override suspend fun getAll(): List<CandidateOrderOverrideEntity> {
             getAllCallCount++
-            return rows.sortedWith(compareBy<CandidateOrderOverrideEntity> { it.input }.thenBy { it.rank })
+            return rows.sortedWith(
+                compareBy<CandidateOrderOverrideEntity> { it.input }
+                    .thenBy { it.scope }
+                    .thenBy { it.rank },
+            )
         }
 
         override suspend fun deleteByInput(input: String) {
             deletedInputs += input
             rows.removeAll { it.input == input }
+            rowsFlow.value = rows.toList()
+        }
+
+        override suspend fun deleteByRule(input: String, scope: String) {
+            deletedRules += input to scope
+            rows.removeAll { it.input == input && it.scope == scope }
             rowsFlow.value = rows.toList()
         }
 
