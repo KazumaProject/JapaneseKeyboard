@@ -108,6 +108,27 @@ class MozcCompoundConversionParityTest {
         )
     }
 
+    @Test
+    fun hiwoCandidatePathsKeepKanjiAndParticleAsExactNodes() {
+        val trace = engine.convertWithTrace("ひを")
+        val relevantCandidates = trace.finalCandidates.filter {
+            it.candidate == "火を" || it.candidate == "日を"
+        }
+
+        assertTrue(
+            trace.finalCandidates.take(40).joinToString("\n"),
+            relevantCandidates.any {
+                it.candidate == "火を" && it.path == listOf("火", "を")
+            },
+        )
+        assertTrue(
+            trace.finalCandidates.take(40).joinToString("\n"),
+            relevantCandidates.any {
+                it.candidate == "日を" && it.path == listOf("日", "を")
+            },
+        )
+    }
+
     companion object {
         private lateinit var engine: KanaKanjiEngine
 
