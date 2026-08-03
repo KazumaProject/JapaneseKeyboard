@@ -1362,6 +1362,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
     private val flickInputPreviewCoordinator = FlickInputPreviewCoordinator(
         composingTextArbiter = composingTextArbiter,
+        createPreviewText = ::createFlickPreviewComposingText,
     )
     private val tenKeyFlickTextPreviewListener = FlickTextPreviewListener { event ->
         flickInputPreviewCoordinator.onEvent(
@@ -21478,6 +21479,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearBunsetsuConversionSession()
     }
 
+    /** Down/Moveプレビューにも通常入力と同じPreEdit装飾を適用する。 */
+    private fun createFlickPreviewComposingText(text: String): CharSequence {
+        return applyPreEditComposingSpans(
+            spannableString = SpannableString(text),
+            inputLength = text.length,
+            underlineEnd = text.length,
+            backgroundColor = if (customComposingTextPreference == true) {
+                inputCompositionBackgroundColor
+                    ?: getColor(com.kazumaproject.core.R.color.char_in_edit_color)
+            } else {
+                getColor(com.kazumaproject.core.R.color.char_in_edit_color)
+            },
+            textColor = if (customComposingTextPreference == true) {
+                inputCompositionTextColor
+            } else {
+                null
+            },
+        )
+    }
+
     /**
      * 編集前（PreEdit）のテキスト装飾を設定する
      * * @param backgroundColor 背景色 (Color Int)
@@ -21491,37 +21512,48 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         val inputLength = inputString.length
         val tailLength = stringInTail.get().length
+        applyPreEditComposingSpans(
+            spannableString = spannableString,
+            inputLength = inputLength,
+            underlineEnd = inputLength + tailLength,
+            backgroundColor = backgroundColor,
+            textColor = textColor,
+        )
 
-        spannableString.apply {
-            // 背景色の設定
+        Timber.d("launchInputString: setComposingTextPreEdit $spannableString")
+        setComposingText(spannableString, 1)
+    }
+
+    private fun applyPreEditComposingSpans(
+        spannableString: SpannableString,
+        inputLength: Int,
+        underlineEnd: Int,
+        @ColorInt backgroundColor: Int,
+        @ColorInt textColor: Int? = null,
+    ): SpannableString {
+        val spanFlag = Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+        return spannableString.apply {
             setSpan(
                 BackgroundColorSpan(backgroundColor),
                 0,
                 inputLength,
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+                spanFlag,
             )
-
-            // テキスト色の設定（指定がある場合のみ）
             textColor?.let { color ->
                 setSpan(
                     ForegroundColorSpan(color),
                     0,
                     inputLength,
-                    Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+                    spanFlag,
                 )
             }
-
-            // 下線の設定
             setSpan(
                 UnderlineSpan(),
                 0,
-                inputLength + tailLength,
-                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE or Spannable.SPAN_COMPOSING
+                underlineEnd,
+                spanFlag,
             )
         }
-
-        Timber.d("launchInputString: setComposingTextPreEdit $spannableString")
-        setComposingText(spannableString, 1)
     }
 
     /**

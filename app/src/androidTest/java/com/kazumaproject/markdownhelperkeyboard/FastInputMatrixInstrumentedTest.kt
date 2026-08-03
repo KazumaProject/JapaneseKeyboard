@@ -17,6 +17,9 @@ import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.os.SystemClock
 import android.provider.Settings
+import android.text.Spanned
+import android.text.style.BackgroundColorSpan
+import android.text.style.UnderlineSpan
 import android.util.Log
 import android.view.InputDevice
 import android.view.MotionEvent
@@ -58,6 +61,9 @@ class FastInputMatrixInstrumentedTest {
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
+                val defaultPreviewBackgroundColor = session.context.getColor(
+                    com.kazumaproject.core.R.color.char_in_edit_color
+                )
 
                 val sumireStyles = listOf(
                     "default",
@@ -77,6 +83,7 @@ class FastInputMatrixInstrumentedTest {
                     check(
                         session.preferences.edit()
                             .putBoolean("flick_editor_preview_preference", true)
+                            .putBoolean("theme_custom_input_color_enable", false)
                             .putString("sumire_keyboard_style_preference", style ?: "default")
                             .putString("sumire_input_method_preference", "switch-mode-effective")
                             .putString("keyboard_touch_effect_type_preference", "none")
@@ -104,6 +111,12 @@ class FastInputMatrixInstrumentedTest {
                         keyboard.primeText,
                         awaitEditorText(scenario) { it.isNotEmpty() },
                     )
+                    assertEditorPreviewDecoration(
+                        scenario = scenario,
+                        expectedText = keyboard.primeText,
+                        expectedBackgroundColor = defaultPreviewBackgroundColor,
+                        caseName = "$keyboard/$style DOWN",
+                    )
                     assertTrue(
                         "Candidate generation started before UP for $keyboard/$style",
                         findCandidateState().texts.isEmpty(),
@@ -129,6 +142,11 @@ class FastInputMatrixInstrumentedTest {
                     check(
                         session.preferences.edit()
                             .putBoolean("flick_editor_preview_preference", true)
+                            .putBoolean("theme_custom_input_color_enable", true)
+                            .putInt(
+                                "theme_custom_pre_edit_bg_color",
+                                PREVIEW_TEST_BACKGROUND_COLOR,
+                            )
                             .putString("sumire_keyboard_style_preference", "default")
                             .commit()
                     )
@@ -158,6 +176,12 @@ class FastInputMatrixInstrumentedTest {
                         it.isNotEmpty() && it != keyboard.primeText
                     }
                     assertTrue("MOVE did not replace preview for $keyboard", movedPreview.isNotEmpty())
+                    assertEditorPreviewDecoration(
+                        scenario = scenario,
+                        expectedText = movedPreview,
+                        expectedBackgroundColor = PREVIEW_TEST_BACKGROUND_COLOR,
+                        caseName = "$keyboard MOVE",
+                    )
                     assertTrue(
                         injectSinglePointerEvent(downTime, MotionEvent.ACTION_UP, end)
                     )
@@ -1382,6 +1406,61 @@ class FastInputMatrixInstrumentedTest {
         return text
     }
 
+    private fun assertEditorPreviewDecoration(
+        scenario: ActivityScenario<FastInputHostActivity>,
+        expectedText: String,
+        expectedBackgroundColor: Int,
+        caseName: String,
+    ) {
+        val deadline = SystemClock.uptimeMillis() + RESULT_TIMEOUT_MS
+        var latest = readEditorDecoration(scenario)
+        while (SystemClock.uptimeMillis() < deadline) {
+            latest = readEditorDecoration(scenario)
+            if (latest.matches(expectedText, expectedBackgroundColor)) return
+            SystemClock.sleep(PREVIEW_TEXT_POLL_MS)
+        }
+        assertTrue(
+            "$caseName did not retain the pre-edit background/underline spans: $latest",
+            latest.matches(expectedText, expectedBackgroundColor),
+        )
+    }
+
+    private fun readEditorDecoration(
+        scenario: ActivityScenario<FastInputHostActivity>
+    ): EditorDecorationSnapshot {
+        var snapshot = EditorDecorationSnapshot.Empty
+        scenario.onActivity { activity ->
+            val text = activity.editText.text
+            snapshot = EditorDecorationSnapshot(
+                text = text?.toString().orEmpty(),
+                backgrounds = text.getSpans(
+                    0,
+                    text.length,
+                    BackgroundColorSpan::class.java,
+                ).map { span ->
+                    BackgroundSpanSnapshot(
+                        color = span.backgroundColor,
+                        start = text.getSpanStart(span),
+                        end = text.getSpanEnd(span),
+                        flags = text.getSpanFlags(span),
+                    )
+                },
+                underlines = text.getSpans(
+                    0,
+                    text.length,
+                    UnderlineSpan::class.java,
+                ).map { span ->
+                    SpanRangeSnapshot(
+                        start = text.getSpanStart(span),
+                        end = text.getSpanEnd(span),
+                        flags = text.getSpanFlags(span),
+                    )
+                },
+            )
+        }
+        return snapshot
+    }
+
     private fun awaitEditorText(
         scenario: ActivityScenario<FastInputHostActivity>,
         predicate: (String) -> Boolean,
@@ -2455,6 +2534,49 @@ class FastInputMatrixInstrumentedTest {
         val texts: List<String>
     )
 
+    private data class EditorDecorationSnapshot(
+        val text: String,
+        val backgrounds: List<BackgroundSpanSnapshot>,
+        val underlines: List<SpanRangeSnapshot>,
+    ) {
+        fun matches(expectedText: String, expectedBackgroundColor: Int): Boolean {
+            val expectedEnd = expectedText.length
+            val hasBackground = backgrounds.any { span ->
+                span.color == expectedBackgroundColor &&
+                    span.start == 0 &&
+                    span.end == expectedEnd &&
+                    span.flags and Spanned.SPAN_COMPOSING != 0
+            }
+            val hasUnderline = underlines.any { span ->
+                span.start == 0 &&
+                    span.end == expectedEnd &&
+                    span.flags and Spanned.SPAN_COMPOSING != 0
+            }
+            return text == expectedText && hasBackground && hasUnderline
+        }
+
+        companion object {
+            val Empty = EditorDecorationSnapshot(
+                text = "",
+                backgrounds = emptyList(),
+                underlines = emptyList(),
+            )
+        }
+    }
+
+    private data class BackgroundSpanSnapshot(
+        val color: Int,
+        val start: Int,
+        val end: Int,
+        val flags: Int,
+    )
+
+    private data class SpanRangeSnapshot(
+        val start: Int,
+        val end: Int,
+        val flags: Int,
+    )
+
     private data class FlickVerification(
         val name: String,
         val normalizedDelta: PointF,
@@ -2633,6 +2755,7 @@ class FastInputMatrixInstrumentedTest {
         private const val FLICK_STEP_MS = 18L
         private const val PREVIEW_HOLD_ASSERT_MS = 120L
         private const val PREVIEW_TEXT_POLL_MS = 4L
+        private const val PREVIEW_TEST_BACKGROUND_COLOR = 0x66336699
         private const val PREVIEW_PERFORMANCE_WARMUP_GESTURES = 30
         private const val PREVIEW_PERFORMANCE_GESTURES = 500
         private const val PREVIEW_GC_SETTLE_MS = 250L
