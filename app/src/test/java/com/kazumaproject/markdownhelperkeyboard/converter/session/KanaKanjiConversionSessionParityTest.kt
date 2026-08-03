@@ -58,8 +58,28 @@ class KanaKanjiConversionSessionParityTest {
                     legacyResult.bunsetsuResult?.splitPatternByCandidateString,
                     incrementalResult.bunsetsuResult?.splitPatternByCandidateString,
                 )
+                assertEquals(
+                    "$input/$mode/bunsetsu=$bunsetsu conversion segments",
+                    legacyResult.candidateSegmentsByString,
+                    incrementalResult.candidateSegmentsByString,
+                )
             }
         }
+    }
+
+    @Test
+    fun segmentCollectionUsesExactPathNodesWhenBunsetsuDisplayIsDisabled() = runBlocking {
+        val result = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY).query(
+            request("ひを", CandidateQueryMode.CONVERSION, bunsetsu = false),
+        )
+
+        assertEquals(
+            listOf(Triple(0, 1, "火"), Triple(1, 2, "を")),
+            result.candidateSegmentsByString.getValue("火を").map {
+                Triple(it.inputStart, it.inputEnd, it.output)
+            },
+        )
+        assertEquals(null, result.bunsetsuResult)
     }
 
     @Test
@@ -207,6 +227,7 @@ class KanaKanjiConversionSessionParityTest {
         typoCorrectionOffsetScore = 3000,
         omissionSearchOffsetScore = 1900,
         beamWidth = 20,
+        collectCandidateSegments = true,
     )
 
     private fun List<Candidate>.fingerprint(): List<List<Any?>> = map { candidate ->

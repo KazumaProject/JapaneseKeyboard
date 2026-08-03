@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -118,6 +119,40 @@ class CandidateOrderOverrideSavedOrderEditTest {
         )
     }
 
+    @Test
+    fun segmentOrderQueriesOnlyInputPrefixesAndReusesBoundedLookup() = runTest {
+        val dao = FakeCandidateOrderOverrideDao(
+            initialRows = mutableListOf(
+                entity(input = "ひ", candidate = "火", rank = 1),
+                entity(input = "べんちまっぷ00001", candidate = "候補", rank = 1),
+            ),
+        )
+        val repository = CandidateOrderOverrideRepository(dao)
+        val candidates = listOf(candidate("日を"), candidate("火を"))
+        val segments = mapOf(
+            "日を" to listOf(
+                candidateSegment(0, 1, "日"),
+                candidateSegment(1, 2, "を"),
+            ),
+            "火を" to listOf(
+                candidateSegment(0, 1, "火"),
+                candidateSegment(1, 2, "を"),
+            ),
+        )
+
+        repeat(2) {
+            assertEquals(
+                listOf("火を", "日を"),
+                repository.applyOrderFromSnapshot("ひを", candidates, segments).map { it.string },
+            )
+        }
+
+        assertEquals(1, dao.findByInputsCalls.size)
+        assertEquals(setOf("ひ", "ひを"), dao.findByInputsCalls.single().toSet())
+        assertFalse(dao.findByInputsCalls.single().contains("べんちまっぷ00001"))
+        assertEquals(0, dao.getAllCallCount)
+    }
+
     private fun entity(
         input: String,
         candidate: String,
@@ -140,12 +175,21 @@ class CandidateOrderOverrideSavedOrderEditTest {
             score = 0
         )
 
+    private fun candidateSegment(inputStart: Int, inputEnd: Int, output: String) =
+        com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment(
+            inputStart = inputStart,
+            inputEnd = inputEnd,
+            output = output,
+        )
+
     private class FakeCandidateOrderOverrideDao(
         initialRows: MutableList<CandidateOrderOverrideEntity>
     ) : CandidateOrderOverrideDao {
         private val rows = initialRows
         private val rowsFlow = MutableStateFlow(rows.toList())
         val deletedInputs = mutableListOf<String>()
+        val findByInputsCalls = mutableListOf<List<String>>()
+        var getAllCallCount = 0
 
         fun rowsForInput(input: String): List<CandidateOrderOverrideEntity> {
             return rows.filter { it.input == input }.sortedBy { it.rank }
@@ -155,11 +199,21 @@ class CandidateOrderOverrideSavedOrderEditTest {
             return rowsForInput(input)
         }
 
+        override suspend fun findByInputs(
+            inputs: List<String>,
+        ): List<CandidateOrderOverrideEntity> {
+            findByInputsCalls += inputs.toList()
+            return rows
+                .filter { it.input in inputs }
+                .sortedWith(compareBy<CandidateOrderOverrideEntity> { it.input }.thenBy { it.rank })
+        }
+
         override fun observeAll(): Flow<List<CandidateOrderOverrideEntity>> {
             return rowsFlow
         }
 
         override suspend fun getAll(): List<CandidateOrderOverrideEntity> {
+            getAllCallCount++
             return rows.sortedWith(compareBy<CandidateOrderOverrideEntity> { it.input }.thenBy { it.rank })
         }
 

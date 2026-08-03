@@ -22,6 +22,15 @@ interface CandidateOrderOverrideDao {
     @Query(
         """
         SELECT * FROM candidate_order_override
+        WHERE input IN (:inputs)
+        ORDER BY input ASC, rank ASC
+        """
+    )
+    suspend fun findByInputs(inputs: List<String>): List<CandidateOrderOverrideEntity>
+
+    @Query(
+        """
+        SELECT * FROM candidate_order_override
         ORDER BY input ASC, rank ASC
         """
     )

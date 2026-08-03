@@ -1,7 +1,10 @@
 package com.kazumaproject.markdownhelperkeyboard.converter
 
 import android.content.Context
+import android.os.Debug
+import android.os.SystemClock
 import android.view.ContextThemeWrapper
+import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -9,8 +12,12 @@ import com.kazumaproject.custom_keyboard.data.KeyCharacterCase
 import com.kazumaproject.custom_keyboard.layout.KeyboardDefaultLayouts
 import com.kazumaproject.custom_keyboard.view.FlickKeyboardView
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.engine.KanaKanjiEngine
+import com.kazumaproject.markdownhelperkeyboard.database.AppDatabase
 import com.kazumaproject.markdownhelperkeyboard.ime_service.di.KanaKanjiEngineEntryPoint
+import com.kazumaproject.markdownhelperkeyboard.candidate_order.database.CandidateOrderOverrideEntity
+import com.kazumaproject.markdownhelperkeyboard.repository.CandidateOrderOverrideRepository
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.runBlocking
@@ -112,6 +119,8 @@ class ConversionPerformanceInstrumentedProbeTest {
         val label = arguments.getString("conversionPerfLabel") ?: "instrumented"
         val warmup = arguments.getString("conversionPerfWarmup")?.toIntOrNull() ?: 2
         val iterations = arguments.getString("conversionPerfIterations")?.toIntOrNull() ?: 10
+        val collectCandidateSegments =
+            arguments.getString("conversionPerfCollectCandidateSegments") == "true"
         val inputs = listOf(
             "きょう",
             "きょうはいいてんきですね",
@@ -136,24 +145,40 @@ class ConversionPerformanceInstrumentedProbeTest {
             userDictionaryRepository = entryPoint.userDictionaryRepository()
         }
 
+        var lastCandidateSegments: Map<String, List<CandidateConversionSegment>> = emptyMap()
+        suspend fun convert(input: String): List<Candidate> {
+            val segmentCollector: MutableMap<String, List<CandidateConversionSegment>>? =
+                if (collectCandidateSegments) LinkedHashMap() else null
+            return engine.convertForProbe(
+                input = input,
+                userDictionaryRepository = userDictionaryRepository,
+                candidateSegmentCollector = segmentCollector,
+            ).also {
+                if (segmentCollector != null) lastCandidateSegments = segmentCollector
+            }
+        }
+
         val firstResults = LinkedHashMap<String, List<Candidate>>()
         val firstConversionNs = inputs.associateWith { input ->
             measureNanoTime {
-                firstResults[input] = engine.convertForProbe(input, userDictionaryRepository)
+                firstResults[input] = convert(input)
             }
         }
 
         repeat(warmup) {
             inputs.forEach { input ->
-                engine.convertForProbe(input, userDictionaryRepository)
+                convert(input)
             }
         }
+        Runtime.getRuntime().gc()
+        SystemClock.sleep(500)
+        val pssBeforeKb = Debug.getPss()
 
         val warmResults = LinkedHashMap<String, List<Candidate>>()
         val warmConversionNs = inputs.associateWith { input ->
             measureNanoTime {
                 repeat(iterations) {
-                    warmResults[input] = engine.convertForProbe(input, userDictionaryRepository)
+                    warmResults[input] = convert(input)
                 }
             }
         }
@@ -162,14 +187,23 @@ class ConversionPerformanceInstrumentedProbeTest {
         var continuousResult: List<Candidate> = emptyList()
         val continuousElapsedNs = measureNanoTime {
             repeat(iterations) {
-                continuousResult = engine.convertForProbe(continuousInput, userDictionaryRepository)
+                continuousResult = convert(continuousInput)
             }
         }
+        Runtime.getRuntime().gc()
+        SystemClock.sleep(500)
+        val pssAfterKb = Debug.getPss()
 
         val report = buildString {
             appendLine("label=$label")
             appendLine("warmup=$warmup")
             appendLine("iterations=$iterations")
+            appendLine("collectCandidateSegments=$collectCandidateSegments")
+            appendLine("segmentCandidateCount=${lastCandidateSegments.size}")
+            appendLine("segmentNodeCount=${lastCandidateSegments.values.sumOf { it.size }}")
+            appendLine("pssBeforeKb=$pssBeforeKb")
+            appendLine("pssAfterKb=$pssAfterKb")
+            appendLine("pssDeltaKb=${pssAfterKb - pssBeforeKb}")
             appendLine("entryPointResolveNs=$entryPointResolveNs")
             appendLine("productionSingletonResolveNs=$productionSingletonResolveNs")
             appendLine("fingerprint=${warmResults.fingerprint()}")
@@ -200,9 +234,227 @@ class ConversionPerformanceInstrumentedProbeTest {
         println(report)
     }
 
+    @Test
+    fun measureCandidateOrderScalePerformance() = runBlocking {
+        val arguments = InstrumentationRegistry.getArguments()
+        assumeTrue(arguments.getString("candidateOrderScaleProbe") == "true")
+
+        val scale = arguments.getString("candidateOrderScale")?.toIntOrNull() ?: 100
+        val conversionWarmup =
+            arguments.getString("candidateOrderConversionWarmup")?.toIntOrNull() ?: 10
+        val conversionIterations =
+            arguments.getString("candidateOrderConversionIterations")?.toIntOrNull() ?: 100
+        val sortIterations =
+            arguments.getString("candidateOrderSortIterations")?.toIntOrNull() ?: 10_000
+        val candidatesPerGroup =
+            arguments.getString("candidateOrderCandidatesPerGroup")?.toIntOrNull() ?: 3
+        require(scale in 1..10_000)
+        require(candidatesPerGroup in 3..200)
+
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val input = "ひを"
+        lateinit var engine: KanaKanjiEngine
+        lateinit var userDictionaryRepository: UserDictionaryRepository
+
+        suspend fun convertWithSegments(): Pair<
+            List<Candidate>,
+            Map<String, List<CandidateConversionSegment>>,
+        > {
+            val segments = LinkedHashMap<String, List<CandidateConversionSegment>>()
+            val candidates = engine.convertForProbe(
+                input = input,
+                userDictionaryRepository = userDictionaryRepository,
+                candidateSegmentCollector = segments,
+            )
+            return candidates to segments
+        }
+
+        val memoryProbeCandidates = listOf(
+            Candidate("日を", 1, 2u, 0),
+            Candidate("火を", 1, 2u, 1),
+            Candidate("陽を", 1, 2u, 2),
+        )
+        val memoryProbeSegments = mapOf(
+            "日を" to listOf(
+                CandidateConversionSegment(0, 1, "日"),
+                CandidateConversionSegment(1, 2, "を"),
+            ),
+            "火を" to listOf(
+                CandidateConversionSegment(0, 1, "火"),
+                CandidateConversionSegment(1, 2, "を"),
+            ),
+            "陽を" to listOf(
+                CandidateConversionSegment(0, 1, "陽"),
+                CandidateConversionSegment(1, 2, "を"),
+            ),
+        )
+
+        val databaseName = "candidate-order-scale-${scale}-${System.nanoTime()}.db"
+        val database = Room.databaseBuilder(
+            context,
+            AppDatabase::class.java,
+            databaseName,
+        ).build()
+        try {
+            val dao = database.candidateOrderOverrideDao()
+            val repository = CandidateOrderOverrideRepository(dao)
+
+            val now = System.currentTimeMillis()
+            val entityCount = scale * candidatesPerGroup
+            val insertNs = measureNanoTime {
+                val batch = ArrayList<CandidateOrderOverrideEntity>(10_000)
+                suspend fun flushBatch() {
+                    if (batch.isEmpty()) return
+                    dao.insertAll(batch)
+                    batch.clear()
+                }
+                for (groupIndex in 0 until scale) {
+                    val suffix = groupIndex.toString().padStart(5, '0')
+                    val groupInput = if (groupIndex == 0) "ひ" else "べんちまっぷ$suffix"
+                    for (candidateIndex in 0 until candidatesPerGroup) {
+                        val output = when {
+                            groupIndex == 0 && candidateIndex == 0 -> "火"
+                            groupIndex == 0 && candidateIndex == 1 -> "日"
+                            groupIndex == 0 && candidateIndex == 2 -> "陽"
+                            else -> "候補${candidateIndex.toString().padStart(3, '0')}-$suffix"
+                        }
+                        batch += CandidateOrderOverrideEntity(
+                        input = groupInput,
+                        candidate = output,
+                        rank = candidateIndex + 1,
+                        createdAt = now,
+                        updatedAt = now,
+                    )
+                        if (batch.size >= 10_000) flushBatch()
+                    }
+                }
+                flushBatch()
+            }
+
+            // Measure only the conversion-time lookup/cache allocation. The test database is
+            // file-backed like production, and insertion pages are already present at baseline.
+            dao.findByInputs(listOf("__measurement_warmup__"))
+            forceGcForMeasurement()
+            val baselinePssKb = Debug.getPss()
+            val baselineHeapKb = usedJavaHeapKb()
+
+            lateinit var firstOrdered: List<Candidate>
+            val firstSnapshotAndSortNs = measureNanoTime {
+                firstOrdered = repository.applyOrderFromSnapshot(
+                    input = input,
+                    candidates = memoryProbeCandidates,
+                    candidateSegmentsByString = memoryProbeSegments,
+                )
+            }
+            assertEquals("火を", firstOrdered.first().string)
+
+            forceGcForMeasurement()
+            val snapshotPssKb = Debug.getPss()
+            val snapshotHeapKb = usedJavaHeapKb()
+
+            val entryPoint = EntryPointAccessors.fromApplication(
+                context.applicationContext,
+                KanaKanjiEngineEntryPoint::class.java,
+            )
+            engine = entryPoint.kanaKanjiEngine()
+            userDictionaryRepository = entryPoint.userDictionaryRepository()
+            repeat(conversionWarmup) { convertWithSegments() }
+            val (referenceCandidates, referenceSegments) = convertWithSegments()
+
+            var lastSorted: List<Candidate> = emptyList()
+            val sortElapsedNs = measureNanoTime {
+                repeat(sortIterations) {
+                    lastSorted = repository.applyOrderFromSnapshot(
+                        input = input,
+                        candidates = referenceCandidates,
+                        candidateSegmentsByString = referenceSegments,
+                    )
+                }
+            }
+            assertEquals("火を", lastSorted.first().string)
+
+            suspend fun convertAndOrder(): List<Candidate> {
+                val (candidates, segments) = convertWithSegments()
+                return repository.applyOrderFromSnapshot(
+                    input = input,
+                    candidates = candidates,
+                    candidateSegmentsByString = segments,
+                )
+            }
+
+            repeat(conversionWarmup) {
+                convertWithSegments()
+                convertAndOrder()
+            }
+            val conversionOnlyNs = LongArray(conversionIterations)
+            val conversionAndOrderNs = LongArray(conversionIterations)
+            repeat(conversionIterations) { index ->
+                if (index % 2 == 0) {
+                    conversionOnlyNs[index] = measureNanoTime { convertWithSegments() }
+                    conversionAndOrderNs[index] = measureNanoTime { convertAndOrder() }
+                } else {
+                    conversionAndOrderNs[index] = measureNanoTime { convertAndOrder() }
+                    conversionOnlyNs[index] = measureNanoTime { convertWithSegments() }
+                }
+            }
+
+            val conversionOnlyAvgUs = conversionOnlyNs.average() / 1_000.0
+            val conversionAndOrderAvgUs = conversionAndOrderNs.average() / 1_000.0
+            val report = buildString {
+                appendLine("scale=$scale")
+                appendLine("overrideGroupCount=$scale")
+                appendLine("overrideEntityCount=$entityCount")
+                appendLine("candidatesPerGroup=$candidatesPerGroup")
+                appendLine("databaseMode=file")
+                appendLine("conversionWarmup=$conversionWarmup")
+                appendLine("conversionIterations=$conversionIterations")
+                appendLine("sortIterations=$sortIterations")
+                appendLine("insertMs=${insertNs / 1_000_000.0}")
+                appendLine("firstSnapshotAndSortMs=${firstSnapshotAndSortNs / 1_000_000.0}")
+                appendLine("sortOnlyAvgUs=${sortElapsedNs / sortIterations / 1_000.0}")
+                appendLine("conversionOnlyAvgUs=$conversionOnlyAvgUs")
+                appendLine("conversionAndOrderAvgUs=$conversionAndOrderAvgUs")
+                appendLine(
+                    "conversionOrderDeltaUs=${conversionAndOrderAvgUs - conversionOnlyAvgUs}",
+                )
+                appendLine("baselinePssKb=$baselinePssKb")
+                appendLine("snapshotPssKb=$snapshotPssKb")
+                appendLine("snapshotPssDeltaKb=${snapshotPssKb - baselinePssKb}")
+                appendLine("baselineHeapKb=$baselineHeapKb")
+                appendLine("snapshotHeapKb=$snapshotHeapKb")
+                appendLine("snapshotHeapDeltaKb=${snapshotHeapKb - baselineHeapKb}")
+                appendLine("candidateCount=${referenceCandidates.size}")
+                appendLine(
+                    "segmentCandidateCount=${referenceSegments.size}",
+                )
+            }
+
+            val outputDir = File(context.filesDir, "conversion-perf").apply { mkdirs() }
+            File(outputDir, "candidate-order-scale-$scale.txt").writeText(report)
+            println(report)
+        } finally {
+            database.close()
+            context.deleteDatabase(databaseName)
+        }
+    }
+
+    private fun forceGcForMeasurement() {
+        repeat(3) {
+            Runtime.getRuntime().gc()
+            System.runFinalization()
+            SystemClock.sleep(300)
+        }
+    }
+
+    private fun usedJavaHeapKb(): Long {
+        val runtime = Runtime.getRuntime()
+        return (runtime.totalMemory() - runtime.freeMemory()) / 1024L
+    }
+
     private suspend fun KanaKanjiEngine.convertForProbe(
         input: String,
         userDictionaryRepository: UserDictionaryRepository,
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> =
         getCandidatesWithBunsetsuSeparation(
             input = input,
@@ -220,6 +472,7 @@ class ConversionPerformanceInstrumentedProbeTest {
             typoCorrectionOffsetScore = 3000,
             omissionSearchOffsetScore = 1900,
             beamWidth = 20,
+            candidateSegmentCollector = candidateSegmentCollector,
         ).candidates
 
     private fun Map<String, List<Candidate>>.fingerprint(): String {

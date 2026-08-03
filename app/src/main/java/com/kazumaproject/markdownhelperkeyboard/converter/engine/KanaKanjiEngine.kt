@@ -23,6 +23,7 @@ import com.kazumaproject.markdownhelperkeyboard.converter.candidate.BunsetsuCand
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_ERA
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CANDIDATE_TYPE_TIME
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.candidate.CandidateConversionSegment
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphBuilder
 import com.kazumaproject.markdownhelperkeyboard.converter.graph.GraphNodeDedupMode
 import com.kazumaproject.markdownhelperkeyboard.converter.mozc.MozcBoundaryMode
@@ -1083,6 +1084,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -1154,6 +1156,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -1587,6 +1590,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -1660,6 +1664,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -2122,6 +2127,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -2195,6 +2201,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -2598,6 +2605,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -2669,6 +2677,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -3055,6 +3064,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): List<Candidate> {
         val conversionContext = currentCoroutineContext()
 
@@ -3125,6 +3135,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
@@ -3547,6 +3558,7 @@ class KanaKanjiEngine {
         beamWidth: Int = 20,
         incrementalSessionState: IncrementalSessionState? = null,
         predictionConfig: PredictionConfig = PredictionConfig(),
+        candidateSegmentCollector: MutableMap<String, List<CandidateConversionSegment>>? = null,
     ): BunsetsuCandidateResult {
         val conversionContext = currentCoroutineContext()
 
@@ -3619,6 +3631,7 @@ class KanaKanjiEngine {
                 beamWidth = beamWidth,
                 cancellationCheck = { conversionContext.ensureActive() },
                 sessionState = incrementalSessionState?.pathState,
+                candidateSegmentCollector = candidateSegmentCollector,
             )
         }
         conversionContext.ensureActive()
