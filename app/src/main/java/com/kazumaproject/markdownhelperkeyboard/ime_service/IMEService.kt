@@ -21476,11 +21476,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     /** Down/Moveプレビューにも通常入力と同じPreEdit装飾を適用する。 */
-    private fun createFlickPreviewComposingText(text: String): CharSequence {
+    private fun createFlickPreviewComposingText(
+        text: String,
+        composingTail: String,
+    ): CharSequence {
         return applyPreEditComposingSpans(
-            spannableString = SpannableString(text),
+            spannableString = SpannableString(text + composingTail),
             inputLength = text.length,
-            underlineEnd = text.length,
+            underlineEnd = text.length + composingTail.length,
             backgroundColor = if (customComposingTextPreference == true) {
                 inputCompositionBackgroundColor
                     ?: getColor(com.kazumaproject.core.R.color.char_in_edit_color)
@@ -24185,7 +24188,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             isHenkan = isHenkan.get(),
             selectMode = selectMode.value,
             cursorMoveMode = cursorMoveMode.value,
-            hasComposingTail = stringInTail.get().isNotEmpty(),
+            composingTail = stringInTail.get(),
             hasInputConnection = currentInputConnection != null,
             baseInput = inputString.value,
             isFlickOnlyMode = isFlickOnlyMode == true,

@@ -5,7 +5,8 @@ import com.kazumaproject.core.domain.flick.FlickTextSelection
 
 internal class FlickInputPreviewCoordinator(
     private val composingTextArbiter: ComposingTextArbiter,
-    private val createPreviewText: (String) -> CharSequence = { it },
+    private val createPreviewText: (input: String, tail: String) -> CharSequence =
+        { input, _ -> input },
     private val mutationResolver: (
         FlickMutationSnapshot,
         FlickTextSelection,
@@ -16,6 +17,7 @@ internal class FlickInputPreviewCoordinator(
         val editorSessionId: Long,
         val source: FlickPreviewSource,
         val snapshot: FlickMutationSnapshot,
+        val composingTail: String,
         var lastSelection: FlickTextSelection,
         var lastMutation: FlickTextMutation,
         var pendingCommitConsumed: Boolean = false,
@@ -82,6 +84,7 @@ internal class FlickInputPreviewCoordinator(
             editorSessionId = context.editorSessionId,
             source = context.source,
             snapshot = snapshot,
+            composingTail = context.composingTail,
             lastSelection = event.selection,
             lastMutation = mutation,
         )
@@ -116,7 +119,7 @@ internal class FlickInputPreviewCoordinator(
                     (previousMutation as? FlickTextMutation.ReplaceComposingInput)?.resultInput
                 val needsEditorUpdate = !composingTextArbiter.isPreviewVisible() ||
                         previousResult != mutation.resultInput
-                if (needsEditorUpdate && !showPreview(mutation)) {
+                if (needsEditorUpdate && !showPreview(mutation, current.composingTail)) {
                     active = null
                     return
                 }
@@ -165,7 +168,8 @@ internal class FlickInputPreviewCoordinator(
     private fun renderMutation(mutation: FlickTextMutation) {
         when (mutation) {
             is FlickTextMutation.ReplaceComposingInput -> {
-                if (!showPreview(mutation)) {
+                val current = active ?: return
+                if (!showPreview(mutation, current.composingTail)) {
                     active = null
                 }
             }
@@ -174,9 +178,12 @@ internal class FlickInputPreviewCoordinator(
         }
     }
 
-    private fun showPreview(mutation: FlickTextMutation.ReplaceComposingInput): Boolean {
+    private fun showPreview(
+        mutation: FlickTextMutation.ReplaceComposingInput,
+        composingTail: String,
+    ): Boolean {
         return composingTextArbiter.showPreview(
-            createPreviewText(mutation.resultInput),
+            createPreviewText(mutation.resultInput, composingTail),
             1,
         )
     }
