@@ -62,6 +62,8 @@ class IMEServiceClipboardPreviewRegressionContractTest {
     fun clipboardPreviewSnapshotKeepsImageBitmapAndLastPastedCondition() {
         val body = functionBody(imeServiceLines(), "resolveClipboardPreviewSnapshot").joinToString("\n")
 
+        assertFalse(body.contains("clipboardUtil.getPrimaryClipContent()"))
+        assertTrue(body.contains("cachedClipboardPreviewItem"))
         assertTrue(body.contains("bitmap = item.bitmap"))
         assertTrue(body.contains("getClipboardPreviewText(item.text)"))
         assertTrue(body.contains("appPreference.last_pasted_clipboard_text_preference == item.text"))
