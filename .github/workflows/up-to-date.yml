@@ -1,14 +1,90 @@
-name: up-to-date
+name: Android PR CI
 
 on:
   pull_request:
+    branches:
+      - dev
+      - main
   push:
     branches:
+      - dev
       - main
 
+permissions:
+  contents: read
+
 jobs:
-  check:
+  build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      ZENZ_MODEL_CACHE_DIR: ${{ github.workspace }}/.zenz-model-cache
+      ZENZ_DEBUG_NATIVE_ABIS: x86_64
+
     steps:
-      - uses: actions/checkout@v4
-      - run: echo "ok"
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: temurin
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          log-accepted-android-sdk-licenses: true
+
+      - name: Install Android SDK components
+        run: |
+          sdkmanager "platforms;android-36" \
+            "ndk;29.0.14206865" \
+            "cmake;3.22.1"
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Cache Zenz model
+        uses: actions/cache@v4
+        with:
+          path: .zenz-model-cache
+          key: ${{ runner.os }}-zenz-model-v2-4f5423f0fad41a73b1242eb96fe5c12ae4fdca83-Q5_K_M-ggml-model-Q5_K_M.gguf
+
+      - name: Build and test
+        run: |
+          ./gradlew \
+            test \
+            :app:assembleFullStandardDebug \
+            :app:assembleLiteStandardDebug \
+            :app:assembleLiteFdroidDebug \
+            :app:testFullStandardDebugUnitTest \
+            :app:testLiteStandardDebugUnitTest \
+            :app:testLiteFdroidDebugUnitTest \
+            :app:lintFullStandardDebug \
+            :app:lintLiteStandardDebug \
+            :app:lintLiteFdroidDebug \
+            --stacktrace \
+            --no-daemon \
+            --max-workers=2
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-test-reports
+          path: |
+            **/build/reports/**
+            **/build/test-results/**
+          if-no-files-found: ignore
+          retention-days: 14
