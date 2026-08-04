@@ -734,6 +734,16 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
 
     private var selectedTextClipboardPreviewRefreshText: String? = null
+    /**
+     * Selection state used by candidate-strip rendering.
+     *
+     * InputConnection is a remote Binder connection for most editors.  Reading selected text
+     * synchronously from the main thread can therefore stall the whole IME while the editor
+     * responds.  Keep the range state immediately and refresh the text snapshot off-main.
+     */
+    private var editorTextSelected: Boolean = false
+    private var selectedEditorText: String = ""
+    private val selectedEditorTextRequestId = AtomicLong(0L)
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -791,6 +801,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             mainHandler.post {
                 action()
+            }
+        }
+    }
+
+    private fun resetEditorSelectionSnapshot() {
+        selectedEditorTextRequestId.incrementAndGet()
+        editorTextSelected = false
+        selectedEditorText = ""
+    }
+
+    private fun updateEditorSelectionSnapshot(newSelStart: Int, newSelEnd: Int) {
+        val hasSelection =
+            newSelStart >= 0 && newSelEnd >= 0 && newSelStart != newSelEnd
+        editorTextSelected = hasSelection
+        selectedEditorText = ""
+        val requestId = selectedEditorTextRequestId.incrementAndGet()
+        if (!hasSelection) return
+
+        val connection = currentInputConnection ?: return
+        ioScope.launch {
+            val text = runCatching {
+                connection.getSelectedText(0)?.toString().orEmpty()
+            }.getOrDefault("")
+            runOnMainThread {
+                if (selectedEditorTextRequestId.get() != requestId || !editorTextSelected) {
+                    return@runOnMainThread
+                }
+                selectedEditorText = text
+                if (text.isNotEmpty()) {
+                    handleSelectedTextSelection(text)
+                } else {
+                    clearSelectedTextClipboardPreviewRefresh()
+                    if (selectedTextGemmaSession != null) {
+                        clearSelectedTextGemmaSession(
+                            clearSuggestions = hasSelectedTextGemmaActionCandidates()
+                        )
+                    }
+                }
+                refreshCandidateStripContent()
             }
         }
     }
@@ -892,10 +941,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         includeZeroQuery: Boolean
     ): CandidateStripInputState {
         val clipboardPreview = resolveClipboardPreviewSnapshot()
-        val selectedEditorText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
         val shouldSuppressClipboardPreviewForSelectedText =
-            selectedEditorText.isNotEmpty() &&
-                selectedTextClipboardPreviewRefreshText != selectedEditorText
+            editorTextSelected &&
+                (selectedEditorText.isEmpty() ||
+                    selectedTextClipboardPreviewRefreshText != selectedEditorText)
         val hasUndoHistory = isEditHistoryEnabled() && deletedBuffer.hasUndoHistory()
         val hasRedoHistory = isEditHistoryEnabled() && deletedBuffer.hasRedoHistory()
         return CandidateStripInputState(
@@ -1051,7 +1100,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isCurrentInputTypePasswordOrEmailForZeroQuery()) return false
         if (isCustomLayoutPickerShownForCandidateStrip()) return false
         if (isSelectedTextGemmaActionsShownForCandidateStrip()) return false
-        if (currentInputConnection?.getSelectedText(0)?.toString().orEmpty().isNotEmpty()) {
+        if (editorTextSelected) {
             return false
         }
         return true
@@ -1077,7 +1126,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (inputString.value.isNotEmpty()) return false
         if (stringInTail.get().isNotEmpty()) return false
         if (isCurrentInputTypePasswordOrEmailForZeroQuery()) return false
-        if (currentInputConnection?.getSelectedText(0)?.toString().orEmpty().isNotEmpty()) {
+        if (editorTextSelected) {
             return false
         }
         return true
@@ -1142,11 +1191,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
-        val selectedText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
         val inputAndSelectionAreEmpty =
             inputString.value.isEmpty() &&
                 stringInTail.get().isEmpty() &&
-                selectedText.isEmpty() &&
+                !editorTextSelected &&
                 newSelStart == newSelEnd
         if (zeroQuerySelectionUpdateSuppressCount > 0 && inputAndSelectionAreEmpty) {
             zeroQuerySelectionUpdateSuppressCount -= 1
@@ -1155,7 +1203,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val cursorMoved = oldSelStart != newSelStart || oldSelEnd != newSelEnd
         if (
-            selectedText.isNotEmpty() ||
+            editorTextSelected ||
             newSelStart != newSelEnd ||
             inputString.value.isNotEmpty() ||
             stringInTail.get().isNotEmpty() ||
@@ -2264,6 +2312,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        resetEditorSelectionSnapshot()
         flickPreviewEditorSessionId += 1L
         flickInputPreviewCoordinator.resetForEditorSession()
         gemmaInputSessionId += 1L
@@ -4581,6 +4630,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onDestroy() {
         flickInputPreviewCoordinator.cancel(restore = false)
+        resetEditorSelectionSnapshot()
         Timber.d("onUpdate onDestroy")
         if (runtimeInputPreferenceListenerRegistered) {
             runtimeInputSharedPreferences.unregisterOnSharedPreferenceChangeListener(
@@ -5667,6 +5717,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
+        updateEditorSelectionSnapshot(
+            newSelStart = newSelStart,
+            newSelEnd = newSelEnd,
+        )
+
         handleZeroQueryOnUpdateSelection(
             oldSelStart = oldSelStart,
             oldSelEnd = oldSelEnd,
@@ -5680,41 +5735,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
-        val selectedText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
-        if (selectedText.isNotEmpty()) {
-            if (selectedTextClipboardPreviewRefreshText == selectedText) {
-                clearSelectedTextGemmaSession(
-                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
-                )
-                updateClipboardPreview()
-                return
-            }
-            clearSelectedTextClipboardPreviewRefresh()
-            if (selectedTextGemmaSession?.selectedText != null &&
-                selectedTextGemmaSession?.selectedText != selectedText
-            ) {
-                clearSelectedTextGemmaSession(
-                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
-                )
-            }
-            if (AppVariantConfig.hasGemma &&
-                appPreference.enable_gemma_translation_preference &&
-                gemmaTranslationManager.isTranslationAvailable()
-            ) {
-                showSelectedTextGemmaActions(selectedText)
-            } else {
-                clearSelectedTextGemmaSession(
-                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
-                )
+        if (editorTextSelected) {
+            if (selectedEditorText.isNotEmpty()) {
+                handleSelectedTextSelection(selectedEditorText)
             }
             return
-        } else {
-            clearSelectedTextClipboardPreviewRefresh()
-            if (selectedTextGemmaSession != null) {
-                clearSelectedTextGemmaSession(
-                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
-                )
-            }
+        }
+        clearSelectedTextClipboardPreviewRefresh()
+        if (selectedTextGemmaSession != null) {
+            clearSelectedTextGemmaSession(
+                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            )
         }
 
         val preservedPreEdit = preservePreEditOnNextSelectionUpdate
@@ -9144,6 +9175,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return insertString.take(readingLength)
     }
 
+    private fun handleSelectedTextSelection(selectedText: String) {
+        if (selectedTextClipboardPreviewRefreshText == selectedText) {
+            clearSelectedTextGemmaSession(
+                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            )
+            updateClipboardPreview()
+            return
+        }
+        clearSelectedTextClipboardPreviewRefresh()
+        if (selectedTextGemmaSession?.selectedText != null &&
+            selectedTextGemmaSession?.selectedText != selectedText
+        ) {
+            clearSelectedTextGemmaSession(
+                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            )
+        }
+        if (AppVariantConfig.hasGemma &&
+            appPreference.enable_gemma_translation_preference &&
+            gemmaTranslationManager.isTranslationAvailable()
+        ) {
+            showSelectedTextGemmaActions(selectedText)
+        } else {
+            clearSelectedTextGemmaSession(
+                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            )
+        }
+    }
+
     private fun showSelectedTextGemmaActions(selectedText: String) {
         clearZeroQueryAllState(refresh = false)
         if (!gemmaTranslationManager.isTranslationAvailable()) {
@@ -9165,8 +9224,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             withContext(Dispatchers.Main) {
                 if (selectedTextGemmaActionMenuRequestId.get() != requestId) return@withContext
-                val currentSelection =
-                    currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
+                val currentSelection = selectedEditorText
                 if (currentSelection != selectedText) return@withContext
 
                 val actions = buildList {
@@ -9232,8 +9290,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun markClipboardPreviewRefreshAfterPrimaryClipChanged() {
         selectedTextClipboardPreviewRefreshText =
-            currentInputConnection?.getSelectedText(0)?.toString()
-                ?.takeIf { it.isNotEmpty() }
+            selectedEditorText.takeIf { it.isNotEmpty() }
         if (selectedTextClipboardPreviewRefreshText != null) {
             clearSelectedTextGemmaSession(
                 clearSuggestions = hasSelectedTextGemmaActionCandidates()
@@ -12689,6 +12746,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val isSensitive = currentInputType.isPassword()
         clipboardUtil.setClipBoard(text, isSensitive = isSensitive)
         appPreference.last_pasted_clipboard_text_preference = ""
+        editorTextSelected = text.isNotEmpty()
+        selectedEditorText = text
         markClipboardPreviewRefreshAfterPrimaryClipChanged()
         updateClipboardPreview()
     }
@@ -20766,9 +20825,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun captureDeletedTextFromConnection(inputConnection: InputConnection?): String {
         val connection = inputConnection ?: return ""
-        val selectedText = connection.getSelectedText(0)?.toString().orEmpty()
-        if (selectedText.isNotEmpty()) {
-            return selectedText
+        if (editorTextSelected && selectedEditorText.isNotEmpty()) {
+            return selectedEditorText
         }
         return getLastCharacterAsString(connection)
     }

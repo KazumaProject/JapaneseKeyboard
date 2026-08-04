@@ -20,7 +20,7 @@ class IMEServiceClipboardPreviewRegressionContractTest {
 
     @Test
     fun onUpdateSelectionRefreshesClipboardPreviewBeforeSelectedTextEarlyReturnAfterCopy() {
-        val body = functionBody(imeServiceLines(), "onUpdateSelection").joinToString("\n")
+        val body = functionBody(imeServiceLines(), "handleSelectedTextSelection").joinToString("\n")
 
         val selectedCopyRefresh = body.indexOf("selectedTextClipboardPreviewRefreshText == selectedText")
         val updateClipboard = body.indexOf("updateClipboardPreview()", startIndex = selectedCopyRefresh)
@@ -52,6 +52,8 @@ class IMEServiceClipboardPreviewRegressionContractTest {
     fun clipboardPreviewRefreshFlagControlsEditorSelectionSuppression() {
         val body = functionBody(imeServiceLines(), "buildCandidateStripInputState").joinToString("\n")
 
+        assertFalse(body.contains("currentInputConnection?.getSelectedText(0)"))
+        assertTrue(body.contains("editorTextSelected"))
         assertTrue(body.contains("selectedTextClipboardPreviewRefreshText != selectedEditorText"))
         assertTrue(body.contains("editorTextSelected = shouldSuppressClipboardPreviewForSelectedText"))
     }
