@@ -6,6 +6,9 @@ on:
       - dev
       - main
   push:
+    branches:
+      - dev
+      - main
 
 jobs:
   check:
