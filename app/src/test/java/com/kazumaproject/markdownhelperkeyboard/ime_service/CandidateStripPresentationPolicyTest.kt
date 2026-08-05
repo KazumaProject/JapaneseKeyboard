@@ -204,6 +204,27 @@ class CandidateStripPresentationPolicyTest {
     }
 
     @Test
+    fun candidateStripUsesEmptyStateWhenCandidatesAreMarkedShownForEmptyInput() {
+        assertFalse(
+            isCandidateStripActive(
+                candidatesShown = true,
+                inputStringEmpty = true
+            )
+        )
+        assertEquals(
+            80,
+            resolveCandidateStripHeightDp(
+                candidatesShown = isCandidateStripActive(
+                    candidatesShown = true,
+                    inputStringEmpty = true
+                ),
+                candidateHeightDp = 160,
+                emptyHeightDp = 80
+            )
+        )
+    }
+
+    @Test
     fun visibleCandidateTabAlwaysReservesItsHeight() {
         val presentation = CandidateStripPresentationPolicy.resolve(
             baseState(
@@ -268,6 +289,7 @@ class CandidateStripPresentationPolicyTest {
             baseState(
                 shortcutToolbarIntegratedInSuggestion = false,
                 candidatesShown = true,
+                inputStringEmpty = false,
                 shortcutToolbarHiddenForCandidates = true
             )
         )
