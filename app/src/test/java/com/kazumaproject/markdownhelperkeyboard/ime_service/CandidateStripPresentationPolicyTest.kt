@@ -180,16 +180,37 @@ class CandidateStripPresentationPolicyTest {
     @Test
     fun candidateTabVisibilityTrueShowsCandidateTabWhenCandidatesAreShown() {
         val presentation = CandidateStripPresentationPolicy.resolve(
-            baseState(candidateTabVisible = true, candidatesShown = true)
+            baseState(
+                candidateTabVisible = true,
+                candidatesShown = true,
+                inputStringEmpty = false
+            )
         )
 
         assertTrue(presentation.showCandidateTab)
     }
 
     @Test
+    fun candidateTabIsHiddenWhenInputStringIsEmptyEvenIfCandidatesAreMarkedShown() {
+        val presentation = CandidateStripPresentationPolicy.resolve(
+            baseState(
+                candidateTabVisible = true,
+                candidatesShown = true,
+                inputStringEmpty = true
+            )
+        )
+
+        assertFalse(presentation.showCandidateTab)
+    }
+
+    @Test
     fun visibleCandidateTabAlwaysReservesItsHeight() {
         val presentation = CandidateStripPresentationPolicy.resolve(
-            baseState(candidateTabVisible = true, candidatesShown = true)
+            baseState(
+                candidateTabVisible = true,
+                candidatesShown = true,
+                inputStringEmpty = false
+            )
         )
 
         assertEquals(36, resolveCandidateTabOffsetPx(presentation, 36))

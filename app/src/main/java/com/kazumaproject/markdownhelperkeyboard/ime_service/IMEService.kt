@@ -4301,6 +4301,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
         isInputViewActive = true
+        // A hidden input view must not carry the previous candidate-display phase into
+        // the next render. The editor can restart the view without onStartInput().
+        shortcutToolbarHiddenForCandidates = false
         collapseShortcutEntryExpansion()
         shortcutInputBehaviorOverride = null
         keyboardSelectionPopupWindow?.dismiss()
@@ -4674,6 +4677,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         releaseFloatingKeyboardBackgroundVideoPlayer()
         stopVoiceInput()
         collapseShortcutEntryExpansion()
+        shortcutToolbarHiddenForCandidates = false
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
         floatingModeSwitchWindow?.dismiss()
