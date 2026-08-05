@@ -1027,6 +1027,57 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
+    fun emptyCandidatePresentationStaysHiddenAfterImeReopenOnCustomKeyboard() {
+        runPhysicalDeviceSession("custom-empty-candidate-reopen") { session ->
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                check(
+                    session.preferences.edit()
+                        .putString(
+                            "keyboard_order_preference",
+                            """["CUSTOM","TENKEY","SUMIRE","QWERTY","ROMAJI"]"""
+                        )
+                        .putBoolean("save_last_used_keyboard", false)
+                        .putString("candidate_column_preference", "1")
+                        .putBoolean("candidate_tab_visibility_preference", true)
+                        .putBoolean("shortcut_toolbar_visibility_preference", false)
+                        .putBoolean("keyboard_floating_preference", false)
+                        .putInt("candidate_view_height_dp_preference", 200)
+                        .putInt("candidate_view_empty_height_dp_preference", 80)
+                        .commit()
+                ) { "Failed to configure custom keyboard candidate regression" }
+
+                ensureTargetImeSelected(session)
+                scenario = launchHost(session.context)
+                restartInput(scenario)
+                awaitVisibleNodeBounds("custom_layout_default")
+                assertTrue(
+                    "Candidate tabs must be hidden for an empty Custom composition",
+                    findVisibleNodeById("candidate_tab_layout") == null
+                )
+
+                scenario.onActivity { activity ->
+                    activity.getSystemService(InputMethodManager::class.java)
+                        .hideSoftInputFromWindow(activity.editText.windowToken, 0)
+                }
+                SystemClock.sleep(500)
+                scenario.onActivity { activity ->
+                    activity.editText.requestFocus()
+                    activity.getSystemService(InputMethodManager::class.java)
+                        .showSoftInput(activity.editText, InputMethodManager.SHOW_IMPLICIT)
+                }
+                awaitVisibleNodeBounds("custom_layout_default")
+                assertTrue(
+                    "Candidate tabs must stay hidden after Custom IME close/reopen",
+                    findVisibleNodeById("candidate_tab_layout") == null
+                )
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
+
+    @Test
     fun sumireThreeColumnRateSweepOnPhysicalDevice() {
         val arguments = InstrumentationRegistry.getArguments()
         val trialsPerInterval =

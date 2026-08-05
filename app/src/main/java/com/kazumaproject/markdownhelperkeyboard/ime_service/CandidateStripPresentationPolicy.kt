@@ -36,6 +36,11 @@ internal fun resolveCandidateStripHeightDp(
     emptyHeightDp: Int
 ): Int = if (candidatesShown) candidateHeightDp else emptyHeightDp
 
+internal fun isCandidateStripActive(
+    candidatesShown: Boolean,
+    inputStringEmpty: Boolean
+): Boolean = candidatesShown && !inputStringEmpty
+
 object CandidateStripPresentationPolicy {
 
     fun resolve(state: CandidateStripPresentationState): CandidateStripPresentation {
@@ -52,12 +57,16 @@ object CandidateStripPresentationPolicy {
                 symbolKeyboardShown = state.symbolKeyboardShown
             )
         )
+        val candidateStripActive = isCandidateStripActive(
+            candidatesShown = state.candidatesShown,
+            inputStringEmpty = state.inputStringEmpty
+        )
         val hideShortcutForCandidates =
-            state.shortcutToolbarHiddenForCandidates && !state.symbolKeyboardShown
+            state.shortcutToolbarHiddenForCandidates &&
+                candidateStripActive &&
+                !state.symbolKeyboardShown
         return CandidateStripPresentation(
-            showCandidateTab = state.candidateTabVisible &&
-                state.candidatesShown &&
-                !state.inputStringEmpty,
+            showCandidateTab = state.candidateTabVisible && candidateStripActive,
             resetCandidateTabSelection = state.resetCandidateTabSelection,
             showIndependentShortcutToolbar =
                 shortcutPresentation.showIndependentToolbar && !hideShortcutForCandidates,
