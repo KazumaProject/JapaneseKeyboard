@@ -55,7 +55,9 @@ object CandidateStripPresentationPolicy {
         val hideShortcutForCandidates =
             state.shortcutToolbarHiddenForCandidates && !state.symbolKeyboardShown
         return CandidateStripPresentation(
-            showCandidateTab = state.candidateTabVisible && state.candidatesShown,
+            showCandidateTab = state.candidateTabVisible &&
+                state.candidatesShown &&
+                !state.inputStringEmpty,
             resetCandidateTabSelection = state.resetCandidateTabSelection,
             showIndependentShortcutToolbar =
                 shortcutPresentation.showIndependentToolbar && !hideShortcutForCandidates,
