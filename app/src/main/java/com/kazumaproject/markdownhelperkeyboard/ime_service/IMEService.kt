@@ -930,14 +930,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
+        // CandidateShowFlag.Updating can be emitted once with an empty input while the
+        // editor/IME is being recreated (for example, after hiding and showing the keyboard).
+        // That event must not make the empty strip behave like an active conversion strip.
+        val effectiveCandidatesShown = isCandidateStripActive(
+            candidatesShown = candidatesShown,
+            inputStringEmpty = inputString.value.isEmpty()
+        )
+
         val content = resolveCandidateStripContent(
             candidates = currentCandidateStripCandidates,
-            candidatesShown = candidatesShown,
+            candidatesShown = effectiveCandidatesShown,
             includeZeroQuery = true
         )
         val fullContent = resolveCandidateStripContent(
             candidates = currentCandidateStripFullCandidates,
-            candidatesShown = candidatesShown,
+            candidatesShown = effectiveCandidatesShown,
             includeZeroQuery = false
         )
         currentCandidateStripContent = content
@@ -949,7 +957,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.submitContent(content)
         suggestionAdapterFull?.submitContent(fullContent)
         val presentation = resolveCandidateStripPresentation(
-            candidatesShown = candidatesShown,
+            candidatesShown = effectiveCandidatesShown,
             resetCandidateTabSelection = resetCandidateTabSelection,
             content = content
         )
@@ -14576,7 +14584,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     prevFlag,
                     currentFlag,
                 )
-                if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
+                if (
+                    prevFlag == CandidateShowFlag.Idle &&
+                    currentFlag == CandidateShowFlag.Updating &&
+                    insertString.isNotEmpty()
+                ) {
                     clearZeroQueryAllState(refresh = false)
                     shortcutToolbarHiddenForCandidates = true
                     refreshCandidateStripContent(candidatesShown = true)
@@ -14687,9 +14699,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     CandidateShowFlag.Updating -> {
+                        val candidateStripActive = insertString.isNotEmpty()
                         clearZeroQueryAllState(refresh = false)
-                        shortcutToolbarHiddenForCandidates = true
-                        refreshCandidateStripContent(candidatesShown = true)
+                        shortcutToolbarHiddenForCandidates = candidateStripActive
+                        refreshCandidateStripContent(candidatesShown = candidateStripActive)
                         val softwareKeyboardVisible =
                             physicalKeyboardEnable.replayCache.firstOrNull() != true
                         val normalKeyboardSurfaceVisible =
@@ -14698,12 +14711,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 mainView.qwertyView.isVisible ||
                                 mainView.customLayoutDefault.isVisible
                         if (
+                            candidateStripActive &&
                             softwareKeyboardVisible &&
                             isKeyboardFloatingMode != true &&
                             normalKeyboardSurfaceVisible
                         ) {
                             // セッション最初の Updating でも候補欄の高さを保証する。
                             setKeyboardHeightWithAdditional(mainView)
+                        } else if (!candidateStripActive && normalKeyboardSurfaceVisible) {
+                            setKeyboardHeightDefault(mainView)
                         }
                         try {
                             setSuggestionOnView(insertString, mainView)
@@ -15798,7 +15814,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         // 3. 最終的な高さ、幅、Gravity、マージンの決定
-        val candidatesShown = addCandidateTabHeight || shortcutToolbarHiddenForCandidates
+        val candidatesShown = isCandidateStripActive(
+            candidatesShown = addCandidateTabHeight || shortcutToolbarHiddenForCandidates,
+            inputStringEmpty = inputString.value.isEmpty()
+        )
         val presentation = resolveCandidateStripPresentation(candidatesShown = candidatesShown)
         val candidateStripHeightDp = resolveCandidateStripHeightDp(
             candidatesShown = candidatesShown,
