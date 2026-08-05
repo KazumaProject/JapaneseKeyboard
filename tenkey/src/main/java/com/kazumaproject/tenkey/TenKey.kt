@@ -138,6 +138,7 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     private var keyTouchCancelListener: KeyTouchCancelListener? = null
     private var inputModeChangedListener: ((InputMode) -> Unit)? = null
     private var qwertyNumberModeRequestedListener: (() -> Unit)? = null
+    private var attachedToWindowListener: (() -> Unit)? = null
     private val flickTextPreviewEmitter = FlickTextPreviewEmitter()
 
     private var flickSensitivity: Int = 100
@@ -1344,6 +1345,10 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
         qwertyNumberModeRequestedListener = listener
     }
 
+    fun setOnAttachedToWindowListener(listener: (() -> Unit)?) {
+        attachedToWindowListener = listener
+    }
+
     /** Padding setters for side keys (symbol, cursors, delete, enter, previous char) **/
     fun setPaddingToSideKeySymbol(paddingSize: Int) {
         binding.sideKeySymbolModeContainer.setIconPadding(paddingSize)
@@ -1385,18 +1390,14 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
     /** Clean up references when view is detached **/
     private fun release() {
         cancelActiveTouch(KeyTouchCancelReason.DetachedFromWindow)
-        flickListener = null
-        longPressListener = null
-        keyTouchCancelListener = null
-        inputModeChangedListener = null
-        qwertyNumberModeRequestedListener = null
         flickTextPreviewEmitter.cancel()
         flickTextPreviewEmitter.listener = null
         longPressJob?.cancel()
         longPressJob = null
         isCursorMode = false
-        // ← CANCEL the observing coroutine when the view is detached
-        //scope.coroutineContext.cancelChildren()
+        // The IME service reuses this view across input-view detach/attach cycles, including
+        // rotation. Keep service-owned listeners until the service replaces the view; only
+        // transient touch state is cancelled here.
     }
 
     fun cancelTenKeyScope() {
@@ -1405,8 +1406,12 @@ class TenKey(context: Context, attributeSet: AttributeSet) :
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        Log.d("TenKey: onDetachedFromWindow", "called")
         release()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        attachedToWindowListener?.invoke()
     }
 
     override fun onVisibilityChanged(changedView: View, visibility: Int) {

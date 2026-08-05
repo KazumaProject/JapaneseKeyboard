@@ -905,10 +905,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun updateSuggestionAdaptersOnMain(
         candidates: List<Candidate>,
         insertString: String,
-        fullCandidates: List<Candidate> = candidates
+        fullCandidates: List<Candidate> = candidates,
+        token: CandidateRequestToken? = null,
     ) = measureDebugStage("IMEService.updateSuggestionAdaptersOnMain") {
         withContext(Dispatchers.Main.immediate) {
-            if (!shouldApplyCandidateResult(insertString)) return@withContext
+            if (!shouldApplyCandidateResult(insertString, token)) return@withContext
             collapseShortcutEntryExpansion(refreshContent = false)
             currentCandidateStripCandidates = candidates
             currentCandidateStripFullCandidates = fullCandidates
@@ -1348,6 +1349,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var selectedTextGemmaSession: SelectedTextGemmaSession? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
+    private var lastKeyboardLayoutRootView: View? = null
+    private var lastKeyboardLayoutOrientation: Int? = null
     private var gemmaMediaPanelController: GemmaImeMediaPanelController? = null
     private var gemmaHandwritingController: GemmaHandwritingController? = null
     private var handwritingModeActive: Boolean = false
@@ -2346,6 +2349,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             scope.coroutineContext.cancelChildren()
             mainLayoutBinding?.let { mainView ->
+                rebindMainKeyboardInputListeners(mainView)
+                scheduleMainKeyboardInputListenerRebind(mainView)
                 startScope(mainView)
             }
         }
@@ -4316,6 +4321,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         shortcutInputBehaviorOverride = null
         keyboardSelectionPopupWindow?.dismiss()
         addUserDictionaryPopup?.dismiss()
+        mainLayoutBinding?.let { mainView ->
+            rebindMainKeyboardInputListeners(mainView)
+            scheduleMainKeyboardInputListenerRebind(mainView)
+        }
         _keyboardSymbolViewState.update { SymbolKeyboardState() }
         _selectMode.update { false }
         _cursorMoveMode.update { false }
@@ -5146,7 +5155,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentNightMode = newNightMode
         }
 
+        lastKeyboardLayoutRootView = null
+        lastKeyboardLayoutOrientation = null
         refreshKeyboardForCurrentOrientation()
+        mainLayoutBinding?.let { mainView ->
+            rebindMainKeyboardInputListeners(mainView)
+            scheduleMainKeyboardInputListenerRebind(mainView)
+            mainView.root.post {
+                if (mainLayoutBinding?.root === mainView.root) {
+                    lastKeyboardLayoutRootView = null
+                    lastKeyboardLayoutOrientation = null
+                    updateKeyboardLayout(mainView)
+                    rebindMainKeyboardInputListeners(mainView)
+                }
+            }
+        }
 
     }
 
@@ -5755,7 +5778,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         windowInsets
                     }
                     setCandidateTabLayout(mainView)
-                    setupCustomKeyboardListeners(mainView)
                     setSuggestionRecyclerView(
                         mainView, FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.ROW
@@ -5763,16 +5785,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         })
                     setShortCutAdapter(mainView)
                     setSymbolKeyboard(mainView)
-                    setQWERTYKeyboard(mainView)
-                    if (isTablet == true) {
-                        setTabletKeyListeners(mainView)
-                    }
-                    setTenKeyListeners(mainView)
+                    rebindMainKeyboardInputListeners(mainView)
                     hideAllKeyboards()
                     setKeyboardSizeSwitchKeyboard(mainView)
                     updateClipboardPreview()
                     mainView.suggestionRecyclerView.isVisible = suggestionViewStatus.value
                 }
+            }
+        }
+    }
+
+    /**
+     * Reconnects input listeners after the IME input view is reused.
+     *
+     * InputMethodService may detach and reattach the same keyboard hierarchy during
+     * rotation or an input-view restart. TenKey intentionally clears its listeners when
+     * detached, while the service keeps reusing the existing hierarchy. Rebinding all
+     * main-surface keyboard listeners here keeps the view lifecycle and the service
+     * lifecycle synchronized.
+     */
+    private fun rebindMainKeyboardInputListeners(mainView: MainLayoutBinding) {
+        setupCustomKeyboardListeners(mainView)
+        setQWERTYKeyboard(mainView)
+        if (isTablet == true) {
+            setTabletKeyListeners(mainView)
+        }
+        setTenKeyListeners(mainView)
+    }
+
+    /**
+     * Configuration callbacks and input-view detach/attach callbacks can be delivered in
+     * either order. Run one more binding pass after the current main-loop turn so a detach
+     * that clears view-owned listeners cannot win the race against the service rebind.
+     */
+    private fun scheduleMainKeyboardInputListenerRebind(mainView: MainLayoutBinding) {
+        mainView.root.post {
+            if (mainLayoutBinding?.root === mainView.root) {
+                rebindMainKeyboardInputListeners(mainView)
             }
         }
     }
@@ -5883,6 +5932,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setComposingText("", 0)
                 endBatchEdit()
             }
+        }
+
+        // A cursor move can finish the editor's ComposingText without going through one of the
+        // IME commit handlers. In that path inputString is already empty, but the candidate
+        // adapters and the last refresh request can still describe the old composing session.
+        // Clear that state before the next IME show/reopen so an empty editor cannot expose the
+        // previous conversion tab or candidates.
+        if (stringInTail.get().isEmpty() && _inputString.value.isEmpty()) {
+            clearSuggestionStateAfterEditorSelectionChange()
         }
         refreshReconversionUi()
     }
@@ -8207,6 +8265,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.keyboardView.apply {
+            setOnAttachedToWindowListener {
+                rebindMainKeyboardInputListeners(mainView)
+            }
             setOnFlickTextPreviewListener(tenKeyFlickTextPreviewListener)
             applyKeyboardTheme(
                 themeMode = keyboardThemeMode ?: "default",
@@ -15558,9 +15619,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private suspend fun updateDisplayedCandidates(
         insertString: String,
-        candidates: List<Candidate>
+        candidates: List<Candidate>,
+        token: CandidateRequestToken? = null,
     ) {
-        if (!shouldApplyCandidateResult(insertString)) {
+        if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
         val localCandidates = candidates.withoutZenzLiveSlot(insertString)
@@ -15593,7 +15655,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 updateSuggestionAdaptersOnMain(
                     candidates = displayedCandidates,
                     insertString = insertString,
-                    fullCandidates = localCandidates
+                    fullCandidates = localCandidates,
+                    token = token,
                 )
             }
         }
@@ -15628,6 +15691,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshReconversionUi()
     }
 
+    private fun clearSuggestionStateAfterEditorSelectionChange() {
+        val hasStaleCandidateState =
+            currentCandidateStripCandidates.isNotEmpty() ||
+                currentCandidateStripFullCandidates.isNotEmpty() ||
+                filteredCandidateList?.isNotEmpty() == true ||
+                currentCandidateStripContent is CandidateStripContent.Candidates ||
+                currentCandidateStripContent is CandidateStripContent.GemmaActions ||
+                shortcutToolbarHiddenForCandidates ||
+                candidateRefreshRequests.value.flag != CandidateShowFlag.Idle
+        if (hasStaleCandidateState) {
+            clearSuggestionStateAfterCommit()
+        }
+    }
+
     private fun updateBunsetsuSpaceKeyIfNeeded(
         mainView: MainLayoutBinding,
         candidates: List<Candidate>,
@@ -15649,7 +15726,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         baseCandidates: List<Candidate>,
         plan: ZenzRerankPlan,
-        mainView: MainLayoutBinding
+        mainView: MainLayoutBinding,
+        candidateToken: CandidateRequestToken,
     ) {
         zenzRerankJob = scope.launch {
             val reranked = try {
@@ -15663,11 +15741,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             putCachedZenzRerank(plan.cacheKey, reranked)
 
-            if (requestToken != zenzRerankRequestToken || reranked == baseCandidates) {
+            if (requestToken != zenzRerankRequestToken ||
+                reranked == baseCandidates ||
+                !shouldApplyCandidateResult(insertString, candidateToken)
+            ) {
                 return@launch
             }
 
-            updateDisplayedCandidates(insertString, reranked)
+            updateDisplayedCandidates(
+                insertString = insertString,
+                candidates = reranked,
+                token = candidateToken,
+            )
             updateBunsetsuSpaceKeyIfNeeded(mainView, reranked, insertString)
 
             if (
@@ -15763,13 +15848,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         // 1. 設定値の読み込み
         val prefs = getKeyboardSizePreferences()
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val orientation = resources.configuration.orientation
+        val isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isSymbol = isSymbolOverride ?: keyboardSymbolViewState.value.isShown
+        val forceFullLayout = !addCandidateTabHeight && (
+            lastKeyboardLayoutRootView !== mainView.root ||
+                lastKeyboardLayoutOrientation != orientation
+            )
         applyShortcutToolbarSize(
             mainView = mainView,
-            forceLayout = !addCandidateTabHeight
+            forceLayout = forceFullLayout
         )
 
         // 2. ピクセル値の計算
@@ -15897,7 +15987,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             finalBottomMargin = finalBottomMargin,
             finalStartMargin = finalStartMargin,
             finalEndMargin = finalEndMargin,
-            forceLayout = !addCandidateTabHeight
+            forceLayout = forceFullLayout
         )
 
         if (isSymbol) {
@@ -15923,6 +16013,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainView.suggestionVisibility.layoutParams = params
             }
         }
+
+        lastKeyboardLayoutRootView = mainView.root
+        lastKeyboardLayoutOrientation = orientation
     }
 
     /**
@@ -18330,12 +18423,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isKeyboardFloatingMode == true) return
         val binding = mainLayoutBinding ?: return
         measureDebugSection("IMEService.updateMainCandidateStripAfterListUpdated") {
-            setMainSuggestionColumn(binding)
             measureDebugSection("IMEService.scrollToPosition0") {
                 binding.suggestionRecyclerView.scrollToPosition(0)
-            }
-            measureDebugSection("IMEService.updateCandidateStripPresentation.afterListUpdated") {
-                updateCandidateStripPresentation(binding)
             }
         }
     }
@@ -18348,7 +18437,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return@measureDebugSection
             }
             val binding = mainLayoutBinding ?: return@measureDebugSection
-            setMainSuggestionColumn(binding)
             binding.suggestionRecyclerView.scrollToPosition(0)
         }
     }
@@ -22210,7 +22298,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             ) return
         }
-        updateDisplayedCandidates(insertString, displayedCandidates)
+        updateDisplayedCandidates(
+            insertString = insertString,
+            candidates = displayedCandidates,
+            token = token,
+        )
 
         if (shouldApplyLiveConversion && !applyLiveConversionBeforeCandidateStrip) {
             delayBeforeApplyingLiveConversion()
@@ -22240,7 +22332,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateBunsetsuSpaceKeyIfNeededOnMain(mainView, displayedCandidates, insertString)
 
         if (rerankPlan != null && cachedReranked == null) {
-            maybeLaunchZenzRerank(requestToken, insertString, filtered, rerankPlan, mainView)
+            maybeLaunchZenzRerank(
+                requestToken = requestToken,
+                insertString = insertString,
+                baseCandidates = filtered,
+                plan = rerankPlan,
+                mainView = mainView,
+                candidateToken = token,
+            )
         }
 
     }
@@ -22289,7 +22388,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             ) return
         }
-        updateDisplayedCandidates(insertString, displayedCandidates)
+        updateDisplayedCandidates(
+            insertString = insertString,
+            candidates = displayedCandidates,
+            token = token,
+        )
 
         if (shouldApplyLiveConversion && !applyLiveConversionBeforeCandidateStrip) {
             delayBeforeApplyingLiveConversion()
@@ -22319,7 +22422,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateBunsetsuSpaceKeyIfNeededOnMain(mainView, displayedCandidates, insertString)
 
         if (rerankPlan != null && cachedReranked == null) {
-            maybeLaunchZenzRerank(requestToken, insertString, filtered, rerankPlan, mainView)
+            maybeLaunchZenzRerank(
+                requestToken = requestToken,
+                insertString = insertString,
+                baseCandidates = filtered,
+                plan = rerankPlan,
+                mainView = mainView,
+                candidateToken = token,
+            )
         }
     }
 
@@ -22352,7 +22462,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (!suppressSuggestions) {
-                updateSuggestionAdaptersOnMain(filtered, insertString)
+                updateSuggestionAdaptersOnMain(
+                    candidates = filtered,
+                    insertString = insertString,
+                    token = token,
+                )
             }
 
         }
@@ -22423,7 +22537,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (!suppressSuggestions) {
-                updateSuggestionAdaptersOnMain(filtered, insertString)
+                updateSuggestionAdaptersOnMain(
+                    candidates = filtered,
+                    insertString = insertString,
+                    token = token,
+                )
             }
 
         }

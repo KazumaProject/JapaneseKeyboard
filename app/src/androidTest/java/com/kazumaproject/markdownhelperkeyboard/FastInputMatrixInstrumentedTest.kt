@@ -22,6 +22,8 @@ import android.text.style.BackgroundColorSpan
 import android.text.style.UnderlineSpan
 import android.util.Log
 import android.view.InputDevice
+import android.view.KeyCharacterMap
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.inputmethod.InputMethodManager
@@ -745,12 +747,12 @@ class FastInputMatrixInstrumentedTest {
     }
 
     @Test
-    fun qwertyVariationPopupTwoFingerInputOnPhysicalDevice() {
-        runPhysicalDeviceSession("qwerty-variation-popup-multitouch") { session ->
+    fun composingTextCursorMoveAndCommitClearsCandidatesOnPhysicalDevice() {
+        runPhysicalDeviceSession("composing-selection-commit-candidate-clear") { session ->
             val testCase = TestCase(
-                keyboard = TestKeyboard.QWERTY,
+                keyboard = TestKeyboard.TENKEY,
                 columns = 1,
-                candidateTabVisible = false,
+                candidateTabVisible = true,
                 toolbarVisible = false,
                 toolbarIntegrated = false,
                 orientation = TestOrientation.PORTRAIT
@@ -759,6 +761,253 @@ class FastInputMatrixInstrumentedTest {
             try {
                 scenario = launchHost(session.context)
                 rotateAndVerify(TestOrientation.PORTRAIT)
+                applyCasePreferences(session.preferences, testCase)
+                ensureTargetImeSelected(session)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                assertDeviceReady(session.context, session.targetIme, scenario)
+                prepareEmptyEditor(scenario)
+
+                val geometry = awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = false
+                )
+                assertTrue(
+                    "Ten-key composing input injection failed",
+                    injectSequence(
+                        first = geometry.first.center,
+                        second = geometry.second.center,
+                        repetitions = 1
+                    )
+                )
+                assertTrue(
+                    "ComposingText did not reach the editor",
+                    awaitEditorText(scenario) { it.isNotEmpty() }.isNotEmpty()
+                )
+                awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = true
+                )
+                assertTrue(
+                    "Candidates were not populated before cursor move",
+                    findCandidateState().texts.isNotEmpty()
+                )
+
+                assertTrue(
+                    "Editor cursor move injection failed",
+                    injectKeyEvent(KeyEvent.KEYCODE_DPAD_LEFT)
+                )
+                assertTrue(
+                    "Editor commit injection failed",
+                    injectKeyEvent(KeyEvent.KEYCODE_ENTER)
+                )
+                awaitTextSettled(scenario)
+                awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = false
+                )
+                assertTrue(
+                    "Candidate tab remained visible after ComposingText cursor-move commit",
+                    findVisibleNodeById("candidate_tab_layout") == null
+                )
+                assertTrue(
+                    "Stale candidates remained after ComposingText cursor-move commit",
+                    findCandidateState().texts.isEmpty()
+                )
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
+
+    @Test
+    fun tenKeyLongPressStillWorksAfterRotationOnPhysicalDevice() {
+        runPhysicalDeviceSession("tenkey-long-press-after-rotation") { session ->
+            val testCase = TestCase(
+                keyboard = TestKeyboard.TENKEY,
+                columns = 1,
+                candidateTabVisible = false,
+                toolbarVisible = false,
+                toolbarIntegrated = false,
+                orientation = TestOrientation.LANDSCAPE
+            )
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+                applyCasePreferences(session.preferences, testCase)
+                check(
+                    session.preferences.edit()
+                        .putInt("long_press_timeout_preference", 100)
+                        .putString("delete_long_press_conversion_behavior", "deferred")
+                        .putBoolean("live_conversion_preference", false)
+                        .commit()
+                )
+                ensureTargetImeSelected(session)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                assertDeviceReady(session.context, session.targetIme, scenario)
+                prepareEmptyEditor(scenario)
+
+                val portrait = awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = false
+                )
+                assertTrue(
+                    "Initial TenKey input injection failed",
+                    injectSequence(
+                        first = portrait.first.center,
+                        second = portrait.second.center,
+                        repetitions = 2
+                    )
+                )
+                val expectedBeforeRotation = buildString {
+                    repeat(2) {
+                        append(TestKeyboard.TENKEY.firstText)
+                        append(TestKeyboard.TENKEY.secondText)
+                    }
+                }
+                assertEquals(
+                    expectedBeforeRotation,
+                    awaitTextSettled(scenario)
+                )
+                awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = true
+                )
+
+                rotateAndVerify(TestOrientation.LANDSCAPE)
+                awaitScreenAlignedNodeBounds("key_delete")
+                val landscape = awaitStableGeometry(
+                    keyboard = TestKeyboard.TENKEY,
+                    requireCandidateContent = false
+                )
+                val deleteBounds = findVisibleNodeById("key_delete")?.screenRect()
+                    ?: throw SetupException("Delete key is not visible after rotation")
+                assertTrue(
+                    "Delete long-press injection failed after rotation",
+                    injectTapWithoutTrailingGap(deleteBounds.center, holdMs = 850L)
+                )
+                val afterText = awaitTextSettled(scenario)
+                val afterCandidates = findCandidateState().texts
+                assertTrue(
+                    "TenKey long press was not delivered after rotation; text=$afterText " +
+                        "candidates=$afterCandidates landscape=$landscape",
+                    afterText.isEmpty()
+                )
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
+
+    @Test
+    fun sumireLongPressPopupStillWorksAfterRotationOnPhysicalDevice() {
+        runPhysicalDeviceSession("sumire-long-press-after-rotation") { session ->
+            val testCase = TestCase(
+                keyboard = TestKeyboard.SUMIRE,
+                columns = 1,
+                candidateTabVisible = false,
+                toolbarVisible = false,
+                toolbarIntegrated = false,
+                orientation = TestOrientation.LANDSCAPE
+            )
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.PORTRAIT)
+                applyCasePreferences(session.preferences, testCase)
+                check(
+                    session.preferences.edit()
+                        .putInt("long_press_timeout_preference", 100)
+                        .putBoolean("flick_editor_preview_preference", false)
+                        .putString("sumire_keyboard_style_preference", "default")
+                        .putString("sumire_input_method_preference", "switch-mode-effective")
+                        .putString("keyboard_touch_effect_type_preference", "none")
+                        .commit()
+                )
+                ensureTargetImeSelected(session)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                assertDeviceReady(session.context, session.targetIme, scenario)
+                prepareEmptyEditor(scenario)
+
+                val portrait = awaitStableGeometry(
+                    keyboard = TestKeyboard.SUMIRE,
+                    requireCandidateContent = false
+                )
+                val portraitScreens = captureSumireLongPressScreens(portrait.prime.center)
+                val portraitChangedPixels = countChangedPixels(
+                    portraitScreens.first,
+                    portraitScreens.second,
+                    ScreenRect(
+                        0,
+                        0,
+                        portraitScreens.first.width,
+                        portraitScreens.first.height
+                    ),
+                    channelTolerance = GUIDE_CHANNEL_TOLERANCE
+                )
+                portraitScreens.first.recycle()
+                portraitScreens.second.recycle()
+
+                rotateAndVerify(TestOrientation.LANDSCAPE)
+                val landscape = awaitStableGeometry(
+                    keyboard = TestKeyboard.SUMIRE,
+                    requireCandidateContent = false
+                )
+                val landscapeScreens = captureSumireLongPressScreens(landscape.prime.center)
+                val landscapeChangedPixels = countChangedPixels(
+                    landscapeScreens.first,
+                    landscapeScreens.second,
+                    ScreenRect(
+                        0,
+                        0,
+                        landscapeScreens.first.width,
+                        landscapeScreens.first.height
+                    ),
+                    channelTolerance = GUIDE_CHANNEL_TOLERANCE
+                )
+                landscapeScreens.first.recycle()
+                landscapeScreens.second.recycle()
+
+                Log.i(
+                    TAG,
+                    "SUMIRE_LONG_PRESS_ROTATION portraitChangedPixels=$portraitChangedPixels " +
+                        "landscapeChangedPixels=$landscapeChangedPixels " +
+                        "portrait=$portrait landscape=$landscape"
+                )
+                assertTrue(
+                    "Sumire long-press popup did not appear before rotation: " +
+                        "changedPixels=$portraitChangedPixels",
+                    portraitChangedPixels >= MIN_LONG_PRESS_POPUP_CHANGED_PIXELS
+                )
+                assertTrue(
+                    "Sumire long-press popup disappeared after landscape rotation: " +
+                        "before=$portraitChangedPixels after=$landscapeChangedPixels",
+                    landscapeChangedPixels >= MIN_LONG_PRESS_POPUP_CHANGED_PIXELS
+                )
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
+
+    @Test
+    fun qwertyVariationPopupTwoFingerInputOnPhysicalDevice() {
+        runPhysicalDeviceSession("qwerty-variation-popup-multitouch") { session ->
+            val testCase = TestCase(
+                keyboard = TestKeyboard.QWERTY,
+                columns = 1,
+                candidateTabVisible = false,
+                toolbarVisible = false,
+                toolbarIntegrated = false,
+                orientation = TestOrientation.LANDSCAPE
+            )
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                scenario = launchHost(session.context)
+                rotateAndVerify(TestOrientation.LANDSCAPE)
                 applyCasePreferences(session.preferences, testCase)
                 check(
                     session.preferences.edit()
@@ -1070,6 +1319,55 @@ class FastInputMatrixInstrumentedTest {
                 assertTrue(
                     "Candidate tabs must stay hidden after Custom IME close/reopen",
                     findVisibleNodeById("candidate_tab_layout") == null
+                )
+            } finally {
+                scenario?.close()
+            }
+        }
+    }
+
+    @Test
+    fun customKeyboardAcceptsInputOnPhysicalDevice() {
+        runPhysicalDeviceSession("custom-input") { session ->
+            var scenario: ActivityScenario<FastInputHostActivity>? = null
+            try {
+                check(
+                    session.preferences.edit()
+                        .putString(
+                            "keyboard_order_preference",
+                            """["CUSTOM","TENKEY","SUMIRE","QWERTY","ROMAJI"]"""
+                        )
+                        .putBoolean("save_last_used_keyboard", false)
+                        .putString("candidate_column_preference", "1")
+                        .putBoolean("candidate_tab_visibility_preference", true)
+                        .putBoolean("shortcut_toolbar_visibility_preference", false)
+                        .putBoolean("keyboard_floating_preference", false)
+                        .commit()
+                ) { "Failed to configure Custom keyboard input test" }
+
+                ensureTargetImeSelected(session)
+                scenario = launchHost(session.context)
+                restartInput(scenario)
+                SystemClock.sleep(IME_LAYOUT_SETTLE_MS)
+                assertDeviceReady(session.context, session.targetIme, scenario)
+                val root = findVisibleNodeById("custom_layout_default")
+                    ?: throw SetupException("Custom keyboard root is not visible")
+                val customKey = findDescendant(root) { node ->
+                    node.isVisibleToUser && (
+                        node.text?.toString() == "q" ||
+                            node.contentDescription?.toString() == "q"
+                        )
+                } ?: throw SetupException("Custom q key is not exposed by accessibility")
+                val customKeyCenter = customKey.screenRect().center
+
+                assertTrue(
+                    "Custom q tap was not injected",
+                    injectTap(customKeyCenter),
+                )
+                assertEquals("q", awaitEditorText(scenario) { it == "q" })
+                assertTrue(
+                    "Custom keyboard root disappeared after q input",
+                    findVisibleNodeById("custom_layout_default") != null,
                 )
             } finally {
                 scenario?.close()
@@ -1842,6 +2140,39 @@ class FastInputMatrixInstrumentedTest {
         throw SetupException("Timed out waiting for visible key id=$idName")
     }
 
+    private fun awaitScreenAlignedNodeBounds(idName: String): ScreenRect {
+        val deadline = SystemClock.uptimeMillis() + SETUP_TIMEOUT_MS
+        var previous: ScreenRect? = null
+        var stableSamples = 0
+        while (SystemClock.uptimeMillis() < deadline) {
+            val nodeBounds = findVisibleNodeById(idName)?.screenRect()
+            val screenshot = uiAutomation.takeScreenshot()
+            val screenBounds = screenshot?.let { shot ->
+                val bounds = ScreenRect(0, 0, shot.width, shot.height)
+                shot.recycle()
+                bounds
+            }
+            if (
+                nodeBounds != null &&
+                screenBounds != null &&
+                nodeBounds == nodeBounds.intersect(screenBounds)
+            ) {
+                if (nodeBounds == previous) {
+                    stableSamples += 1
+                } else {
+                    stableSamples = 1
+                }
+                if (stableSamples >= GEOMETRY_STABLE_SAMPLES) return nodeBounds
+                previous = nodeBounds
+            } else {
+                previous = null
+                stableSamples = 0
+            }
+            SystemClock.sleep(GEOMETRY_SAMPLE_MS)
+        }
+        throw SetupException("Timed out waiting for screen-aligned node id=$idName")
+    }
+
     private fun countChangedPixels(
         first: Bitmap,
         second: Bitmap,
@@ -1932,6 +2263,39 @@ class FastInputMatrixInstrumentedTest {
         return injectTapWithoutTrailingGap(point, TAP_HOLD_MS).also {
             SystemClock.sleep(TAP_GAP_MS)
         }
+    }
+
+    private fun injectKeyEvent(keyCode: Int): Boolean {
+        val downTime = SystemClock.uptimeMillis()
+        val down = KeyEvent(
+            downTime,
+            downTime,
+            KeyEvent.ACTION_DOWN,
+            keyCode,
+            0,
+            0,
+            KeyCharacterMap.VIRTUAL_KEYBOARD,
+            0,
+            0,
+            InputDevice.SOURCE_KEYBOARD
+        )
+        val upTime = SystemClock.uptimeMillis()
+        val up = KeyEvent(
+            downTime,
+            upTime,
+            KeyEvent.ACTION_UP,
+            keyCode,
+            0,
+            0,
+            KeyCharacterMap.VIRTUAL_KEYBOARD,
+            0,
+            0,
+            InputDevice.SOURCE_KEYBOARD
+        )
+        val downInjected = uiAutomation.injectInputEvent(down, true)
+        val upInjected = uiAutomation.injectInputEvent(up, true)
+        SystemClock.sleep(TAP_GAP_MS)
+        return downInjected && upInjected
     }
 
     private fun injectFlick(start: PointF, end: PointF): Boolean {
@@ -2035,6 +2399,30 @@ class FastInputMatrixInstrumentedTest {
         val upInjected = uiAutomation.injectInputEvent(up, true)
         up.recycle()
         return downInjected && upInjected
+    }
+
+    private fun captureSumireLongPressScreens(point: PointF): Pair<Bitmap, Bitmap> {
+        val downTime = SystemClock.uptimeMillis()
+        check(
+            injectSinglePointerEvent(
+                downTime = downTime,
+                action = MotionEvent.ACTION_DOWN,
+                point = point
+            )
+        ) { "Sumire long-press DOWN injection failed" }
+        SystemClock.sleep(25L)
+        val afterDown = checkNotNull(uiAutomation.takeScreenshot())
+        SystemClock.sleep(240L)
+        val afterLongPress = checkNotNull(uiAutomation.takeScreenshot())
+        check(
+            injectSinglePointerEvent(
+                downTime = downTime,
+                action = MotionEvent.ACTION_UP,
+                point = point
+            )
+        ) { "Sumire long-press UP injection failed" }
+        SystemClock.sleep(TAP_GAP_MS)
+        return afterDown to afterLongPress
     }
 
     private fun injectOverlappingTapPair(
@@ -2975,6 +3363,7 @@ class FastInputMatrixInstrumentedTest {
         private const val GUIDE_CHANNEL_TOLERANCE = 12
         private const val MAX_GUIDE_CHANGED_PIXELS = 80
         private const val MIN_GUIDE_CONTROL_CHANGED_PIXELS = 120
+        private const val MIN_LONG_PRESS_POPUP_CHANGED_PIXELS = 500
         private const val QWERTY_LONG_PRESS_HOLD_MS = 350L
         private const val POLL_MS = 32L
         private const val GEOMETRY_SAMPLE_MS = 32L
