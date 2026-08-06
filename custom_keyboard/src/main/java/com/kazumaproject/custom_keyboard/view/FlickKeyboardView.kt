@@ -179,6 +179,7 @@ class FlickKeyboardView @JvmOverloads constructor(
     private val canonicalGuideLabels =
         IdentityHashMap<AutoSizeButton, AutoSizeButton.FlickGuideLabels>()
     private var currentLayout: KeyboardLayout? = null
+    private var controllerRebindPending = false
     private var keyboardRenderRevision: Int = 0
     private var renderedKeyboardRenderRevision: Int = -1
     private var keyCharacterCase: KeyCharacterCase = KeyCharacterCase.AS_DEFINED
@@ -561,6 +562,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             childCount == expectedChildCount
         ) {
             Log.d("FlickKeyboardView", "setKeyboard (Reuse Existing Views)")
+            cancelTrackedTouchState()
             return
         }
         Log.d("FlickKeyboardView", "setKeyboard (Full Rebuild)")
@@ -2940,7 +2942,26 @@ class FlickKeyboardView @JvmOverloads constructor(
         return super.onTouchEvent(event)
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        if (!controllerRebindPending) return
+
+        controllerRebindPending = false
+        post {
+            if (isAttachedToWindow) {
+                Log.d(
+                    "FlickKeyboardView",
+                    "Rebuilding input controllers after window reattach"
+                )
+                rebuildCurrentKeyboard()
+            } else {
+                controllerRebindPending = true
+            }
+        }
+    }
+
     override fun onDetachedFromWindow() {
+        controllerRebindPending = true
         doubleTapActionDispatcher.cancel()
         cancelTextPreview()
         cancelTrackedTouchState()
