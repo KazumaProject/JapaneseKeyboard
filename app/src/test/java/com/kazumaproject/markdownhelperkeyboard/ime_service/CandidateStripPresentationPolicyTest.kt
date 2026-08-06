@@ -180,16 +180,58 @@ class CandidateStripPresentationPolicyTest {
     @Test
     fun candidateTabVisibilityTrueShowsCandidateTabWhenCandidatesAreShown() {
         val presentation = CandidateStripPresentationPolicy.resolve(
-            baseState(candidateTabVisible = true, candidatesShown = true)
+            baseState(
+                candidateTabVisible = true,
+                candidatesShown = true,
+                inputStringEmpty = false
+            )
         )
 
         assertTrue(presentation.showCandidateTab)
     }
 
     @Test
+    fun candidateTabIsHiddenWhenInputStringIsEmptyEvenIfCandidatesAreMarkedShown() {
+        val presentation = CandidateStripPresentationPolicy.resolve(
+            baseState(
+                candidateTabVisible = true,
+                candidatesShown = true,
+                inputStringEmpty = true
+            )
+        )
+
+        assertFalse(presentation.showCandidateTab)
+    }
+
+    @Test
+    fun candidateStripUsesEmptyStateWhenCandidatesAreMarkedShownForEmptyInput() {
+        assertFalse(
+            isCandidateStripActive(
+                candidatesShown = true,
+                inputStringEmpty = true
+            )
+        )
+        assertEquals(
+            80,
+            resolveCandidateStripHeightDp(
+                candidatesShown = isCandidateStripActive(
+                    candidatesShown = true,
+                    inputStringEmpty = true
+                ),
+                candidateHeightDp = 160,
+                emptyHeightDp = 80
+            )
+        )
+    }
+
+    @Test
     fun visibleCandidateTabAlwaysReservesItsHeight() {
         val presentation = CandidateStripPresentationPolicy.resolve(
-            baseState(candidateTabVisible = true, candidatesShown = true)
+            baseState(
+                candidateTabVisible = true,
+                candidatesShown = true,
+                inputStringEmpty = false
+            )
         )
 
         assertEquals(36, resolveCandidateTabOffsetPx(presentation, 36))
@@ -247,6 +289,7 @@ class CandidateStripPresentationPolicyTest {
             baseState(
                 shortcutToolbarIntegratedInSuggestion = false,
                 candidatesShown = true,
+                inputStringEmpty = false,
                 shortcutToolbarHiddenForCandidates = true
             )
         )
