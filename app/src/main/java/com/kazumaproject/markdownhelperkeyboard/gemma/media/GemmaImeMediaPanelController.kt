@@ -297,7 +297,9 @@ class GemmaImeMediaPanelController(
             context.getString(R.string.gemma_image_loading_clipboard),
         )
         mediaLoadJob = controllerScope.launch {
-            val item = clipboardUtil.getPrimaryClipContent() as? ClipboardItem.Image
+            val item = withContext(Dispatchers.IO) {
+                clipboardUtil.getPrimaryClipContent()
+            } as? ClipboardItem.Image
             if (item == null) {
                 if (isCurrentImageLoad(requestId)) {
                     state = state.copy(

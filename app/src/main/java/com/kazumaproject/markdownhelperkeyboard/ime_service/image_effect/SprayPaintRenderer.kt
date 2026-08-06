@@ -12,8 +12,6 @@ import android.os.Looper
 import android.os.Process
 import android.view.Surface
 import timber.log.Timber
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.math.sqrt
 
@@ -121,7 +119,7 @@ internal class SprayPaintRenderer(
     }
 
     override fun detachSurface() {
-        runBlockingOnRendererThread(maxWaitMillis = 120L) {
+        postOnRenderer {
             handler.removeCallbacks(frameRunnable)
             frameScheduled = false
             paused = true
@@ -162,8 +160,8 @@ internal class SprayPaintRenderer(
     }
 
     override fun release() {
-        runBlockingOnRendererThread(maxWaitMillis = 250L) {
-            if (released) return@runBlockingOnRendererThread
+        postOnRenderer {
+            if (released) return@postOnRenderer
             released = true
             handler.removeCallbacks(frameRunnable)
             frameScheduled = false
@@ -172,8 +170,8 @@ internal class SprayPaintRenderer(
             simulation?.release()
             simulation = null
             releaseEglSurfaceOnly()
+            rendererThread.quitSafely()
         }
-        rendererThread.quitSafely()
     }
 
     override fun isRendererThreadAliveForTesting(): Boolean {
@@ -306,22 +304,6 @@ internal class SprayPaintRenderer(
         } else {
             handler.post(action)
         }
-    }
-
-    private fun runBlockingOnRendererThread(maxWaitMillis: Long, action: () -> Unit) {
-        if (Looper.myLooper() == handler.looper) {
-            action()
-            return
-        }
-        if (!rendererThread.isAlive) return
-        val latch = CountDownLatch(1)
-        handler.post {
-            runCatching(action).onFailure {
-                Timber.w(it, "Failed to run spray paint renderer cleanup.")
-            }
-            latch.countDown()
-        }
-        latch.await(maxWaitMillis, TimeUnit.MILLISECONDS)
     }
 
     private fun runRendererCatching(operation: String, action: () -> Unit) {

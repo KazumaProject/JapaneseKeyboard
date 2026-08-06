@@ -41,12 +41,21 @@ class ClipboardUtil(private val context: Context) {
      * @return 取得したコンテンツを表す [ClipboardItem]。（[ClipboardItem.Image]、[ClipboardItem.Text]、または [ClipboardItem.Empty]）
      */
     fun getPrimaryClipContent(): ClipboardItem {
+        return getPrimaryClipContent(maxImageDimension = null)
+    }
+
+    /**
+     * クリップボードの主要なコンテンツを取得します。
+     * [maxImageDimension] が指定された場合、画像は指定サイズ以下になるよう縮小します。
+     * 候補欄のプレビューなど、元画像の解像度を必要としない用途で使用します。
+     */
+    fun getPrimaryClipContent(maxImageDimension: Int?): ClipboardItem {
         if (!clipboard.hasPrimaryClip()) {
             return ClipboardItem.Empty
         }
 
         // 1. 画像の取得を最優先で試みる
-        getClipboardImageBitmap()?.let { bitmap ->
+        getClipboardImageBitmap(maxImageDimension)?.let { bitmap ->
             return ClipboardItem.Image(id = 0, bitmap = bitmap)
         }
 
@@ -59,6 +68,10 @@ class ClipboardUtil(private val context: Context) {
 
         // 3. 画像も有効なテキストも見つからなかった場合
         return ClipboardItem.Empty
+    }
+
+    fun getPrimaryClipPreviewContent(maxImageDimension: Int = 256): ClipboardItem {
+        return getPrimaryClipContent(maxImageDimension = maxImageDimension)
     }
 
     /**
@@ -127,7 +140,7 @@ class ClipboardUtil(private val context: Context) {
      *
      * @return 成功した場合はBitmapオブジェクト、失敗した場合はnull。
      */
-    fun getClipboardImageBitmap(): Bitmap? {
+    fun getClipboardImageBitmap(maxImageDimension: Int? = null): Bitmap? {
         if (!clipboard.hasPrimaryClip()) {
             return null
         }
@@ -141,8 +154,31 @@ class ClipboardUtil(private val context: Context) {
             val uri = item.uri
             if (uri != null) {
                 try {
+                    if (maxImageDimension == null || maxImageDimension <= 0) {
+                        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                            return BitmapFactory.decodeStream(inputStream)
+                        }
+                    }
+
+                    val bounds = BitmapFactory.Options().apply {
+                        inJustDecodeBounds = true
+                    }
                     context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                        return BitmapFactory.decodeStream(inputStream)
+                        BitmapFactory.decodeStream(inputStream, null, bounds)
+                    }
+                    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) continue
+
+                    var sampleSize = 1
+                    val largestDimension = maxOf(bounds.outWidth, bounds.outHeight)
+                    val targetDimension = checkNotNull(maxImageDimension)
+                    while (largestDimension / sampleSize > targetDimension) {
+                        sampleSize = sampleSize shl 1
+                    }
+                    val options = BitmapFactory.Options().apply {
+                        inSampleSize = sampleSize
+                    }
+                    context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                        return BitmapFactory.decodeStream(inputStream, null, options)
                     }
                 } catch (e: Exception) {
                     Timber.e("ClipboardUtil", "URIからのBitmapデコードに失敗しました: $uri", e)
