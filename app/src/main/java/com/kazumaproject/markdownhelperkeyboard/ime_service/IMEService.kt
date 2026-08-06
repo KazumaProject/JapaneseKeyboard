@@ -571,6 +571,12 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private var isClipboardHistoryFeatureEnabled: Boolean = false
     private val clipboardMutex = Mutex()
+    private val clipboardPreviewRequestId = AtomicLong(0L)
+    private var clipboardPreviewLoadJob: Job? = null
+    @Volatile
+    private var cachedClipboardPreviewItem: ClipboardItem = ClipboardItem.Empty
+    @Volatile
+    private var cachedClipboardPreviewSensitive: Boolean = false
     private val zenzModelPathMutex = Mutex()
     private var cachedZenzModelSource: String? = null
     private var cachedZenzModelPath: String? = null
@@ -614,6 +620,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var isFloatingQwertyConfigured: Boolean = false
     private var keyboardBackgroundPlayer: ExoPlayer? = null
     private var floatingKeyboardBackgroundPlayer: ExoPlayer? = null
+    private val keyboardBackgroundImageRequestId = AtomicLong(0L)
+    private val keyboardBackgroundImageRequestIds = java.util.WeakHashMap<ImageView, Long>()
     private var floatingKeyboardBackgroundVideoConfig: KeyboardBackgroundVideoConfig? = null
     private val inkRootLocation = IntArray(2)
     private val inkTargetLocation = IntArray(2)
@@ -632,6 +640,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var bunsetsuSplitPatterns: List<List<Int>> = emptyList()
     private var bunsetsuConversionSession: BunsetsuConversionSession? = null
     private var pendingReconversionEntry: ReconversionEntry? = null
+    private var pendingReconversionValid: Boolean = false
+    private val reconversionValidationRequestId = AtomicLong(0L)
     private var bunsetsuReconversionDraft: BunsetsuReconversionDraft? = null
     private var preserveBunsetsuReconversionDraftOnNextProcessInput = false
     private var isRestoringReconversionInput = false
@@ -690,6 +700,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
             }
             withContext(Dispatchers.Main.immediate) {
+                cachedClipboardPreviewItem = newItem
+                cachedClipboardPreviewSensitive = isSensitive
                 if (newItem is ClipboardItem.Empty) {
                     clearSelectedTextClipboardPreviewRefresh()
                 } else {
@@ -697,6 +709,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 }
                 updateClipboardPreview()
             }
+            refreshClipboardPreviewSnapshot()
         }
     }
 
@@ -734,6 +747,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     )
 
     private var selectedTextClipboardPreviewRefreshText: String? = null
+    /**
+     * Selection state used by candidate-strip rendering.
+     *
+     * InputConnection is a remote Binder connection for most editors.  Reading selected text
+     * synchronously from the main thread can therefore stall the whole IME while the editor
+     * responds.  Keep the range state immediately and refresh the text snapshot off-main.
+     */
+    private var editorTextSelected: Boolean = false
+    private var selectedEditorText: String = ""
+    private val selectedEditorTextRequestId = AtomicLong(0L)
+    private val editorConnectionReadMutex = Mutex()
+    private var systemUserDictionaryLoadJob: Job? = null
 
     private val scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val ioScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -795,6 +820,64 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
+    private fun resetEditorSelectionSnapshot() {
+        selectedEditorTextRequestId.incrementAndGet()
+        editorTextSelected = false
+        selectedEditorText = ""
+    }
+
+    private fun refreshClipboardPreviewSnapshot() {
+        val requestId = clipboardPreviewRequestId.incrementAndGet()
+        clipboardPreviewLoadJob?.cancel()
+        clipboardPreviewLoadJob = ioScope.launch {
+            val item = runCatching {
+                clipboardUtil.getPrimaryClipPreviewContent()
+            }.getOrDefault(ClipboardItem.Empty)
+            val isSensitive = runCatching {
+                clipboardUtil.isPrimaryClipSensitive()
+            }.getOrDefault(false)
+            withContext(Dispatchers.Main.immediate) {
+                if (clipboardPreviewRequestId.get() != requestId) return@withContext
+                cachedClipboardPreviewItem = item
+                cachedClipboardPreviewSensitive = isSensitive
+                updateClipboardPreview()
+            }
+        }
+    }
+
+    private fun updateEditorSelectionSnapshot(newSelStart: Int, newSelEnd: Int) {
+        val hasSelection =
+            newSelStart >= 0 && newSelEnd >= 0 && newSelStart != newSelEnd
+        editorTextSelected = hasSelection
+        selectedEditorText = ""
+        val requestId = selectedEditorTextRequestId.incrementAndGet()
+        if (!hasSelection) return
+
+        val connection = currentInputConnection ?: return
+        ioScope.launch {
+            val text = runCatching {
+                connection.getSelectedText(0)?.toString().orEmpty()
+            }.getOrDefault("")
+            runOnMainThread {
+                if (selectedEditorTextRequestId.get() != requestId || !editorTextSelected) {
+                    return@runOnMainThread
+                }
+                selectedEditorText = text
+                if (text.isNotEmpty()) {
+                    handleSelectedTextSelection(text)
+                } else {
+                    clearSelectedTextClipboardPreviewRefresh()
+                    if (selectedTextGemmaSession != null) {
+                        clearSelectedTextGemmaSession(
+                            clearSuggestions = hasSelectedTextGemmaActionCandidates()
+                        )
+                    }
+                }
+                refreshCandidateStripContent()
+            }
+        }
+    }
+
     private fun setSuggestionAdapterSuggestionsOnMain(candidates: List<Candidate>) {
         runOnMainThread {
             measureDebugSection("IMEService.setSuggestionAdapterSuggestionsOnMain") {
@@ -822,10 +905,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private suspend fun updateSuggestionAdaptersOnMain(
         candidates: List<Candidate>,
         insertString: String,
-        fullCandidates: List<Candidate> = candidates
+        fullCandidates: List<Candidate> = candidates,
+        token: CandidateRequestToken? = null,
     ) = measureDebugStage("IMEService.updateSuggestionAdaptersOnMain") {
         withContext(Dispatchers.Main.immediate) {
-            if (!shouldApplyCandidateResult(insertString)) return@withContext
+            if (!shouldApplyCandidateResult(insertString, token)) return@withContext
             collapseShortcutEntryExpansion(refreshContent = false)
             currentCandidateStripCandidates = candidates
             currentCandidateStripFullCandidates = fullCandidates
@@ -847,14 +931,22 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
+        // CandidateShowFlag.Updating can be emitted once with an empty input while the
+        // editor/IME is being recreated (for example, after hiding and showing the keyboard).
+        // That event must not make the empty strip behave like an active conversion strip.
+        val effectiveCandidatesShown = isCandidateStripActive(
+            candidatesShown = candidatesShown,
+            inputStringEmpty = inputString.value.isEmpty()
+        )
+
         val content = resolveCandidateStripContent(
             candidates = currentCandidateStripCandidates,
-            candidatesShown = candidatesShown,
+            candidatesShown = effectiveCandidatesShown,
             includeZeroQuery = true
         )
         val fullContent = resolveCandidateStripContent(
             candidates = currentCandidateStripFullCandidates,
-            candidatesShown = candidatesShown,
+            candidatesShown = effectiveCandidatesShown,
             includeZeroQuery = false
         )
         currentCandidateStripContent = content
@@ -866,7 +958,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         suggestionAdapter?.submitContent(content)
         suggestionAdapterFull?.submitContent(fullContent)
         val presentation = resolveCandidateStripPresentation(
-            candidatesShown = candidatesShown,
+            candidatesShown = effectiveCandidatesShown,
             resetCandidateTabSelection = resetCandidateTabSelection,
             content = content
         )
@@ -892,10 +984,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         includeZeroQuery: Boolean
     ): CandidateStripInputState {
         val clipboardPreview = resolveClipboardPreviewSnapshot()
-        val selectedEditorText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
         val shouldSuppressClipboardPreviewForSelectedText =
-            selectedEditorText.isNotEmpty() &&
-                selectedTextClipboardPreviewRefreshText != selectedEditorText
+            editorTextSelected &&
+                (selectedEditorText.isEmpty() ||
+                    selectedTextClipboardPreviewRefreshText != selectedEditorText)
         val hasUndoHistory = isEditHistoryEnabled() && deletedBuffer.hasUndoHistory()
         val hasRedoHistory = isEditHistoryEnabled() && deletedBuffer.hasRedoHistory()
         return CandidateStripInputState(
@@ -939,9 +1031,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun resolveClipboardPreviewSnapshot(): ClipboardPreviewSnapshot {
-        return when (val item = clipboardUtil.getPrimaryClipContent()) {
+        return when (val item = cachedClipboardPreviewItem) {
             is ClipboardItem.Image -> {
-                if (clipboardUtil.isPrimaryClipSensitive()) {
+                if (cachedClipboardPreviewSensitive) {
                     ClipboardPreviewSnapshot(
                         text = getSensitiveClipboardPreviewText(),
                         bitmap = null,
@@ -1051,7 +1143,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isCurrentInputTypePasswordOrEmailForZeroQuery()) return false
         if (isCustomLayoutPickerShownForCandidateStrip()) return false
         if (isSelectedTextGemmaActionsShownForCandidateStrip()) return false
-        if (currentInputConnection?.getSelectedText(0)?.toString().orEmpty().isNotEmpty()) {
+        if (editorTextSelected) {
             return false
         }
         return true
@@ -1077,7 +1169,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (inputString.value.isNotEmpty()) return false
         if (stringInTail.get().isNotEmpty()) return false
         if (isCurrentInputTypePasswordOrEmailForZeroQuery()) return false
-        if (currentInputConnection?.getSelectedText(0)?.toString().orEmpty().isNotEmpty()) {
+        if (editorTextSelected) {
             return false
         }
         return true
@@ -1142,11 +1234,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
-        val selectedText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
         val inputAndSelectionAreEmpty =
             inputString.value.isEmpty() &&
                 stringInTail.get().isEmpty() &&
-                selectedText.isEmpty() &&
+                !editorTextSelected &&
                 newSelStart == newSelEnd
         if (zeroQuerySelectionUpdateSuppressCount > 0 && inputAndSelectionAreEmpty) {
             zeroQuerySelectionUpdateSuppressCount -= 1
@@ -1155,7 +1246,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         val cursorMoved = oldSelStart != newSelStart || oldSelEnd != newSelEnd
         if (
-            selectedText.isNotEmpty() ||
+            editorTextSelected ||
             newSelStart != newSelEnd ||
             inputString.value.isNotEmpty() ||
             stringInTail.get().isNotEmpty() ||
@@ -1258,6 +1349,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     private var selectedTextGemmaSession: SelectedTextGemmaSession? = null
 
     private var mainLayoutBinding: MainLayoutBinding? = null
+    private var lastKeyboardLayoutRootView: View? = null
+    private var lastKeyboardLayoutOrientation: Int? = null
     private var gemmaMediaPanelController: GemmaImeMediaPanelController? = null
     private var gemmaHandwritingController: GemmaHandwritingController? = null
     private var handwritingModeActive: Boolean = false
@@ -2256,6 +2349,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         } else {
             scope.coroutineContext.cancelChildren()
             mainLayoutBinding?.let { mainView ->
+                rebindMainKeyboardInputListeners(mainView)
+                scheduleMainKeyboardInputListenerRebind(mainView)
                 startScope(mainView)
             }
         }
@@ -2264,6 +2359,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        resetEditorSelectionSnapshot()
         flickPreviewEditorSessionId += 1L
         flickInputPreviewCoordinator.resetForEditorSession()
         gemmaInputSessionId += 1L
@@ -2290,6 +2386,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         startKanaKanjiConversionSession(preferences.conversionBackend)
         resetKeyboard()
         initializeMozcDictionaries(preferences)
+        refreshClipboardPreviewSnapshot()
         syncCustomKeyboardSuggestionPreference()
         refreshCandidateStripContent()
     }
@@ -2773,11 +2870,26 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun initializeMozcDictionaries(@Suppress("UNUSED_PARAMETER") preferences: ImePreferencesSnapshot) {
         applyDictionaryOverrideRevisionIfNeeded()
-        if (!kanaKanjiEngine.isSystemUserDictionaryInitialized()) {
-            runCatching {
-                kanaKanjiEngine.loadSystemUserDictionaryFromFiles(applicationContext)
+        if (!kanaKanjiEngine.isSystemUserDictionaryInitialized() &&
+            systemUserDictionaryLoadJob?.isActive != true
+        ) {
+            systemUserDictionaryLoadJob = ioScope.launch {
+                runCatching {
+                    kanaKanjiEngine.loadSystemUserDictionaryFromFiles(applicationContext)
+                }.onFailure {
+                    Timber.w(it, "Failed to load system user dictionary asynchronously")
+                }
+                withContext(Dispatchers.Main.immediate) {
+                    if (isInputViewActive) {
+                        requestCandidateRefresh(CandidateShowFlag.Updating)
+                    }
+                }
             }
         }
+    }
+
+    private suspend fun awaitSystemUserDictionaryLoad() {
+        systemUserDictionaryLoadJob?.join()
     }
 
     private fun updateIncognitoModeState(editorInfo: EditorInfo?) {
@@ -2861,8 +2973,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun loadKeyboardBackgroundBitmap(): Bitmap? {
-        val uriString = appPreference.keyboard_background_image_uri
+    private fun loadKeyboardBackgroundBitmap(uriString: String): Bitmap? {
         if (uriString.isBlank()) return null
         val uri = runCatching { uriString.toUri() }.getOrNull() ?: return null
         return runCatching {
@@ -2880,40 +2991,60 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         imageView.isVisible = false
     }
 
-    private fun applyKeyboardBackgroundImageToViewIfNeeded(imageView: ImageView): Boolean {
-        val bitmap = loadKeyboardBackgroundBitmap()
-        if (bitmap == null) {
-            clearKeyboardBackgroundImage(imageView)
-            return false
-        }
-
+    private fun applyKeyboardBackgroundImageToViewIfNeeded(
+        imageView: ImageView,
+        onApplied: (Boolean) -> Unit = {}
+    ) {
+        assertMainThread("applyKeyboardBackgroundImageToViewIfNeeded")
+        val requestId = keyboardBackgroundImageRequestId.incrementAndGet()
+        keyboardBackgroundImageRequestIds[imageView] = requestId
+        val uriString = appPreference.keyboard_background_image_uri
         val displayMode = appPreference.keyboard_background_image_display_mode
-        when (displayMode) {
-            "center_crop" -> {
-                imageView.background = null
-                imageView.scaleType = ImageView.ScaleType.CENTER_CROP
-                imageView.setImageBitmap(bitmap)
-            }
+        clearKeyboardBackgroundImage(imageView)
+        if (uriString.isBlank()) {
+            onApplied(false)
+            return
+        }
 
+        ioScope.launch {
+            val bitmap = loadKeyboardBackgroundBitmap(uriString)
+            runOnMainThread {
+                if (keyboardBackgroundImageRequestIds[imageView] != requestId) return@runOnMainThread
+                if (bitmap == null) {
+                    clearKeyboardBackgroundImage(imageView)
+                    onApplied(false)
+                    return@runOnMainThread
+                }
 
-            else -> {
                 imageView.background = null
-                imageView.scaleType = ImageView.ScaleType.FIT_CENTER
+                imageView.scaleType = if (displayMode == "center_crop") {
+                    ImageView.ScaleType.CENTER_CROP
+                } else {
+                    ImageView.ScaleType.FIT_CENTER
+                }
                 imageView.setImageBitmap(bitmap)
+                imageView.isVisible = true
+                onApplied(true)
             }
         }
-        imageView.isVisible = true
-        return true
     }
 
-    private fun applyKeyboardBackgroundImageIfNeeded(mainView: MainLayoutBinding): Boolean {
-        return applyKeyboardBackgroundImageToViewIfNeeded(mainView.keyboardBackgroundImage)
+    private fun applyKeyboardBackgroundImageIfNeeded(mainView: MainLayoutBinding) {
+        applyKeyboardBackgroundImageToViewIfNeeded(mainView.keyboardBackgroundImage)
     }
 
     private fun applyFloatingKeyboardBackgroundImageIfNeeded(
         floatingView: FloatingKeyboardLayoutBinding
-    ): Boolean {
-        return applyKeyboardBackgroundImageToViewIfNeeded(floatingView.floatingKeyboardBackgroundImage)
+    ) {
+        applyKeyboardBackgroundImageToViewIfNeeded(
+            imageView = floatingView.floatingKeyboardBackgroundImage,
+            onApplied = { applied ->
+                applyFloatingKeyboardContainerTransparencyForBackgroundMedia(
+                    floatingView,
+                    enabled = applied
+                )
+            }
+        )
     }
 
     private fun resolveVideoQualityMaxSize(quality: String): Pair<Int, Int> {
@@ -3151,12 +3282,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 enabled = true
             )
         } else {
-            val isBackgroundImageApplied =
-                applyFloatingKeyboardBackgroundImageIfNeeded(floatingView)
-            applyFloatingKeyboardContainerTransparencyForBackgroundMedia(
-                floatingView,
-                enabled = isBackgroundImageApplied
-            )
+            applyFloatingKeyboardBackgroundImageIfNeeded(floatingView)
         }
     }
 
@@ -4188,10 +4314,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         syncQwertyEnglishDirectInputPreference()
         syncNgramDictionaryPreferences()
         isInputViewActive = true
+        // A hidden input view must not carry the previous candidate-display phase into
+        // the next render. The editor can restart the view without onStartInput().
+        shortcutToolbarHiddenForCandidates = false
         collapseShortcutEntryExpansion()
         shortcutInputBehaviorOverride = null
         keyboardSelectionPopupWindow?.dismiss()
         addUserDictionaryPopup?.dismiss()
+        mainLayoutBinding?.let { mainView ->
+            rebindMainKeyboardInputListeners(mainView)
+            scheduleMainKeyboardInputListenerRebind(mainView)
+        }
         _keyboardSymbolViewState.update { SymbolKeyboardState() }
         _selectMode.update { false }
         _cursorMoveMode.update { false }
@@ -4561,6 +4694,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         releaseFloatingKeyboardBackgroundVideoPlayer()
         stopVoiceInput()
         collapseShortcutEntryExpansion()
+        shortcutToolbarHiddenForCandidates = false
         floatingCandidateWindow?.dismiss()
         floatingDockWindow?.dismiss()
         floatingModeSwitchWindow?.dismiss()
@@ -4581,6 +4715,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     override fun onDestroy() {
         flickInputPreviewCoordinator.cancel(restore = false)
+        resetEditorSelectionSnapshot()
         Timber.d("onUpdate onDestroy")
         if (runtimeInputPreferenceListenerRegistered) {
             runtimeInputSharedPreferences.unregisterOnSharedPreferenceChangeListener(
@@ -5020,7 +5155,21 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             currentNightMode = newNightMode
         }
 
+        lastKeyboardLayoutRootView = null
+        lastKeyboardLayoutOrientation = null
         refreshKeyboardForCurrentOrientation()
+        mainLayoutBinding?.let { mainView ->
+            rebindMainKeyboardInputListeners(mainView)
+            scheduleMainKeyboardInputListenerRebind(mainView)
+            mainView.root.post {
+                if (mainLayoutBinding?.root === mainView.root) {
+                    lastKeyboardLayoutRootView = null
+                    lastKeyboardLayoutOrientation = null
+                    updateKeyboardLayout(mainView)
+                    rebindMainKeyboardInputListeners(mainView)
+                }
+            }
+        }
 
     }
 
@@ -5629,7 +5778,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         windowInsets
                     }
                     setCandidateTabLayout(mainView)
-                    setupCustomKeyboardListeners(mainView)
                     setSuggestionRecyclerView(
                         mainView, FlexboxLayoutManager(applicationContext).apply {
                             flexDirection = FlexDirection.ROW
@@ -5637,16 +5785,43 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         })
                     setShortCutAdapter(mainView)
                     setSymbolKeyboard(mainView)
-                    setQWERTYKeyboard(mainView)
-                    if (isTablet == true) {
-                        setTabletKeyListeners(mainView)
-                    }
-                    setTenKeyListeners(mainView)
+                    rebindMainKeyboardInputListeners(mainView)
                     hideAllKeyboards()
                     setKeyboardSizeSwitchKeyboard(mainView)
                     updateClipboardPreview()
                     mainView.suggestionRecyclerView.isVisible = suggestionViewStatus.value
                 }
+            }
+        }
+    }
+
+    /**
+     * Reconnects input listeners after the IME input view is reused.
+     *
+     * InputMethodService may detach and reattach the same keyboard hierarchy during
+     * rotation or an input-view restart. TenKey intentionally clears its listeners when
+     * detached, while the service keeps reusing the existing hierarchy. Rebinding all
+     * main-surface keyboard listeners here keeps the view lifecycle and the service
+     * lifecycle synchronized.
+     */
+    private fun rebindMainKeyboardInputListeners(mainView: MainLayoutBinding) {
+        setupCustomKeyboardListeners(mainView)
+        setQWERTYKeyboard(mainView)
+        if (isTablet == true) {
+            setTabletKeyListeners(mainView)
+        }
+        setTenKeyListeners(mainView)
+    }
+
+    /**
+     * Configuration callbacks and input-view detach/attach callbacks can be delivered in
+     * either order. Run one more binding pass after the current main-loop turn so a detach
+     * that clears view-owned listeners cannot win the race against the service rebind.
+     */
+    private fun scheduleMainKeyboardInputListenerRebind(mainView: MainLayoutBinding) {
+        mainView.root.post {
+            if (mainLayoutBinding?.root === mainView.root) {
+                rebindMainKeyboardInputListeners(mainView)
             }
         }
     }
@@ -5667,6 +5842,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
+        updateEditorSelectionSnapshot(
+            newSelStart = newSelStart,
+            newSelEnd = newSelEnd,
+        )
+
         handleZeroQueryOnUpdateSelection(
             oldSelStart = oldSelStart,
             oldSelEnd = oldSelEnd,
@@ -5680,41 +5860,17 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
-        val selectedText = currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
-        if (selectedText.isNotEmpty()) {
-            if (selectedTextClipboardPreviewRefreshText == selectedText) {
-                clearSelectedTextGemmaSession(
-                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
-                )
-                updateClipboardPreview()
-                return
-            }
-            clearSelectedTextClipboardPreviewRefresh()
-            if (selectedTextGemmaSession?.selectedText != null &&
-                selectedTextGemmaSession?.selectedText != selectedText
-            ) {
-                clearSelectedTextGemmaSession(
-                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
-                )
-            }
-            if (AppVariantConfig.hasGemma &&
-                appPreference.enable_gemma_translation_preference &&
-                gemmaTranslationManager.isTranslationAvailable()
-            ) {
-                showSelectedTextGemmaActions(selectedText)
-            } else {
-                clearSelectedTextGemmaSession(
-                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
-                )
+        if (editorTextSelected) {
+            if (selectedEditorText.isNotEmpty()) {
+                handleSelectedTextSelection(selectedEditorText)
             }
             return
-        } else {
-            clearSelectedTextClipboardPreviewRefresh()
-            if (selectedTextGemmaSession != null) {
-                clearSelectedTextGemmaSession(
-                    clearSuggestions = hasSelectedTextGemmaActionCandidates()
-                )
-            }
+        }
+        clearSelectedTextClipboardPreviewRefresh()
+        if (selectedTextGemmaSession != null) {
+            clearSelectedTextGemmaSession(
+                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            )
         }
 
         val preservedPreEdit = preservePreEditOnNextSelectionUpdate
@@ -5776,6 +5932,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 setComposingText("", 0)
                 endBatchEdit()
             }
+        }
+
+        // A cursor move can finish the editor's ComposingText without going through one of the
+        // IME commit handlers. In that path inputString is already empty, but the candidate
+        // adapters and the last refresh request can still describe the old composing session.
+        // Clear that state before the next IME show/reopen so an empty editor cannot expose the
+        // previous conversion tab or candidates.
+        if (stringInTail.get().isEmpty() && _inputString.value.isEmpty()) {
+            clearSuggestionStateAfterEditorSelectionChange()
         }
         refreshReconversionUi()
     }
@@ -8100,6 +8265,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         mainView: MainLayoutBinding
     ) {
         mainView.keyboardView.apply {
+            setOnAttachedToWindowListener {
+                rebindMainKeyboardInputListeners(mainView)
+            }
             setOnFlickTextPreviewListener(tenKeyFlickTextPreviewListener)
             applyKeyboardTheme(
                 themeMode = keyboardThemeMode ?: "default",
@@ -8540,19 +8708,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         /** 共有 **/
                         Key.KeyRA -> {
-                            val selectedText = getSelectedText(0)
-                            if (!selectedText.isNullOrEmpty()) {
-                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, selectedText.toString())
-                                }
-                                val chooser: Intent =
-                                    Intent.createChooser(sendIntent, "Share text via").apply {
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                    }
-                                startActivity(chooser)
-                                clearSelection()
-                            }
+                            shareSelectedTextAction()
                         }
                         /** その他 **/
                         else -> {
@@ -8749,19 +8905,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                         /** 共有 **/
                         Key.KeyRA -> {
-                            val selectedText = getSelectedText(0)
-                            if (!selectedText.isNullOrEmpty()) {
-                                val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, selectedText.toString())
-                                }
-                                val chooser: Intent =
-                                    Intent.createChooser(sendIntent, "Share text via").apply {
-                                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                                    }
-                                startActivity(chooser)
-                                clearSelection()
-                            }
+                            shareSelectedTextAction()
                         }
                         /** その他 **/
                         else -> {
@@ -9144,6 +9288,34 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         return insertString.take(readingLength)
     }
 
+    private fun handleSelectedTextSelection(selectedText: String) {
+        if (selectedTextClipboardPreviewRefreshText == selectedText) {
+            clearSelectedTextGemmaSession(
+                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            )
+            updateClipboardPreview()
+            return
+        }
+        clearSelectedTextClipboardPreviewRefresh()
+        if (selectedTextGemmaSession?.selectedText != null &&
+            selectedTextGemmaSession?.selectedText != selectedText
+        ) {
+            clearSelectedTextGemmaSession(
+                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            )
+        }
+        if (AppVariantConfig.hasGemma &&
+            appPreference.enable_gemma_translation_preference &&
+            gemmaTranslationManager.isTranslationAvailable()
+        ) {
+            showSelectedTextGemmaActions(selectedText)
+        } else {
+            clearSelectedTextGemmaSession(
+                clearSuggestions = hasSelectedTextGemmaActionCandidates()
+            )
+        }
+    }
+
     private fun showSelectedTextGemmaActions(selectedText: String) {
         clearZeroQueryAllState(refresh = false)
         if (!gemmaTranslationManager.isTranslationAvailable()) {
@@ -9165,8 +9337,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             )
             withContext(Dispatchers.Main) {
                 if (selectedTextGemmaActionMenuRequestId.get() != requestId) return@withContext
-                val currentSelection =
-                    currentInputConnection?.getSelectedText(0)?.toString().orEmpty()
+                val currentSelection = selectedEditorText
                 if (currentSelection != selectedText) return@withContext
 
                 val actions = buildList {
@@ -9232,8 +9403,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun markClipboardPreviewRefreshAfterPrimaryClipChanged() {
         selectedTextClipboardPreviewRefreshText =
-            currentInputConnection?.getSelectedText(0)?.toString()
-                ?.takeIf { it.isNotEmpty() }
+            selectedEditorText.takeIf { it.isNotEmpty() }
         if (selectedTextClipboardPreviewRefreshText != null) {
             clearSelectedTextGemmaSession(
                 clearSuggestions = hasSelectedTextGemmaActionCandidates()
@@ -9337,36 +9507,45 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         originalText: String,
         transformedText: String
     ) {
-        val inputConnection = currentInputConnection
-        if (inputConnection == null) {
+        val inputConnection = currentInputConnection ?: run {
             showToastMessage(getString(R.string.candidate_translation_cancelled_context_changed))
             clearSelectedTextGemmaSession(clearSuggestions = true)
             return
         }
-        val currentSelectedText = inputConnection.getSelectedText(0)?.toString().orEmpty()
-        if (currentSelectedText != originalText) {
-            showToastMessage(getString(R.string.candidate_translation_cancelled_context_changed))
-            clearSelectedTextGemmaSession(clearSuggestions = true)
-            return
-        }
-        if (transformedText == originalText) {
-            clearSelectedTextGemmaSession(clearSuggestions = true)
-            return
-        }
+        ioScope.launch {
+            val currentSelectedText = runCatching {
+                inputConnection.getSelectedText(0)?.toString().orEmpty()
+            }.getOrDefault("")
+            runOnMainThread {
+                if (currentInputConnection !== inputConnection ||
+                    currentSelectedText != originalText
+                ) {
+                    showToastMessage(
+                        getString(R.string.candidate_translation_cancelled_context_changed)
+                    )
+                    clearSelectedTextGemmaSession(clearSuggestions = true)
+                    return@runOnMainThread
+                }
+                if (transformedText == originalText) {
+                    clearSelectedTextGemmaSession(clearSuggestions = true)
+                    return@runOnMainThread
+                }
 
-        beginBatchEdit()
-        try {
-            commitText(transformedText, 1)
-        } finally {
-            endBatchEdit()
+                beginBatchEdit()
+                try {
+                    commitText(transformedText, 1)
+                } finally {
+                    endBatchEdit()
+                }
+                pushEditHistoryEntry(
+                    EditHistoryEntry.ReplaceCommittedText(
+                        beforeText = originalText,
+                        afterText = transformedText
+                    )
+                )
+                clearSelectedTextGemmaSession(clearSuggestions = true)
+            }
         }
-        pushEditHistoryEntry(
-            EditHistoryEntry.ReplaceCommittedText(
-                beforeText = originalText,
-                afterText = transformedText
-            )
-        )
-        clearSelectedTextGemmaSession(clearSuggestions = true)
     }
 
     private fun isSelectedTextGemmaActionCandidate(candidate: Candidate): Boolean {
@@ -11610,10 +11789,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     KeyAction.Copy -> {
-                        val selectedText = getSelectedText(0)
-                        if (!selectedText.isNullOrEmpty()) {
-                            copySelectedTextToClipboard(selectedText)
-                        }
+                        copyAction()
                     }
 
                     KeyAction.Delete -> {
@@ -12336,10 +12512,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
                     KeyAction.Backspace -> {}
                     KeyAction.Copy -> {
-                        val selectedText = getSelectedText(0)
-                        if (!selectedText.isNullOrEmpty()) {
-                            copySelectedTextToClipboard(selectedText)
-                        }
+                        copyAction()
                     }
 
                     KeyAction.Paste -> {
@@ -12678,9 +12851,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun copyAction() {
-        val selectedText = getSelectedText(0)
-        if (!selectedText.isNullOrEmpty()) {
-            copySelectedTextToClipboard(selectedText)
+        readSelectedTextOffMain { selectedText ->
+            if (selectedText.isNotEmpty()) {
+                copySelectedTextToClipboard(selectedText)
+            }
+        }
+    }
+
+    private fun readSelectedTextOffMain(onRead: (String) -> Unit) {
+        val inputConnection = currentInputConnection ?: return
+        ioScope.launch {
+            val selectedText = runCatching {
+                inputConnection.getSelectedText(0)?.toString().orEmpty()
+            }.getOrDefault("")
+            runOnMainThread {
+                if (currentInputConnection === inputConnection) {
+                    onRead(selectedText)
+                }
+            }
+        }
+    }
+
+    private fun shareSelectedTextAction() {
+        readSelectedTextOffMain { selectedText ->
+            if (selectedText.isEmpty()) return@readSelectedTextOffMain
+            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, selectedText)
+            }
+            val chooser = Intent.createChooser(sendIntent, "Share text via").apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            }
+            startActivity(chooser)
+            clearSelection()
         }
     }
 
@@ -12689,6 +12892,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val isSensitive = currentInputType.isPassword()
         clipboardUtil.setClipBoard(text, isSensitive = isSensitive)
         appPreference.last_pasted_clipboard_text_preference = ""
+        editorTextSelected = text.isNotEmpty()
+        selectedEditorText = text
         markClipboardPreviewRefreshAfterPrimaryClipChanged()
         updateClipboardPreview()
     }
@@ -12698,31 +12903,39 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
      */
     private fun pasteAction() {
         clearZeroQueryAllState(refresh = false)
-        when (val item = clipboardUtil.getPrimaryClipContent()) {
-            is ClipboardItem.Image -> {
-                commitBitmap(item.bitmap)
+        val inputConnection = currentInputConnection ?: return
+        scope.launch {
+            val item = withContext(Dispatchers.IO) {
+                clipboardUtil.getPrimaryClipContent()
             }
+            if (currentInputConnection !== inputConnection) return@launch
+            when (item) {
+                is ClipboardItem.Image -> {
+                    commitBitmap(item.bitmap)
+                }
 
-            is ClipboardItem.Text -> {
-                if (item.text.isNotEmpty()) {
-                    commitText(item.text, 1)
-                    appPreference.last_pasted_clipboard_text_preference = item.text
+                is ClipboardItem.Text -> {
+                    if (item.text.isNotEmpty()) {
+                        commitText(item.text, 1)
+                        appPreference.last_pasted_clipboard_text_preference = item.text
+                    }
+                }
+
+                is ClipboardItem.Empty -> {
+                    // Do nothing
                 }
             }
-
-            is ClipboardItem.Empty -> {
-                // Do nothing
-            }
+            clearDeletedBufferWithoutResetLayout()
+            refreshEditHistoryUi()
         }
-        clearDeletedBufferWithoutResetLayout()
-        refreshEditHistoryUi()
     }
 
     private fun cutAction() {
-        val selectedText = getSelectedText(0)
-        if (!selectedText.isNullOrEmpty()) {
-            copySelectedTextToClipboard(selectedText)
-            sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+        readSelectedTextOffMain { selectedText ->
+            if (selectedText.isNotEmpty()) {
+                copySelectedTextToClipboard(selectedText)
+                sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+            }
         }
     }
 
@@ -12895,21 +13108,33 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             // ここで処理を中断するか、別の形式（例: "image/jpeg"）を試すか判断できます
         }
 
-        // 1. Bitmapをキャッシュディレクトリ内のファイルに保存
-        val cachePath = File(cacheDir, "images")
-        cachePath.mkdirs() // ディレクトリが存在することを確認
-        val imageFile = File(cachePath, "clipboard_image.png")
-        try {
-            FileOutputStream(imageFile).use { outputStream ->
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-            }
-            // ▼▼▼ ログ追加 ▼▼▼
-            Timber.d("commitBitmap: Bitmapをファイルに保存しました: ${imageFile.absolutePath}")
-        } catch (e: IOException) {
-            Timber.e(e, "Bitmapのファイルへの保存に失敗しました")
-            return
-        }
+        ioScope.launch {
+            val imageFile = withContext(Dispatchers.IO) {
+                val cachePath = File(cacheDir, "images")
+                cachePath.mkdirs()
+                val file = File(cachePath, "clipboard_image.png")
+                runCatching {
+                    FileOutputStream(file).use { outputStream ->
+                        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                    }
+                    file
+                }.onFailure {
+                    Timber.e(it, "Bitmapのファイルへの保存に失敗しました")
+                }.getOrNull()
+            } ?: return@launch
 
+            runOnMainThread {
+                if (currentInputConnection !== inputConnection) return@runOnMainThread
+                commitBitmapContent(inputConnection, editorInfo, imageFile)
+            }
+        }
+    }
+
+    private fun commitBitmapContent(
+        inputConnection: InputConnection,
+        editorInfo: EditorInfo,
+        imageFile: File,
+    ) {
         // 2. FileProviderを使用してContent URIを取得
         val contentUri: Uri
         try {
@@ -14420,7 +14645,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     prevFlag,
                     currentFlag,
                 )
-                if (prevFlag == CandidateShowFlag.Idle && currentFlag == CandidateShowFlag.Updating) {
+                if (
+                    prevFlag == CandidateShowFlag.Idle &&
+                    currentFlag == CandidateShowFlag.Updating &&
+                    insertString.isNotEmpty()
+                ) {
                     clearZeroQueryAllState(refresh = false)
                     shortcutToolbarHiddenForCandidates = true
                     refreshCandidateStripContent(candidatesShown = true)
@@ -14531,9 +14760,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     }
 
                     CandidateShowFlag.Updating -> {
+                        val candidateStripActive = insertString.isNotEmpty()
                         clearZeroQueryAllState(refresh = false)
-                        shortcutToolbarHiddenForCandidates = true
-                        refreshCandidateStripContent(candidatesShown = true)
+                        shortcutToolbarHiddenForCandidates = candidateStripActive
+                        refreshCandidateStripContent(candidatesShown = candidateStripActive)
                         val softwareKeyboardVisible =
                             physicalKeyboardEnable.replayCache.firstOrNull() != true
                         val normalKeyboardSurfaceVisible =
@@ -14542,12 +14772,15 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                                 mainView.qwertyView.isVisible ||
                                 mainView.customLayoutDefault.isVisible
                         if (
+                            candidateStripActive &&
                             softwareKeyboardVisible &&
                             isKeyboardFloatingMode != true &&
                             normalKeyboardSurfaceVisible
                         ) {
                             // セッション最初の Updating でも候補欄の高さを保証する。
                             setKeyboardHeightWithAdditional(mainView)
+                        } else if (!candidateStripActive && normalKeyboardSurfaceVisible) {
+                            setKeyboardHeightDefault(mainView)
                         }
                         try {
                             setSuggestionOnView(insertString, mainView)
@@ -15312,23 +15545,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         leftContextOverride: String? = null
     ): ZenzContext {
         return try {
-            withContext(Dispatchers.Main) {
-                val lastCandidateLength = if (isLiveConversionEnable == true) {
-                    lastCandidate?.length ?: 0
-                } else {
-                    insertString.length
+            val (inputConnection, lastCandidateLength, enableRightContext) =
+                withContext(Dispatchers.Main.immediate) {
+                    Triple(
+                        currentInputConnection,
+                        if (isLiveConversionEnable == true) {
+                            lastCandidate?.length ?: 0
+                        } else {
+                            insertString.length
+                        },
+                        enableZenzRightContextPreference == true,
+                    )
                 }
-
-                val leftContext = leftContextOverride ?: getLeftContext(inputLength = lastCandidateLength)
-                    .dropLast(lastCandidateLength)
+            val leftContext = leftContextOverride ?: getLeftContext(
+                inputConnection = inputConnection,
+                inputLength = lastCandidateLength,
+            ).dropLast(lastCandidateLength)
+            val rawRightContext = if (enableRightContext) {
+                getRightContext(
+                    inputConnection = inputConnection,
+                    inputLength = lastCandidateLength,
+                )
+            } else {
+                ""
+            }
+            withContext(Dispatchers.Main.immediate) {
                 val resolvedContext = resolveZenzContext(
                     leftContext = leftContext,
-                    rawRightContext = if (enableZenzRightContextPreference == true) {
-                        getRightContext(inputLength = lastCandidateLength)
-                    } else {
-                        ""
-                    },
-                    enableRightContext = enableZenzRightContextPreference == true
+                    rawRightContext = rawRightContext,
+                    enableRightContext = enableRightContext
                 )
                 ZenzContext(
                     leftContext = resolvedContext.leftContext,
@@ -15374,9 +15619,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private suspend fun updateDisplayedCandidates(
         insertString: String,
-        candidates: List<Candidate>
+        candidates: List<Candidate>,
+        token: CandidateRequestToken? = null,
     ) {
-        if (!shouldApplyCandidateResult(insertString)) {
+        if (!shouldApplyCandidateResult(insertString, token)) {
             return
         }
         val localCandidates = candidates.withoutZenzLiveSlot(insertString)
@@ -15409,7 +15655,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 updateSuggestionAdaptersOnMain(
                     candidates = displayedCandidates,
                     insertString = insertString,
-                    fullCandidates = localCandidates
+                    fullCandidates = localCandidates,
+                    token = token,
                 )
             }
         }
@@ -15444,6 +15691,20 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshReconversionUi()
     }
 
+    private fun clearSuggestionStateAfterEditorSelectionChange() {
+        val hasStaleCandidateState =
+            currentCandidateStripCandidates.isNotEmpty() ||
+                currentCandidateStripFullCandidates.isNotEmpty() ||
+                filteredCandidateList?.isNotEmpty() == true ||
+                currentCandidateStripContent is CandidateStripContent.Candidates ||
+                currentCandidateStripContent is CandidateStripContent.GemmaActions ||
+                shortcutToolbarHiddenForCandidates ||
+                candidateRefreshRequests.value.flag != CandidateShowFlag.Idle
+        if (hasStaleCandidateState) {
+            clearSuggestionStateAfterCommit()
+        }
+    }
+
     private fun updateBunsetsuSpaceKeyIfNeeded(
         mainView: MainLayoutBinding,
         candidates: List<Candidate>,
@@ -15465,7 +15726,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         insertString: String,
         baseCandidates: List<Candidate>,
         plan: ZenzRerankPlan,
-        mainView: MainLayoutBinding
+        mainView: MainLayoutBinding,
+        candidateToken: CandidateRequestToken,
     ) {
         zenzRerankJob = scope.launch {
             val reranked = try {
@@ -15479,11 +15741,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
             putCachedZenzRerank(plan.cacheKey, reranked)
 
-            if (requestToken != zenzRerankRequestToken || reranked == baseCandidates) {
+            if (requestToken != zenzRerankRequestToken ||
+                reranked == baseCandidates ||
+                !shouldApplyCandidateResult(insertString, candidateToken)
+            ) {
                 return@launch
             }
 
-            updateDisplayedCandidates(insertString, reranked)
+            updateDisplayedCandidates(
+                insertString = insertString,
+                candidates = reranked,
+                token = candidateToken,
+            )
             updateBunsetsuSpaceKeyIfNeeded(mainView, reranked, insertString)
 
             if (
@@ -15579,13 +15848,18 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         // 1. 設定値の読み込み
         val prefs = getKeyboardSizePreferences()
-        val isPortrait = resources.configuration.orientation == Configuration.ORIENTATION_PORTRAIT
+        val orientation = resources.configuration.orientation
+        val isPortrait = orientation == Configuration.ORIENTATION_PORTRAIT
         val density = resources.displayMetrics.density
         val screenWidth = resources.displayMetrics.widthPixels
         val isSymbol = isSymbolOverride ?: keyboardSymbolViewState.value.isShown
+        val forceFullLayout = !addCandidateTabHeight && (
+            lastKeyboardLayoutRootView !== mainView.root ||
+                lastKeyboardLayoutOrientation != orientation
+            )
         applyShortcutToolbarSize(
             mainView = mainView,
-            forceLayout = !addCandidateTabHeight
+            forceLayout = forceFullLayout
         )
 
         // 2. ピクセル値の計算
@@ -15630,7 +15904,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
 
         // 3. 最終的な高さ、幅、Gravity、マージンの決定
-        val candidatesShown = addCandidateTabHeight || shortcutToolbarHiddenForCandidates
+        val candidatesShown = isCandidateStripActive(
+            candidatesShown = addCandidateTabHeight || shortcutToolbarHiddenForCandidates,
+            inputStringEmpty = inputString.value.isEmpty()
+        )
         val presentation = resolveCandidateStripPresentation(candidatesShown = candidatesShown)
         val candidateStripHeightDp = resolveCandidateStripHeightDp(
             candidatesShown = candidatesShown,
@@ -15710,7 +15987,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             finalBottomMargin = finalBottomMargin,
             finalStartMargin = finalStartMargin,
             finalEndMargin = finalEndMargin,
-            forceLayout = !addCandidateTabHeight
+            forceLayout = forceFullLayout
         )
 
         if (isSymbol) {
@@ -15736,6 +16013,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 mainView.suggestionVisibility.layoutParams = params
             }
         }
+
+        lastKeyboardLayoutRootView = mainView.root
+        lastKeyboardLayoutOrientation = orientation
     }
 
     /**
@@ -18143,12 +18423,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         if (isKeyboardFloatingMode == true) return
         val binding = mainLayoutBinding ?: return
         measureDebugSection("IMEService.updateMainCandidateStripAfterListUpdated") {
-            setMainSuggestionColumn(binding)
             measureDebugSection("IMEService.scrollToPosition0") {
                 binding.suggestionRecyclerView.scrollToPosition(0)
-            }
-            measureDebugSection("IMEService.updateCandidateStripPresentation.afterListUpdated") {
-                updateCandidateStripPresentation(binding)
             }
         }
     }
@@ -18161,7 +18437,6 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 return@measureDebugSection
             }
             val binding = mainLayoutBinding ?: return@measureDebugSection
-            setMainSuggestionColumn(binding)
             binding.suggestionRecyclerView.scrollToPosition(0)
         }
     }
@@ -20594,25 +20869,51 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         refreshCandidateStripContent()
     }
 
-    private fun canPerformPendingReconversion(entry: ReconversionEntry): Boolean {
-        if (entry.committedText.isEmpty() || entry.reading.isEmpty()) return false
-        val textBeforeCursor = currentInputConnection
-            ?.getTextBeforeCursor(entry.committedText.length, 0)
-            ?.toString()
-            .orEmpty()
-        return textBeforeCursor.endsWith(entry.committedText)
-    }
-
     private fun shouldShowReconversionButton(): Boolean {
         if (!reconversionEnabledPreference) return false
         if (inputString.value.isNotEmpty() || stringInTail.get().isNotEmpty()) return false
         if (isHenkan.get()) return false
-        val entry = pendingReconversionEntry ?: return false
-        return canPerformPendingReconversion(entry)
+        return pendingReconversionEntry != null && pendingReconversionValid
     }
 
     private fun refreshReconversionUi() {
+        val entry = pendingReconversionEntry
+        val requestId = reconversionValidationRequestId.incrementAndGet()
+        pendingReconversionValid = false
         refreshCandidateStripContent()
+        if (!reconversionEnabledPreference ||
+            inputString.value.isNotEmpty() ||
+            stringInTail.get().isNotEmpty() ||
+            isHenkan.get() ||
+            entry == null ||
+            entry.committedText.isEmpty() ||
+            entry.reading.isEmpty()
+        ) {
+            return
+        }
+
+        val inputConnection = currentInputConnection ?: return
+        ioScope.launch {
+            val valid = editorConnectionReadMutex.withLock {
+                withContext(Dispatchers.IO) {
+                    val textBeforeCursor = inputConnection
+                        .getTextBeforeCursor(entry.committedText.length, 0)
+                        ?.toString()
+                        .orEmpty()
+                    textBeforeCursor.endsWith(entry.committedText)
+                }
+            }
+            withContext(Dispatchers.Main.immediate) {
+                if (reconversionValidationRequestId.get() != requestId ||
+                    pendingReconversionEntry !== entry ||
+                    currentInputConnection !== inputConnection
+                ) {
+                    return@withContext
+                }
+                pendingReconversionValid = valid
+                refreshCandidateStripContent()
+            }
+        }
     }
 
     private fun clearPendingReconversionEntry() {
@@ -20719,7 +21020,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         clearZeroQueryAllState(refresh = false)
         val entry = pendingReconversionEntry ?: return
         val mainView = mainLayoutBinding ?: return
-        if (!canPerformPendingReconversion(entry)) {
+        if (!pendingReconversionValid) {
             clearPendingReconversionEntry()
             return
         }
@@ -20766,9 +21067,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
     private fun captureDeletedTextFromConnection(inputConnection: InputConnection?): String {
         val connection = inputConnection ?: return ""
-        val selectedText = connection.getSelectedText(0)?.toString().orEmpty()
-        if (selectedText.isNotEmpty()) {
-            return selectedText
+        if (editorTextSelected && selectedEditorText.isNotEmpty()) {
+            return selectedEditorText
         }
         return getLastCharacterAsString(connection)
     }
@@ -21998,7 +22298,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             ) return
         }
-        updateDisplayedCandidates(insertString, displayedCandidates)
+        updateDisplayedCandidates(
+            insertString = insertString,
+            candidates = displayedCandidates,
+            token = token,
+        )
 
         if (shouldApplyLiveConversion && !applyLiveConversionBeforeCandidateStrip) {
             delayBeforeApplyingLiveConversion()
@@ -22028,7 +22332,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateBunsetsuSpaceKeyIfNeededOnMain(mainView, displayedCandidates, insertString)
 
         if (rerankPlan != null && cachedReranked == null) {
-            maybeLaunchZenzRerank(requestToken, insertString, filtered, rerankPlan, mainView)
+            maybeLaunchZenzRerank(
+                requestToken = requestToken,
+                insertString = insertString,
+                baseCandidates = filtered,
+                plan = rerankPlan,
+                mainView = mainView,
+                candidateToken = token,
+            )
         }
 
     }
@@ -22077,7 +22388,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                 )
             ) return
         }
-        updateDisplayedCandidates(insertString, displayedCandidates)
+        updateDisplayedCandidates(
+            insertString = insertString,
+            candidates = displayedCandidates,
+            token = token,
+        )
 
         if (shouldApplyLiveConversion && !applyLiveConversionBeforeCandidateStrip) {
             delayBeforeApplyingLiveConversion()
@@ -22107,7 +22422,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         updateBunsetsuSpaceKeyIfNeededOnMain(mainView, displayedCandidates, insertString)
 
         if (rerankPlan != null && cachedReranked == null) {
-            maybeLaunchZenzRerank(requestToken, insertString, filtered, rerankPlan, mainView)
+            maybeLaunchZenzRerank(
+                requestToken = requestToken,
+                insertString = insertString,
+                baseCandidates = filtered,
+                plan = rerankPlan,
+                mainView = mainView,
+                candidateToken = token,
+            )
         }
     }
 
@@ -22140,7 +22462,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (!suppressSuggestions) {
-                updateSuggestionAdaptersOnMain(filtered, insertString)
+                updateSuggestionAdaptersOnMain(
+                    candidates = filtered,
+                    insertString = insertString,
+                    token = token,
+                )
             }
 
         }
@@ -22211,7 +22537,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         } else {
             if (!suppressSuggestions) {
-                updateSuggestionAdaptersOnMain(filtered, insertString)
+                updateSuggestionAdaptersOnMain(
+                    candidates = filtered,
+                    insertString = insertString,
+                    token = token,
+                )
             }
 
         }
@@ -22479,8 +22809,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         orderedCandidates
     } }
 
-    private fun getLeftContext(inputLength: Int): String {
-        val ic = currentInputConnection ?: return ""
+    private suspend fun getLeftContext(
+        inputConnection: InputConnection?,
+        inputLength: Int,
+    ): String = withContext(Dispatchers.IO) {
+        val ic = inputConnection ?: return@withContext ""
         val lengthToGetTextBeforeCursor = (8 + inputLength).coerceAtMost(64)
         // カーソル前のテキストを取得
         val charSequence = ic.getTextBeforeCursor(lengthToGetTextBeforeCursor, 0)
@@ -22489,11 +22822,14 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         Timber.d("getLeftContext: inputLength [$inputLength] text: [$text]")
         // 改行記号 '\n' があれば、それより後ろの部分だけを返す。
         // 改行がない場合は、テキスト全体が返されます。
-        return text.substringAfterLast('\n')
+        text.substringAfterLast('\n')
     }
 
-    private fun getRightContext(inputLength: Int): String {
-        val ic = currentInputConnection ?: return ""
+    private suspend fun getRightContext(
+        inputConnection: InputConnection?,
+        inputLength: Int,
+    ): String = withContext(Dispatchers.IO) {
+        val ic = inputConnection ?: return@withContext ""
         val lengthToGetTextAfterCursor = (8 + inputLength).coerceAtMost(64)
 
         // カーソル後のテキストを取得
@@ -22502,7 +22838,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
 
         Timber.d("getRightContext: inputLength [$inputLength] text: [$text]")
 
-        return text.substringBefore('\n')
+        text.substringBefore('\n')
     }
 
     private suspend fun getSuggestionListWithoutPrediction(
@@ -22651,6 +22987,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         typoCorrectionJapaneseFlickEnabled: Boolean = false,
         typoCorrectionQwertyEnglishEnabled: Boolean = false,
     ): KanaKanjiQueryResult {
+        awaitSystemUserDictionaryLoad()
         val session = kanaKanjiConversionSession ?: KanaKanjiConversionSession(
             engine = kanaKanjiEngine,
             backend = conversionBackend,
@@ -22738,33 +23075,30 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             setComposingText("", 0)
             finishComposingText()
         } else {
-            val textBeforeCursor = inputConnection.getTextBeforeCursor(100, 0)?.toString() ?: ""
-            if (textBeforeCursor.isEmpty()) return
-
-            val charsToDelete = deleteKeyFlickTargetChars + ALWAYS_DELETE_KEY_FLICK_BOUNDARIES
-
-            var deleteCount = 0
-
-            // カーソル直前の1文字が指定記号かどうかをチェック
-            if (textBeforeCursor.last() in charsToDelete) {
-                // 記号の場合、1文字だけ削除する
-                deleteCount = 1
-            } else {
-                // 記号でない場合、空白まで遡って単語の長さを数える
-                for (char in textBeforeCursor.reversed()) {
-                    if (char.isWhitespace() || char in charsToDelete) {
-                        // 単語の区切り（空白または記号）が見つかったら停止
-                        break
+            scope.launch {
+                val textBeforeCursor = editorConnectionReadMutex.withLock {
+                    withContext(Dispatchers.IO) {
+                        inputConnection.getTextBeforeCursor(100, 0)?.toString().orEmpty()
                     }
-                    deleteCount++
                 }
-            }
+                if (currentInputConnection !== inputConnection || isHenkan.get()) return@launch
+                if (textBeforeCursor.isEmpty()) return@launch
 
-            if (deleteCount > 0) {
-                val deletedText = textBeforeCursor.takeLast(deleteCount)
-                inputConnection.deleteSurroundingText(deleteCount, 0)
-                if (deletedText.isNotEmpty()) {
-                    pushEditHistoryEntry(EditHistoryEntry.DeleteCommittedText(deletedText))
+                val charsToDelete = deleteKeyFlickTargetChars + ALWAYS_DELETE_KEY_FLICK_BOUNDARIES
+                val deleteCount = if (textBeforeCursor.last() in charsToDelete) {
+                    1
+                } else {
+                    textBeforeCursor.reversed().takeWhile {
+                        !it.isWhitespace() && it !in charsToDelete
+                    }.length
+                }
+
+                if (deleteCount > 0) {
+                    val deletedText = textBeforeCursor.takeLast(deleteCount)
+                    inputConnection.deleteSurroundingText(deleteCount, 0)
+                    if (deletedText.isNotEmpty()) {
+                        pushEditHistoryEntry(EditHistoryEntry.DeleteCommittedText(deletedText))
+                    }
                 }
             }
         }
@@ -22784,31 +23118,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             return
         }
 
-        val textAfterCursor = inputConnection.getTextAfterCursor(100, 0)?.toString() ?: ""
-        if (textAfterCursor.isEmpty()) return
-
-        val charsToDelete = deleteKeyFlickTargetChars + ALWAYS_DELETE_KEY_FLICK_BOUNDARIES
-
-        var deleteCount = 0
-        if (textAfterCursor.first() in charsToDelete) {
-            deleteCount = 1
-        } else {
-            for (char in textAfterCursor) {
-                if (char.isWhitespace() || char in charsToDelete) break
-                deleteCount++
+        scope.launch {
+            val textAfterCursor = editorConnectionReadMutex.withLock {
+                withContext(Dispatchers.IO) {
+                    inputConnection.getTextAfterCursor(100, 0)?.toString().orEmpty()
+                }
             }
-        }
+            if (currentInputConnection !== inputConnection || isHenkan.get()) return@launch
+            if (textAfterCursor.isEmpty()) return@launch
 
-        if (deleteCount > 0) {
-            val deletedText = textAfterCursor.take(deleteCount)
-            inputConnection.deleteSurroundingText(0, deleteCount)
-            if (deletedText.isNotEmpty()) {
-                pushEditHistoryEntry(
-                    EditHistoryEntry.DeleteCommittedText(
-                        deletedText = deletedText,
-                        direction = DeleteDirection.AfterCursor
+            val charsToDelete = deleteKeyFlickTargetChars + ALWAYS_DELETE_KEY_FLICK_BOUNDARIES
+            val deleteCount = if (textAfterCursor.first() in charsToDelete) {
+                1
+            } else {
+                textAfterCursor.takeWhile {
+                    !it.isWhitespace() && it !in charsToDelete
+                }.length
+            }
+
+            if (deleteCount > 0) {
+                val deletedText = textAfterCursor.take(deleteCount)
+                inputConnection.deleteSurroundingText(0, deleteCount)
+                if (deletedText.isNotEmpty()) {
+                    pushEditHistoryEntry(
+                        EditHistoryEntry.DeleteCommittedText(
+                            deletedText = deletedText,
+                            direction = DeleteDirection.AfterCursor
+                        )
                     )
-                )
+                }
             }
         }
     }
@@ -23576,27 +23914,35 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     }
 
     private fun moveCursorLeftBySelection() {
-        if (currentInputConnection == null) return
-
-        beginBatchEdit()
-        try {
-            val req = ExtractedTextRequest()
-            req.token = 0
-            req.flags = 0
-            val extractedText = getExtractedText(req, 0)
-
-            if (extractedText != null) {
-                val start = extractedText.selectionStart
-                if (start > 0) {
-                    setSelection(start - 1, start - 1)
+        val inputConnection = currentInputConnection ?: return
+        scope.launch {
+            val start = editorConnectionReadMutex.withLock {
+                withContext(Dispatchers.IO) {
+                    val req = ExtractedTextRequest().apply {
+                        token = 0
+                        flags = 0
+                    }
+                    runCatching {
+                        inputConnection.getExtractedText(req, 0)?.selectionStart
+                    }.getOrNull()
                 }
-            } else {
-                sendDpadLeftIfPossible()
             }
-        } catch (e: Exception) {
-            Timber.e(e)
-        } finally {
-            endBatchEdit()
+            if (currentInputConnection !== inputConnection) return@launch
+
+            beginBatchEdit()
+            try {
+                if (start != null) {
+                    if (start > 0) {
+                        setSelection(start - 1, start - 1)
+                    }
+                } else {
+                    sendDpadLeftIfPossible()
+                }
+            } catch (e: Exception) {
+                Timber.e(e)
+            } finally {
+                endBatchEdit()
+            }
         }
     }
 
@@ -24022,41 +24368,57 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
     }
 
-    private fun isCursorAtBeginning(): Boolean {
-        val extractedText = runCatching {
-            currentInputConnection?.getExtractedText(ExtractedTextRequest(), 0)
-        }.getOrNull()
-        extractedText?.selectionStart?.let { return it <= 0 }
-        val textBeforeCursor = runCatching {
-            currentInputConnection?.getTextBeforeCursor(1, 0)
-        }.getOrNull()
-        return textBeforeCursor.isNullOrEmpty()
+    private suspend fun isCursorAtBeginning(): Boolean {
+        val inputConnection = currentInputConnection ?: return true
+        return editorConnectionReadMutex.withLock {
+            withContext(Dispatchers.IO) {
+                val extractedText = runCatching {
+                    inputConnection.getExtractedText(ExtractedTextRequest(), 0)
+                }.getOrNull()
+                extractedText?.selectionStart?.let { return@withContext it <= 0 }
+                val textBeforeCursor = runCatching {
+                    inputConnection.getTextBeforeCursor(1, 0)
+                }.getOrNull()
+                textBeforeCursor.isNullOrEmpty()
+            }
+        }
     }
 
-    private fun isCursorAtEnd(): Boolean {
-        val extractedText = runCatching {
-            currentInputConnection?.getExtractedText(ExtractedTextRequest(), 0)
-        }.getOrNull()
-        extractedText?.let {
-            val textLength = it.text?.length ?: 0
-            val cursorPosition = it.selectionEnd
-            return cursorPosition >= textLength
+    private suspend fun isCursorAtEnd(): Boolean {
+        val inputConnection = currentInputConnection ?: return true
+        return editorConnectionReadMutex.withLock {
+            withContext(Dispatchers.IO) {
+                val extractedText = runCatching {
+                    inputConnection.getExtractedText(ExtractedTextRequest(), 0)
+                }.getOrNull()
+                extractedText?.let {
+                    val textLength = it.text?.length ?: 0
+                    val cursorPosition = it.selectionEnd
+                    return@withContext cursorPosition >= textLength
+                }
+                val textAfterCursor = runCatching {
+                    inputConnection.getTextAfterCursor(1, 0)
+                }.getOrNull()
+                textAfterCursor.isNullOrEmpty()
+            }
         }
-        val textAfterCursor = runCatching {
-            currentInputConnection?.getTextAfterCursor(1, 0)
-        }.getOrNull()
-        return textAfterCursor.isNullOrEmpty()
     }
 
     private fun sendDpadLeftIfPossible() {
-        if (!isCursorAtBeginning()) {
-            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+        val inputConnection = currentInputConnection ?: return
+        scope.launch {
+            if (!isCursorAtBeginning() && currentInputConnection === inputConnection) {
+                sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_LEFT)
+            }
         }
     }
 
     private fun sendDpadRightIfPossible() {
-        if (!isCursorAtEnd()) {
-            sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+        val inputConnection = currentInputConnection ?: return
+        scope.launch {
+            if (!isCursorAtEnd() && currentInputConnection === inputConnection) {
+                sendDownUpKeyEvents(KeyEvent.KEYCODE_DPAD_RIGHT)
+            }
         }
     }
 

@@ -12,8 +12,6 @@ import android.os.Looper
 import android.os.Process
 import android.view.Surface
 import timber.log.Timber
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
 internal class LiquidRippleRenderer(
@@ -119,7 +117,7 @@ internal class LiquidRippleRenderer(
     }
 
     override fun detachSurface() {
-        runBlockingOnRendererThread(maxWaitMillis = 120L) {
+        postOnRenderer {
             handler.removeCallbacks(frameRunnable)
             frameScheduled = false
             paused = true
@@ -160,8 +158,8 @@ internal class LiquidRippleRenderer(
     }
 
     override fun release() {
-        runBlockingOnRendererThread(maxWaitMillis = 250L) {
-            if (released) return@runBlockingOnRendererThread
+        postOnRenderer {
+            if (released) return@postOnRenderer
             released = true
             handler.removeCallbacks(frameRunnable)
             frameScheduled = false
@@ -170,8 +168,8 @@ internal class LiquidRippleRenderer(
             simulation?.release()
             simulation = null
             releaseEglSurfaceOnly()
+            rendererThread.quitSafely()
         }
-        rendererThread.quitSafely()
     }
 
     override fun isRendererThreadAliveForTesting(): Boolean {
@@ -274,22 +272,6 @@ internal class LiquidRippleRenderer(
         } else {
             handler.post(action)
         }
-    }
-
-    private fun runBlockingOnRendererThread(maxWaitMillis: Long, action: () -> Unit) {
-        if (Looper.myLooper() == handler.looper) {
-            action()
-            return
-        }
-        if (!rendererThread.isAlive) return
-        val latch = CountDownLatch(1)
-        handler.post {
-            runCatching(action).onFailure {
-                Timber.w(it, "Failed to run liquid ripple renderer cleanup.")
-            }
-            latch.countDown()
-        }
-        latch.await(maxWaitMillis, TimeUnit.MILLISECONDS)
     }
 
     private fun runRendererCatching(operation: String, action: () -> Unit) {
