@@ -222,6 +222,7 @@ import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateS
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateQueryModeResolver
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshCoordinator
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshRequest
+import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRefreshTransitionPolicy
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestToken
 import com.kazumaproject.markdownhelperkeyboard.ime_service.candidate.CandidateRequestTracker
 import com.kazumaproject.markdownhelperkeyboard.ime_service.clipboard.ClipboardUtil
@@ -14645,10 +14646,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                     prevFlag,
                     currentFlag,
                 )
-                if (
-                    prevFlag == CandidateShowFlag.Idle &&
-                    currentFlag == CandidateShowFlag.Updating &&
-                    insertString.isNotEmpty()
+                if (CandidateRefreshTransitionPolicy.shouldEnterActiveCandidatePhase(
+                        previousFlag = prevFlag,
+                        currentFlag = currentFlag,
+                        input = insertString,
+                    )
                 ) {
                     clearZeroQueryAllState(refresh = false)
                     shortcutToolbarHiddenForCandidates = true
@@ -14798,7 +14800,10 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
                         }
                     }
                 }
-                prevFlag = currentFlag
+                prevFlag = CandidateRefreshTransitionPolicy.nextUiPreviousFlag(
+                    currentFlag = currentFlag,
+                    input = insertString,
+                )
             }
         }
 
