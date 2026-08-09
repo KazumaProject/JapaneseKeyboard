@@ -2,6 +2,7 @@ package com.kazumaproject.markdownhelperkeyboard.converter.session
 
 import com.kazumaproject.markdownhelperkeyboard.converter.TestEngineFactory
 import com.kazumaproject.markdownhelperkeyboard.converter.candidate.Candidate
+import com.kazumaproject.markdownhelperkeyboard.converter.engine.PredictionConfig
 import com.kazumaproject.markdownhelperkeyboard.repository.UserDictionaryRepository
 import com.kazumaproject.markdownhelperkeyboard.user_dictionary.database.UserWord
 import kotlinx.coroutines.runBlocking
@@ -94,6 +95,73 @@ class KanaKanjiConversionSessionParityTest {
 
         val ichi = session.query(request("いち", CandidateQueryMode.CONVERSION, bunsetsu = false))
         assertTrue(ichi.candidates.map { it.string }.contains("①"))
+    }
+
+    @Test
+    fun predictionIncludesExactSymbolEmojiEmoticonCandidates() = runBlocking {
+        val session = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY)
+
+        val exactEmoji = session.query(
+            request("ねこ", CandidateQueryMode.PREDICTION, bunsetsu = false),
+        )
+        assertTrue(exactEmoji.candidates.map { it.string }.any { it.contains("🐈") })
+
+        val exactEmojiWithBunsetsu = session.query(
+            request("ねこ", CandidateQueryMode.PREDICTION, bunsetsu = true),
+        )
+        assertTrue(exactEmojiWithBunsetsu.candidates.map { it.string }.any { it.contains("🐈") })
+
+        val exactEmoticon = session.query(
+            request("にこ", CandidateQueryMode.PREDICTION, bunsetsu = false),
+        )
+        assertTrue(exactEmoticon.candidates.map { it.string }.contains("(^o^)"))
+
+        val exactEmoticonWithBunsetsu = session.query(
+            request("にこ", CandidateQueryMode.PREDICTION, bunsetsu = true),
+        )
+        assertTrue(exactEmoticonWithBunsetsu.candidates.map { it.string }.contains("(^o^)"))
+
+        val exactSymbol = session.query(
+            request("さんかく", CandidateQueryMode.PREDICTION, bunsetsu = false),
+        )
+        assertTrue(exactSymbol.candidates.any { it.type.toInt() == 13 })
+
+        val prefixEmoji = session.query(
+            request("うれし", CandidateQueryMode.PREDICTION, bunsetsu = false),
+        )
+        assertTrue(prefixEmoji.candidates.any { it.type.toInt() == 11 })
+
+        val prefixEmoticon = session.query(
+            request("にこに", CandidateQueryMode.PREDICTION, bunsetsu = false),
+        )
+        assertTrue(prefixEmoticon.candidates.any { it.type.toInt() == 12 })
+
+        val prefixSymbol = session.query(
+            request("さんか", CandidateQueryMode.PREDICTION, bunsetsu = false),
+        )
+        assertTrue(prefixSymbol.candidates.any { it.type.toInt() == 13 })
+
+        val disabledConfig = PredictionConfig(symbolEmojiEnabled = false)
+        val disabledPrefixEmoji = session.query(
+            request("うれし", CandidateQueryMode.PREDICTION, bunsetsu = false).copy(
+                predictionConfig = disabledConfig,
+            ),
+        )
+        assertTrue(disabledPrefixEmoji.candidates.none { it.type.toInt() == 11 })
+
+        val disabledPrefixEmoticon = session.query(
+            request("にこに", CandidateQueryMode.PREDICTION, bunsetsu = false).copy(
+                predictionConfig = disabledConfig,
+            ),
+        )
+        assertTrue(disabledPrefixEmoticon.candidates.none { it.type.toInt() == 12 })
+
+        val disabledPrefixSymbol = session.query(
+            request("さんか", CandidateQueryMode.PREDICTION, bunsetsu = false).copy(
+                predictionConfig = disabledConfig,
+            ),
+        )
+        assertTrue(disabledPrefixSymbol.candidates.none { it.type.toInt() == 13 })
     }
 
     @Test
