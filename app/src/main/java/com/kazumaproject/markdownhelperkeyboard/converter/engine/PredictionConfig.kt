@@ -25,6 +25,9 @@ data class PredictionConfig(
     val proverbEnabled: Boolean = true,
     val externalMozcEnabled: Boolean = true,
     val symbolEmojiEnabled: Boolean = true,
+    val showSymbolCandidates: Boolean = true,
+    val showEmojiCandidates: Boolean = true,
+    val showEmoticonCandidates: Boolean = true,
 ) {
     val normalizedMinimumInputLength: Int
         get() = minimumInputLength.coerceIn(MIN_INPUT_LENGTH, MAX_INPUT_LENGTH)
