@@ -1546,6 +1546,12 @@
     <string name="external_mozc_prediction_enable_summary">有効な人名・地名・Wiki・NEologd・Web辞書を前方一致予測に使用します。</string>
     <string name="symbol_emoji_prediction_enable_title">記号・絵文字・顔文字</string>
     <string name="symbol_emoji_prediction_enable_summary">記号、絵文字、顔文字の辞書を前方一致予測に使用します。</string>
+    <string name="symbol_candidate_enable_title">記号の変換候補</string>
+    <string name="symbol_candidate_enable_summary">記号の変換候補を表示します。</string>
+    <string name="emoji_candidate_enable_title">絵文字の変換候補</string>
+    <string name="emoji_candidate_enable_summary">絵文字の変換候補を表示します。</string>
+    <string name="emoticon_candidate_enable_title">顔文字の変換候補</string>
+    <string name="emoticon_candidate_enable_summary">顔文字の変換候補を表示します。</string>
     <string name="dictionary_prediction_candidate_limit_title">予測候補数</string>
     <string name="user_dictionary_prediction_candidate_limit_summary">ユーザー辞書から前方一致で取得する予測候補の最大数です。</string>
     <string name="learn_dictionary_prediction_candidate_limit_summary">学習辞書から前方一致で取得する予測候補の最大数です。</string>
