@@ -124,6 +124,27 @@
             android:title="@string/symbol_emoji_prediction_enable_title"
             app:iconSpaceReserved="false" />
 
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="symbol_candidate_enable_preference"
+            android:summary="@string/symbol_candidate_enable_summary"
+            android:title="@string/symbol_candidate_enable_title"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="emoji_candidate_enable_preference"
+            android:summary="@string/emoji_candidate_enable_summary"
+            android:title="@string/emoji_candidate_enable_title"
+            app:iconSpaceReserved="false" />
+
+        <SwitchPreferenceCompat
+            android:defaultValue="true"
+            android:key="emoticon_candidate_enable_preference"
+            android:summary="@string/emoticon_candidate_enable_summary"
+            android:title="@string/emoticon_candidate_enable_title"
+            app:iconSpaceReserved="false" />
+
     </PreferenceCategory>
 
 </androidx.preference.PreferenceScreen>
