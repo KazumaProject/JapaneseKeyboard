@@ -9,6 +9,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
@@ -19,6 +21,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 
@@ -385,6 +388,35 @@ private fun Fragment.styleEditorSection(
         ViewGroup.LayoutParams.WRAP_CONTENT
     )
     root.addView(preview)
+    if (flickTarget == FlickTarget.TFBI && preview is FlickPopupStylePreviewView) {
+        root.addView(sectionTitle("TFBiポップアップ表示"))
+        val modeGroup = RadioGroup(context).apply {
+            orientation = RadioGroup.VERTICAL
+        }
+        val legacyId = View.generateViewId()
+        val guideId = View.generateViewId()
+        modeGroup.addView(RadioButton(context).apply {
+            id = legacyId
+            text = "従来の3×3ポップアップ"
+        })
+        modeGroup.addView(RadioButton(context).apply {
+            id = guideId
+            text = "キー上部ガイド（アルテ／TFBi風）"
+        })
+        val initialMode = AppPreference.flick_tfbi_popup_presentation
+        modeGroup.check(if (initialMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) guideId else legacyId)
+        modeGroup.setOnCheckedChangeListener { _, checkedId ->
+            val mode = if (checkedId == guideId) {
+                TfbiPopupPresentationMode.GUIDE_ABOVE_KEY
+            } else {
+                TfbiPopupPresentationMode.LEGACY_GRID
+            }
+            AppPreference.flick_tfbi_popup_presentation = mode
+            preview.setTfbiPopupPresentationMode(mode)
+        }
+        preview.setTfbiPopupPresentationMode(initialMode)
+        root.addView(modeGroup)
+    }
     root.addView(sizeLabel.first)
     root.addView(sizeSeek)
     root.addView(textLabel.first)

@@ -10,6 +10,7 @@ import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 
 class PopupStylePreviewView @JvmOverloads constructor(
     context: Context,
@@ -120,6 +121,7 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
 
     private var style = PopupViewStyle(100, 28f)
     private var target = Target.DIRECTIONAL
+    private var tfbiPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
 
     fun applyStyle(target: Target, style: PopupViewStyle) {
         this.target = target
@@ -129,6 +131,11 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
             backgroundColor = style.backgroundColor,
             textColor = style.textColor
         )
+        invalidate()
+    }
+
+    fun setTfbiPopupPresentationMode(mode: TfbiPopupPresentationMode) {
+        tfbiPresentationMode = mode
         invalidate()
     }
 
@@ -153,7 +160,11 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
             Target.DIRECTIONAL -> drawDirectionalPreview(canvas)
             Target.CROSS -> drawCrossPreview(canvas)
             Target.STANDARD -> drawStandardPreview(canvas)
-            Target.TFBI -> drawTfbiPreview(canvas)
+            Target.TFBI -> if (tfbiPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+                drawTfbiGuidePreview(canvas)
+            } else {
+                drawTfbiPreview(canvas)
+            }
         }
     }
 
@@ -235,6 +246,89 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
                 if (row == 1 && col == 1) drawCenteredText(canvas, "あ", rect)
             }
         }
+    }
+
+    private fun drawTfbiGuidePreview(canvas: Canvas) {
+        val scale = style.sizeScalePercent / 100f
+        val panelWidth = dpToPx(132f) * scale
+        val panelHeight = dpToPx(108f) * scale
+        val panelLeft = width / 2f - panelWidth / 2f
+        val panelTop = dpToPx(12f)
+        val panel = RectF(panelLeft, panelTop, panelLeft + panelWidth, panelTop + panelHeight)
+        val guideBackground = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = this@FlickPopupStylePreviewView.style.backgroundColor
+                ?: Color.rgb(232, 232, 232)
+        }
+        val guideLine = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(90, 60, 60, 60)
+            style = Paint.Style.STROKE
+            strokeWidth = dpToPx(1f)
+        }
+        val active = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = defaultHighlightColor
+        }
+        canvas.drawRoundRect(panel, dpToPx(4f), dpToPx(4f), guideBackground)
+        canvas.drawRoundRect(panel, dpToPx(4f), dpToPx(4f), guideLine)
+
+        val cellW = panel.width() / 3f
+        val cellH = panel.height() / 3f
+        for (index in 1..2) {
+            canvas.drawLine(panel.left + cellW * index, panel.top, panel.left + cellW * index, panel.bottom, guideLine)
+            canvas.drawLine(panel.left, panel.top + cellH * index, panel.right, panel.top + cellH * index, guideLine)
+        }
+
+        fun cell(row: Int, column: Int): RectF = RectF(
+            panel.left + column * cellW,
+            panel.top + row * cellH,
+            panel.left + (column + 1) * cellW,
+            panel.top + (row + 1) * cellH
+        )
+
+        val current = cell(1, 0)
+        canvas.drawRoundRect(
+            RectF(current.left + dpToPx(3f), current.top + dpToPx(5f), current.right - dpToPx(3f), current.bottom - dpToPx(5f)),
+            dpToPx(8f),
+            dpToPx(8f),
+            active
+        )
+        drawGuideText(canvas, "き", current, Color.WHITE)
+        drawGuideText(canvas, "ゅ", cell(0, 1), Color.DKGRAY)
+        drawGuideText(canvas, "ゃ", cell(1, 2), Color.DKGRAY)
+        drawGuideText(canvas, "ょ", cell(2, 1), Color.DKGRAY)
+
+        val key = RectF(
+            width / 2f - dpToPx(76f),
+            panel.bottom + dpToPx(18f),
+            width / 2f + dpToPx(76f),
+            panel.bottom + dpToPx(74f)
+        )
+        val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(185, 185, 185) }
+        canvas.drawRect(key, keyPaint)
+        drawGuideText(canvas, "か", key, Color.GRAY)
+
+        val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = defaultHighlightColor
+            style = Paint.Style.STROKE
+            strokeWidth = dpToPx(8f)
+            strokeCap = Paint.Cap.SQUARE
+        }
+        val arrowHead = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = defaultHighlightColor }
+        val centerY = key.centerY()
+        canvas.drawLine(key.centerX() + dpToPx(34f), centerY, key.left + dpToPx(24f), centerY, arrowPaint)
+        val head = Path().apply {
+            moveTo(key.left + dpToPx(12f), centerY)
+            lineTo(key.left + dpToPx(30f), centerY - dpToPx(11f))
+            lineTo(key.left + dpToPx(30f), centerY + dpToPx(11f))
+            close()
+        }
+        canvas.drawPath(head, arrowHead)
+    }
+
+    private fun drawGuideText(canvas: Canvas, text: String, rect: RectF, color: Int) {
+        textPaint.color = color
+        textPaint.textSize = spToPx(style.textSizeSp.coerceAtMost(24f))
+        val y = rect.centerY() - (textPaint.descent() + textPaint.ascent()) / 2f
+        canvas.drawText(text, rect.centerX(), y, textPaint)
     }
 
     private fun drawCenteredText(canvas: Canvas, text: String, rect: RectF) {
