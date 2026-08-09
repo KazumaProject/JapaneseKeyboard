@@ -526,24 +526,23 @@ class SuggestionAdapter internal constructor(
             return when {
                 oldItem is SuggestionDisplayItem.CandidateItem &&
                         newItem is SuggestionDisplayItem.CandidateItem ->
-                    oldItem.candidateIndex == newItem.candidateIndex &&
-                            oldItem.candidate.string == newItem.candidate.string &&
-                            oldItem.candidate.type == newItem.candidate.type
+                    // Candidate rows are positional slots. The RecyclerView has no move
+                    // animation, and onBindViewHolder installs the current candidate click
+                    // listener, so a changed candidate at the same slot is a content change.
+                    // Treating its text/type as identity made every keystroke look like a set
+                    // of removals and insertions to DiffUtil.
+                    oldItem.candidateIndex == newItem.candidateIndex
 
                 oldItem is SuggestionDisplayItem.GemmaActionItem &&
                         newItem is SuggestionDisplayItem.GemmaActionItem ->
-                    oldItem.candidateIndex == newItem.candidateIndex &&
-                            oldItem.candidate.string == newItem.candidate.string &&
-                            oldItem.candidate.type == newItem.candidate.type
+                    oldItem.candidateIndex == newItem.candidateIndex
 
                 oldItem is SuggestionDisplayItem.ZeroQueryCloseItem &&
                         newItem is SuggestionDisplayItem.ZeroQueryCloseItem -> true
 
                 oldItem is SuggestionDisplayItem.ZeroQueryCandidateItem &&
                         newItem is SuggestionDisplayItem.ZeroQueryCandidateItem ->
-                    oldItem.candidateIndex == newItem.candidateIndex &&
-                            oldItem.candidate.string == newItem.candidate.string &&
-                            oldItem.candidate.type == newItem.candidate.type
+                    oldItem.candidateIndex == newItem.candidateIndex
 
                 oldItem is SuggestionDisplayItem.QuickActionsItem &&
                         newItem is SuggestionDisplayItem.QuickActionsItem -> true

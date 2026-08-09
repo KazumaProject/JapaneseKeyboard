@@ -15,6 +15,34 @@ import org.junit.Test
 class CandidateRefreshCoordinatorTest {
 
     @Test
+    fun emptyUpdatingDoesNotConsumeTheNextActiveCandidateTransition() {
+        val afterDictionaryRefresh = CandidateRefreshTransitionPolicy.nextUiPreviousFlag(
+            currentFlag = CandidateShowFlag.Updating,
+            input = "",
+        )
+
+        assertEquals(CandidateShowFlag.Idle, afterDictionaryRefresh)
+        assertTrue(
+            CandidateRefreshTransitionPolicy.shouldEnterActiveCandidatePhase(
+                previousFlag = afterDictionaryRefresh,
+                currentFlag = CandidateShowFlag.Updating,
+                input = "かな",
+            )
+        )
+    }
+
+    @Test
+    fun nonEmptyUpdatingRemainsTheActiveCandidatePhase() {
+        assertEquals(
+            CandidateShowFlag.Updating,
+            CandidateRefreshTransitionPolicy.nextUiPreviousFlag(
+                currentFlag = CandidateShowFlag.Updating,
+                input = "かな",
+            )
+        )
+    }
+
+    @Test
     fun repeatedUpdatingRequestsRemainDistinctAndCarryTheirInputSnapshot() {
         val coordinator = CandidateRefreshCoordinator()
 

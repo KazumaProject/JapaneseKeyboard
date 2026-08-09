@@ -1586,6 +1586,12 @@
     <string name="external_mozc_prediction_enable_summary">Use enabled person, place, wiki, NEologd, and web dictionaries for completion.</string>
     <string name="symbol_emoji_prediction_enable_title">Symbols, emoji, and emoticons</string>
     <string name="symbol_emoji_prediction_enable_summary">Use symbol, emoji, and emoticon dictionaries for completion candidates.</string>
+    <string name="symbol_candidate_enable_title">Symbol candidates</string>
+    <string name="symbol_candidate_enable_summary">Show symbol conversion candidates.</string>
+    <string name="emoji_candidate_enable_title">Emoji candidates</string>
+    <string name="emoji_candidate_enable_summary">Show emoji conversion candidates.</string>
+    <string name="emoticon_candidate_enable_title">Emoticon candidates</string>
+    <string name="emoticon_candidate_enable_summary">Show emoticon conversion candidates.</string>
     <string name="dictionary_prediction_candidate_limit_title">Prediction candidates</string>
     <string name="user_dictionary_prediction_candidate_limit_summary">Maximum number of prefix-match candidates fetched from the user dictionary.</string>
     <string name="learn_dictionary_prediction_candidate_limit_summary">Maximum number of prefix-match candidates fetched from the learning dictionary.</string>
