@@ -957,13 +957,27 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             }
         }
         suggestionAdapter?.submitContent(content)
-        suggestionAdapterFull?.submitContent(fullContent)
+        // The full candidate view is hidden during normal composing. Submitting to its
+        // AsyncListDiffer on every keystroke still calculates a complete DiffUtil diff even
+        // though the user cannot see it. Keep the state current, but submit only when that
+        // view is actually visible; the visibility transition below refreshes it once.
+        if (isFullCandidateViewVisible()) {
+            suggestionAdapterFull?.submitContent(fullContent)
+        }
         val presentation = resolveCandidateStripPresentation(
             candidatesShown = effectiveCandidatesShown,
             resetCandidateTabSelection = resetCandidateTabSelection,
             content = content
         )
         applyCandidateStripPresentation(presentation)
+    }
+
+    private fun isFullCandidateViewVisible(): Boolean {
+        return if (isKeyboardFloatingMode == true) {
+            floatingKeyboardBinding?.candidatesRowView?.isVisible == true
+        } else {
+            mainLayoutBinding?.candidatesRowView?.isVisible == true
+        }
     }
 
     private fun resolveCandidateStripContent(
@@ -16484,6 +16498,11 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         }
         mainView.suggestionVisibility.apply {
             this.setImageDrawable(if (isVisible) cachedArrowDropDownDrawable else cachedArrowDropUpDrawable)
+        }
+        if (!isVisible) {
+            // The full candidate view was intentionally not diffed while hidden. Submit the
+            // latest state after it becomes the active surface.
+            refreshCandidateStripContent(candidatesShown = true)
         }
     }
 
