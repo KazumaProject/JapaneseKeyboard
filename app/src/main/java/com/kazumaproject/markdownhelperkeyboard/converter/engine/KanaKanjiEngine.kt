@@ -84,6 +84,21 @@ private const val POS_ID_NUMBER_ARABIC: Short = 2044
 private const val POS_ID_NUMBER_SEPARATED: Short = 2045
 private const val POS_ID_NUMBER_KANJI: Short = 2046
 
+internal fun shouldIncludeSymbolEmojiReading(
+    inputLength: Int,
+    readingLength: Int,
+    predictionConfig: PredictionConfig,
+): Boolean = readingLength == inputLength || (
+    predictionConfig.japanesePredictionEnabled &&
+        predictionConfig.symbolEmojiEnabled &&
+        predictionConfig.acceptsJapaneseReading(inputLength, readingLength)
+    )
+
+internal fun createJapaneseNumberValueBasedCandidates(input: String): List<Candidate> {
+    val numberValue = input.toNumber()?.second?.toLongOrNull() ?: return emptyList()
+    return createValueBasedSymbolCandidates(numberValue, input.length.toUByte())
+}
+
 class KanaKanjiEngine {
 
     data class IncrementalPerformanceSnapshot(
@@ -5024,15 +5039,15 @@ class KanaKanjiEngine {
         succinctBitVector: SuccinctBitVector,
         predictionConfig: PredictionConfig,
     ): List<String> {
-        if (!predictionConfig.japanesePredictionEnabled || !predictionConfig.symbolEmojiEnabled) {
-            return emptyList()
-        }
         if (input.length > PredictionConfig.MAX_PREDICTION_INPUT_LENGTH) return emptyList()
         return yomiTrie.predictiveSearch(
             prefix = input, succinctBitVector = succinctBitVector
         ).filter {
-            it.length == input.length ||
-                predictionConfig.acceptsJapaneseReading(input.length, it.length)
+            shouldIncludeSymbolEmojiReading(
+                inputLength = input.length,
+                readingLength = it.length,
+                predictionConfig = predictionConfig,
+            )
         }
     }
 
@@ -5271,6 +5286,8 @@ class KanaKanjiEngine {
                     )
                 )
             }
+
+            candidates += createJapaneseNumberValueBasedCandidates(input)
 
             candidates
 

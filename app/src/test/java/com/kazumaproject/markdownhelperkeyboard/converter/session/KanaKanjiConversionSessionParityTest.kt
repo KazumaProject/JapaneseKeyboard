@@ -83,6 +83,20 @@ class KanaKanjiConversionSessionParityTest {
     }
 
     @Test
+    fun conversionKeepsExactSymbolEmojiEmoticonAndValueBasedNumberCandidates() = runBlocking {
+        val session = KanaKanjiConversionSession(engine, ConversionBackend.LEGACY)
+
+        val neko = session.query(request("ねこ", CandidateQueryMode.CONVERSION, bunsetsu = false))
+        assertTrue(neko.candidates.map { it.string }.any { it.contains("🐈") })
+
+        val niko = session.query(request("にこ", CandidateQueryMode.CONVERSION, bunsetsu = false))
+        assertTrue(niko.candidates.map { it.string }.contains("(^o^)"))
+
+        val ichi = session.query(request("いち", CandidateQueryMode.CONVERSION, bunsetsu = false))
+        assertTrue(ichi.candidates.map { it.string }.contains("①"))
+    }
+
+    @Test
     fun cancelledInPlaceAppendIsDiscardedBeforeNextRequest() = runBlocking {
         val localEngine = TestEngineFactory.create()
         val repository = mock<UserDictionaryRepository>()
