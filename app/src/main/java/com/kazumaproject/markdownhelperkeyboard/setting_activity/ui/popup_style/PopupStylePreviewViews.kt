@@ -3,9 +3,11 @@ package com.kazumaproject.markdownhelperkeyboard.setting_activity.ui.popup_style
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
+import android.graphics.Shader
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.View
@@ -117,6 +119,11 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
         color = defaultTextColor
         textAlign = Paint.Align.CENTER
         typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
+    private val guideTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = defaultTextColor
+        textAlign = Paint.Align.CENTER
+        typeface = android.graphics.Typeface.DEFAULT
     }
 
     private var style = PopupViewStyle(100, 28f)
@@ -256,8 +263,17 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
         val panelTop = dpToPx(12f)
         val panel = RectF(panelLeft, panelTop, panelLeft + panelWidth, panelTop + panelHeight)
         val guideBackground = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = this@FlickPopupStylePreviewView.style.backgroundColor
-                ?: Color.rgb(232, 232, 232)
+            val color = this@FlickPopupStylePreviewView.style.backgroundColor
+                ?: Color.rgb(238, 240, 242)
+            shader = LinearGradient(
+                0f,
+                panel.top,
+                0f,
+                panel.bottom,
+                blendWithWhite(color, 0.16f),
+                blendWithBlack(color, 0.06f),
+                Shader.TileMode.CLAMP
+            )
         }
         val guideLine = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.argb(90, 60, 60, 60)
@@ -291,10 +307,10 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
             dpToPx(8f),
             active
         )
-        drawGuideText(canvas, "き", current, Color.WHITE)
-        drawGuideText(canvas, "ゅ", cell(0, 1), Color.DKGRAY)
-        drawGuideText(canvas, "ゃ", cell(1, 2), Color.DKGRAY)
-        drawGuideText(canvas, "ょ", cell(2, 1), Color.DKGRAY)
+        drawGuideText(canvas, "き", current, Color.WHITE, MAIN_TEXT_SCALE)
+        drawGuideText(canvas, "ゅ", cell(0, 1), Color.DKGRAY, OPTION_TEXT_SCALE)
+        drawGuideText(canvas, "ゃ", cell(1, 2), Color.DKGRAY, OPTION_TEXT_SCALE)
+        drawGuideText(canvas, "ょ", cell(2, 1), Color.DKGRAY, OPTION_TEXT_SCALE)
 
         val key = RectF(
             width / 2f - dpToPx(76f),
@@ -304,7 +320,7 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
         )
         val keyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(185, 185, 185) }
         canvas.drawRect(key, keyPaint)
-        drawGuideText(canvas, "か", key, Color.GRAY)
+        drawGuideText(canvas, "か", key, Color.GRAY, 1f)
 
         val arrowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = defaultHighlightColor
@@ -324,11 +340,34 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
         canvas.drawPath(head, arrowHead)
     }
 
-    private fun drawGuideText(canvas: Canvas, text: String, rect: RectF, color: Int) {
-        textPaint.color = color
-        textPaint.textSize = spToPx(style.textSizeSp.coerceAtMost(24f))
-        val y = rect.centerY() - (textPaint.descent() + textPaint.ascent()) / 2f
-        canvas.drawText(text, rect.centerX(), y, textPaint)
+    private fun drawGuideText(
+        canvas: Canvas,
+        text: String,
+        rect: RectF,
+        color: Int,
+        scale: Float
+    ) {
+        guideTextPaint.color = color
+        guideTextPaint.textSize = spToPx((style.textSizeSp * scale).coerceAtMost(24f))
+        val y = rect.centerY() - (guideTextPaint.descent() + guideTextPaint.ascent()) / 2f
+        canvas.drawText(text, rect.centerX(), y, guideTextPaint)
+    }
+
+    private fun blendWithWhite(color: Int, amount: Float): Int {
+        return Color.rgb(
+            (Color.red(color) + (255 - Color.red(color)) * amount).toInt(),
+            (Color.green(color) + (255 - Color.green(color)) * amount).toInt(),
+            (Color.blue(color) + (255 - Color.blue(color)) * amount).toInt()
+        )
+    }
+
+    private fun blendWithBlack(color: Int, amount: Float): Int {
+        val factor = 1f - amount
+        return Color.rgb(
+            (Color.red(color) * factor).toInt(),
+            (Color.green(color) * factor).toInt(),
+            (Color.blue(color) * factor).toInt()
+        )
     }
 
     private fun drawCenteredText(canvas: Canvas, text: String, rect: RectF) {
@@ -338,6 +377,11 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
 
     private fun dpToPx(dp: Float): Float {
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, dp, resources.displayMetrics)
+    }
+
+    private companion object {
+        const val MAIN_TEXT_SCALE = 1.20f
+        const val OPTION_TEXT_SCALE = 0.68f
     }
 
     private fun spToPx(sp: Float): Float {
