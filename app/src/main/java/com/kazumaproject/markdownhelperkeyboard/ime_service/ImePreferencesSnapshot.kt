@@ -352,6 +352,12 @@ data class ImePreferencesSnapshot(
                         appPreference.external_mozc_prediction_enable_preference,
                     symbolEmojiEnabled =
                         appPreference.symbol_emoji_prediction_enable_preference,
+                    showSymbolCandidates =
+                        appPreference.symbol_candidate_enable_preference,
+                    showEmojiCandidates =
+                        appPreference.emoji_candidate_enable_preference,
+                    showEmoticonCandidates =
+                        appPreference.emoticon_candidate_enable_preference,
                 ),
                 flickSensitivityPreferenceValue = appPreference.flick_sensitivity_preference ?: 100,
                 flickThresholdShapePreferenceValue =
