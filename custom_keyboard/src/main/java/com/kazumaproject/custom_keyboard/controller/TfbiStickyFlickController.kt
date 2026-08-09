@@ -10,12 +10,14 @@ import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
+import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import kotlin.math.abs
 import kotlin.math.atan2
 
@@ -74,6 +76,10 @@ class TfbiStickyFlickController(
     private var inputTextTransform: (String) -> String = { it }
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
+    private var popupPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
+    private val guidePopupHost by lazy {
+        TfbiGuidePopupHost(context) { popupWindowAnchorProvider?.invoke() }
+    }
 
     private val longPressRunnable = Runnable {
         val view = attachedView ?: return@Runnable
@@ -97,9 +103,19 @@ class TfbiStickyFlickController(
         popupWindowAnchorProvider = provider
     }
 
+    fun setPopupPresentationMode(mode: TfbiPopupPresentationMode) {
+        if (popupPresentationMode == mode) return
+        popupWindow?.dismiss()
+        guidePopupHost.dismiss()
+        popupWindow = null
+        popupView = null
+        popupPresentationMode = mode
+    }
+
     fun setInputTextTransform(transform: (String) -> String) {
         inputTextTransform = transform
         popupView?.setInputTextTransform(transform)
+        guidePopupHost.setInputTextTransform(transform)
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
@@ -110,6 +126,7 @@ class TfbiStickyFlickController(
             textColor = style.textColor
         )
         popupView?.applyPopupViewStyle(popupStyle)
+        guidePopupHost.applyPopupViewStyle(popupStyle)
     }
 
     fun cancel() {
@@ -164,6 +181,7 @@ class TfbiStickyFlickController(
                 setupSecondStageUI(firstFlickDirection)
                 popupView?.highlightDirection(determinedDirection)
                 currentSecondFlickDirection = determinedDirection
+                updateGuideSecondStage()
             }
         } else {
             // ===== ★ 変更点 1 =====
@@ -199,6 +217,7 @@ class TfbiStickyFlickController(
             if (highlightTargetDirection != currentSecondFlickDirection) {
                 popupView?.highlightDirection(highlightTargetDirection)
                 currentSecondFlickDirection = highlightTargetDirection
+                updateGuideSecondStage()
             }
         }
     }
@@ -267,6 +286,44 @@ class TfbiStickyFlickController(
         baseDirection: TfbiFlickDirection,
         showPetals: Boolean
     ) {
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            showGuidePopup(anchorView, baseDirection, showPetals)
+        } else {
+            showLegacyPopup(anchorView, baseDirection, showPetals)
+        }
+    }
+
+    private fun showGuidePopup(
+        anchorView: View,
+        baseDirection: TfbiFlickDirection,
+        showPetals: Boolean
+    ) {
+        val currentText = characterMapProvider?.invoke(baseDirection, TfbiFlickDirection.TAP).orEmpty()
+        val optionLabels = if (showPetals) {
+            getEnabledFirstFlickDirections().associateWith { direction ->
+                characterMapProvider?.invoke(direction, direction).orEmpty()
+            }.mapValues { (_, output) -> guideOptionLabel(currentText, output) }
+        } else {
+            emptyMap()
+        }
+        guidePopupHost.show(
+            anchor = anchorView,
+            state = TfbiGuidePopupState(
+                currentText = currentText,
+                currentSlot = TfbiFlickDirection.TAP,
+                optionLabels = optionLabels
+            ),
+            direction = baseDirection.takeUnless { it == TfbiFlickDirection.TAP && !showPetals },
+            style = popupStyle,
+            inputTextTransform = inputTextTransform
+        )
+    }
+
+    private fun showLegacyPopup(
+        anchorView: View,
+        baseDirection: TfbiFlickDirection,
+        showPetals: Boolean
+    ) {
         if (popupWindow?.isShowing == true && !showPetals) return
 
         val tapCharacter = characterMapProvider?.invoke(baseDirection, TfbiFlickDirection.TAP) ?: ""
@@ -315,10 +372,35 @@ class TfbiStickyFlickController(
         popupView?.setCharacters(tapCharacter, petalChars)
     }
 
+    private fun updateGuideSecondStage() {
+        if (popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) return
+        val first = firstFlickDirection
+        val currentText = characterMapProvider?.invoke(first, currentSecondFlickDirection).orEmpty()
+            .ifEmpty { characterMapProvider?.invoke(first, TfbiFlickDirection.TAP).orEmpty() }
+        val options = getEnabledSecondFlickDirections(first).associateWith { direction ->
+            characterMapProvider?.invoke(first, direction).orEmpty()
+        }.mapValues { (_, output) -> guideOptionLabel(currentText, output) }
+        guidePopupHost.update(
+            state = TfbiGuidePopupState(
+                currentText = currentText,
+                currentSlot = first,
+                optionLabels = options,
+                selectedOption = currentSecondFlickDirection
+            ),
+            direction = currentSecondFlickDirection
+        )
+    }
+
+    private fun guideOptionLabel(currentText: String, output: String): String {
+        if (output.isEmpty()) return ""
+        return output.removePrefix(currentText).ifEmpty { output }
+    }
+
 
     private fun resetState() {
         attachedView?.removeCallbacks(longPressRunnable)
         popupWindow?.dismiss()
+        guidePopupHost.dismiss()
         popupWindow = null
         popupView = null
         flickState = FlickState.NEUTRAL

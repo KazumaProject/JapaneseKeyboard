@@ -106,6 +106,7 @@ import com.kazumaproject.core.data.floating_candidate.CandidateItem
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.QwertyPopupViewStyleSet
+import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.extensions.dpToPx
 import com.kazumaproject.core.domain.extensions.getThemeColorOrFallback
 import com.kazumaproject.core.domain.extensions.hiraganaToKatakana
@@ -794,7 +795,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.VIBRATION_KEY,
         AppPreference.VIBRATION_TIMING_KEY,
         AppPreference.KEY_SOUND_KEY,
-        AppPreference.KEY_SOUND_VOLUME_PERCENT_KEY
+        AppPreference.KEY_SOUND_VOLUME_PERCENT_KEY,
+        AppPreference.FLICK_TFBI_POPUP_PRESENTATION_KEY
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -2454,6 +2456,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         )
         val longPressTimeout =
             (appPreference.long_press_timeout_preference ?: 300).coerceIn(100, 2000)
+        val tfbiPopupPresentationMode = appPreference.flick_tfbi_popup_presentation
 
         flickSensitivityPreferenceValue = sensitivity
         flickThresholdShapePreferenceValue = thresholdShape
@@ -2501,6 +2504,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyView.setFlickThresholdShape(thresholdShape)
             qwertyView.setLongPressTimeout(longPressTimeout.toLong())
             applyCurrentFlickGuidePreference(customLayoutDefault)
+            customLayoutDefault.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
         }
         floatingKeyboardBinding?.apply {
             keyboardViewFloating.setFlickSensitivityValue(sensitivity)
@@ -2515,6 +2519,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyViewFloating.setFlickThresholdShape(thresholdShape)
             qwertyViewFloating.setLongPressTimeout(longPressTimeout.toLong())
             applyCurrentFlickGuidePreference(customLayoutFloating)
+            customLayoutFloating.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
         }
     }
 
@@ -11374,6 +11379,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
     ) {
         flickView.setOnFlickTextPreviewListener(sumireFlickTextPreviewListener)
         flickView.bindRuntimeGestureSettings(runtimeGestureSettingsSource)
+        val tfbiPopupPresentationMode = appPreference.flick_tfbi_popup_presentation
+        flickView.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
         if (isFloatingView) {
             Timber.d("Configuring floating FlickKeyboardView mirror surface")
             // Floating ON のときだけ、popup の window anchor を IME decorView (or floating root)
