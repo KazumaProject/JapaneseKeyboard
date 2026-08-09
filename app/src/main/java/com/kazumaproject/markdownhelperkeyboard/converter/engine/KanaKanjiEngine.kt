@@ -2394,10 +2394,52 @@ class KanaKanjiEngine {
             emptyList()
         }
 
+        val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
+            input = input,
+            yomiTrie = emojiYomiTrie,
+            succinctBitVector = emojiSuccinctBitVectorLBSYomi,
+            predictionConfig = predictionConfig,
+        )
+
+        val emoticonCommonPrefixDeferred = deferredPredictionEmojiSymbols(
+            input = input,
+            yomiTrie = emoticonYomiTrie,
+            succinctBitVector = emoticonSuccinctBitVectorLBSYomi,
+            predictionConfig = predictionConfig,
+        )
+
         val symbolCommonPrefixDeferred = deferredPredictionEmojiSymbols(
             input = input,
             yomiTrie = symbolYomiTrie,
             succinctBitVector = symbolSuccinctBitVectorLBSYomi,
+            predictionConfig = predictionConfig,
+        )
+
+        val emojiListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = emojiCommonPrefixDeferred,
+            yomiTrie = emojiYomiTrie,
+            tokenArray = emojiTokenArray,
+            tangoTrie = emojiTangoTrie,
+            succinctBitVectorLBSYomi = emojiSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = emojiSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = emojiSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = emojiSuccinctBitVectorTangoLBS,
+            type = 11,
+            predictionConfig = predictionConfig,
+        )
+
+        val emoticonListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = emoticonCommonPrefixDeferred,
+            yomiTrie = emoticonYomiTrie,
+            tokenArray = emoticonTokenArray,
+            tangoTrie = emoticonTangoTrie,
+            succinctBitVectorLBSYomi = emoticonSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = emoticonSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = emoticonSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = emoticonSuccinctBitVectorTangoLBS,
+            type = 12,
             predictionConfig = predictionConfig,
         )
 
@@ -2417,7 +2459,7 @@ class KanaKanjiEngine {
 
         if (input.length == 1) {
             val finalListOneLetter =
-                resultNBestFinalDeferred.candidates.sortedBy { it.score } + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + symbolListDeferred + singleKanjiListDeferred
+                resultNBestFinalDeferred.candidates.sortedBy { it.score } + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + singleKanjiListDeferred
             return BunsetsuCandidateResult(
                 candidates = finalListOneLetter,
                 splitPatterns = resultNBestFinalDeferred.splitPatterns,
@@ -2591,7 +2633,7 @@ class KanaKanjiEngine {
         )
 
         val finalList =
-            resultListFinal + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
+            resultListFinal + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
 
         return BunsetsuCandidateResult(
             candidates = finalList,
@@ -2876,10 +2918,52 @@ class KanaKanjiEngine {
             emptyList()
         }
 
+        val emojiCommonPrefixDeferred = deferredPredictionEmojiSymbols(
+            input = input,
+            yomiTrie = emojiYomiTrie,
+            succinctBitVector = emojiSuccinctBitVectorLBSYomi,
+            predictionConfig = predictionConfig,
+        )
+
+        val emoticonCommonPrefixDeferred = deferredPredictionEmojiSymbols(
+            input = input,
+            yomiTrie = emoticonYomiTrie,
+            succinctBitVector = emoticonSuccinctBitVectorLBSYomi,
+            predictionConfig = predictionConfig,
+        )
+
         val symbolCommonPrefixDeferred = deferredPredictionEmojiSymbols(
             input = input,
             yomiTrie = symbolYomiTrie,
             succinctBitVector = symbolSuccinctBitVectorLBSYomi,
+            predictionConfig = predictionConfig,
+        )
+
+        val emojiListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = emojiCommonPrefixDeferred,
+            yomiTrie = emojiYomiTrie,
+            tokenArray = emojiTokenArray,
+            tangoTrie = emojiTangoTrie,
+            succinctBitVectorLBSYomi = emojiSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = emojiSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = emojiSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = emojiSuccinctBitVectorTangoLBS,
+            type = 11,
+            predictionConfig = predictionConfig,
+        )
+
+        val emoticonListDeferred = deferredFromDictionarySymbols(
+            input = input,
+            commonPrefixListString = emoticonCommonPrefixDeferred,
+            yomiTrie = emoticonYomiTrie,
+            tokenArray = emoticonTokenArray,
+            tangoTrie = emoticonTangoTrie,
+            succinctBitVectorLBSYomi = emoticonSuccinctBitVectorLBSYomi,
+            succinctBitVectorIsLeafYomi = emoticonSuccinctBitVectorIsLeafYomi,
+            succinctBitVectorTokenArray = emoticonSuccinctBitVectorTokenArray,
+            succinctBitVectorTangoLBS = emoticonSuccinctBitVectorTangoLBS,
+            type = 12,
             predictionConfig = predictionConfig,
         )
 
@@ -2897,7 +2981,7 @@ class KanaKanjiEngine {
             predictionConfig = predictionConfig,
         )
 
-        if (input.length == 1) return resultNBestFinalDeferred.sortedBy { it.score } + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + symbolListDeferred + singleKanjiListDeferred
+        if (input.length == 1) return resultNBestFinalDeferred.sortedBy { it.score } + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + symbolListDeferred + singleKanjiListDeferred
 
         val yomiPartOfDeferred = if (input.length > 16) {
             emptyList()
@@ -3060,7 +3144,7 @@ class KanaKanjiEngine {
         val resultListFinal =
             resultList.sortedWith(compareBy<Candidate> { it.score }.thenBy { it.string })
 
-        return resultListFinal + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
+        return resultListFinal + kotowazaListDeferred + (englishDeferred + englishZenkaku).sortedBy { it.score } + (emojiListDeferred + emoticonListDeferred).sortedBy { it.score } + hirakanaAndKana + yomiPartListDeferred + symbolListDeferred + singleKanjiListDeferred
 
     }
 
