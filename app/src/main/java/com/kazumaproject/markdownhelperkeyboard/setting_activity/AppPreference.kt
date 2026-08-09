@@ -88,6 +88,8 @@ object AppPreference {
 
     private lateinit var preferences: SharedPreferences
     private val gson = Gson()
+    private const val LEGACY_SYMBOL_EMOJI_CANDIDATE_ENABLE_KEY =
+        "symbol_emoji_candidate_enable_preference"
     private val circularSlotActionEditableSlots = setOf(
         CircularFlickDirection.SLOT_4,
         CircularFlickDirection.SLOT_5,
@@ -156,6 +158,12 @@ object AppPreference {
         Pair("external_mozc_prediction_enable_preference", true)
     private val SYMBOL_EMOJI_PREDICTION_ENABLE_PREFERENCE =
         Pair("symbol_emoji_prediction_enable_preference", true)
+    private val SYMBOL_CANDIDATE_ENABLE_PREFERENCE =
+        Pair("symbol_candidate_enable_preference", true)
+    private val EMOJI_CANDIDATE_ENABLE_PREFERENCE =
+        Pair("emoji_candidate_enable_preference", true)
+    private val EMOTICON_CANDIDATE_ENABLE_PREFERENCE =
+        Pair("emoticon_candidate_enable_preference", true)
     private val CANDIDATE_ORDER_OVERRIDE_ENABLE =
         Pair("candidate_order_override_enable_preference", false)
     private val MOZCUT_PERSON_NAME = Pair("mozc_ut_person_name_preference", false)
@@ -857,7 +865,28 @@ object AppPreference {
         preferences = PreferenceManager.getDefaultSharedPreferences(context)
         removeUnsafeLegacyGemmaHandwritingPrompt()
         migratePredictionLookaheadPreferenceIfNeeded()
+        migrateSymbolEmojiCandidatePreferenceIfNeeded()
         migrateSumireKeymapGuideModesIfNeeded()
+    }
+
+    fun migrateSymbolEmojiCandidatePreferenceIfNeeded() {
+        if (!preferences.contains(LEGACY_SYMBOL_EMOJI_CANDIDATE_ENABLE_KEY)) return
+        val legacyValue = preferences.getBoolean(
+            LEGACY_SYMBOL_EMOJI_CANDIDATE_ENABLE_KEY,
+            true,
+        )
+        preferences.edit {
+            if (!preferences.contains(SYMBOL_CANDIDATE_ENABLE_PREFERENCE.first)) {
+                it.putBoolean(SYMBOL_CANDIDATE_ENABLE_PREFERENCE.first, legacyValue)
+            }
+            if (!preferences.contains(EMOJI_CANDIDATE_ENABLE_PREFERENCE.first)) {
+                it.putBoolean(EMOJI_CANDIDATE_ENABLE_PREFERENCE.first, legacyValue)
+            }
+            if (!preferences.contains(EMOTICON_CANDIDATE_ENABLE_PREFERENCE.first)) {
+                it.putBoolean(EMOTICON_CANDIDATE_ENABLE_PREFERENCE.first, legacyValue)
+            }
+            it.remove(LEGACY_SYMBOL_EMOJI_CANDIDATE_ENABLE_KEY)
+        }
     }
 
     private fun migrateSumireKeymapGuideModesIfNeeded() {
@@ -1804,6 +1833,33 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putBoolean(SYMBOL_EMOJI_PREDICTION_ENABLE_PREFERENCE.first, value)
+        }
+
+    var symbol_candidate_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            SYMBOL_CANDIDATE_ENABLE_PREFERENCE.first,
+            SYMBOL_CANDIDATE_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(SYMBOL_CANDIDATE_ENABLE_PREFERENCE.first, value)
+        }
+
+    var emoji_candidate_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            EMOJI_CANDIDATE_ENABLE_PREFERENCE.first,
+            EMOJI_CANDIDATE_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(EMOJI_CANDIDATE_ENABLE_PREFERENCE.first, value)
+        }
+
+    var emoticon_candidate_enable_preference: Boolean
+        get() = preferences.getBoolean(
+            EMOTICON_CANDIDATE_ENABLE_PREFERENCE.first,
+            EMOTICON_CANDIDATE_ENABLE_PREFERENCE.second,
+        )
+        set(value) = preferences.edit {
+            it.putBoolean(EMOTICON_CANDIDATE_ENABLE_PREFERENCE.first, value)
         }
 
     var candidate_order_override_enable_preference: Boolean?

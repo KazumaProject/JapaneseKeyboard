@@ -55,6 +55,9 @@ class PredictionPreferenceTest {
         AppPreference.proverb_prediction_enable_preference = false
         AppPreference.external_mozc_prediction_enable_preference = false
         AppPreference.symbol_emoji_prediction_enable_preference = false
+        AppPreference.symbol_candidate_enable_preference = false
+        AppPreference.emoji_candidate_enable_preference = false
+        AppPreference.emoticon_candidate_enable_preference = false
         AppPreference.user_dictionary_prediction_candidate_limit_preference = 2
         AppPreference.learn_dictionary_prediction_candidate_limit_preference = 7
 
@@ -73,6 +76,9 @@ class PredictionPreferenceTest {
         assertFalse(prediction.proverbEnabled)
         assertFalse(prediction.externalMozcEnabled)
         assertFalse(prediction.symbolEmojiEnabled)
+        assertFalse(prediction.showSymbolCandidates)
+        assertFalse(prediction.showEmojiCandidates)
+        assertFalse(prediction.showEmoticonCandidates)
         assertEquals(2, snapshot.userDictionaryPredictionCandidateLimit)
         assertEquals(7, snapshot.learnDictionaryPredictionCandidateLimit)
     }
@@ -107,6 +113,21 @@ class PredictionPreferenceTest {
             assertEquals(expectedCount, AppPreference.prediction_lookahead_character_count_preference)
             assertEquals(expectedCount, preferences.all["prediction_lookahead_preference"])
         }
+    }
+
+    @Test
+    fun legacyCombinedSymbolEmojiCandidatePreferenceIsSplitAndPersisted() {
+        val preferences = PreferenceManager.getDefaultSharedPreferences(context)
+        preferences.edit()
+            .putBoolean("symbol_emoji_candidate_enable_preference", false)
+            .commit()
+
+        AppPreference.migrateSymbolEmojiCandidatePreferenceIfNeeded()
+
+        assertFalse(AppPreference.symbol_candidate_enable_preference)
+        assertFalse(AppPreference.emoji_candidate_enable_preference)
+        assertFalse(AppPreference.emoticon_candidate_enable_preference)
+        assertFalse(preferences.contains("symbol_emoji_candidate_enable_preference"))
     }
 
     @Test
@@ -145,6 +166,15 @@ class PredictionPreferenceTest {
         assertEquals(1, lookahead?.min)
         assertEquals(6, lookahead?.max)
         assertTrue(lookahead?.showSeekBarValue == true)
+
+        listOf(
+            "symbol_candidate_enable_preference",
+            "emoji_candidate_enable_preference",
+            "emoticon_candidate_enable_preference",
+        ).forEach { key ->
+            val preference = screen.findPreference<androidx.preference.SwitchPreferenceCompat>(key)
+            assertTrue(preference?.isChecked == true)
+        }
     }
 
     private companion object {
@@ -161,6 +191,9 @@ class PredictionPreferenceTest {
             "proverb_prediction_enable_preference",
             "external_mozc_prediction_enable_preference",
             "symbol_emoji_prediction_enable_preference",
+            "symbol_candidate_enable_preference",
+            "emoji_candidate_enable_preference",
+            "emoticon_candidate_enable_preference",
         )
         val DICTIONARY_KEYS = listOf(
             "user_dictionary_prediction_candidate_limit_preference",
