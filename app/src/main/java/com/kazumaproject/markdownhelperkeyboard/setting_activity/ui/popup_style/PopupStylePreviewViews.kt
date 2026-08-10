@@ -13,6 +13,8 @@ import android.util.TypedValue
 import android.view.View
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
+import com.kazumaproject.core.domain.extensions.getThemeColor
+import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 
 class PopupStylePreviewView @JvmOverloads constructor(
     context: Context,
@@ -129,6 +131,13 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
     private var style = PopupViewStyle(100, 28f)
     private var target = Target.DIRECTIONAL
     private var tfbiPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
+    private var tfbiGuideBackgroundColor: Int? = null
+
+    private val defaultTfbiGuideBackgroundColor = if (context.isDarkThemeOn()) {
+        context.getThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHighest)
+    } else {
+        context.getThemeColor(com.google.android.material.R.attr.colorSurface)
+    }
 
     fun applyStyle(target: Target, style: PopupViewStyle) {
         this.target = target
@@ -143,6 +152,11 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
 
     fun setTfbiPopupPresentationMode(mode: TfbiPopupPresentationMode) {
         tfbiPresentationMode = mode
+        invalidate()
+    }
+
+    fun setTfbiGuideBackgroundColor(color: Int?) {
+        tfbiGuideBackgroundColor = color
         invalidate()
     }
 
@@ -264,7 +278,8 @@ class FlickPopupStylePreviewView @JvmOverloads constructor(
         val panel = RectF(panelLeft, panelTop, panelLeft + panelWidth, panelTop + panelHeight)
         val guideBackground = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             val color = this@FlickPopupStylePreviewView.style.backgroundColor
-                ?: Color.rgb(238, 240, 242)
+                ?: tfbiGuideBackgroundColor
+                ?: defaultTfbiGuideBackgroundColor
             shader = LinearGradient(
                 0f,
                 panel.top,

@@ -32,6 +32,9 @@ internal class TfbiGuidePopupHost(
     private var guideWidth = 1
     private var guideHeight = 1
     private var currentGapPx = 1
+    private var configuredBackgroundColor: Int? = null
+    private var configuredHighlightedColor: Int? = null
+    private var configuredTextColor: Int? = null
 
     fun show(
         anchor: View,
@@ -46,7 +49,7 @@ internal class TfbiGuidePopupHost(
         val arrow = arrowView ?: TfbiGestureArrowView(context).also { arrowView = it }
         panel.setInputTextTransform(inputTextTransform)
         panel.applyPopupViewStyle(style)
-        arrow.setColor(0xff1976d2.toInt())
+        applyConfiguredColors(panel, arrow)
         panel.setState(state)
         arrow.setDirection(direction)
 
@@ -81,7 +84,10 @@ internal class TfbiGuidePopupHost(
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
-        guideView?.applyPopupViewStyle(style)
+        guideView?.let { panel ->
+            panel.applyPopupViewStyle(style)
+            applyConfiguredColors(panel, arrowView)
+        }
     }
 
     fun setColors(
@@ -89,8 +95,10 @@ internal class TfbiGuidePopupHost(
         highlightedColor: Int,
         textColor: Int
     ) {
-        guideView?.setColors(backgroundColor, highlightedColor, textColor)
-        arrowView?.setColor(highlightedColor)
+        configuredBackgroundColor = backgroundColor
+        configuredHighlightedColor = highlightedColor
+        configuredTextColor = textColor
+        applyConfiguredColors(guideView, arrowView)
     }
 
     fun dismiss() {
@@ -129,4 +137,21 @@ internal class TfbiGuidePopupHost(
 
     private fun dp(value: Float): Int =
         (value * context.resources.displayMetrics.density).roundToInt().coerceAtLeast(1)
+
+    private fun applyConfiguredColors(
+        panel: TfbiGuidePopupView?,
+        arrow: TfbiGestureArrowView?
+    ) {
+        val backgroundColor = configuredBackgroundColor
+        val highlightedColor = configuredHighlightedColor
+        val textColor = configuredTextColor
+        if (panel != null && backgroundColor != null && highlightedColor != null && textColor != null) {
+            panel.setColors(backgroundColor, highlightedColor, textColor)
+        }
+        arrow?.setColor(highlightedColor ?: DEFAULT_ARROW_COLOR)
+    }
+
+    private companion object {
+        const val DEFAULT_ARROW_COLOR: Int = 0xff1976d2.toInt()
+    }
 }

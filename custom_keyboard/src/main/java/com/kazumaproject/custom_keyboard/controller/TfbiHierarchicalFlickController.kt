@@ -694,6 +694,7 @@ class TfbiHierarchicalFlickController(
     private fun setupStageUI(map: Map<TfbiFlickDirection, TfbiFlickNode>) {
         // 中央に表示する文字
         val tapCharacter = nodeDisplayText(map[TfbiFlickDirection.TAP])
+        val stageBaseCharacter = stageBaseCharacter(map, tapCharacter)
 
         // 周囲に表示する文字
         val petalChars = map
@@ -703,9 +704,9 @@ class TfbiHierarchicalFlickController(
         popupView?.setCharacters(tapCharacter, petalChars)
         if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
             val currentText = if (guideStageJustOpened) {
-                tapCharacter
+                stageBaseCharacter
             } else {
-                nodeDisplayText(map[currentHighlight]).ifEmpty { tapCharacter }
+                nodeDisplayText(map[currentHighlight]).ifEmpty { stageBaseCharacter }
             }
             val currentSlot = if (mapStack.size > 1) guideRootDirection else currentHighlight
             guidePopupHost.update(
@@ -713,7 +714,7 @@ class TfbiHierarchicalFlickController(
                     currentText = currentText,
                     currentSlot = currentSlot,
                     optionLabels = petalChars.mapValues { (_, output) ->
-                        guideOptionLabel(tapCharacter, output)
+                        guideOptionLabel(stageBaseCharacter, output)
                     },
                     selectedOption = if (guideStageJustOpened) null else guideSelectedOption
                 ),
@@ -729,9 +730,10 @@ class TfbiHierarchicalFlickController(
     ) {
         if (popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) return
         val tapCharacter = nodeDisplayText(map[TfbiFlickDirection.TAP])
+        val stageBaseCharacter = stageBaseCharacter(map, tapCharacter)
         val optionLabels = map
             .filterKeys { it != TfbiFlickDirection.TAP }
-            .mapValues { (_, node) -> guideOptionLabel(tapCharacter, nodeDisplayText(node)) }
+            .mapValues { (_, node) -> guideOptionLabel(stageBaseCharacter, nodeDisplayText(node)) }
         guidePopupHost.update(
             state = TfbiGuidePopupState(
                 currentText = currentText,
@@ -741,6 +743,20 @@ class TfbiHierarchicalFlickController(
             ),
             direction = guideArrowDirection
         )
+    }
+
+    /**
+     * Some hierarchical stages intentionally omit TAP because the entry direction itself is
+     * the current character (for example な -> に -> にゅ).  The guide still needs a base label
+     * for that stage; otherwise an empty TAP node makes the active label disappear.
+     */
+    private fun stageBaseCharacter(
+        map: Map<TfbiFlickDirection, TfbiFlickNode>,
+        tapCharacter: String
+    ): String {
+        if (tapCharacter.isNotEmpty()) return tapCharacter
+        val entryDirection = highlightStack.peek() ?: currentHighlight
+        return nodeDisplayText(map[entryDirection])
     }
 
     private fun nodeDisplayText(node: TfbiFlickNode?): String {
