@@ -9,8 +9,11 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.util.TypedValue
 import android.view.View
+import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.domain.extensions.getThemeColor
+import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 
 /**
@@ -21,6 +24,16 @@ import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
  * next labels, matching the guide figures used by TFBi documentation.
  */
 class TfbiGuidePopupView(context: Context) : View(context) {
+
+    private val defaultPanelColor = if (context.isDarkThemeOn()) {
+        context.getThemeColor(com.google.android.material.R.attr.colorSurfaceContainerHighest)
+    } else {
+        context.getThemeColor(com.google.android.material.R.attr.colorSurface)
+    }
+    private val defaultTextColor = ContextCompat.getColor(
+        context,
+        com.kazumaproject.core.R.color.keyboard_icon_color
+    )
 
     private val panelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val activePaint = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -41,9 +54,12 @@ class TfbiGuidePopupView(context: Context) : View(context) {
 
     private var state = TfbiGuidePopupState("。", TfbiFlickDirection.TAP)
     private var popupStyle = PopupViewStyle(100, 20f)
+    private var configuredBackgroundColor: Int? = null
+    private var configuredHighlightedColor: Int? = null
+    private var configuredTextColor: Int? = null
     private var popupBackgroundColor: Int? = null
     private var activeColor: Int = DEFAULT_ACTIVE_COLOR
-    private var popupTextColor: Int = DEFAULT_TEXT_COLOR
+    private var popupTextColor: Int = defaultTextColor
     private var activeTextColor: Int = Color.WHITE
     private var inputTextTransform: (String) -> String = { it }
 
@@ -70,9 +86,9 @@ class TfbiGuidePopupView(context: Context) : View(context) {
             backgroundColor = style.backgroundColor,
             textColor = style.textColor
         )
-        popupBackgroundColor = style.backgroundColor
-        activeColor = DEFAULT_ACTIVE_COLOR
-        popupTextColor = style.textColor ?: DEFAULT_TEXT_COLOR
+        popupBackgroundColor = style.backgroundColor ?: configuredBackgroundColor
+        activeColor = configuredHighlightedColor ?: DEFAULT_ACTIVE_COLOR
+        popupTextColor = style.textColor ?: configuredTextColor ?: defaultTextColor
         activeTextColor = readableForeground(activeColor)
         invalidate()
     }
@@ -82,9 +98,12 @@ class TfbiGuidePopupView(context: Context) : View(context) {
         highlightedBackgroundColor: Int,
         textColor: Int
     ) {
-        popupBackgroundColor = backgroundColor
+        configuredBackgroundColor = backgroundColor
+        configuredHighlightedColor = highlightedBackgroundColor
+        configuredTextColor = textColor
+        popupBackgroundColor = popupStyle.backgroundColor ?: backgroundColor
         activeColor = highlightedBackgroundColor
-        popupTextColor = textColor
+        popupTextColor = popupStyle.textColor ?: textColor
         activeTextColor = readableForeground(activeColor)
         invalidate()
     }
@@ -94,7 +113,7 @@ class TfbiGuidePopupView(context: Context) : View(context) {
 
         val inset = dp(1f)
         val panel = RectF(inset, inset, width - inset, height - inset)
-        val panelColor = popupBackgroundColor ?: DEFAULT_BACKGROUND_COLOR
+        val panelColor = popupBackgroundColor ?: defaultPanelColor
         panelPaint.shader = LinearGradient(
             0f,
             panel.top,
@@ -233,8 +252,6 @@ class TfbiGuidePopupView(context: Context) : View(context) {
 
     private companion object {
         const val DEFAULT_ACTIVE_COLOR: Int = 0xff1976d2.toInt()
-        const val DEFAULT_TEXT_COLOR: Int = 0xff202124.toInt()
-        const val DEFAULT_BACKGROUND_COLOR: Int = 0xffeef0f2.toInt()
         const val MAIN_TEXT_SCALE: Float = 1.20f
         const val OPTION_TEXT_SCALE: Float = 0.68f
         const val MAIN_MIN_TEXT_SIZE_SP: Float = 12f

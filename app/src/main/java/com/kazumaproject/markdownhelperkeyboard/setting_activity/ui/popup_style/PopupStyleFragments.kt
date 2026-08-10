@@ -389,6 +389,11 @@ private fun Fragment.styleEditorSection(
     )
     root.addView(preview)
     if (flickTarget == FlickTarget.TFBI && preview is FlickPopupStylePreviewView) {
+        preview.setTfbiGuideBackgroundColor(
+            AppPreference.key_popup_background_color.takeIf {
+                AppPreference.key_popup_use_custom_color
+            }
+        )
         root.addView(sectionTitle("TFBiポップアップ表示"))
         val modeGroup = RadioGroup(context).apply {
             orientation = RadioGroup.VERTICAL
