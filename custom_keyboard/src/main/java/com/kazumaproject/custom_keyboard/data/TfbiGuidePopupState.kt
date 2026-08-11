@@ -12,5 +12,17 @@ data class TfbiGuidePopupState(
     val currentText: String,
     val currentSlot: TfbiFlickDirection,
     val optionLabels: Map<TfbiFlickDirection, String> = emptyMap(),
-    val selectedOption: TfbiFlickDirection? = null
+    val selectedOption: TfbiFlickDirection? = null,
+    val fingerPosition: TfbiGuideFingerPosition? = null
+)
+
+/**
+ * The current touch position expressed as a normalized point in the guide's 3x3 area.
+ *
+ * The controllers derive this from the touched key's local coordinates. Keeping it normalized
+ * lets the guide render at any popup size without coupling the state to Android view dimensions.
+ */
+data class TfbiGuideFingerPosition(
+    val x: Float,
+    val y: Float
 )

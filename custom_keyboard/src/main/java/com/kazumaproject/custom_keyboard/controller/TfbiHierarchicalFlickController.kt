@@ -18,6 +18,7 @@ import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.data.KeyMode
 import com.kazumaproject.custom_keyboard.data.ModeSwitchBoundary
 import com.kazumaproject.custom_keyboard.data.TfbiFlickNode
+import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
@@ -103,6 +104,7 @@ class TfbiHierarchicalFlickController(
     private var currentHighlight: TfbiFlickDirection = TfbiFlickDirection.TAP
     private var isJitterGuardActive = false
     private var activeGestureConfig: GestureSessionConfig? = null
+    private var currentFingerPosition: TfbiGuideFingerPosition? = null
 
     // ポップアップView関連
     private var popupView: TfbiFlickPopupView? = null
@@ -246,6 +248,7 @@ class TfbiHierarchicalFlickController(
         centerStack.push(event.x to event.y)
         mapStack.push(rMap)
         highlightStack.push(TfbiFlickDirection.TAP)
+        currentFingerPosition = resolveTfbiGuideFingerPosition(view, event)
         currentHighlight = TfbiFlickDirection.TAP
         guideRootDirection = TfbiFlickDirection.TAP
         guideSelectedOption = null
@@ -261,6 +264,7 @@ class TfbiHierarchicalFlickController(
     }
 
     private fun handleTouchMove(event: MotionEvent, view: View) {
+        updateGuideFingerPosition(view, event)
         // 現在の中心座標とマップをスタックの先頭から取得
         val (centerX, centerY) = centerStack.peek() ?: return
         val currentM = currentMap ?: return
@@ -631,7 +635,8 @@ class TfbiHierarchicalFlickController(
             state = TfbiGuidePopupState(
                 currentText = tapCharacter,
                 currentSlot = TfbiFlickDirection.TAP,
-                optionLabels = optionLabels
+                optionLabels = optionLabels,
+                fingerPosition = currentFingerPosition
             ),
             direction = null,
             style = popupStyle,
@@ -775,6 +780,13 @@ class TfbiHierarchicalFlickController(
         return output.removePrefix(currentText).ifEmpty { output }
     }
 
+    private fun updateGuideFingerPosition(view: View, event: MotionEvent) {
+        currentFingerPosition = resolveTfbiGuideFingerPosition(view, event)
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            guidePopupHost.updateFingerPosition(currentFingerPosition)
+        }
+    }
+
     private fun resetState() {
         attachedView?.removeCallbacks(longPressRunnable)
         popupWindow?.dismiss()
@@ -792,6 +804,7 @@ class TfbiHierarchicalFlickController(
         guideStageJustOpened = false
         isJitterGuardActive = false
         activeGestureConfig = null
+        currentFingerPosition = null
 
         if (currentMode != KeyMode.NORMAL) {
             currentMode = KeyMode.NORMAL
