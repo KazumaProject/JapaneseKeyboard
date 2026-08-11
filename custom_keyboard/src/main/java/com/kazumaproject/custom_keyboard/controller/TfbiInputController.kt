@@ -15,6 +15,8 @@ import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.controller.getLocationRelativeToWindowAnchor
+import com.kazumaproject.custom_keyboard.controller.resolveTfbiGuideFingerPosition
+import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import com.kazumaproject.custom_keyboard.controller.TfbiGuidePopupHost
 import kotlin.math.abs
@@ -77,6 +79,7 @@ class TfbiInputController(
     private var intermediateTouchY = 0f
     private var isLongPressModeActive = false
     private var activeGestureConfig: GestureSessionConfig? = null
+    private var currentFingerPosition: TfbiGuideFingerPosition? = null
 
     var listener: TfbiListener? = null
     private var characterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
@@ -213,6 +216,7 @@ class TfbiInputController(
         isTouchActive = true
         initialTouchX = event.x
         initialTouchY = event.y
+        currentFingerPosition = resolveTfbiGuideFingerPosition(view, event)
         listener?.onPress(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP)
 
         showPopup(view, TfbiFlickDirection.TAP, false)
@@ -221,6 +225,7 @@ class TfbiInputController(
     }
 
     private fun handleTouchMove(event: MotionEvent, view: View) {
+        updateGuideFingerPosition(view, event)
         if (flickState == FlickState.NEUTRAL) {
             val dx = event.x - initialTouchX
             val dy = event.y - initialTouchY
@@ -251,7 +256,9 @@ class TfbiInputController(
                 if (isLongPressModeActive) {
                     return
                 }
+                val fingerPosition = currentFingerPosition
                 resetState()
+                currentFingerPosition = fingerPosition
                 showPopup(view, TfbiFlickDirection.TAP, false)
                 listener?.onSelectionChanged(
                     TfbiFlickDirection.TAP,
@@ -372,7 +379,8 @@ class TfbiInputController(
             state = TfbiGuidePopupState(
                 currentText = currentText,
                 currentSlot = TfbiFlickDirection.TAP,
-                optionLabels = optionLabels
+                optionLabels = optionLabels,
+                fingerPosition = currentFingerPosition
             ),
             direction = baseDirection.takeUnless { it == TfbiFlickDirection.TAP && !showPetals },
             style = popupStyle,
@@ -461,6 +469,13 @@ class TfbiInputController(
         return output.removePrefix(currentText).ifEmpty { output }
     }
 
+    private fun updateGuideFingerPosition(view: View, event: MotionEvent) {
+        currentFingerPosition = resolveTfbiGuideFingerPosition(view, event)
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            guidePopupHost.updateFingerPosition(currentFingerPosition)
+        }
+    }
+
     private fun characterFor(first: TfbiFlickDirection, second: TfbiFlickDirection): String {
         val normal = characterMapProvider?.invoke(first, second).orEmpty()
         val longPress = longPressCharacterMapProvider?.invoke(first, second).orEmpty()
@@ -477,6 +492,7 @@ class TfbiInputController(
         firstFlickDirection = TfbiFlickDirection.TAP
         currentSecondFlickDirection = TfbiFlickDirection.TAP
         isLongPressModeActive = false
+        currentFingerPosition = null
     }
 
     private fun clearLongPressCallback(view: View?) {

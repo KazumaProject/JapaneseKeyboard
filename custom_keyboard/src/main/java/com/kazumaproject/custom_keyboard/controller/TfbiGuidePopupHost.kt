@@ -1,8 +1,10 @@
 package com.kazumaproject.custom_keyboard.controller
 
 import android.content.Context
+import android.view.MotionEvent
 import android.view.View
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiGestureArrowView
@@ -32,6 +34,7 @@ internal class TfbiGuidePopupHost(
     private var guideWidth = 1
     private var guideHeight = 1
     private var currentGapPx = 1
+    private var currentState: TfbiGuidePopupState? = null
     private var configuredBackgroundColor: Int? = null
     private var configuredHighlightedColor: Int? = null
     private var configuredTextColor: Int? = null
@@ -50,6 +53,7 @@ internal class TfbiGuidePopupHost(
         panel.setInputTextTransform(inputTextTransform)
         panel.applyPopupViewStyle(style)
         applyConfiguredColors(panel, arrow)
+        currentState = state
         panel.setState(state)
         arrow.setDirection(direction)
 
@@ -63,6 +67,7 @@ internal class TfbiGuidePopupHost(
         val host = preferredHostProvider()
         if (!overlay.show(anchor, host, panel, guideWidth, guideHeight)) {
             anchorView = null
+            currentState = null
             return
         }
         // Add the arrow after the panel so it is drawn above the key and the panel edge.
@@ -74,8 +79,21 @@ internal class TfbiGuidePopupHost(
         state: TfbiGuidePopupState,
         direction: TfbiFlickDirection?
     ) {
-        guideView?.setState(state)
+        val resolvedState = state.copy(
+            fingerPosition = state.fingerPosition ?: currentState?.fingerPosition
+        )
+        currentState = resolvedState
+        guideView?.setState(resolvedState)
         arrowView?.setDirection(direction)
+        positionVisiblePopups()
+    }
+
+    /** Updates the cursor without rebuilding the labels or the current selection. */
+    fun updateFingerPosition(position: TfbiGuideFingerPosition?) {
+        val state = currentState ?: return
+        val updatedState = state.copy(fingerPosition = position)
+        currentState = updatedState
+        guideView?.setState(updatedState)
         positionVisiblePopups()
     }
 
@@ -104,6 +122,7 @@ internal class TfbiGuidePopupHost(
     fun dismiss() {
         overlay.dismissAll()
         anchorView = null
+        currentState = null
     }
 
     private fun positionVisiblePopups() {
@@ -154,4 +173,16 @@ internal class TfbiGuidePopupHost(
     private companion object {
         const val DEFAULT_ARROW_COLOR: Int = 0xff1976d2.toInt()
     }
+}
+
+/** Converts a key-local touch coordinate into the guide panel's normalized coordinate space. */
+internal fun resolveTfbiGuideFingerPosition(
+    anchor: View,
+    event: MotionEvent
+): TfbiGuideFingerPosition? {
+    if (anchor.width <= 0 || anchor.height <= 0) return null
+    return TfbiGuideFingerPosition(
+        x = (event.x / anchor.width.toFloat()).coerceIn(0f, 1f),
+        y = (event.y / anchor.height.toFloat()).coerceIn(0f, 1f)
+    )
 }

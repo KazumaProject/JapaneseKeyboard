@@ -14,6 +14,7 @@ import androidx.core.graphics.ColorUtils
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
+import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 
 /**
@@ -50,6 +51,12 @@ class TfbiGuidePopupView(context: Context) : View(context) {
     }
     private val activeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textAlign = Paint.Align.CENTER
+    }
+    private val fingerMarkerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
+    private val fingerMarkerOutlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
     }
 
     private var state = TfbiGuidePopupState("。", TfbiFlickDirection.TAP)
@@ -150,6 +157,27 @@ class TfbiGuidePopupView(context: Context) : View(context) {
                 drawPlainLabel(canvas, inputTextTransform(label), rect)
             }
         }
+
+        state.fingerPosition?.let { drawFingerMarker(canvas, panel, it) }
+    }
+
+    private fun drawFingerMarker(
+        canvas: Canvas,
+        panel: RectF,
+        position: TfbiGuideFingerPosition
+    ) {
+        val x = panel.left + panel.width() * position.x.coerceIn(0f, 1f)
+        val y = panel.top + panel.height() * position.y.coerceIn(0f, 1f)
+        val radius = dp(5f).coerceAtMost(minOf(panel.width(), panel.height()) * 0.08f)
+
+        // A contrasting ring keeps the cursor visible over both labels and the active pill.
+        fingerMarkerOutlinePaint.color = readableForeground(popupBackgroundColor ?: defaultPanelColor)
+        fingerMarkerOutlinePaint.strokeWidth = dp(2f)
+        canvas.drawCircle(x, y, radius + dp(2f), fingerMarkerOutlinePaint)
+
+        fingerMarkerPaint.color = activeColor
+        fingerMarkerPaint.strokeWidth = dp(2f)
+        canvas.drawCircle(x, y, radius, fingerMarkerPaint)
     }
 
     private fun rectFor(

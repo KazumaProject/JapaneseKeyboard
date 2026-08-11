@@ -17,6 +17,7 @@ import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
 import com.kazumaproject.custom_keyboard.view.TfbiFlickDirection
 import com.kazumaproject.custom_keyboard.view.TfbiFlickPopupView
+import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 import kotlin.math.abs
 import kotlin.math.atan2
@@ -65,6 +66,7 @@ class TfbiStickyFlickController(
     private var intermediateTouchX = 0f
     private var intermediateTouchY = 0f
     private var activeGestureConfig: GestureSessionConfig? = null
+    private var currentFingerPosition: TfbiGuideFingerPosition? = null
 
     var listener: TfbiListener? = null
     private var characterMapProvider: ((TfbiFlickDirection, TfbiFlickDirection) -> String)? = null
@@ -154,6 +156,7 @@ class TfbiStickyFlickController(
         flickState = FlickState.NEUTRAL
         initialTouchX = event.x
         initialTouchY = event.y
+        currentFingerPosition = resolveTfbiGuideFingerPosition(view, event)
         listener?.onPress(TfbiFlickDirection.TAP, TfbiFlickDirection.TAP)
 
         // 最初は必ず花びらなしのポップアップを表示する
@@ -162,6 +165,7 @@ class TfbiStickyFlickController(
     }
 
     private fun handleTouchMove(event: MotionEvent, view: View) {
+        updateGuideFingerPosition(view, event)
         if (flickState == FlickState.NEUTRAL) {
             val dx = event.x - initialTouchX
             val dy = event.y - initialTouchY
@@ -311,7 +315,8 @@ class TfbiStickyFlickController(
             state = TfbiGuidePopupState(
                 currentText = currentText,
                 currentSlot = TfbiFlickDirection.TAP,
-                optionLabels = optionLabels
+                optionLabels = optionLabels,
+                fingerPosition = currentFingerPosition
             ),
             direction = baseDirection.takeUnless { it == TfbiFlickDirection.TAP && !showPetals },
             style = popupStyle,
@@ -396,6 +401,13 @@ class TfbiStickyFlickController(
         return output.removePrefix(currentText).ifEmpty { output }
     }
 
+    private fun updateGuideFingerPosition(view: View, event: MotionEvent) {
+        currentFingerPosition = resolveTfbiGuideFingerPosition(view, event)
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            guidePopupHost.updateFingerPosition(currentFingerPosition)
+        }
+    }
+
 
     private fun resetState() {
         attachedView?.removeCallbacks(longPressRunnable)
@@ -407,6 +419,7 @@ class TfbiStickyFlickController(
         firstFlickDirection = TfbiFlickDirection.TAP
         currentSecondFlickDirection = TfbiFlickDirection.TAP
         activeGestureConfig = null
+        currentFingerPosition = null
     }
 
     private fun currentFlickThreshold(): Float {

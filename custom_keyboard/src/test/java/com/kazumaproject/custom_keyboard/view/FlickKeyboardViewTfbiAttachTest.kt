@@ -40,6 +40,18 @@ class FlickKeyboardViewTfbiAttachTest {
         val state = touchDownState("second-flick", TfbiInputController::class.java)
 
         assertEquals("な", state.currentText)
+        assertEquals(0.5f, state.fingerPosition?.x ?: -1f, 0.001f)
+        assertEquals(0.5f, state.fingerPosition?.y ?: -1f, 0.001f)
+    }
+
+
+
+    @Test
+    fun secondFlickGuideTracksFingerPosition() {
+        val state = touchStateAfterLeftFlick("second-flick", TfbiInputController::class.java)
+
+        assertEquals(0f, state.fingerPosition?.x ?: -1f, 0.001f)
+        assertEquals(0.5f, state.fingerPosition?.y ?: -1f, 0.001f)
     }
 
 
