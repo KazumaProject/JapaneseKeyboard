@@ -408,6 +408,7 @@ class TfbiHierarchicalFlickController(
     }
 
     private fun handleTouchUp(event: MotionEvent) {
+        attachedView?.let { updateGuideFingerPosition(it, event) }
         val currentM = currentMap ?: return
         val finalDirection = currentHighlight
         val node = currentM[finalDirection]
@@ -844,6 +845,12 @@ class TfbiHierarchicalFlickController(
         }
         if (enabledDirections.size <= 1 && enabledDirections.contains(TfbiFlickDirection.TAP)) {
             return TfbiFlickDirection.TAP
+        }
+
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            currentFingerPosition?.let { position ->
+                return resolveTfbiGuideGridDirection(position, enabledDirections)
+            }
         }
 
         val centerAngles = mapOf(

@@ -14,11 +14,13 @@ import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
 import com.kazumaproject.core.domain.flick.FlickGestureMath
 import com.kazumaproject.core.domain.flick.GestureSessionConfig
 import com.kazumaproject.core.domain.flick.GestureSessionConfigSource
+import com.kazumaproject.custom_keyboard.controller.TfbiGuidePopupHost
 import com.kazumaproject.custom_keyboard.controller.getLocationRelativeToWindowAnchor
+import com.kazumaproject.custom_keyboard.controller.isTfbiGuideTapCell
 import com.kazumaproject.custom_keyboard.controller.resolveTfbiGuideFingerPosition
+import com.kazumaproject.custom_keyboard.controller.resolveTfbiGuideGridDirection
 import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
-import com.kazumaproject.custom_keyboard.controller.TfbiGuidePopupHost
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.hypot
@@ -252,7 +254,12 @@ class TfbiInputController(
                 (event.x - initialTouchX).toDouble(),
                 (event.y - initialTouchY).toDouble()
             ).toFloat()
-            if (distanceFromInitial < CANCEL_THRESHOLD) {
+            val returnedToGuideCenter = popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY &&
+                    currentFingerPosition?.let(::isTfbiGuideTapCell) == true
+            if (returnedToGuideCenter || (
+                        popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY &&
+                                distanceFromInitial < CANCEL_THRESHOLD
+                    )) {
                 if (isLongPressModeActive) {
                     return
                 }
@@ -294,6 +301,7 @@ class TfbiInputController(
     private fun handleTouchUp(event: MotionEvent) {
         isTouchActive = false
         clearLongPressCallback(attachedView)
+        attachedView?.let { updateGuideFingerPosition(it, event) }
 
         var finalSecondDirection: TfbiFlickDirection
         if (flickState == FlickState.FIRST_FLICK_DETERMINED) {
@@ -545,6 +553,12 @@ class TfbiInputController(
         }
         if (enabledDirections.isEmpty()) {
             return TfbiFlickDirection.TAP
+        }
+
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            currentFingerPosition?.let { position ->
+                return resolveTfbiGuideGridDirection(position, enabledDirections)
+            }
         }
 
         val centerAngles = mapOf(

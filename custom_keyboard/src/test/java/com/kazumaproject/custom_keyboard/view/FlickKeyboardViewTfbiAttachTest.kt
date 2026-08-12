@@ -96,6 +96,32 @@ class FlickKeyboardViewTfbiAttachTest {
     }
 
     @Test
+    fun secondFlickGuideUsesGuideCellForSecondStage() {
+        val state = touchStateAfterFlickToCell(
+            "second-flick",
+            TfbiInputController::class.java,
+            targetX = 0.1f,
+            targetY = 1f
+        )
+
+        assertEquals("じ", state.currentText)
+        assertEquals(TfbiFlickDirection.DOWN_LEFT, state.selectedOption)
+    }
+
+    @Test
+    fun thirdFlickGuideUsesBottomCenterCellForSecondStage() {
+        val state = touchStateAfterFlickToCell(
+            "third-flick",
+            TfbiHierarchicalFlickController::class.java,
+            targetX = 0.65f,
+            targetY = 1f
+        )
+
+        assertEquals("しょ", state.currentText)
+        assertEquals("しょ", state.optionLabels[TfbiFlickDirection.DOWN])
+    }
+
+    @Test
     fun allBuiltInKanaLayoutVariantsAttachNaController() {
         listOf("toggle", "flick", "switch-mode-effective").forEach { layoutType ->
             val secondLayout = KeyboardDefaultLayouts.createFinalLayout(
@@ -220,6 +246,67 @@ class FlickKeyboardViewTfbiAttachTest {
         }
 
         val controller = findControllerForLabel("な", controllerClass, keyboard)
+        val host = controller!!::class.java.getDeclaredMethod("getGuidePopupHost").apply {
+            isAccessible = true
+        }.invoke(controller)
+        val guideView = host!!::class.java.getDeclaredField("guideView").apply {
+            isAccessible = true
+        }.get(host)
+        val state = guideView!!::class.java.getDeclaredField("state").apply {
+            isAccessible = true
+        }.get(guideView)
+        return state as TfbiGuidePopupState
+    }
+
+    private fun touchStateAfterFlickToCell(
+        inputStyle: String,
+        controllerClass: Class<*>,
+        targetX: Float,
+        targetY: Float
+    ): TfbiGuidePopupState {
+        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val keyboard = FlickKeyboardView(
+            ContextThemeWrapper(
+                activity,
+                com.google.android.material.R.style.Theme_Material3_DayNight_NoActionBar
+            )
+        ).apply {
+            setTfbiPopupPresentationMode(TfbiPopupPresentationMode.GUIDE_ABOVE_KEY)
+            setKeyboard(createLayout(inputStyle))
+        }
+        activity.setContentView(keyboard)
+        keyboard.measure(exactly(1080), exactly(1000))
+        keyboard.layout(0, 0, 1080, 1000)
+
+        val saButton = (0 until keyboard.childCount)
+            .map { keyboard.getChildAt(it) }
+            .filterIsInstance<AutoSizeButton>()
+            .first { it.text.toString() == "さ" }
+        val centerX = saButton.width / 2f
+        val centerY = saButton.height / 2f
+        val targetTouchX = saButton.width * targetX
+        val targetTouchY = saButton.height * targetY
+        val down = MotionEvent.obtain(0L, 0L, MotionEvent.ACTION_DOWN, centerX, centerY, 0)
+        val firstMove = MotionEvent.obtain(0L, 10L, MotionEvent.ACTION_MOVE, 0f, centerY, 0)
+        val secondMove = MotionEvent.obtain(
+            0L,
+            20L,
+            MotionEvent.ACTION_MOVE,
+            targetTouchX,
+            targetTouchY,
+            0
+        )
+        try {
+            assertNotNull(saButton.dispatchTouchEvent(down))
+            assertNotNull(saButton.dispatchTouchEvent(firstMove))
+            assertNotNull(saButton.dispatchTouchEvent(secondMove))
+        } finally {
+            down.recycle()
+            firstMove.recycle()
+            secondMove.recycle()
+        }
+
+        val controller = findControllerForLabel("さ", controllerClass, keyboard)
         val host = controller!!::class.java.getDeclaredMethod("getGuidePopupHost").apply {
             isAccessible = true
         }.invoke(controller)

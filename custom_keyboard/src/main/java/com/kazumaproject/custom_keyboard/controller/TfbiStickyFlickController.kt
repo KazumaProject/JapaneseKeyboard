@@ -230,6 +230,8 @@ class TfbiStickyFlickController(
         // (この関数内のロジックは元の TfbiInputController と同じで、変更不要です)
         // ログのタグだけ "TfbStickyInput" に変更しています。
 
+        attachedView?.let { updateGuideFingerPosition(it, event) }
+
         Log.d(
             "TfbStickyInput", // ★ ログタグ
             "handleTouchUp: START. Current state = $flickState"
@@ -473,6 +475,12 @@ class TfbiStickyFlickController(
         }
         if (enabledDirections.isEmpty()) {
             return TfbiFlickDirection.TAP
+        }
+
+        if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
+            currentFingerPosition?.let { position ->
+                return resolveTfbiGuideGridDirection(position, enabledDirections)
+            }
         }
 
         val centerAngles = mapOf(
