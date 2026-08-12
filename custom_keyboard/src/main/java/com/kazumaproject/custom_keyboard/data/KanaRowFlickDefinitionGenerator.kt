@@ -341,7 +341,10 @@ object KanaRowFlickDefinitionGenerator {
         } else {
             UP
         }
-        return branch(label = text) {
+        return branch(
+            label = text,
+            parentContinuationDirections = setOf(UP, RIGHT, DOWN)
+        ) {
             add(primaryDirection, input(text))
             add(longDirection, input("${text}う"))
         }
@@ -368,12 +371,14 @@ object KanaRowFlickDefinitionGenerator {
     private fun branch(
         label: String? = null,
         cancelOnTap: Boolean = true,
+        parentContinuationDirections: Set<TfbiFlickDirection> = emptySet(),
         overrides: KanaRowColumnOverrides = KanaRowColumnOverrides(),
         block: FlickStageBuilder.() -> Unit
     ): FlickNodeDefinition.Branch = FlickNodeDefinition.Branch(
         label = label,
         stage = stage(block),
-        cancelOnTap = overrides.cancelOnTap ?: cancelOnTap
+        cancelOnTap = overrides.cancelOnTap ?: cancelOnTap,
+        parentContinuationDirections = parentContinuationDirections
     )
 
     @KanaRowFlickDefinitionDsl

@@ -271,7 +271,7 @@ class TfbiHierarchicalFlickController(
 
         val dx = event.x - centerX
         val dy = event.y - centerY
-        val enabledDirections = currentM.keys
+        val enabledDirections = effectiveStageMap(currentM).keys
 
         // 現在のフリック方向を計算
         val direction = calculateDirection(
@@ -338,8 +338,15 @@ class TfbiHierarchicalFlickController(
         // (TAP 以外の方向に動いたので、ジッターガードは解除)
         isJitterGuardActive = false
 
-        // ハイライト対象のノードを取得
-        val node = currentM[direction]
+        // ハイライト対象のノードを取得します。yoon の子階層では、親の同じ段にある
+        // じゃ／じゅ／じょの兄弟方向を継続候補として扱います。
+        var selectionMap = currentM
+        var node = currentM[direction]
+        if (node == null && parentContinuationNode(direction) != null) {
+            popCurrentStageForParentContinuation()
+            selectionMap = currentMap ?: return
+            node = selectionMap[direction]
+        }
         val depthBeforeSelection = mapStack.size
         if (depthBeforeSelection == 1) {
             guideRootDirection = direction
@@ -350,7 +357,7 @@ class TfbiHierarchicalFlickController(
                     dx = dx,
                     dy = dy,
                     targetDirection = direction,
-                    currentMap = currentM
+                    currentMap = selectionMap
                 )
             ) {
                 updateInternalState(node.triggersMode, event)
@@ -366,10 +373,10 @@ class TfbiHierarchicalFlickController(
                 // 終端ノード（文字）の場合：ハイライトを更新
                 popupView?.highlightDirection(currentHighlight)
                 guideSelectedOption = direction
-                updateGuideForSelection(node.char, currentM)
+                updateGuideForSelection(node.char, selectionMap)
 
                 // 状態更新
-                if (isModeSwitchGestureConfident(dx, dy, currentHighlight, currentM)) {
+                if (isModeSwitchGestureConfident(dx, dy, currentHighlight, selectionMap)) {
                     updateInternalState(node.triggersMode, event)
                 }
             }
@@ -464,6 +471,46 @@ class TfbiHierarchicalFlickController(
                 (node.nextMap[TfbiFlickDirection.TAP] as? TfbiFlickNode.Input)?.char
             else -> null
         }?.takeIf(String::isNotEmpty)
+    }
+
+    /**
+     * Returns the explicitly allowed sibling entries from the parent stage. Continuations
+     * are metadata on the currently open submenu, so unrelated parent directions never leak
+     * into an arbitrary child stage.
+     */
+    private fun parentContinuationNodes(): Map<TfbiFlickDirection, TfbiFlickNode> {
+        if (mapStack.size <= 1 || highlightStack.isEmpty()) return emptyMap()
+
+        val entryDirection = highlightStack.peek() ?: return emptyMap()
+        val parentMap = mapStack.elementAt(1)
+        val sourceNode = parentMap[entryDirection] as? TfbiFlickNode.SubMenu
+            ?: return emptyMap()
+
+        return sourceNode.parentContinuationDirections
+            .asSequence()
+            .filter { it != entryDirection }
+            .mapNotNull { direction ->
+                parentMap[direction]?.let { direction to it }
+            }
+            .toMap()
+    }
+
+    private fun effectiveStageMap(
+        map: Map<TfbiFlickDirection, TfbiFlickNode>
+    ): Map<TfbiFlickDirection, TfbiFlickNode> {
+        val continuations = parentContinuationNodes()
+        return if (continuations.isEmpty()) map else continuations + map
+    }
+
+    private fun parentContinuationNode(
+        direction: TfbiFlickDirection
+    ): TfbiFlickNode? = parentContinuationNodes()[direction]
+
+    private fun popCurrentStageForParentContinuation() {
+        if (mapStack.size <= 1) return
+        mapStack.pop()
+        highlightStack.pop()
+        currentMap = mapStack.peek()
     }
 
     private fun updateInternalState(newMode: KeyMode?, event: MotionEvent) {
@@ -698,12 +745,13 @@ class TfbiHierarchicalFlickController(
      * 第2階層以降のUI（ポップアップの内容）を設定します。
      */
     private fun setupStageUI(map: Map<TfbiFlickDirection, TfbiFlickNode>) {
+        val displayMap = effectiveStageMap(map)
         // 中央に表示する文字
-        val tapCharacter = nodeDisplayText(map[TfbiFlickDirection.TAP])
-        val stageBaseCharacter = stageBaseCharacter(map, tapCharacter)
+        val tapCharacter = nodeDisplayText(displayMap[TfbiFlickDirection.TAP])
+        val stageBaseCharacter = stageBaseCharacter(displayMap, tapCharacter)
 
         // 周囲に表示する文字
-        val petalChars = map
+        val petalChars = displayMap
             .filterKeys { it != TfbiFlickDirection.TAP }
             .mapValues { (_, node) -> nodeDisplayText(node) }
 
@@ -712,7 +760,7 @@ class TfbiHierarchicalFlickController(
             val currentText = if (guideStageJustOpened) {
                 stageBaseCharacter
             } else {
-                nodeDisplayText(map[currentHighlight]).ifEmpty { stageBaseCharacter }
+                nodeDisplayText(displayMap[currentHighlight]).ifEmpty { stageBaseCharacter }
             }
             val currentSlot = if (mapStack.size > 1) guideRootDirection else currentHighlight
             guidePopupHost.update(
@@ -735,9 +783,10 @@ class TfbiHierarchicalFlickController(
         map: Map<TfbiFlickDirection, TfbiFlickNode>
     ) {
         if (popupPresentationMode != TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) return
-        val tapCharacter = nodeDisplayText(map[TfbiFlickDirection.TAP])
-        val stageBaseCharacter = stageBaseCharacter(map, tapCharacter)
-        val optionLabels = map
+        val displayMap = effectiveStageMap(map)
+        val tapCharacter = nodeDisplayText(displayMap[TfbiFlickDirection.TAP])
+        val stageBaseCharacter = stageBaseCharacter(displayMap, tapCharacter)
+        val optionLabels = displayMap
             .filterKeys { it != TfbiFlickDirection.TAP }
             .mapValues { (_, node) -> guideOptionLabel(stageBaseCharacter, nodeDisplayText(node)) }
         guidePopupHost.update(

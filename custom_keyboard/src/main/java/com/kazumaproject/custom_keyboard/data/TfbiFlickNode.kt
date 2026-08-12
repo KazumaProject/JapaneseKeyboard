@@ -38,7 +38,13 @@ sealed class TfbiFlickNode {
     data class SubMenu(
         val nextMap: Map<TfbiFlickDirection, TfbiFlickNode>,
         val label: String? = null,
-        val cancelOnTap: Boolean = false
+        val cancelOnTap: Boolean = false,
+        /**
+         * Directions in the parent stage that may be selected continuously while this
+         * submenu is open.  This is intentionally opt-in so an arbitrary submenu cannot
+         * accidentally expose unrelated parent entries.
+         */
+        val parentContinuationDirections: Set<TfbiFlickDirection> = emptySet()
     ) : TfbiFlickNode()
 
     /**
