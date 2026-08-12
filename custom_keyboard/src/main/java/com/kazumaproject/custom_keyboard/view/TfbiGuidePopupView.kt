@@ -15,6 +15,7 @@ import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.domain.extensions.getThemeColor
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.custom_keyboard.data.TfbiGuideFingerPosition
+import com.kazumaproject.custom_keyboard.data.TfbiGuideGrid
 import com.kazumaproject.custom_keyboard.data.TfbiGuidePopupState
 
 /**
@@ -69,12 +70,6 @@ class TfbiGuidePopupView(context: Context) : View(context) {
     private var popupTextColor: Int = defaultTextColor
     private var activeTextColor: Int = Color.WHITE
     private var inputTextTransform: (String) -> String = { it }
-
-    private val directionLayout = listOf(
-        listOf(TfbiFlickDirection.UP_LEFT, TfbiFlickDirection.UP, TfbiFlickDirection.UP_RIGHT),
-        listOf(TfbiFlickDirection.LEFT, TfbiFlickDirection.TAP, TfbiFlickDirection.RIGHT),
-        listOf(TfbiFlickDirection.DOWN_LEFT, TfbiFlickDirection.DOWN, TfbiFlickDirection.DOWN_RIGHT)
-    )
 
     fun setState(state: TfbiGuidePopupState) {
         this.state = state
@@ -186,18 +181,9 @@ class TfbiGuidePopupView(context: Context) : View(context) {
         cellWidth: Float,
         cellHeight: Float
     ): RectF {
-        val position = directionLayout
-            .asSequence()
-            .withIndex()
-            .flatMap { (row, directions) ->
-                directions.withIndex().map { (column, value) ->
-                    Triple(row, column, value)
-                }
-            }
-            .firstOrNull { it.third == direction }
-            ?: Triple(1, 1, TfbiFlickDirection.TAP)
-        val left = panel.left + position.second * cellWidth
-        val top = panel.top + position.first * cellHeight
+        val (column, row) = TfbiGuideGrid.cellOf(direction)
+        val left = panel.left + column * cellWidth
+        val top = panel.top + row * cellHeight
         return RectF(left, top, left + cellWidth, top + cellHeight)
     }
 
