@@ -406,7 +406,7 @@ private fun Fragment.styleEditorSection(
         })
         modeGroup.addView(RadioButton(context).apply {
             id = guideId
-            text = "キー上部ガイド（アルテ／TFBi風）"
+            text = "キー上部ガイド"
         })
         val initialMode = AppPreference.flick_tfbi_popup_presentation
         modeGroup.check(if (initialMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) guideId else legacyId)
