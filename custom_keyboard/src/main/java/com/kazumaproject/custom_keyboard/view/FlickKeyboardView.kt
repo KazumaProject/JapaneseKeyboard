@@ -30,8 +30,10 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.extensions.isDarkThemeOn
 import com.kazumaproject.core.domain.extensions.setBorder
 import com.kazumaproject.core.domain.extensions.setDrawableAlpha
@@ -131,6 +133,8 @@ class FlickKeyboardView @JvmOverloads constructor(
     )
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
+    private var tfbiPopupPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
+    private var tfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
 
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
@@ -276,6 +280,18 @@ class FlickKeyboardView @JvmOverloads constructor(
         standardFlickControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
 
         flickLongPressControllers.forEach { it.setPopupWindowAnchorProvider(provider) }
+
+    }
+
+    fun setTfbiPopupPresentationMode(mode: TfbiPopupPresentationMode) {
+        tfbiPopupPresentationMode = mode
+
+
+    }
+
+    fun setTfbiFlickStartPositionMode(mode: TfbiFlickStartPositionMode) {
+        tfbiFlickStartPositionMode = mode
+
 
     }
 

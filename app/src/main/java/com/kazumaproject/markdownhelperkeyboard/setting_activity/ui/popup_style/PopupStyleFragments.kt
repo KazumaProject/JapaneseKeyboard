@@ -9,6 +9,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.SeekBar
 import android.widget.TextView
@@ -19,6 +21,8 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.navigation.fragment.findNavController
 import com.kazumaproject.core.data.popup.PopupViewStyle
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
+import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.markdownhelperkeyboard.R
 import com.kazumaproject.markdownhelperkeyboard.setting_activity.AppPreference
 
@@ -385,6 +389,72 @@ private fun Fragment.styleEditorSection(
         ViewGroup.LayoutParams.WRAP_CONTENT
     )
     root.addView(preview)
+    if (flickTarget == FlickTarget.TFBI && preview is FlickPopupStylePreviewView) {
+        preview.setTfbiGuideBackgroundColor(
+            AppPreference.key_popup_background_color.takeIf {
+                AppPreference.key_popup_use_custom_color
+            }
+        )
+        root.addView(sectionTitle(getString(R.string.tfbi_popup_presentation_title)))
+        val modeGroup = RadioGroup(context).apply {
+            orientation = RadioGroup.VERTICAL
+        }
+        val legacyId = View.generateViewId()
+        val guideId = View.generateViewId()
+        modeGroup.addView(RadioButton(context).apply {
+            id = legacyId
+            text = getString(R.string.tfbi_popup_presentation_legacy)
+        })
+        modeGroup.addView(RadioButton(context).apply {
+            id = guideId
+            text = getString(R.string.tfbi_popup_presentation_guide)
+        })
+        val initialMode = AppPreference.flick_tfbi_popup_presentation
+        modeGroup.check(if (initialMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) guideId else legacyId)
+        modeGroup.setOnCheckedChangeListener { _, checkedId ->
+            val mode = if (checkedId == guideId) {
+                TfbiPopupPresentationMode.GUIDE_ABOVE_KEY
+            } else {
+                TfbiPopupPresentationMode.LEGACY_GRID
+            }
+            AppPreference.flick_tfbi_popup_presentation = mode
+            preview.setTfbiPopupPresentationMode(mode)
+        }
+        preview.setTfbiPopupPresentationMode(initialMode)
+        root.addView(modeGroup)
+
+        root.addView(sectionTitle(getString(R.string.tfbi_flick_start_position_title)))
+        val startPositionGroup = RadioGroup(context).apply {
+            orientation = RadioGroup.VERTICAL
+        }
+        val touchPointId = View.generateViewId()
+        val keyCenterId = View.generateViewId()
+        startPositionGroup.addView(RadioButton(context).apply {
+            id = touchPointId
+            text = getString(R.string.tfbi_flick_start_position_touch_point)
+        })
+        startPositionGroup.addView(RadioButton(context).apply {
+            id = keyCenterId
+            text = getString(R.string.tfbi_flick_start_position_key_center)
+        })
+        val initialStartPosition = AppPreference.flick_tfbi_flick_start_position
+        startPositionGroup.check(
+            if (initialStartPosition == TfbiFlickStartPositionMode.KEY_CENTER) {
+                keyCenterId
+            } else {
+                touchPointId
+            }
+        )
+        startPositionGroup.setOnCheckedChangeListener { _, checkedId ->
+            AppPreference.flick_tfbi_flick_start_position =
+                if (checkedId == keyCenterId) {
+                    TfbiFlickStartPositionMode.KEY_CENTER
+                } else {
+                    TfbiFlickStartPositionMode.TOUCH_POINT
+                }
+        }
+        root.addView(startPositionGroup)
+    }
     root.addView(sizeLabel.first)
     root.addView(sizeSeek)
     root.addView(textLabel.first)

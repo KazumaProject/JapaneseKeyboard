@@ -1292,6 +1292,14 @@
     <string name="qwerty_popup_view_style_preference_summary">QWERTY/ローマ字のキー preview と長押し候補 PopupView のサイズと文字サイズを設定します</string>
     <string name="flick_keyboard_popup_view_style_preference_title">タップ・フリック PopupView のサイズ</string>
     <string name="flick_keyboard_popup_view_style_preference_summary">方向別・十字・サークル・2段/3段フリック PopupView のサイズと文字サイズを設定します</string>
+    <string name="tfbi_flick_start_position_title">TFBiフリック開始位置</string>
+    <string name="tfbi_flick_start_position_summary">ガイドカーソルを指の位置から始めるか、キー中央から始めるかを設定します</string>
+    <string name="tfbi_flick_start_position_dialog_title">TFBiフリック開始位置を選択</string>
+    <string name="tfbi_flick_start_position_touch_point">指を置いた位置を反映（従来）</string>
+    <string name="tfbi_flick_start_position_key_center">キー中央から開始</string>
+    <string name="tfbi_popup_presentation_title">TFBiポップアップ表示</string>
+    <string name="tfbi_popup_presentation_legacy">従来の3×3ポップアップ</string>
+    <string name="tfbi_popup_presentation_guide">キー上部ガイド</string>
     <string name="qwerty_number_key_flick_setting_preference_summary">QWERTY 数字キーの上・下フリックで出力する文字を設定します</string>
     <string name="qwerty_number_key_flick_setting_preference_title">数字キーのフリック設定</string>
     <string name="custom_keyboard_usage_number_title">数字入力欄で使用する</string>
