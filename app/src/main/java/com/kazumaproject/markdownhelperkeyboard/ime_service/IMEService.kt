@@ -796,7 +796,8 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         AppPreference.VIBRATION_TIMING_KEY,
         AppPreference.KEY_SOUND_KEY,
         AppPreference.KEY_SOUND_VOLUME_PERCENT_KEY,
-        AppPreference.FLICK_TFBI_POPUP_PRESENTATION_KEY
+        AppPreference.FLICK_TFBI_POPUP_PRESENTATION_KEY,
+        AppPreference.FLICK_TFBI_FLICK_START_POSITION_KEY
     )
     private val runtimeInputPreferenceListener =
         SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
