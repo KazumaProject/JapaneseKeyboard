@@ -2457,6 +2457,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         val longPressTimeout =
             (appPreference.long_press_timeout_preference ?: 300).coerceIn(100, 2000)
         val tfbiPopupPresentationMode = appPreference.flick_tfbi_popup_presentation
+        val tfbiFlickStartPositionMode = appPreference.flick_tfbi_flick_start_position
 
         flickSensitivityPreferenceValue = sensitivity
         flickThresholdShapePreferenceValue = thresholdShape
@@ -2505,6 +2506,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyView.setLongPressTimeout(longPressTimeout.toLong())
             applyCurrentFlickGuidePreference(customLayoutDefault)
             customLayoutDefault.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
+            customLayoutDefault.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
         }
         floatingKeyboardBinding?.apply {
             keyboardViewFloating.setFlickSensitivityValue(sensitivity)
@@ -2520,6 +2522,7 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
             qwertyViewFloating.setLongPressTimeout(longPressTimeout.toLong())
             applyCurrentFlickGuidePreference(customLayoutFloating)
             customLayoutFloating.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
+            customLayoutFloating.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
         }
     }
 
@@ -11380,7 +11383,9 @@ class IMEService : InputMethodService(), LifecycleOwner, InputConnection,
         flickView.setOnFlickTextPreviewListener(sumireFlickTextPreviewListener)
         flickView.bindRuntimeGestureSettings(runtimeGestureSettingsSource)
         val tfbiPopupPresentationMode = appPreference.flick_tfbi_popup_presentation
+        val tfbiFlickStartPositionMode = appPreference.flick_tfbi_flick_start_position
         flickView.setTfbiPopupPresentationMode(tfbiPopupPresentationMode)
+        flickView.setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
         if (isFloatingView) {
             Timber.d("Configuring floating FlickKeyboardView mirror surface")
             // Floating ON のときだけ、popup の window anchor を IME decorView (or floating root)
