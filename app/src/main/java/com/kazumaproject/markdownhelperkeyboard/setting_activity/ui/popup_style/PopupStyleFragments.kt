@@ -395,7 +395,7 @@ private fun Fragment.styleEditorSection(
                 AppPreference.key_popup_use_custom_color
             }
         )
-        root.addView(sectionTitle("TFBiポップアップ表示"))
+        root.addView(sectionTitle(getString(R.string.tfbi_popup_presentation_title)))
         val modeGroup = RadioGroup(context).apply {
             orientation = RadioGroup.VERTICAL
         }
@@ -403,11 +403,11 @@ private fun Fragment.styleEditorSection(
         val guideId = View.generateViewId()
         modeGroup.addView(RadioButton(context).apply {
             id = legacyId
-            text = "従来の3×3ポップアップ"
+            text = getString(R.string.tfbi_popup_presentation_legacy)
         })
         modeGroup.addView(RadioButton(context).apply {
             id = guideId
-            text = "キー上部ガイド"
+            text = getString(R.string.tfbi_popup_presentation_guide)
         })
         val initialMode = AppPreference.flick_tfbi_popup_presentation
         modeGroup.check(if (initialMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) guideId else legacyId)
