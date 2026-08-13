@@ -1343,6 +1343,9 @@
     <string name="tfbi_flick_start_position_dialog_title">Select TFBi flick start position</string>
     <string name="tfbi_flick_start_position_touch_point">Follow finger position (legacy)</string>
     <string name="tfbi_flick_start_position_key_center">Start from key center</string>
+    <string name="tfbi_popup_presentation_title">TFBi popup presentation</string>
+    <string name="tfbi_popup_presentation_legacy">Legacy 3x3 popup</string>
+    <string name="tfbi_popup_presentation_guide">Guide above key</string>
     <string name="qwerty_number_key_flick_setting_preference_summary">Number key flick settings</string>
     <string name="qwerty_number_key_flick_setting_preference_title">Configure the characters output by upward and downward flicks on QWERTY number keys.</string>
     <string name="custom_keyboard_usage_number_title">Use for number input fields</string>
