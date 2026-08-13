@@ -28,6 +28,7 @@
         <item>通常入力</item>
         <item>サークル入力</item>
         <item>２段フリック入力</item>
+        <item>中央開始ポインターフリック入力</item>
         <item>ドーナツ入力</item>
     </string-array>
 
@@ -35,6 +36,7 @@
         <item>default</item>
         <item>circle</item>
         <item>second-flick</item>
+        <item>center-guide-flick</item>
         <item>sumire</item>
     </string-array>
 
