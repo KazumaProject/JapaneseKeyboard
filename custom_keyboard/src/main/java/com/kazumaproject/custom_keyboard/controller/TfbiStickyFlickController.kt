@@ -79,6 +79,9 @@ class TfbiStickyFlickController(
     private var popupWindow: PopupWindow? = null
     private var popupStyle = PopupViewStyle(100, 20f)
     private var inputTextTransform: (String) -> String = { it }
+    private var popupBackgroundColor: Int? = null
+    private var popupHighlightedColor: Int? = null
+    private var popupTextColor: Int? = null
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
     private var popupPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
@@ -125,6 +128,13 @@ class TfbiStickyFlickController(
         inputTextTransform = transform
         popupView?.setInputTextTransform(transform)
         guidePopupHost.setInputTextTransform(transform)
+    }
+
+    fun setPopupColors(backgroundColor: Int, highlightedColor: Int, textColor: Int) {
+        popupBackgroundColor = backgroundColor
+        popupHighlightedColor = highlightedColor
+        popupTextColor = textColor
+        guidePopupHost.setColors(backgroundColor, highlightedColor, textColor)
     }
 
     fun applyPopupViewStyle(style: PopupViewStyle) {
@@ -360,6 +370,9 @@ class TfbiStickyFlickController(
 
         popupView = TfbiFlickPopupView(context).apply {
             setInputTextTransform(inputTextTransform)
+            if (popupBackgroundColor != null && popupHighlightedColor != null && popupTextColor != null) {
+                setColors(popupBackgroundColor!!, popupHighlightedColor!!, popupTextColor!!)
+            }
             applyPopupViewStyle(popupStyle)
             setCharacters(tapCharacter, petalChars)
             highlightDirection(TfbiFlickDirection.TAP)
