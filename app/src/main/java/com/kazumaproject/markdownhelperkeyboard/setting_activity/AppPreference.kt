@@ -9,6 +9,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.kazumaproject.core.data.clicked_symbol.SymbolMode
 import com.kazumaproject.core.domain.flick.FlickThresholdShape
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.custom_keyboard.data.CircularFlickDirection
 import com.kazumaproject.custom_keyboard.data.KeyboardInputMode
@@ -69,6 +70,8 @@ object AppPreference {
     const val FLICK_SENSITIVITY_KEY = "flick_sensitivity_preference"
     const val FLICK_THRESHOLD_SHAPE_KEY = "flick_threshold_shape_preference"
     const val FLICK_TFBI_POPUP_PRESENTATION_KEY = "flick_tfbi_popup_presentation_preference"
+    const val FLICK_TFBI_FLICK_START_POSITION_KEY =
+        "flick_tfbi_flick_start_position_preference"
     const val FLICK_EDITOR_PREVIEW_KEY = "flick_editor_preview_preference"
     const val TENKEY_KEYMAP_GUIDE_JAPANESE_KEY = "tenkey_keymap_guide"
     const val TENKEY_KEYMAP_GUIDE_ENGLISH_KEY = "tenkey_keymap_guide_english"
@@ -528,6 +531,11 @@ object AppPreference {
         Pair("flick_tfbi_popup_text_size_sp_preference", 20.0f)
     private val FLICK_TFBI_POPUP_PRESENTATION =
         Pair(FLICK_TFBI_POPUP_PRESENTATION_KEY, TfbiPopupPresentationMode.LEGACY_GRID.preferenceValue)
+    private val FLICK_TFBI_FLICK_START_POSITION =
+        Pair(
+            FLICK_TFBI_FLICK_START_POSITION_KEY,
+            TfbiFlickStartPositionMode.TOUCH_POINT.preferenceValue
+        )
 
     private val CANDIDATE_LETTER_SIZE = Pair("candidate_letter_size_preference", 14.0f)
 
@@ -3093,6 +3101,17 @@ object AppPreference {
         )
         set(value) = preferences.edit {
             it.putString(FLICK_TFBI_POPUP_PRESENTATION.first, value.preferenceValue)
+        }
+
+    var flick_tfbi_flick_start_position: TfbiFlickStartPositionMode
+        get() = TfbiFlickStartPositionMode.fromPreference(
+            preferences.getString(
+                FLICK_TFBI_FLICK_START_POSITION.first,
+                FLICK_TFBI_FLICK_START_POSITION.second
+            )
+        )
+        set(value) = preferences.edit {
+            it.putString(FLICK_TFBI_FLICK_START_POSITION.first, value.preferenceValue)
         }
 
     var clipboard_preview_preference: Boolean

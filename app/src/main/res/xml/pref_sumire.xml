@@ -18,6 +18,15 @@
             android:summary="@string/flick_keyboard_popup_view_style_preference_summary" />
 
         <ListPreference
+            android:defaultValue="touch_point"
+            android:dialogTitle="@string/tfbi_flick_start_position_dialog_title"
+            android:entries="@array/tfbi_flick_start_position_options"
+            android:entryValues="@array/tfbi_flick_start_position_values"
+            android:key="flick_tfbi_flick_start_position_preference"
+            android:summary="%s"
+            android:title="@string/tfbi_flick_start_position_title" />
+
+        <ListPreference
             android:defaultValue="toggle"
             android:dialogTitle="@string/sumire_input_method_dialog_title"
             android:entries="@array/sumire_input_method_options"

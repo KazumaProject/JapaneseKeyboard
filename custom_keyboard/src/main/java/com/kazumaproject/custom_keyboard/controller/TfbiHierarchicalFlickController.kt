@@ -9,6 +9,7 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.widget.PopupWindow
 import androidx.core.graphics.drawable.toDrawable
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
 import com.kazumaproject.core.domain.flick.FixedGestureSessionConfigSource
@@ -105,6 +106,8 @@ class TfbiHierarchicalFlickController(
     private var isJitterGuardActive = false
     private var activeGestureConfig: GestureSessionConfig? = null
     private var currentFingerPosition: TfbiGuideFingerPosition? = null
+    private var tfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
+    private var activeTfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
 
     // ポップアップView関連
     private var popupView: TfbiFlickPopupView? = null
@@ -162,6 +165,10 @@ class TfbiHierarchicalFlickController(
         popupWindow = null
         popupView = null
         popupPresentationMode = mode
+    }
+
+    fun setTfbiFlickStartPositionMode(mode: TfbiFlickStartPositionMode) {
+        tfbiFlickStartPositionMode = mode
     }
 
     fun setModeSwitchAngleMargin(margin: Double) {
@@ -248,7 +255,14 @@ class TfbiHierarchicalFlickController(
         centerStack.push(event.x to event.y)
         mapStack.push(rMap)
         highlightStack.push(TfbiFlickDirection.TAP)
-        currentFingerPosition = resolveTfbiGuideFingerPosition(view, event)
+        activeTfbiFlickStartPositionMode = tfbiFlickStartPositionMode
+        currentFingerPosition = resolveTfbiGuideFingerPosition(
+            anchor = view,
+            event = event,
+            startPositionMode = activeTfbiFlickStartPositionMode,
+            downX = event.x,
+            downY = event.y
+        )
         currentHighlight = TfbiFlickDirection.TAP
         guideRootDirection = TfbiFlickDirection.TAP
         guideSelectedOption = null
@@ -831,7 +845,14 @@ class TfbiHierarchicalFlickController(
     }
 
     private fun updateGuideFingerPosition(view: View, event: MotionEvent) {
-        currentFingerPosition = resolveTfbiGuideFingerPosition(view, event)
+        val (downX, downY) = centerStack.peek() ?: (event.x to event.y)
+        currentFingerPosition = resolveTfbiGuideFingerPosition(
+            anchor = view,
+            event = event,
+            startPositionMode = activeTfbiFlickStartPositionMode,
+            downX = downX,
+            downY = downY
+        )
         if (popupPresentationMode == TfbiPopupPresentationMode.GUIDE_ABOVE_KEY) {
             guidePopupHost.updateFingerPosition(currentFingerPosition)
         }

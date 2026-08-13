@@ -30,6 +30,7 @@ import androidx.appcompat.widget.AppCompatImageButton
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.ColorUtils
 import com.google.android.material.R
+import com.kazumaproject.core.data.popup.TfbiFlickStartPositionMode
 import com.kazumaproject.core.data.popup.FlickPopupViewStyleSet
 import com.kazumaproject.core.data.popup.PopupViewStyle
 import com.kazumaproject.core.data.popup.TfbiPopupPresentationMode
@@ -138,6 +139,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     private var popupWindowAnchorProvider: (() -> View?)? = null
     private var tfbiPopupPresentationMode = TfbiPopupPresentationMode.LEGACY_GRID
+    private var tfbiFlickStartPositionMode = TfbiFlickStartPositionMode.TOUCH_POINT
 
     private val hitRect = Rect()
     private var flickSensitivity: Int = 100
@@ -293,6 +295,13 @@ class FlickKeyboardView @JvmOverloads constructor(
         tfbiControllers.forEach { it.setPopupPresentationMode(mode) }
         stickyTfbiControllers.forEach { it.setPopupPresentationMode(mode) }
         hierarchicalTfbiControllers.forEach { it.setPopupPresentationMode(mode) }
+    }
+
+    fun setTfbiFlickStartPositionMode(mode: TfbiFlickStartPositionMode) {
+        tfbiFlickStartPositionMode = mode
+        tfbiControllers.forEach { it.setTfbiFlickStartPositionMode(mode) }
+        stickyTfbiControllers.forEach { it.setTfbiFlickStartPositionMode(mode) }
+        hierarchicalTfbiControllers.forEach { it.setTfbiFlickStartPositionMode(mode) }
     }
 
     fun applyPopupViewStyleSet(styleSet: FlickPopupViewStyleSet) {
@@ -2222,6 +2231,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setPopupPresentationMode(tfbiPopupPresentationMode)
+                        setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : TfbiInputController.TfbiListener {
@@ -2391,6 +2401,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setPopupPresentationMode(tfbiPopupPresentationMode)
+                        setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
                         setInputTextTransform(::transformInputTextForDisplay)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)
                         this.listener = object : TfbiStickyFlickController.TfbiListener {
@@ -2452,6 +2463,7 @@ class FlickKeyboardView @JvmOverloads constructor(
                     ).apply {
                         setPopupWindowAnchorProvider(popupWindowAnchorProvider)
                         setPopupPresentationMode(tfbiPopupPresentationMode)
+                        setTfbiFlickStartPositionMode(tfbiFlickStartPositionMode)
                         setInputTextTransform(::transformInputTextForDisplay)
                         setModeSwitchAngleMargin(hierarchicalFlickModeSwitchAngleMargin)
                         applyPopupViewStyle(popupViewStyleSet.tfbi)

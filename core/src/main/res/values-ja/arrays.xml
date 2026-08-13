@@ -40,6 +40,16 @@
         <item>sumire</item>
     </string-array>
 
+    <string-array name="tfbi_flick_start_position_options">
+        <item>指を置いた位置を反映（従来）</item>
+        <item>キー中央から開始</item>
+    </string-array>
+
+    <string-array name="tfbi_flick_start_position_values">
+        <item>touch_point</item>
+        <item>key_center</item>
+    </string-array>
+
     <string-array name="sumire_input_method_options">
         <item>トグル入力</item>
         <item>フリック入力</item>

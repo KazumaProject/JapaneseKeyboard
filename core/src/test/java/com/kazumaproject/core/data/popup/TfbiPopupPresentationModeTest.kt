@@ -6,6 +6,24 @@ import org.junit.Test
 class TfbiPopupPresentationModeTest {
 
     @Test
+    fun unknownStartPositionPreferenceKeepsTheLegacyTouchPointMode() {
+        assertEquals(
+            TfbiFlickStartPositionMode.TOUCH_POINT,
+            TfbiFlickStartPositionMode.fromPreference("unknown")
+        )
+    }
+
+    @Test
+    fun keyCenterModeRoundTripsThroughPreferenceValue() {
+        assertEquals(
+            TfbiFlickStartPositionMode.KEY_CENTER,
+            TfbiFlickStartPositionMode.fromPreference(
+                TfbiFlickStartPositionMode.KEY_CENTER.preferenceValue
+            )
+        )
+    }
+
+    @Test
     fun unknownPreferenceKeepsLegacyPresentation() {
         assertEquals(
             TfbiPopupPresentationMode.LEGACY_GRID,
