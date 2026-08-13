@@ -4971,6 +4971,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -4979,6 +4980,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -4987,6 +4989,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -4995,6 +4998,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5003,6 +5007,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5011,6 +5016,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5019,6 +5025,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5027,6 +5034,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5035,6 +5043,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5052,6 +5061,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5060,6 +5070,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5716,6 +5727,7 @@ object KeyboardDefaultLayouts {
                 "@#/_", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5723,6 +5735,7 @@ object KeyboardDefaultLayouts {
                 "ABC", 0, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5730,6 +5743,7 @@ object KeyboardDefaultLayouts {
                 "DEF", 0, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5737,6 +5751,7 @@ object KeyboardDefaultLayouts {
                 "GHI", 1, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5744,6 +5759,7 @@ object KeyboardDefaultLayouts {
                 "JKL", 1, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5751,6 +5767,7 @@ object KeyboardDefaultLayouts {
                 "MNO", 1, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5758,6 +5775,7 @@ object KeyboardDefaultLayouts {
                 "PQRS", 2, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5765,6 +5783,7 @@ object KeyboardDefaultLayouts {
                 "TUV", 2, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5772,6 +5791,7 @@ object KeyboardDefaultLayouts {
                 "WXYZ", 2, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5781,6 +5801,7 @@ object KeyboardDefaultLayouts {
                 "' \" ( )", 3, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -5788,6 +5809,7 @@ object KeyboardDefaultLayouts {
                 ". , ? !", 3, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6046,6 +6068,7 @@ object KeyboardDefaultLayouts {
                 "1\n☆♪→", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6053,6 +6076,7 @@ object KeyboardDefaultLayouts {
                 "2\n￥$€", 0, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6060,6 +6084,7 @@ object KeyboardDefaultLayouts {
                 "3\n%°#", 0, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6067,6 +6092,7 @@ object KeyboardDefaultLayouts {
                 "4\n○*・", 1, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6074,6 +6100,7 @@ object KeyboardDefaultLayouts {
                 "5\n+x÷", 1, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6081,6 +6108,7 @@ object KeyboardDefaultLayouts {
                 "6\n< = >", 1, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6088,6 +6116,7 @@ object KeyboardDefaultLayouts {
                 "7\n「」:", 2, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6095,6 +6124,7 @@ object KeyboardDefaultLayouts {
                 "8\n〒々〆", 2, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6102,6 +6132,7 @@ object KeyboardDefaultLayouts {
                 "9\n^|\\", 2, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6109,6 +6140,7 @@ object KeyboardDefaultLayouts {
                 "0\n〜…", 3, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6122,6 +6154,7 @@ object KeyboardDefaultLayouts {
                 keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6129,6 +6162,7 @@ object KeyboardDefaultLayouts {
                 ".,-/", 3, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6477,6 +6511,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6485,6 +6520,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6493,6 +6529,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6501,6 +6538,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6509,6 +6547,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6517,6 +6556,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6525,6 +6565,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6533,6 +6574,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6541,6 +6583,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6558,6 +6601,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -6566,6 +6610,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7216,6 +7261,7 @@ object KeyboardDefaultLayouts {
                 "@#/_", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7223,6 +7269,7 @@ object KeyboardDefaultLayouts {
                 "ABC", 0, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7230,6 +7277,7 @@ object KeyboardDefaultLayouts {
                 "DEF", 0, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7237,6 +7285,7 @@ object KeyboardDefaultLayouts {
                 "GHI", 1, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7244,6 +7293,7 @@ object KeyboardDefaultLayouts {
                 "JKL", 1, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7251,6 +7301,7 @@ object KeyboardDefaultLayouts {
                 "MNO", 1, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7258,6 +7309,7 @@ object KeyboardDefaultLayouts {
                 "PQRS", 2, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7265,6 +7317,7 @@ object KeyboardDefaultLayouts {
                 "TUV", 2, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7272,6 +7325,7 @@ object KeyboardDefaultLayouts {
                 "WXYZ", 2, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7281,6 +7335,7 @@ object KeyboardDefaultLayouts {
                 "' \" ( )", 3, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7288,6 +7343,7 @@ object KeyboardDefaultLayouts {
                 ". , ? !", 3, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7544,6 +7600,7 @@ object KeyboardDefaultLayouts {
                 "@#/_", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7551,6 +7608,7 @@ object KeyboardDefaultLayouts {
                 "ABC", 0, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7558,6 +7616,7 @@ object KeyboardDefaultLayouts {
                 "DEF", 0, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7565,6 +7624,7 @@ object KeyboardDefaultLayouts {
                 "GHI", 1, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7572,6 +7632,7 @@ object KeyboardDefaultLayouts {
                 "JKL", 1, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7579,6 +7640,7 @@ object KeyboardDefaultLayouts {
                 "MNO", 1, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7586,6 +7648,7 @@ object KeyboardDefaultLayouts {
                 "PQRS", 2, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7593,6 +7656,7 @@ object KeyboardDefaultLayouts {
                 "TUV", 2, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7600,6 +7664,7 @@ object KeyboardDefaultLayouts {
                 "WXYZ", 2, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7609,6 +7674,7 @@ object KeyboardDefaultLayouts {
                 "' \" ( )", 3, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7616,6 +7682,7 @@ object KeyboardDefaultLayouts {
                 ". , ? !", 3, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7893,6 +7960,7 @@ object KeyboardDefaultLayouts {
                 "1\n☆♪→", 0, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7900,6 +7968,7 @@ object KeyboardDefaultLayouts {
                 "2\n￥$€", 0, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7907,6 +7976,7 @@ object KeyboardDefaultLayouts {
                 "3\n%°#", 0, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7914,6 +7984,7 @@ object KeyboardDefaultLayouts {
                 "4\n○*・", 1, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7921,6 +7992,7 @@ object KeyboardDefaultLayouts {
                 "5\n+x÷", 1, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7928,6 +8000,7 @@ object KeyboardDefaultLayouts {
                 "6\n< = >", 1, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7935,6 +8008,7 @@ object KeyboardDefaultLayouts {
                 "7\n「」:", 2, 1, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7942,6 +8016,7 @@ object KeyboardDefaultLayouts {
                 "8\n〒々〆", 2, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7949,6 +8024,7 @@ object KeyboardDefaultLayouts {
                 "9\n^|\\", 2, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7956,6 +8032,7 @@ object KeyboardDefaultLayouts {
                 "0\n〜…", 3, 2, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7969,6 +8046,7 @@ object KeyboardDefaultLayouts {
                 keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -7976,6 +8054,7 @@ object KeyboardDefaultLayouts {
                 ".,-/", 3, 3, true, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8325,6 +8404,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8333,6 +8413,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8341,6 +8422,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8349,6 +8431,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8357,6 +8440,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8365,6 +8449,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8373,6 +8458,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8381,6 +8467,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8389,6 +8476,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8406,6 +8494,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -8414,6 +8503,7 @@ object KeyboardDefaultLayouts {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
                     "second-flick" -> KeyType.TWO_STEP_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9114,6 +9204,7 @@ object KeyboardDefaultLayouts {
                 keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9125,6 +9216,7 @@ object KeyboardDefaultLayouts {
                 keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9136,6 +9228,7 @@ object KeyboardDefaultLayouts {
                 keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9147,6 +9240,7 @@ object KeyboardDefaultLayouts {
                 keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9154,6 +9248,7 @@ object KeyboardDefaultLayouts {
                 "2\n￥$€", 0, 2, false, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9161,6 +9256,7 @@ object KeyboardDefaultLayouts {
                 "3\n%°&", 0, 3, false, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9168,6 +9264,7 @@ object KeyboardDefaultLayouts {
                 "5\n+x÷", 1, 2, false, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9175,6 +9272,7 @@ object KeyboardDefaultLayouts {
                 "6\n< = >", 1, 3, false, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9182,6 +9280,7 @@ object KeyboardDefaultLayouts {
                 "8\n〒々〆", 2, 2, false, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9189,6 +9288,7 @@ object KeyboardDefaultLayouts {
                 "9\n^|\\", 2, 3, false, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9196,6 +9296,7 @@ object KeyboardDefaultLayouts {
                 "0\n〜…", 3, 2, false, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
@@ -9203,6 +9304,7 @@ object KeyboardDefaultLayouts {
                 "#\n.^,", 3, 3, false, keyType = when (inputStyle) {
                     "default" -> KeyType.PETAL_FLICK
                     "circle" -> KeyType.STANDARD_FLICK
+                    "center-guide-flick" -> KeyType.CENTER_GUIDE_FLICK
                     "sumire" -> KeyType.CIRCULAR_FLICK
                     else -> KeyType.PETAL_FLICK
                 }
